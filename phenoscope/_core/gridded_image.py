@@ -18,7 +18,10 @@ class GriddedImage(Image):
             super().__init__(image)
         else:
             raise ValueError('Input should be either an image array or a phenoscope.Image object.')
-        self._gs_extractor = GridSectionExtractor(n_rows=n_rows, n_cols=n_cols)
+        if gridding_method is None is None:
+            self._gs_extractor = GridSectionExtractor(n_rows=n_rows, n_cols=n_cols)
+        else:
+            self._gs_extractor = gridding_method
 
     @property
     def grid_metrics(self) -> pd.DataFrame:
@@ -33,6 +36,18 @@ class GriddedImage(Image):
             subtable = _tmp_table.loc[_tmp_table.loc[:, 'grid_col_bin'] == col_bindex, :]
             _new_map[np.isin(element=self.object_map, test_elements=subtable.index.to_numpy())] = n + 1
         return _new_map
+
+    @property
+    def grid_row_edges(self) -> np.ndarray:
+        intervals = self.grid_metrics.loc[:, 'grid_row_intervals'].apply(lambda x: x.to_numpy())
+        edges = np.concatenate(intervals).unique()
+        return edges
+
+    @property
+    def grid_col_edges(self) -> np.ndarray:
+        intervals = self.grid_metrics.loc[:, 'grid_col_intervals'].apply(lambda x: x.to_numpy())
+        edges = np.concatenate(intervals).unique()
+        return edges
 
     @property
     def grid_row_map(self) -> np.ndarray:
@@ -52,7 +67,7 @@ class GriddedImage(Image):
             _new_map[np.isin(element=self.object_map, test_elements=subtable.index.to_numpy())] = n + 1
         return _new_map
 
-    def show_column_overlay(self, use_enhanced=False, ax=None, figsize=(9, 10)) -> (plt.Figure, plt.Axes):
+    def show_column_overlay(self, use_enhanced=False, show_edges=False, ax=None, figsize=(9, 10)) -> (plt.Figure, plt.Axes):
         if ax is None:
             fig, func_ax = plt.subplots(tight_layout=True, figsize=figsize)
         else:
@@ -65,12 +80,14 @@ class GriddedImage(Image):
         else:
             func_ax.imshow(label2rgb(label=self.grid_col_map, image=self.array))
 
+        if show_edges: func_ax.vlines(x=self.grid_col_edges, ymin=0, ymax=self.shape[1], colors='c', linestyles='--')
+
         if ax is None:
             return fig, func_ax
         else:
             return func_ax
 
-    def show_row_overlay(self, use_enhanced=False, ax=None, figsize=(9, 10)) -> (plt.Figure, plt.Axes):
+    def show_row_overlay(self, use_enhanced=False, show_edges=False, ax=None, figsize=(9, 10)) -> (plt.Figure, plt.Axes):
         if ax is None:
             fig, func_ax = plt.subplots(tight_layout=True, figsize=figsize)
         else:
@@ -83,12 +100,14 @@ class GriddedImage(Image):
         else:
             func_ax.imshow(label2rgb(label=self.grid_row_map, image=self.array))
 
+        if show_edges: func_ax.hlines(y=self.grid_row_edges, xmin=0, xmax=self.shape[0], color='c', linestyles='--')
+
         if ax is None:
             return fig, func_ax
         else:
             return func_ax
 
-    def show_section_overlay(self, use_enhanced=False, ax=None, figsize=(9, 10)) -> (plt.Figure, plt.Axes):
+    def show_section_overlay(self, use_enhanced=False, show_edges=False, ax=None, figsize=(9, 10)) -> (plt.Figure, plt.Axes):
         if ax is None:
             fig, func_ax = plt.subplots(tight_layout=True, figsize=figsize)
         else:
@@ -100,6 +119,11 @@ class GriddedImage(Image):
             func_ax.imshow(label2rgb(label=self.grid_section_map, image=self.enhanced_array))
         else:
             func_ax.imshow(label2rgb(label=self.grid_section_map, image=self.array))
+
+        if show_edges:
+            func_ax.vlines(x=self.grid_col_edges, ymin=0, ymax=self.shape[1], colors='c', linestyles='--')
+            func_ax.hlines(y=self.grid_row_edges, xmin=0, xmax=self.shape[0], color='c', linestyles='--')
+
 
         cmap = plt.get_cmap('tab20')
         cmap_cycle = cycle(cmap(i) for i in range(cmap.N))

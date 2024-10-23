@@ -4,6 +4,7 @@ from . import BoundaryExtractor
 
 from typing import Optional
 import pandas as pd
+import numpy as np
 
 
 class GridSectionExtractor(GridFeatureExtractor):
@@ -15,17 +16,43 @@ class GridSectionExtractor(GridFeatureExtractor):
         # Find the centroid and boundaries
         results = BoundaryExtractor().extract(image)
 
+        gs_row_bins = np.histogram_bin_edges(
+                a=results.loc[:,'center_rr'],
+                bins=self._n_rows,
+                range=(
+                    results.loc[:,'min_rr'].min(),
+                    results.loc[:,'max_rr'].max()
+                )
+        )
+        results.loc[:,'grid_row_intervals'] = pd.cut(
+                results.loc[:, 'center_rr'],
+                bins=gs_row_bins,
+        )
         results.loc[:, 'grid_row_bin'] = pd.cut(
                 results.loc[:, 'center_rr'],
-                bins=self._n_rows,
+                bins=gs_row_bins,
                 labels=range(self._n_rows)
         )
 
+        gs_col_bins = np.histogram_bin_edges(
+                a=results.loc[:,'center_cc'],
+                bins=self._n_cols,
+                range=(
+                    results.loc[:,'min_cc'].min(),
+                    results.loc[:,'max_cc'].max()
+                )
+        )
+        results.loc[:, 'grid_col_intervals'] = pd.cut(
+                results.loc[:, 'center_cc'],
+                bins=gs_col_bins,
+        )
         results.loc[:, 'grid_col_bin'] = pd.cut(
                 results.loc[:, 'center_cc'],
-                bins=self._n_cols,
+                bins=gs_col_bins,
                 labels=range(self._n_cols)
         )
+
+
 
         results.loc[:, 'grid_section_bin'] = list(zip(
                 results.loc[:, 'grid_row_bin'],
