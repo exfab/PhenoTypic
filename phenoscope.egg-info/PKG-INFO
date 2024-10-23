@@ -1,16 +1,22 @@
 Metadata-Version: 2.1
 Name: phenoscope
 Version: 0.3.1
-Summary: A python package for high-throughput analysis of microorganism colonies on solid media plates
-Home-page: https://github.com/Xander-git/PhenoScope
-Author: Alexander Nguyen
-Author-email: anguy344@ucr.edu
-Classifier: Programming Language :: Python :: 3
+Summary: An image processing platform created for Ex-FAB NSF BioFoundry that aims to facilitate the development of image processing tools for synthetic bioengineering research.
+Author-email: Alexander Nguyen <xander-git@protonmail.com>
+Classifier: Development Status :: Alpha
 Classifier: License :: OSI Approved :: MIT License
-Classifier: Operating System :: OS Independent
-Requires-Python: >=3.10
+Classifier: Natural Language :: English
+Classifier: Programming Language :: Python
+Classifier: Programming Language :: Python :: 3.10
+Requires-Python: ~=3.10
 Description-Content-Type: text/markdown
 License-File: LICENSE
+Requires-Dist: pandas
+Requires-Dist: numpy
+Requires-Dist: seaborn
+Requires-Dist: scikit-image
+Requires-Dist: scikit-learn
+Requires-Dist: scipy
 
 # Phenomics
 
