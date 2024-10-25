@@ -13,13 +13,13 @@ from typing import Dict, Any
 
 from ...interface._image_operation import ImageOperation
 
-from ...interface.object_detector import ObjectDetector
-from ...interface.image_preprocessor import ImagePreprocessor
-from ...interface.morphology_morpher import MorphologyMorpher
-from ...interface.image_transformer import ImageTransformer
-from ...interface.object_filter import ObjectFilter
-from ...interface.feature_extractor import FeatureExtractor
-from ...interface.object_modifier import ObjectModifier
+from ...interface._object_detector import ObjectDetector
+from ...interface._image_preprocessor import ImagePreprocessor
+from ...interface._morphology_morpher import MorphologyMorpher
+from ...interface._image_transformer import ImageTransformer
+from ...interface._object_filter import ObjectFilter
+from ...interface._feature_extractor import FeatureExtractor
+from ...interface._object_modifier import ObjectModifier
 
 from ...util.error_message import INTERFACE_ERROR_MSG
 

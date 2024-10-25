@@ -10,7 +10,7 @@ log.addHandler(console_handler)
 console_handler.setFormatter(formatter)
 
 
-from .imaging_pipeline import ImagingPipeline
+from ._imaging_pipeline import ImagingPipeline
 from ... import Image
 
 

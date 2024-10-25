@@ -1,5 +1,5 @@
 import skimage
-from .image import Image
+from ._image import Image
 from pathlib import Path
 
 

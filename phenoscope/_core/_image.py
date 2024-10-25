@@ -53,8 +53,8 @@ class Image:
         return np.copy(self.__enhanced_image_array)
 
     @enhanced_array.setter
-    def enhanced_array(self, enhanced_image: np.ndarray) -> None:
-        self.__enhanced_image_array = enhanced_image
+    def enhanced_array(self, image: np.ndarray) -> None:
+        self.__enhanced_image_array = image
         self.__object_mask = None
         self.__object_map = None
 

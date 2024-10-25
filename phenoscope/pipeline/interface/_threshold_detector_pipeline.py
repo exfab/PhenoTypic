@@ -11,7 +11,7 @@ console_handler.setFormatter(formatter)
 
 import numpy as np
 
-from .imaging_pipeline import ImagingPipeline
+from ._imaging_pipeline import ImagingPipeline
 from ...util.type_checks import is_binary_mask
 
 

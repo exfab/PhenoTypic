@@ -1,6 +1,6 @@
 
 INTERFACE_ERROR_MSG = "An interface method was called when it was not supposed to be. Make sure any inherited classes properly overload this method."
-OUTPUT_NOT_IMAGE_MSG = "This method's output is not a phenoscope.Image object even though it should be."
+OUTPUT_NOT_IMAGE_MSG = "This method's output is not a phenoscope. Image object even though it should be."
 OUTPUT_NOT_TABLE_MSG = "This method's output is not a pandas DataFrame even though it should be."
 
 INVALID_MASK_SHAPE_MSG = 'Object Mask shape should be the same as the image shape.'

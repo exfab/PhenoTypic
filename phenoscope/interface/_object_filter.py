@@ -26,7 +26,7 @@ class ObjectFilter(ImageOperation):
         if not np.array_equal(image.array, input_img): raise ValueError(ARRAY_CHANGE_ERROR_MSG)
         if not np.array_equal(image.enhanced_array, input_enhanced): raise ValueError(ENHANCED_ARRAY_CHANGE_ERROR_MSG)
 
-        if type(output) is not Image: raise RuntimeError(OUTPUT_NOT_IMAGE_MSG)
+        if isinstance(output, Image) is False: raise RuntimeError(OUTPUT_NOT_IMAGE_MSG)
         return output
 
     def _operate(self, image: Image) -> Image:

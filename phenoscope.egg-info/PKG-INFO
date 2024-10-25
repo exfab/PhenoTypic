@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: phenoscope
-Version: 0.3.1
+Version: 0.4.0a0
 Summary: An image processing platform created for Ex-FAB NSF BioFoundry that aims to facilitate the development of image processing tools for synthetic bioengineering research.
 Author-email: Alexander Nguyen <xander-git@protonmail.com>
 Classifier: Development Status :: Alpha

@@ -1,13 +1,13 @@
 import numpy as np
 from typing import Optional, Union
 
-from .. import Image
-from ..interface import ObjectModifier
+from phenoscope import Image
+from phenoscope.interface import ObjectFilter
 
 
-class BorderObjectModifier(ObjectModifier):
-    def __init__(self, edge_size: Optional[Union[int, float]] = None):
-        self.__edge_size = edge_size
+class BorderObjectFilter(ObjectFilter):
+    def __init__(self, border_size: Optional[Union[int, float]] = None):
+        self.__edge_size = border_size
 
     def _operate(self, image: Image) -> Image:
         if self.__edge_size is None:

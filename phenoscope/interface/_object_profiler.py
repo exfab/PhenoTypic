@@ -1,11 +1,11 @@
 import pandas as pd
 
-from .object_detector import ObjectDetector
-from .image_preprocessor import ImagePreprocessor
-from .feature_extractor import FeatureExtractor
-from .morphology_morpher import MorphologyMorpher
-from .object_filter import ObjectFilter
-from .object_modifier import ObjectModifier
+from ._object_detector import ObjectDetector
+from ._image_preprocessor import ImagePreprocessor
+from ._feature_extractor import FeatureExtractor
+from ._morphology_morpher import MorphologyMorpher
+from ._object_filter import ObjectFilter
+from ._object_modifier import ObjectModifier
 
 from .. import Image
 from ..util.error_message import INTERFACE_ERROR_MSG
