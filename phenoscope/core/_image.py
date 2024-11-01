@@ -4,30 +4,43 @@ from typing_extensions import Self
 import numpy as np
 import matplotlib.pyplot as plt
 from skimage.measure import label
-from skimage.color import label2rgb
+from skimage.color import label2rgb, rgb2gray
 
 from ..util.type_checks import is_binary_mask
 from ..util.error_message import INVALID_MASK_SHAPE_MSG, INVALID_MAP_SHAPE_MSG
 
-
 class Image:
     def __init__(self, image: Union[np.ndarray, Self]):
         if type(image) is np.ndarray:
-            self.__image_array: np.ndarray = image
-            self.__enhanced_image_array = image
+            if image.ndim == 3:
+                self.__color_array = image
+                self.__image_array = rgb2gray(image)
+            else:
+                self.__color_array = None
+                self.__image_array: np.ndarray = image
+            self.__enhanced_image_array = self.__image_array
             self.__object_mask: Optional[np.ndarray] = None
             self.__object_map: Optional[np.ndarray] = None
-        elif hasattr(image, 'array') and hasattr(image, 'enhanced_array') and hasattr(image, 'object_mask') and hasattr(image,
-                                                                                                                        'object_map'):
+
+        elif hasattr(image, 'array') \
+                and hasattr(image, 'enhanced_array') \
+                and hasattr(image, 'object_mask') \
+                and hasattr(image, 'object_map'):
+            self.__color_array = image.color_array
             self.__image_array: np.ndarray = image.array
             self.__enhanced_image_array: np.ndarray = image.enhanced_array
             self.__object_mask: Optional[np.ndarray] = image.object_mask
             self.__object_map: Optional[np.ndarray] = image.object_map
+
         else:
-            raise ValueError('Unsupported input for image class constructor')
+            raise ValueError(
+                    f'Unsupported input for image class constructor - Input: {type(image)} - Accepted Input:{np.ndarray} or {self.__class__}'
+            )
+
 
     def __getitem__(self, index):
-        return self.__class__(self.__image_array[index])
+        new_img = self.__class__(self.__image_array[index])
+        new_img.enhanced_array = self.__enhanced_image_array[index]
 
     @property
     def shape(self) -> tuple:
@@ -40,6 +53,16 @@ class Image:
     @property
     def array(self) -> np.ndarray:
         return np.copy(self.__image_array)
+
+    @property
+    def color_array(self) -> np.ndarray:
+        if self.__color_array is None: raise AttributeError('The input image array was not an RGB array.')
+        return self.__color_array
+
+    @color_array.setter
+    def color_array(self, image: np.ndarray):
+        self.__color_array = image
+        self.array = rgb2gray(image)
 
     @array.setter
     def array(self, image: np.ndarray) -> None:
@@ -58,13 +81,17 @@ class Image:
         self.__object_mask = None
         self.__object_map = None
 
+    # Object Mask: A binary array that represents detected objects
     @property
-    def object_mask(self) -> np.ndarray:
+    def object_mask(self) -> Union[np.ndarray, None]:
         """
         The object mask is a boolean array indicating the indices of the objects in the image.
         :return:
         """
-        return np.copy(self.__object_mask)
+        if self.__object_mask is not None:
+            return np.copy(self.__object_mask)
+        else:
+            return None
 
     @object_mask.setter
     def object_mask(self, mask: np.ndarray) -> None:
@@ -78,8 +105,15 @@ class Image:
             self.__object_mask = None
 
     @property
-    def object_map(self) -> np.ndarray:
-        return np.copy(self.__object_map)
+    def object_map(self) -> Union[np.ndarray, None]:
+        """
+        The object map is a numpy array with integer values that represent the different objects within the mask
+        :return:
+        """
+        if self.__object_map is not None:
+            return np.copy(self.__object_map)
+        else:
+            return None
 
     @object_map.setter
     def object_map(self, object_map: np.ndarray) -> None:
@@ -91,7 +125,12 @@ class Image:
             self.__object_map = None
 
     def copy(self):
-        new_image = self.__class__(self.array)
+        if self.color_array is not None:
+            new_image = self.__class__(self.color_array)
+        else:
+            new_image = self.__class__(self.array)
+
+
         new_image.enhanced_array = self.__enhanced_image_array
         new_image.object_mask = self.__object_mask
         new_image.object_map = self.__object_map
@@ -189,16 +228,16 @@ class Image:
 
         if self.__enhanced_image_array.shape[0] != rr_len or self.__enhanced_image_array.shape[1] != cc_len:
             raise RuntimeError(
-                'Detected enhanced image shape do not match the image shape. Ensure that enhanced image array shape is not changed during execution.')
+                    'Detected enhanced image shape do not match the image shape. Ensure that enhanced image array shape is not changed during execution.')
 
         if self.__object_mask is not None:
             if self.__object_map.shape[0] != rr_len or self.__object_map.shape[1] != cc_len:
                 raise RuntimeError(
-                    'Detected object map shape do not match the image shape. Ensure that the object map array shape is not changed during runtime.')
+                        'Detected object map shape do not match the image shape. Ensure that the object map array shape is not changed during runtime.')
 
         if self.__object_map is not None:
             if self.__object_mask.shape[0] != rr_len or self.__object_mask.shape[1] != cc_len:
                 raise RuntimeError(
-                    'Detected object mask shape do not match the image shape. Ensure that the object mask array shape is not changed during runtime.')
+                        'Detected object mask shape do not match the image shape. Ensure that the object mask array shape is not changed during runtime.')
 
         return True

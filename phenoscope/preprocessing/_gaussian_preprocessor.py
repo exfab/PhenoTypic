@@ -5,7 +5,7 @@ from .. import Image
 
 
 class GaussianPreprocessor(ImagePreprocessor):
-    def __init__(self, sigma, mode='reflect', truncate=4.0, channel_axis=None):
+    def __init__(self, sigma=2, mode='reflect', truncate=4.0, channel_axis=None):
         self._sigma = sigma
         self._mode = mode
         self._truncate = truncate

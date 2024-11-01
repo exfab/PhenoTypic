@@ -1,7 +1,7 @@
 from skimage.filters import threshold_triangle
 
 from ..interface import ThresholdDetector
-from phenoscope._core._image import Image
+from phenoscope.core._image import Image
 
 
 class TriangleDetector(ThresholdDetector):

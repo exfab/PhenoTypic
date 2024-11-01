@@ -6,7 +6,7 @@ from ..interface import NoisePreprocessor
 from skimage.filters import median
 
 
-class MedianFilter(NoisePreprocessor):
+class MedianPreprocessor(NoisePreprocessor):
     def __init__(self, mode='nearest', cval: float = 0.0):
         if mode in ['nearest', 'reflect', 'constant', 'mirror', 'wrap']:
             self._mode = mode

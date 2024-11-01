@@ -5,7 +5,7 @@ from .. import Image
 from ..interface import ImagePreprocessor
 
 
-class RollingBallFilter(ImagePreprocessor):
+class RollingBallPreprocessor(ImagePreprocessor):
     def __init__(self, radius: int = 100, kernel: np.ndarray = None, nansafe: bool = False, num_threads: int = None):
         self._radius: int = radius
         self._kernel: np.ndarray = kernel

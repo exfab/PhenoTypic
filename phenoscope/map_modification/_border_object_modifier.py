@@ -2,10 +2,10 @@ import numpy as np
 from typing import Optional, Union
 
 from phenoscope import Image
-from phenoscope.interface import ObjectFilter
+from phenoscope.interface import MapModifier
 
 
-class BorderObjectFilter(ObjectFilter):
+class BorderObjectModifier(MapModifier):
     def __init__(self, border_size: Optional[Union[int, float]] = None):
         self.__edge_size = border_size
 

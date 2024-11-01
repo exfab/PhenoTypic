@@ -7,7 +7,7 @@ from .. import Image
 from ..interface import NoisePreprocessor
 
 
-class RankMedianFilter(NoisePreprocessor):
+class RankMedianPreprocessor(NoisePreprocessor):
     def __init__(self, footprint_shape: str = 'square', footprint_radius: int = None, shift_x=0, shift_y=0):
         if footprint_shape not in ['disk', 'square', 'sphere', 'cube']:
             raise ValueError(f'footprint shape {footprint_shape} is not supported')

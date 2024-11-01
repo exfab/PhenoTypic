@@ -9,6 +9,11 @@ from .. import Image
 
 # <<Interface>>
 class FeatureExtractor(ImageOperation):
+    """
+    A FeatureExtractor is an interface object intended to essentially perform calculations on the values within detected objects of
+    the image array. The __init__ constructor & _operate method is meant to be the only parts overloaded in inherited classes. This is so
+    that the main extract method call can contain all the necessary type validation and output validation checks to streamline development.
+    """
     def extract(self, image: Image, inplace:bool = False) -> pd.DataFrame:
         input_image: Image = image.copy()
 

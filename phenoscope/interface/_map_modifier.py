@@ -7,7 +7,7 @@ from ..util.error_message import INTERFACE_ERROR_MSG, ARRAY_CHANGE_ERROR_MSG, EN
 
 
 # <<Interface>>
-class ObjectModifier(ImageOperation):
+class MapModifier(ImageOperation):
     def modify(self, image: Image, inplace: bool = False) -> Image:
         if image.object_map is None: raise ValueError(MISSING_MAP_ERROR_MSG)
         input_image = image.copy()

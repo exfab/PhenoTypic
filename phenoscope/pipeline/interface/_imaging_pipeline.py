@@ -13,13 +13,14 @@ from typing import Dict, Any
 
 from ...interface._image_operation import ImageOperation
 
-from ...interface._object_detector import ObjectDetector
-from ...interface._image_preprocessor import ImagePreprocessor
-from ...interface._morphology_morpher import MorphologyMorpher
-from ...interface._image_transformer import ImageTransformer
-from ...interface._object_filter import ObjectFilter
+from ...interface import ObjectDetector
+from ...interface import ImagePreprocessor
+from ...interface import MorphologyMorpher
+from ...interface import ImageTransformer
+from ...interface import MapModifier
+from ...interface import FeatureExtractor
+from ...grid.interface import GridFeatureExtractor
 from ...interface._feature_extractor import FeatureExtractor
-from ...interface._object_modifier import ObjectModifier
 
 from ...util.error_message import INTERFACE_ERROR_MSG
 
@@ -44,13 +45,9 @@ class ImagingPipeline(ImageOperation):
                 return operator.morph(input, inplace=inplace)
             case ObjectDetector():
                 return operator.detect(input, inplace=inplace)
-            case FeatureExtractor():
-                return operator.measure(input, inplace=inplace)
-            case ObjectFilter():
-                return operator.filter(input, inplace=inplace)
             case ImageTransformer():
                 return operator.transform(input, inplace=inplace)
-            case ObjectModifier():
+            case MapModifier():
                 return operator.modify(input, inplace=inplace)
             case FeatureExtractor():
                 raise ValueError(

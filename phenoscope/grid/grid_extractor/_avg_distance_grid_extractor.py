@@ -1,29 +1,30 @@
-from .. import Image
-from ..interface import GridFeatureExtractor
-from . import BoundaryExtractor
-from ..filter import BorderObjectFilter
+from phenoscope import Image
+from phenoscope.grid.interface import GridExtractor
+from phenoscope.feature_extraction import BoundaryExtractor
+from phenoscope.map_modification import BorderObjectModifier
 
 from typing import Optional
 import pandas as pd
 import numpy as np
 
 
-class GridSectionExtractor(GridFeatureExtractor):
+# TODO: Update accesor names in class
+class AvgDistanceGridSectionExtractor(GridExtractor):
     def __init__(self, n_rows: int = 8, n_cols: int = 12):
-        self._n_rows: int = n_rows
-        self._n_cols: int = n_cols
+        self.n_rows: int = n_rows
+        self.n_cols: int = n_cols
 
     def _operate(self, image: Image) -> pd.DataFrame:
         # Find the centroid and boundaries
 
-        image = BorderObjectFilter(border_size=1).filter(image)
+        image = BorderObjectModifier(border_size=1).modify(image)
         boundary_table = BoundaryExtractor().extract(image)
 
         grid_results_one = boundary_table.copy()
 
         gs_row_bins_one = np.histogram_bin_edges(
                 a=grid_results_one.loc[:, 'center_rr'],
-                bins=self._n_rows,
+                bins=self.n_rows,
                 range=(
                     grid_results_one.loc[:, 'min_rr'].min() - 1,
                     grid_results_one.loc[:, 'max_rr'].max() + 1
@@ -32,12 +33,12 @@ class GridSectionExtractor(GridFeatureExtractor):
         grid_results_one.loc[:, 'grid_row_bin'] = pd.cut(
                 grid_results_one.loc[:, 'center_rr'],
                 bins=gs_row_bins_one,
-                labels=range(self._n_rows)
+                labels=range(self.n_rows)
         )
 
         gs_col_bins_one = np.histogram_bin_edges(
                 a=grid_results_one.loc[:, 'center_cc'],
-                bins=self._n_cols,
+                bins=self.n_cols,
                 range=(
                     grid_results_one.loc[:, 'min_cc'].min() - 1,
                     grid_results_one.loc[:, 'max_cc'].max() + 1
@@ -46,7 +47,7 @@ class GridSectionExtractor(GridFeatureExtractor):
         grid_results_one.loc[:, 'grid_col_bin'] = pd.cut(
                 grid_results_one.loc[:, 'center_cc'],
                 bins=gs_col_bins_one,
-                labels=range(self._n_cols)
+                labels=range(self.n_cols)
         )
 
         # Find Average Row Distances
@@ -102,14 +103,14 @@ class GridSectionExtractor(GridFeatureExtractor):
         # Add grid row indices
         gs_row_bins_two = np.histogram_bin_edges(
                 a=grid_results_two.loc[:, 'center_rr'],
-                bins=self._n_rows,
+                bins=self.n_rows,
                 range=row_range
         )
         np.round(a=gs_row_bins_two, out=gs_row_bins_two)
         grid_results_two.loc[:, 'grid_row_bin'] = pd.cut(
                 grid_results_two.loc[:, 'center_rr'],
                 bins=gs_row_bins_two,
-                labels=range(self._n_rows)
+                labels=range(self.n_rows)
         )
 
         # Add row intervals
@@ -135,14 +136,14 @@ class GridSectionExtractor(GridFeatureExtractor):
         # Add grid column indices
         gs_col_bins_two = np.histogram_bin_edges(
                 a=grid_results_two.loc[:, 'center_cc'],
-                bins=self._n_cols,
+                bins=self.n_cols,
                 range=col_range
         )
         np.round(a=gs_col_bins_two, out=gs_col_bins_two)
         grid_results_two.loc[:, 'grid_col_bin'] = pd.cut(
                 grid_results_two.loc[:, 'center_cc'],
                 bins=gs_col_bins_two,
-                labels=range(self._n_cols)
+                labels=range(self.n_cols)
         )
 
         # Add column intervals
