@@ -5,3 +5,4 @@
 **.pyc
 ./phenoscope.egg-info/**
 ./phenoscope.egg-info
+./phenoscope.egg-info/
