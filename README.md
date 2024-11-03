@@ -1,8 +1,7 @@
 # PhenoScope
 ![Development Status](https://img.shields.io/badge/status-Pre--Alpha-red)
 
-An image processing framework for rapid protocol development of phenotype image analysis 
-
+An image processing framework created for Ex-FAB NSF BioFoundry that aims to streamline the development of image processing tools for phenotype image analysis.
 ---
 ## Overview
 This framework aims to provide a toolkit & developer framework that streamlines the process of creating phenotype image analysis protocols. 
