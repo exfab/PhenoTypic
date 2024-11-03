@@ -1,1 +1,2 @@
 from ._min_residual_error_modifier import MinResidualErrorModifier
+from ._linreg_residual_outlier_modifier import LinRegResidualOutlierModifier
