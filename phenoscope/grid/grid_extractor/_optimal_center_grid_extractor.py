@@ -80,7 +80,7 @@ class OptimalCenterGridExtractor(GridExtractor):
             _pred_bin.sort()
             _lower_midpoint = (_pred_bin[1] - _pred_bin[0]) / 2 + _pred_bin[0]
             _upper_midpoint = (_pred_bin[-1] - _pred_bin[-2]) / 2 + _pred_bin[-2]
-            return (self._minus_rr_mean - _lower_midpoint) + (self._plus_rr_mean - _upper_midpoint)
+            return (self._minus_rr_mean - _lower_midpoint)**2 + (self._plus_rr_mean - _upper_midpoint)**2
 
         max_row_pad_size = min(abs(boundary_table.loc[:, bound_extractor.LABEL_MIN_RR].min() - 1),
                                abs(image.shape[0] - boundary_table.loc[:, bound_extractor.LABEL_MAX_RR].max()))
@@ -109,7 +109,7 @@ class OptimalCenterGridExtractor(GridExtractor):
             _pred_bin.sort()
             _lower_midpoint = (_pred_bin[1] - _pred_bin[0]) / 2 + _pred_bin[0]
             _upper_midpoint = (_pred_bin[-1] - _pred_bin[-2]) / 2 + _pred_bin[-2]
-            return (self._minus_cc_mean - _lower_midpoint) + (self._plus_cc_mean - _upper_midpoint)
+            return (self._minus_cc_mean - _lower_midpoint)**2 + (self._plus_cc_mean - _upper_midpoint)**2
 
         max_col_pad_size = min(abs(boundary_table.loc[:, bound_extractor.LABEL_MIN_CC].min() - 1),
                                abs(image.shape[1] - boundary_table.loc[:, bound_extractor.LABEL_MAX_CC].max()))

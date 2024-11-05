@@ -32,7 +32,8 @@ dependencies = [
     "seaborn",
     "scikit-image",
     "scikit-learn",
-    "scipy"
+    "scipy",
+    "opencv"
 ]
 
 [projects.urls]

@@ -4,10 +4,13 @@ from typing_extensions import Self
 import numpy as np
 import matplotlib.pyplot as plt
 from skimage.measure import label
+from pathlib import Path
 from skimage.color import label2rgb, rgb2gray
+from skimage.io import imsave
 
 from ..util.type_checks import is_binary_mask
 from ..util.error_message import INVALID_MASK_SHAPE_MSG, INVALID_MAP_SHAPE_MSG
+
 
 class Image:
     def __init__(self, image: Union[np.ndarray, Self]):
@@ -37,10 +40,24 @@ class Image:
                     f'Unsupported input for image class constructor - Input: {type(image)} - Accepted Input:{np.ndarray} or {self.__class__}'
             )
 
-
     def __getitem__(self, index):
-        new_img = self.__class__(self.__image_array[index])
-        new_img.enhanced_array = self.__enhanced_image_array[index]
+        if len(index) != 2: raise ValueError(
+            'Image objects only support 2-dimensional slicing. RGB images will be sliced evenly across each channel.')
+        if self.__color_array is not None:
+            new_img = self.__class__(self.__color_array[index, :])
+            new_img.array = self.__image_array[index]
+            new_img.enhanced_array = self.__enhanced_image_array[index]
+        else:
+            new_img = self.__class__(self.__image_array[index])
+            new_img.enhanced_array = self.__enhanced_image_array[index]
+
+        if self.__object_mask is not None:
+            new_img.object_mask = self.__object_mask[index]
+
+        if self.__object_map is not None:
+            new_img.object_map = self.__object_map[index]
+
+        return new_img
 
     @property
     def shape(self) -> tuple:
@@ -50,19 +67,22 @@ class Image:
     def ndim(self) -> int:
         return self.__image_array.ndim
 
+    # The color representation of the image. This is blank if a grayscale image is set as the image
     @property
-    def array(self) -> np.ndarray:
-        return np.copy(self.__image_array)
-
-    @property
-    def color_array(self) -> np.ndarray:
-        if self.__color_array is None: raise AttributeError('The input image array was not an RGB array.')
+    def color_array(self) -> Optional[np.ndarray]:
+        # if self.__color_array is None: raise AttributeError('The input image array was not an RGB array.')
         return self.__color_array
 
     @color_array.setter
     def color_array(self, image: np.ndarray):
+        if image.ndim != 3: raise ValueError('The input image array was not an RGB array.')
         self.__color_array = image
         self.array = rgb2gray(image)
+
+    # The 2-dimensional representation of the image
+    @property
+    def array(self) -> np.ndarray:
+        return np.copy(self.__image_array)
 
     @array.setter
     def array(self, image: np.ndarray) -> None:
@@ -71,6 +91,7 @@ class Image:
         self.__object_mask = None
         self.__object_map = None
 
+    # The 2-dimensional enhanced representation of the image that is fed into the detection algorithm
     @property
     def enhanced_array(self) -> np.ndarray:
         return np.copy(self.__enhanced_image_array)
@@ -130,11 +151,14 @@ class Image:
         else:
             new_image = self.__class__(self.array)
 
-
         new_image.enhanced_array = self.__enhanced_image_array
         new_image.object_mask = self.__object_mask
         new_image.object_map = self.__object_map
         return new_image
+
+    def imsave(self, filepath):
+        fpath = Path(filepath)
+        imsave(fname=fpath, arr=self.__image_array)
 
     def show(self, ax=None, cmap='gray', figsize=(9, 10)) -> (plt.Figure, plt.Axes):
         if ax is None:

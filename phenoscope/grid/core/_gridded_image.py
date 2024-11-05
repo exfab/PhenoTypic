@@ -37,6 +37,25 @@ class GriddedImage(Image):
 
         self._bound_extractor = BoundaryExtractor()
 
+    def __getitem__(self, index):
+        if len(index) != 2: raise ValueError(
+                'Image objects only support 2-dimensional slicing. RGB images will be sliced evenly across each channel.')
+        if self.color_array is not None:
+            new_img = Image(self.color_array[index])
+            new_img.array = self.array[index]
+            new_img.enhanced_array = self.enhanced_array[index]
+        else:
+            new_img = Image(self.array[index])
+            new_img.enhanced_array = self.enhanced_array[index]
+
+        if self.object_mask is not None:
+            new_img.object_mask = self.object_mask[index]
+
+        if self.object_map is not None:
+            new_img.object_map = self.object_map[index]
+
+        return new_img
+
     @property
     def bound_extractor(self):
         return self._bound_extractor
@@ -120,7 +139,7 @@ class GriddedImage(Image):
         right_edges = self.grid_info.loc[:, self._grid_extractor.LABEL_GRID_COL_INTERVAL].apply(lambda x: x[1]).to_numpy()
 
         edges = np.unique(np.concatenate([left_edges, right_edges]))
-        return edges
+        return edges.astype(int)
 
     @property
     def grid_col_map(self) -> np.ndarray:
@@ -168,7 +187,7 @@ class GriddedImage(Image):
         right_edges = self.grid_info.loc[:, self._grid_extractor.LABEL_GRID_ROW_INTERVAL].apply(lambda x: x[1]).to_numpy()
 
         edges = np.unique(np.concatenate([left_edges, right_edges]))
-        return edges
+        return edges.astype(int)
 
     @property
     def grid_row_map(self) -> np.ndarray:
@@ -259,7 +278,6 @@ class GriddedImage(Image):
         img.object_map = self.grid_section_map
         gs_table = self._bound_extractor.extract(img)
         for obj_label in gs_table.index.unique():
-
             subtable = gs_table.loc[obj_label, :]
             min_rr = subtable.loc[self._bound_extractor.LABEL_MIN_RR]
             max_rr = subtable.loc[self._bound_extractor.LABEL_MAX_RR]
@@ -274,7 +292,6 @@ class GriddedImage(Image):
                     edgecolor=next(cmap_cycle),
                     facecolor='none'
             ))
-
 
         if ax is None:
             return fig, func_ax
