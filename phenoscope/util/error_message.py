@@ -1,4 +1,6 @@
 INTERFACE_ERROR_MSG = "An interface method was called when it was not supposed to be. Make sure any inherited classes properly overload this method."
+NO_IMAGE_DATA_ERROR_MSG = 'No image has been loaded into this class. Use an io method or set the color_array or array equal to an image data array.'
+
 NO_OUTPUT_ERROR_MSG = 'No output was returned in this operation'
 OUTPUT_NOT_IMAGE_MSG = "This method's output is not a phenoscope Image object even though it should be."
 OUTPUT_NOT_GRIDDED_IMAGE_MSG = "This method's output is not a phenoscope GriddedImage object even though it should be."
