@@ -1,10 +1,12 @@
 import matplotlib.pyplot as plt
 from skimage.color import label2rgb
+from typing import Optional, Tuple
 
 from ._imageCore import ImageCore
 
+
 class ImageShow(ImageCore):
-    def show(self, ax=None, cmap='gray', figsize=(9, 10)) -> (plt.Figure, plt.Axes):
+    def show(self, ax: plt.Axes = None, cmap: str = 'gray', figsize: Tuple[int] = (9, 10)) -> (plt.Figure, plt.Axes):
         if ax is None:
             fig, func_ax = plt.subplots(tight_layout=True, figsize=figsize)
         else:
@@ -21,7 +23,7 @@ class ImageShow(ImageCore):
         else:
             return func_ax
 
-    def show_enhanced(self, ax=None, cmap='gray', figsize=(9, 10)) -> (plt.Figure, plt.Axes):
+    def show_enhanced(self, ax: plt.Axes = None, cmap: str = 'gray', figsize: Tuple[int] = (9, 10)) -> (plt.Figure, plt.Axes):
         if ax is None:
             fig, func_ax = plt.subplots(tight_layout=True, figsize=figsize)
         else:
@@ -38,7 +40,7 @@ class ImageShow(ImageCore):
         else:
             return func_ax
 
-    def show_mask(self, ax=None, cmap='gray', figsize=(9, 10)) -> (plt.Figure, plt.Axes):
+    def show_mask(self, ax: plt.Axes = None, cmap: str = 'gray', figsize: Tuple[int] = (9, 10)) -> (plt.Figure, plt.Axes):
         if ax is None:
             fig, func_ax = plt.subplots(tight_layout=True, figsize=figsize)
         else:
@@ -55,24 +57,28 @@ class ImageShow(ImageCore):
         else:
             return func_ax
 
-    def show_map(self, ax=None, cmap='tab20', figsize=(9, 10)) -> (plt.Figure, plt.Axes):
+    def show_map(self, object_label: Optional[int] = None, ax: plt.Axes = None, cmap: str = 'tab20', figsize: Tuple[int] = (9, 10)) -> (
+            plt.Figure, plt.Axes):
         if ax is None:
             fig, func_ax = plt.subplots(tight_layout=True, figsize=figsize)
         else:
             func_ax = ax
 
         func_ax.grid(False)
-        if len(self.object_map.shape) == 2:
-            func_ax.imshow(self.object_map, cmap=cmap)
-        else:
-            func_ax.imshow(self.object_map)
+
+        # Optionally isolate a certain object
+        obj_map = self.object_map
+        if object_label is not None:
+            obj_map[obj_map != object_label] = 0
+
+        func_ax.imshow(obj_map, cmap=cmap)
 
         if ax is None:
             return fig, func_ax
         else:
             return func_ax
 
-    def show_overlay(self, use_enhanced=False, ax=None, figsize=(9, 10)) -> (plt.Figure, plt.Axes):
+    def show_overlay(self, object_label:Optional[int]=None,use_enhanced=False, ax=None, figsize=(9, 10)) -> (plt.Figure, plt.Axes):
         if ax is None:
             fig, func_ax = plt.subplots(tight_layout=True, figsize=figsize)
         else:
@@ -80,10 +86,16 @@ class ImageShow(ImageCore):
 
         func_ax.grid(False)
 
+        # Create an obj map and isolate an object if user-specified
+        obj_map = self.object_map
+        if object_label is not None:
+            obj_map[obj_map != object_label] = 0
+
+        # Plot image
         if use_enhanced:
-            func_ax.imshow(label2rgb(label=self.object_map, image=self.enhanced_array))
+            func_ax.imshow(label2rgb(label=obj_map, image=self.enhanced_array))
         else:
-            func_ax.imshow(label2rgb(label=self.object_map, image=self.array))
+            func_ax.imshow(label2rgb(label=obj_map, image=self.array))
 
         if ax is None:
             return fig, func_ax

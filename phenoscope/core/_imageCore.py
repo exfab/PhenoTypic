@@ -174,6 +174,13 @@ class ImageCore:
         else:
             self.__object_map = None
 
+    def get_object_labels(self) -> np.ndarray[Optional[int]]:
+        if self.__object_map is None:
+            return np.array([None])
+        else:
+            labels = np.unique(self.__object_map)
+            return labels[np.nonzero(self.__object_map)]
+
     def copy(self):
         if self.color_array is not None:
             new_image = self.__class__(self.color_array)
@@ -185,6 +192,11 @@ class ImageCore:
         new_image.object_mask = self.__object_mask
         new_image.object_map = self.__object_map
         return new_image
+
+    def reset(self):
+        self.__enhanced_image_array = self.array
+        self.__object_mask = None
+        self.__object_map = None
 
     def shape_integrity_check(self):
         rr_len = self.__image_array.shape[0]

@@ -1,0 +1,191 @@
+import pandas as pd
+import numpy as np
+from typing import Optional
+
+from cellprofiler_core.preferences import set_headless
+from cellprofiler_core.image import ImageSetList, Image as CpImage
+from cellprofiler_core.object import ObjectSet, Objects
+from cellprofiler_core.measurement import Measurements
+from cellprofiler_core.pipeline import Pipeline
+from cellprofiler_core.workspace import Workspace
+from cellprofiler_core.module import Module
+
+from cellprofiler_core.module.image_segmentation import ImageSegmentation
+from cellprofiler.modules.measuretexture import MeasureTexture
+
+from phenoscope import Image
+from phenoscope.interface import FeatureExtractor
+from phenoscope.util.exceptions import ValueWarning
+
+
+class CellProfilerTextureExtractor(FeatureExtractor):
+    def __init__(
+            self,
+            texture_scale: int = 5,
+            gray_levels: int = 256,
+            max_object_num: Optional[int] = None,
+            exc_type: Optional[str] = 'error'
+    ):
+        """
+
+        :param texture_scale: (int) The distance of the texture measurements in each direction when being calculated.
+        :param gray_levels: (int) The number of gray levels when being calculated.
+        :param max_object_num: (Optional[int]) This sets a max number of objects to be analyzed in the image. This can be useful for plate colony analysis, where you want to be sure which object in the image you are measuring
+        :param exc_type: (Optional[str]) This sets which type of exception is raised in the event that there are more objects in the image than the max. This should be either None, 'error', or 'warning
+        """
+
+        self.texture_scale: int = texture_scale
+        self.gray_levels: int = gray_levels
+        self.max_object_num: int = max_object_num
+        self.exc_type: Optional[str] = exc_type
+
+        self.MEASUREMENT_AXIS_LABEL_MAPPING = {  # Measurement Axis Translation
+            "00": "MeasurementAxis(0)",  # -
+            "01": "MeasurementAxis(135)",  # \
+            "02": "MeasurementAxis(90)",  # -
+            "03": "MeasurementAxis(45)"  # /
+        }
+
+    def _operate(self, image: Image) -> pd.DataFrame:
+        # Initialize CellProfiler in Non-GUI mode
+        set_headless()
+
+        # Create CellProfiler Workspace Objects
+        img_set_list = ImageSetList()
+        img_set_list_idx = img_set_list.count()
+        img_set = img_set_list.get_image_set(img_set_list_idx)
+
+        # Create a cellprofiler object set
+        cpc_obj_set = ObjectSet(can_overwrite=False)
+
+        # Create a CellProfiler Measurement object
+        cpc_measurements = Measurements(
+                mode='memory',
+                multithread=True
+        )
+
+        # Create a CellProfiler Pipeline object
+        pipeline = Pipeline()
+        pipeline.set_needs_headless_extraction(True)
+        pipeline.turn_off_batch_mode()
+
+        # Integrate into workspace
+        workspace = Workspace(
+                pipeline,
+                Module(),
+                img_set,
+                cpc_obj_set,
+                cpc_measurements,
+                img_set_list
+
+        )
+
+        # Convert the phenoscope Image to a CellProfiler Image
+        cp_img = CpImage(image.array)
+        img_set.add(image.name, cp_img)
+
+        map_labels = np.unique(image.object_map)
+        map_labels = map_labels[np.nonzero(map_labels)]
+
+        # Check to make sure the number of items in the image is expected
+        if self.max_object_num is not None and len(map_labels) > self.max_object_num:
+            if self.exc_type == 'error':
+                raise ValueError(
+                        'There are more objects in the image being inputted into CellProfiler than the user-defined max amount')
+            elif self.exc_type == 'warning':
+                raise ValueWarning(
+                        'There are more objects in the image being inputted into CellProfiler than the user-defined max amount')
+            elif self.exc_type is None:
+                pass
+            else:
+                raise ValueError('Unknown exception type')
+
+        map_results = []
+        for label in map_labels:
+
+            # Create an object map that only contains the specfied label
+            obj_map = image.object_map
+            obj_map[obj_map != label] = 0
+
+            # DEPRECATED in favor of naming consistency:
+            # obj_name = f'ImgName({image.name})_ObjId({label:02})_CpObjects'
+            obj_name = f'CpObj_{label}'
+
+            # Create a CellProfiler Objects obj that describes the objects in a CellProfiler Image
+            cp_obj = Objects()
+            cp_obj.segmented = obj_map
+            cp_obj.parent_image = cp_img.parent_image
+            cpc_obj_set.add_objects(cp_obj, obj_name)
+
+            # Add segmentation as a measurement to the workspace
+            img_segmentation = ImageSegmentation()
+            img_segmentation.add_measurements(workspace=workspace, object_name=obj_name)
+
+            # Generate target module and set the necessary values
+            # ----- Module Implementation -----
+            mod = MeasureTexture()
+            mod.gray_levels.value = self.gray_levels
+            mod.images_or_objects.value = 'Objects'
+            mod.images_list.value = image.name
+            mod.objects_list.value = obj_name
+            mod.add_scale(self.texture_scale)  # TODO: This is potentially zero-indexed??
+
+            # Execute measurements
+            pipeline.add_module(mod)
+            pipeline.run_module(mod, workspace)
+
+            # Get all the metrics labels generated as feature keys
+            cpc_metric_info = pd.DataFrame(mod.get_measurement_columns(pipeline), columns=['source', 'keys', 'dtype'])
+            keys = cpc_metric_info.loc[cpc_metric_info.loc[:, 'source'] == obj_name, 'keys']
+
+            # Get the measurement results
+            obj_results = {}
+            for key in keys:
+                curr_result = cpc_measurements.get_measurement(obj_name, key)
+                curr_result = curr_result[np.nonzero(curr_result)]
+                if len(curr_result) == 1:
+                    curr_result = curr_result[0]
+                elif len(curr_result) == 0:
+                    curr_result = np.nan
+                else:
+                    raise RuntimeError('CellProfiler returned more than one value for a single object.')
+
+                obj_results[key] = curr_result
+            obj_results = pd.Series(data=obj_results, index=keys, name=obj_name)
+            obj_results.index.name = ''
+            map_results.append(obj_results)
+
+        # Close CellProfiler API (IMPORTANT!!!)
+        workspace.close()
+
+        # Compile results
+        map_results = pd.concat(map_results, axis=1).T
+
+        # Check Integrity (Only needed if images_list was a module parameter)
+        if hasattr(mod, 'images_list') and not all(image.name in col for col in map_results.columns):
+            raise RuntimeError("The measurement's data integrity could not be guaranteed due to an unknown issue.")
+
+        # Edit column names to be more intuitive. This isn't always needed but adds a lot to readability
+        map_results.columns = map_results.columns.str.replace(f'_{image.name}', repl='', regex=False)
+        metadata = pd.Series(map_results.columns).str.split("_", expand=True).rename(columns={
+            0: 'category',
+            1: 'feature',
+            2: 'scale',
+            3: 'axis',
+            4: 'gray'
+        })
+        metadata["gray"] = metadata["gray"].apply(lambda x: f"GrayLvl({x})")
+        metadata["scale"] = metadata["scale"].apply(lambda x: f"TextureScale({x})")
+        metadata['axis'] = metadata['axis'].apply(lambda x: self.MEASUREMENT_AXIS_LABEL_MAPPING[x])
+        metadata = metadata["category"] + "_" \
+                   + metadata["feature"] + "_" \
+                   + metadata["scale"] + "_" \
+                   + metadata["axis"] + "_" \
+                   + metadata["gray"]
+        map_results.columns = metadata
+
+        # Remove CpObj from labels
+        map_results.index.name = 'label'
+        map_results.index = map_results.index.str.replace('CpObj_', '', regex=False)
+
+        return map_results
