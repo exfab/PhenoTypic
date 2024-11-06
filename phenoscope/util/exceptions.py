@@ -1,0 +1,2 @@
+class ValueWarning(Warning):
+    pass

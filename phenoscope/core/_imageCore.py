@@ -37,6 +37,7 @@ class ImageCore:
                 self.__object_mask: Optional[np.ndarray] = None
                 self.__object_map: Optional[np.ndarray] = None
 
+            # If the image is a subclass of the Image class
             elif hasattr(image, 'array') \
                     and hasattr(image, 'enhanced_array') \
                     and hasattr(image, 'object_mask') \
