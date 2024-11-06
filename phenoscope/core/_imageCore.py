@@ -13,13 +13,14 @@ from ..util.error_message import INVALID_MASK_SHAPE_MSG, INVALID_MAP_SHAPE_MSG, 
 
 IMAGE_COUNT = 0
 
+
 class ImageCore:
     def __init__(self, image: Optional[Union[np.ndarray, Self]] = None, name: Optional[str] = None):
         global IMAGE_COUNT
         self.IMAGE_NUMBER = IMAGE_COUNT
         IMAGE_COUNT = IMAGE_COUNT + 1
 
-        if image is None: # Create an empty image object
+        if image is None:  # Create an empty image object
             self.__color_array = None
             self.__image_array = None
             self.__enhanced_image_array = None
@@ -57,7 +58,6 @@ class ImageCore:
             self.name = f'{self.IMAGE_NUMBER:02}'
         else:
             self.name = name
-
 
     def __getitem__(self, index):
         if self.__image_array is None: raise AttributeError(NO_IMAGE_DATA_ERROR_MSG)
@@ -180,6 +180,7 @@ class ImageCore:
         else:
             new_image = self.__class__(self.array)
 
+        new_image.name = self.name
         new_image.enhanced_array = self.__enhanced_image_array
         new_image.object_mask = self.__object_mask
         new_image.object_map = self.__object_map
