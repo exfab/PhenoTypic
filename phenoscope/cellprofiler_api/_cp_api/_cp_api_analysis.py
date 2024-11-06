@@ -70,6 +70,6 @@ class CellProfilerApiAnalysis(CellProfilerApiMeasureTexture):
         }, index=["status_valid_analysis"]
         ).astype(int)
         self.results_table = pd.concat(
-            self.results.values(), axis=0
+                self.results.values(), axis=0
         )
-        self.results_table = pd.concat([self.results_table, validity], axis=0)
+        self.results_table = pd.concat(objs=[self.results_table, validity], axis=0)
