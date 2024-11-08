@@ -21,7 +21,7 @@ from phenoscope.util.exceptions import ValueWarning
 
 class CellProfilerAreaShapeExtractor(FeatureExtractor):
     def __init__(
-            self, calculate_adv: bool = False, calculate_zernikes: bool = False, max_object_num: Optional[int] = 1,
+            self, calculate_adv: bool = False, calculate_zernikes: bool = False, max_object_num: Optional[int] = None,
             exc_type: Optional[str] = 'error'
     ):
         """
