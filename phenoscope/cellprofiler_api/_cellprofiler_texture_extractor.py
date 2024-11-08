@@ -10,6 +10,7 @@ from cellprofiler_core.module.image_segmentation import ImageSegmentation
 from cellprofiler.modules.measuretexture import MeasureTexture
 
 import pandas as pd
+import numpy as np
 from typing import Optional
 
 from phenoscope import Image
