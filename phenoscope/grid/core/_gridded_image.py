@@ -18,11 +18,11 @@ from phenoscope.feature_extraction import BoundaryExtractor
 
 
 class GriddedImage(Image):
-    def __init__(self, image: Union[np.ndarray, Image], n_rows=8, n_cols=12, gridding_method: GridExtractor = None):
+    def __init__(self, image: Union[np.ndarray, Image], name: str = None, n_rows=8, n_cols=12, gridding_method: GridExtractor = None):
         if isinstance(image, np.ndarray):
-            super().__init__(image)
+            super().__init__(image=image, name=name)
         elif isinstance(image, Image):
-            super().__init__(image)
+            super().__init__(image=image, name=name)
             if hasattr(image, '_grid_extractor'):
                 self._grid_extractor = image.grid_extractor
         else:

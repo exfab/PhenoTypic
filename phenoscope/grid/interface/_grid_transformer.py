@@ -15,11 +15,11 @@ class GridTransformer(ImageTransformer, GridOperation):
         self.n_rows = n_rows
         self.n_cols = n_cols
 
-    def transform(self, image: GriddedImage) -> GriddedImage:
+    def transform(self, image: GriddedImage, inplace=False) -> GriddedImage:
         from phenoscope.grid import GriddedImage
 
         if not isinstance(image, GriddedImage): raise ValueError(GRID_SERIES_INPUT_IMAGE_ERROR_MSG)
-        output = super().transform(image)
+        output = super().transform(image, inplace=inplace)
         if not isinstance(output, GriddedImage): raise ValueError(OUTPUT_NOT_GRIDDED_IMAGE_MSG)
         return output
 
