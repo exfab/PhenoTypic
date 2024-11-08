@@ -45,6 +45,12 @@ class ImageMetadata(ImageIO):
     def name(self, value: str):
         self.__metadata[self.LABEL_IMAGE_NAME] = value
 
+    def copy(self):
+        new_img = super().copy()
+        for key in self.metadata.keys():
+            new_img.metadata[key] = self.metadata[key]
+        return new_img
+
     def get_metadata_table(self) -> pd.DataFrame:
         if not isinstance(self.__metadata, dict):
             raise AttributeError(

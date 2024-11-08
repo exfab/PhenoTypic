@@ -177,7 +177,6 @@ class ImageCore:
         else:
             new_image = self.__class__(self.array)
 
-        new_image.name = self.name
         new_image.enhanced_array = self.__enhanced_image_array
         new_image.object_mask = self.__object_mask
         new_image.object_map = self.__object_map
