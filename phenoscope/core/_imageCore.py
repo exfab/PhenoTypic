@@ -173,9 +173,10 @@ class ImageCore:
 
     def copy(self):
         if self.color_array is not None:
-            new_image = self.__class__(self.color_array)
+            new_image = self.__class__(self.__color_array)
+            new_image.array = self.__image_array
         else:
-            new_image = self.__class__(self.array)
+            new_image = self.__class__(self.__image_array)
 
         new_image.enhanced_array = self.__enhanced_image_array
         new_image.object_mask = self.__object_mask

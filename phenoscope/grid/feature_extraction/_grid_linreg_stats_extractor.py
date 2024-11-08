@@ -37,6 +37,7 @@ class GridLinRegStatsExtractor(GridFeatureExtractor):
                                 right=row_linreg_info,
                                 left_on=image.grid_extractor.LABEL_GRID_ROW_NUM,
                                 right_on=image.grid_extractor.LABEL_GRID_ROW_NUM)
+
         # NOTE: Row linear regression(CC) -> pred RR
         section_info.loc[:, self.LABEL_PRED_RR] = \
             section_info.loc[:, image.bound_extractor.LABEL_CENTER_CC] \

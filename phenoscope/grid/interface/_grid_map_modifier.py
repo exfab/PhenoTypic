@@ -15,5 +15,5 @@ class GridMapModifier(MapModifier, GridOperation):
         output = super().modify(image=image, inplace=inplace)
         return output
 
-    def _operate(self, image: GriddedImage, inplace: bool = False) -> GriddedImage:
+    def _operate(self, image: GriddedImage) -> GriddedImage:
         raise NotImplementedError(INTERFACE_ERROR_MSG)
