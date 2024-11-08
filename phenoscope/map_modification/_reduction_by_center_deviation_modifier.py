@@ -14,10 +14,14 @@ class ReductionByCenterDeviationModifier(MapModifier):
         bound_extractor = BoundaryExtractor()
         bound_info = bound_extractor.extract(image)
 
+        # bound_info.loc[:, 'Measurement_CenterDeviation'] = bound_info.apply(
+        #         lambda row: print(row),
+        #         axis=0)
+
         bound_info.loc[:, 'Measurement_CenterDeviation'] = bound_info.apply(
                 lambda row: euclidean(u=[row[bound_extractor.LABEL_CENTER_CC], row[bound_extractor.LABEL_CENTER_RR]],
                                       v=[img_center_cc, img_center_rr]),
-                axis=0)
+                axis=1)
 
         # Get the label of the obj w/ the least deviation
         obj_to_keep = bound_info.loc[:,'Measurement_CenterDeviation'].idxmin()

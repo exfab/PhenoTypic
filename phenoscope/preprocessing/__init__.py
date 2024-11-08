@@ -5,3 +5,4 @@ from ._rank_median_preprocessor import RankMedianPreprocessor
 from ._rolling_ball_preprocessor import RollingBallPreprocessor
 from ._white_tophat_preprocessor import WhiteTophatPreprocessor
 from ._laplace_preprocessor import LaplacePreprocessor
+from ._contrast_streching import ContrastStretching

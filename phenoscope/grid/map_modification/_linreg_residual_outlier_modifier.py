@@ -7,7 +7,7 @@ from phenoscope.grid.feature_extraction import GridLinRegStatsExtractor
 
 
 class LinRegResidualOutlierModifier(GridMapModifier):
-    def __init__(self, axis: Optional[int] = None, stddev_multiplier=1.5, ddof: int = 1, variance_maximum: int = 100):
+    def __init__(self, axis: Optional[int] = None, stddev_multiplier=1.5, max_coeff_variance: int = 1):
         """
         This operation measures the variance of each column and row of the grid in the image. If the amount of variance surpasses the maximum,
         the operation then measures the row or column for linear regression residual outliers and removes any objects with a residual above the
@@ -16,12 +16,11 @@ class LinRegResidualOutlierModifier(GridMapModifier):
         :param axis: (Optional[int])
         :param stddev_multiplier:
         :param ddof: (int) Delta degrees of freedom for the variance calculation
-        :param variance_maximum: (int) The maximum amount of variance a row or column can have before it will be analyzed for residual outlier removal.
+        :param max_coeff_variance: (int) The maximum value the coefficient of variance a row or column can have before it will be analyzed for residual outlier removal.
         """
         self.axis = axis  # Either none for both axis, 0 for row, or 1 for column
         self.stddev_multiplier = stddev_multiplier
-        self.ddof = ddof
-        self.max_variance = variance_maximum
+        self.max_coeff_variance = max_coeff_variance
 
     def _operate(self, image: GriddedImage) -> GriddedImage:
         """
@@ -41,11 +40,15 @@ class LinRegResidualOutlierModifier(GridMapModifier):
         # Row-wise residual outlier discovery
         if self.axis is None or self.axis == 0:
 
-            # Collect the variance of every row
-            row_variance = grid_info.groupby(image.grid_extractor.LABEL_GRID_ROW_NUM)[linreg_stat_extractor.LABEL_RESIDUAL_ERR].var(
-                    ddof=self.ddof
-            )
-            over_limit_row_variance = row_variance.loc[row_variance > self.max_variance]
+            # Calculate the coefficient of variance (std/mean)
+            #   Collect the standard deviation
+            row_variance = grid_info.groupby(image.grid_extractor.LABEL_GRID_ROW_NUM)[linreg_stat_extractor.LABEL_RESIDUAL_ERR].std()
+
+            #   Divide standard deviation by mean
+            row_variance = row_variance \
+                           / grid_info.groupby(image.grid_extractor.LABEL_GRID_ROW_NUM)[linreg_stat_extractor.LABEL_RESIDUAL_ERR].mean()
+
+            over_limit_row_variance = row_variance.loc[row_variance > self.max_coeff_variance]
 
             # Collect outlier objects in the rows with a variance over the maximum
             for row_idx in over_limit_row_variance.index:
@@ -62,11 +65,15 @@ class LinRegResidualOutlierModifier(GridMapModifier):
         # Column-wise residual outlier discovery
         if self.axis is None or self.axis == 1:
 
-            # Collect the variance of every column
-            col_variance = grid_info.groupby(image.grid_extractor.LABEL_GRID_COL_NUM)[linreg_stat_extractor.LABEL_RESIDUAL_ERR].var(
-                    ddof=self.ddof
-            )
-            over_limit_col_variance = col_variance.loc[col_variance > self.max_variance]
+            # Calculate the coefficient of variance (std/mean)
+            #   Collect the standard deviation
+            col_variance = grid_info.groupby(image.grid_extractor.LABEL_GRID_COL_NUM)[linreg_stat_extractor.LABEL_RESIDUAL_ERR].std()
+
+            #   Divide standard deviation by mean
+            col_variance = col_variance \
+                           / grid_info.groupby(image.grid_extractor.LABEL_GRID_COL_NUM)[linreg_stat_extractor.LABEL_RESIDUAL_ERR].mean()
+
+            over_limit_col_variance = col_variance.loc[col_variance > self.max_coeff_variance]
 
             # Collect outlier objects in the columns with a variance over the maximum
             for col_idx in over_limit_col_variance.index:

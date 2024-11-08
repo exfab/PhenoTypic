@@ -11,15 +11,10 @@ from skimage.io import imsave
 from ..util.type_checks import is_binary_mask
 from ..util.error_message import INVALID_MASK_SHAPE_MSG, INVALID_MAP_SHAPE_MSG, NO_IMAGE_DATA_ERROR_MSG
 
-IMAGE_COUNT = 0
 
 
 class ImageCore:
-    def __init__(self, image: Optional[Union[np.ndarray, Self]] = None, name: Optional[str] = None):
-        global IMAGE_COUNT
-        self.IMAGE_NUMBER = IMAGE_COUNT
-        IMAGE_COUNT = IMAGE_COUNT + 1
-
+    def __init__(self, image: Optional[Union[np.ndarray, Self]] = None):
         if image is None:  # Create an empty image object
             self.__color_array = None
             self.__image_array = None
@@ -53,11 +48,6 @@ class ImageCore:
                 raise ValueError(
                         f'Unsupported input for image class constructor - Input: {type(image)} - Accepted Input:{np.ndarray} or {self.__class__}'
                 )
-
-        if name is None:
-            self.name = f'{self.IMAGE_NUMBER:02}'
-        else:
-            self.name = name
 
     def __getitem__(self, index):
         if self.__image_array is None: raise AttributeError(NO_IMAGE_DATA_ERROR_MSG)

@@ -1,7 +1,7 @@
 import pytest
 
 from phenoscope import Image
-from phenoscope.sample_images import PlateDay1
+from phenoscope.data import PlateDay1
 
 
 def test_image():

@@ -253,7 +253,9 @@ class GriddedImage(Image):
     def get_section_count(self, ascending=False):
         return self.grid_info.loc[:, self.grid_extractor.LABEL_GRID_SECTION_NUM].value_counts().sort_values(ascending=ascending)
 
-    def show_overlay(self, use_enhanced=False, show_gridlines=True, show_linreg=False, ax=None, figsize=(9, 10)) -> (plt.Figure, plt.Axes):
+    def show_overlay(self, use_enhanced: bool = False, show_gridlines: bool = True, show_linreg: bool = False, ax: plt.Axes = None,
+                     figsize: Tuple[int] = (9, 10)
+                     ) -> (plt.Figure, plt.Axes):
         if ax is None:
             fig, func_ax = plt.subplots(tight_layout=True, figsize=figsize)
         else:
@@ -262,9 +264,9 @@ class GriddedImage(Image):
         func_ax.grid(False)
 
         if use_enhanced:
-            func_ax.imshow(label2rgb(label=self.grid_section_map, image=self.enhanced_array))
+            func_ax.imshow(label2rgb(label=self.object_map, image=self.enhanced_array))
         else:
-            func_ax.imshow(label2rgb(label=self.grid_section_map, image=self.array))
+            func_ax.imshow(label2rgb(label=self.object_map, image=self.array))
 
         if show_gridlines:
             col_edges = self.grid_col_edges
@@ -272,26 +274,26 @@ class GriddedImage(Image):
             func_ax.vlines(x=col_edges, ymin=row_edges.min(), ymax=row_edges.max(), colors='c', linestyles='--')
             func_ax.hlines(y=row_edges, xmin=col_edges.min(), xmax=col_edges.max(), color='c', linestyles='--')
 
-        cmap = plt.get_cmap('tab20')
-        cmap_cycle = cycle(cmap(i) for i in range(cmap.N))
-        img = self.copy()
-        img.object_map = self.grid_section_map
-        gs_table = self._bound_extractor.extract(img)
-        for obj_label in gs_table.index.unique():
-            subtable = gs_table.loc[obj_label, :]
-            min_rr = subtable.loc[self._bound_extractor.LABEL_MIN_RR]
-            max_rr = subtable.loc[self._bound_extractor.LABEL_MAX_RR]
-            min_cc = subtable.loc[self._bound_extractor.LABEL_MIN_CC]
-            max_cc = subtable.loc[self._bound_extractor.LABEL_MAX_CC]
+            cmap = plt.get_cmap('tab20')
+            cmap_cycle = cycle(cmap(i) for i in range(cmap.N))
+            img = self.copy()
+            img.object_map = self.grid_section_map
+            gs_table = self._bound_extractor.extract(img)
+            for obj_label in gs_table.index.unique():
+                subtable = gs_table.loc[obj_label, :]
+                min_rr = subtable.loc[self._bound_extractor.LABEL_MIN_RR]
+                max_rr = subtable.loc[self._bound_extractor.LABEL_MAX_RR]
+                min_cc = subtable.loc[self._bound_extractor.LABEL_MIN_CC]
+                max_cc = subtable.loc[self._bound_extractor.LABEL_MAX_CC]
 
-            width = max_cc - min_cc
-            height = max_rr - min_rr
+                width = max_cc - min_cc
+                height = max_rr - min_rr
 
-            func_ax.add_patch(Rectangle(
-                    (min_cc, min_rr), width=width, height=height,
-                    edgecolor=next(cmap_cycle),
-                    facecolor='none'
-            ))
+                func_ax.add_patch(Rectangle(
+                        (min_cc, min_rr), width=width, height=height,
+                        edgecolor=next(cmap_cycle),
+                        facecolor='none'
+                ))
 
         if ax is None:
             return fig, func_ax
