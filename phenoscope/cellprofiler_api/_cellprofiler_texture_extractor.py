@@ -1,7 +1,3 @@
-import pandas as pd
-import numpy as np
-from typing import Optional
-
 from cellprofiler_core.preferences import set_headless
 from cellprofiler_core.image import ImageSetList, Image as CpImage
 from cellprofiler_core.object import ObjectSet, Objects
@@ -13,12 +9,15 @@ from cellprofiler_core.module import Module
 from cellprofiler_core.module.image_segmentation import ImageSegmentation
 from cellprofiler.modules.measuretexture import MeasureTexture
 
+import pandas as pd
+from typing import Optional
+
 from phenoscope import Image
 from phenoscope.interface import FeatureExtractor
 from phenoscope.util.exceptions import ValueWarning
 
 
-class CellProfilerTextureExtractor(FeatureExtractor):
+class CellProfilerTexture(FeatureExtractor):
     def __init__(
             self,
             texture_scale: int = 5,
@@ -171,21 +170,46 @@ class CellProfilerTextureExtractor(FeatureExtractor):
             0: 'category',
             1: 'feature',
             2: 'scale',
-            3: 'axis',
+            3: 'metric_axis',
             4: 'gray'
         })
-        metadata["gray"] = metadata["gray"].apply(lambda x: f"GrayLvl({x})")
-        metadata["scale"] = metadata["scale"].apply(lambda x: f"TextureScale({x})")
-        metadata['axis'] = metadata['axis'].apply(lambda x: self.MEASUREMENT_AXIS_LABEL_MAPPING[x])
+
+        # return metadata
+
+        metadata.loc[:, "gray"] = metadata.loc[:, "gray"].apply(lambda x: f"GrayLvl({x})")
+        metadata.loc[:, "scale"] = metadata.loc[:, "scale"].apply(lambda x: f"TextureScale({x})")
+        metadata.loc[:, 'metric_axis'] = metadata.loc[:, 'metric_axis'].apply(
+                lambda x: self.MEASUREMENT_AXIS_LABEL_MAPPING[x])
+
         metadata = metadata["category"] + "_" \
                    + metadata["feature"] + "_" \
                    + metadata["scale"] + "_" \
-                   + metadata["axis"] + "_" \
+                   + metadata["metric_axis"] + "_" \
                    + metadata["gray"]
         map_results.columns = metadata
 
         # Remove CpObj from labels
         map_results.index.name = 'label'
         map_results.index = map_results.index.str.replace('CpObj_', '', regex=False)
+
+        # Results are currently within a numpy. This function will extract the values, while checking that there was only one value in the array
+        def extract_value_from_embed_arr(element):
+            if isinstance(element, np.ndarray):
+                # Check for multiple values
+                if len(element) > 1: raise RuntimeWarning(
+                        f'CellProfiler result returned more than one object, but only the first one will be kept. Review data for {image.name}.')
+
+                if len(element) == 0:
+                    return np.nan
+                else:
+                    return element[0]
+
+            else:
+                return element  # Catch all else conditions. Defer handling to user.
+
+        map_results = map_results.map(lambda x: extract_value_from_embed_arr(x))
+
+        # Drop nan columns (usually stem from using grayscale vs rgb image)
+        map_results = map_results.dropna(axis=1, how='all')
 
         return map_results

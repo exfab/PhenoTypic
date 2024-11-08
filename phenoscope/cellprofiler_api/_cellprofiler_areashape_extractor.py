@@ -13,13 +13,14 @@ from cellprofiler.modules.measureobjectsizeshape import MeasureObjectSizeShape
 
 import pandas as pd
 from typing import Optional
+import numpy as np
 
 from phenoscope import Image
 from phenoscope.interface import FeatureExtractor
 from phenoscope.util.exceptions import ValueWarning
 
 
-class CellProfilerAreaShapeExtractor(FeatureExtractor):
+class CellProfilerAreaShape(FeatureExtractor):
     def __init__(
             self, calculate_adv: bool = False, calculate_zernikes: bool = False, max_object_num: Optional[int] = None,
             exc_type: Optional[str] = 'error'
@@ -152,6 +153,23 @@ class CellProfilerAreaShapeExtractor(FeatureExtractor):
         # Remove CpObj from labels
         map_results.index.name = 'label'
         map_results.index = map_results.index.str.replace('CpObj_', '', regex=False)
+
+        # Results are currently within a numpy. This function will extract the values, while checking that there was only one value in the array
+        def extract_value_from_embed_arr(element):
+            if isinstance(element, np.ndarray):
+                # Check for multiple values
+                if len(element) > 1: raise RuntimeWarning(
+                    f'CellProfiler result returned more than one object, but only the first one will be kept. Review data for {image.name}.')
+
+                if len(element) == 0:
+                    return np.nan
+                else:
+                    return element[0]
+
+            else:
+                return element  # Catch all else conditions. Defer handling to user.
+
+        map_results = map_results.map(lambda x: extract_value_from_embed_arr(x))
 
         # Drop nan columns (usually stem from using grayscale vs rgb image)
         map_results = map_results.dropna(axis=1, how='all')

@@ -1,7 +1,3 @@
-import pandas as pd
-import numpy as np
-from typing import Optional
-
 from cellprofiler_core.preferences import set_headless
 from cellprofiler_core.image import ImageSetList, Image as CpImage
 from cellprofiler_core.object import ObjectSet, Objects
@@ -11,29 +7,36 @@ from cellprofiler_core.workspace import Workspace
 from cellprofiler_core.module import Module
 
 from cellprofiler_core.module.image_segmentation import ImageSegmentation
-from cellprofiler.modules.measureobjectsizeshape import MeasureObjectSizeShape
+from cellprofiler.modules.measureobjectintensity import MeasureObjectIntensity
+
+import pandas as pd
+import numpy as np
+from typing import Optional
 
 from phenoscope import Image
 from phenoscope.interface import FeatureExtractor
 from phenoscope.util.exceptions import ValueWarning
 
 
-class CellProfilerAreaShapeExtractor(FeatureExtractor):
+class CellProfilerObjectIntensity(FeatureExtractor):
     def __init__(
-            self, calculate_adv: bool = False, calculate_zernikes: bool = False, max_object_num: Optional[int] = 1,
+            self, max_object_num: Optional[int] = None,
             exc_type: Optional[str] = 'error'
     ):
         """
 
-        :param calculate_adv:
-        :param calculate_zernikes:
-        :param max_object_num: (Optional[int]) This sets a max number of objects to be analyzed in the image. This can be useful for plate colony analysis, where you want to be sure which object in the image you are measuring
+        :param max_object_num: (Optional[int]) This sets a max number of objects to be analyzed in the image. This can be useful for plate colony analysis, where you want to be sure which object in the image you are measuring 
         :param exc_type: (Optional[str]) This sets which type of exception is raised in the event that there are more objects in the image than the max. This should be either None, 'error', or 'warning
         """
-        self.calculate_adv: bool = calculate_adv
-        self.calculate_zernikes: bool = calculate_zernikes
         self.max_object_num: int = max_object_num
         self.exc_type: Optional[str] = exc_type
+
+        self.MEASUREMENT_AXIS_LABEL_MAPPING = {  # Measurement Axis Translation
+            "00": "deg(0)",  # -
+            "01": "deg(135)",  # \
+            "02": "deg(90)",  # -
+            "03": "deg(45)"  # /
+        }
 
     def _operate(self, image: Image) -> pd.DataFrame:
         # Initialize CellProfiler in Non-GUI mode
@@ -112,12 +115,12 @@ class CellProfilerAreaShapeExtractor(FeatureExtractor):
 
             # Generate target module and set the necessary values
             # ----- Module Implementation -----
-            mod = MeasureObjectSizeShape()
-            mod.calculate_advanced.value = self.calculate_adv
-            mod.calculate_zernikes.value = self.calculate_zernikes
+            mod = MeasureObjectIntensity()
+            mod.images_list.value = image.name
             mod.objects_list.value = obj_name
 
             # Execute measurements
+            pipeline.add_module(mod)
             pipeline.run_module(mod, workspace)
 
             # Get all the metrics labels generated as feature keys
@@ -127,12 +130,18 @@ class CellProfilerAreaShapeExtractor(FeatureExtractor):
             # Get the measurement results
             obj_results = {}
             for key in keys:
-                curr_result = np.array(cpc_measurements.get_measurement(obj_name, key))
+                curr_result = cpc_measurements.get_measurement(obj_name, key)
                 curr_result = curr_result[np.nonzero(curr_result)]
+                if len(curr_result) == 1:
+                    curr_result = curr_result[0]
+                elif len(curr_result) == 0:
+                    curr_result = np.nan
+                else:
+                    raise RuntimeError('CellProfiler returned more than one value for a single object.')
 
                 obj_results[key] = curr_result
             obj_results = pd.Series(data=obj_results, index=keys, name=obj_name)
-            obj_results.index.name = 'Metric'
+            obj_results.index.name = ''
             map_results.append(obj_results)
 
         # Close CellProfiler API (IMPORTANT!!!)
@@ -141,8 +150,8 @@ class CellProfilerAreaShapeExtractor(FeatureExtractor):
         # Compile results
         map_results = pd.concat(map_results, axis=1).T
 
-        # Check Integrity (Only needed if images_list was a module parameter)
-        if hasattr(mod, 'images_list') and not all(image.name in col for col in map_results.columns):
+        # Check Integrity
+        if not all(image.name in col for col in map_results.columns):
             raise RuntimeError("The measurement's data integrity could not be guaranteed due to an unknown issue.")
 
         # Remove Image Name since we only needed it for the check
@@ -151,6 +160,23 @@ class CellProfilerAreaShapeExtractor(FeatureExtractor):
         # Remove CpObj from labels
         map_results.index.name = 'label'
         map_results.index = map_results.index.str.replace('CpObj_', '', regex=False)
+
+        # Results are currently within a numpy. This function will extract the values, while checking that there was only one value in the array
+        def extract_value_from_embed_arr(element):
+            if isinstance(element, np.ndarray):
+                # Check for multiple values
+                if len(element) > 1: raise RuntimeWarning(
+                    f'CellProfiler result returned more than one object, but only the first one will be kept. Review data for {image.name}.')
+
+                if len(element) == 0:
+                    return np.nan
+                else:
+                    return element[0]
+
+            else:
+                return element  # Catch all else conditions. Defer handling to user.
+
+        map_results = map_results.map(lambda x: extract_value_from_embed_arr(x))
 
         # Drop nan columns (usually stem from using grayscale vs rgb image)
         map_results = map_results.dropna(axis=1, how='all')
