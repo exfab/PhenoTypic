@@ -55,7 +55,10 @@ class AutoGridAlignmentTransformer(GridTransformer):
 
         adj_dist = x_max - x_min
 
-        adj_over_hyp = adj_dist / hyp_dist
+        if hyp_dist == 0:
+            adj_over_hyp = 0
+        else:
+            adj_over_hyp = adj_dist / hyp_dist
 
         # Find the angle of rotation from horizon in degrees
         theta = np.arccos(adj_over_hyp) * (180.0 / np.pi)
