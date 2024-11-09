@@ -2,11 +2,8 @@ from typing import Union, Optional
 from typing_extensions import Self
 
 import numpy as np
-import matplotlib.pyplot as plt
 from skimage.measure import label
-from pathlib import Path
-from skimage.color import label2rgb, rgb2gray
-from skimage.io import imsave
+from skimage.color import  rgb2gray
 
 from ..util.type_checks import is_binary_mask
 from ..util.error_message import INVALID_MASK_SHAPE_MSG, INVALID_MAP_SHAPE_MSG, NO_IMAGE_DATA_ERROR_MSG

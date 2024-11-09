@@ -61,7 +61,10 @@ class AutoGridAlignmentTransformer(GridTransformer):
         theta = np.arccos(adj_over_hyp) * (180.0 / np.pi)
 
         # Adds the correct orientation to the angle
-        theta = theta * ((y_0 - y_1) / abs(y_0 - y_1))
+        if (y_0 - y_1) != 0:
+            theta = theta * ((y_0 - y_1) / abs(y_0 - y_1))
+        else:
+            theta = 0.0
 
         def find_angle_of_rot(x):
             new_theta = theta + x
