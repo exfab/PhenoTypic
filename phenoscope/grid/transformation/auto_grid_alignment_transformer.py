@@ -58,16 +58,14 @@ class AutoGridAlignmentTransformer(GridTransformer):
         if hyp_dist == 0:
             adj_over_hyp = 0
         else:
-            adj_over_hyp = adj_dist / hyp_dist
+            adj_over_hyp = np.divide(adj_dist, hyp_dist, where=hyp_dist != 0)
 
         # Find the angle of rotation from horizon in degrees
         theta = np.arccos(adj_over_hyp) * (180.0 / np.pi)
 
         # Adds the correct orientation to the angle
-        if (y_0 - y_1) != 0:
-            theta = theta * ((y_0 - y_1) / abs(y_0 - y_1))
-        else:
-            theta = 0.0
+        theta_sign = y_0 - y_1
+        theta = theta * (np.divide(theta_sign, abs(theta_sign), where=theta_sign != 0))
 
         def find_angle_of_rot(x):
             new_theta = theta + x
