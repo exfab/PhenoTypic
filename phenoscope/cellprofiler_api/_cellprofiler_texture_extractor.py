@@ -192,6 +192,8 @@ class CellProfilerTexture(FeatureExtractor):
         # Remove CpObj from labels
         map_results.index.name = 'label'
         map_results.index = map_results.index.str.replace('CpObj_', '', regex=False)
+        map_results.index = map_results.index.astype(int)
+
 
         # Results are currently within a numpy. This function will extract the values, while checking that there was only one value in the array
         def extract_value_from_embed_arr(element):
