@@ -177,6 +177,7 @@ class CellProfilerObjectIntensity(FeatureExtractor):
                 return element  # Catch all else conditions. Defer handling to user.
 
         map_results = map_results.map(lambda x: extract_value_from_embed_arr(x))
+        map_results.columns.name=''
 
         # Drop nan columns (usually stem from using grayscale vs rgb image)
         map_results = map_results.dropna(axis=1, how='all')
