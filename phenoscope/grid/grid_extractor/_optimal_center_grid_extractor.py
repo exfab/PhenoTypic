@@ -185,9 +185,12 @@ class OptimalCenterGridExtractor(GridExtractor):
                 grid_results_two.loc[:, self.LABEL_GRID_COL_NUM]
         ))
 
+        idx_map = np.arange(self.n_rows*self.n_cols)
+        idx_map = np.reshape(idx_map, (self.n_rows, self.n_cols))
+
         # Add section numbers
         for num, idx in enumerate(np.sort(grid_results_two.loc[:, self.LABEL_GRID_SECTION_IDX].unique())):
-            grid_results_two.loc[grid_results_two.loc[:, self.LABEL_GRID_SECTION_IDX] == idx, self.LABEL_GRID_SECTION_NUM] = int(num)
+            grid_results_two.loc[grid_results_two.loc[:, self.LABEL_GRID_SECTION_IDX] == idx, self.LABEL_GRID_SECTION_NUM] = idx_map[idx]
 
         # Reduce memory consumption with categorical labels
         grid_results_two.loc[:, self.LABEL_GRID_SECTION_IDX] = grid_results_two.loc[:, self.LABEL_GRID_SECTION_IDX].astype('category')
