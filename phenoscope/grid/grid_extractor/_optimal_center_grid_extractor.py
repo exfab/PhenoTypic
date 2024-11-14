@@ -186,7 +186,7 @@ class OptimalCenterGridExtractor(GridExtractor):
         ))
 
         # Add section numbers
-        for num, idx in enumerate(grid_results_two.loc[:, self.LABEL_GRID_SECTION_IDX].unique()):
+        for num, idx in enumerate(np.sort(grid_results_two.loc[:, self.LABEL_GRID_SECTION_IDX].unique())):
             grid_results_two.loc[grid_results_two.loc[:, self.LABEL_GRID_SECTION_IDX] == idx, self.LABEL_GRID_SECTION_NUM] = int(num)
 
         # Reduce memory consumption with categorical labels
