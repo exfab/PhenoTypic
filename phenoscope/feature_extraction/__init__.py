@@ -1,1 +1,2 @@
 from ._boundary_extractor import BoundaryExtractor
+from ._object_image_extractor import ObjectImageExtractor

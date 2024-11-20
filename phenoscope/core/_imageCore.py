@@ -51,7 +51,7 @@ class ImageCore:
         if len(index) != 2: raise ValueError(
                 'Image objects only support 2-dimensional slicing. RGB images will be sliced evenly across each channel.')
         if self.__color_array is not None:
-            new_img = self.__class__(self.__color_array[index, :])
+            new_img = self.__class__(self.__color_array[index])
             new_img.array = self.__image_array[index]
             new_img.enhanced_array = self.__enhanced_image_array[index]
         else:

@@ -22,7 +22,6 @@ class BoundaryExtractor(FeatureExtractor):
     def _operate(self, image: Image) -> pd.DataFrame:
         results = pd.DataFrame(regionprops_table(
                 label_image=image.object_map,
-                intensity_image=image.array,
                 properties=['label', 'centroid', 'bbox']
         )).set_index('label')
 
