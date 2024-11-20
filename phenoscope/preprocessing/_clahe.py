@@ -1,10 +1,10 @@
 from skimage.exposure import equalize_adapthist
 
 from .. import Image
-from ..interface import ContrastPreprocessor
+from ..interface import ImagePreprocessor
 
 
-class CLAHE(ContrastPreprocessor):
+class CLAHE(ImagePreprocessor):
     def __init__(self, kernel_size: int = None):
         self.__kernel_size: int = kernel_size
 

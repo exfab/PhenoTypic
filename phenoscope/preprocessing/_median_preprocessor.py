@@ -1,12 +1,10 @@
-import numpy as np
-
 from .. import Image
-from ..interface import NoisePreprocessor
+from ..interface import ImagePreprocessor
 
 from skimage.filters import median
 
 
-class MedianPreprocessor(NoisePreprocessor):
+class MedianPreprocessor(ImagePreprocessor):
     def __init__(self, mode='nearest', cval: float = 0.0):
         if mode in ['nearest', 'reflect', 'constant', 'mirror', 'wrap']:
             self._mode = mode

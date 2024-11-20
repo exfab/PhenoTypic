@@ -4,10 +4,10 @@ from skimage.morphology import disk, square, cube, ball
 from skimage.util import img_as_ubyte
 
 from .. import Image
-from ..interface import NoisePreprocessor
+from ..interface import ImagePreprocessor
 
 
-class RankMedianPreprocessor(NoisePreprocessor):
+class RankMedianPreprocessor(ImagePreprocessor):
     def __init__(self, footprint_shape: str = 'square', footprint_radius: int = None, shift_x=0, shift_y=0):
         if footprint_shape not in ['disk', 'square', 'sphere', 'cube']:
             raise ValueError(f'footprint shape {footprint_shape} is not supported')
