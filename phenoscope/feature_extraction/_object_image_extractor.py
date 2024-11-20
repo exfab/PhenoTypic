@@ -56,7 +56,7 @@ class ObjectImageExtractor(FeatureExtractor):
                     new_img.object_map = new_img.object_mask
                     new_img.object_map[new_img.object_mask] = label
 
-            new_img.name = f'{curr_obj_img.name}_Obj{label}'
+            new_img.name = f'{image.name}_Obj{label}'
             object_images[label] = new_img
 
         return object_images
