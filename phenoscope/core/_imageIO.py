@@ -12,9 +12,10 @@ class ImageIO(ImageShow):
         elif input_img.ndim == 2:
             self.array = input_img
 
+    # TODO: Add option to save color image
     def imsave(self, filepath):
         fpath = Path(filepath)
-        if self.color_array is not None:
-            imsave(fname=fpath, arr=self.color_array, check_contrast=False)
-        else:
-            imsave(fname=fpath, arr=self.array, check_contrast=False)
+        # if self.color_array is not None:
+        #     imsave(fname=fpath, arr=self.color_array, check_contrast=False)
+        # else:
+        imsave(fname=fpath, arr=self.array, check_contrast=False)
