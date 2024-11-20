@@ -14,4 +14,7 @@ class ImageIO(ImageShow):
 
     def imsave(self, filepath):
         fpath = Path(filepath)
-        imsave(fname=fpath, arr=self.__image_array)
+        if self.color_array is not None:
+          imsave(fname=fpath, arr=self.color_array)
+        else:
+            imsave(fname=fpath, arr=self.array)
