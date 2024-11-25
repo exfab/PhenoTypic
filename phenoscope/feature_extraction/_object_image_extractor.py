@@ -5,6 +5,7 @@ from skimage.measure import regionprops_table
 from skimage.transform import resize
 
 from phenoscope import Image
+from phenoscope.grid import GriddedImage
 from phenoscope.interface import FeatureExtractor
 
 
@@ -36,6 +37,8 @@ class ObjectImageExtractor(FeatureExtractor):
 
         # Create dict for flattened image arrays
         object_images = {}
+        if isinstance(image, GriddedImage):
+            grid_info = image.grid_info
         for label in obj_slices.index:
 
             # Extract object image as new Image
@@ -56,7 +59,10 @@ class ObjectImageExtractor(FeatureExtractor):
                     new_img.object_map = new_img.object_mask
                     new_img.object_map[new_img.object_mask] = label
 
-            new_img.name = f'{image.name}_Obj{label}'
+            new_img.name = f'{image.name}_label({label})'
+            if isinstance(image, GriddedImage):
+                new_img.name += f'_gridsection({grid_info.loc[label, "Grid_SectionNum"]})'
+
             object_images[label] = new_img
 
         return object_images
