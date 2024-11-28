@@ -19,7 +19,6 @@ dependencies:
   - imageio
   - inflect
   - mahotas
-  - mysqlclient
   - psutil
   - pytest
   - pyzmq

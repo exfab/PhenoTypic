@@ -9,7 +9,7 @@ from ..util.type_checks import is_binary_mask
 from ..util.error_message import INVALID_MASK_SHAPE_MSG, INVALID_MAP_SHAPE_MSG, NO_IMAGE_DATA_ERROR_MSG
 
 
-
+# TODO: Import Sparse Matrix
 class ImageCore:
     def __init__(self, image: Optional[Union[np.ndarray, Self]] = None):
         if image is None:  # Create an empty image object

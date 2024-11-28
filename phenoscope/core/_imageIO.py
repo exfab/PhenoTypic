@@ -29,7 +29,8 @@ class ImageIO(ImageShow):
         # else:
         imsave(fname=fpath, arr=img_as_ubyte(self.array), check_contrast=False)
 
-    def savez(self, savepath:Path):
+    # TODO: Implement way to save metadata
+    def savez(self, savepath:Path, save_metadata:bool=False):
         """
         Provides a way to save the current image object and the progress in the current pipeline. This method preserves the array data
         compared to saving it as an image filetype such as jpg or png.
