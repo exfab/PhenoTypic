@@ -72,7 +72,7 @@ class CellProfilerAreaShape(FeatureExtractor):
         )
 
         # Convert the phenoscope Image to a CellProfiler Image
-        cp_img = CpImage(image.array)
+        cp_img = CpImage(image.matrix)
         img_set.add(image.name, cp_img)
 
         map_labels = np.unique(image.object_map)

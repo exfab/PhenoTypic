@@ -40,13 +40,13 @@ class GriddedImage(Image):
     def __getitem__(self, index):
         if len(index) != 2: raise ValueError(
                 'Image objects only support 2-dimensional slicing. RGB images will be sliced evenly across each channel.')
-        if self.color_array is not None:
-            new_img = Image(self.color_array[index])
-            new_img.array = self.array[index]
-            new_img.enhanced_array = self.enhanced_array[index]
-        else:
+        if self.array is not None:
             new_img = Image(self.array[index])
-            new_img.enhanced_array = self.enhanced_array[index]
+            new_img.matrix = self.matrix[index]
+            new_img.enhanced_matrix = self.enhanced_matrix[index]
+        else:
+            new_img = Image(self.matrix[index])
+            new_img.enhanced_matrix = self.enhanced_matrix[index]
 
         if self.object_mask is not None:
             new_img.object_mask = self.object_mask[index]
@@ -166,9 +166,9 @@ class GriddedImage(Image):
         func_ax.grid(False)
 
         if use_enhanced:
-            func_ax.imshow(label2rgb(label=self.grid_col_map, image=self.enhanced_array))
+            func_ax.imshow(label2rgb(label=self.grid_col_map, image=self.enhanced_matrix))
         else:
-            func_ax.imshow(label2rgb(label=self.grid_col_map, image=self.array))
+            func_ax.imshow(label2rgb(label=self.grid_col_map, image=self.matrix))
 
         if show_gridlines:
             col_edges = self.grid_col_edges
@@ -214,9 +214,9 @@ class GriddedImage(Image):
         func_ax.grid(False)
 
         if use_enhanced:
-            func_ax.imshow(label2rgb(label=self.grid_row_map, image=self.enhanced_array))
+            func_ax.imshow(label2rgb(label=self.grid_row_map, image=self.enhanced_matrix))
         else:
-            func_ax.imshow(label2rgb(label=self.grid_row_map, image=self.array))
+            func_ax.imshow(label2rgb(label=self.grid_row_map, image=self.matrix))
 
         if show_gridlines:
             col_edges = self.grid_col_edges
@@ -264,9 +264,9 @@ class GriddedImage(Image):
         func_ax.grid(False)
 
         if use_enhanced:
-            func_ax.imshow(label2rgb(label=self.object_map, image=self.enhanced_array))
+            func_ax.imshow(label2rgb(label=self.object_map, image=self.enhanced_matrix))
         else:
-            func_ax.imshow(label2rgb(label=self.object_map, image=self.array))
+            func_ax.imshow(label2rgb(label=self.object_map, image=self.matrix))
 
         if show_gridlines:
             col_edges = self.grid_col_edges

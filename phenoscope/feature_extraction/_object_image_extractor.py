@@ -48,10 +48,10 @@ class ObjectImageExtractor(FeatureExtractor):
             new_img = curr_obj_img.copy()
             if self.target_dimensions is not None:
                 if self.use_color:
-                    new_img.color_array = self._resize_color_array(curr_obj_img)
+                    new_img.matrix = self._resize_color_array(curr_obj_img)
 
                 else:
-                    new_img.array = self._resize_array(curr_obj_img)
+                    new_img.matrix = self._resize_array(curr_obj_img)
 
                 if curr_obj_img.object_mask is not None and curr_obj_img.object_map is not None:
                     new_img.object_mask = self._resize_object_mask(curr_obj_img)
@@ -59,23 +59,23 @@ class ObjectImageExtractor(FeatureExtractor):
                     new_img.object_map = new_img.object_mask
                     new_img.object_map[new_img.object_mask] = label
 
-            new_img.name = f'{image.name}_label({label})'
+            new_img.name = f'{image.name}_Obj({label})'
             if isinstance(image, GriddedImage):
-                new_img.name += f'_gridsection({grid_info.loc[label, "Grid_SectionNum"]})'
+                new_img.name += f'_GridNum({grid_info.loc[label, "Grid_SectionNum"]})'
 
             object_images[label] = new_img
 
         return object_images
 
     def _resize_color_array(self, image):
-        return resize(image=image.color_array,
+        return resize(image=image.matrix,
                       output_shape=self.target_dimensions,
                       anti_aliasing=self.anti_aliasing,
                       order=self.order,
                       anti_aliasing_sigma=self.anti_aliasing_sigma)
 
     def _resize_array(self, image):
-        return resize(image=image.array, output_shape=self.target_dimensions,
+        return resize(image=image.matrix, output_shape=self.target_dimensions,
                       anti_aliasing=self.anti_aliasing,
                       order=self.order,
                       anti_aliasing_sigma=self.anti_aliasing_sigma)

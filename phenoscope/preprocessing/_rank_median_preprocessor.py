@@ -18,9 +18,9 @@ class RankMedianPreprocessor(ImagePreprocessor):
         self._shift_y = shift_y
 
     def _operate(self, image: Image) -> Image:
-        image.enhanced_array = median(
-                image=img_as_ubyte(image.enhanced_array),
-                footprint=self._get_footprint(self._get_footprint_radius(image.enhanced_array))
+        image.enhanced_matrix = median(
+                image=img_as_ubyte(image.enhanced_matrix),
+                footprint=self._get_footprint(self._get_footprint_radius(image.enhanced_matrix))
         )
         return image
 

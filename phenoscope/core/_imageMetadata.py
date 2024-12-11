@@ -5,12 +5,12 @@ from skimage.measure import regionprops_table
 from typing_extensions import Self
 from typing import Optional, Union
 
-from ._imageIO import ImageIO
+from ._imageShow import ImageShow
 
 IMAGE_COUNT = 0
 
 
-class ImageMetadata(ImageIO):
+class ImageMetadata(ImageShow):
     """
     This class adds the ability to handle image metadata in a way that it can be inserted into extracted measurements.
     """
@@ -30,14 +30,6 @@ class ImageMetadata(ImageIO):
             self.__metadata = {self.LABEL_IMAGE_NAME: name}
 
     @property
-    def metadata(self):
-        return self.__metadata
-
-    @metadata.setter
-    def metadata(self, value: dict):
-        raise ValueError('The metadata dictionary itself should not be changed. The values itself are mutable using dictionary accessors.')
-
-    @property
     def name(self):
         return self.__metadata[self.LABEL_IMAGE_NAME]
 
@@ -47,14 +39,28 @@ class ImageMetadata(ImageIO):
 
     def copy(self):
         new_img = super().copy()
-        for key in self.metadata.keys():
-            new_img.metadata[key] = self.metadata[key]
+        for key in self.__metadata.keys():
+            new_img.set_metadata(key, self.__metadata[key])
         return new_img
+
+    def set_metadata(self, key, value) -> None:
+        try:
+            str(value)
+        except Exception:
+            raise Exception('Value provided to function could not be represented as a string. Metadata values must be able to be represented as a string.')
+
+        self.__metadata[key] = value
+
+    def get_metadata_keys(self) -> list:
+        return [self.__metadata.keys()]
+
+    def get_metadata(self, key):
+        return self.__metadata[key]
 
     def get_metadata_table(self) -> pd.DataFrame:
         if not isinstance(self.__metadata, dict):
             raise AttributeError(
-                    'The metadata attribute was changed previously from a dictionary. In order for functions to work properly, it must be a dict.')
+                'The metadata attribute was changed previously from a dictionary. In order for functions to work properly, it must be a dict.')
 
         # Create a pandas dataframe that has all the object labels
         table = pd.DataFrame(regionprops_table(label_image=self.object_map, properties=['label']))

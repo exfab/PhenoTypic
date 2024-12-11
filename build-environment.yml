@@ -3,6 +3,7 @@ channels:
   - conda-forge
   - bioconda
   - r
+  - anaconda
   - defaults
 dependencies:
   - python=3.10
@@ -15,18 +16,23 @@ dependencies:
   - jupyter
   - dash
   - joblib
-  - boto3
   - docutils
   - h5py
   - imageio
   - mahotas
+  - inflect
+  - mysqlclient=1.4.6
   - psutil
   - pytest
   - scipy
   - scyjava
   - seaborn
+  - pip
   - bioconda::centrosome
-  - bioconda::cellprofiler
-  - bioconda::cellprofiler-core
+  - pip:
+    - python-javabridge
+    - CellProfiler
+    - cellprofiler-core
   # Other dependencies:
   #   Jave Runtime Environment or Java Development Kit
+  #   MySQL package config (https://github.com/PyMySQL/mysqlclient)

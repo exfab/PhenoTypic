@@ -12,12 +12,12 @@ class WhiteTophatPreprocessor(ImagePreprocessor):
 
     def _operate(self, image: Image) -> Image:
         white_tophat_results = white_tophat(
-                image.enhanced_array,
+                image.enhanced_matrix,
                 footprint=self._get_footprint(
-                        self._get_footprint_radius(array=image.enhanced_array)
+                        self._get_footprint_radius(array=image.enhanced_matrix)
                 )
         )
-        image.enhanced_array = image.enhanced_array - white_tophat_results
+        image.enhanced_matrix = image.enhanced_matrix - white_tophat_results
 
         return image
 

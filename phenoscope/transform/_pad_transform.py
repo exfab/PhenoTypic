@@ -19,13 +19,13 @@ class PadTransformer(ImageTransformer):
         self.__kwargs = kwargs
 
     def _operate(self, image: Image) -> Image:
-        if image.color_array is None:
-            image.array = np.pad(array=image.array,
-                                pad_width=((self.__pad_size, self.__pad_size), (self.__pad_size, self.__pad_size)),
-                                mode=self.__mode, **self.__kwargs)
+        if image.array is None:
+            image.matrix = np.pad(array=image.matrix,
+                                  pad_width=((self.__pad_size, self.__pad_size), (self.__pad_size, self.__pad_size)),
+                                  mode=self.__mode, **self.__kwargs)
         else:
-            image.color_array = np.pad(
-                    array=image.color_array,
+            image.array = np.pad(
+                    array=image.array,
                     pad_width=((self.__pad_size, self.__pad_size), (self.__pad_size, self.__pad_size), (0, 0)),
                     mode=self.__mode, **self.__kwargs
             )

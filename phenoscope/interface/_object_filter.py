@@ -13,8 +13,8 @@ class ObjectFilter(ImageOperation):
     def filter(self, image: Image, inplace=False) -> Image:
         # Input Validation
         if image.object_map is None: raise ValueError("Image has no object map")
-        input_img = np.copy(image.array)
-        input_enhanced = np.copy(image.enhanced_array)
+        input_img = np.copy(image.matrix)
+        input_enhanced = np.copy(image.enhanced_matrix)
 
         # Operation
         if inplace:
@@ -23,8 +23,8 @@ class ObjectFilter(ImageOperation):
             output = self._operate(image.copy())
 
         # Integrity Check
-        if not np.array_equal(image.array, input_img): raise ValueError(ARRAY_CHANGE_ERROR_MSG)
-        if not np.array_equal(image.enhanced_array, input_enhanced): raise ValueError(ENHANCED_ARRAY_CHANGE_ERROR_MSG)
+        if not np.array_equal(image.matrix, input_img): raise ValueError(ARRAY_CHANGE_ERROR_MSG)
+        if not np.array_equal(image.enhanced_matrix, input_enhanced): raise ValueError(ENHANCED_ARRAY_CHANGE_ERROR_MSG)
 
         if isinstance(output, Image) is False: raise RuntimeError(OUTPUT_NOT_IMAGE_MSG)
         return output

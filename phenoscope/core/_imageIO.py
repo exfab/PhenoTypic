@@ -3,23 +3,23 @@ from skimage.util import img_as_ubyte
 from pathlib import Path
 import numpy as np
 
-from ._imageShow import ImageShow
+from ._imageMetadata import ImageMetadata
 
 
-LABEL_COLOR_ARRAY = 'color_array'
-LABEL_ARRAY = 'array'
-LABEL_ENHANCED_ARRAY = 'enhanced_array'
+LABEL_ARRAY = 'color_array'
+LABEL_MATRIX = 'array'
+LABEL_ENHANCED_MATRIX = 'enhanced_array'
 LABEL_OBJECT_MASK = 'object_mask'
 LABEL_OBJECT_MAP = 'object_map'
 LABEL_CUSTOM_FILE_EXTENSION_PREFIX = 'ps'
 
-class ImageIO(ImageShow):
+class ImageIO(ImageMetadata):
     def imread(self, filepath: str):
         input_img = imread(Path(filepath))
         if input_img.ndim == 3:
-            self.color_array = input_img
-        elif input_img.ndim == 2:
             self.array = input_img
+        elif input_img.ndim == 2:
+            self.matrix = input_img
 
     # TODO: Add option to save color image
     def imsave(self, filepath:Path):
@@ -27,10 +27,10 @@ class ImageIO(ImageShow):
         # if self.color_array is not None:
         #     imsave(fname=fpath, arr=self.color_array, check_contrast=False)
         # else:
-        imsave(fname=fpath, arr=img_as_ubyte(self.array), check_contrast=False)
+        imsave(fname=fpath, arr=img_as_ubyte(self.matrix), check_contrast=False)
 
     # TODO: Implement way to save metadata
-    def savez(self, savepath:Path, save_metadata:bool=False):
+    def savez(self, savepath:Path):
         """
         Provides a way to save the current image object and the progress in the current pipeline. This method preserves the array data
         compared to saving it as an image filetype such as jpg or png.
@@ -40,14 +40,15 @@ class ImageIO(ImageShow):
         if savepath is None: raise ValueError(f'savepath not specified.')
 
         savepath = Path(savepath)
-        savepath = savepath.parent / f'{savepath.stem}.{LABEL_CUSTOM_FILE_EXTENSION_PREFIX}.npz'
+        if str(savepath).endswith(f'{LABEL_CUSTOM_FILE_EXTENSION_PREFIX}.npz') is False:
+            savepath = savepath.parent / f'{savepath.stem}.{LABEL_CUSTOM_FILE_EXTENSION_PREFIX}.npz'
         save_dict = {}
-
-        if self.color_array is not None: save_dict[LABEL_COLOR_ARRAY] = self.color_array
 
         if self.array is not None: save_dict[LABEL_ARRAY] = self.array
 
-        if self.enhanced_array is not None: save_dict[LABEL_ENHANCED_ARRAY] = self.enhanced_array
+        if self.matrix is not None: save_dict[LABEL_MATRIX] = self.matrix
+
+        if self.enhanced_matrix is not None: save_dict[LABEL_ENHANCED_MATRIX] = self.enhanced_matrix
 
         if self.object_mask is not None: save_dict[LABEL_OBJECT_MASK] = self.object_mask
 
@@ -73,8 +74,9 @@ class ImageIO(ImageShow):
 
         data = np.load(filepath)
         keys = data.keys()
-        if LABEL_COLOR_ARRAY in keys: self.color_array = data[LABEL_COLOR_ARRAY]
         if LABEL_ARRAY in keys: self.array = data[LABEL_ARRAY]
+        if LABEL_MATRIX in keys: self.matrix = data[LABEL_MATRIX]
+        if LABEL_ENHANCED_MATRIX in keys: self.enhanced_matrix = data[LABEL_ENHANCED_MATRIX]
         if LABEL_OBJECT_MASK in keys: self.object_mask = data[LABEL_OBJECT_MASK]
         if LABEL_OBJECT_MAP in keys: self.object_map = data[LABEL_OBJECT_MAP]
 

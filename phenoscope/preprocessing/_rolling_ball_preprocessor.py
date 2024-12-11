@@ -13,9 +13,9 @@ class RollingBallPreprocessor(ImagePreprocessor):
         self._num_threads: int = num_threads
 
     def _operate(self, image: Image):
-        image.enhanced_array -= rolling_ball(image=image.enhanced_array,
-                                             radius=self._radius,
-                                             kernel=self._kernel,
-                                             nansafe=self._nansafe,
-                                             num_threads=self._num_threads)
+        image.enhanced_matrix -= rolling_ball(image=image.enhanced_matrix,
+                                              radius=self._radius,
+                                              kernel=self._kernel,
+                                              nansafe=self._nansafe,
+                                              num_threads=self._num_threads)
         return image

@@ -22,8 +22,8 @@ class FeatureExtractor(ImageOperation):
         else:
             measurement = self._operate(image.copy())
 
-        if not np.array_equal(input_image.array, image.array): raise ValueError(ARRAY_CHANGE_ERROR_MSG)
-        if not np.array_equal(input_image.enhanced_array, image.enhanced_array): raise ValueError(ENHANCED_ARRAY_CHANGE_ERROR_MSG)
+        if not np.array_equal(input_image.matrix, image.matrix): raise ValueError(ARRAY_CHANGE_ERROR_MSG)
+        if not np.array_equal(input_image.enhanced_matrix, image.enhanced_matrix): raise ValueError(ENHANCED_ARRAY_CHANGE_ERROR_MSG)
         if not np.array_equal(input_image.object_mask, image.object_mask): raise ValueError(MASK_CHANGE_ERROR_MSG)
         if not np.array_equal(input_image.object_map, image.object_map): raise ValueError(MAP_CHANGE_ERROR_MSG)
 

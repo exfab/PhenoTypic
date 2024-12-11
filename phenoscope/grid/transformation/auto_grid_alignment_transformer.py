@@ -75,14 +75,14 @@ class AutoGridAlignmentTransformer(GridTransformer):
                 bounds=(-largest_angle, largest_angle)
         )
 
-        array = rotate(image=image.array, angle=optimal_angle.x, mode=self.mode)
-        enhanced_array = rotate(image=image.enhanced_array, angle=optimal_angle.x, mode=self.mode)
+        array = rotate(image=image.matrix, angle=optimal_angle.x, mode=self.mode)
+        enhanced_array = rotate(image=image.enhanced_matrix, angle=optimal_angle.x, mode=self.mode)
 
-        if image.color_array is not None:
-            carray = rotate(image=image.color_array, angle=optimal_angle.x, mode=self.mode)
-            image.color_array = carray
+        if image.array is not None:
+            carray = rotate(image=image.array, angle=optimal_angle.x, mode=self.mode)
+            image.array = carray
 
         # TODO: Maybe find a way to streamline this?
-        image.array = array
-        image.enhanced_array = enhanced_array
+        image.matrix = array
+        image.enhanced_matrix = enhanced_array
         return image

@@ -1,4 +1,4 @@
-from ._imageMetadata import ImageMetadata
+from ._imageIO import ImageIO
 
-class Image(ImageMetadata):
+class Image(ImageIO):
     pass

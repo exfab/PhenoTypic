@@ -12,8 +12,8 @@ class LaplacePreprocessor(ImagePreprocessor):
         self._mask:Optional[np.ndarray] = mask
 
     def _operate(self, image: Image) -> Image:
-        image.enhanced_array = laplace(
-                image=image.enhanced_array,
+        image.enhanced_matrix = laplace(
+                image=image.enhanced_matrix,
                 ksize=self._ksize,
                 mask=self._mask,
         )

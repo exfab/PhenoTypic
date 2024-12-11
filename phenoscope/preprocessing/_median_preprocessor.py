@@ -13,5 +13,5 @@ class MedianPreprocessor(ImagePreprocessor):
             raise ValueError('mode must be one of "nearest","reflect","constant","mirror","wrap"')
 
     def _operate(self, image: Image) -> Image:
-        image.enhanced_array = median(image=image.enhanced_array, behavior='ndimage', mode=self._mode, cval=self._cval)
+        image.enhanced_matrix = median(image=image.enhanced_matrix, behavior='ndimage', mode=self._mode, cval=self._cval)
         return image

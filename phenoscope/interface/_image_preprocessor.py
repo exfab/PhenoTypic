@@ -11,14 +11,14 @@ class ImagePreprocessor(ImageOperation):
     def preprocess(self, image: Image, inplace: bool = False) -> Image:
 
         # Make a copy for post checking
-        input_arr = image.array
+        input_arr = image.matrix
 
         if inplace:
             output = self._operate(image)
         else:
             output = self._operate(image.copy())
 
-        if not np.array_equal(input_arr, output.array): raise AttributeError(ARRAY_CHANGE_ERROR_MSG)
+        if not np.array_equal(input_arr, output.matrix): raise AttributeError(ARRAY_CHANGE_ERROR_MSG)
 
         return output
 

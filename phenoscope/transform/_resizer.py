@@ -74,12 +74,12 @@ class Resizer(ImageTransformer):
         # Resize the image while preserving aspect ratio
 
         # Resize 2D array
-        new_array = self._skimage_resize(array=image.array)
+        new_array = self._skimage_resize(array=image.matrix)
         if self.preserve_aspect_ratio and self.pad_mode is not None:
             new_array = self._create_padded_image(array=new_array)
 
         # Resize enhanced array
-        new_enhanced_array = self._skimage_resize(array=image.enhanced_array)
+        new_enhanced_array = self._skimage_resize(array=image.enhanced_matrix)
         if self.preserve_aspect_ratio:
             new_enhanced_array = self._create_padded_image(array=new_enhanced_array)
 
@@ -103,16 +103,16 @@ class Resizer(ImageTransformer):
             new_map = None
 
         # Resize color array if it exist
-        if image.color_array is not None:
-            new_rgb_array = self._skimage_resize(array=image.color_array)
+        if image.array is not None:
+            new_rgb_array = self._skimage_resize(array=image.array)
 
             if self.preserve_aspect_ratio and self.pad_mode is not None:
                 new_rgb_array = self._create_padded_image(new_rgb_array)
 
-            image.color_array = new_rgb_array
+            image.array = new_rgb_array
 
-        image.array = new_array
-        image.enhanced_array = new_enhanced_array
+        image.matrix = new_array
+        image.enhanced_matrix = new_enhanced_array
         image.object_mask = new_mask
         image.object_map = new_map
         return image
