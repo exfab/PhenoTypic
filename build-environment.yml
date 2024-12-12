@@ -10,24 +10,28 @@ dependencies:
   - matplotlib
   - numpy
   - pandas
-  - scikit-image
+  - scikit-image=0.18.3
   - scikit-learn
   - opencv
   - jupyter
   - dash
   - joblib
-  - docutils
-  - h5py
+  - docutils=0.15.2
+  - h5py=3.6
   - imageio
   - mahotas
-  - inflect
+  - inflect=7.
   - mysqlclient=1.4.6
+  - pyzmq=22.3
+  - inflect=7
+  - wxPython=5
   - psutil
   - pytest
-  - scipy
+  - scipy=1.9
   - scyjava
   - seaborn
   - pip
+  - boto3
   - bioconda::centrosome
   - pip:
     - python-javabridge

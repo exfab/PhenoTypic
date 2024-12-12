@@ -30,7 +30,7 @@ class ImageCore:
                 self.__object_mask: Optional[np.ndarray] = None
                 self.__object_map: Optional[np.ndarray] = None
 
-            elif issubclass(image, ImageCore):
+            elif issubclass(type(image), ImageCore):
                 self.__array = image.array
                 self.__image_matrix: np.ndarray = image.matrix
                 self.__enhanced_image_matrix: np.ndarray = image.enhanced_matrix

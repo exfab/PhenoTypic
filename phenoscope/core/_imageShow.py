@@ -7,25 +7,48 @@ from ._imageCore import ImageCore
 
 
 class ImageShow(ImageCore):
-    def show(self, ax: plt.Axes = None, cmap: str = 'gray', figsize: Tuple[int] = None) -> (plt.Figure, plt.Axes):
-        if figsize is None: self.__get_default_figsize()
+    def show_array(self,
+                   ax: plt.Axes = None,
+                   figsize: Tuple[int] = None) -> (plt.Figure, plt.Axes):
+        if figsize is None: figsize = self.__get_default_figsize()
+
         if ax is None:
             fig, func_ax = plt.subplots(tight_layout=True, figsize=figsize)
         else:
             func_ax = ax
 
         func_ax.grid(False)
-        if len(self.array.shape) == 2:
-            func_ax.imshow(self.array, cmap=cmap)
+        if len(self.matrix.shape) == 2:
+            func_ax.imshow(self.matrix)
         else:
-            func_ax.imshow(self.array)
+            func_ax.imshow(self.matrix)
 
         if ax is None:
             return fig, func_ax
         else:
             return func_ax
 
-    def show_enhanced(self, ax: plt.Axes = None, cmap: str = 'gray', figsize: Tuple[int] = None) -> (plt.Figure, plt.Axes):
+    def show_matrix(self, ax: plt.Axes = None, cmap: str = 'gray', figsize: Tuple[int] = None) -> (
+            plt.Figure, plt.Axes):
+        if figsize is None: figsize = self.__get_default_figsize()
+        if ax is None:
+            fig, func_ax = plt.subplots(tight_layout=True, figsize=figsize)
+        else:
+            func_ax = ax
+
+        func_ax.grid(False)
+        if len(self.matrix.shape) == 2:
+            func_ax.imshow(self.matrix, cmap=cmap)
+        else:
+            func_ax.imshow(self.matrix)
+
+        if ax is None:
+            return fig, func_ax
+        else:
+            return func_ax
+
+    def show_enhanced(self, ax: plt.Axes = None, cmap: str = 'gray', figsize: Tuple[int] = None) -> (
+            plt.Figure, plt.Axes):
         if figsize is None: self.__get_default_figsize()
         if ax is None:
             fig, func_ax = plt.subplots(tight_layout=True, figsize=figsize)
@@ -44,7 +67,7 @@ class ImageShow(ImageCore):
             return func_ax
 
     def show_mask(self, ax: plt.Axes = None, cmap: str = 'gray', figsize: Tuple[int] = None) -> (plt.Figure, plt.Axes):
-        if figsize is None: self.__get_default_figsize()
+        if figsize is None: figsize = self.__get_default_figsize()
         if ax is None:
             fig, func_ax = plt.subplots(tight_layout=True, figsize=figsize)
         else:
@@ -61,9 +84,10 @@ class ImageShow(ImageCore):
         else:
             return func_ax
 
-    def show_map(self, object_label: Optional[int] = None, ax: plt.Axes = None, cmap: str = 'tab20', figsize: Tuple[int] = None) -> (
+    def show_map(self, object_label: Optional[int] = None, ax: plt.Axes = None, cmap: str = 'tab20',
+                 figsize: Tuple[int] = None) -> (
             plt.Figure, plt.Axes):
-        if figsize is None: self.__get_default_figsize()
+        if figsize is None: figsize = self.__get_default_figsize()
         if ax is None:
             fig, func_ax = plt.subplots(tight_layout=True, figsize=figsize)
         else:
@@ -83,8 +107,14 @@ class ImageShow(ImageCore):
         else:
             return func_ax
 
-    def show_overlay(self, object_label:Optional[int]=None,use_enhanced=False, ax=None, figsize=(9, 10)) -> (plt.Figure, plt.Axes):
-        if figsize is None: self.__get_default_figsize()
+    def show_overlay(self,
+                     object_label: Optional[int] = None,
+                     use_enhanced=False,
+                     ax=None,
+                     figsize=(9, 10),
+                     alpha=0.2) -> (
+            plt.Figure, plt.Axes):
+        if figsize is None: figsize = self.__get_default_figsize()
         if ax is None:
             fig, func_ax = plt.subplots(tight_layout=True, figsize=figsize)
         else:
@@ -99,22 +129,22 @@ class ImageShow(ImageCore):
 
         # Plot image
         if use_enhanced:
-            func_ax.imshow(label2rgb(label=obj_map, image=self.enhanced_matrix))
+            func_ax.imshow(label2rgb(label=obj_map, image=self.enhanced_matrix, alpha=alpha))
         else:
-            func_ax.imshow(label2rgb(label=obj_map, image=self.array))
+            func_ax.imshow(label2rgb(label=obj_map, image=self.array, alpha=alpha))
 
         if ax is None:
             return fig, func_ax
         else:
             return func_ax
 
-    def __get_default_figsize(self)->Tuple[int, int]:
+    def __get_default_figsize(self) -> Tuple[int, int]:
         """
         Calculate the aspect ratio of an image to maintain its information
         :return:
         """
         height, width = self.shape[0], self.shape[1]
         divisor = gcd(width, height)
-        width_ratio = width//divisor
-        height_rato = height//divisor
+        width_ratio = width // divisor
+        height_rato = height // divisor
         return width_ratio, height_rato
