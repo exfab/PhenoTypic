@@ -18,7 +18,7 @@ class ImageCore:
             self.__enhanced_image_matrix = None
             self.__object_mask = None
             self.__object_map = None
-        else:  # Load image array into object
+        else:  # Load data from an object
             if type(image) is np.ndarray:
                 if image.ndim == 3:
                     self.__array = image
@@ -71,9 +71,12 @@ class ImageCore:
         if self.__image_matrix is None: raise AttributeError(NO_IMAGE_DATA_ERROR_MSG)
         return self.__image_matrix.ndim
 
-    # The color representation of the image. This is blank if a grayscale image is set as the image
     @property
     def array(self) -> Optional[np.ndarray]:
+        """
+        The multichannel representation of the image. This is None if a single-channel image is set as the image.
+        :return:
+        """
         if self.__image_matrix is None: raise AttributeError(NO_IMAGE_DATA_ERROR_MSG)
         return self.__array
 
@@ -83,9 +86,12 @@ class ImageCore:
         self.__array = image
         self.matrix = rgb2gray(image)
 
-    # The 2-dimensional representation of the image
     @property
     def matrix(self) -> np.ndarray:
+        """
+        The single channel representation of the image.
+        :return:
+        """
         if self.__image_matrix is None: raise AttributeError(NO_IMAGE_DATA_ERROR_MSG)
         return np.copy(self.__image_matrix)
 
@@ -112,7 +118,8 @@ class ImageCore:
     @property
     def object_mask(self) -> Union[np.ndarray, None]:
         """
-        The object mask is a boolean array indicating the indices of the objects in the image.
+        The object mask is a boolean array indicating the indices of the objects in the image. This is a boolean array
+        of one if no detection algorithm is used on it.
         :return:
         """
         if self.__image_matrix is None: raise AttributeError(NO_IMAGE_DATA_ERROR_MSG)
@@ -120,13 +127,14 @@ class ImageCore:
         if self.__object_mask is not None:
             return np.copy(self.__object_mask)
         else:
-            return None
+            return np.full(shape=self.shape, fill_value=True)
 
     @object_mask.setter
     def object_mask(self, mask: np.ndarray) -> None:
         if mask is not None:
-            if is_binary_mask(mask) is False:
-                raise ValueError("Mask must be a binary array.")
+            if is_binary_mask(mask) is False: raise ValueError("Mask must be a binary array.")
+            if not isinstance(mask, np.ndarray): raise ValueError("Mask must be a numpy array or None.")
+
             if not np.array_equal(mask.shape, self.__enhanced_image_matrix.shape): raise ValueError(
                 INVALID_MASK_SHAPE_MSG)
             self.__object_mask = mask
@@ -145,7 +153,7 @@ class ImageCore:
         if self.__object_map is not None:
             return np.copy(self.__object_map)
         else:
-            return None
+            return np.full(shape=self.shape, fill_value=1)
 
     @object_map.setter
     def object_map(self, object_map: np.ndarray) -> None:

@@ -1,1 +1,0 @@
-from phenoscope.grid import GriddedImage
