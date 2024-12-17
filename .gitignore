@@ -3,6 +3,8 @@
 **/__pycache__/**
 *.idea
 **.pyc
-./phenoscope.egg-info/**
-./phenoscope.egg-info
+**./phenoscope.egg-info/**
+**./phenoscope.egg-info**
 ./phenoscope.egg-info/
+*.DS_Store
+

@@ -184,7 +184,7 @@ class ImageCore:
             if not np.array_equal(obj_map.shape, self.__enhanced_image_matrix.shape): raise ValueError(
                 INVALID_MAP_SHAPE_MSG)
             self.__object_map = csc_array(arg1=obj_map, shape=obj_map.shape)
-            self.__object_mask = obj_map > 0
+            self.object_mask = obj_map > 0
         else:
             self.__object_map = None
 
@@ -201,14 +201,14 @@ class ImageCore:
 
     def copy(self):
         if self.array is not None:
-            new_image = self.__class__(self.__array)
-            new_image.matrix = self.__image_matrix
+            new_image = self.__class__(self.array)
+            new_image.matrix = self.matrix
         else:
-            new_image = self.__class__(self.__image_matrix)
+            new_image = self.__class__(self.matrix)
 
-        new_image.enhanced_matrix = self.__enhanced_image_matrix
-        new_image.object_mask = self.__object_mask
-        new_image.object_map = self.__object_map
+        new_image.enhanced_matrix = self.enhanced_matrix
+        new_image.object_mask = self.object_mask
+        new_image.object_map = self.object_map
         return new_image
 
     def reset(self):
