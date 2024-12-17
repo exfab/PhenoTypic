@@ -1,4 +1,6 @@
 from typing import Union, Optional
+
+from scipy.sparse import csc_array
 from typing_extensions import Self
 
 import numpy as np
@@ -12,13 +14,15 @@ from ..util.error_message import INVALID_MASK_SHAPE_MSG, INVALID_MAP_SHAPE_MSG, 
 # TODO: Import Sparse Matrix
 class ImageCore:
     def __init__(self, image: Optional[Union[np.ndarray, Self]] = None):
-        if image is None:  # Create an empty image object
-            self.__array = None
-            self.__image_matrix = None
-            self.__enhanced_image_matrix = None
-            self.__object_mask = None
-            self.__object_map = None
-        else:  # Load data from an object
+
+        # Create blank image variables
+        self.__array: Optional[np.ndarray] = None
+        self.__image_matrix: Optional[np.ndarray] = None
+        self.__enhanced_image_matrix: Optional[np.ndarray] = None
+        self.__object_mask: Optional[csc_array] = None
+        self.__object_map: Optional[csc_array] = None
+
+        if image is not None:  # Load data from an object
             if type(image) is np.ndarray:
                 if image.ndim == 3:
                     self.__array = image
@@ -26,16 +30,28 @@ class ImageCore:
                 else:
                     self.__array = None
                     self.__image_matrix: np.ndarray = image
+
                 self.__enhanced_image_matrix = self.__image_matrix
-                self.__object_mask: Optional[np.ndarray] = None
-                self.__object_map: Optional[np.ndarray] = None
+                self.__object_mask = None
+                self.__object_map = None
 
             elif issubclass(type(image), ImageCore):
                 self.__array = image.array
-                self.__image_matrix: np.ndarray = image.matrix
-                self.__enhanced_image_matrix: np.ndarray = image.enhanced_matrix
-                self.__object_mask: Optional[np.ndarray] = image.object_mask
-                self.__object_map: Optional[np.ndarray] = image.object_map
+                self.__image_matrix = image.matrix
+                self.__enhanced_image_matrix = image.enhanced_matrix
+
+                # Check if image.object_mask is returning the default for null object_mask
+                if np.array_equal(np.full(image.shape, fill_value=True), image.object_mask):
+                    self.__object_mask = None
+                else:
+                    self.__object_mask = csc_array(arg1=image.object_mask, shape=image.shape)
+
+                # Check if image.object_map is returning the default for null object_map
+                if np.array_equal(np.full(image.shape, fill_value=1), image.object_map):
+                    self.__object_map = None
+                else:
+                    self.__object_map = csc_array(arg1=image.object_map, shape=image.shape)
+
             else:
                 raise ValueError(
                     f'Unsupported input for image class constructor - Input: {type(image)} - Accepted Input:{np.ndarray} or {self.__class__}'
@@ -77,8 +93,10 @@ class ImageCore:
         The multichannel representation of the image. This is None if a single-channel image is set as the image.
         :return:
         """
-        if self.__image_matrix is None: raise AttributeError(NO_IMAGE_DATA_ERROR_MSG)
-        return self.__array
+        if self.__array is None:
+            return None
+        else:
+            return np.copy(self.__array)
 
     @array.setter
     def array(self, image: np.ndarray):
@@ -87,13 +105,15 @@ class ImageCore:
         self.matrix = rgb2gray(image)
 
     @property
-    def matrix(self) -> np.ndarray:
+    def matrix(self) -> Optional[np.ndarray]:
         """
         The single channel representation of the image.
         :return:
         """
-        if self.__image_matrix is None: raise AttributeError(NO_IMAGE_DATA_ERROR_MSG)
-        return np.copy(self.__image_matrix)
+        if self.__image_matrix is None:
+            return None
+        else:
+            return np.copy(self.__image_matrix)
 
     @matrix.setter
     def matrix(self, image: np.ndarray) -> None:
@@ -104,9 +124,11 @@ class ImageCore:
 
     # The 2-dimensional enhanced representation of the image that is fed into the detection algorithm
     @property
-    def enhanced_matrix(self) -> np.ndarray:
-        if self.__enhanced_image_matrix is None: raise AttributeError(NO_IMAGE_DATA_ERROR_MSG)
-        return np.copy(self.__enhanced_image_matrix)
+    def enhanced_matrix(self) -> Optional[np.ndarray]:
+        if self.__enhanced_image_matrix is None:
+            return None
+        else:
+            return np.copy(self.__enhanced_image_matrix)
 
     @enhanced_matrix.setter
     def enhanced_matrix(self, enhanced_image: np.ndarray) -> None:
@@ -116,52 +138,53 @@ class ImageCore:
 
     # Object Mask: A binary array that represents detected objects
     @property
-    def object_mask(self) -> Union[np.ndarray, None]:
+    def object_mask(self) -> Optional[np.ndarray]:
         """
         The object mask is a boolean array indicating the indices of the objects in the image. This is a boolean array
         of one if no detection algorithm is used on it.
         :return:
         """
-        if self.__image_matrix is None: raise AttributeError(NO_IMAGE_DATA_ERROR_MSG)
 
         if self.__object_mask is not None:
-            return np.copy(self.__object_mask)
-        else:
+            return np.copy(self.__object_mask.toarray())
+        elif self.__image_matrix is not None:
             return np.full(shape=self.shape, fill_value=True)
+        else:
+            return None
 
     @object_mask.setter
-    def object_mask(self, mask: np.ndarray) -> None:
-        if mask is not None:
-            if is_binary_mask(mask) is False: raise ValueError("Mask must be a binary array.")
-            if not isinstance(mask, np.ndarray): raise ValueError("Mask must be a numpy array or None.")
+    def object_mask(self, obj_mask: np.ndarray) -> None:
+        if obj_mask is not None:
+            if is_binary_mask(obj_mask) is False: raise ValueError("Mask must be a binary array.")
+            if not isinstance(obj_mask, np.ndarray): raise ValueError("Mask must be a numpy array or None.")
 
-            if not np.array_equal(mask.shape, self.__enhanced_image_matrix.shape): raise ValueError(
+            if not np.array_equal(obj_mask.shape, self.__enhanced_image_matrix.shape): raise ValueError(
                 INVALID_MASK_SHAPE_MSG)
-            self.__object_mask = mask
-            self.__object_map = label(self.__object_mask)
+            self.__object_mask = csc_array(arg1=obj_mask, shape=obj_mask.shape)
+            self.__object_map = csc_array(arg1=label(obj_mask), shape=obj_mask.shape)
         else:
             self.__object_mask = None
 
     @property
-    def object_map(self) -> Union[np.ndarray, None]:
+    def object_map(self) -> Optional[np.ndarray]:
         """
         The object map is a numpy array with integer values that represent the different objects within the mask
         :return:
         """
-        if self.__image_matrix is None: raise AttributeError(NO_IMAGE_DATA_ERROR_MSG)
-
         if self.__object_map is not None:
-            return np.copy(self.__object_map)
-        else:
+            return np.copy(self.__object_map.toarray())
+        elif self.__image_matrix is not None:
             return np.full(shape=self.shape, fill_value=1)
+        else:
+            return None
 
     @object_map.setter
-    def object_map(self, object_map: np.ndarray) -> None:
-        if object_map is not None:
-            if not np.array_equal(object_map.shape, self.__enhanced_image_matrix.shape): raise ValueError(
+    def object_map(self, obj_map: np.ndarray) -> None:
+        if obj_map is not None:
+            if not np.array_equal(obj_map.shape, self.__enhanced_image_matrix.shape): raise ValueError(
                 INVALID_MAP_SHAPE_MSG)
-            self.__object_map = object_map
-            self.__object_mask = self.__object_map > 0
+            self.__object_map = csc_array(arg1=obj_map, shape=obj_map.shape)
+            self.__object_mask = obj_map > 0
         else:
             self.__object_map = None
 

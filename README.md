@@ -7,3 +7,10 @@ An image processing framework created for Ex-FAB NSF BioFoundry that aims to str
 This framework aims to provide a toolkit & developer framework that streamlines the process of creating phenotype image analysis protocols. 
 By providing a structured data flow, developers can create their own versions of computer vision operations and easily integrate it
 with other established protocols without having to create entirely programs every time.
+
+## Installation
+'''
+git clone https://github.com/Xander-git/PhenoScope.git
+cd PhenoScope
+pip install -e .
+'''

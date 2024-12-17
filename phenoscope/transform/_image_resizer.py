@@ -10,7 +10,7 @@ SUPPORTED_PAD_MODE_LIST = [None, 'constant', 'edge', 'linear_ramp', 'maximum', '
                            'symmetric', 'wrap', 'empty']
 
 
-class Resizer(ImageTransformer):
+class ImageResizer(ImageTransformer):
     def __init__(
             self,
             target_size: Tuple,

@@ -37,3 +37,7 @@ dependencies = [
 
 [projects.urls]
 Repository = "https://github.com/Xander-git/PhenoScope"
+
+[tool.pytest.ini_options]
+testpaths = ["./tests/*"]
+addopts = "--verbose --capture=no"

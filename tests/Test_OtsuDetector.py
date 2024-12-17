@@ -4,7 +4,7 @@ import numpy as np
 from phenoscope import Image
 from phenoscope.detection import OtsuDetector
 
-from Test_Image import sample_data
+from .Test_Image import sample_data
 
 def test_inplace_OtsuDetector(sample_data):
     img = Image(sample_data['image'])
@@ -29,3 +29,4 @@ def test_OtsuDetector(sample_data):
 
     assert not np.array_equal(img.object_mask, original_mask)
     assert not np.array_equal(img.object_map, original_map)
+
