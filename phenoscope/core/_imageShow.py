@@ -131,7 +131,7 @@ class ImageShow(ImageCore):
         if use_enhanced:
             func_ax.imshow(label2rgb(label=obj_map, image=self.enhanced_matrix, alpha=alpha))
         else:
-            func_ax.imshow(label2rgb(label=obj_map, image=self.array, alpha=alpha))
+            func_ax.imshow(label2rgb(label=obj_map, image=self.matrix, alpha=alpha))
 
         if ax is None:
             return fig, func_ax
