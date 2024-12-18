@@ -25,40 +25,40 @@ class ImageMetadata(ImageShow):
         IMAGE_COUNT = IMAGE_COUNT + 1
 
         if name is None:
-            self.__metadata = {self.LABEL_IMAGE_NAME: f'{self.IMAGE_NUMBER:02}'}
+            self._metadata = {self.LABEL_IMAGE_NAME: f'{self.IMAGE_NUMBER:02}'}
         else:
-            self.__metadata = {self.LABEL_IMAGE_NAME: name}
+            self._metadata = {self.LABEL_IMAGE_NAME: name}
 
     @property
     def name(self):
-        return self.__metadata[self.LABEL_IMAGE_NAME]
+        return self._metadata[self.LABEL_IMAGE_NAME]
 
     @name.setter
     def name(self, value: str):
-        self.__metadata[self.LABEL_IMAGE_NAME] = value
+        self.set_metadata(self.LABEL_IMAGE_NAME, value)
 
     def copy(self):
         new_img = super().copy()
-        for key in self.__metadata.keys():
-            new_img.set_metadata(key, self.__metadata[key])
+        for key in self._metadata.keys():
+            new_img.set_metadata(key, self._metadata[key])
         return new_img
 
     def set_metadata(self, key, value) -> None:
         try:
             str(value)
-        except Exception:
-            raise Exception('Value provided to function could not be represented as a string. Metadata values must be able to be represented as a string.')
+        except Exception as e:
+            raise e('Value provided to function could not be represented as a string. Metadata values must be able to be represented as a string.')
 
-        self.__metadata[key] = value
+        self._metadata[key] = value
 
     def get_metadata_keys(self) -> list:
-        return [self.__metadata.keys()]
+        return [self._metadata.keys()]
 
     def get_metadata(self, key):
-        return self.__metadata[key]
+        return self._metadata[key]
 
     def get_metadata_table(self) -> pd.DataFrame:
-        if not isinstance(self.__metadata, dict):
+        if not isinstance(self._metadata, dict):
             raise AttributeError(
                 'The metadata attribute was changed previously from a dictionary. In order for functions to work properly, it must be a dict.')
 
@@ -66,8 +66,8 @@ class ImageMetadata(ImageShow):
         table = pd.DataFrame(regionprops_table(label_image=self.object_map, properties=['label']))
 
         # Insert metadata
-        for key in self.__metadata.keys():
-            table.insert(loc=1, column=f'Metadata_{key}', value=self.__metadata[key])
+        for key in self._metadata.keys():
+            table.insert(loc=1, column=f'Metadata_{key}', value=self._metadata[key])
 
         # Set the labels as index to match other feature extraction convenction
         table.set_index(keys='label', inplace=True)

@@ -54,6 +54,10 @@ class ImageIO(ImageMetadata):
 
         if self.object_map is not None: save_dict[LABEL_OBJECT_MAP] = self.object_map
 
+        if self._metadata:
+            pass
+
+
         if save_dict:
             np.savez(savepath, **save_dict)
         else:

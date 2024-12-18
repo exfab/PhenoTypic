@@ -155,6 +155,7 @@ class ImageResizer(ImageTransformer):
 
     def _create_padded_image(self, array: np.ndarray) -> np.ndarray:
         """
+        pad the image along each dimension
 
         :param array:
         :return:

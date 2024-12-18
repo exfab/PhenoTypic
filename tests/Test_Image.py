@@ -1,5 +1,7 @@
 import pytest
 
+import os
+from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -64,3 +66,29 @@ def test_image_show_overlay_enhanced(sample_data):
     assert fig is not None
     assert ax is not None
     plt.close(fig)
+
+def test_image_set_metadata(sample_data):
+    img = Image(sample_data['image'])
+    img.name = 'test_image'
+    img.set_metadata(key='test_int', value=100)
+    img.set_metadata(key='test_float', value=100.0)
+    img.set_metadata(key='test_bool', value=True)
+    img.set_metadata(key='test_str', value='test_string')
+    assert img.name == 'test_image'
+    assert img.get_metadata(key='test_int') == 100
+    assert img.get_metadata(key='test_float') == 100.0
+    assert img.get_metadata(key='test_bool') == True
+    assert img.get_metadata(key='test_str') == 'test_string'
+
+def test_image_savez_loadz(sample_data):
+    current_file_path = Path(__file__).resolve()
+    test_resources_path = current_file_path.parent / 'resources'
+
+    img = Image(sample_data['image'])
+    img.name = 'test_image'
+    img.set_metadata(key='test_int', value=100)
+    img.set_metadata(key='test_float', value=100.0)
+    img.set_metadata(key='test_bool', value=True)
+    img.set_metadata(key='test_str', value='test_string')
+
+    img.savez(test_resources_path / 'test_image_savez')
