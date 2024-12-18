@@ -3,6 +3,7 @@ from skimage.util import img_as_ubyte
 from pathlib import Path
 import numpy as np
 import os
+import pandas as pd
 
 from ._imageMetadata import ImageMetadata
 
@@ -42,6 +43,10 @@ class ImageIO(ImageMetadata):
         if savepath is None: raise ValueError(f'savepath not specified.')
 
         savepath = Path(savepath)
+        if savepath.exists():
+            num_matching_files = pd.Series(os.listdir(savepath.parent)).str.contains(savepath.stem).sum()
+            savepath = savepath.parent / (f'{savepath.stem}({num_matching_files})' + savepath.suffix)
+
         temp_savepath = savepath.parent/(savepath.stem + '.npz')
         if str(savepath).endswith(f'{LABEL_CUSTOM_FILE_EXTENSION_PREFIX}') is False:
             savepath = savepath.parent /( f'{savepath.stem}' + LABEL_CUSTOM_FILE_EXTENSION_PREFIX)
