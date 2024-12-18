@@ -148,7 +148,7 @@ class ImageCore:
         if self.__object_mask is not None:
             return np.copy(self.__object_mask.toarray())
         elif self.__image_matrix is not None:
-            return np.full(shape=self.shape, fill_value=True)
+            return np.full(shape=self.shape, fill_value=1)
         else:
             return None
 
@@ -158,9 +158,13 @@ class ImageCore:
             if is_binary_mask(obj_mask) is False: raise ValueError("Mask must be a binary array.")
             if not isinstance(obj_mask, np.ndarray): raise ValueError("Mask must be a numpy array or None.")
 
-            if not np.array_equal(obj_mask.shape, self.__enhanced_image_matrix.shape): raise ValueError(
-                INVALID_MASK_SHAPE_MSG)
-            self.__object_mask = csc_array(arg1=obj_mask, shape=obj_mask.shape)
+            if not np.array_equal(obj_mask.shape, self.__enhanced_image_matrix.shape):
+                raise ValueError(INVALID_MASK_SHAPE_MSG)
+
+            if np.array_equal(obj_mask, np.full(shape=self.shape,fill_value=1)):
+                self.__object_mask = None
+            else:
+                self.__object_mask = csc_array(arg1=obj_mask, shape=obj_mask.shape)
             self.__object_map = csc_array(arg1=label(obj_mask), shape=obj_mask.shape)
         else:
             self.__object_mask = None
@@ -181,10 +185,16 @@ class ImageCore:
     @object_map.setter
     def object_map(self, obj_map: np.ndarray) -> None:
         if obj_map is not None:
-            if not np.array_equal(obj_map.shape, self.__enhanced_image_matrix.shape): raise ValueError(
-                INVALID_MAP_SHAPE_MSG)
-            self.__object_map = csc_array(arg1=obj_map, shape=obj_map.shape)
-            self.object_mask = obj_map > 0
+            if not np.array_equal(obj_map.shape, self.__enhanced_image_matrix.shape):
+                raise ValueError(INVALID_MAP_SHAPE_MSG)
+
+            if np.array_equal(obj_map, np.full(shape=self.shape,fill_value=1)):
+                self.__object_map = None
+                self.__object_mask = None
+            else:
+                self.__object_map = csc_array(arg1=obj_map, shape=obj_map.shape)
+                temp_mask = obj_map>0
+                self.__object_mask = csc_array(arg1=temp_mask, shape=temp_mask.shape)
         else:
             self.__object_map = None
 
