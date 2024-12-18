@@ -1,7 +1,9 @@
 import matplotlib.pyplot as plt
 from skimage.color import label2rgb
 from typing import Optional, Tuple
-from math import gcd
+from math import gcd, log10
+
+from tinycss2.ast import AtRule
 
 from ._imageCore import ImageCore
 
@@ -18,10 +20,7 @@ class ImageShow(ImageCore):
             func_ax = ax
 
         func_ax.grid(False)
-        if len(self.matrix.shape) == 2:
-            func_ax.imshow(self.matrix)
-        else:
-            func_ax.imshow(self.matrix)
+        func_ax.imshow(self.array)
 
         if ax is None:
             return fig, func_ax
@@ -40,7 +39,7 @@ class ImageShow(ImageCore):
         if len(self.matrix.shape) == 2:
             func_ax.imshow(self.matrix, cmap=cmap)
         else:
-            func_ax.imshow(self.matrix)
+            raise AttributeError('The image matrix is not 2D.')
 
         if ax is None:
             return fig, func_ax
@@ -138,13 +137,23 @@ class ImageShow(ImageCore):
         else:
             return func_ax
 
+    # TODO: Fix default figsize function
     def __get_default_figsize(self) -> Tuple[int, int]:
         """
         Calculate the aspect ratio of an image to maintain its information
         :return:
         """
-        height, width = self.shape[0], self.shape[1]
-        divisor = gcd(width, height)
-        width_ratio = width // divisor
-        height_rato = height // divisor
-        return width_ratio, height_rato
+        # height, width = self.shape[0], self.shape[1]
+        #
+        # def round_to_base(x):
+        #     magnitude = int(log10(x))
+        #     return round(x ,-magnitude)
+        #
+        # height = round_to_base(height)
+        # width = round_to_base(width)
+        #
+        # divisor = gcd(width, height)
+        # width_ratio = width // divisor
+        # height_rato = height // divisor
+        # return width_ratio, height_rato
+        return None

@@ -24,10 +24,10 @@ class ImageCore:
 
         if image is not None:  # Load data from an object
             if type(image) is np.ndarray:
-                if image.ndim == 3:
+                if (image.ndim == 3 or image.ndim == 4) and image.shape[2]==3:
                     self.__array = image
                     self.__image_matrix = rgb2gray(image)
-                else:
+                elif image.ndim == 2:
                     self.__array = None
                     self.__image_matrix: np.ndarray = image
 
