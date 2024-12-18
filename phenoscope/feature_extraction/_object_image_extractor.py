@@ -10,6 +10,7 @@ from phenoscope.interface import FeatureExtractor
 
 LABEL_METADATA_GRIDNUM = 'Grid_SectionNum'
 LABEL_METADATA_OBJECT_LABEL = 'Object_Label'
+LABEL_PARENT_IMAGE = 'Metadata_ParentImageName'
 class ObjectImageExtractor(FeatureExtractor):
     def __init__(
             self, target_dimensions: Optional[Tuple] = None, use_color=False, mode: str = 'constant', cval: float = 0,
@@ -63,6 +64,7 @@ class ObjectImageExtractor(FeatureExtractor):
 
             new_img.name = f'{image.name}_Obj{label}'
             new_img.set_metadata(key=LABEL_METADATA_OBJECT_LABEL, value=label)
+            new_img.set_metadata(key=LABEL_PARENT_IMAGE, value=image.name)
             if isinstance(image, GriddedImage):
                 new_img.set_metadata(key=LABEL_METADATA_GRIDNUM, value=grid_info.loc[label, "Grid_SectionNum"])
 
