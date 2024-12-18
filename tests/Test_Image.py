@@ -30,7 +30,7 @@ def test_image(sample_data):
     assert img.matrix is not None
     assert img.enhanced_matrix is not None
 
-    assert np.array_equal(img.object_mask , np.full(shape=img.shape, fill_value=True))
+    assert np.array_equal(img.object_mask , np.full(shape=img.shape, fill_value=1))
     assert np.array_equal(img.object_map, np.full(shape=img.shape, fill_value=1))
 
 def test_image_show_array(sample_data):

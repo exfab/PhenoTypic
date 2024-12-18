@@ -163,9 +163,10 @@ class ImageCore:
 
             if np.array_equal(obj_mask, np.full(shape=self.shape,fill_value=1)):
                 self.__object_mask = None
+                self.__object_map = None
             else:
                 self.__object_mask = csc_array(arg1=obj_mask, shape=obj_mask.shape)
-            self.__object_map = csc_array(arg1=label(obj_mask), shape=obj_mask.shape)
+                self.__object_map = csc_array(arg1=label(obj_mask), shape=obj_mask.shape)
         else:
             self.__object_mask = None
 
