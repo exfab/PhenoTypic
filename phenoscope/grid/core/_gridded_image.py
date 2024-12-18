@@ -18,12 +18,13 @@ from phenoscope.feature_extraction import BoundaryExtractor
 
 
 class GriddedImage(Image):
-    def __init__(self, image: Union[np.ndarray, Image], name: str = None, n_rows=8, n_cols=12, gridding_method: GridExtractor = None):
-        if isinstance(image, np.ndarray):
+    def __init__(self, image: Union[np.ndarray, Image] = None, name: str = None, n_rows=8, n_cols=12,
+                 gridding_method: GridExtractor = None):
+        if isinstance(image, np.ndarray) or image is None:
             super().__init__(image=image, name=name)
         elif isinstance(image, Image):
             super().__init__(image=image, name=name)
-            if hasattr(image, '_grid_extractor'):
+            if hasattr(image, 'grid_extractor'):
                 self._grid_extractor = image.grid_extractor
         else:
             raise ValueError('Input should be either an image array or a phenoscope.Image object.')
@@ -39,7 +40,7 @@ class GriddedImage(Image):
 
     def __getitem__(self, index):
         if len(index) != 2: raise ValueError(
-                'Image objects only support 2-dimensional slicing. RGB images will be sliced evenly across each channel.')
+            'Image objects only support 2-dimensional slicing. RGB images will be sliced evenly across each channel.')
         if self.array is not None:
             new_img = Image(self.array[index])
             new_img.matrix = self.matrix[index]
@@ -120,11 +121,12 @@ class GriddedImage(Image):
 
         # Collect slope & intercept for the rows or columns
         for idx in range(N):
-            warnings.simplefilter('ignore', np.RankWarning)  # TODO: When upgrading numpy version this will need to change
+            warnings.simplefilter('ignore',
+                                  np.RankWarning)  # TODO: When upgrading numpy version this will need to change
             m_slope[idx], b_intercept[idx] = np.polyfit(
-                    x=grid_info.loc[grid_info.loc[:, x_group] == idx, x_val],
-                    y=grid_info.loc[grid_info.loc[:, x_group] == idx, y_val],
-                    deg=1
+                x=grid_info.loc[grid_info.loc[:, x_group] == idx, x_val],
+                y=grid_info.loc[grid_info.loc[:, x_group] == idx, y_val],
+                deg=1
             )
         return m_slope, np.round(b_intercept)
 
@@ -135,8 +137,10 @@ class GriddedImage(Image):
         returns the grid's column edges used to create boundaries
         :return:
         """
-        left_edges = self.grid_info.loc[:, self._grid_extractor.LABEL_GRID_COL_INTERVAL].apply(lambda x: x[0]).to_numpy()
-        right_edges = self.grid_info.loc[:, self._grid_extractor.LABEL_GRID_COL_INTERVAL].apply(lambda x: x[1]).to_numpy()
+        left_edges = self.grid_info.loc[:, self._grid_extractor.LABEL_GRID_COL_INTERVAL].apply(
+            lambda x: x[0]).to_numpy()
+        right_edges = self.grid_info.loc[:, self._grid_extractor.LABEL_GRID_COL_INTERVAL].apply(
+            lambda x: x[1]).to_numpy()
 
         edges = np.unique(np.concatenate([left_edges, right_edges]))
         return edges.astype(int)
@@ -152,12 +156,14 @@ class GriddedImage(Image):
 
     def get_col_info(self, idx):
         if idx not in range(self.n_cols):
-            raise ValueError(f'Index {idx} is out of range. Index for this image should be between 0 - {self.n_cols - 1}.')
+            raise ValueError(
+                f'Index {idx} is out of range. Index for this image should be between 0 - {self.n_cols - 1}.')
 
         grid_info = self.grid_info
         return grid_info.loc[grid_info.loc[:, self._grid_extractor.LABEL_GRID_COL_NUM] == idx, :]
 
-    def show_column_overlay(self, use_enhanced=False, show_gridlines=True, ax=None, figsize=(9, 10)) -> (plt.Figure, plt.Axes):
+    def show_column_overlay(self, use_enhanced=False, show_gridlines=True, ax=None, figsize=(9, 10)) -> (
+    plt.Figure, plt.Axes):
         if ax is None:
             fig, func_ax = plt.subplots(tight_layout=True, figsize=figsize)
         else:
@@ -183,8 +189,10 @@ class GriddedImage(Image):
     # Grid Row Implementation
     @property
     def grid_row_edges(self) -> np.ndarray:
-        left_edges = self.grid_info.loc[:, self._grid_extractor.LABEL_GRID_ROW_INTERVAL].apply(lambda x: x[0]).to_numpy()
-        right_edges = self.grid_info.loc[:, self._grid_extractor.LABEL_GRID_ROW_INTERVAL].apply(lambda x: x[1]).to_numpy()
+        left_edges = self.grid_info.loc[:, self._grid_extractor.LABEL_GRID_ROW_INTERVAL].apply(
+            lambda x: x[0]).to_numpy()
+        right_edges = self.grid_info.loc[:, self._grid_extractor.LABEL_GRID_ROW_INTERVAL].apply(
+            lambda x: x[1]).to_numpy()
 
         edges = np.unique(np.concatenate([left_edges, right_edges]))
         return edges.astype(int)
@@ -200,12 +208,14 @@ class GriddedImage(Image):
 
     def get_row_info(self, idx: int):
         if idx not in range(self.n_rows):
-            raise ValueError(f'Index {idx} is out of range. Index for this image should be between 0 - {self.n_rows - 1}.')
+            raise ValueError(
+                f'Index {idx} is out of range. Index for this image should be between 0 - {self.n_rows - 1}.')
 
         grid_info = self.grid_info
         return grid_info.loc[grid_info.loc[:, self._grid_extractor.LABEL_GRID_ROW_NUM] == idx, :]
 
-    def show_row_overlay(self, use_enhanced=False, show_gridlines=True, ax=None, figsize=(9, 10)) -> (plt.Figure, plt.Axes):
+    def show_row_overlay(self, use_enhanced=False, show_gridlines=True, ax=None, figsize=(9, 10)) -> (
+    plt.Figure, plt.Axes):
         if ax is None:
             fig, func_ax = plt.subplots(tight_layout=True, figsize=figsize)
         else:
@@ -235,25 +245,31 @@ class GriddedImage(Image):
         _new_map: np.ndarray = self.object_map
 
         # Get a map with each object label being changed to its bin representation
-        for n, section_bindex in enumerate(np.sort(_tmp_table.loc[:, self._grid_extractor.LABEL_GRID_SECTION_IDX].unique())):
-            subtable = _tmp_table.loc[_tmp_table.loc[:, self._grid_extractor.LABEL_GRID_SECTION_IDX] == section_bindex, :]
+        for n, section_bindex in enumerate(
+                np.sort(_tmp_table.loc[:, self._grid_extractor.LABEL_GRID_SECTION_IDX].unique())):
+            subtable = _tmp_table.loc[_tmp_table.loc[:, self._grid_extractor.LABEL_GRID_SECTION_IDX] == section_bindex,
+                       :]
             _new_map[np.isin(element=self.object_map, test_elements=subtable.index.to_numpy())] = n + 1
         return _new_map
 
     def get_section_info(self, row_idx, col_idx):
         if row_idx not in range(self.n_rows):
-            raise ValueError(f'Index {row_idx} is out of range. Index for this image should be between 0 - {self.n_rows - 1}.')
+            raise ValueError(
+                f'Index {row_idx} is out of range. Index for this image should be between 0 - {self.n_rows - 1}.')
         if col_idx not in range(self.n_cols):
-            raise ValueError(f'Index {col_idx} is out of range. Index for this image should be between 0 - {self.n_cols - 1}.')
+            raise ValueError(
+                f'Index {col_idx} is out of range. Index for this image should be between 0 - {self.n_cols - 1}.')
 
         grid_info = self.grid_info
         grid_info = grid_info.loc[grid_info.loc[:, self._grid_extractor.LABEL_GRID_ROW_NUM] == row_idx, :]
         return grid_info.loc[grid_info.loc[:, self._grid_extractor.LABEL_GRID_COL_NUM] == col_idx, :]
 
     def get_section_count(self, ascending=False):
-        return self.grid_info.loc[:, self.grid_extractor.LABEL_GRID_SECTION_NUM].value_counts().sort_values(ascending=ascending)
+        return self.grid_info.loc[:, self.grid_extractor.LABEL_GRID_SECTION_NUM].value_counts().sort_values(
+            ascending=ascending)
 
-    def show_overlay(self, use_enhanced: bool = False, show_gridlines: bool = True, show_linreg: bool = False, ax: plt.Axes = None,
+    def show_overlay(self, use_enhanced: bool = False, show_gridlines: bool = True, show_linreg: bool = False,
+                     ax: plt.Axes = None,
                      figsize: Tuple[int] = (9, 10)
                      ) -> (plt.Figure, plt.Axes):
         if ax is None:
@@ -290,9 +306,9 @@ class GriddedImage(Image):
                 height = max_rr - min_rr
 
                 func_ax.add_patch(Rectangle(
-                        (min_cc, min_rr), width=width, height=height,
-                        edgecolor=next(cmap_cycle),
-                        facecolor='none'
+                    (min_cc, min_rr), width=width, height=height,
+                    edgecolor=next(cmap_cycle),
+                    facecolor='none'
                 ))
 
         if ax is None:

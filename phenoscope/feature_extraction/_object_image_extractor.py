@@ -66,7 +66,7 @@ class ObjectImageExtractor(FeatureExtractor):
             new_img.set_metadata(key=LABEL_METADATA_OBJECT_LABEL, value=label)
             new_img.set_metadata(key=LABEL_PARENT_IMAGE, value=image.name)
             if isinstance(image, GriddedImage):
-                new_img.set_metadata(key=LABEL_METADATA_GRIDNUM, value=grid_info.loc[label, "Grid_SectionNum"])
+                new_img.set_metadata(key=LABEL_METADATA_GRIDNUM, value=int(grid_info.loc[label, "Grid_SectionNum"]))
 
             object_images[label] = new_img
 

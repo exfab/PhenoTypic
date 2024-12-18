@@ -70,10 +70,10 @@ class ImageCore:
             new_img.enhanced_matrix = self.__enhanced_image_matrix[index]
 
         if self.__object_mask is not None:
-            new_img.object_mask = self.__object_mask[index]
+            new_img.object_mask = self.object_mask[index]
 
         if self.__object_map is not None:
-            new_img.object_map = self.__object_map[index]
+            new_img.object_map = self.object_map[index]
 
         return new_img
 
