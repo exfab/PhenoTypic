@@ -2,6 +2,7 @@ from skimage.io import imread, imsave
 from skimage.util import img_as_ubyte
 from pathlib import Path
 import numpy as np
+import os
 
 from ._imageMetadata import ImageMetadata
 
@@ -11,7 +12,8 @@ LABEL_MATRIX = 'array'
 LABEL_ENHANCED_MATRIX = 'enhanced_array'
 LABEL_OBJECT_MASK = 'object_mask'
 LABEL_OBJECT_MAP = 'object_map'
-LABEL_CUSTOM_FILE_EXTENSION_PREFIX = 'ps'
+LABEL_CUSTOM_FILE_EXTENSION_PREFIX = '.psnpz'
+LABEL_METADATA_MATRIX = 'metadata_matrix'
 
 class ImageIO(ImageMetadata):
     def imread(self, filepath: str):
@@ -40,8 +42,10 @@ class ImageIO(ImageMetadata):
         if savepath is None: raise ValueError(f'savepath not specified.')
 
         savepath = Path(savepath)
-        if str(savepath).endswith(f'{LABEL_CUSTOM_FILE_EXTENSION_PREFIX}.npz') is False:
-            savepath = savepath.parent / f'{savepath.stem}.{LABEL_CUSTOM_FILE_EXTENSION_PREFIX}.npz'
+        temp_savepath = savepath.parent/(savepath.stem + '.npz')
+        if str(savepath).endswith(f'{LABEL_CUSTOM_FILE_EXTENSION_PREFIX}') is False:
+            savepath = savepath.parent /( f'{savepath.stem}' + LABEL_CUSTOM_FILE_EXTENSION_PREFIX)
+
         save_dict = {}
 
         if self.array is not None: save_dict[LABEL_ARRAY] = self.array
@@ -55,11 +59,15 @@ class ImageIO(ImageMetadata):
         if self.object_map is not None: save_dict[LABEL_OBJECT_MAP] = self.object_map
 
         if self._metadata:
-            pass
-
+            save_dict[LABEL_METADATA_MATRIX] = np.array(tuple(zip(
+                self._metadata.keys(),
+                self._metadata.values(),
+                self._metadata_dtype.values()
+            )))
 
         if save_dict:
-            np.savez(savepath, **save_dict)
+            np.savez(temp_savepath, **save_dict)
+            os.rename(temp_savepath, str(savepath))
         else:
             raise AttributeError(f'Image has no data to save.')
 
@@ -72,17 +80,27 @@ class ImageIO(ImageMetadata):
         if filepath is None: raise ValueError(f'filepath not specified.')
 
         fpath = Path(filepath)
-        if f'.{LABEL_CUSTOM_FILE_EXTENSION_PREFIX}.npz' not in fpath.name:
-            raise ValueError(f'File is does not contain .{LABEL_CUSTOM_FILE_EXTENSION_PREFIX}.npz at the end, and cannot be read as phenoscope-created npz file.')
+        if fpath.suffix == '.npz':
+            raise Warning(f'File is an npz file and not a psnpz file. The Image data may not load properly.')
+
+        elif fpath.suffix!=LABEL_CUSTOM_FILE_EXTENSION_PREFIX:
+            raise ValueError(f'File is not a {LABEL_CUSTOM_FILE_EXTENSION_PREFIX} file, and cannot be interpreted.')
 
 
-        data = np.load(filepath)
+        data = np.load(fpath)
         keys = data.keys()
         if LABEL_ARRAY in keys: self.array = data[LABEL_ARRAY]
         if LABEL_MATRIX in keys: self.matrix = data[LABEL_MATRIX]
         if LABEL_ENHANCED_MATRIX in keys: self.enhanced_matrix = data[LABEL_ENHANCED_MATRIX]
         if LABEL_OBJECT_MASK in keys: self.object_mask = data[LABEL_OBJECT_MASK]
         if LABEL_OBJECT_MAP in keys: self.object_map = data[LABEL_OBJECT_MAP]
+        if LABEL_METADATA_MATRIX in keys: self._load_metadata(data[LABEL_METADATA_MATRIX])
 
-        # Numpy loads have to be closed at the end
+        # Numpy load has to be closed at the end
         data.close()
+        return self
+
+    def _load_metadata(self, metadata_matrix):
+        self._metadata = dict(zip(metadata_matrix[:, 0], metadata_matrix[:, 1]))
+        self._metadata_dtype = dict(zip(metadata_matrix[:, 0], metadata_matrix[:, 2]))
+        self.validate_metadata_dtype()

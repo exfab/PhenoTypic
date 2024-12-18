@@ -24,10 +24,13 @@ class ImageMetadata(ImageShow):
         self.IMAGE_NUMBER = IMAGE_COUNT
         IMAGE_COUNT = IMAGE_COUNT + 1
 
+        self._metadata = {}
+        self._metadata_dtype = {}
+
         if name is None:
-            self._metadata = {self.LABEL_IMAGE_NAME: f'{self.IMAGE_NUMBER:02}'}
+            self.set_metadata(self.LABEL_IMAGE_NAME, f'{IMAGE_COUNT:02d}')
         else:
-            self._metadata = {self.LABEL_IMAGE_NAME: name}
+            self.set_metadata(self.LABEL_IMAGE_NAME, name)
 
     @property
     def name(self):
@@ -44,18 +47,40 @@ class ImageMetadata(ImageShow):
         return new_img
 
     def set_metadata(self, key, value) -> None:
-        try:
-            str(value)
-        except Exception as e:
-            raise e('Value provided to function could not be represented as a string. Metadata values must be able to be represented as a string.')
+        acceptable_dtypes = (int, float, str, bool)
+        if not isinstance(value, acceptable_dtypes): raise ValueError(f'value must be of types {acceptable_dtypes}')
 
         self._metadata[key] = value
+        self._metadata_dtype[key] = f'{type(value).__name__}'
 
     def get_metadata_keys(self) -> list:
         return [self._metadata.keys()]
 
     def get_metadata(self, key):
         return self._metadata[key]
+
+    def _get_metadata_dtype_name(self, key)->str:
+        """
+        Returns the name of the metadata dtype.
+        :param key:
+        :return: (str) The name of the dtype
+        """
+        return self._metadata_dtype[key]
+
+    def validate_metadata_dtype(self):
+        """
+        Validates the dtypes of the metadata values to match the expected dtypes. This helps ensure the saving/loading
+        of Image functions properly, but can also have other use cases.
+        :return:
+        """
+        for key in self._metadata.keys():
+            value = self._metadata[key]
+            match self._get_metadata_dtype_name(key):
+                case 'str': self._metadata[key] = str(value)
+                case 'int': self._metadata[key] = int(value)
+                case 'float': self._metadata[key] = float(value)
+                case 'bool': self._metadata[key] = bool(value)
+                case _: self._metadata[key] = value
 
     def get_metadata_table(self) -> pd.DataFrame:
         if not isinstance(self._metadata, dict):

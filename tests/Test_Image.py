@@ -1,6 +1,7 @@
 import pytest
 
 import os
+import time
 from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
@@ -83,12 +84,43 @@ def test_image_set_metadata(sample_data):
 def test_image_savez_loadz(sample_data):
     current_file_path = Path(__file__).resolve()
     test_resources_path = current_file_path.parent / 'resources'
+    test_filepath = test_resources_path / 'test_image_savez.psnpz'
 
     img = Image(sample_data['image'])
+
+    original_array = img.array
+    original_matrix = img.matrix
+    original_enhanced_matrix = img.enhanced_matrix
+    original_object_mask = img.object_mask
+    original_object_map = img.object_map
+
     img.name = 'test_image'
     img.set_metadata(key='test_int', value=100)
     img.set_metadata(key='test_float', value=100.0)
     img.set_metadata(key='test_bool', value=True)
     img.set_metadata(key='test_str', value='test_string')
 
-    img.savez(test_resources_path / 'test_image_savez')
+    if test_filepath.exists(): os.remove(test_filepath)
+    assert test_filepath.exists() is False
+
+    img.savez(test_filepath)
+
+    assert test_filepath.exists()
+    new_img = Image().loadz(test_filepath)
+    assert new_img is not None
+    assert np.array_equal(original_array, new_img.array)
+    assert np.array_equal(original_matrix, new_img.matrix)
+    assert np.array_equal(original_enhanced_matrix, new_img.enhanced_matrix)
+    assert np.array_equal(original_object_mask, new_img.object_mask)
+    assert np.array_equal(original_object_map, new_img.object_map)
+
+    assert new_img.name == 'test_image'
+    assert new_img.get_metadata(key='test_int') == 100
+    assert new_img.get_metadata(key='test_float') == 100.0
+    assert new_img.get_metadata(key='test_bool') == True
+    assert new_img.get_metadata(key='test_str') == 'test_string'
+    assert img._metadata==new_img._metadata
+
+
+
+
