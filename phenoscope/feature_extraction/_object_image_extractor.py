@@ -59,8 +59,9 @@ class ObjectImageExtractor(FeatureExtractor):
                 if curr_obj_img.object_mask is not None and curr_obj_img.object_map is not None:
                     new_img.object_mask = self._resize_object_mask(curr_obj_img)
 
-                    new_img.object_map = new_img.object_mask
-                    new_img.object_map[new_img.object_mask] = label
+                    obj_map = new_img.object_mask
+                    obj_map[new_img.obj] = label
+                    new_img.object_map = obj_map
 
             new_img.name = f'{image.name}_Obj{label}'
             new_img.set_metadata(key=LABEL_METADATA_OBJECT_LABEL, value=label)
