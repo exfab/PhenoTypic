@@ -54,7 +54,7 @@ class ImageMetadata(ImageShow):
         self._metadata_dtype[key] = f'{type(value).__name__}'
 
     def get_metadata_keys(self) -> list:
-        return [self._metadata.keys()]
+        return list(self._metadata.keys())
 
     def get_metadata(self, key):
         return self._metadata[key]

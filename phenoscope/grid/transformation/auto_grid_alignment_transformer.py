@@ -42,7 +42,7 @@ class AutoGridAlignmentTransformer(GridTransformer):
         y_1 = (x_max * m) + b  # Find the corresponding y-value at the above x values
 
         # Collect opening angle ray coordinate info
-        xy_vertices = np.vstack([x_min, y_0]).T  # An array containing the X & Y coordinates of the vertices
+        xy_vertices = np.vstack([x_min, y_0]).T  # An array containing the x & y coordinates of the vertices
 
         xy_upper_ray = np.vstack([x_max, y_1]).T  # An array containing the x & y coordinates of the upper ray endpoint
 
