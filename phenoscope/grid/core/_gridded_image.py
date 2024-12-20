@@ -163,7 +163,7 @@ class GriddedImage(Image):
         return grid_info.loc[grid_info.loc[:, self._grid_extractor.LABEL_GRID_COL_NUM] == idx, :]
 
     def show_column_overlay(self, use_enhanced=False, show_gridlines=True, ax=None, figsize=(9, 10)) -> (
-    plt.Figure, plt.Axes):
+            plt.Figure, plt.Axes):
         if ax is None:
             fig, func_ax = plt.subplots(tight_layout=True, figsize=figsize)
         else:
@@ -215,7 +215,7 @@ class GriddedImage(Image):
         return grid_info.loc[grid_info.loc[:, self._grid_extractor.LABEL_GRID_ROW_NUM] == idx, :]
 
     def show_row_overlay(self, use_enhanced=False, show_gridlines=True, ax=None, figsize=(9, 10)) -> (
-    plt.Figure, plt.Axes):
+            plt.Figure, plt.Axes):
         if ax is None:
             fig, func_ax = plt.subplots(tight_layout=True, figsize=figsize)
         else:
@@ -268,7 +268,8 @@ class GriddedImage(Image):
         return self.grid_info.loc[:, self.grid_extractor.LABEL_GRID_SECTION_NUM].value_counts().sort_values(
             ascending=ascending)
 
-    def show_overlay(self, use_enhanced: bool = False, show_gridlines: bool = True, show_linreg: bool = False,
+    def show_overlay(self, object_label=None, use_enhanced: bool = False, show_gridlines: bool = True,
+                     show_linreg: bool = False,
                      ax: plt.Axes = None,
                      figsize: Tuple[int] = (9, 10)
                      ) -> (plt.Figure, plt.Axes):
@@ -279,10 +280,14 @@ class GriddedImage(Image):
 
         func_ax.grid(False)
 
+        obj_map = self.object_map
+        if object_label is not None:
+            obj_map[obj_map != object_label] = 0
+
         if use_enhanced:
-            func_ax.imshow(label2rgb(label=self.object_map, image=self.enhanced_matrix))
+            func_ax.imshow(label2rgb(label=obj_map, image=self.enhanced_matrix))
         else:
-            func_ax.imshow(label2rgb(label=self.object_map, image=self.matrix))
+            func_ax.imshow(label2rgb(label=obj_map, image=self.matrix))
 
         if show_gridlines:
             col_edges = self.grid_col_edges
