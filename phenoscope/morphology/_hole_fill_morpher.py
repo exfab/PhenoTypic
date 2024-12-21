@@ -16,8 +16,9 @@ class HoleFillMorpher(MorphologyMorpher):
 
     def _operate(self, image: Image) -> Image:
         if not is_binary_mask(image.object_mask): raise ValueError('input object array must be a binary array')
+        mask = image.object_mask
         image.object_mask = binary_fill_holes(
-                input=image.object_mask,
+                input=mask,
                 structure=self._structure,
                 origin=self._origin
         )

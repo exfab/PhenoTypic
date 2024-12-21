@@ -43,9 +43,11 @@ class ImageIO(ImageMetadata):
         if savepath is None: raise ValueError(f'savepath not specified.')
 
         savepath = Path(savepath)
-        if savepath.exists():
-            num_matching_files = pd.Series(os.listdir(savepath.parent)).str.contains(savepath.stem).sum()
-            savepath = savepath.parent / (f'{savepath.stem}({num_matching_files})' + savepath.suffix)
+
+        # Checks if the file already exists to prevent overwriting (deprecated)
+        # if savepath.exists():
+        #     num_matching_files = pd.Series(os.listdir(savepath.parent)).str.contains(savepath.stem).sum()
+        #     savepath = savepath.parent / (f'{savepath.stem}({num_matching_files})' + savepath.suffix)
 
         temp_savepath = savepath.parent/(savepath.stem + '.npz')
         if str(savepath).endswith(f'{LABEL_CUSTOM_FILE_EXTENSION_PREFIX}') is False:
