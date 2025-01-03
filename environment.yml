@@ -26,7 +26,7 @@ dependencies:
   - scyjava
   - seaborn
   - bioconda::centrosome
-  - bioconda::cellprofiler
-  - bioconda::cellprofiler-core
+  - bioconda::cellprofiler_api
+  - bioconda::cellprofiler_api-core
   # Other dependencies:
   #   Jave Runtime Environment or Java Development Kit

@@ -36,7 +36,7 @@ dependencies:
   - pip:
     - python-javabridge
     - CellProfiler
-    - cellprofiler-core
+    - cellprofiler_api-core
   # Other dependencies:
   #   Jave Runtime Environment or Java Development Kit
   #   MySQL package config (https://github.com/PyMySQL/mysqlclient)

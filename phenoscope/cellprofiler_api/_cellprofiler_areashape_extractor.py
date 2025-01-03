@@ -1,5 +1,3 @@
-import numpy as np
-
 from cellprofiler_core.preferences import set_headless
 from cellprofiler_core.image import ImageSetList, Image as CpImage
 from cellprofiler_core.object import ObjectSet, Objects
@@ -9,7 +7,7 @@ from cellprofiler_core.workspace import Workspace
 from cellprofiler_core.module import Module
 
 from cellprofiler_core.module.image_segmentation import ImageSegmentation
-from cellprofiler.modules.measureobjectsizeshape import MeasureObjectSizeShape
+from cellprofiler_api.modules.measureobjectsizeshape import MeasureObjectSizeShape
 
 import pandas as pd
 from typing import Optional
@@ -22,7 +20,9 @@ from phenoscope.util.exceptions import ValueWarning
 
 class CellProfilerAreaShape(FeatureExtractor):
     def __init__(
-            self, calculate_adv: bool = False, calculate_zernikes: bool = False, max_object_num: Optional[int] = None,
+            self, calculate_adv: bool = False,
+            calculate_zernikes: bool = False,
+            max_object_num: Optional[int] = None,
             exc_type: Optional[str] = 'error'
     ):
         """
@@ -46,7 +46,7 @@ class CellProfilerAreaShape(FeatureExtractor):
         img_set_list_idx = img_set_list.count()
         img_set = img_set_list.get_image_set(img_set_list_idx)
 
-        # Create a cellprofiler object set
+        # Create a cellprofiler_api object set
         cpc_obj_set = ObjectSet(can_overwrite=False)
 
         # Create a CellProfiler Measurement object
@@ -155,7 +155,7 @@ class CellProfilerAreaShape(FeatureExtractor):
         map_results.index = map_results.index.str.replace('CpObj_', '', regex=False)
         map_results.index = map_results.index.astype(int)
 
-        # Results are currently within a numpy. This function will extract the values, while checking that there was only one value in the array
+        # Results are currently within a numpy array. This function will extract the values, while checking that there was only one value in the array
         def extract_value_from_embed_arr(element):
             if isinstance(element, np.ndarray):
                 # Check for multiple values

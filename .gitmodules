@@ -1,0 +1,3 @@
+[submodule "phenoscope/cellprofiler_api/cellprofiler_source_code"]
+	path = phenoscope/cellprofiler_api/cellprofiler_source_code
+	url = https://github.com/CellProfiler/CellProfiler.git

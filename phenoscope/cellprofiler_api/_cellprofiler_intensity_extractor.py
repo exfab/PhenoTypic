@@ -7,7 +7,7 @@ from cellprofiler_core.workspace import Workspace
 from cellprofiler_core.module import Module
 
 from cellprofiler_core.module.image_segmentation import ImageSegmentation
-from cellprofiler.modules.measureobjectintensity import MeasureObjectIntensity
+from cellprofiler_api.modules.measureobjectintensity import MeasureObjectIntensity
 
 import pandas as pd
 import numpy as np
@@ -47,7 +47,7 @@ class CellProfilerObjectIntensity(FeatureExtractor):
         img_set_list_idx = img_set_list.count()
         img_set = img_set_list.get_image_set(img_set_list_idx)
 
-        # Create a cellprofiler object set
+        # Create a cellprofiler_api object set
         cpc_obj_set = ObjectSet(can_overwrite=False)
 
         # Create a CellProfiler Measurement object

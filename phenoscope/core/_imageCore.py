@@ -2,18 +2,22 @@ from typing import Union, Optional
 
 from scipy.sparse import csc_array
 from typing_extensions import Self
-
 import numpy as np
 from skimage.measure import label
 from skimage.color import rgb2gray
+import uuid
 
 from ..util.type_checks import is_binary_mask
 from ..util.error_message import INVALID_MASK_SHAPE_MSG, INVALID_MAP_SHAPE_MSG, NO_IMAGE_DATA_ERROR_MSG
 
 
-# TODO: Import Sparse Matrix
 class ImageCore:
     def __init__(self, image: Optional[Union[np.ndarray, Self]] = None):
+        # Unique Image Identifier
+        self.__uuid = uuid.uuid4()
+
+        # Create public attributes
+        self.parent_image:Optional[ImageCore] = None
 
         # Create blank image variables
         self.__array: Optional[np.ndarray] = None
@@ -23,10 +27,13 @@ class ImageCore:
         self.__object_map: Optional[csc_array] = None
 
         if image is not None:  # Load data from an object
+
+            # Constructor for a numpy array
             if type(image) is np.ndarray:
-                if (image.ndim == 3 or image.ndim == 4) and image.shape[2]==3:
+                if (image.ndim == 3 or image.ndim == 4) and image.shape[2] == 3:
                     self.__array = image
                     self.__image_matrix = rgb2gray(image)
+
                 elif image.ndim == 2:
                     self.__array = None
                     self.__image_matrix: np.ndarray = image
@@ -35,6 +42,7 @@ class ImageCore:
                 self.__object_mask = None
                 self.__object_map = None
 
+            # Constructor from phenoscope Image
             elif issubclass(type(image), ImageCore):
                 self.__array = image.array
                 self.__image_matrix = image.matrix
@@ -76,6 +84,10 @@ class ImageCore:
             new_img.object_map = self.object_map[index]
 
         return new_img
+
+    @property
+    def uuid(self):
+        return str(self.__uuid)
 
     @property
     def shape(self) -> tuple:
@@ -161,7 +173,7 @@ class ImageCore:
             if not np.array_equal(obj_mask.shape, self.__enhanced_image_matrix.shape):
                 raise ValueError(INVALID_MASK_SHAPE_MSG)
 
-            if np.array_equal(obj_mask, np.full(shape=self.shape,fill_value=1)):
+            if np.array_equal(obj_mask, np.full(shape=self.shape, fill_value=1)):
                 self.__object_mask = None
                 self.__object_map = None
             else:
@@ -189,12 +201,12 @@ class ImageCore:
             if not np.array_equal(obj_map.shape, self.__enhanced_image_matrix.shape):
                 raise ValueError(INVALID_MAP_SHAPE_MSG)
 
-            if np.array_equal(obj_map, np.full(shape=self.shape,fill_value=1)):
+            if np.array_equal(obj_map, np.full(shape=self.shape, fill_value=1)):
                 self.__object_map = None
                 self.__object_mask = None
             else:
                 self.__object_map = csc_array(arg1=obj_map, shape=obj_map.shape)
-                temp_mask = obj_map>0
+                temp_mask = obj_map > 0
                 self.__object_mask = csc_array(arg1=temp_mask, shape=temp_mask.shape)
         else:
             self.__object_map = None

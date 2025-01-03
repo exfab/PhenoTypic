@@ -1,1 +1,1 @@
-from .auto_grid_alignment_transformer import AutoGridAlignmentTransformer
+from .grid_aligner import GridAligner
