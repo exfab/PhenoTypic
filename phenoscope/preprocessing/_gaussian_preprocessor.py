@@ -12,8 +12,8 @@ class GaussianPreprocessor(ImagePreprocessor):
         self._channel_axis = channel_axis
 
     def _operate(self, image: Image) -> Image:
-        image.enhanced_matrix = gaussian(
-                image=image.enhanced_matrix,
+        image.det_matrix[:] = gaussian(
+                image=image.det_matrix[:],
                 sigma=self._sigma,
                 mode=self._mode,
                 truncate=self._truncate,

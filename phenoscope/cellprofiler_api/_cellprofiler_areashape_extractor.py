@@ -7,7 +7,7 @@ from cellprofiler_core.workspace import Workspace
 from cellprofiler_core.module import Module
 
 from cellprofiler_core.module.image_segmentation import ImageSegmentation
-from cellprofiler_api.modules.measureobjectsizeshape import MeasureObjectSizeShape
+from cellprofiler.modules.measureobjectsizeshape import MeasureObjectSizeShape
 
 import pandas as pd
 from typing import Optional

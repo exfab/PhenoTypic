@@ -2,41 +2,35 @@ name: phenoscope-build
 channels:
   - conda-forge
   - bioconda
-  - r
   - anaconda
   - defaults
 dependencies:
   - python=3.10
+  - absl-py
   - matplotlib
   - numpy
   - pandas
-  - scikit-image=0.18.3
+  - scikit-image
   - scikit-learn
-  - opencv
-  - jupyter
   - dash
   - joblib
-  - docutils=0.15.2
-  - h5py=3.6
+  - boto3
+  - docutils
+  - h5py
   - imageio
   - mahotas
-  - inflect=7.
-  - mysqlclient=1.4.6
-  - pyzmq=22.3
-  - inflect=7
-  - wxPython=5
   - psutil
   - pytest
-  - scipy=1.9
+  - pyzmq
+  - scipy
   - scyjava
   - seaborn
-  - pip
-  - boto3
-  - bioconda::centrosome
+  - jupyter
   - pip:
-    - python-javabridge
-    - CellProfiler
-    - cellprofiler_api-core
+#    - python-javabridge
+#    - centrosome
+#    - cellprofiler
+#    - cellprofiler-core
   # Other dependencies:
   #   Jave Runtime Environment or Java Development Kit
   #   MySQL package config (https://github.com/PyMySQL/mysqlclient)

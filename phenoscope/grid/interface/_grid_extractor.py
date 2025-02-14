@@ -3,7 +3,7 @@ import pandas as pd
 from phenoscope import Image
 from phenoscope.interface import FeatureExtractor
 from phenoscope.grid.interface import GridOperation
-from phenoscope.util.error_message import INTERFACE_ERROR_MSG
+from phenoscope.util.constants import INTERFACE_ERROR_MSG
 
 
 class GridExtractor(FeatureExtractor, GridOperation):

@@ -12,18 +12,18 @@ class WhiteTophatPreprocessor(ImagePreprocessor):
 
     def _operate(self, image: Image) -> Image:
         white_tophat_results = white_tophat(
-                image.enhanced_matrix,
+                image.det_matrix[:],
                 footprint=self._get_footprint(
-                        self._get_footprint_radius(array=image.enhanced_matrix)
+                        self._get_footprint_radius(detection_matrix=image.det_matrix[:])
                 )
         )
-        image.enhanced_matrix = image.enhanced_matrix - white_tophat_results
+        image.det_matrix[:] = image.det_matrix[:] - white_tophat_results
 
         return image
 
-    def _get_footprint_radius(self, array: np.ndarray) -> int:
+    def _get_footprint_radius(self, detection_matrix: np.ndarray) -> int:
         if self._footprint_radius is None:
-            return int(np.min(array.shape) * 0.004)
+            return int(np.min(detection_matrix.shape) * 0.004)
         else:
             return self._footprint_radius
 

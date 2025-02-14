@@ -7,7 +7,7 @@ from cellprofiler_core.workspace import Workspace
 from cellprofiler_core.module import Module
 
 from cellprofiler_core.module.image_segmentation import ImageSegmentation
-from cellprofiler_api.modules.measureobjectintensity import MeasureObjectIntensity
+from cellprofiler.modules.measureobjectintensity import MeasureObjectIntensity
 
 import pandas as pd
 import numpy as np

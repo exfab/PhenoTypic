@@ -11,6 +11,6 @@ class ContrastStretching(ImagePreprocessor):
         self.upper_percentile = upper_percentile
 
     def _operate(self, image: Image) -> Image:
-        p_lower, p_upper = np.percentile(image.enhanced_matrix, (self.lower_percentile, self.upper_percentile))
-        image.enhanced_matrix = rescale_intensity(image.enhanced_matrix, in_range=(p_lower, p_upper))
+        p_lower, p_upper = np.percentile(image.det_matrix[:], (self.lower_percentile, self.upper_percentile))
+        image.det_matrix[:] = rescale_intensity(image.det_matrix[:], in_range=(p_lower, p_upper))
         return image

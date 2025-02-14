@@ -12,7 +12,7 @@ from . import (
     feature_extraction,
     grid,
     interface,
-    map_modification,
+    objects,
     morphology,
     pipeline,
     preprocessing,
@@ -21,5 +21,5 @@ from . import (
     util
 )
 
-if platform.system() == 'Linux' or platform.system() == 'Darwin':
-    from . import cellprofiler_api
+# if platform.system() == 'Linux' or platform.system() == 'Darwin':
+#     from . import cellprofiler_api

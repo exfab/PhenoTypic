@@ -1,6 +1,6 @@
 import pandas as pd
 
-from ..util.error_message import INTERFACE_ERROR_MSG
+from ..util.constants import INTERFACE_ERROR_MSG
 
 class TableOperation:
     def __init__(self):

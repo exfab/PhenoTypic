@@ -2,16 +2,16 @@ import pandas as pd
 from typing import Optional
 import numpy as np
 
-from .cellprofiler_sou.preferences import set_headless, set_awt_headless
+from cellprofiler_core.preferences import set_headless, set_awt_headless
 from cellprofiler_core.image import ImageSetList, Image as CpImage, ImageSet as CpImageSet
 from cellprofiler_core.object import ObjectSet, Objects
 from cellprofiler_core.measurement import Measurements
 from cellprofiler_core.pipeline import Pipeline
 from cellprofiler_core.workspace import Workspace
 from cellprofiler_core.module import Module
-
 from cellprofiler_core.module.image_segmentation import ImageSegmentation
-from cellprofiler_api.modules.measureobjectsizeshape import MeasureObjectSizeShape
+
+from .cellprofiler_source_code.src.frontend.cellprofiler.modules.measureobjectsizeshape import MeasureObjectSizeShape
 
 import phenoscope as ps
 from phenoscope.interface import FeatureExtractor
@@ -33,7 +33,7 @@ class CellProfilerAPI(FeatureExtractor):
         self._cellprofiler_module: Optional[Module] = None
 
     def extract(self, image: ps.Image, inplace: bool = False) -> pd.DataFrame:
-        self._init_cellprofiler()
+        self._initialize_cellprofiler()
 
         measurements = super().extract(image, inplace)
         self._rename_cellprofiler_measurements(measurements)
@@ -41,12 +41,12 @@ class CellProfilerAPI(FeatureExtractor):
         self._cleanup_cellprofiler()
         return measurements
 
-    def _init_cellprofiler(self):
+    def _initialize_cellprofiler(self):
         """
         Initialize the cellprofiler_api backend
         :return:
         """
-        self._cellprofiler_image_set_list = ImageSetList()
+        self._initialize_cellprofiler_image_set_list()
 
         self._cellprofiler_image_set = (self._cellprofiler_image_set_list
                                         .get_image_set(self._cellprofiler_image_set_list.count()))
@@ -72,6 +72,18 @@ class CellProfilerAPI(FeatureExtractor):
             measurements=self._cellprofiler_measurements,
             image_set_list=self._cellprofiler_image_set_list,
         )
+    
+    def _initialize_cellprofiler_image_set_list(self)->None:
+        self._cellprofiler_image_set_list = ImageSetList()
+
+    def _initialize_cellprofiler_image_set(self)->None:
+        if self._cellprofiler_image_set is None:
+            self._initialize_cellprofiler_image_set_list()
+        self._cellprofiler_image_set = (self._cellprofiler_image_set_list
+                                        .get_image_set(self._cellprofiler_image_set_list.count()))
+        
+    
+    # TODO: Initialize rest of cellprofiler objects
 
     def _cleanup_cellprofiler(self):
         """

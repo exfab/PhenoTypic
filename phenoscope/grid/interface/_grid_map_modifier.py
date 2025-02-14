@@ -5,7 +5,7 @@ if TYPE_CHECKING: from phenoscope.grid import GriddedImage
 
 from phenoscope.interface import MapModifier
 from phenoscope.grid.interface import GridOperation
-from phenoscope.util.error_message import GRID_SERIES_INPUT_IMAGE_ERROR_MSG, INTERFACE_ERROR_MSG
+from phenoscope.util.constants import GRID_SERIES_INPUT_IMAGE_ERROR_MSG, INTERFACE_ERROR_MSG
 
 
 class GridMapModifier(MapModifier, GridOperation):

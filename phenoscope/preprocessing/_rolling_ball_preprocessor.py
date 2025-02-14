@@ -13,7 +13,7 @@ class RollingBallPreprocessor(ImagePreprocessor):
         self._num_threads: int = num_threads
 
     def _operate(self, image: Image):
-        image.enhanced_matrix -= rolling_ball(image=image.enhanced_matrix,
+        image.det_matrix[:] -= rolling_ball(image=image.det_matrix[:],
                                               radius=self._radius,
                                               kernel=self._kernel,
                                               nansafe=self._nansafe,

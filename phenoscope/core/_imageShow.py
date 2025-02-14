@@ -52,10 +52,10 @@ class ImageShow(ImageCore):
             func_ax = ax
 
         func_ax.grid(False)
-        if len(self.enhanced_matrix.shape) == 2:
-            func_ax.imshow(self.enhanced_matrix, cmap=cmap)
+        if len(self.det_matrix.shape) == 2:
+            func_ax.imshow(self.det_matrix, cmap=cmap)
         else:
-            func_ax.imshow(self.enhanced_matrix)
+            func_ax.imshow(self.det_matrix)
 
         if ax is None:
             return fig, func_ax
@@ -122,7 +122,7 @@ class ImageShow(ImageCore):
 
         # Plot image
         if use_enhanced:
-            func_ax.imshow(label2rgb(label=obj_map, image=self.enhanced_matrix, alpha=alpha))
+            func_ax.imshow(label2rgb(label=obj_map, image=self.det_matrix, alpha=alpha))
         else:
             func_ax.imshow(label2rgb(label=obj_map, image=self.matrix, alpha=alpha))
 

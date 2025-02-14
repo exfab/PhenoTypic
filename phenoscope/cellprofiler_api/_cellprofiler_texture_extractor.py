@@ -7,7 +7,7 @@ from cellprofiler_core.workspace import Workspace
 from cellprofiler_core.module import Module
 
 from cellprofiler_core.module.image_segmentation import ImageSegmentation
-from cellprofiler_api.modules.measuretexture import MeasureTexture
+from cellprofiler.modules.measuretexture import MeasureTexture
 
 import pandas as pd
 import numpy as np

@@ -18,15 +18,15 @@ class RankMedianPreprocessor(ImagePreprocessor):
         self._shift_y = shift_y
 
     def _operate(self, image: Image) -> Image:
-        image.enhanced_matrix = median(
-                image=img_as_ubyte(image.enhanced_matrix),
-                footprint=self._get_footprint(self._get_footprint_radius(image.enhanced_matrix))
+        image.det_matrix[:] = median(
+                image=img_as_ubyte(image.det_matrix[:]),
+                footprint=self._get_footprint(self._get_footprint_radius(image.det_matrix[:]))
         )
         return image
 
-    def _get_footprint_radius(self, image: np.ndarray) -> int:
+    def _get_footprint_radius(self, det_matrix: np.ndarray) -> int:
         if self._footprint_radius is None:
-            return int(np.min(image.shape) * 0.002)
+            return int(np.min(det_matrix.shape) * 0.002)
         else:
             return self._footprint_radius
 

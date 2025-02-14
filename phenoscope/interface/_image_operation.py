@@ -1,4 +1,4 @@
-from ..util.error_message import INTERFACE_ERROR_MSG
+from ..util.constants import INTERFACE_ERROR_MSG
 
 from .. import Image
 

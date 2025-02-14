@@ -1,4 +1,3 @@
-from ._imageIO import ImageIO
-
-class Image(ImageIO):
+from ._image_handler import ImageHandler
+class Image(ImageHandler):
     pass

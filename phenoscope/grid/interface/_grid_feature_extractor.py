@@ -7,7 +7,7 @@ if TYPE_CHECKING: from phenoscope.grid import GriddedImage
 
 from phenoscope.interface import FeatureExtractor
 from phenoscope.grid.interface import GridOperation
-from phenoscope.util.error_message import GRID_SERIES_INPUT_IMAGE_ERROR_MSG, OUTPUT_NOT_TABLE_MSG
+from phenoscope.util.constants import GRID_SERIES_INPUT_IMAGE_ERROR_MSG, OUTPUT_NOT_TABLE_MSG
 
 
 class GridFeatureExtractor(FeatureExtractor, GridOperation):

@@ -5,18 +5,21 @@ import numpy as np
 import os
 import pandas as pd
 
-from ._imageMetadata import ImageMetadata
+from ._imageMeasurements import ImageMeasurements
 
 
-LABEL_ARRAY = 'color_array'
-LABEL_MATRIX = 'array'
+LABEL_ARRAY = 'array'
+LABEL_MATRIX = 'matrix'
 LABEL_ENHANCED_MATRIX = 'enhanced_array'
 LABEL_OBJECT_MASK = 'object_mask'
 LABEL_OBJECT_MAP = 'object_map'
-LABEL_CUSTOM_FILE_EXTENSION_PREFIX = '.psnpz'
 LABEL_METADATA_MATRIX = 'metadata_matrix'
 
-class ImageIO(ImageMetadata):
+LABEL_CUSTOM_FILE_EXTENSION_PREFIX = '.psnpz'
+METADATA_RECARRAY = 'metadata_recarray'
+MEASUREMENT_PREPEND = 'psnpz_measurement_'
+
+class ImageIO(ImageMeasurements):
     def imread(self, filepath: str):
         input_img = imread(Path(filepath))
         if input_img.ndim == 3:
@@ -65,12 +68,13 @@ class ImageIO(ImageMetadata):
 
         if self.object_map is not None: save_dict[LABEL_OBJECT_MAP] = self.object_map
 
-        if self._metadata:
-            save_dict[LABEL_METADATA_MATRIX] = np.array(tuple(zip(
-                self._metadata.keys(),
-                self._metadata.values(),
-                self._metadata_dtype.values()
-            )))
+        if len(self.metadata)>0:
+            save_dict[METADATA_RECARRAY] = self.metadata.to_recarray()
+
+        if len(self.measurements)>0:
+            measurement_dict = self.measurements.to_dict()
+            renamed_measurements = {f'{MEASUREMENT_PREPEND}{key}': value for key, value in measurement_dict.items()}
+            save_dict = {**save_dict, **renamed_measurements}
 
         if save_dict:
             np.savez(temp_savepath, **save_dict)
@@ -101,13 +105,63 @@ class ImageIO(ImageMetadata):
         if LABEL_ENHANCED_MATRIX in keys: self.enhanced_matrix = data[LABEL_ENHANCED_MATRIX]
         if LABEL_OBJECT_MASK in keys: self.object_mask = data[LABEL_OBJECT_MASK]
         if LABEL_OBJECT_MAP in keys: self.object_map = data[LABEL_OBJECT_MAP]
-        if LABEL_METADATA_MATRIX in keys: self._load_metadata(data[LABEL_METADATA_MATRIX])
+
+        if METADATA_RECARRAY in keys:
+            metadata_recarray:np.recarray = data[METADATA_RECARRAY]
+            metadata_keys = metadata_recarray.dtype.names
+            metadata_values = metadata_recarray[0]
+            for metadata_idx, metadata_key in enumerate(metadata_keys):
+                self.metadata[metadata_key] = metadata_values[metadata_idx]
+
+        # Searches for unique prepend in keyword names
+        measurement_keys = [key for key in keys
+                            if MEASUREMENT_PREPEND in key]
+        if len(measurement_keys)>0:
+            for measurement_key in measurement_keys:
+
+                # Need to reconstruct dataframe from array
+                table = pd.DataFrame(data=data[measurement_key])
+                table.set_index(table.columns[0], inplace=True) # Index column should be the first column based on to_recarrays_dict() protocol.
+                self.measurements[measurement_key.replace(f'{MEASUREMENT_PREPEND}',"")] = table # Removes prepend from measurement names
 
         # Numpy load has to be closed at the end
         data.close()
         return self
 
+    def legacy_loadz(self, filepath:Path):
+        """
+           Imports the data from a phenoscope-created numpy array.
+           :param filepath: (Pathlike) points to where the
+           :return:
+           """
+        if filepath is None: raise ValueError(f'filepath not specified.')
+
+        fpath = Path(filepath)
+        if fpath.suffix == '.npz':
+            raise Warning(f'File is an npz file and not a psnpz file. The Image data may not load properly.')
+
+        elif fpath.suffix != LABEL_CUSTOM_FILE_EXTENSION_PREFIX:
+            raise ValueError(f'File is not a {LABEL_CUSTOM_FILE_EXTENSION_PREFIX} file, and cannot be interpreted.')
+
+        data = np.load(fpath)
+        keys = data.keys()
+        if LABEL_ARRAY in keys: self.array = data[LABEL_ARRAY]
+        if LABEL_MATRIX in keys: self.matrix = data[LABEL_MATRIX]
+        if LABEL_ENHANCED_MATRIX in keys: self.enhanced_matrix = data[LABEL_ENHANCED_MATRIX]
+        if LABEL_OBJECT_MASK in keys: self.object_mask = data[LABEL_OBJECT_MASK]
+        if LABEL_OBJECT_MAP in keys: self.object_map = data[LABEL_OBJECT_MAP]
+        if LABEL_METADATA_MATRIX in keys: self._load_metadata(data[LABEL_METADATA_MATRIX])
+
+        # Numpy load has to be closed at the end
+        data.close()
+
+    def _recarray_to_metadata(self, metadata_recarray:np.recarray):
+        keys = metadata_recarray.dtype.names
+        metadata_values = metadata_recarray[0]
+        for key in keys:
+            self.metadata[key] = metadata_values[key]
+
+
     def _load_metadata(self, metadata_matrix):
-        self._metadata = dict(zip(metadata_matrix[:, 0], metadata_matrix[:, 1]))
-        self._metadata_dtype = dict(zip(metadata_matrix[:, 0], metadata_matrix[:, 2]))
-        self.validate_metadata_dtype()
+        for row in range(metadata_matrix.shape[0]):
+            self.metadata[metadata_matrix[row, 0]] = [metadata_matrix[row, 1]]

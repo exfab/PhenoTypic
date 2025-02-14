@@ -6,15 +6,17 @@ current_file_dir = Path(os.path.dirname(os.path.abspath(__file__)))
 from .. import imread
 
 
-def PlateDay1():
+def load_plate_12hr():
     return imread(current_file_dir / 'StandardDay1.jpg')
 
 
-def PlateDay6():
+def load_plate_72hr():
+    """Return's an image of a cell plate at 72 hrs"""
     return imread(current_file_dir / 'StandardDay6.jpg')
 
 
-def PlateSeries():
+def load_plate_series():
+    """Return's a series of plate images across 6 time samples"""
     series = []
     fnames = os.listdir(current_file_dir / 'PlateSeries')
     fnames.sort()
@@ -23,19 +25,22 @@ def PlateSeries():
     return series
 
 
-def EarlyColony():
+def load_colony_12_hr():
     return imread(current_file_dir / 'StdDay1-Results/well_imgs/StdDay1_well_3.png')
 
 
-def FaintColony():
+def load_faint_colony_12hr():
     return imread(current_file_dir / 'StdDay1-Results/well_imgs/StdDay1_well_15.png')
 
 
-def Colony():
+def load_colony_72hr():
+    """Returns a colony image array of K. Marxianus"""
     return imread(current_file_dir / 'StdDay6-Results/well_imgs/StdDay6_well005.png')
 
-def SmearPlateDay1():
+def load_smear_plate_12hr():
+    """Returns a plate image array of K. Marxianus that contains noise such as smears"""
     return imread(current_file_dir/'difficult/1_1S_16.jpg')
 
-def SmearPlateDay2():
+def load_smear_plate_24hr():
+    """Returns a plate image array of K. Marxianus that contains noise such as smears"""
     return imread(current_file_dir/'difficult/2_2Y_6.jpg')

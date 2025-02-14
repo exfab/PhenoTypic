@@ -1,7 +1,7 @@
 from phenoscope import Image
 from phenoscope.grid.interface import GridExtractor
 from phenoscope.feature_extraction import BoundaryExtractor
-from phenoscope.map_modification import BorderObjectModifier
+from phenoscope.objects import BorderObjectModifier
 
 from typing import Optional
 import pandas as pd

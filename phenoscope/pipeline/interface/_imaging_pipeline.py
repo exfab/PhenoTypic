@@ -22,7 +22,7 @@ from ...interface import FeatureExtractor
 from ...grid.interface import GridFeatureExtractor
 from ...interface._feature_extractor import FeatureExtractor
 
-from ...util.error_message import INTERFACE_ERROR_MSG
+from ...util.constants import INTERFACE_ERROR_MSG
 
 
 class ImagingPipeline(ImageOperation):

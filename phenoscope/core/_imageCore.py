@@ -1,15 +1,23 @@
 from typing import Union, Optional
 
+import pandas as pd
 from scipy.sparse import csc_array
 from typing_extensions import Self
 import numpy as np
 from skimage.measure import label
+import skimage
 from skimage.color import rgb2gray
 import uuid
 
 from ..util.type_checks import is_binary_mask
-from ..util.error_message import INVALID_MASK_SHAPE_MSG, INVALID_MAP_SHAPE_MSG, NO_IMAGE_DATA_ERROR_MSG
-
+from ..util.constants import INVALID_MASK_SHAPE_MSG, INVALID_MAP_SHAPE_MSG, NO_IMAGE_DATA_ERROR_MSG
+from ..util.labels.object_info import (OBJECT_MAP_ID,
+                                       CENTER_RR,
+                                       MIN_RR,
+                                       MAX_RR,
+                                       CENTER_CC,
+                                       MIN_CC,
+                                       MAX_CC)
 
 class ImageCore:
     def __init__(self, image: Optional[Union[np.ndarray, Self]] = None):
@@ -22,7 +30,7 @@ class ImageCore:
         # Create blank image variables
         self.__array: Optional[np.ndarray] = None
         self.__image_matrix: Optional[np.ndarray] = None
-        self.__enhanced_image_matrix: Optional[np.ndarray] = None
+        self.__det_matrix: Optional[np.ndarray] = None
         self.__object_mask: Optional[csc_array] = None
         self.__object_map: Optional[csc_array] = None
 
@@ -38,7 +46,7 @@ class ImageCore:
                     self.__array = None
                     self.__image_matrix: np.ndarray = image
 
-                self.__enhanced_image_matrix = self.__image_matrix
+                self.__det_matrix = self.__image_matrix
                 self.__object_mask = None
                 self.__object_map = None
 
@@ -46,7 +54,7 @@ class ImageCore:
             elif issubclass(type(image), ImageCore):
                 self.__array = image.array
                 self.__image_matrix = image.matrix
-                self.__enhanced_image_matrix = image.enhanced_matrix
+                self.__det_matrix = image.det_matrix
 
                 # Check if image.object_mask is returning the default for null object_mask
                 if np.array_equal(np.full(image.shape, fill_value=True), image.object_mask):
@@ -72,10 +80,10 @@ class ImageCore:
         if self.__array is not None:
             new_img = self.__class__(self.__array[index])
             new_img.matrix = self.__image_matrix[index]
-            new_img.enhanced_matrix = self.__enhanced_image_matrix[index]
+            new_img.det_matrix = self.__det_matrix[index]
         else:
             new_img = self.__class__(self.__image_matrix[index])
-            new_img.enhanced_matrix = self.__enhanced_image_matrix[index]
+            new_img.det_matrix = self.__det_matrix[index]
 
         if self.__object_mask is not None:
             new_img.object_mask = self.object_mask[index]
@@ -88,6 +96,13 @@ class ImageCore:
     @property
     def uuid(self):
         return str(self.__uuid)
+
+    @property
+    def num_objects(self):
+        if self.__object_map is None:
+            return 0
+        else:
+            return len(np.unique(self.__object_map.data))
 
     @property
     def shape(self) -> tuple:
@@ -130,21 +145,21 @@ class ImageCore:
     @matrix.setter
     def matrix(self, image: np.ndarray) -> None:
         self.__image_matrix = image
-        self.__enhanced_image_matrix = image
+        self.__det_matrix = image
         self.__object_mask = None
         self.__object_map = None
 
     # The 2-dimensional enhanced representation of the image that is fed into the detection algorithm
     @property
-    def enhanced_matrix(self) -> Optional[np.ndarray]:
-        if self.__enhanced_image_matrix is None:
+    def det_matrix(self) -> Optional[np.ndarray]:
+        if self.__det_matrix is None:
             return None
         else:
-            return np.copy(self.__enhanced_image_matrix)
+            return np.copy(self.__det_matrix)
 
-    @enhanced_matrix.setter
-    def enhanced_matrix(self, enhanced_image: np.ndarray) -> None:
-        self.__enhanced_image_matrix = enhanced_image
+    @det_matrix.setter
+    def det_matrix(self, enhanced_image: np.ndarray) -> None:
+        self.__det_matrix = enhanced_image
         self.__object_mask = None
         self.__object_map = None
 
@@ -170,7 +185,7 @@ class ImageCore:
             if is_binary_mask(obj_mask) is False: raise ValueError("Mask must be a binary array.")
             if not isinstance(obj_mask, np.ndarray): raise ValueError("Mask must be a numpy array or None.")
 
-            if not np.array_equal(obj_mask.shape, self.__enhanced_image_matrix.shape):
+            if not np.array_equal(obj_mask.shape, self.__det_matrix.shape):
                 raise ValueError(INVALID_MASK_SHAPE_MSG)
 
             if np.array_equal(obj_mask, np.full(shape=self.shape, fill_value=1)):
@@ -198,7 +213,7 @@ class ImageCore:
     @object_map.setter
     def object_map(self, obj_map: np.ndarray) -> None:
         if obj_map is not None:
-            if not np.array_equal(obj_map.shape, self.__enhanced_image_matrix.shape):
+            if not np.array_equal(obj_map.shape, self.__det_matrix.shape):
                 raise ValueError(INVALID_MAP_SHAPE_MSG)
 
             if np.array_equal(obj_map, np.full(shape=self.shape, fill_value=1)):
@@ -211,16 +226,31 @@ class ImageCore:
         else:
             self.__object_map = None
 
+    def object_info(self):
+        return pd.DataFrame(
+            data=skimage.measure.regionprops_table(
+                label_image=self.object_map,
+                properties=['label','centroid','bbox']
+            )
+        ).rename(columns={
+            'label':OBJECT_MAP_ID,
+            'centroid-0':CENTER_RR,
+            'centroid-1':CENTER_CC,
+            'bbox-0':MIN_RR,
+            'bbox-1':MIN_CC,
+            'bbox-2':MAX_RR,
+            'bbox-3':MAX_CC,
+        }).set_index(OBJECT_MAP_ID)
+
     def get_object_labels(self) -> np.ndarray[Optional[int]]:
         """
         Returns all the object labels present in the image map.
         :return:
         """
         if self.__object_map is None:
-            return np.array([None])
+            return np.array([np.nan])
         else:
-            labels = np.unique(self.__object_map)
-            return labels[np.nonzero(self.__object_map)]
+            return np.unique(self.__object_map.data)
 
     def copy(self):
         if self.array is not None:
@@ -229,13 +259,13 @@ class ImageCore:
         else:
             new_image = self.__class__(self.matrix)
 
-        new_image.enhanced_matrix = self.enhanced_matrix
+        new_image.det_matrix = self.det_matrix
         new_image.object_mask = self.object_mask
         new_image.object_map = self.object_map
         return new_image
 
     def reset(self):
-        self.__enhanced_image_matrix = self.matrix
+        self.__det_matrix = self.matrix
         self.__object_mask = None
         self.__object_map = None
 
@@ -243,7 +273,7 @@ class ImageCore:
         rr_len = self.__image_matrix.shape[0]
         cc_len = self.__image_matrix.shape[1]
 
-        if self.__enhanced_image_matrix.shape[0] != rr_len or self.__enhanced_image_matrix.shape[1] != cc_len:
+        if self.__det_matrix.shape[0] != rr_len or self.__det_matrix.shape[1] != cc_len:
             raise RuntimeError(
                 'Detected enhanced image shape do not match the image shape. Ensure that enhanced image array shape is not changed during execution.')
 

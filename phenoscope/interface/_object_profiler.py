@@ -8,7 +8,7 @@ from ._object_filter import ObjectFilter
 from ._map_modifier import MapModifier
 
 from .. import Image
-from ..util.error_message import INTERFACE_ERROR_MSG
+from ..util.constants import INTERFACE_ERROR_MSG
 
 
 class ObjectProfiler:
