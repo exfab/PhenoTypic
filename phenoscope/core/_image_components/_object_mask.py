@@ -2,10 +2,10 @@ from skimage.measure import label
 import matplotlib.pyplot as plt
 import numpy as np
 
-from ...util.constants import ConstObjectMask
+from ...util.constants import C_ObjectMask
 
 
-class ObjectMask:
+class ObjectMaskSubhandler:
     """Class provides access to the object map as a boolean array form and creates a way for binary operations to alter objects.
 
 
@@ -23,25 +23,43 @@ class ObjectMask:
 
     def __getitem__(self, key):
         """Returns a copy of the binary object mask in array form"""
-        return self._handler.object_map[key] > 0
+        return self._handler.obj_map[key] > 0
 
-    def __setitem__(self, key, value:np.ndarray):
+    def __setitem__(self, key, value: np.ndarray):
         """Sets values of the object mask to value and resets the labeling in the map"""
-        mask = self._handler.object_map[:] > 0
+        mask = self._handler.obj_map[:] > 0
 
         # Check to make sure the section of the mask the key accesses is the same as the value
-        if mask[key].shape != value.shape: raise ConstObjectMask.ARRAY_KEY_VALUE_SHAPE_MISMATCH
+        if type(value) in [int, bool]:
+            try:
+                value = bool(value)
+                mask[key] = value
+            except TypeError:
+                raise C_ObjectMask.InvalidScalarValueError
+        elif type(value) == np.ndarray:
+            # Check input and section have matching shape
+            if mask[key].shape != value.shape:
+                raise C_ObjectMask.ArrayKeyValueShapeMismatchError
 
-        # Sets the section of the binary mask to the shown value
-        mask[key] = (value > 0).astype(np.bool_)
+            # Sets the section of the binary mask to the value array
+            mask[key] = (value > 0)
+        else:
+            raise C_ObjectMask.InvalidValueTypeError(type(value))
 
         # Relabel the mask and set the underlying csc matrix to the new mask
         # Where the reset of labeling occurs. May eventually add way to sync without label reset in future
-        self._handler.object_map[:] = label(mask)
+        self._handler.obj_map[:] = label(mask)
 
     @property
     def shape(self):
-        return self._handler.object_map.shape
+        return self._handler.obj_map.shape
+
+    def copy(self)->np.ndarray:
+        """Returns a copy of the binary object mask"""
+        return self._handler.obj_mask[:].copy()
+
+    def reset(self):
+        self._handler.obj_map.reset()
 
     def show(self, ax: plt.Axes = None,
              figsize: str = None,
@@ -67,7 +85,7 @@ class ObjectMask:
         else:
             fig = ax.get_figure()
 
-        ax.imshow(self._handler.object_map[:] > 0, cmap=cmap)
+        ax.imshow(self._handler.obj_map[:] > 0, cmap=cmap)
         if title is not None: ax.set_title(title)
         ax.grid(False)
 

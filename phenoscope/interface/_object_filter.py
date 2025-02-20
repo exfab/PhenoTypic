@@ -12,7 +12,7 @@ class ObjectFilter(ImageOperation):
 
     def filter(self, image: Image, inplace=False) -> Image:
         # Input Validation
-        if image.object_map is None: raise ValueError("Image has no object map")
+        if image.obj_map is None: raise ValueError("Image has no object map")
         input_img = np.copy(image.matrix)
         input_enhanced = np.copy(image.enhanced_matrix)
 

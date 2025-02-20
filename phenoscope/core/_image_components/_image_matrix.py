@@ -1,34 +1,43 @@
+from typing import Optional, Tuple
+
 import numpy as np
 
 import matplotlib.pyplot as plt
+from skimage.color import label2rgb
 
-from ...util.constants import C_ImageMatrix
+from ...util.constants import C_ImageMatrixSubhandler
 
 
-class ImageMatrix:
-    """An immutable container for the image matrix representation. Accessible like a numpy array. This is used for the actual measurements after detection.
+class ImageMatrixSubhandler:
+    """An immutable accessor for the image matrix data. Accessible like a numpy array. This is used for the actual measurements after detection.
 
     Note:
         The ImageMatrix is left unchanged so that any detection improvements don't bias the true value of the images
     """
 
-    def __init__(self, handler, image_matrix: np.ndarray):
-        if len(image_matrix.shape) != 2: raise ValueError("Image matrix must be 2D")
+    def __init__(self, handler):
+        """Initiallizes the ImageMatrixSubhandler object.
 
+              Args:
+                  handler: (ImageHandler) The parent ImageHandler that the ImageMatrixSubhandler belongs to.
+              """
         self._handler = handler
 
-        self.__matrix = image_matrix
 
     def __getitem__(self, key):
-        return self.__matrix[key]
+        return self._handler._matrix[key].copy()
 
     def __setitem__(self, key, value):
-        raise C_ImageMatrix.IllegalElementAssignmentError('Image.matrix')
+        raise C_ImageMatrixSubhandler.IllegalElementAssignmentError('Image.matrix')
 
     @property
     def shape(self) -> tuple:
         """Returns the shape of the image matrix (num_rows:int, num_columns:int)"""
-        return self.__matrix.shape
+        return self._handler._matrix.shape
+
+    def copy(self)->np.ndarray:
+        """Returns a copy of the image matrix"""
+        return self._handler._matrix.copy()
 
     def show(self, ax: plt.Axes = None, figsize: str = None, cmap: str = 'gray', title: str = None) -> (plt.Figure, plt.Axes):
         """Display the image matrix with matplotlib.
@@ -50,10 +59,27 @@ class ImageMatrix:
             fig = ax.figure
 
         # Plot array
-        ax.imshow(self.__matrix, cmap=cmap)
+        ax.imshow(self._handler.matrix[:], cmap=cmap)
 
         # Adjust ax settings
         if title is not None: ax.set_title(title)
         ax.grid(False)
+
+        return fig, ax
+
+    def show_overlay(self, object_label: Optional[int] = None, ax: plt.Axes = None,
+                     figsize: Tuple[int, int] = None) -> (plt.Figure, plt.Axes):
+        if ax is None:
+            fig, ax = plt.subplots(figsize=figsize)
+        else:
+            fig = ax.get_figure()
+
+        ax.grid(False)
+
+        map_copy = self._handler.obj_map[:]
+        if object_label is not None:
+            map_copy[map_copy == object_label] = 0
+
+        ax.imshow(label2rgb(label=map_copy, image=self._handler.matrix[:]))
 
         return fig, ax

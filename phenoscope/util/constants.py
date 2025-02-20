@@ -19,11 +19,26 @@ MISSING_MAP_ERROR_MSG = 'This image is missing an object mask. This operation re
 
 GRID_SERIES_INPUT_IMAGE_ERROR_MSG = 'For GridOperation classes with the exception of GridExtractor objects, the input must be an instance of the GriddedImage object type.'
 
+from types import SimpleNamespace
+
 
 class C_PhenoScopeModule:
     class UnknownError(Exception):
         def __init__(self):
             super().__init__('An unknown error occurred.')
+
+
+"""
+Image Operation
+"""
+
+
+class C_ImageOperation(C_PhenoScopeModule):
+    class ComponentChangeError(AttributeError):
+        def __init__(self, component, operation):
+            super().__init__(
+                f'The {operation} operation attempted to change the component {component}. This operation should not change the component {component}.'
+            )
 
 
 """
@@ -45,14 +60,16 @@ class C_ImageHandler(C_PhenoScopeModule):
     class NoArrayError(AttributeError):
         def __init__(self):
             super().__init__(
-                "No array form found. Either Input image was 2-D and had no array form. Push image through a FormatConvertor in order to add an array component."
-                )
+                "No array found. Either Input image was 2-D and had no array form. Set a multi-channel image or use a FormatConverter"
+            )
 
     class EmptyImageError(AttributeError):
         def __init__(self):
-            super().__init__('No array or matrix form was found. Use Image.set_image(new_image) to load data.')
+            super().__init__(f'No image data loaded. Use Image.set_image(new_image) to load data.')
 
-    AMBIGUOUS_IMAGE_FORMAT = 'Input image array has an ambiguous image format that could be either RGB or BGR. RGB was assumed. To suppress warning, specify image format constructor or Image.set_image()'
+    class UnsupportedFileType(ValueError):
+        def __init__(self, suffix):
+            super().__init__(f'Image.imread() does not support file type: {suffix}')
 
 
 class C_ImmutableImageComponent(C_PhenoScopeModule):
@@ -61,14 +78,25 @@ class C_ImmutableImageComponent(C_PhenoScopeModule):
 
         def __init__(self, component_name):
             super().__init__(
-                f'{component_name} elements should not be changed directly. Change the {component_name} elements by using Image.set_image(new_image).'
+                f'{component_name} components should not be changed directly. Change the {component_name} elements by using Image.set_image(new_image).'
             )
 
 
-class C_ImageArray(C_ImmutableImageComponent): pass
+class C_ImageArraySubhandler(C_ImmutableImageComponent):
+    class NoArrayError(AttributeError):
+        def __init__(self):
+            super().__init__(
+                "No array form found. Either Input image was 2-D and had no array form. Set a multi-channel image or use a FormatConverter"
+            )
+
+    class InvalidSchemaHsv(TypeError):
+        def __init__(self, schema):
+            super().__init__(
+                f'To be converted to HSV format, the schema should be RGB, but got {schema}'
+            )
 
 
-class C_ImageMatrix(C_ImmutableImageComponent): pass
+class C_ImageMatrixSubhandler(C_ImmutableImageComponent): pass
 
 
 class C_MutableImageComponent(C_PhenoScopeModule):
@@ -87,21 +115,44 @@ class C_MutableImageComponent(C_PhenoScopeModule):
             super().__init__(f'The shape of {param_name} must be the same shape as the Image.matrix')
 
 
-class C_ImageDetectionMatrix(C_MutableImageComponent): pass
+class C_ImageDetectionMatrixSubhandler(C_MutableImageComponent): pass
 
 
-class ConstObjectMask(C_MutableImageComponent):
-    class InvalidValueTypeError(AttributeError):
+class C_ObjectMask(C_MutableImageComponent):
+    class InvalidValueTypeError(ValueError):
         def __init__(self, value_type):
             super().__init__(
-                f'The mask array slice was trying to be set with an array of type {value_type} and could not be cast to a boolean array.'
-                )
+                f'The mask array section was trying to be set with an array of type {value_type} and could not be cast to a boolean array.'
+            )
+
+    class InvalidScalarValueError(ValueError):
+        def __init__(self):
+            super().__init__(
+                'The scalar value could not be converted to a boolean value. If value is an integer, it should be either 0 or 1.'
+            )
 
 
-class ConstObjectMap(C_MutableImageComponent): pass
+class C_ObjectMap(C_MutableImageComponent):
+    class InvalidValueTypeError(ValueError):
+        def __init__(self, value_type):
+            super().__init__(
+                f'ObjectMap elements were attempted to be set with {value_type}, but should only be set to an array of integers or an integer'
+            )
 
 
-class C_MetadataContainer(C_PhenoScopeModule):
+class C_Metadata(C_PhenoScopeModule):
+    LABELS = SimpleNamespace(
+        UUID='UUID',
+        ImageName='ImageName',
+        ParentImageName='ParentImageName',
+        ParentUUID='ParentUUID',
+        Format='Format',
+    )
+
+    PRIVATE_KEYS = [LABELS.UUID]
+
+    PROTECTED_KEYS = [LABELS.ParentUUID, LABELS.ParentImageName, LABELS.Format]
+
     class UUIDReassignmentError(ValueError):
         def __init__(self):
             super().__init__('The uuid metadata should not be changed to preserve data integrity.')
@@ -134,12 +185,13 @@ class C_ImageFormats:
     RGBA = 'RGBA'
     BGR = 'BGR'
     BGRA = 'BGRA'
-    SUPPORTED_FORMATS = [RGB, RGBA, GRAYSCALE, BGR, BGRA, HSV]
+    SUPPORTED_FORMATS = [RGB, RGBA, GRAYSCALE, BGR, BGRA]
+    MATRIX_FORMATS = [GRAYSCALE, GRAYSCALE_SINGLE_CHANNEL]
 
     class UnsupportedFormatError(ValueError):
         def __init__(self, input_format):
             super().__init__(
-                f"input image format {input_format} is not supported.  Accepted formats are ['RGB', 'RGBA','Grayscale','BGR','BGRA','HSV']"
+                f"input image format {input_format} is not supported.  Accepted formats are ['RGB', 'RGBA','Grayscale','BGR','BGRA']"
             )
 
 
@@ -148,8 +200,16 @@ Objects
 """
 
 
+class C_ImageObjects(C_ImmutableImageComponent):
+    class InvalidObjectLabel(ValueError):
+        def __init__(self, label):
+            super().__init__(
+                f'The object with label {label} is not in the object map. If you meant to access the object by index use Image.objects.at() instead'
+            )
+
+
 class C_ObjectInfo(C_PhenoScopeModule):
-    OBJECT_MAP_ID = 'ObjectLabel'
+    OBJECT_LABELS = 'ObjectLabel'
 
     CENTER_RR = 'Bbox_CenterRR'
     MIN_RR = 'Bbox_MinRR'
@@ -158,3 +218,38 @@ class C_ObjectInfo(C_PhenoScopeModule):
     CENTER_CC = 'Bbox_CenterCC'
     MIN_CC = 'Bbox_MinCC'
     MAX_CC = 'Bbox_MaxCC'
+
+
+"""
+Grid
+"""
+
+
+class C_Grid(C_PhenoScopeModule):
+    """
+    Attributes:
+        GRID_ROW_NUM: The row number of the object in the grid.
+        GRID_ROW_INTERVAL: The interval of the object's row in the grid as a tuple (row_min, row_max.
+        GRID_COL_NUM: The column number in the grid.
+        GRID_COL_INTERVAL: The interval of the object's column in the grid as a tuple (col_min, col_max).
+        GRID_SECTION_NUM: The section number that the object belongs to in the grid. The sections are numbered left to right, top to bottom.
+        GRID_SECTION_IDX: The index of the section in the grid.
+
+    """
+    GRID_ROW_NUM = 'Grid_RowNum'
+    GRID_ROW_INTERVAL = 'Grid_RowInterval'
+
+    GRID_COL_NUM = 'Grid_ColNum'
+    GRID_COL_INTERVAL = 'Grid_ColInterval'
+
+    GRID_SECTION_NUM = 'Grid_SectionNum'
+    GRID_SECTION_IDX = 'Grid_SectionIndex'
+
+"""
+Features
+"""
+class C_GridLinRegStatsExtractor:
+    ROW_LINREG_M, ROW_LINREG_B = 'RowLinReg_M', 'RowLinReg_B'
+    COL_LINREG_M, COL_LINREG_B = 'ColLinReg_M', 'LinReg_B'
+    PRED_RR, PRED_CC = 'RowLinReg_PredRR', 'ColLinReg_PredCC'
+    RESIDUAL_ERR = 'LinReg_ResidualError'

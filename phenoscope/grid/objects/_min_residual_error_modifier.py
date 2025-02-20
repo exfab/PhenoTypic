@@ -16,19 +16,19 @@ class MinResidualErrorModifier(GridMapModifier):
     def _operate(self, image: GriddedImage) -> GriddedImage:
         # Get the section objects in order of most amount. More objects in a section means
         # more potential spread that can affect linreg results.
-        max_iter = (image.n_rows * image.n_cols) * 4
+        max_iter = (image.grid.nrows * image.grid.ncols) * 4
 
         # Initialize extractor here to save obj construction time
         linreg_stat_extractor = GridLinRegStatsExtractor()
 
         # Get initial section obj count
-        section_obj_counts = image.get_section_count(ascending=False)
+        section_obj_counts = image.grid.get_section_count(ascending=False)
 
         n_iters = 0
         # Check that there exist sections with more than one object
         while n_iters < max_iter and (section_obj_counts > 1).any():
             # Get the current object map. This is inside the loop to ensure latest version each iteration
-            obj_map = image.object_map
+            obj_map = image.obj_map[:]
 
             # Get the section idx with the most objects
             section_with_most_obj = section_obj_counts.idxmax()
@@ -48,7 +48,7 @@ class MinResidualErrorModifier(GridMapModifier):
             # Set the objects with the labels to the background value
             obj_map[np.isin(obj_map, objects_to_drop)] = 0
 
-            image.object_map = obj_map
+            image.obj_map = obj_map
 
             # Reset section obj count and add counter
             section_obj_counts = image.get_section_count(ascending=False)

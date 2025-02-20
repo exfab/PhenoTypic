@@ -4,7 +4,7 @@ from phenoscope import Image
 from phenoscope.grid import GriddedImage
 
 from phenoscope.detection import OtsuDetector
-from phenoscope.feature_extraction import ObjectImageExtractor
+from phenoscope.features import ObjectImageExtractor
 
 from .Test_Image import sample_data
 

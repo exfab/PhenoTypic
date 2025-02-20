@@ -75,7 +75,7 @@ class CellProfilerAreaShape(FeatureExtractor):
         cp_img = CpImage(image.matrix)
         img_set.add(image.name, cp_img)
 
-        map_labels = np.unique(image.object_map)
+        map_labels = np.unique(image.obj_map)
         map_labels = map_labels[np.nonzero(map_labels)]
 
         # Check to make sure the number of items in the image is expected
@@ -95,7 +95,7 @@ class CellProfilerAreaShape(FeatureExtractor):
         for label in map_labels:
 
             # Create an object map that only contains the specfied label
-            obj_map = image.object_map
+            obj_map = image.obj_map
             obj_map[obj_map != label] = 0
 
             # DEPRECATED in favor of naming consistency:

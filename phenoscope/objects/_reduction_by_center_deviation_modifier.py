@@ -2,10 +2,15 @@ from scipy.spatial.distance import euclidean
 
 from ..interface import MapModifier
 from .. import Image
-from ..feature_extraction import BoundaryExtractor
+from ..features import BoundaryExtractor
 
 
-class ReductionByCenterDeviationModifier(MapModifier):
+class CenterDeviationReducer(MapModifier):
+    """Removes objects based on how far away they are from the center of the image.
+
+    Useful for isolated colony images
+
+    """
 
     def _operate(self, image: Image):
         img_center_cc = round(image.shape[1] / 2)
@@ -27,13 +32,13 @@ class ReductionByCenterDeviationModifier(MapModifier):
         obj_to_keep = bound_info.loc[:,'Measurement_CenterDeviation'].idxmin()
 
         # Get a working copy of the object map
-        obj_map = image.object_map
+        obj_map = image.obj_map
 
         # Set other objects to background
         obj_map[obj_map!=obj_to_keep] = 0
 
         # Set Image object map to new value
-        image.object_map = obj_map
+        image.obj_map = obj_map
 
         return image
 

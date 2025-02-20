@@ -3,7 +3,7 @@ from pathlib import Path
 
 current_file_dir = Path(os.path.dirname(os.path.abspath(__file__)))
 
-from .. import imread
+from skimage.io import imread
 
 
 def load_plate_12hr():

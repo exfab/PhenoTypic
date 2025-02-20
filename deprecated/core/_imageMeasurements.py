@@ -5,7 +5,7 @@ from typing import Optional, Union
 
 from ._imageMetadata import ImageMetadata
 
-from ._image_components._measurement_container import MeasurementContainer
+from core._image_components._measurement_container import MeasurementContainer
 
 class ImageMeasurements(ImageMetadata):
     """

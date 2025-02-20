@@ -1,28 +1,38 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from typing import Tuple
+from typing import Tuple, Optional
 
-from ...util.constants import C_ImageArray
+from skimage.color import rgb2hsv, label2rgb
+
+from ...util.constants import C_ImageArraySubhandler, C_ImageFormats
 
 
-class ImageArray:
-    """An immutable container for the image's multi-channel information. Access image elements similar to a numpy array.
+class ImageArraySubhandler:
+    """An immutable accessor image's multichannel information. Access image elements similar to a numpy array."""
 
-    """
-
-    def __init__(self, handler, image_array: np.ndarray):
+    def __init__(self, handler):
         self._handler = handler
-        self.__array = image_array
 
-    def __getitem__(self, key)->np.ndarray:
-        return self.__array[key]
+    def __getitem__(self, key) -> np.ndarray:
+        return self._handler._array[key].copy()
 
     def __setitem__(self, key, value):
-        raise C_ImageArray.IllegalElementAssignmentError
+        raise C_ImageArraySubhandler.IllegalElementAssignmentError
 
-    def shape(self) -> tuple[int, ...]:
+    @property
+    def shape(self) -> Optional[tuple[int, ...]]:
         """Returns the shape of the image"""
-        return self.__array.shape
+        return self._handler._array.shape
+
+    def copy(self)->np.ndarray:
+        """Returns a copy of the image array"""
+        return self._handler._array.copy()
+
+    def get_hsv(self) -> np.ndarray:
+        if self._handler.schema != C_ImageFormats.HSV:
+            raise C_ImageArraySubhandler.InvalidSchemaHsv(self._handler.schema)
+        else:
+            return rgb2hsv(self._handler._array)
 
     def show(self, ax: plt.Axes = None, figsize: Tuple[int, int] = None, title: str = None) -> (plt.Figure, plt.Axes):
         """Display the image array with matplotlib.
@@ -43,10 +53,29 @@ class ImageArray:
             fig = ax.figure
 
         # Plot array
-        ax.imshow(self.__array)
+        ax.imshow(self._handler.array[:])
 
         # Adjust ax settings
         if title is not None: ax.set_title(title)
         ax.grid(False)
 
         return fig, ax
+
+    def show_overlay(self, object_label: Optional[int] = None, ax: plt.Axes = None,
+                     figsize: Tuple[int, int] = None)->(plt.Figure, plt.Axes):
+        if ax is None:
+            fig, ax = plt.subplots(figsize=figsize)
+        else:
+            fig = ax.get_figure()
+
+        ax.grid(False)
+
+        map_copy = self._handler.obj_map[:]
+        if object_label is not None:
+            map_copy[map_copy==object_label]=0
+
+        ax.imshow(label2rgb(label=map_copy, image=self._handler.array[:]))
+
+        return fig, ax
+
+

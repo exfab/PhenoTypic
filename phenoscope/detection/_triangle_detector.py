@@ -6,5 +6,5 @@ from .. import Image
 
 class TriangleDetector(ThresholdDetector):
     def _operate(self, image: Image) -> Image:
-        image.object_mask = image.enhanced_matrix >= threshold_triangle(image.enhanced_matrix)
+        image.obj_mask = image.det_matrix[:] >= threshold_triangle(image.det_matrix[:])
         return image

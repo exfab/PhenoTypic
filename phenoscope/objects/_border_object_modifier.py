@@ -5,7 +5,10 @@ from phenoscope import Image
 from phenoscope.interface import MapModifier
 
 
-class BorderObjectModifier(MapModifier):
+class BorderObjectRemover(MapModifier):
+    """Removes objects at the border of the image within a certain distance.
+
+    """
     def __init__(self, border_size: Optional[Union[int, float]] = None):
         self.__edge_size = border_size
 
@@ -19,7 +22,7 @@ class BorderObjectModifier(MapModifier):
         else:
             raise TypeError('Invalid edge size. Should be int, float, or None to use default edge size.')
 
-        obj_map = np.copy(image.object_map)
+        obj_map = image.obj_map[:]
         edges = [obj_map[:edge_size - 1, :].ravel(),
                  obj_map[-edge_size:, :].ravel(),
                  obj_map[:, :edge_size - 1].ravel(),
@@ -29,5 +32,5 @@ class BorderObjectModifier(MapModifier):
         for label in edge_labels:
             obj_map[obj_map == label] = 0
 
-        image.object_map = obj_map
+        image.obj_map = obj_map
         return image

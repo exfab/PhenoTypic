@@ -1,6 +1,6 @@
 import numpy as np
 from ._image_operation import ImageOperation
-from ..util.constants import INTERFACE_ERROR_MSG, ARRAY_CHANGE_ERROR_MSG
+from ..util.constants import INTERFACE_ERROR_MSG, ARRAY_CHANGE_ERROR_MSG, C_ImageOperation, C_ImageFormats
 from .. import Image
 
 
@@ -11,14 +11,19 @@ class ImagePreprocessor(ImageOperation):
     def preprocess(self, image: Image, inplace: bool = False) -> Image:
 
         # Make a copy for post checking
-        input_arr = image.matrix
+        imcopy = image.copy()
 
         if inplace:
             output = self._operate(image)
         else:
             output = self._operate(image.copy())
 
-        if not np.array_equal(input_arr, output.matrix): raise AttributeError(ARRAY_CHANGE_ERROR_MSG)
+        if image.schema not in C_ImageFormats.MATRIX_FORMATS:
+            if not np.array_equal(output.array[:], imcopy.array[:]):
+                raise C_ImageOperation.ComponentChangeError(component='array', operation = self.__class__.__name__)
+
+        if not np.array_equal(output.matrix[:], imcopy.matrix[:]):
+            raise C_ImageOperation.ComponentChangeError(component='matrix', operation = self.__class__.__name__)
 
         return output
 

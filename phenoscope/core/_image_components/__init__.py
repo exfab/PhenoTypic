@@ -1,9 +1,9 @@
-from ._image_array import ImageArray
-from ._image_matrix import ImageMatrix
-from ._image_det_matrix import ImageDetectionMatrix
-from ._object_map import ObjectMap
-from ._object_mask import ObjectMask
+from ._image_array import ImageArraySubhandler
+from ._image_matrix import ImageMatrixSubhandler
+from ._image_det_matrix import ImageDetectionMatrixSubhandler
+from ._object_map import ObjectMapSubhandler
+from ._object_mask import ObjectMaskSubhandler
 
-from ._image_objects import ImageObjects
+from ._image_objects import ImageObjectsSubhandler
 from ._measurement_container import MeasurementContainer
 from ._metadata_container import MetadataContainer

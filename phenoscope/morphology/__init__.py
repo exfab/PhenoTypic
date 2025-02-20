@@ -1,3 +1,3 @@
-from ._hole_fill_morpher import HoleFillMorpher
-from ._opening_morpher import OpeningMorpher
-from ._white_tophat_morpher import WhiteTophatMorpher
+from ._morphology_filler import MorphologyFiller
+from ._morphology_opener import MorphologyOpener
+from ._white_tophat_modifier import WhiteTophatModifier

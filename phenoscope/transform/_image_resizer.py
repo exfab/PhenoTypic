@@ -84,8 +84,8 @@ class ImageResizer(ImageTransformer):
             new_enhanced_array = self._create_padded_image(array=new_enhanced_array)
 
         # Resize mask array
-        if image.object_mask is not None:
-            new_mask = self._cv_resize(array=image.object_mask.astype(int))
+        if image.obj_mask is not None:
+            new_mask = self._cv_resize(array=image.obj_mask.astype(int))
             new_mask = new_mask != 0  # Ensure binary values in mask array
 
             if self.preserve_aspect_ratio and self.pad_mode is not None:
@@ -94,8 +94,8 @@ class ImageResizer(ImageTransformer):
             new_mask = None
 
         # Resize map array
-        if image.object_map is not None:
-            new_map = self._cv_resize(array=image.object_map)
+        if image.obj_map is not None:
+            new_map = self._cv_resize(array=image.obj_map)
 
             if self.preserve_aspect_ratio and self.pad_mode is not None:
                 new_map = self._create_padded_image(array=new_map)
@@ -113,8 +113,8 @@ class ImageResizer(ImageTransformer):
 
         image.matrix = new_array
         image.enhanced_matrix = new_enhanced_array
-        image.object_mask = new_mask
-        image.object_map = new_map
+        image.obj_mask = new_mask
+        image.obj_map = new_map
         return image
 
     def _skimage_resize(self, array: np.ndarray, ) -> np.ndarray:

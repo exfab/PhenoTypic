@@ -3,7 +3,7 @@ import pandas as pd
 
 from typing import Dict, Union, List, Optional
 
-from ...util.constants import C_MetadataContainer
+from ...util.constants import C_Metadata
 class MetadataContainer:
     SCALAR_TYPES = [int, float, str, bool, np.integer, np.floating, np.bool_, np.complexfloating]
     def __init__(self, handler):
@@ -15,10 +15,10 @@ class MetadataContainer:
 
     def __setitem__(self, key, value):
         if type(key) != str:
-            raise C_MetadataContainer.MetadataKeyTypeError(f'{type(key)}')
+            raise C_Metadata.MetadataKeyTypeError(f'{type(key)}')
 
         if " " in key:
-            raise C_MetadataContainer.MetadataKeySpacesError()
+            raise C_Metadata.MetadataKeySpacesError()
 
         if type(value) not in self.SCALAR_TYPES:
             raise TypeError(f"Value {value} of type {type(value)} not supported for metadata scalar values")

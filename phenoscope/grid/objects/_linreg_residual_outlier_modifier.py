@@ -4,6 +4,7 @@ from typing import Optional
 from phenoscope.grid import GriddedImage
 from phenoscope.grid.interface import GridMapModifier
 from phenoscope.grid.features import GridLinRegStatsExtractor
+from phenoscope.util.constants import C_Grid, C_GridLinRegStatsExtractor
 
 
 class LinRegResidualOutlierModifier(GridMapModifier):
@@ -25,10 +26,10 @@ class LinRegResidualOutlierModifier(GridMapModifier):
     def _operate(self, image: GriddedImage) -> GriddedImage:
         """
         Removes the objects with the above cutoff from the mean of error. The lower cutoff is kept because those objects are not likely noise.
-        :param image:
+        Args:
+            image: (GriddedImage) A phenoscope GriddedImage object.
         :return:
         """
-        # TODO: Finish Implementation
 
         # Generate cached version of grid_info
         linreg_stat_extractor = GridLinRegStatsExtractor()
@@ -39,22 +40,21 @@ class LinRegResidualOutlierModifier(GridMapModifier):
 
         # Row-wise residual outlier discovery
         if self.axis is None or self.axis == 0:
-
             # Calculate the coefficient of variance (std/mean)
             #   Collect the standard deviation
-            row_variance = grid_info.groupby(image.grid_extractor.LABEL_GRID_ROW_NUM)[linreg_stat_extractor.LABEL_RESIDUAL_ERR].std()
+            row_variance = grid_info.groupby(C_Grid.GRID_ROW_NUM)[C_GridLinRegStatsExtractor.RESIDUAL_ERR].std()
 
             #   Divide standard deviation by mean
             row_variance = row_variance \
-                           / grid_info.groupby(image.grid_extractor.LABEL_GRID_ROW_NUM)[linreg_stat_extractor.LABEL_RESIDUAL_ERR].mean()
+                           / grid_info.groupby(C_Grid.GRID_ROW_NUM)[C_GridLinRegStatsExtractor.RESIDUAL_ERR].mean()
 
             over_limit_row_variance = row_variance.loc[row_variance > self.max_coeff_variance]
 
             # Collect outlier objects in the rows with a variance over the maximum
             for row_idx in over_limit_row_variance.index:
                 row_err = grid_info.loc[
-                    grid_info.loc[:, image.grid_extractor.LABEL_GRID_ROW_NUM] == row_idx,
-                    linreg_stat_extractor.LABEL_RESIDUAL_ERR
+                    grid_info.loc[:, C_Grid.GRID_ROW_NUM] == row_idx,
+                    C_GridLinRegStatsExtractor.RESIDUAL_ERR
                 ]
                 row_err_mean = row_err.mean()
                 row_stddev = row_err.std()
@@ -64,22 +64,20 @@ class LinRegResidualOutlierModifier(GridMapModifier):
 
         # Column-wise residual outlier discovery
         if self.axis is None or self.axis == 1:
-
             # Calculate the coefficient of variance (std/mean)
             #   Collect the standard deviation
-            col_variance = grid_info.groupby(image.grid_extractor.LABEL_GRID_COL_NUM)[linreg_stat_extractor.LABEL_RESIDUAL_ERR].std()
+            col_variance = grid_info.groupby(C_Grid.GRID_COL_NUM)[C_GridLinRegStatsExtractor.RESIDUAL_ERR].std()
 
             #   Divide standard deviation by mean
-            col_variance = col_variance \
-                           / grid_info.groupby(image.grid_extractor.LABEL_GRID_COL_NUM)[linreg_stat_extractor.LABEL_RESIDUAL_ERR].mean()
+            col_variance = col_variance / grid_info.groupby(C_Grid.GRID_COL_NUM)[C_GridLinRegStatsExtractor.RESIDUAL_ERR].mean()
 
             over_limit_col_variance = col_variance.loc[col_variance > self.max_coeff_variance]
 
             # Collect outlier objects in the columns with a variance over the maximum
             for col_idx in over_limit_col_variance.index:
                 col_err = grid_info.loc[
-                    grid_info.loc[:, image.grid_extractor.LABEL_GRID_COL_NUM] == col_idx,
-                    linreg_stat_extractor.LABEL_RESIDUAL_ERR
+                    grid_info.loc[:, C_Grid.GRID_COL_NUM] == col_idx,
+                    C_GridLinRegStatsExtractor.RESIDUAL_ERR
                 ]
                 col_err_mean = col_err.mean()
                 col_stddev = col_err.std()
@@ -88,8 +86,6 @@ class LinRegResidualOutlierModifier(GridMapModifier):
                 outlier_obj_ids += col_err.loc[col_err >= upper_col_cutoff].index.tolist()
 
         # Remove objects from obj map
-        obj_map = image.object_map
-        obj_map[np.isin(obj_map, outlier_obj_ids)] = 0
+        image.obj_map[np.isin(image.obj_map[:], outlier_obj_ids)] = 0
 
-        image.object_map = obj_map
         return image

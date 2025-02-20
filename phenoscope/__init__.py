@@ -9,7 +9,7 @@ from .core import Image, imread
 from . import (
     data,
     detection,
-    feature_extraction,
+    features,
     grid,
     interface,
     objects,

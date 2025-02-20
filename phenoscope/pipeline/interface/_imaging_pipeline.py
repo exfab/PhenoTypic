@@ -15,7 +15,6 @@ from ...interface._image_operation import ImageOperation
 
 from ...interface import ObjectDetector
 from ...interface import ImagePreprocessor
-from ...interface import MorphologyMorpher
 from ...interface import ImageTransformer
 from ...interface import MapModifier
 from ...interface import FeatureExtractor
@@ -41,8 +40,6 @@ class ImagingPipeline(ImageOperation):
         match operator:
             case ImagePreprocessor():
                 return operator.preprocess(input, inplace=inplace)
-            case MorphologyMorpher():
-                return operator.morph(input, inplace=inplace)
             case ObjectDetector():
                 return operator.detect(input, inplace=inplace)
             case ImageTransformer():

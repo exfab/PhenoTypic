@@ -1,2 +1,2 @@
 from .core import GriddedImage
-from . import features, transformation
+from . import features, transform

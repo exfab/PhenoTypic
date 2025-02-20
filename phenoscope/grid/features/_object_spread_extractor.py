@@ -1,5 +1,5 @@
-from phenoscope import Image
-from phenoscope.grid.interface import GridFeatureExtractor, GridExtractor
+from phenoscope.grid import GriddedImage
+from phenoscope.grid.interface import GridFeatureExtractor
 
 import pandas as pd
 import numpy as np
@@ -7,13 +7,12 @@ from scipy.spatial import distance_matrix
 
 
 class ObjectSpreadExtractor(GridFeatureExtractor):
-    def __init__(self, n_rows=8, n_cols=12, grid_extractor=None):
-        self.grid_extractor: GridExtractor = grid_extractor
-        self.grid_extractor.n_rows = n_rows
-        self.grid_extractor.n_cols = n_cols
+    """
+    This module measure's an objects spread from the grid section's center points
+    """
 
-    def _operate(self, image: Image) -> pd.DataFrame:
-        gs_table = self.grid_extractor.extract(image)
+    def _operate(self, image: GriddedImage) -> pd.DataFrame:
+        gs_table = image.grid.info()
         gs_counts = pd.DataFrame(gs_table.loc[:, 'grid_section_bin'].value_counts())
 
         obj_spread = []
