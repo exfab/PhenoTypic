@@ -2,7 +2,7 @@ import numpy as np
 
 from scipy.sparse import csc_matrix, coo_matrix
 import matplotlib.pyplot as plt
-from skimage.measure import regionprops_table
+from skimage.measure import regionprops_table, label
 
 from ...util.constants import C_ObjectMap
 
@@ -112,6 +112,11 @@ class ObjectMapSubhandler:
             self._handler._sparse_object_map = None
         else:
             self._handler._sparse_object_map = self._dense_to_sparse(self._handler.matrix.shape)
+
+    def relabel(self):
+        """Relables all the objects based on their connectivity"""
+        self._dense_to_sparse(label(self._handler.obj_mask[:]))
+
 
     @staticmethod
     def _dense_to_sparse(arg) -> csc_matrix:

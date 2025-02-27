@@ -11,17 +11,17 @@ class ImageObjectsSubhandler:
         self._handler = handler
 
     @property
-    def labels(self) -> np.ndarray:
+    def labels(self) -> list:
         """Returns the labels in the image.
 
         We considered using a simple numpy.unique() call on the object map, but wanted to guarantee that the labels will always be consistent
         with any skimage version outputs.
 
         """
-        return self._handler.obj_map._labels
+        return [x.label for x in self.props]
 
     @property
-    def regionprops(self):
+    def props(self):
         """Returns a skimage.regionprops object for the image. Useful for simple calculations"""
         return regionprops(label_image=self._handler.obj_map[:], intensity_image=self._handler.matrix[:], cache=False)
 
@@ -32,15 +32,20 @@ class ImageObjectsSubhandler:
     @property
     def num_objects(self) -> int:
         """Returns the number of objects in the map."""
-        return self._handler.obj_map._num_objects
+        return len(self.labels)
 
     def reset(self):
         self._handler.obj_map.reset()
 
-    def __getitem__(self, object_label: int):
-        """Returns a slice of the object image based on the object's label."""
-        if object_label not in self.labels: raise C_ImageObjects.InvalidObjectLabel(object_label)
-        return self._handler[self.regionprops[self.get_object_idx(object_label)].slice]
+    # def __getitem__(self, object_label: int):
+    #     """Returns a slice of the object image based on the object's label."""
+    #     if object_label not in self.labels: raise C_ImageObjects.InvalidObjectLabel(object_label)
+    #     return self._handler[self.props[self.get_object_idx(object_label)].slice]
+
+    def __getitem__(self, index: int):
+        """Returns a slice of the object image based on the object's index."""
+        return self._handler[self.props[index].slice]
+
 
     def at(self, idx):
         """Returns a crop of object from the image based on it's idx in a sorted list of labels
@@ -50,7 +55,8 @@ class ImageObjectsSubhandler:
         Returns:
             (Image) The cropped bounding box of an object as an Image
         """
-        return self._handler[self.regionprops[idx].slice]
+        return self._handler[self.props[idx].slice]
+
 
     def get_labels(self, label):
         """Returns a crop of an object from the image based on its label

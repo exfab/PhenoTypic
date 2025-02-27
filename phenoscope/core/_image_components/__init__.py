@@ -7,3 +7,5 @@ from ._object_mask import ObjectMaskSubhandler
 from ._image_objects import ImageObjectsSubhandler
 from ._measurement_container import MeasurementContainer
 from ._metadata_container import MetadataContainer
+
+from ._hsv_handler import HSVHandler

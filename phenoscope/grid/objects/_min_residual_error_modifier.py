@@ -3,6 +3,7 @@ import numpy as np
 from phenoscope.grid import GriddedImage
 from phenoscope.grid.interface import GridMapModifier
 from phenoscope.grid.features import GridLinRegStatsExtractor
+from phenoscope.util.constants import C_GridLinRegStatsExtractor
 
 
 class MinResidualErrorModifier(GridMapModifier):
@@ -22,7 +23,7 @@ class MinResidualErrorModifier(GridMapModifier):
         linreg_stat_extractor = GridLinRegStatsExtractor()
 
         # Get initial section obj count
-        section_obj_counts = image.grid.get_section_count(ascending=False)
+        section_obj_counts = image.grid.get_section_counts(ascending=False)
 
         n_iters = 0
         # Check that there exist sections with more than one object
@@ -40,7 +41,7 @@ class MinResidualErrorModifier(GridMapModifier):
             section_info = linreg_stat_extractor.extract(image)
 
             # Isolate the object id with the smallest residual error
-            min_err_obj_id = section_info.loc[:, linreg_stat_extractor.LABEL_RESIDUAL_ERR].idxmin()
+            min_err_obj_id = section_info.loc[:, C_GridLinRegStatsExtractor.RESIDUAL_ERR].idxmin()
 
             # Isolate which objects within the section should be dropped
             objects_to_drop = section_info.index.drop(min_err_obj_id).to_numpy()
@@ -51,7 +52,7 @@ class MinResidualErrorModifier(GridMapModifier):
             image.obj_map = obj_map
 
             # Reset section obj count and add counter
-            section_obj_counts = image.get_section_count(ascending=False)
+            section_obj_counts = image.grid.get_section_counts(ascending=False)
             n_iters += 1
 
         return image

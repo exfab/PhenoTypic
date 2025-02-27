@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from skimage.color import label2rgb
 
+from phenoscope import Image
 from phenoscope.util.constants import C_ObjectInfo, C_Grid
 
 
@@ -34,6 +35,21 @@ class GridSubhandler:
 
     def info(self):
         return self._handler._grid_setter.extract(self._handler)
+
+    @property
+    def _idx_ref_matrix(self):
+        """Returns a matrix of grid positions to help with indexing"""
+        return np.reshape(np.arange(self.nrows * self.ncols), newshape=(self.nrows, self.ncols))
+
+    def __getitem__(self, idx):
+        """Returns a crop of the grid section based on it's flattened index. Ordered left to right, top to bottom."""
+        row_edges, col_edges = self.get_row_edges(), self.get_col_edges()
+        row_pos, col_pos = np.where(self._idx_ref_matrix == idx)
+        min_cc = col_edges[col_pos]
+        max_cc = col_edges[col_pos + 1]
+        min_rr = row_edges[row_pos]
+        max_rr = row_edges[row_pos + 1]
+        return Image(self._handler[int(min_rr):int(max_rr), int(min_cc):int(max_cc)])
 
     def get_linreg_info(self, axis) -> Tuple[np.ndarray[float], np.ndarray[float]]:
         """
@@ -80,11 +96,11 @@ class GridSubhandler:
     def get_col_edges(self) -> np.ndarray:
         grid_info = self.info()
         left_edges = grid_info.loc[:, C_Grid.GRID_COL_INTERVAL].apply(
-            lambda x: x[0].to_numpy()
-        )
+            lambda x: x[0]
+        ).to_numpy()
         right_edges = grid_info.loc[:, C_Grid.GRID_COL_INTERVAL].apply(
-            lambda x: x[1].to_numpy()
-        )
+            lambda x: x[1]
+        ).to_numpy()
         edges = np.unique(np.concatenate([left_edges, right_edges]))
         return edges.astype(int)
 
@@ -134,11 +150,11 @@ class GridSubhandler:
         """Returns the row edges of the grid"""
         grid_info = self.info()
         left_edges = grid_info.loc[:, C_Grid.GRID_ROW_INTERVAL].apply(
-            lambda x: x[0].to_numpy()
-        )
+            lambda x: x[0]
+        ).to_numpy()
         right_edges = grid_info.loc[:, C_Grid.GRID_ROW_INTERVAL].apply(
-            lambda x: x[1].to_numpy()
-        )
+            lambda x: x[1]
+        ).to_numpy()
         edges = np.unique(np.concatenate([left_edges, right_edges]))
         return edges.astype(int)
 
@@ -198,7 +214,7 @@ class GridSubhandler:
 
         return section_map
 
-    def get_section_counts(self, ascending=False)->pd.DataFrame:
+    def get_section_counts(self, ascending=False) -> pd.DataFrame:
         """Returns a sorted dataframe with the number of objects within each section"""
         return self.info().loc[:, C_Grid.GRID_SECTION_NUM].value_counts().sort_values(ascending=ascending)
 

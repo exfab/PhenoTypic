@@ -5,7 +5,7 @@ import numpy as np
 import skimage as ski
 import matplotlib.pyplot as plt
 
-from skimage.color import rgb2gray, rgba2rgb
+from skimage.color import rgb2gray, rgba2rgb, rgb2hsv
 from skimage.transform import rotate as skimage_rotate
 from scipy.ndimage import rotate as scipy_rotate
 from copy import deepcopy
@@ -46,7 +46,7 @@ class ImageHandler:
 
     """
 
-    def __init__(self, input_image: Optional[Union[np.ndarray, Type[Image]]] = None, input_schema=None):
+    def __init__(self, input_image: Optional[Union[np.ndarray, Type[Image]]] = None, input_schema: str = None):
         # Initialize core backend variables
         self.__image_schema = None
 
@@ -63,7 +63,7 @@ class ImageHandler:
         # Protected Metadata can be edited, but not removed
         self._protected_metadata: Dict[
             str, Optional[Union[int, float, str, bool, np.integer, np.floating, np.bool_, np.complexfloating]]] = {
-            C_Metadata.LABELS.ImageName: None
+            C_Metadata.LABELS.IMAGE_NAME: None
         }
 
         # Public metadata can be edited or removed
@@ -77,11 +77,7 @@ class ImageHandler:
         self.__object_map_subhandler: ObjectMapSubhandler = ObjectMapSubhandler(self)
         self.__objects_subhandler: ImageObjectsSubhandler = ImageObjectsSubhandler(self)
 
-        # Set value if input was given
-        if type(input_image) == np.ndarray:
-            self.set_image(input_image=input_image, input_schema=input_schema)
-        elif type(input_image) == self.__class__:
-            self.set_image(input_image=input_image)
+        self.set_image(input_image=input_image, input_schema=input_schema)
 
     def __getitem__(self, slices) -> Type[Image]:
         """Returns a copy of the image at the slices specified
@@ -109,15 +105,18 @@ class ImageHandler:
                 and self._public_metadata == other._public_metadata
         ) else False
 
+    def __ne__(self, other):
+        return not self == other
+
     @property
     def name(self):
-        return self._protected_metadata[C_Metadata.LABELS.NAME]
+        return self._protected_metadata[C_Metadata.LABELS.IMAGE_NAME]
 
     @name.setter
     def name(self, value):
         if type(value) != str:
             raise ValueError('Image name must be a string')
-        self._protected_metadata[C_Metadata.LABELS.NAME] = value
+        self._protected_metadata[C_Metadata.LABELS.IMAGE_NAME] = value
 
     @property
     def shape(self):
@@ -282,7 +281,7 @@ class ImageHandler:
         # Create a new instance of ImageHandler
         return self.__class__(self)
 
-    def imread(self, filepath):
+    def imread(self, filepath) -> Type[Image]:
         """Imports an image from a filepath and initilizes class components. The image name is automatically set to the file stem.
 
 
@@ -298,11 +297,13 @@ class ImageHandler:
                 input_image=ski.io.imread(filepath), input_schema=C_ImageFormats.RGB
             )
             self.name = filepath.stem
+            return self
         elif filepath.suffix in ['.tif', '.tiff']:
             self.set_image(
                 input_image=ski.io.imread(filepath), input_schema=C_ImageFormats.GRAYSCALE
             )
             self.name = filepath.stem
+            return self
         else:
             raise C_ImageHandler.UnsupportedFileType(filepath.suffix)
 
@@ -317,7 +318,8 @@ class ImageHandler:
         """
         if type(input_image) == np.ndarray:
             self._set_from_array(input_image, input_schema)
-        elif type(input_image) == self.__class__:
+        elif type(input_image) == self.__class__ or isinstance(input_image, self.__class__) or issubclass(type(input_image), self.__class__
+                                                                                                          ):
             self._set_from_class_instance(input_image)
         elif input_image is None:
             self.__image_schema = None
@@ -330,10 +332,10 @@ class ImageHandler:
         self.__image_schema = class_instance.schema
 
         if class_instance.schema not in C_ImageFormats.MATRIX_FORMATS:
-            self._set_from_array(class_instance.array[:], class_instance.schema)
+            self._set_from_array(class_instance.array[:].copy(), class_instance.schema)
         else:
-            self._set_from_array(class_instance.matrix[:], class_instance.schema)
-        self._det_matrix = class_instance._det_matrix
+            self._set_from_array(class_instance.matrix[:].copy(), class_instance.schema)
+        self._det_matrix = class_instance._det_matrix.copy()
         self._sparse_object_map = class_instance._sparse_object_map.copy()
         self._protected_metadata = deepcopy(class_instance._protected_metadata)
         self._public_metadata = deepcopy(class_instance._public_metadata)
@@ -512,15 +514,34 @@ class ImageHandler:
         # If the array has more than 3 dimensions, we don't have a standard interpretation.
         raise ValueError("Unknown format (unsupported number of dimensions)")
 
-    def show_overlay(self, object_label=None,
-                     ax: plt.Axes = None,
-                     figsize: Tuple[int, int] = (9, 10)
+    def show(self,
+             ax: plt.Axes = None,
+             figsize: Tuple[int, int] = (9, 10)
+             ) -> (plt.Figure, plt.Axes):
+        """Returns a matplotlib figure showing the input image"""
+        if self.schema not in C_ImageFormats.MATRIX_FORMATS:
+            return self.array.show(ax=ax, figsize=figsize)
+        else:
+            return self.matrix.show(ax=ax, figsize=figsize)
+
+    def show_overlay(self, object_label: Optional[int] = None, ax: plt.Axes = None,
+                     figsize: Tuple[int, int] = (10, 5),
+                     annotate: bool = False,
+                     annotation_size: int = 12,
+                     annotation_color: str = 'white',
+                     annotation_facecolor: str = 'red',
                      ) -> (plt.Figure, plt.Axes):
         """Returns a matplotlib figure showing the overlay of the object map on the input image"""
         if self.schema not in C_ImageFormats.MATRIX_FORMATS:
-            return self.array.show_overlay(object_label=object_label, ax=ax, figsize=figsize)
+            return self.array.show_overlay(object_label=object_label, ax=ax, figsize=figsize,
+                                           annotate=annotate, annotation_size=annotation_size,
+                                           annotation_color=annotation_color, annotation_facecolor=annotation_facecolor
+                                           )
         else:
-            return self.matrix.show_overlay(object_label=object_label, ax=ax, figsize=figsize)
+            return self.matrix.show_overlay(object_label=object_label, ax=ax, figsize=figsize,
+                                            annotate=annotate, annotation_size=annotation_size,
+                                            annotation_color=annotation_color, annotation_facecolor=annotation_facecolor
+                                            )
 
     def rotate(self, angle_of_rotation: int, mode: str = 'edge', **kwargs) -> None:
         """Rotate's the image and all it's components"""
@@ -531,4 +552,10 @@ class ImageHandler:
         self._det_matrix = skimage_rotate(image=self._det_matrix, angle=angle_of_rotation, mode=mode, clip=True, **kwargs)
 
         # Rotate the object map while preserving the details and using nearest-neighbor interpolation
-        self.obj_map[:] = scipy_rotate(input=self.obj_map, angle=angle_of_rotation, mode='constant', cval=0, order=0, reshape=False)
+        self.obj_map[:] = scipy_rotate(input=self.obj_map[:], angle=angle_of_rotation, mode='constant', cval=0, order=0, reshape=False)
+
+    def reset(self) -> Type[Image]:
+        """Resets the image detection matrix and object map"""
+        self.det_matrix.reset()
+        self.obj_map.reset()
+        return self

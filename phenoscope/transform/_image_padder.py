@@ -20,15 +20,15 @@ class ImagePadder(ImageTransformer):
         self.__kwargs = kwargs
 
     def _operate(self, image: Image) -> Image:
-        if image.schema not in C_ImageFormats.MATRIX_FORMATS:
-            image.set_image(np.pad(array=image.array[:],
+        if image.schema in C_ImageFormats.MATRIX_FORMATS:
+            image.set_image(np.pad(array=image.matrix[:],
                                    pad_width=((self.__pad_size, self.__pad_size), (self.__pad_size, self.__pad_size)),
                                    mode=self.__mode, **self.__kwargs
                                    ), input_schema=image.schema
                             )
         else:
             image.set_image(np.pad(
-                array=image.matrix[:],
+                array=image.array[:],
                 pad_width=((self.__pad_size, self.__pad_size), (self.__pad_size, self.__pad_size), (0, 0)),
                 mode=self.__mode, **self.__kwargs
             ), input_schema=image.schema

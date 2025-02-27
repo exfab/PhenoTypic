@@ -14,14 +14,16 @@ from phenoscope.grid.grid_setter import OptimalCenterGridSetter
 from phenoscope.features import BoundaryExtractor
 from phenoscope.grid.interface import GridSetter
 from phenoscope.grid.core._grid_handler import GridSubhandler
-from phenoscope.util.constants import C_ImageHandler, C_ObjectInfo
+from phenoscope.util.constants import C_ImageHandler, C_ObjectInfo, C_ImageFormats
 
 GT = TypeVar('GT', bound='GriddedImage')
 
 
 class GriddedImage(Image):
-    def __init__(self, image: Optional[Union[np.ndarray, Image]] = None, grid_setter: Optional[GridSetter] = None, nrows=8, ncols=12):
-        super().__init__(image)
+    def __init__(self, input_image: Optional[Union[np.ndarray, Type[Image]]] = None, input_schema: str = None,
+                 grid_setter: Optional[GridSetter] = None,
+                 nrows: int = 8, ncols: int = 12):
+        super().__init__(input_image=input_image, input_schema=input_schema)
 
         if grid_setter is None:
             grid_setter = OptimalCenterGridSetter(nrows=nrows, ncols=ncols)
@@ -37,13 +39,34 @@ class GriddedImage(Image):
     def grid(self, grid):
         raise C_ImageHandler.IllegalAssignmentError('grid')
 
+    def __getitem__(self, slices) -> Image:
+        """Returns a copy of the image at the slices specified
+
+        Returns:
+            Image: A copy of the image at the slices indicated
+        """
+        if self.schema not in C_ImageFormats.MATRIX_FORMATS:
+            subimage = Image(input_image=self.array[slices], input_schema=self.schema)
+        else:
+            subimage = Image(input_image=self.matrix[slices], input_schema=self.schema)
+
+        subimage.det_matrix[:] = self.det_matrix[slices]
+        subimage.obj_map[:] = self.obj_map[slices]
+        return subimage
+
     def show_overlay(self, object_label=None,
                      show_gridlines: bool = True,
                      show_linreg: bool = False,
                      ax: plt.Axes = None,
-                     figsize: Tuple[int, int] = (9, 10)
+                     figsize: Tuple[int, int] = (9, 10),
+                     annotate: bool = False,
+                     annotation_size: int = 12,
+                     annotation_color: str = 'white',
+                     annotation_facecolor: str = 'red',
                      ) -> (plt.Figure, plt.Axes):
-        fig, ax = super().show_overlay(object_label=object_label, ax=ax, figsize=figsize)
+        fig, ax = super().show_overlay(object_label=object_label, ax=ax, figsize=figsize,
+                                       annotate=annotate,annotation_size=annotation_size,
+                                       annotation_color=annotation_color, annotation_facecolor=annotation_facecolor)
 
         if show_gridlines:
             col_edges = self.grid.get_col_edges()

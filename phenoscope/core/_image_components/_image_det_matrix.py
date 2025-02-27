@@ -4,6 +4,7 @@ import numpy as np
 
 import matplotlib.pyplot as plt
 from skimage.color import label2rgb
+from skimage.exposure import histogram
 
 from ...util.constants import C_ImageDetectionMatrixSubhandler
 
@@ -42,6 +43,23 @@ class ImageDetectionMatrixSubhandler:
     def reset(self):
         """Resets the image detection matrix to the original matrix representation."""
         self._handler._det_matrix = self._handler.matrix[:].copy()
+
+    def histogram(self, figsize: Tuple[int, int] = (10, 5)):
+        """Returns a histogram of the image matrix. Useful for troubleshooting detection results.
+        Args:
+            figsize:
+
+        Returns:
+
+        """
+        fig, axes = plt.subplots(nrows=2, ncols=2, figsize=figsize)
+        axes[0].imshow(self._handler.det_matrix[:])
+        axes[0].set_title(self._handler.name)
+
+        hist_one, histc_one = histogram(self._handler.det_matrix[:])
+        axes[1].plot(hist_one, histc_one, lw=2)
+        axes[1].set_title('Grayscale Histogram (Detection Matrix)')
+        return fig, axes
 
     def show(self, ax: plt.Axes = None, figsize: str = None, cmap: str = 'gray', title: str = None) -> (plt.Figure, plt.Axes):
         """Display the image detection matrix with matplotlib.

@@ -23,7 +23,7 @@ class ObjectMaskSubhandler:
 
     def __getitem__(self, key):
         """Returns a copy of the binary object mask in array form"""
-        return self._handler.obj_map[key] > 0
+        return (self._handler.obj_map[key] > 0).astype(np.bool_)
 
     def __setitem__(self, key, value: np.ndarray):
         """Sets values of the object mask to value and resets the labeling in the map"""
@@ -54,7 +54,7 @@ class ObjectMaskSubhandler:
     def shape(self):
         return self._handler.obj_map.shape
 
-    def copy(self)->np.ndarray:
+    def copy(self) -> np.ndarray:
         """Returns a copy of the binary object mask"""
         return self._handler.obj_mask[:].copy()
 
@@ -90,3 +90,14 @@ class ObjectMaskSubhandler:
         ax.grid(False)
 
         return fig, ax
+
+    def _extract_objects(self, array: np.ndarray, bg_color: int = 0):
+        """Returns the array with every non-object pixel set to 0. Equivalent to np.ma.array.filled(bg_color)"""
+        if array.ndim == 3:
+            mask = np.dstack(
+                [(self._handler.obj_map[:] > 0) for _ in range(array.shape[-1])]
+            )
+        else: mask = self._handler.obj_map[:] > 0
+        new_arr = array.copy()
+        new_arr[~mask] = bg_color
+        return new_arr

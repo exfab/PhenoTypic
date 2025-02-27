@@ -16,7 +16,7 @@ class GridLinRegStatsExtractor(GridFeatureExtractor):
         if self.section_num is None:
             section_info = image.grid.info().reset_index(drop=False)
         else:
-            grid_info = image.grid.info.reset_index(drop=False)
+            grid_info = image.grid.info().reset_index(drop=False)
             section_info = grid_info.loc[grid_info.loc[:, C_Grid.GRID_SECTION_NUM] == self.section_num, :]
 
         # Get the current row-wise linreg info

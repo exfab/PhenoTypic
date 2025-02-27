@@ -143,15 +143,12 @@ class C_ObjectMap(C_MutableImageComponent):
 class C_Metadata(C_PhenoScopeModule):
     LABELS = SimpleNamespace(
         UUID='UUID',
-        ImageName='ImageName',
-        ParentImageName='ParentImageName',
-        ParentUUID='ParentUUID',
-        Format='Format',
+        IMAGE_NAME='ImageName',
+        PARENT_IMAGE_NAME='ParentImageName',
+        PARENT_UUID='ParentUUID',
+        SCHEMA='Schema',
     )
 
-    PRIVATE_KEYS = [LABELS.UUID]
-
-    PROTECTED_KEYS = [LABELS.ParentUUID, LABELS.ParentImageName, LABELS.Format]
 
     class UUIDReassignmentError(ValueError):
         def __init__(self):
@@ -169,6 +166,8 @@ class C_Metadata(C_PhenoScopeModule):
         def __init__(self, type_value):
             super().__init__(f'The metadata values should be scalar values. Got type {type_value}.')
 
+
+class C_HSVHandler(C_ImageArraySubhandler): pass
 
 """
 Image Formats

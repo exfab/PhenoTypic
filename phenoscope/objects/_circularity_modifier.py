@@ -15,12 +15,12 @@ class CircularityRemovalModifier(MapModifier):
 
     def _operate(self, image: Image) -> Image:
         # Create intial measurement table
-        table = (pd.DataFrame(regionprops_table(label_image=image.obj_map, intensity_image=image.matrix,
+        table = (pd.DataFrame(regionprops_table(label_image=image.obj_map[:], intensity_image=image.matrix[:],
                                                 properties=['label', 'area', 'perimeter']
                                                 )
                               )
                  .rename(columns={'label': C_ObjectInfo.OBJECT_LABELS})
-                 .set_index('label'))
+                 .set_index(C_ObjectInfo.OBJECT_LABELS))
 
         # Calculate circularity based on Polsby-Popper Score
         table['circularity'] = (4 * math.pi * table['area']) / (table['perimeter'] ** 2)

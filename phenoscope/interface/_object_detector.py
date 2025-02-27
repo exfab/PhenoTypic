@@ -10,8 +10,7 @@ class ObjectDetector(ImageOperation):
         pass
 
     def detect(self, image: Image, inplace: bool = False) -> Image:
-        input_arr = image.matrix
-        input_enhanced_arr = image.enhanced_matrix
+        imcopy = image.copy()
 
         if inplace:
             output = self._operate(image)
@@ -19,8 +18,8 @@ class ObjectDetector(ImageOperation):
             output = self._operate(image.copy())
 
         # Post Operation Checks
-        if not np.array_equal(input_arr, output.matrix): raise AttributeError(ARRAY_CHANGE_ERROR_MSG)
-        if not np.array_equal(input_enhanced_arr, output.enhanced_matrix): raise AttributeError(ENHANCED_ARRAY_CHANGE_ERROR_MSG)
+        if not np.array_equal(imcopy.matrix[:], output.matrix[:]): raise AttributeError(ARRAY_CHANGE_ERROR_MSG)
+        if not np.array_equal(imcopy.det_matrix[:], output.det_matrix[:]): raise AttributeError(ENHANCED_ARRAY_CHANGE_ERROR_MSG)
 
         return output
 
