@@ -8,7 +8,7 @@ from ._optimal_center_grid_setter import OptimalCenterGridSetter
 from ._grid_aligner import GridAligner
 
 __all__ = [
-    "interface",
+    "abstract",
     "GridApply",
     "GridLinRegStatsExtractor",
     "MinResidualErrorRemover",

@@ -1,2 +1,0 @@
-class ValueWarning(Warning):
-    pass

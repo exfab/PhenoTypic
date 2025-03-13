@@ -38,7 +38,9 @@ class GridImage(Image):
                  nrows: int = 8, ncols: int = 12):
         super().__init__(input_image=input_image, input_schema=input_schema)
 
-        if grid_setter is None:
+        if hasattr(input_image, '_grid_setter'):
+            grid_setter = input_image._grid_setter
+        elif grid_setter is None:
             grid_setter = OptimalCenterGridSetter(nrows=nrows, ncols=ncols)
 
         self._grid_setter: Optional[GridSetter] = grid_setter

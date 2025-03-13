@@ -1,6 +1,6 @@
 from phenoscope import Image
 from phenoscope.grid.interface import GridSetter
-from phenoscope.features import BoundaryExtractor
+from features import BoundaryExtractor
 
 import pandas as pd
 import numpy as np

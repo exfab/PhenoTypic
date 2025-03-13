@@ -1,1 +1,0 @@
-from ._gridded_image import GriddedImage

@@ -1,10 +1,9 @@
-from typing import Optional
 import pandas as pd
 import numpy as np
 
 from phenoscope import Image
 from phenoscope.grid.interface import GridSetter
-from phenoscope.features import BoundaryExtractor
+from features import BoundaryExtractor
 from phenoscope.objects import BorderObjectRemover
 
 
