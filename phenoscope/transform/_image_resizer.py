@@ -3,7 +3,7 @@ import skimage as ski
 import cv2
 
 from phenoscope import Image
-from phenoscope.interface import ImageTransformer
+from phenoscope.abstract import ImageTransformer
 import numpy as np
 
 SUPPORTED_PAD_MODE_LIST = [None, 'constant', 'edge', 'linear_ramp', 'maximum', 'mean', 'median', 'minimum', 'reflect',
@@ -84,8 +84,8 @@ class ImageResizer(ImageTransformer):
             new_enhanced_array = self._create_padded_image(array=new_enhanced_array)
 
         # Resize mask array
-        if image.obj_mask is not None:
-            new_mask = self._cv_resize(array=image.obj_mask.astype(int))
+        if image.omask is not None:
+            new_mask = self._cv_resize(array=image.omask.astype(int))
             new_mask = new_mask != 0  # Ensure binary values in mask array
 
             if self.preserve_aspect_ratio and self.pad_mode is not None:
@@ -94,8 +94,8 @@ class ImageResizer(ImageTransformer):
             new_mask = None
 
         # Resize map array
-        if image.obj_map is not None:
-            new_map = self._cv_resize(array=image.obj_map)
+        if image.omap is not None:
+            new_map = self._cv_resize(array=image.omap)
 
             if self.preserve_aspect_ratio and self.pad_mode is not None:
                 new_map = self._create_padded_image(array=new_map)
@@ -113,8 +113,8 @@ class ImageResizer(ImageTransformer):
 
         image.matrix = new_array
         image.enhanced_matrix = new_enhanced_array
-        image.obj_mask = new_mask
-        image.obj_map = new_map
+        image.omask = new_mask
+        image.omap = new_map
         return image
 
     def _skimage_resize(self, array: np.ndarray, ) -> np.ndarray:

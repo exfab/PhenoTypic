@@ -1,0 +1,10 @@
+phenoscope.grid.core package
+============================
+
+Module contents
+---------------
+
+.. automodule:: phenoscope.grid.core
+   :members:
+   :undoc-members:
+   :show-inheritance:

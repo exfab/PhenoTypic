@@ -4,7 +4,7 @@ from skimage.morphology import disk, square, cube, ball
 from skimage.util import img_as_ubyte
 
 from .. import Image
-from ..interface import ImagePreprocessor
+from ..abstract import ImagePreprocessor
 
 
 class RankMedianPreprocessor(ImagePreprocessor):
@@ -18,9 +18,9 @@ class RankMedianPreprocessor(ImagePreprocessor):
         self._shift_y = shift_y
 
     def _operate(self, image: Image) -> Image:
-        image.det_matrix[:] = median(
-                image=img_as_ubyte(image.det_matrix[:]),
-                footprint=self._get_footprint(self._get_footprint_radius(image.det_matrix[:]))
+        image.enh_matrix[:] = median(
+                image=img_as_ubyte(image.enh_matrix[:]),
+                footprint=self._get_footprint(self._get_footprint_radius(image.enh_matrix[:]))
         )
         return image
 

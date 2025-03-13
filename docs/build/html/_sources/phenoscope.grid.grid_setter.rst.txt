@@ -1,0 +1,10 @@
+phenoscope.grid.grid\_setter package
+====================================
+
+Module contents
+---------------
+
+.. automodule:: phenoscope.grid.grid_setter
+   :members:
+   :undoc-members:
+   :show-inheritance:

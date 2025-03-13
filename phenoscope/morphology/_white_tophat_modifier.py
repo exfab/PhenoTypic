@@ -1,7 +1,7 @@
 import numpy as np
 from skimage.morphology import disk, square, white_tophat
 
-from ..interface import MapModifier
+from ..abstract import MapModifier
 from .. import Image
 
 
@@ -12,12 +12,12 @@ class WhiteTophatModifier(MapModifier):
 
     def _operate(self, image: Image) -> Image:
         white_tophat_results = white_tophat(
-            image.obj_mask[:],
+            image.omask[:],
             footprint=self._get_footprint(
-                self._get_footprint_radius(array=image.obj_mask[:])
+                self._get_footprint_radius(array=image.omask[:])
             )
         )
-        image.obj_mask[:] = image.obj_mask[:] & ~white_tophat_results
+        image.omask[:] = image.omask[:] & ~white_tophat_results
         return image
 
     def _get_footprint_radius(self, array: np.ndarray) -> int:

@@ -1,0 +1,10 @@
+phenoscope.pipeline.preprocessing package
+=========================================
+
+Module contents
+---------------
+
+.. automodule:: phenoscope.pipeline.preprocessing
+   :members:
+   :undoc-members:
+   :show-inheritance:

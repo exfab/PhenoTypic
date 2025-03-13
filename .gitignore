@@ -1,11 +1,15 @@
 ./**.ipynb_checkpoints
 **.ipynb_checkpoints
-**/__pycache__/**
+**/__pycache__/**git
 *.idea
 **.pyc
 **./phenoscope.egg-info/**
 **./phenoscope.egg-info**
-./phenoscope.egg-info/
+phenoscope.egg-info/
 *.DS_Store
 .vscode
 conda-recipe
+.DS_Store
+deprecated/*
+.git.backup/*
+.git.backup

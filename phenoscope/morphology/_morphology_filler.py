@@ -3,8 +3,8 @@ from scipy.ndimage import binary_fill_holes
 from typing import Optional
 
 from .. import Image
-from ..interface import MapModifier
-from ..util.type_checks import is_binary_mask
+from ..abstract import MapModifier
+from ..util.funcs import is_binary_mask
 
 
 class MorphologyFiller(MapModifier):
@@ -15,8 +15,8 @@ class MorphologyFiller(MapModifier):
         self._origin = origin
 
     def _operate(self, image: Image) -> Image:
-        image.obj_mask[:] = binary_fill_holes(
-            input=image.obj_mask[:],
+        image.omask[:] = binary_fill_holes(
+            input=image.omask[:],
             structure=self._structure,
             origin=self._origin
         )

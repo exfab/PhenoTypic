@@ -1,7 +1,7 @@
 import numpy as np
 
 from .. import Image
-from ..interface import ImageTransformer
+from ..abstract import ImageTransformer
 from ..util.constants import C_ImageFormats
 
 

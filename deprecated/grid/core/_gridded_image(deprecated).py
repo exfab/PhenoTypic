@@ -1,7 +1,7 @@
 from __future__ import annotations
 from typing import Union, Tuple, TYPE_CHECKING
 
-if TYPE_CHECKING: from phenoscope.grid.interface import GridSetter
+if TYPE_CHECKING: from src.grid.interface import GridSetter
 
 import pandas as pd
 import numpy as np
@@ -12,9 +12,9 @@ from matplotlib.patches import Rectangle
 from itertools import cycle
 from skimage.color import label2rgb
 
-from phenoscope import Image
-from phenoscope.grid.grid_setter import OptimalCenterGridSetter
-from phenoscope.features import BoundaryExtractor
+from src import Image
+from src.grid.grid_setter import OptimalCenterGridSetter
+from src.measure import BoundaryExtractor
 
 
 class GriddedImage(Image):
@@ -49,11 +49,11 @@ class GriddedImage(Image):
             new_img = Image(self.matrix[index])
             new_img.enhanced_matrix = self.enhanced_matrix[index]
 
-        if self.obj_mask is not None:
-            new_img.obj_mask = self.obj_mask[index]
+        if self.omask is not None:
+            new_img.omask = self.omask[index]
 
-        if self.obj_map is not None:
-            new_img.obj_map = self.obj_map[index]
+        if self.omap is not None:
+            new_img.omap = self.omap[index]
 
         return new_img
 
@@ -90,8 +90,8 @@ class GriddedImage(Image):
 
     @property
     def grid_info(self) -> pd.DataFrame:
-        if self.obj_map is None: raise ValueError('Image object map is empty. Apply a detector first.')
-        return self._grid_extractor.extract(self)
+        if self.omap is None: raise ValueError('Image object map is empty. Apply a detector first.')
+        return self._grid_extractor.measure(self)
 
     def get_linreg_info(self, axis) -> Tuple[np.ndarray[float], np.ndarray[float]]:
         """
@@ -148,10 +148,10 @@ class GriddedImage(Image):
     @property
     def grid_col_map(self) -> np.ndarray:
         _tmp_table: pd.DataFrame = self.grid_info
-        _new_map: np.ndarray = self.obj_map
+        _new_map: np.ndarray = self.omap
         for n, col_bindex in enumerate(np.sort(_tmp_table.loc[:, self._grid_extractor.LABEL_GRID_COL_NUM].unique())):
             subtable = _tmp_table.loc[_tmp_table.loc[:, self._grid_extractor.LABEL_GRID_COL_NUM] == col_bindex, :]
-            _new_map[np.isin(element=self.obj_map, test_elements=subtable.index.to_numpy())] = n + 1
+            _new_map[np.isin(element=self.omap, test_elements=subtable.index.to_numpy())] = n + 1
         return _new_map
 
     def get_col_info(self, idx):
@@ -200,10 +200,10 @@ class GriddedImage(Image):
     @property
     def grid_row_map(self) -> np.ndarray:
         _tmp_table: pd.DataFrame = self.grid_info
-        _new_map: np.ndarray = self.obj_map
+        _new_map: np.ndarray = self.omap
         for n, row_bindex in enumerate(np.sort(_tmp_table.loc[:, self._grid_extractor.LABEL_GRID_ROW_NUM].unique())):
             subtable = _tmp_table.loc[_tmp_table.loc[:, self._grid_extractor.LABEL_GRID_ROW_NUM] == row_bindex, :]
-            _new_map[np.isin(element=self.obj_map, test_elements=subtable.index.to_numpy())] = n + 1
+            _new_map[np.isin(element=self.omap, test_elements=subtable.index.to_numpy())] = n + 1
         return _new_map
 
     def get_row_info(self, idx: int):
@@ -242,14 +242,14 @@ class GriddedImage(Image):
     @property
     def grid_section_map(self) -> np.ndarray:
         _tmp_table: pd.DataFrame = self.grid_info
-        _new_map: np.ndarray = self.obj_map
+        _new_map: np.ndarray = self.omap
 
         # Get a map with each object label being changed to its bin representation
         for n, section_bindex in enumerate(
                 np.sort(_tmp_table.loc[:, self._grid_extractor.LABEL_GRID_SECTION_IDX].unique())):
             subtable = _tmp_table.loc[_tmp_table.loc[:, self._grid_extractor.LABEL_GRID_SECTION_IDX] == section_bindex,
                        :]
-            _new_map[np.isin(element=self.obj_map, test_elements=subtable.index.to_numpy())] = n + 1
+            _new_map[np.isin(element=self.omap, test_elements=subtable.index.to_numpy())] = n + 1
         return _new_map
 
     def get_section_info(self, row_idx, col_idx):
@@ -280,7 +280,7 @@ class GriddedImage(Image):
 
         func_ax.grid(False)
 
-        obj_map = self.obj_map
+        obj_map = self.omap
         if object_label is not None:
             obj_map[obj_map != object_label] = 0
 
@@ -298,8 +298,8 @@ class GriddedImage(Image):
             cmap = plt.get_cmap('tab20')
             cmap_cycle = cycle(cmap(i) for i in range(cmap.N))
             img = self.copy()
-            img.obj_map = self.grid_section_map
-            gs_table = self._bound_extractor.extract(img)
+            img.omap = self.grid_section_map
+            gs_table = self._bound_extractor.measure(img)
             for obj_label in gs_table.index.unique():
                 subtable = gs_table.loc[obj_label, :]
                 min_rr = subtable.loc[self._bound_extractor.LABEL_MIN_RR]

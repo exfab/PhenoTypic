@@ -4,7 +4,7 @@ from skimage.measure import regionprops_table
 import math
 
 from .. import Image
-from ..interface import MapModifier
+from ..abstract import MapModifier
 from ..util.constants import C_ObjectInfo
 
 
@@ -15,7 +15,7 @@ class CircularityRemovalModifier(MapModifier):
 
     def _operate(self, image: Image) -> Image:
         # Create intial measurement table
-        table = (pd.DataFrame(regionprops_table(label_image=image.obj_map[:], intensity_image=image.matrix[:],
+        table = (pd.DataFrame(regionprops_table(label_image=image.omap[:], intensity_image=image.matrix[:],
                                                 properties=['label', 'area', 'perimeter']
                                                 )
                               )
@@ -26,6 +26,6 @@ class CircularityRemovalModifier(MapModifier):
         table['circularity'] = (4 * math.pi * table['area']) / (table['perimeter'] ** 2)
 
         passing_objects = table[table['circularity'] > self.__cutoff]
-        failed_object_boolean_indices = ~(np.isin(element=image.obj_map[:], test_elements=passing_objects.index.to_numpy()))
-        image.obj_map[failed_object_boolean_indices] = 0
+        failed_object_boolean_indices = ~(np.isin(element=image.omap[:], test_elements=passing_objects.index.to_numpy()))
+        image.omap[failed_object_boolean_indices] = 0
         return image

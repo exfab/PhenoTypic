@@ -1,0 +1,1373 @@
+<!DOCTYPE html>
+
+<html :class="{'dark': darkMode === 'dark' || (darkMode === 'system' &amp;&amp; window.matchMedia('(prefers-color-scheme: dark)').matches)}" class="scroll-smooth" data-content_root="./" lang="en" x-data="{ darkMode: localStorage.getItem('darkMode') || localStorage.setItem('darkMode', 'system'), activeSection: '' }" x-init="$watch('darkMode', val =&gt; localStorage.setItem('darkMode', val))">
+<head>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<meta charset="utf-8"/>
+<meta content="white" media="(prefers-color-scheme: light)" name="theme-color"/>
+<meta content="black" media="(prefers-color-scheme: dark)" name="theme-color"/>
+<meta content="width=device-width, initial-scale=1" name="viewport"/>
+<title>phenoscope | PhenoScope 0.5.0a1 documentation</title>
+<meta content="phenoscope | PhenoScope 0.5.0a1 documentation" property="og:title"/>
+<meta content="phenoscope | PhenoScope 0.5.0a1 documentation" name="twitter:title"/>
+<link href="_static/pygments.css?v=e72c8e07" rel="stylesheet" type="text/css"/>
+<link href="_static/theme.css?v=42baaae4" rel="stylesheet" type="text/css"/>
+<link href="search.html" rel="search" title="Search"/>
+<link href="genindex.html" rel="index" title="Index"/>
+<link href="phenoscope.html" rel="next" title="phenoscope"/>
+<link href="index.html" rel="prev" title="PhenoScope Documentation"/>
+<script>
+    <!-- Prevent Flash of wrong theme -->
+      const userPreference = localStorage.getItem('darkMode');
+      let mode;
+      if (userPreference === 'dark' || window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        mode = 'dark';
+        document.documentElement.classList.add('dark');
+      } else {
+        mode = 'light';
+      }
+      if (!userPreference) {localStorage.setItem('darkMode', mode)}
+    </script>
+</head>
+<body :class="{ 'overflow-hidden': showSidebar }" class="min-h-screen font-sans antialiased bg-background text-foreground" x-data="{ showSidebar: false, showScrollTop: false }">
+<div @click.self="showSidebar = false" class="fixed inset-0 z-50 overflow-hidden bg-background/80 backdrop-blur-sm md:hidden" x-cloak="" x-show="showSidebar"></div><div class="relative flex flex-col min-h-screen" id="page"><a class="absolute top-0 left-0 z-[100] block bg-background p-4 text-xl transition -translate-x-full opacity-0 focus:translate-x-0 focus:opacity-100" href="#content">
+      Skip to content
+    </a><header class="sticky top-0 z-40 w-full border-b shadow-sm border-border supports-backdrop-blur:bg-background/60 bg-background/95 backdrop-blur"><div class="container flex items-center h-14">
+<div class="hidden mr-4 md:flex">
+<a class="flex items-center mr-6" href="index.html">
+<img alt="Logo" class="mr-2 hidden dark:block" height="24" src="_static/PhenoScopeLogo-DarkMode.png" width="24"/>
+<img alt="Logo" class="mr-2 dark:hidden" height="24" src="_static/PhenoScopeLogo.png" width="24"/><span class="hidden font-bold sm:inline-block text-clip whitespace-nowrap">PhenoScope 0.5.0a1 documentation</span>
+</a></div><button @click="showSidebar = true" class="inline-flex items-center justify-center h-10 px-0 py-2 mr-2 text-base font-medium transition-colors rounded-md hover:text-accent-foreground hover:bg-transparent md:hidden" type="button">
+<svg aria-hidden="true" fill="currentColor" height="24" viewbox="0 96 960 960" width="24" xmlns="http://www.w3.org/2000/svg">
+<path d="M152.587 825.087q-19.152 0-32.326-13.174t-13.174-32.326q0-19.152 13.174-32.326t32.326-13.174h440q19.152 0 32.326 13.174t13.174 32.326q0 19.152-13.174 32.326t-32.326 13.174h-440Zm0-203.587q-19.152 0-32.326-13.174T107.087 576q0-19.152 13.174-32.326t32.326-13.174h320q19.152 0 32.326 13.174T518.087 576q0 19.152-13.174 32.326T472.587 621.5h-320Zm0-203.587q-19.152 0-32.326-13.174t-13.174-32.326q0-19.152 13.174-32.326t32.326-13.174h440q19.152 0 32.326 13.174t13.174 32.326q0 19.152-13.174 32.326t-32.326 13.174h-440ZM708.913 576l112.174 112.174q12.674 12.674 12.674 31.826t-12.674 31.826Q808.413 764.5 789.261 764.5t-31.826-12.674l-144-144Q600 594.391 600 576t13.435-31.826l144-144q12.674-12.674 31.826-12.674t31.826 12.674q12.674 12.674 12.674 31.826t-12.674 31.826L708.913 576Z"></path>
+</svg>
+<span class="sr-only">Toggle navigation menu</span>
+</button>
+<div class="flex items-center justify-between flex-1 space-x-2 sm:space-x-4 md:justify-end">
+<div class="flex-1 w-full md:w-auto md:flex-none"><form @keydown.k.window.meta="$refs.search.focus()" action="search.html" class="relative flex items-center group" id="searchbox" method="get">
+<input aria-label="Search the docs" class="inline-flex items-center font-medium transition-colors bg-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background border border-input hover:bg-accent focus:bg-accent hover:text-accent-foreground focus:text-accent-foreground hover:placeholder-accent-foreground py-2 px-4 relative h-9 w-full justify-start rounded-[0.5rem] text-sm text-muted-foreground sm:pr-12 md:w-40 lg:w-64" id="search-input" name="q" placeholder="Search ..." type="search" x-ref="search"/>
+<kbd class="pointer-events-none absolute right-1.5 top-2 hidden h-5 select-none text-muted-foreground items-center gap-1 rounded border border-border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex group-hover:bg-accent group-hover:text-accent-foreground">
+<span class="text-xs">⌘</span>
+    K
+  </kbd>
+</form>
+</div>
+<nav class="flex items-center space-x-1">
+<button @click="darkMode = darkMode === 'light' ? 'dark' : 'light'" aria-label="Color theme switcher" class="relative inline-flex items-center justify-center px-0 text-sm font-medium transition-colors rounded-md hover:bg-accent hover:text-accent-foreground h-9 w-9" type="button">
+<svg class="absolute transition-all scale-100 rotate-0 dark:-rotate-90 dark:scale-0" fill="currentColor" height="24" viewbox="0 96 960 960" width="24" xmlns="http://www.w3.org/2000/svg">
+<path d="M480 685q45.456 0 77.228-31.772Q589 621.456 589 576q0-45.456-31.772-77.228Q525.456 467 480 467q-45.456 0-77.228 31.772Q371 530.544 371 576q0 45.456 31.772 77.228Q434.544 685 480 685Zm0 91q-83 0-141.5-58.5T280 576q0-83 58.5-141.5T480 376q83 0 141.5 58.5T680 576q0 83-58.5 141.5T480 776ZM80 621.5q-19.152 0-32.326-13.174T34.5 576q0-19.152 13.174-32.326T80 530.5h80q19.152 0 32.326 13.174T205.5 576q0 19.152-13.174 32.326T160 621.5H80Zm720 0q-19.152 0-32.326-13.174T754.5 576q0-19.152 13.174-32.326T800 530.5h80q19.152 0 32.326 13.174T925.5 576q0 19.152-13.174 32.326T880 621.5h-80Zm-320-320q-19.152 0-32.326-13.174T434.5 256v-80q0-19.152 13.174-32.326T480 130.5q19.152 0 32.326 13.174T525.5 176v80q0 19.152-13.174 32.326T480 301.5Zm0 720q-19.152 0-32.326-13.17Q434.5 995.152 434.5 976v-80q0-19.152 13.174-32.326T480 850.5q19.152 0 32.326 13.174T525.5 896v80q0 19.152-13.174 32.33-13.174 13.17-32.326 13.17ZM222.174 382.065l-43-42Q165.5 327.391 166 308.239t13.174-33.065q13.435-13.674 32.587-13.674t32.065 13.674l42.239 43q12.674 13.435 12.555 31.706-.12 18.272-12.555 31.946-12.674 13.674-31.445 13.413-18.772-.261-32.446-13.174Zm494 494.761-42.239-43q-12.674-13.435-12.674-32.087t12.674-31.565Q686.609 756.5 705.38 757q18.772.5 32.446 13.174l43 41.761Q794.5 824.609 794 843.761t-13.174 33.065Q767.391 890.5 748.239 890.5t-32.065-13.674Zm-42-494.761Q660.5 369.391 661 350.62q.5-18.772 13.174-32.446l41.761-43Q728.609 261.5 747.761 262t33.065 13.174q13.674 13.435 13.674 32.587t-13.674 32.065l-43 42.239q-13.435 12.674-31.706 12.555-18.272-.12-31.946-12.555Zm-495 494.761Q165.5 863.391 165.5 844.239t13.674-32.065l43-42.239q13.435-12.674 32.087-12.674t31.565 12.674Q299.5 782.609 299 801.38q-.5 18.772-13.174 32.446l-41.761 43Q231.391 890.5 212.239 890t-33.065-13.174ZM480 576Z"></path>
+</svg>
+<svg class="absolute transition-all scale-0 rotate-90 dark:rotate-0 dark:scale-100" fill="currentColor" height="24" viewbox="0 96 960 960" width="24" xmlns="http://www.w3.org/2000/svg">
+<path d="M480 936q-151 0-255.5-104.5T120 576q0-138 90-239.5T440 218q25-3 39 18t-1 44q-17 26-25.5 55t-8.5 61q0 90 63 153t153 63q31 0 61.5-9t54.5-25q21-14 43-1.5t19 39.5q-14 138-117.5 229T480 936Zm0-80q88 0 158-48.5T740 681q-20 5-40 8t-40 3q-123 0-209.5-86.5T364 396q0-20 3-40t8-40q-78 32-126.5 102T200 576q0 116 82 198t198 82Zm-10-270Z"></path>
+</svg>
+</button>
+</nav>
+</div>
+</div>
+</header>
+<div class="flex-1"><div class="container flex-1 items-start md:grid md:grid-cols-[220px_minmax(0,1fr)] md:gap-6 lg:grid-cols-[240px_minmax(0,1fr)] lg:gap-10"><aside :aria-hidden="!showSidebar" :class="{ 'translate-x-0': showSidebar }" class="fixed inset-y-0 left-0 md:top-14 z-50 md:z-30 bg-background md:bg-transparent transition-all duration-100 -translate-x-full md:translate-x-0 ml-0 p-6 md:p-0 md:-ml-2 md:h-[calc(100vh-3.5rem)] w-5/6 md:w-full shrink-0 overflow-y-auto border-r border-border md:sticky" id="left-sidebar">
+<a class="!justify-start text-sm md:!hidden bg-background" href="index.html">
+<img alt="Logo" class="mr-2 hidden dark:block" height="16" src="_static/PhenoScopeLogo-DarkMode.png" width="16"/>
+<img alt="Logo" class="mr-2 dark:hidden" height="16" src="_static/PhenoScopeLogo.png" width="16"/><span class="font-bold text-clip whitespace-nowrap">PhenoScope 0.5.0a1 documentation</span>
+</a>
+<div class="relative overflow-hidden md:overflow-auto my-4 md:my-0 h-[calc(100vh-8rem)] md:h-auto">
+<div class="overflow-y-auto h-full w-full relative pr-6"><nav class="table w-full min-w-full my-6 lg:my-8">
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">phenoscope</a></li>
+<li class="toctree-l1"><a class="reference internal" href="phenoscope.core.html">phenoscope.core package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="phenoscope.core.accessors.html">phenoscope.core.accessors package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="phenoscope.data.html">phenoscope.data package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="phenoscope.detection.html">phenoscope.detection package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="phenoscope.grid.html">phenoscope.grid package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="phenoscope.measure.html">phenoscope.measure package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="phenoscope.morphology.html">phenoscope.morphology package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="phenoscope.objects.html">phenoscope.objects package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="phenoscope.pipeline.html">phenoscope.pipeline package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="phenoscope.preprocessing.html">phenoscope.preprocessing package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="phenoscope.transform.html">phenoscope.transform package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="phenoscope.abstract.html">phenoscope.abstract package</a></li>
+</ul>
+</nav>
+</div>
+</div>
+<button @click="showSidebar = false" class="absolute md:hidden right-4 top-4 rounded-sm opacity-70 transition-opacity hover:opacity-100" type="button">
+<svg class="h-4 w-4" fill="currentColor" height="24" stroke="none" viewbox="0 96 960 960" width="24" xmlns="http://www.w3.org/2000/svg">
+<path d="M480 632 284 828q-11 11-28 11t-28-11q-11-11-11-28t11-28l196-196-196-196q-11-11-11-28t11-28q11-11 28-11t28 11l196 196 196-196q11-11 28-11t28 11q11 11 11 28t-11 28L536 576l196 196q11 11 11 28t-11 28q-11 11-28 11t-28-11L480 632Z"></path>
+</svg>
+</button>
+</aside>
+<main class="relative py-6 lg:gap-10 lg:py-8 xl:grid xl:grid-cols-[1fr_300px]">
+<div class="w-full min-w-0 mx-auto">
+<nav aria-label="breadcrumbs" class="flex items-center mb-4 space-x-1 text-sm text-muted-foreground">
+<a class="overflow-hidden text-ellipsis whitespace-nowrap hover:text-foreground" href="index.html">
+<span class="hidden md:inline">PhenoScope 0.5.0a1 documentation</span>
+<svg aria-label="Home" class="md:hidden" fill="currentColor" height="18" stroke="none" viewbox="0 96 960 960" width="18" xmlns="http://www.w3.org/2000/svg">
+<path d="M240 856h120V616h240v240h120V496L480 316 240 496v360Zm-80 80V456l320-240 320 240v480H520V696h-80v240H160Zm320-350Z"></path>
+</svg>
+</a>
+<div class="mr-1">/</div><span aria-current="page" class="font-medium text-foreground overflow-hidden text-ellipsis whitespace-nowrap">phenoscope</span>
+</nav>
+<div id="content" role="main">
+<section id="phenoscope">
+<h1>phenoscope<a class="headerlink" href="#phenoscope" title="Link to this heading">¶</a></h1>
+<section id="classes">
+<h2>Classes<a class="headerlink" href="#classes" title="Link to this heading" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#classes'">¶</a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="phenoscope.Image">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenoscope.</span></span><span class="sig-name descname"><span class="pre">Image</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">input_image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Type</span><span class="p"><span class="pre">[</span></span><span class="pre">Image</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">input_schema</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/phenoscope/core/_image.html#Image"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenoscope.Image" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#phenoscope.Image'">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">ImageHsv</span></code></p>
+<p>A comprehensive class for handling image processing, including manipulation, information sync, metadata management, and format conversion.</p>
+<p>The <cite>ImageHandler</cite> class is designed to load, process, and manage image data using different
+representation formats (e.g., arrays and matrices). This class allows for metadata editing,
+schema definition, and subcomponent handling to streamline image processing tasks.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<ul class="simple">
+<li><p>If the input_image is 2-D, the ImageHandler leave the array form as None</p></li>
+<li><p>If the input_image is 3-D, the ImageHandler will automatically set the matrix component to the grayscale representation.</p></li>
+<li><p>Added in v0.5.0, HSV handling support</p></li>
+</ul>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>input_image</strong> (<em>ndarray</em><em> | </em><em>Type</em><em>[</em><em>Image</em><em>] </em><em>| </em><em>None</em>)</p>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="phenoscope.Image.__getitem__">
+<span class="sig-name descname"><span class="pre">__getitem__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">→</span> <span class="sig-return-typehint"><span class="pre">Type</span><span class="p"><span class="pre">[</span></span><span class="pre">Image</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#phenoscope.Image.__getitem__" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#phenoscope.Image.__getitem__'">¶</a></dt>
+<dd><p>Returns a subimage from the current object based on the provided key. The subimage is initialized
+as a new instance of the same class, maintaining the schema and format consistency as the original
+image object. This method supports 2-dimensional slicing and indexing.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>key</strong> – A slicing key or index used to extract a subset or part of the image object.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>An instance of the current class representing the subimage corresponding to the provided key.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>KeyError</strong> – If the provided key does not match the expected slicing format or dimensions.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><em>Type</em>[<em>Image</em>]</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="phenoscope.Image.__setitem__">
+<span class="sig-name descname"><span class="pre">__setitem__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">value</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenoscope.Image.__setitem__" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#phenoscope.Image.__setitem__'">¶</a></dt>
+<dd><p>Sets an item in the object with a given key and Image object. Ensures that the Image being set matches the expected shape and type, and updates internal properties accordingly.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>key</strong> (<em>Any</em>) – The array slices for accesssing the elements of the image.</p></li>
+<li><p><strong>value</strong> (<em>ImageHandler</em>) – The value to be set, which must match the shape of the
+existing elements and conform to the expected schema.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>ValueError</strong> – If the shape of the <cite>value</cite> does not match the shape of the existing
+    elements being accessed.</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="phenoscope.Image.copy">
+<span class="sig-name descname"><span class="pre">copy</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenoscope.Image.copy" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#phenoscope.Image.copy'">¶</a></dt>
+<dd><p>Creates a copy of the current Image instance, excluding the UUID.
+.. note:: - The new instance is only informationally a copy. The UUID of the new instance is different.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>A copy of the current Image instance.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="#phenoscope.Image" title="phenoscope.Image">Image</a></p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="phenoscope.Image.imread">
+<span class="sig-name descname"><span class="pre">imread</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filepath</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">PathLike</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">→</span> <span class="sig-return-typehint"><span class="pre">Type</span><span class="p"><span class="pre">[</span></span><span class="pre">Image</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#phenoscope.Image.imread" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#phenoscope.Image.imread'">¶</a></dt>
+<dd><p>Reads an image file from a given file path, processes it as per its format, and sets the image
+along with its schema in the current instance. Supports RGB formats (png, jpg, jpeg) and
+grayscale formats (tif, tiff). The name of the image processing instance is updated to match
+the file name without the extension. If the file format is unsupported, an exception is raised.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>filepath</strong> (<em>PathLike</em>) – Path to the image file to be read.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The current instance with the newly loaded image and schema.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Type[<a class="reference internal" href="#phenoscope.Image" title="phenoscope.Image">Image</a>]</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>C_ImageHandler.UnsupportedFileType</strong> – If the file format is not supported.</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="phenoscope.Image.isempty">
+<span class="sig-name descname"><span class="pre">isempty</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">→</span> <span class="sig-return-typehint"><span class="pre">bool</span></span></span><a class="headerlink" href="#phenoscope.Image.isempty" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#phenoscope.Image.isempty'">¶</a></dt>
+<dd><p>Returns True if there is no image data</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>bool</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="phenoscope.Image.reset">
+<span class="sig-name descname"><span class="pre">reset</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">→</span> <span class="sig-return-typehint"><span class="pre">Type</span><span class="p"><span class="pre">[</span></span><span class="pre">Image</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#phenoscope.Image.reset" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#phenoscope.Image.reset'">¶</a></dt>
+<dd><p>Resets the internal state of the object and returns an updated instance.</p>
+<p>This method resets the state of DetectionMatrix and ObjectMap components maintained
+by the object. It ensures that the object is reset to its original state
+while maintaining its type integrity. Upon execution, the instance of the
+calling object itself is returned.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The instance of the object after resetting its internal
+state.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>Type[<a class="reference internal" href="#phenoscope.Image" title="phenoscope.Image">Image</a>]</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="phenoscope.Image.rotate">
+<span class="sig-name descname"><span class="pre">rotate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">angle_of_rotation</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mode</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'edge'</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">→</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#phenoscope.Image.rotate" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#phenoscope.Image.rotate'">¶</a></dt>
+<dd><p>Rotate’s the image and all its components</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>angle_of_rotation</strong> (<em>int</em>)</p></li>
+<li><p><strong>mode</strong> (<em>str</em>)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="phenoscope.Image.set_image">
+<span class="sig-name descname"><span class="pre">set_image</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">input_image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">input_schema</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">→</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#phenoscope.Image.set_image" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#phenoscope.Image.set_image'">¶</a></dt>
+<dd><p>Sets the image to the inputted array or Image</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>input_image</strong> – (np.ndarray, phenoscope.Image, optional) The image data to be set</p></li>
+<li><p><strong>input_schema</strong> (<em>str</em><em> | </em><em>None</em>) – (str, optional) If input image is a np.ndarray and format is None, the image format will be guessed.
+If the image format is ambiguous between RGB/BGR it will assume RGB unless otherwise specified.
+Accepted formats are [‘RGB’, ‘RGBA’,’Grayscale’,’BGR’,’BGRA’,’HSV’]</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="phenoscope.Image.show">
+<span class="sig-name descname"><span class="pre">show</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ax:</span> <span class="pre">~matplotlib.axes._axes.Axes</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">figsize:</span> <span class="pre">~typing.Tuple[int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">int]</span> <span class="pre">=</span> <span class="pre">(9</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">10))</span> <span class="pre">-&gt;</span> <span class="pre">(&lt;class</span> <span class="pre">'matplotlib.figure.Figure'&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">&lt;class</span> <span class="pre">'matplotlib.axes._axes.Axes'&gt;</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenoscope.Image.show" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#phenoscope.Image.show'">¶</a></dt>
+<dd><p>Returns a matplotlib figure showing the input image</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>ax</strong> (<em>Axes</em><em> | </em><em>None</em>)</p></li>
+<li><p><strong>figsize</strong> (<em>Tuple</em><em>[</em><em>int</em><em>, </em><em>int</em><em>]</em>)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>(&lt;class ‘matplotlib.figure.Figure’&gt;, &lt;class ‘matplotlib.axes._axes.Axes’&gt;)</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="phenoscope.Image.show_overlay">
+<span class="sig-name descname"><span class="pre">show_overlay</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">object_label:</span> <span class="pre">int</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ax:</span> <span class="pre">~matplotlib.axes._axes.Axes</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">figsize:</span> <span class="pre">~typing.Tuple[int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">int]</span> <span class="pre">=</span> <span class="pre">(10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">5)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">annotate:</span> <span class="pre">bool</span> <span class="pre">=</span> <span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">annotation_size:</span> <span class="pre">int</span> <span class="pre">=</span> <span class="pre">12</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">annotation_color:</span> <span class="pre">str</span> <span class="pre">=</span> <span class="pre">'white'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">annotation_facecolor:</span> <span class="pre">str</span> <span class="pre">=</span> <span class="pre">'red')</span> <span class="pre">-&gt;</span> <span class="pre">(&lt;class</span> <span class="pre">'matplotlib.figure.Figure'&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">&lt;class</span> <span class="pre">'matplotlib.axes._axes.Axes'&gt;</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenoscope.Image.show_overlay" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#phenoscope.Image.show_overlay'">¶</a></dt>
+<dd><p>Returns a matplotlib figure showing the overlay of the object map on the input image</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>object_label</strong> (<em>int</em><em> | </em><em>None</em>)</p></li>
+<li><p><strong>ax</strong> (<em>Axes</em><em> | </em><em>None</em>)</p></li>
+<li><p><strong>figsize</strong> (<em>Tuple</em><em>[</em><em>int</em><em>, </em><em>int</em><em>]</em>)</p></li>
+<li><p><strong>annotate</strong> (<em>bool</em>)</p></li>
+<li><p><strong>annotation_size</strong> (<em>int</em>)</p></li>
+<li><p><strong>annotation_color</strong> (<em>str</em>)</p></li>
+<li><p><strong>annotation_facecolor</strong> (<em>str</em>)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>(&lt;class ‘matplotlib.figure.Figure’&gt;, &lt;class ‘matplotlib.axes._axes.Axes’&gt;)</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py property">
+<dt class="sig sig-object py" id="phenoscope.Image.array">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">array</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="phenoscope.core.accessors.html#phenoscope.core.accessors.ImageArray" title="phenoscope.core.accessors._image_array.ImageArray"><span class="pre">ImageArray</span></a></em><a class="headerlink" href="#phenoscope.Image.array" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#phenoscope.Image.array'">¶</a></dt>
+<dd><p>The image’s array representation. An image array can represent multi-channels, thus the array can be 3-D or 4-D</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<ul class="simple">
+<li><p>array elements are not directly mutable in order to preserve image information integrity</p></li>
+<li><p>change array elements by changing the image being represented with Image.set_image()</p></li>
+<li><p>Raises an error if input image has no array form</p></li>
+</ul>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>A class that can be accessed like a numpy array, but has extra methods to streamline development, or None if not set</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>Optional[<a class="reference internal" href="phenoscope.core.accessors.html#phenoscope.core.accessors.ImageArray" title="phenoscope.core.accessors.ImageArray">ImageArray</a>]</p>
+</dd>
+</dl>
+<p>See Also: <code class="xref py py-class docutils literal notranslate"><span class="pre">ImageArray</span></code></p>
+</dd></dl>
+<dl class="py property">
+<dt class="sig sig-object py" id="phenoscope.Image.enh_matrix">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">enh_matrix</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="phenoscope.core.accessors.html#phenoscope.core.accessors.ImageEnhancedMatrix" title="phenoscope.core.accessors._image_enh_matrix.ImageEnhancedMatrix"><span class="pre">ImageEnhancedMatrix</span></a></em><a class="headerlink" href="#phenoscope.Image.enh_matrix" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#phenoscope.Image.enh_matrix'">¶</a></dt>
+<dd><p><code class="xref py py-class docutils literal notranslate"><span class="pre">ImageEnhancedMatrix</span></code>. Preprocessing steps can be applied to this component to improve detection performance.</p>
+<p>The enhanceable matrix is a copy of the image’s matrix form that can be modified and used to improve detection performance.
+The original matrix data should be left intact in order to preserve image information integrity for measurements.’</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>A mutable container that stores a copy of the image’s matrix form</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="phenoscope.core.accessors.html#phenoscope.core.accessors.ImageEnhancedMatrix" title="phenoscope.core.accessors.ImageEnhancedMatrix">ImageEnhancedMatrix</a></p>
+</dd>
+</dl>
+<p>See Also: <code class="xref py py-class docutils literal notranslate"><span class="pre">ImageEnhancedMatrix</span></code></p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Returns the image’s enhanced matrix accessor (See</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py property">
+<dt class="sig sig-object py" id="phenoscope.Image.hsv">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">hsv</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="phenoscope.core.accessors.html#phenoscope.core.accessors.HsvAccessor" title="phenoscope.core.accessors._hsv_interface.HsvAccessor"><span class="pre">HsvAccessor</span></a></em><a class="headerlink" href="#phenoscope.Image.hsv" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#phenoscope.Image.hsv'">¶</a></dt>
+<dd><p>Returns the HSV abstract object.</p>
+<p>This property returns an instance of the HsvAccessor associated with the
+current object, allowing access to HSV (hue, saturation, value) related
+functionalities controlled by this handler.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The instance of the HSV abstract handler.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="phenoscope.core.accessors.html#phenoscope.core.accessors.HsvAccessor" title="phenoscope.core.accessors.HsvAccessor">HsvAccessor</a></p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py property">
+<dt class="sig sig-object py" id="phenoscope.Image.matrix">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">matrix</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="phenoscope.core.accessors.html#phenoscope.core.accessors.ImageMatrix" title="phenoscope.core.accessors._image_matrix.ImageMatrix"><span class="pre">ImageMatrix</span></a></em><a class="headerlink" href="#phenoscope.Image.matrix" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#phenoscope.Image.matrix'">¶</a></dt>
+<dd><p>The image’s matrix representation. The array form is converted into a matrix form since some algorithm’s only handle 2-D</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<ul class="simple">
+<li><p>matrix elements are not directly mutable in order to preserve image information integrity</p></li>
+<li><p>Change matrix elements by changing the image being represented with Image.set_image()</p></li>
+</ul>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>An immutable container for the image matrix that can be accessed like a numpy array, but has extra methods to streamline development.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="phenoscope.core.accessors.html#phenoscope.core.accessors.ImageMatrix" title="phenoscope.core.accessors.ImageMatrix">ImageMatrix</a></p>
+</dd>
+</dl>
+<p>See Also: <code class="xref py py-class docutils literal notranslate"><span class="pre">ImageMatrix</span></code></p>
+</dd></dl>
+<dl class="py property">
+<dt class="sig sig-object py" id="phenoscope.Image.name">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">name</span></span><a class="headerlink" href="#phenoscope.Image.name" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#phenoscope.Image.name'">¶</a></dt>
+<dd><p>Returns the name of the image. If no name is set, the name will be the file stem of the image.</p>
+</dd></dl>
+<dl class="py property">
+<dt class="sig sig-object py" id="phenoscope.Image.num_objects">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">num_objects</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></em><a class="headerlink" href="#phenoscope.Image.num_objects" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#phenoscope.Image.num_objects'">¶</a></dt>
+<dd><p>Returns the number of objects in the image
+.. note:: If the number of objects is 0, the target for analysis is the entire image itself.</p>
+</dd></dl>
+<dl class="py property">
+<dt class="sig sig-object py" id="phenoscope.Image.objects">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">objects</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="phenoscope.core.accessors.html#phenoscope.core.accessors.ImageObjects" title="phenoscope.core.accessors._image_objects.ImageObjects"><span class="pre">ImageObjects</span></a></em><a class="headerlink" href="#phenoscope.Image.objects" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#phenoscope.Image.objects'">¶</a></dt>
+<dd><p>Returns an abstract to access the objects in an image and perform operations on them, such as measurement calculations .</p>
+<p>This method provides access to <cite>ImageObjects</cite>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The subhandler instance that manages image-related objects.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="phenoscope.core.accessors.html#phenoscope.core.accessors.ImageObjects" title="phenoscope.core.accessors.ImageObjects">ImageObjects</a></p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py property">
+<dt class="sig sig-object py" id="phenoscope.Image.omap">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">omap</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="phenoscope.core.accessors.html#phenoscope.core.accessors.ObjectMap" title="phenoscope.core.accessors._object_map.ObjectMap"><span class="pre">ObjectMap</span></a></em><a class="headerlink" href="#phenoscope.Image.omap" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#phenoscope.Image.omap'">¶</a></dt>
+<dd><p>The Object Map. A mutable integer matrix that identifies the different objects in an image to be analyzed. Changes to elements of the object_map sync to the object_mask.</p>
+<p>The object_map is stored as a compressed sparse column matrix in the backend. This is to save on memory consumption at the cost of adding
+increased computational overhead between converting between sparse and dense matrices.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<ul class="simple">
+<li><p>Has accessor methods to get sparse representations of the object map that can streamline measurement calculations.</p></li>
+</ul>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>A mutable integer matrix that identifies the different objects in an image to be analyzed.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="phenoscope.core.accessors.html#phenoscope.core.accessors.ObjectMap" title="phenoscope.core.accessors.ObjectMap">ObjectMap</a></p>
+</dd>
+</dl>
+<p>See Also: <code class="xref py py-class docutils literal notranslate"><span class="pre">ObjectMap</span></code></p>
+</dd></dl>
+<dl class="py property">
+<dt class="sig sig-object py" id="phenoscope.Image.omask">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">omask</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="phenoscope.core.accessors.html#phenoscope.core.accessors.ObjectMask" title="phenoscope.core.accessors._object_mask.ObjectMask"><span class="pre">ObjectMask</span></a></em><a class="headerlink" href="#phenoscope.Image.omask" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#phenoscope.Image.omask'">¶</a></dt>
+<dd><p>The Object Mask. A mutable binary representation of the objects in an image to be analyzed. Changing elements of the mask will reset object_map labeling.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<ul class="simple">
+<li><dl class="simple">
+<dt>If the image has not been processed by a detector, the target for analysis is the entire image itself. Accessing the object_mask in this case</dt><dd><p>will return a 2-D array entirely with value 1 that is the same shape as the matrix</p>
+</dd>
+</dl>
+</li>
+<li><p>Changing elements of the mask will relabel of objects in the object_map (A workaround to this issue may or may not come in future versions)</p></li>
+</ul>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>A mutable binary representation of the objects in an image to be analyzed.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>ObjectMaskErrors</p>
+</dd>
+</dl>
+<p>See Also: <code class="xref py py-class docutils literal notranslate"><span class="pre">ObjectMask</span></code></p>
+</dd></dl>
+<dl class="py property">
+<dt class="sig sig-object py" id="phenoscope.Image.props">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">props</span></span><a class="headerlink" href="#phenoscope.Image.props" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#phenoscope.Image.props'">¶</a></dt>
+<dd><p>Fetches the properties of labeled regions in an image.</p>
+<p>Calculates region properties for the entire image using the matrix representation.
+The labeled image is generated as a full array with values of 1, and the
+intensity image corresponds to the <cite>_matrix</cite> attribute of the object.
+Cache is disabled in this configuration.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>A list of properties for the entire provided image.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>list[skimage.measure._regionprops.RegionProperties]</p>
+</dd>
+</dl>
+<div class="admonition-notes admonition">
+<p class="admonition-title">Notes</p>
+<p>(Excerpt from skimage.measure.regionprops documentation on available properties. See more at <code class="xref py py-class docutils literal notranslate"><span class="pre">skimage.measure.regionprops</span></code>.):</p>
+<dl>
+<dt>area: float</dt><dd><p>Area of the region i.e. number of pixels of the region scaled by pixel-area.</p>
+</dd>
+<dt>area_bbox: float</dt><dd><p>Area of the bounding box i.e. number of pixels of bounding box scaled by pixel-area.</p>
+</dd>
+<dt>area_convex: float</dt><dd><p>Area of the convex hull image, which is the smallest convex polygon that encloses the region.</p>
+</dd>
+<dt>area_filled: float</dt><dd><p>Area of the region with all the holes filled in.</p>
+</dd>
+<dt>axis_major_length: float</dt><dd><p>The length of the major axis of the ellipse that has the same normalized second central moments as the region.</p>
+</dd>
+<dt>axis_minor_length: float</dt><dd><p>The length of the minor axis of the ellipse that has the same normalized second central moments as the region.</p>
+</dd>
+<dt>bbox: tuple</dt><dd><p>Bounding box (min_row, min_col, max_row, max_col). Pixels belonging to the bounding box are in the half-open interval [min_row; max_row) and [min_col; max_col).</p>
+</dd>
+<dt>centroid: array</dt><dd><p>Centroid coordinate tuple (row, col).</p>
+</dd>
+<dt>centroid_local: array</dt><dd><p>Centroid coordinate tuple (row, col), relative to region bounding box.</p>
+</dd>
+<dt>centroid_weighted: array</dt><dd><p>Centroid coordinate tuple (row, col) weighted with intensity image.</p>
+</dd>
+<dt>centroid_weighted_local: array</dt><dd><p>Centroid coordinate tuple (row, col), relative to region bounding box, weighted with intensity image.</p>
+</dd>
+<dt>coords_scaled(K, 2): ndarray</dt><dd><p>Coordinate list (row, col) of the region scaled by spacing.</p>
+</dd>
+<dt>coords(K, 2): ndarray</dt><dd><p>Coordinate list (row, col) of the region.</p>
+</dd>
+<dt>eccentricity: float</dt><dd><p>Eccentricity of the ellipse that has the same second-moments as the region. The eccentricity is the ratio of the focal distance (distance between focal points) over the major axis length. The value is in the interval [0, 1). When it is 0, the ellipse becomes a circle.</p>
+</dd>
+<dt>equivalent_diameter_area: float</dt><dd><p>The diameter of a circle with the same area as the region.</p>
+</dd>
+<dt>euler_number: int</dt><dd><p>Euler characteristic of the set of non-zero pixels. Computed as number of connected components subtracted by number of holes (input.ndim connectivity). In 3D, number of connected components plus number of holes subtracted by number of tunnels.</p>
+</dd>
+<dt>extent: float</dt><dd><p>Ratio of pixels in the region to pixels in the total bounding box. Computed as area / (rows * cols)</p>
+</dd>
+<dt>feret_diameter_max: float</dt><dd><p>Maximum Feret’s diameter computed as the longest distance between points around a region’s convex hull contour as determined by find_contours. [5]</p>
+</dd>
+<dt>image(H, J): ndarray</dt><dd><p>Sliced binary region image which has the same size as bounding box.</p>
+</dd>
+<dt>image_convex(H, J): ndarray</dt><dd><p>Binary convex hull image which has the same size as bounding box.</p>
+</dd>
+<dt>image_filled(H, J): ndarray</dt><dd><p>Binary region image with filled holes which has the same size as bounding box.</p>
+</dd>
+<dt>image_intensity: ndarray</dt><dd><p>Image inside region bounding box.</p>
+</dd>
+<dt>inertia_tensor: ndarray</dt><dd><p>Inertia tensor of the region for the rotation around its mass.</p>
+</dd>
+<dt>inertia_tensor_eigvals: tuple</dt><dd><p>The eigenvalues of the inertia tensor in decreasing order.</p>
+</dd>
+<dt>intensity_max: float</dt><dd><p>Value with the greatest intensity in the region.</p>
+</dd>
+<dt>intensity_mean: float</dt><dd><p>Value with the mean intensity in the region.</p>
+</dd>
+<dt>intensity_min: float</dt><dd><p>Value with the least intensity in the region.</p>
+</dd>
+<dt>intensity_std: float</dt><dd><p>Standard deviation of the intensity in the region.</p>
+</dd>
+<dt>label: int</dt><dd><p>The label in the labeled input image.</p>
+</dd>
+<dt>moments(3, 3): ndarray</dt><dd><p>Spatial moments up to 3rd order:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><code><span id="line-1"><span class="n">m_ij</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">{</span> <span class="n">array</span><span class="p">(</span><span class="n">row</span><span class="p">,</span> <span class="n">col</span><span class="p">)</span> <span class="o">*</span> <span class="n">row</span><span class="o">^</span><span class="n">i</span> <span class="o">*</span> <span class="n">col</span><span class="o">^</span><span class="n">j</span> <span class="p">}</span>
+</span></code></pre></div>
+</div>
+</dd>
+</dl>
+<p>where the sum is over the row, col coordinates of the region.</p>
+<dl>
+<dt>moments_central(3, 3): ndarray</dt><dd><p>Central moments (translation invariant) up to 3rd order:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><code><span id="line-1"><span class="n">mu_ij</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">{</span> <span class="n">array</span><span class="p">(</span><span class="n">row</span><span class="p">,</span> <span class="n">col</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">row</span> <span class="o">-</span> <span class="n">row_c</span><span class="p">)</span><span class="o">^</span><span class="n">i</span> <span class="o">*</span> <span class="p">(</span><span class="n">col</span> <span class="o">-</span> <span class="n">col_c</span><span class="p">)</span><span class="o">^</span><span class="n">j</span> <span class="p">}</span>
+</span></code></pre></div>
+</div>
+<p>where the sum is over the row, col coordinates of the region, and row_c and col_c are the coordinates of the region’s centroid.</p>
+</dd>
+<dt>moments_hu: tuple</dt><dd><p>Hu moments (translation, scale and rotation invariant).</p>
+</dd>
+<dt>moments_normalized(3, 3): ndarray</dt><dd><p>Normalized moments (translation and scale invariant) up to 3rd order:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><code><span id="line-1"><span class="n">nu_ij</span> <span class="o">=</span> <span class="n">mu_ij</span> <span class="o">/</span> <span class="n">m_00</span><span class="o">^</span><span class="p">[(</span><span class="n">i</span><span class="o">+</span><span class="n">j</span><span class="p">)</span><span class="o">/</span><span class="mi">2</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span>
+</span></code></pre></div>
+</div>
+<p>where m_00 is the zeroth spatial moment.</p>
+</dd>
+<dt>moments_weighted(3, 3): ndarray</dt><dd><p>Spatial moments of intensity image up to 3rd order:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><code><span id="line-1"><span class="n">wm_ij</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">{</span> <span class="n">array</span><span class="p">(</span><span class="n">row</span><span class="p">,</span> <span class="n">col</span><span class="p">)</span> <span class="o">*</span> <span class="n">row</span><span class="o">^</span><span class="n">i</span> <span class="o">*</span> <span class="n">col</span><span class="o">^</span><span class="n">j</span> <span class="p">}</span>
+</span></code></pre></div>
+</div>
+<p>where the sum is over the row, col coordinates of the region.</p>
+</dd>
+<dt>moments_weighted_central(3, 3): ndarray</dt><dd><p>Central moments (translation invariant) of intensity image up to 3rd order:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><code><span id="line-1"><span class="n">wmu_ij</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">{</span> <span class="n">array</span><span class="p">(</span><span class="n">row</span><span class="p">,</span> <span class="n">col</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">row</span> <span class="o">-</span> <span class="n">row_c</span><span class="p">)</span><span class="o">^</span><span class="n">i</span> <span class="o">*</span> <span class="p">(</span><span class="n">col</span> <span class="o">-</span> <span class="n">col_c</span><span class="p">)</span><span class="o">^</span><span class="n">j</span> <span class="p">}</span>
+</span></code></pre></div>
+</div>
+<p>where the sum is over the row, col coordinates of the region, and row_c and col_c are the coordinates of the region’s weighted centroid.</p>
+</dd>
+<dt>moments_weighted_hu: tuple</dt><dd><p>Hu moments (translation, scale and rotation invariant) of intensity image.</p>
+</dd>
+<dt>moments_weighted_normalized(3, 3): ndarray</dt><dd><p>Normalized moments (translation and scale invariant) of intensity image up to 3rd order:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><code><span id="line-1"><span class="n">wnu_ij</span> <span class="o">=</span> <span class="n">wmu_ij</span> <span class="o">/</span> <span class="n">wm_00</span><span class="o">^</span><span class="p">[(</span><span class="n">i</span><span class="o">+</span><span class="n">j</span><span class="p">)</span><span class="o">/</span><span class="mi">2</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span>
+</span></code></pre></div>
+</div>
+<p>where wm_00 is the zeroth spatial moment (intensity-weighted area).</p>
+</dd>
+<dt>num_pixels: int</dt><dd><p>Number of foreground pixels.</p>
+</dd>
+<dt>orientation: float</dt><dd><p>Angle between the 0th axis (rows) and the major axis of the ellipse that has the same second moments as the region, ranging from -pi/2 to pi/2 counter-clockwise.</p>
+</dd>
+<dt>perimeter: float</dt><dd><p>Perimeter of object which approximates the contour as a line through the centers of border pixels using a 4-connectivity.</p>
+</dd>
+<dt>perimeter_crofton: float</dt><dd><p>Perimeter of object approximated by the Crofton formula in 4 directions.</p>
+</dd>
+<dt>slice: tuple of slices</dt><dd><p>A slice to extract the object from the source image.</p>
+</dd>
+<dt>solidity: float</dt><dd><p>Ratio of pixels in the region to pixels of the convex hull image.</p>
+</dd>
+</dl>
+</div>
+<div class="admonition-references admonition">
+<p class="admonition-title">References</p>
+<p><a class="reference external" href="https://scikit-image.org/docs/stable/api/skimage.measure.html#skimage.measure.regionprops">https://scikit-image.org/docs/stable/api/skimage.measure.html#skimage.measure.regionprops</a></p>
+</div>
+</dd></dl>
+<dl class="py property">
+<dt class="sig sig-object py" id="phenoscope.Image.schema">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">schema</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#phenoscope.Image.schema" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#phenoscope.Image.schema'">¶</a></dt>
+<dd><p>Returns the input format of the image array or matrix depending on input format</p>
+</dd></dl>
+<dl class="py property">
+<dt class="sig sig-object py" id="phenoscope.Image.shape">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">shape</span></span><a class="headerlink" href="#phenoscope.Image.shape" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#phenoscope.Image.shape'">¶</a></dt>
+<dd><p>Returns the shape of the image array or matrix depending on input format or none if no image is set.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Returns the shape of the array or matrix depending on input format or none if no image is set.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>Optional[Tuple(int,int,…)]</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py property">
+<dt class="sig sig-object py" id="phenoscope.Image.uuid">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">uuid</span></span><a class="headerlink" href="#phenoscope.Image.uuid" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#phenoscope.Image.uuid'">¶</a></dt>
+<dd><p>Returns the UUID of the image</p>
+</dd></dl>
+</dd></dl>
+<dl class="py class">
+<dt class="sig sig-object py" id="phenoscope.GridImage">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenoscope.</span></span><span class="sig-name descname"><span class="pre">GridImage</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">input_image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Type</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#phenoscope.Image" title="phenoscope.core._image.Image"><span class="pre">Image</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">input_schema</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">grid_setter</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="phenoscope.grid.abstract.html#phenoscope.grid.abstract.GridSetter" title="phenoscope.grid.abstract._grid_setter.GridSetter"><span class="pre">GridSetter</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nrows</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">8</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ncols</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">12</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/phenoscope/core/_grid_image.html#GridImage"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenoscope.GridImage" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#phenoscope.GridImage'">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#phenoscope.Image" title="phenoscope.core._image.Image"><code class="xref py py-class docutils literal notranslate"><span class="pre">Image</span></code></a></p>
+<p>Represents an image that supports grid-based processing and overlay visualization.</p>
+<p>This class extends the base <cite>Image</cite> class functionality to include grid handling,
+grid-based slicing, and advanced visualization capabilities such as displaying overlay information
+with gridlines and annotations. It interacts with the provided grid handling utilities
+to determine grid structure and assign/overlay it effectively on the image.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>input_image</strong> (<em>ndarray</em><em> | </em><em>Type</em><em>[</em><a class="reference internal" href="#phenoscope.Image" title="phenoscope.core._image.Image"><em>Image</em></a><em>] </em><em>| </em><em>None</em>)</p></li>
+<li><p><strong>input_schema</strong> (<em>str</em>)</p></li>
+<li><p><strong>grid_setter</strong> (<a class="reference internal" href="phenoscope.grid.abstract.html#phenoscope.grid.abstract.GridSetter" title="phenoscope.grid.abstract._grid_setter.GridSetter"><em>GridSetter</em></a><em> | </em><em>None</em>)</p></li>
+<li><p><strong>nrows</strong> (<em>int</em>)</p></li>
+<li><p><strong>ncols</strong> (<em>int</em>)</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="phenoscope.GridImage._grid_setter">
+<span class="sig-name descname"><span class="pre">_grid_setter</span></span><a class="headerlink" href="#phenoscope.GridImage._grid_setter" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#phenoscope.GridImage._grid_setter'">¶</a></dt>
+<dd><p>An object responsible for defining and optimizing the grid
+layout over the image, defaulting to an <cite>OptimalCenterGridSetter</cite> instance if none is provided.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Optional[<a class="reference internal" href="phenoscope.grid.abstract.html#phenoscope.grid.abstract.GridSetter" title="phenoscope.grid.abstract.GridSetter">GridSetter</a>]</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="phenoscope.GridImage.__grid_subhandler">
+<span class="sig-name descname"><span class="pre">__grid_subhandler</span></span><a class="headerlink" href="#phenoscope.GridImage.__grid_subhandler" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#phenoscope.GridImage.__grid_subhandler'">¶</a></dt>
+<dd><p>An internal utility for managing grid-based operations such as
+accessing row and column edges and generating section maps for the image’s grid system.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="phenoscope.core.accessors.html#phenoscope.core.accessors.GridAccessor" title="phenoscope.core.accessors.GridAccessor">GridAccessor</a></p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="phenoscope.GridImage.__getitem__">
+<span class="sig-name descname"><span class="pre">__getitem__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">→</span> <span class="sig-return-typehint"><a class="reference internal" href="#phenoscope.Image" title="phenoscope.core._image.Image"><span class="pre">Image</span></a></span></span><a class="reference internal" href="_modules/phenoscope/core/_grid_image.html#GridImage.__getitem__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenoscope.GridImage.__getitem__" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#phenoscope.GridImage.__getitem__'">¶</a></dt>
+<dd><p>Returns a copy of the image at the slices specified as a regular Image object.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>A copy of the image at the slices indicated</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="#phenoscope.Image" title="phenoscope.Image">Image</a></p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="phenoscope.GridImage.__setitem__">
+<span class="sig-name descname"><span class="pre">__setitem__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">value</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenoscope.GridImage.__setitem__" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#phenoscope.GridImage.__setitem__'">¶</a></dt>
+<dd><p>Sets an item in the object with a given key and Image object. Ensures that the Image being set matches the expected shape and type, and updates internal properties accordingly.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>key</strong> (<em>Any</em>) – The array slices for accesssing the elements of the image.</p></li>
+<li><p><strong>value</strong> (<em>ImageHandler</em>) – The value to be set, which must match the shape of the
+existing elements and conform to the expected schema.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>ValueError</strong> – If the shape of the <cite>value</cite> does not match the shape of the existing
+    elements being accessed.</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="phenoscope.GridImage.copy">
+<span class="sig-name descname"><span class="pre">copy</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenoscope.GridImage.copy" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#phenoscope.GridImage.copy'">¶</a></dt>
+<dd><p>Creates a copy of the current Image instance, excluding the UUID.
+.. note:: - The new instance is only informationally a copy. The UUID of the new instance is different.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>A copy of the current Image instance.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="#phenoscope.Image" title="phenoscope.Image">Image</a></p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="phenoscope.GridImage.imread">
+<span class="sig-name descname"><span class="pre">imread</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filepath</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">PathLike</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">→</span> <span class="sig-return-typehint"><span class="pre">Type</span><span class="p"><span class="pre">[</span></span><span class="pre">Image</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#phenoscope.GridImage.imread" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#phenoscope.GridImage.imread'">¶</a></dt>
+<dd><p>Reads an image file from a given file path, processes it as per its format, and sets the image
+along with its schema in the current instance. Supports RGB formats (png, jpg, jpeg) and
+grayscale formats (tif, tiff). The name of the image processing instance is updated to match
+the file name without the extension. If the file format is unsupported, an exception is raised.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>filepath</strong> (<em>PathLike</em>) – Path to the image file to be read.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The current instance with the newly loaded image and schema.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Type[<a class="reference internal" href="#phenoscope.Image" title="phenoscope.Image">Image</a>]</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>C_ImageHandler.UnsupportedFileType</strong> – If the file format is not supported.</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="phenoscope.GridImage.isempty">
+<span class="sig-name descname"><span class="pre">isempty</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">→</span> <span class="sig-return-typehint"><span class="pre">bool</span></span></span><a class="headerlink" href="#phenoscope.GridImage.isempty" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#phenoscope.GridImage.isempty'">¶</a></dt>
+<dd><p>Returns True if there is no image data</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>bool</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="phenoscope.GridImage.reset">
+<span class="sig-name descname"><span class="pre">reset</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">→</span> <span class="sig-return-typehint"><span class="pre">Type</span><span class="p"><span class="pre">[</span></span><span class="pre">Image</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#phenoscope.GridImage.reset" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#phenoscope.GridImage.reset'">¶</a></dt>
+<dd><p>Resets the internal state of the object and returns an updated instance.</p>
+<p>This method resets the state of DetectionMatrix and ObjectMap components maintained
+by the object. It ensures that the object is reset to its original state
+while maintaining its type integrity. Upon execution, the instance of the
+calling object itself is returned.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The instance of the object after resetting its internal
+state.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>Type[<a class="reference internal" href="#phenoscope.Image" title="phenoscope.Image">Image</a>]</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="phenoscope.GridImage.rotate">
+<span class="sig-name descname"><span class="pre">rotate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">angle_of_rotation</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mode</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'edge'</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">→</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#phenoscope.GridImage.rotate" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#phenoscope.GridImage.rotate'">¶</a></dt>
+<dd><p>Rotate’s the image and all its components</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>angle_of_rotation</strong> (<em>int</em>)</p></li>
+<li><p><strong>mode</strong> (<em>str</em>)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="phenoscope.GridImage.set_image">
+<span class="sig-name descname"><span class="pre">set_image</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">input_image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">input_schema</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">→</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#phenoscope.GridImage.set_image" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#phenoscope.GridImage.set_image'">¶</a></dt>
+<dd><p>Sets the image to the inputted array or Image</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>input_image</strong> – (np.ndarray, phenoscope.Image, optional) The image data to be set</p></li>
+<li><p><strong>input_schema</strong> (<em>str</em><em> | </em><em>None</em>) – (str, optional) If input image is a np.ndarray and format is None, the image format will be guessed.
+If the image format is ambiguous between RGB/BGR it will assume RGB unless otherwise specified.
+Accepted formats are [‘RGB’, ‘RGBA’,’Grayscale’,’BGR’,’BGRA’,’HSV’]</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="phenoscope.GridImage.show">
+<span class="sig-name descname"><span class="pre">show</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ax:</span> <span class="pre">~matplotlib.axes._axes.Axes</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">figsize:</span> <span class="pre">~typing.Tuple[int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">int]</span> <span class="pre">=</span> <span class="pre">(9</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">10))</span> <span class="pre">-&gt;</span> <span class="pre">(&lt;class</span> <span class="pre">'matplotlib.figure.Figure'&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">&lt;class</span> <span class="pre">'matplotlib.axes._axes.Axes'&gt;</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenoscope.GridImage.show" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#phenoscope.GridImage.show'">¶</a></dt>
+<dd><p>Returns a matplotlib figure showing the input image</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>ax</strong> (<em>Axes</em><em> | </em><em>None</em>)</p></li>
+<li><p><strong>figsize</strong> (<em>Tuple</em><em>[</em><em>int</em><em>, </em><em>int</em><em>]</em>)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>(&lt;class ‘matplotlib.figure.Figure’&gt;, &lt;class ‘matplotlib.axes._axes.Axes’&gt;)</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="phenoscope.GridImage.show_overlay">
+<span class="sig-name descname"><span class="pre">show_overlay</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">object_label:</span> <span class="pre">int</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show_gridlines:</span> <span class="pre">bool</span> <span class="pre">=</span> <span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show_linreg:</span> <span class="pre">bool</span> <span class="pre">=</span> <span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">figsize:</span> <span class="pre">~typing.Tuple[int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">int]</span> <span class="pre">=</span> <span class="pre">(9</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">10)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">annotate:</span> <span class="pre">bool</span> <span class="pre">=</span> <span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">annotation_size:</span> <span class="pre">int</span> <span class="pre">=</span> <span class="pre">12</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">annotation_color:</span> <span class="pre">str</span> <span class="pre">=</span> <span class="pre">'white'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">annotation_facecolor:</span> <span class="pre">str</span> <span class="pre">=</span> <span class="pre">'red'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ax:</span> <span class="pre">~matplotlib.axes._axes.Axes</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None)</span> <span class="pre">-&gt;</span> <span class="pre">(&lt;class</span> <span class="pre">'matplotlib.figure.Figure'&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">&lt;class</span> <span class="pre">'matplotlib.axes._axes.Axes'&gt;</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/phenoscope/core/_grid_image.html#GridImage.show_overlay"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenoscope.GridImage.show_overlay" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#phenoscope.GridImage.show_overlay'">¶</a></dt>
+<dd><p>Displays an overlay of data with optional annotations, linear regression lines, and gridlines on a
+grid-based figure. The figure can be customized with various parameters to suit visualization needs.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>object_label</strong> (<em>Optional</em>) – Specific label of the object to highlight or focus on in the overlay.</p></li>
+<li><p><strong>show_gridlines</strong> (<em>bool</em>) – Whether or not to include gridlines on the overlay. Defaults to True.</p></li>
+<li><p><strong>show_linreg</strong> (<em>bool</em>) – Indicate whether to display linear regression lines on the overlay. Defaults to False.</p></li>
+<li><p><strong>figsize</strong> (<em>Tuple</em><em>[</em><em>int</em><em>, </em><em>int</em><em>]</em>) – Size of the figure, specified as a tuple of width and height values (in inches).
+Defaults to (9, 10).</p></li>
+<li><p><strong>annotate</strong> (<em>bool</em>) – Determines whether points or objects should be annotated. Defaults to False.</p></li>
+<li><p><strong>annotation_size</strong> (<em>int</em>) – Font size for the annotations. Defaults to 12.</p></li>
+<li><p><strong>annotation_color</strong> (<em>str</em>) – Color for annotation text. Defaults to ‘white’.</p></li>
+<li><p><strong>annotation_facecolor</strong> (<em>str</em>) – Background color for annotation highlights. Defaults to ‘red’.</p></li>
+<li><p><strong>ax</strong> (<em>plt.Axes</em><em>, </em><em>optional</em>) – Axis on which to draw the overlay; can be provided externally. Defaults to None.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Modified figure and axis containing the rendered overlay.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Tuple[plt.Figure, plt.Axes]</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py property">
+<dt class="sig sig-object py" id="phenoscope.GridImage.array">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">array</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="phenoscope.core.accessors.html#phenoscope.core.accessors.ImageArray" title="phenoscope.core.accessors._image_array.ImageArray"><span class="pre">ImageArray</span></a></em><a class="headerlink" href="#phenoscope.GridImage.array" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#phenoscope.GridImage.array'">¶</a></dt>
+<dd><p>The image’s array representation. An image array can represent multi-channels, thus the array can be 3-D or 4-D</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<ul class="simple">
+<li><p>array elements are not directly mutable in order to preserve image information integrity</p></li>
+<li><p>change array elements by changing the image being represented with Image.set_image()</p></li>
+<li><p>Raises an error if input image has no array form</p></li>
+</ul>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>A class that can be accessed like a numpy array, but has extra methods to streamline development, or None if not set</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>Optional[<a class="reference internal" href="phenoscope.core.accessors.html#phenoscope.core.accessors.ImageArray" title="phenoscope.core.accessors.ImageArray">ImageArray</a>]</p>
+</dd>
+</dl>
+<p>See Also: <code class="xref py py-class docutils literal notranslate"><span class="pre">ImageArray</span></code></p>
+</dd></dl>
+<dl class="py property">
+<dt class="sig sig-object py" id="phenoscope.GridImage.enh_matrix">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">enh_matrix</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="phenoscope.core.accessors.html#phenoscope.core.accessors.ImageEnhancedMatrix" title="phenoscope.core.accessors._image_enh_matrix.ImageEnhancedMatrix"><span class="pre">ImageEnhancedMatrix</span></a></em><a class="headerlink" href="#phenoscope.GridImage.enh_matrix" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#phenoscope.GridImage.enh_matrix'">¶</a></dt>
+<dd><p><code class="xref py py-class docutils literal notranslate"><span class="pre">ImageEnhancedMatrix</span></code>. Preprocessing steps can be applied to this component to improve detection performance.</p>
+<p>The enhanceable matrix is a copy of the image’s matrix form that can be modified and used to improve detection performance.
+The original matrix data should be left intact in order to preserve image information integrity for measurements.’</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>A mutable container that stores a copy of the image’s matrix form</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="phenoscope.core.accessors.html#phenoscope.core.accessors.ImageEnhancedMatrix" title="phenoscope.core.accessors.ImageEnhancedMatrix">ImageEnhancedMatrix</a></p>
+</dd>
+</dl>
+<p>See Also: <code class="xref py py-class docutils literal notranslate"><span class="pre">ImageEnhancedMatrix</span></code></p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Returns the image’s enhanced matrix accessor (See</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py property">
+<dt class="sig sig-object py" id="phenoscope.GridImage.grid">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">grid</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="phenoscope.core.accessors.html#phenoscope.core.accessors.GridAccessor" title="phenoscope.core.accessors._grid_interface.GridAccessor"><span class="pre">GridAccessor</span></a></em><a class="headerlink" href="#phenoscope.GridImage.grid" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#phenoscope.GridImage.grid'">¶</a></dt>
+<dd><p>Returns the GridAccessor object for managing grid-related operations.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Provides access to Grid-related operations.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="phenoscope.core.accessors.html#phenoscope.core.accessors.GridAccessor" title="phenoscope.core.accessors.GridAccessor">GridAccessor</a></p>
+</dd>
+</dl>
+<p>See Also <code class="xref py py-class docutils literal notranslate"><span class="pre">GridAccessor</span></code></p>
+</dd></dl>
+<dl class="py property">
+<dt class="sig sig-object py" id="phenoscope.GridImage.hsv">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">hsv</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="phenoscope.core.accessors.html#phenoscope.core.accessors.HsvAccessor" title="phenoscope.core.accessors._hsv_interface.HsvAccessor"><span class="pre">HsvAccessor</span></a></em><a class="headerlink" href="#phenoscope.GridImage.hsv" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#phenoscope.GridImage.hsv'">¶</a></dt>
+<dd><p>Returns the HSV abstract object.</p>
+<p>This property returns an instance of the HsvAccessor associated with the
+current object, allowing access to HSV (hue, saturation, value) related
+functionalities controlled by this handler.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The instance of the HSV abstract handler.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="phenoscope.core.accessors.html#phenoscope.core.accessors.HsvAccessor" title="phenoscope.core.accessors.HsvAccessor">HsvAccessor</a></p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py property">
+<dt class="sig sig-object py" id="phenoscope.GridImage.matrix">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">matrix</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="phenoscope.core.accessors.html#phenoscope.core.accessors.ImageMatrix" title="phenoscope.core.accessors._image_matrix.ImageMatrix"><span class="pre">ImageMatrix</span></a></em><a class="headerlink" href="#phenoscope.GridImage.matrix" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#phenoscope.GridImage.matrix'">¶</a></dt>
+<dd><p>The image’s matrix representation. The array form is converted into a matrix form since some algorithm’s only handle 2-D</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<ul class="simple">
+<li><p>matrix elements are not directly mutable in order to preserve image information integrity</p></li>
+<li><p>Change matrix elements by changing the image being represented with Image.set_image()</p></li>
+</ul>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>An immutable container for the image matrix that can be accessed like a numpy array, but has extra methods to streamline development.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="phenoscope.core.accessors.html#phenoscope.core.accessors.ImageMatrix" title="phenoscope.core.accessors.ImageMatrix">ImageMatrix</a></p>
+</dd>
+</dl>
+<p>See Also: <code class="xref py py-class docutils literal notranslate"><span class="pre">ImageMatrix</span></code></p>
+</dd></dl>
+<dl class="py property">
+<dt class="sig sig-object py" id="phenoscope.GridImage.name">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">name</span></span><a class="headerlink" href="#phenoscope.GridImage.name" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#phenoscope.GridImage.name'">¶</a></dt>
+<dd><p>Returns the name of the image. If no name is set, the name will be the file stem of the image.</p>
+</dd></dl>
+<dl class="py property">
+<dt class="sig sig-object py" id="phenoscope.GridImage.num_objects">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">num_objects</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></em><a class="headerlink" href="#phenoscope.GridImage.num_objects" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#phenoscope.GridImage.num_objects'">¶</a></dt>
+<dd><p>Returns the number of objects in the image
+.. note:: If the number of objects is 0, the target for analysis is the entire image itself.</p>
+</dd></dl>
+<dl class="py property">
+<dt class="sig sig-object py" id="phenoscope.GridImage.objects">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">objects</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="phenoscope.core.accessors.html#phenoscope.core.accessors.ImageObjects" title="phenoscope.core.accessors._image_objects.ImageObjects"><span class="pre">ImageObjects</span></a></em><a class="headerlink" href="#phenoscope.GridImage.objects" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#phenoscope.GridImage.objects'">¶</a></dt>
+<dd><p>Returns an abstract to access the objects in an image and perform operations on them, such as measurement calculations .</p>
+<p>This method provides access to <cite>ImageObjects</cite>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The subhandler instance that manages image-related objects.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="phenoscope.core.accessors.html#phenoscope.core.accessors.ImageObjects" title="phenoscope.core.accessors.ImageObjects">ImageObjects</a></p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py property">
+<dt class="sig sig-object py" id="phenoscope.GridImage.omap">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">omap</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="phenoscope.core.accessors.html#phenoscope.core.accessors.ObjectMap" title="phenoscope.core.accessors._object_map.ObjectMap"><span class="pre">ObjectMap</span></a></em><a class="headerlink" href="#phenoscope.GridImage.omap" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#phenoscope.GridImage.omap'">¶</a></dt>
+<dd><p>The Object Map. A mutable integer matrix that identifies the different objects in an image to be analyzed. Changes to elements of the object_map sync to the object_mask.</p>
+<p>The object_map is stored as a compressed sparse column matrix in the backend. This is to save on memory consumption at the cost of adding
+increased computational overhead between converting between sparse and dense matrices.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<ul class="simple">
+<li><p>Has accessor methods to get sparse representations of the object map that can streamline measurement calculations.</p></li>
+</ul>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>A mutable integer matrix that identifies the different objects in an image to be analyzed.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="phenoscope.core.accessors.html#phenoscope.core.accessors.ObjectMap" title="phenoscope.core.accessors.ObjectMap">ObjectMap</a></p>
+</dd>
+</dl>
+<p>See Also: <code class="xref py py-class docutils literal notranslate"><span class="pre">ObjectMap</span></code></p>
+</dd></dl>
+<dl class="py property">
+<dt class="sig sig-object py" id="phenoscope.GridImage.omask">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">omask</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="phenoscope.core.accessors.html#phenoscope.core.accessors.ObjectMask" title="phenoscope.core.accessors._object_mask.ObjectMask"><span class="pre">ObjectMask</span></a></em><a class="headerlink" href="#phenoscope.GridImage.omask" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#phenoscope.GridImage.omask'">¶</a></dt>
+<dd><p>The Object Mask. A mutable binary representation of the objects in an image to be analyzed. Changing elements of the mask will reset object_map labeling.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<ul class="simple">
+<li><dl class="simple">
+<dt>If the image has not been processed by a detector, the target for analysis is the entire image itself. Accessing the object_mask in this case</dt><dd><p>will return a 2-D array entirely with value 1 that is the same shape as the matrix</p>
+</dd>
+</dl>
+</li>
+<li><p>Changing elements of the mask will relabel of objects in the object_map (A workaround to this issue may or may not come in future versions)</p></li>
+</ul>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>A mutable binary representation of the objects in an image to be analyzed.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>ObjectMaskErrors</p>
+</dd>
+</dl>
+<p>See Also: <code class="xref py py-class docutils literal notranslate"><span class="pre">ObjectMask</span></code></p>
+</dd></dl>
+<dl class="py property">
+<dt class="sig sig-object py" id="phenoscope.GridImage.props">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">props</span></span><a class="headerlink" href="#phenoscope.GridImage.props" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#phenoscope.GridImage.props'">¶</a></dt>
+<dd><p>Fetches the properties of labeled regions in an image.</p>
+<p>Calculates region properties for the entire image using the matrix representation.
+The labeled image is generated as a full array with values of 1, and the
+intensity image corresponds to the <cite>_matrix</cite> attribute of the object.
+Cache is disabled in this configuration.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>A list of properties for the entire provided image.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>list[skimage.measure._regionprops.RegionProperties]</p>
+</dd>
+</dl>
+<div class="admonition-notes admonition">
+<p class="admonition-title">Notes</p>
+<p>(Excerpt from skimage.measure.regionprops documentation on available properties. See more at <code class="xref py py-class docutils literal notranslate"><span class="pre">skimage.measure.regionprops</span></code>.):</p>
+<dl>
+<dt>area: float</dt><dd><p>Area of the region i.e. number of pixels of the region scaled by pixel-area.</p>
+</dd>
+<dt>area_bbox: float</dt><dd><p>Area of the bounding box i.e. number of pixels of bounding box scaled by pixel-area.</p>
+</dd>
+<dt>area_convex: float</dt><dd><p>Area of the convex hull image, which is the smallest convex polygon that encloses the region.</p>
+</dd>
+<dt>area_filled: float</dt><dd><p>Area of the region with all the holes filled in.</p>
+</dd>
+<dt>axis_major_length: float</dt><dd><p>The length of the major axis of the ellipse that has the same normalized second central moments as the region.</p>
+</dd>
+<dt>axis_minor_length: float</dt><dd><p>The length of the minor axis of the ellipse that has the same normalized second central moments as the region.</p>
+</dd>
+<dt>bbox: tuple</dt><dd><p>Bounding box (min_row, min_col, max_row, max_col). Pixels belonging to the bounding box are in the half-open interval [min_row; max_row) and [min_col; max_col).</p>
+</dd>
+<dt>centroid: array</dt><dd><p>Centroid coordinate tuple (row, col).</p>
+</dd>
+<dt>centroid_local: array</dt><dd><p>Centroid coordinate tuple (row, col), relative to region bounding box.</p>
+</dd>
+<dt>centroid_weighted: array</dt><dd><p>Centroid coordinate tuple (row, col) weighted with intensity image.</p>
+</dd>
+<dt>centroid_weighted_local: array</dt><dd><p>Centroid coordinate tuple (row, col), relative to region bounding box, weighted with intensity image.</p>
+</dd>
+<dt>coords_scaled(K, 2): ndarray</dt><dd><p>Coordinate list (row, col) of the region scaled by spacing.</p>
+</dd>
+<dt>coords(K, 2): ndarray</dt><dd><p>Coordinate list (row, col) of the region.</p>
+</dd>
+<dt>eccentricity: float</dt><dd><p>Eccentricity of the ellipse that has the same second-moments as the region. The eccentricity is the ratio of the focal distance (distance between focal points) over the major axis length. The value is in the interval [0, 1). When it is 0, the ellipse becomes a circle.</p>
+</dd>
+<dt>equivalent_diameter_area: float</dt><dd><p>The diameter of a circle with the same area as the region.</p>
+</dd>
+<dt>euler_number: int</dt><dd><p>Euler characteristic of the set of non-zero pixels. Computed as number of connected components subtracted by number of holes (input.ndim connectivity). In 3D, number of connected components plus number of holes subtracted by number of tunnels.</p>
+</dd>
+<dt>extent: float</dt><dd><p>Ratio of pixels in the region to pixels in the total bounding box. Computed as area / (rows * cols)</p>
+</dd>
+<dt>feret_diameter_max: float</dt><dd><p>Maximum Feret’s diameter computed as the longest distance between points around a region’s convex hull contour as determined by find_contours. [5]</p>
+</dd>
+<dt>image(H, J): ndarray</dt><dd><p>Sliced binary region image which has the same size as bounding box.</p>
+</dd>
+<dt>image_convex(H, J): ndarray</dt><dd><p>Binary convex hull image which has the same size as bounding box.</p>
+</dd>
+<dt>image_filled(H, J): ndarray</dt><dd><p>Binary region image with filled holes which has the same size as bounding box.</p>
+</dd>
+<dt>image_intensity: ndarray</dt><dd><p>Image inside region bounding box.</p>
+</dd>
+<dt>inertia_tensor: ndarray</dt><dd><p>Inertia tensor of the region for the rotation around its mass.</p>
+</dd>
+<dt>inertia_tensor_eigvals: tuple</dt><dd><p>The eigenvalues of the inertia tensor in decreasing order.</p>
+</dd>
+<dt>intensity_max: float</dt><dd><p>Value with the greatest intensity in the region.</p>
+</dd>
+<dt>intensity_mean: float</dt><dd><p>Value with the mean intensity in the region.</p>
+</dd>
+<dt>intensity_min: float</dt><dd><p>Value with the least intensity in the region.</p>
+</dd>
+<dt>intensity_std: float</dt><dd><p>Standard deviation of the intensity in the region.</p>
+</dd>
+<dt>label: int</dt><dd><p>The label in the labeled input image.</p>
+</dd>
+<dt>moments(3, 3): ndarray</dt><dd><p>Spatial moments up to 3rd order:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><code><span id="line-1"><span class="n">m_ij</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">{</span> <span class="n">array</span><span class="p">(</span><span class="n">row</span><span class="p">,</span> <span class="n">col</span><span class="p">)</span> <span class="o">*</span> <span class="n">row</span><span class="o">^</span><span class="n">i</span> <span class="o">*</span> <span class="n">col</span><span class="o">^</span><span class="n">j</span> <span class="p">}</span>
+</span></code></pre></div>
+</div>
+</dd>
+</dl>
+<p>where the sum is over the row, col coordinates of the region.</p>
+<dl>
+<dt>moments_central(3, 3): ndarray</dt><dd><p>Central moments (translation invariant) up to 3rd order:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><code><span id="line-1"><span class="n">mu_ij</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">{</span> <span class="n">array</span><span class="p">(</span><span class="n">row</span><span class="p">,</span> <span class="n">col</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">row</span> <span class="o">-</span> <span class="n">row_c</span><span class="p">)</span><span class="o">^</span><span class="n">i</span> <span class="o">*</span> <span class="p">(</span><span class="n">col</span> <span class="o">-</span> <span class="n">col_c</span><span class="p">)</span><span class="o">^</span><span class="n">j</span> <span class="p">}</span>
+</span></code></pre></div>
+</div>
+<p>where the sum is over the row, col coordinates of the region, and row_c and col_c are the coordinates of the region’s centroid.</p>
+</dd>
+<dt>moments_hu: tuple</dt><dd><p>Hu moments (translation, scale and rotation invariant).</p>
+</dd>
+<dt>moments_normalized(3, 3): ndarray</dt><dd><p>Normalized moments (translation and scale invariant) up to 3rd order:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><code><span id="line-1"><span class="n">nu_ij</span> <span class="o">=</span> <span class="n">mu_ij</span> <span class="o">/</span> <span class="n">m_00</span><span class="o">^</span><span class="p">[(</span><span class="n">i</span><span class="o">+</span><span class="n">j</span><span class="p">)</span><span class="o">/</span><span class="mi">2</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span>
+</span></code></pre></div>
+</div>
+<p>where m_00 is the zeroth spatial moment.</p>
+</dd>
+<dt>moments_weighted(3, 3): ndarray</dt><dd><p>Spatial moments of intensity image up to 3rd order:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><code><span id="line-1"><span class="n">wm_ij</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">{</span> <span class="n">array</span><span class="p">(</span><span class="n">row</span><span class="p">,</span> <span class="n">col</span><span class="p">)</span> <span class="o">*</span> <span class="n">row</span><span class="o">^</span><span class="n">i</span> <span class="o">*</span> <span class="n">col</span><span class="o">^</span><span class="n">j</span> <span class="p">}</span>
+</span></code></pre></div>
+</div>
+<p>where the sum is over the row, col coordinates of the region.</p>
+</dd>
+<dt>moments_weighted_central(3, 3): ndarray</dt><dd><p>Central moments (translation invariant) of intensity image up to 3rd order:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><code><span id="line-1"><span class="n">wmu_ij</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">{</span> <span class="n">array</span><span class="p">(</span><span class="n">row</span><span class="p">,</span> <span class="n">col</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">row</span> <span class="o">-</span> <span class="n">row_c</span><span class="p">)</span><span class="o">^</span><span class="n">i</span> <span class="o">*</span> <span class="p">(</span><span class="n">col</span> <span class="o">-</span> <span class="n">col_c</span><span class="p">)</span><span class="o">^</span><span class="n">j</span> <span class="p">}</span>
+</span></code></pre></div>
+</div>
+<p>where the sum is over the row, col coordinates of the region, and row_c and col_c are the coordinates of the region’s weighted centroid.</p>
+</dd>
+<dt>moments_weighted_hu: tuple</dt><dd><p>Hu moments (translation, scale and rotation invariant) of intensity image.</p>
+</dd>
+<dt>moments_weighted_normalized(3, 3): ndarray</dt><dd><p>Normalized moments (translation and scale invariant) of intensity image up to 3rd order:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><code><span id="line-1"><span class="n">wnu_ij</span> <span class="o">=</span> <span class="n">wmu_ij</span> <span class="o">/</span> <span class="n">wm_00</span><span class="o">^</span><span class="p">[(</span><span class="n">i</span><span class="o">+</span><span class="n">j</span><span class="p">)</span><span class="o">/</span><span class="mi">2</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span>
+</span></code></pre></div>
+</div>
+<p>where wm_00 is the zeroth spatial moment (intensity-weighted area).</p>
+</dd>
+<dt>num_pixels: int</dt><dd><p>Number of foreground pixels.</p>
+</dd>
+<dt>orientation: float</dt><dd><p>Angle between the 0th axis (rows) and the major axis of the ellipse that has the same second moments as the region, ranging from -pi/2 to pi/2 counter-clockwise.</p>
+</dd>
+<dt>perimeter: float</dt><dd><p>Perimeter of object which approximates the contour as a line through the centers of border pixels using a 4-connectivity.</p>
+</dd>
+<dt>perimeter_crofton: float</dt><dd><p>Perimeter of object approximated by the Crofton formula in 4 directions.</p>
+</dd>
+<dt>slice: tuple of slices</dt><dd><p>A slice to extract the object from the source image.</p>
+</dd>
+<dt>solidity: float</dt><dd><p>Ratio of pixels in the region to pixels of the convex hull image.</p>
+</dd>
+</dl>
+</div>
+<div class="admonition-references admonition">
+<p class="admonition-title">References</p>
+<p><a class="reference external" href="https://scikit-image.org/docs/stable/api/skimage.measure.html#skimage.measure.regionprops">https://scikit-image.org/docs/stable/api/skimage.measure.html#skimage.measure.regionprops</a></p>
+</div>
+</dd></dl>
+<dl class="py property">
+<dt class="sig sig-object py" id="phenoscope.GridImage.schema">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">schema</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#phenoscope.GridImage.schema" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#phenoscope.GridImage.schema'">¶</a></dt>
+<dd><p>Returns the input format of the image array or matrix depending on input format</p>
+</dd></dl>
+<dl class="py property">
+<dt class="sig sig-object py" id="phenoscope.GridImage.shape">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">shape</span></span><a class="headerlink" href="#phenoscope.GridImage.shape" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#phenoscope.GridImage.shape'">¶</a></dt>
+<dd><p>Returns the shape of the image array or matrix depending on input format or none if no image is set.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Returns the shape of the array or matrix depending on input format or none if no image is set.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>Optional[Tuple(int,int,…)]</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py property">
+<dt class="sig sig-object py" id="phenoscope.GridImage.uuid">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">uuid</span></span><a class="headerlink" href="#phenoscope.GridImage.uuid" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#phenoscope.GridImage.uuid'">¶</a></dt>
+<dd><p>Returns the UUID of the image</p>
+</dd></dl>
+</dd></dl>
+<div class="toctree-wrapper compound">
+<p class="caption" role="heading"><span class="caption-text">Modules</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="phenoscope.html">phenoscope</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="phenoscope.html#modules">Modules</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="phenoscope.abstract.html">phenoscope.abstract package</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="phenoscope.abstract.html#module-phenoscope.abstract">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="phenoscope.core.html">phenoscope.core package</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="phenoscope.core.html#subpackages">Subpackages</a></li>
+<li class="toctree-l4"><a class="reference internal" href="phenoscope.core.html#module-phenoscope.core">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="phenoscope.data.html">phenoscope.data package</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="phenoscope.data.html#module-phenoscope.data">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="phenoscope.detection.html">phenoscope.detection package</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="phenoscope.detection.html#module-phenoscope.detection">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="phenoscope.grid.html">phenoscope.grid package</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="phenoscope.grid.html#subpackages">Subpackages</a></li>
+<li class="toctree-l4"><a class="reference internal" href="phenoscope.grid.html#module-phenoscope.grid">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="phenoscope.measure.html">phenoscope.measure package</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="phenoscope.measure.html#module-phenoscope.measure">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="phenoscope.morphology.html">phenoscope.morphology package</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="phenoscope.morphology.html#module-phenoscope.morphology">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="phenoscope.objects.html">phenoscope.objects package</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="phenoscope.objects.html#module-phenoscope.objects">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="phenoscope.pipeline.html">phenoscope.pipeline package</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="phenoscope.pipeline.html#module-phenoscope.pipeline">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="phenoscope.preprocessing.html">phenoscope.preprocessing package</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="phenoscope.preprocessing.html#module-phenoscope.preprocessing">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="phenoscope.transform.html">phenoscope.transform package</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="phenoscope.transform.html#module-phenoscope.transform">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="phenoscope.util.html">phenoscope.util package</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="phenoscope.util.html#submodules">Submodules</a></li>
+<li class="toctree-l4"><a class="reference internal" href="phenoscope.util.html#phenoscope-util-constants-module">phenoscope.util.constants module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="phenoscope.util.html#module-phenoscope.util.funcs">phenoscope.util.funcs module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="phenoscope.util.html#module-phenoscope.util">Module contents</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="phenoscope.html#classes">Classes</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="phenoscope.html#phenoscope.Image"><code class="docutils literal notranslate"><span class="pre">Image</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="phenoscope.html#phenoscope.Image.__getitem__"><code class="docutils literal notranslate"><span class="pre">Image.__getitem__()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="phenoscope.html#phenoscope.Image.__setitem__"><code class="docutils literal notranslate"><span class="pre">Image.__setitem__()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="phenoscope.html#phenoscope.Image.copy"><code class="docutils literal notranslate"><span class="pre">Image.copy()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="phenoscope.html#phenoscope.Image.imread"><code class="docutils literal notranslate"><span class="pre">Image.imread()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="phenoscope.html#phenoscope.Image.isempty"><code class="docutils literal notranslate"><span class="pre">Image.isempty()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="phenoscope.html#phenoscope.Image.reset"><code class="docutils literal notranslate"><span class="pre">Image.reset()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="phenoscope.html#phenoscope.Image.rotate"><code class="docutils literal notranslate"><span class="pre">Image.rotate()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="phenoscope.html#phenoscope.Image.set_image"><code class="docutils literal notranslate"><span class="pre">Image.set_image()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="phenoscope.html#phenoscope.Image.show"><code class="docutils literal notranslate"><span class="pre">Image.show()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="phenoscope.html#phenoscope.Image.show_overlay"><code class="docutils literal notranslate"><span class="pre">Image.show_overlay()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="phenoscope.html#phenoscope.Image.array"><code class="docutils literal notranslate"><span class="pre">Image.array</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="phenoscope.html#phenoscope.Image.enh_matrix"><code class="docutils literal notranslate"><span class="pre">Image.enh_matrix</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="phenoscope.html#phenoscope.Image.hsv"><code class="docutils literal notranslate"><span class="pre">Image.hsv</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="phenoscope.html#phenoscope.Image.matrix"><code class="docutils literal notranslate"><span class="pre">Image.matrix</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="phenoscope.html#phenoscope.Image.name"><code class="docutils literal notranslate"><span class="pre">Image.name</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="phenoscope.html#phenoscope.Image.num_objects"><code class="docutils literal notranslate"><span class="pre">Image.num_objects</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="phenoscope.html#phenoscope.Image.objects"><code class="docutils literal notranslate"><span class="pre">Image.objects</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="phenoscope.html#phenoscope.Image.omap"><code class="docutils literal notranslate"><span class="pre">Image.omap</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="phenoscope.html#phenoscope.Image.omask"><code class="docutils literal notranslate"><span class="pre">Image.omask</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="phenoscope.html#phenoscope.Image.props"><code class="docutils literal notranslate"><span class="pre">Image.props</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="phenoscope.html#phenoscope.Image.schema"><code class="docutils literal notranslate"><span class="pre">Image.schema</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="phenoscope.html#phenoscope.Image.shape"><code class="docutils literal notranslate"><span class="pre">Image.shape</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="phenoscope.html#phenoscope.Image.uuid"><code class="docutils literal notranslate"><span class="pre">Image.uuid</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="phenoscope.html#phenoscope.GridImage"><code class="docutils literal notranslate"><span class="pre">GridImage</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="phenoscope.html#phenoscope.GridImage._grid_setter"><code class="docutils literal notranslate"><span class="pre">GridImage._grid_setter</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="phenoscope.html#phenoscope.GridImage.__grid_subhandler"><code class="docutils literal notranslate"><span class="pre">GridImage.__grid_subhandler</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="phenoscope.html#phenoscope.GridImage.__getitem__"><code class="docutils literal notranslate"><span class="pre">GridImage.__getitem__()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="phenoscope.html#phenoscope.GridImage.__setitem__"><code class="docutils literal notranslate"><span class="pre">GridImage.__setitem__()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="phenoscope.html#phenoscope.GridImage.copy"><code class="docutils literal notranslate"><span class="pre">GridImage.copy()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="phenoscope.html#phenoscope.GridImage.imread"><code class="docutils literal notranslate"><span class="pre">GridImage.imread()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="phenoscope.html#phenoscope.GridImage.isempty"><code class="docutils literal notranslate"><span class="pre">GridImage.isempty()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="phenoscope.html#phenoscope.GridImage.reset"><code class="docutils literal notranslate"><span class="pre">GridImage.reset()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="phenoscope.html#phenoscope.GridImage.rotate"><code class="docutils literal notranslate"><span class="pre">GridImage.rotate()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="phenoscope.html#phenoscope.GridImage.set_image"><code class="docutils literal notranslate"><span class="pre">GridImage.set_image()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="phenoscope.html#phenoscope.GridImage.show"><code class="docutils literal notranslate"><span class="pre">GridImage.show()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="phenoscope.html#phenoscope.GridImage.show_overlay"><code class="docutils literal notranslate"><span class="pre">GridImage.show_overlay()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="phenoscope.html#phenoscope.GridImage.array"><code class="docutils literal notranslate"><span class="pre">GridImage.array</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="phenoscope.html#phenoscope.GridImage.enh_matrix"><code class="docutils literal notranslate"><span class="pre">GridImage.enh_matrix</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="phenoscope.html#phenoscope.GridImage.grid"><code class="docutils literal notranslate"><span class="pre">GridImage.grid</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="phenoscope.html#phenoscope.GridImage.hsv"><code class="docutils literal notranslate"><span class="pre">GridImage.hsv</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="phenoscope.html#phenoscope.GridImage.matrix"><code class="docutils literal notranslate"><span class="pre">GridImage.matrix</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="phenoscope.html#phenoscope.GridImage.name"><code class="docutils literal notranslate"><span class="pre">GridImage.name</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="phenoscope.html#phenoscope.GridImage.num_objects"><code class="docutils literal notranslate"><span class="pre">GridImage.num_objects</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="phenoscope.html#phenoscope.GridImage.objects"><code class="docutils literal notranslate"><span class="pre">GridImage.objects</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="phenoscope.html#phenoscope.GridImage.omap"><code class="docutils literal notranslate"><span class="pre">GridImage.omap</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="phenoscope.html#phenoscope.GridImage.omask"><code class="docutils literal notranslate"><span class="pre">GridImage.omask</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="phenoscope.html#phenoscope.GridImage.props"><code class="docutils literal notranslate"><span class="pre">GridImage.props</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="phenoscope.html#phenoscope.GridImage.schema"><code class="docutils literal notranslate"><span class="pre">GridImage.schema</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="phenoscope.html#phenoscope.GridImage.shape"><code class="docutils literal notranslate"><span class="pre">GridImage.shape</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="phenoscope.html#phenoscope.GridImage.uuid"><code class="docutils literal notranslate"><span class="pre">GridImage.uuid</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div>
+</section>
+</section>
+</div></div><aside class="hidden text-sm xl:block" id="right-sidebar">
+<div class="sticky top-16 -mt-10 max-h-[calc(100vh-5rem)] overflow-y-auto pt-6 space-y-2"><p class="font-medium">On this page</p>
+<ul>
+<li><a :data-current="activeSection === '#classes'" class="reference internal" href="#classes">Classes</a><ul>
+<li><a :data-current="activeSection === '#phenoscope.Image'" class="reference internal" href="#phenoscope.Image"><code class="docutils literal notranslate"><span class="pre">Image</span></code></a><ul>
+<li><a :data-current="activeSection === '#phenoscope.Image.__getitem__'" class="reference internal" href="#phenoscope.Image.__getitem__"><code class="docutils literal notranslate"><span class="pre">Image.__getitem__()</span></code></a></li>
+<li><a :data-current="activeSection === '#phenoscope.Image.__setitem__'" class="reference internal" href="#phenoscope.Image.__setitem__"><code class="docutils literal notranslate"><span class="pre">Image.__setitem__()</span></code></a></li>
+<li><a :data-current="activeSection === '#phenoscope.Image.copy'" class="reference internal" href="#phenoscope.Image.copy"><code class="docutils literal notranslate"><span class="pre">Image.copy()</span></code></a></li>
+<li><a :data-current="activeSection === '#phenoscope.Image.imread'" class="reference internal" href="#phenoscope.Image.imread"><code class="docutils literal notranslate"><span class="pre">Image.imread()</span></code></a></li>
+<li><a :data-current="activeSection === '#phenoscope.Image.isempty'" class="reference internal" href="#phenoscope.Image.isempty"><code class="docutils literal notranslate"><span class="pre">Image.isempty()</span></code></a></li>
+<li><a :data-current="activeSection === '#phenoscope.Image.reset'" class="reference internal" href="#phenoscope.Image.reset"><code class="docutils literal notranslate"><span class="pre">Image.reset()</span></code></a></li>
+<li><a :data-current="activeSection === '#phenoscope.Image.rotate'" class="reference internal" href="#phenoscope.Image.rotate"><code class="docutils literal notranslate"><span class="pre">Image.rotate()</span></code></a></li>
+<li><a :data-current="activeSection === '#phenoscope.Image.set_image'" class="reference internal" href="#phenoscope.Image.set_image"><code class="docutils literal notranslate"><span class="pre">Image.set_image()</span></code></a></li>
+<li><a :data-current="activeSection === '#phenoscope.Image.show'" class="reference internal" href="#phenoscope.Image.show"><code class="docutils literal notranslate"><span class="pre">Image.show()</span></code></a></li>
+<li><a :data-current="activeSection === '#phenoscope.Image.show_overlay'" class="reference internal" href="#phenoscope.Image.show_overlay"><code class="docutils literal notranslate"><span class="pre">Image.show_overlay()</span></code></a></li>
+<li><a :data-current="activeSection === '#phenoscope.Image.array'" class="reference internal" href="#phenoscope.Image.array"><code class="docutils literal notranslate"><span class="pre">Image.array</span></code></a></li>
+<li><a :data-current="activeSection === '#phenoscope.Image.enh_matrix'" class="reference internal" href="#phenoscope.Image.enh_matrix"><code class="docutils literal notranslate"><span class="pre">Image.enh_matrix</span></code></a></li>
+<li><a :data-current="activeSection === '#phenoscope.Image.hsv'" class="reference internal" href="#phenoscope.Image.hsv"><code class="docutils literal notranslate"><span class="pre">Image.hsv</span></code></a></li>
+<li><a :data-current="activeSection === '#phenoscope.Image.matrix'" class="reference internal" href="#phenoscope.Image.matrix"><code class="docutils literal notranslate"><span class="pre">Image.matrix</span></code></a></li>
+<li><a :data-current="activeSection === '#phenoscope.Image.name'" class="reference internal" href="#phenoscope.Image.name"><code class="docutils literal notranslate"><span class="pre">Image.name</span></code></a></li>
+<li><a :data-current="activeSection === '#phenoscope.Image.num_objects'" class="reference internal" href="#phenoscope.Image.num_objects"><code class="docutils literal notranslate"><span class="pre">Image.num_objects</span></code></a></li>
+<li><a :data-current="activeSection === '#phenoscope.Image.objects'" class="reference internal" href="#phenoscope.Image.objects"><code class="docutils literal notranslate"><span class="pre">Image.objects</span></code></a></li>
+<li><a :data-current="activeSection === '#phenoscope.Image.omap'" class="reference internal" href="#phenoscope.Image.omap"><code class="docutils literal notranslate"><span class="pre">Image.omap</span></code></a></li>
+<li><a :data-current="activeSection === '#phenoscope.Image.omask'" class="reference internal" href="#phenoscope.Image.omask"><code class="docutils literal notranslate"><span class="pre">Image.omask</span></code></a></li>
+<li><a :data-current="activeSection === '#phenoscope.Image.props'" class="reference internal" href="#phenoscope.Image.props"><code class="docutils literal notranslate"><span class="pre">Image.props</span></code></a></li>
+<li><a :data-current="activeSection === '#phenoscope.Image.schema'" class="reference internal" href="#phenoscope.Image.schema"><code class="docutils literal notranslate"><span class="pre">Image.schema</span></code></a></li>
+<li><a :data-current="activeSection === '#phenoscope.Image.shape'" class="reference internal" href="#phenoscope.Image.shape"><code class="docutils literal notranslate"><span class="pre">Image.shape</span></code></a></li>
+<li><a :data-current="activeSection === '#phenoscope.Image.uuid'" class="reference internal" href="#phenoscope.Image.uuid"><code class="docutils literal notranslate"><span class="pre">Image.uuid</span></code></a></li>
+</ul>
+</li>
+<li><a :data-current="activeSection === '#phenoscope.GridImage'" class="reference internal" href="#phenoscope.GridImage"><code class="docutils literal notranslate"><span class="pre">GridImage</span></code></a><ul>
+<li><a :data-current="activeSection === '#phenoscope.GridImage._grid_setter'" class="reference internal" href="#phenoscope.GridImage._grid_setter"><code class="docutils literal notranslate"><span class="pre">GridImage._grid_setter</span></code></a></li>
+<li><a :data-current="activeSection === '#phenoscope.GridImage.__grid_subhandler'" class="reference internal" href="#phenoscope.GridImage.__grid_subhandler"><code class="docutils literal notranslate"><span class="pre">GridImage.__grid_subhandler</span></code></a></li>
+<li><a :data-current="activeSection === '#phenoscope.GridImage.__getitem__'" class="reference internal" href="#phenoscope.GridImage.__getitem__"><code class="docutils literal notranslate"><span class="pre">GridImage.__getitem__()</span></code></a></li>
+<li><a :data-current="activeSection === '#phenoscope.GridImage.__setitem__'" class="reference internal" href="#phenoscope.GridImage.__setitem__"><code class="docutils literal notranslate"><span class="pre">GridImage.__setitem__()</span></code></a></li>
+<li><a :data-current="activeSection === '#phenoscope.GridImage.copy'" class="reference internal" href="#phenoscope.GridImage.copy"><code class="docutils literal notranslate"><span class="pre">GridImage.copy()</span></code></a></li>
+<li><a :data-current="activeSection === '#phenoscope.GridImage.imread'" class="reference internal" href="#phenoscope.GridImage.imread"><code class="docutils literal notranslate"><span class="pre">GridImage.imread()</span></code></a></li>
+<li><a :data-current="activeSection === '#phenoscope.GridImage.isempty'" class="reference internal" href="#phenoscope.GridImage.isempty"><code class="docutils literal notranslate"><span class="pre">GridImage.isempty()</span></code></a></li>
+<li><a :data-current="activeSection === '#phenoscope.GridImage.reset'" class="reference internal" href="#phenoscope.GridImage.reset"><code class="docutils literal notranslate"><span class="pre">GridImage.reset()</span></code></a></li>
+<li><a :data-current="activeSection === '#phenoscope.GridImage.rotate'" class="reference internal" href="#phenoscope.GridImage.rotate"><code class="docutils literal notranslate"><span class="pre">GridImage.rotate()</span></code></a></li>
+<li><a :data-current="activeSection === '#phenoscope.GridImage.set_image'" class="reference internal" href="#phenoscope.GridImage.set_image"><code class="docutils literal notranslate"><span class="pre">GridImage.set_image()</span></code></a></li>
+<li><a :data-current="activeSection === '#phenoscope.GridImage.show'" class="reference internal" href="#phenoscope.GridImage.show"><code class="docutils literal notranslate"><span class="pre">GridImage.show()</span></code></a></li>
+<li><a :data-current="activeSection === '#phenoscope.GridImage.show_overlay'" class="reference internal" href="#phenoscope.GridImage.show_overlay"><code class="docutils literal notranslate"><span class="pre">GridImage.show_overlay()</span></code></a></li>
+<li><a :data-current="activeSection === '#phenoscope.GridImage.array'" class="reference internal" href="#phenoscope.GridImage.array"><code class="docutils literal notranslate"><span class="pre">GridImage.array</span></code></a></li>
+<li><a :data-current="activeSection === '#phenoscope.GridImage.enh_matrix'" class="reference internal" href="#phenoscope.GridImage.enh_matrix"><code class="docutils literal notranslate"><span class="pre">GridImage.enh_matrix</span></code></a></li>
+<li><a :data-current="activeSection === '#phenoscope.GridImage.grid'" class="reference internal" href="#phenoscope.GridImage.grid"><code class="docutils literal notranslate"><span class="pre">GridImage.grid</span></code></a></li>
+<li><a :data-current="activeSection === '#phenoscope.GridImage.hsv'" class="reference internal" href="#phenoscope.GridImage.hsv"><code class="docutils literal notranslate"><span class="pre">GridImage.hsv</span></code></a></li>
+<li><a :data-current="activeSection === '#phenoscope.GridImage.matrix'" class="reference internal" href="#phenoscope.GridImage.matrix"><code class="docutils literal notranslate"><span class="pre">GridImage.matrix</span></code></a></li>
+<li><a :data-current="activeSection === '#phenoscope.GridImage.name'" class="reference internal" href="#phenoscope.GridImage.name"><code class="docutils literal notranslate"><span class="pre">GridImage.name</span></code></a></li>
+<li><a :data-current="activeSection === '#phenoscope.GridImage.num_objects'" class="reference internal" href="#phenoscope.GridImage.num_objects"><code class="docutils literal notranslate"><span class="pre">GridImage.num_objects</span></code></a></li>
+<li><a :data-current="activeSection === '#phenoscope.GridImage.objects'" class="reference internal" href="#phenoscope.GridImage.objects"><code class="docutils literal notranslate"><span class="pre">GridImage.objects</span></code></a></li>
+<li><a :data-current="activeSection === '#phenoscope.GridImage.omap'" class="reference internal" href="#phenoscope.GridImage.omap"><code class="docutils literal notranslate"><span class="pre">GridImage.omap</span></code></a></li>
+<li><a :data-current="activeSection === '#phenoscope.GridImage.omask'" class="reference internal" href="#phenoscope.GridImage.omask"><code class="docutils literal notranslate"><span class="pre">GridImage.omask</span></code></a></li>
+<li><a :data-current="activeSection === '#phenoscope.GridImage.props'" class="reference internal" href="#phenoscope.GridImage.props"><code class="docutils literal notranslate"><span class="pre">GridImage.props</span></code></a></li>
+<li><a :data-current="activeSection === '#phenoscope.GridImage.schema'" class="reference internal" href="#phenoscope.GridImage.schema"><code class="docutils literal notranslate"><span class="pre">GridImage.schema</span></code></a></li>
+<li><a :data-current="activeSection === '#phenoscope.GridImage.shape'" class="reference internal" href="#phenoscope.GridImage.shape"><code class="docutils literal notranslate"><span class="pre">GridImage.shape</span></code></a></li>
+<li><a :data-current="activeSection === '#phenoscope.GridImage.uuid'" class="reference internal" href="#phenoscope.GridImage.uuid"><code class="docutils literal notranslate"><span class="pre">GridImage.uuid</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div>
+</aside>
+</main>
+</div>
+</div><footer class="py-6 border-t border-border md:py-0">
+<div class="container flex flex-col items-center justify-between gap-4 md:h-24 md:flex-row">
+<div class="flex flex-col items-center gap-4 px-8 md:flex-row md:gap-2 md:px-0">
+<p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2025, ExFAB BioFoundry Built with <a class="font-medium underline underline-offset-4" href="https://www.sphinx-doc.org" rel="noreferrer">Sphinx 8.1.3</a></p>
+</div>
+</div>
+</footer>
+</div>
+<script src="_static/documentation_options.js?v=0a971622"></script>
+<script src="_static/doctools.js?v=9bcbadda"></script>
+<script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+<script defer="defer" src="_static/theme.js?v=073f68d9"></script>
+</body>
+</html>

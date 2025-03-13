@@ -3,17 +3,17 @@ from typing import Optional, Union, Type
 import numpy as np
 from skimage.color import rgb2hsv
 
-from ._image_components import HSVHandler
+from .accessors import HsvAccessor
 from ._image_handler import ImageHandler, Image
-from ..util.constants import C_ImageFormats, C_ImageHandler
+from phenoscope.util.constants import C_ImageFormats, C_ImageHandler
 
 
 class ImageHsv(ImageHandler):
     """Adds HSV support for the color measurement module"""
 
     def __init__(self, input_image: Optional[Union[np.ndarray, Type[Image]]] = None, input_schema=None):
-        super().__init__(input_image=input_image, input_schema=input_schema)
-        self.__hsv_handler = HSVHandler(self)
+        super().__init__(image_input=input_image, input_schema=input_schema)
+        self.__hsv_handler = HsvAccessor(self)
 
     @property
     def _hsv(self):
@@ -30,7 +30,16 @@ class ImageHsv(ImageHandler):
                     raise ValueError(f'Unsupported schema {self.schema} for HSV conversion')
 
     @property
-    def hsv(self):
+    def hsv(self)->HsvAccessor:
+        """Returns the HSV abstract object.
+
+        This property returns an instance of the HsvAccessor associated with the
+        current object, allowing access to HSV (hue, saturation, value) related
+        functionalities controlled by this handler.
+
+        Returns:
+            HsvAccessor: The instance of the HSV abstract handler.
+        """
         return self.__hsv_handler
 
     @hsv.setter

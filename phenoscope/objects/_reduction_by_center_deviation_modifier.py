@@ -1,8 +1,8 @@
 from scipy.spatial.distance import euclidean
 
-from ..interface import MapModifier
+from ..abstract import MapModifier
 from .. import Image
-from ..features import BoundaryExtractor
+from ..measure import BoundaryExtractor
 
 
 class CenterDeviationReducer(MapModifier):
@@ -17,7 +17,7 @@ class CenterDeviationReducer(MapModifier):
         img_center_rr = round(image.shape[0] / 2)
 
         bound_extractor = BoundaryExtractor()
-        bound_info = bound_extractor.extract(image)
+        bound_info = bound_extractor.measure(image)
 
         # bound_info.loc[:, 'Measurement_CenterDeviation'] = bound_info.apply(
         #         lambda row: print(row),
@@ -32,13 +32,13 @@ class CenterDeviationReducer(MapModifier):
         obj_to_keep = bound_info.loc[:,'Measurement_CenterDeviation'].idxmin()
 
         # Get a working copy of the object map
-        obj_map = image.obj_map
+        obj_map = image.omap
 
         # Set other objects to background
         obj_map[obj_map!=obj_to_keep] = 0
 
         # Set Image object map to new value
-        image.obj_map = obj_map
+        image.omap = obj_map
 
         return image
 

@@ -1,4 +1,4 @@
-INTERFACE_ERROR_MSG = "An interface method was called when it was not supposed to be. Make sure any inherited classes properly overload this method."
+INTERFACE_ERROR_MSG = "An abstract method was called when it was not supposed to be. Make sure any inherited classes properly overload this method."
 NO_IMAGE_DATA_ERROR_MSG = 'No image has been loaded into this class. Use an io method or set the color_array or array equal to an image data array.'
 
 NO_OUTPUT_ERROR_MSG = 'No output was returned in this operation'
@@ -34,11 +34,16 @@ Image Operation
 
 
 class C_ImageOperation(C_PhenoScopeModule):
-    class ComponentChangeError(AttributeError):
-        def __init__(self, component, operation):
+    """The Constants for ImageOperation classes."""
+    class IntegrityError(AttributeError):
+        def __init__(self, component, operation, image_name):
             super().__init__(
-                f'The {operation} operation attempted to change the component {component}. This operation should not change the component {component}.'
+                f'The {operation} operation attempted to change the component {component} for image {image_name}. This operation should not change the component {component}.'
             )
+
+    class OperationError(Exception):
+        def __init__(self, operation, image_name, err_type, message):
+            super().__init__(f'The operation: {operation} failed on image: {image_name}. {err_type}: {message}.')
 
 
 """
@@ -47,13 +52,14 @@ Image Handler
 
 
 class C_ImageHandler(C_PhenoScopeModule):
+    """The Constants for ImageHandler classes."""
     class IllegalAssignmentError(AttributeError):
         def __init__(self, attr):
             super().__init__(
                 f'The {attr} attribute should not directly assigned to a new object. If trying to change array elemennts use Image.{attr}[:]=value instead. If trying to change the image being represented use Image.set_image(new_image).'
             )
 
-    class uuidAssignmentError(AttributeError):
+    class UuidAssignmentError(AttributeError):
         def __init__(self):
             super().__init__('The Image uuid should not be changed as this can lead to errors with data integrity')
 
@@ -62,6 +68,10 @@ class C_ImageHandler(C_PhenoScopeModule):
             super().__init__(
                 "No array found. Either Input image was 2-D and had no array form. Set a multi-channel image or use a FormatConverter"
             )
+
+    class NoObjectsError(AttributeError):
+        def __init__(self, image_name):
+            super().__init__(f'No objects currently in image "{image_name}". Apply a `Detector` to the Image object first or access image-wide information using Image.props')
 
     class EmptyImageError(AttributeError):
         def __init__(self):
@@ -73,6 +83,7 @@ class C_ImageHandler(C_PhenoScopeModule):
 
 
 class C_ImmutableImageComponent(C_PhenoScopeModule):
+    """The Constants for ImmutableImageComponent classes."""
     class IllegalElementAssignmentError(AttributeError):
         """Exception raiased when trying to change the array/matrix elements directly. The User should use Image.set_image(new_image) instead."""
 
@@ -83,6 +94,7 @@ class C_ImmutableImageComponent(C_PhenoScopeModule):
 
 
 class C_ImageArraySubhandler(C_ImmutableImageComponent):
+    """The Constants for ImageArraySubhandler classes."""
     class NoArrayError(AttributeError):
         def __init__(self):
             super().__init__(
@@ -115,9 +127,6 @@ class C_MutableImageComponent(C_PhenoScopeModule):
             super().__init__(f'The shape of {param_name} must be the same shape as the Image.matrix')
 
 
-class C_ImageDetectionMatrixSubhandler(C_MutableImageComponent): pass
-
-
 class C_ObjectMask(C_MutableImageComponent):
     class InvalidValueTypeError(ValueError):
         def __init__(self, value_type):
@@ -130,6 +139,9 @@ class C_ObjectMask(C_MutableImageComponent):
             super().__init__(
                 'The scalar value could not be converted to a boolean value. If value is an integer, it should be either 0 or 1.'
             )
+
+
+class C_ImageDetectionMatrix(C_MutableImageComponent): pass
 
 
 class C_ObjectMap(C_MutableImageComponent):
@@ -149,7 +161,6 @@ class C_Metadata(C_PhenoScopeModule):
         SCHEMA='Schema',
     )
 
-
     class UUIDReassignmentError(ValueError):
         def __init__(self):
             super().__init__('The uuid metadata should not be changed to preserve data integrity.')
@@ -168,6 +179,7 @@ class C_Metadata(C_PhenoScopeModule):
 
 
 class C_HSVHandler(C_ImageArraySubhandler): pass
+
 
 """
 Image Formats
@@ -225,15 +237,22 @@ Grid
 
 
 class C_Grid(C_PhenoScopeModule):
-    """
-    Attributes:
-        GRID_ROW_NUM: The row number of the object in the grid.
-        GRID_ROW_INTERVAL: The interval of the object's row in the grid as a tuple (row_min, row_max.
-        GRID_COL_NUM: The column number in the grid.
-        GRID_COL_INTERVAL: The interval of the object's column in the grid as a tuple (col_min, col_max).
-        GRID_SECTION_NUM: The section number that the object belongs to in the grid. The sections are numbered left to right, top to bottom.
-        GRID_SECTION_IDX: The index of the section in the grid.
+    """Represents a grid structure in the PhenoScope module.
 
+    This class is designed to manage and define grid-related configurations,
+    such as the number of rows and columns in the grid, intervals between these
+    rows and columns, and grid section information like section number and
+    index. The primary purpose of this class is to provide a structured and
+    encapsulated way to handle grid parameters and their usage within the
+    PhenoScope framework.
+
+    Attributes:
+        GRID_ROW_NUM (str): Key for the number of rows in the grid.
+        GRID_ROW_INTERVAL (str): Key for the interval between rows in the grid.
+        GRID_COL_NUM (str): Key for the number of columns in the grid.
+        GRID_COL_INTERVAL (str): Key for the interval between columns in the grid.
+        GRID_SECTION_NUM (str): Key for the number of sections in the grid.
+        GRID_SECTION_IDX (str): Key for the index of a specific section in the grid.
     """
     GRID_ROW_NUM = 'Grid_RowNum'
     GRID_ROW_INTERVAL = 'Grid_RowInterval'
@@ -244,9 +263,12 @@ class C_Grid(C_PhenoScopeModule):
     GRID_SECTION_NUM = 'Grid_SectionNum'
     GRID_SECTION_IDX = 'Grid_SectionIndex'
 
+
 """
 Features
 """
+
+
 class C_GridLinRegStatsExtractor:
     ROW_LINREG_M, ROW_LINREG_B = 'RowLinReg_M', 'RowLinReg_B'
     COL_LINREG_M, COL_LINREG_B = 'ColLinReg_M', 'LinReg_B'

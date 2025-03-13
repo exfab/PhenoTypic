@@ -1,5 +1,5 @@
 from .. import Image
-from ..interface import ImagePreprocessor
+from ..abstract import ImagePreprocessor
 
 from skimage.filters import median
 
@@ -13,5 +13,5 @@ class MedianPreprocessor(ImagePreprocessor):
             raise ValueError('mode must be one of "nearest","reflect","constant","mirror","wrap"')
 
     def _operate(self, image: Image) -> Image:
-        image.det_matrix[:] = median(image=image.det_matrix[:], behavior='ndimage', mode=self._mode, cval=self._cval)
+        image.enh_matrix[:] = median(image=image.enh_matrix[:], behavior='ndimage', mode=self._mode, cval=self._cval)
         return image

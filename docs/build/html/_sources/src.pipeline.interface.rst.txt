@@ -1,0 +1,10 @@
+src.pipeline.interface package
+==============================
+
+Module contents
+---------------
+
+.. automodule:: src.pipeline.interface
+   :members:
+   :undoc-members:
+   :show-inheritance:

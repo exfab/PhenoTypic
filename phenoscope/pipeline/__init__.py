@@ -1,2 +1,3 @@
-from . import interface
-from . import preprocessing
+from ._image_pipeline import ImagePipeline
+
+__all__ = ["ImagePipeline"]

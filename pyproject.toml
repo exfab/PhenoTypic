@@ -1,18 +1,18 @@
 [build-system]
 requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 
 [project]
 name = 'phenoscope'
-
-version = '0.4.2a'
+dynamic = ["version"]
 
 authors = [
     {name='Alexander Nguyen', email="xander-git@protonmail.com"}
 ]
 
-description = "An image processing framework created for Ex-FAB NSF BioFoundry that aims to streamline the development of image processing tools for phenotype image analysis."
+description = "An image processing framework created for Ex-FAB NSF BioFoundry that aims to streamline the development of image processing pipelines for images analysis of phenotypes."
 
 readme="README.md"
 
@@ -33,6 +33,15 @@ dependencies = [
     "scikit-image",
     "scikit-learn",
     "scipy",
+    "opencv-python",
+    "h5py",
+    "mahotas",
+    "pillow",
+    "sphinx",
+    "sphinxcontrib-napoleon",
+    "sphinx-autodoc-typehints",
+    "sphinxawesome-theme",
+    "furo"
 ]
 
 [projects.urls]
@@ -41,3 +50,6 @@ Repository = "https://github.com/Xander-git/PhenoScope"
 [tool.pytest.ini_options]
 testpaths = ["./tests/*"]
 addopts = "--verbose --capture=no"
+
+[tool.setuptools.dynamic]
+version = {attr = "phenoscope.__version__"}

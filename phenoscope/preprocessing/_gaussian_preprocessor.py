@@ -1,6 +1,6 @@
 from skimage.filters import gaussian
 
-from ..interface import ImagePreprocessor
+from ..abstract import ImagePreprocessor
 from .. import Image
 
 
@@ -12,8 +12,8 @@ class GaussianPreprocessor(ImagePreprocessor):
         self._channel_axis = channel_axis
 
     def _operate(self, image: Image) -> Image:
-        image.det_matrix[:] = gaussian(
-                image=image.det_matrix[:],
+        image.enh_matrix[:] = gaussian(
+                image=image.enh_matrix[:],
                 sigma=self._sigma,
                 mode=self._mode,
                 truncate=self._truncate,

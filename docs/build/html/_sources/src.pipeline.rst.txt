@@ -1,0 +1,19 @@
+src.pipeline package
+====================
+
+Subpackages
+-----------
+
+.. toctree::
+   :maxdepth: 4
+
+   src.pipeline.interface
+   src.pipeline.preprocessing
+
+Module contents
+---------------
+
+.. automodule:: src.pipeline
+   :members:
+   :undoc-members:
+   :show-inheritance:

@@ -1,0 +1,1054 @@
+<!DOCTYPE html>
+<html lang="en"
+      data-content_root="../../../"
+      x-data="{ darkMode: localStorage.getItem('darkMode') || localStorage.setItem('darkMode', 'system'), activeSection: '' }"
+      x-init="$watch('darkMode', val => localStorage.setItem('darkMode', val))"
+      class="scroll-smooth"
+      :class="{'dark': darkMode === 'dark' || (darkMode === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)}"
+>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="utf-8" />
+  <meta name="theme-color" media="(prefers-color-scheme: light)" content="white" />
+  <meta name="theme-color" media="(prefers-color-scheme: dark)" content="black" />
+  
+    <title>phenoscope.core._image_handler | PhenoScope 0.5.0a1 documentation</title>
+    <meta property="og:title" content="phenoscope.core._image_handler | PhenoScope 0.5.0a1 documentation" />
+    <meta name="twitter:title" content="phenoscope.core._image_handler | PhenoScope 0.5.0a1 documentation" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=e72c8e07" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/theme.css?v=42baaae4" />
+        <link rel="search" title="Search" href="../../../search.html" />
+        <link rel="index" title="Index" href="../../../genindex.html" />
+
+    <script>
+    <!-- Prevent Flash of wrong theme -->
+      const userPreference = localStorage.getItem('darkMode');
+      let mode;
+      if (userPreference === 'dark' || window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        mode = 'dark';
+        document.documentElement.classList.add('dark');
+      } else {
+        mode = 'light';
+      }
+      if (!userPreference) {localStorage.setItem('darkMode', mode)}
+    </script>
+</head>
+  <body x-data="{ showSidebar: false, showScrollTop: false }" class="min-h-screen font-sans antialiased bg-background text-foreground" :class="{ 'overflow-hidden': showSidebar }">
+    <div x-cloak x-show="showSidebar" class="fixed inset-0 z-50 overflow-hidden bg-background/80 backdrop-blur-sm md:hidden" @click.self="showSidebar = false"></div><div id="page" class="relative flex flex-col min-h-screen"><a href="#content" class="absolute top-0 left-0 z-[100] block bg-background p-4 text-xl transition -translate-x-full opacity-0 focus:translate-x-0 focus:opacity-100">
+      Skip to content
+    </a><header
+  class="sticky top-0 z-40 w-full border-b shadow-sm border-border supports-backdrop-blur:bg-background/60 bg-background/95 backdrop-blur"><div class="container flex items-center h-14">
+    <div class="hidden mr-4 md:flex">
+      <a href="../../../index.html" class="flex items-center mr-6">
+          <img width="24" height="24" class="mr-2 hidden dark:block" src="../../../_static/PhenoScopeLogo-DarkMode.png" alt="Logo" />
+        <img width="24" height="24" class="mr-2 dark:hidden" src="../../../_static/PhenoScopeLogo.png" alt="Logo" /><span class="hidden font-bold sm:inline-block text-clip whitespace-nowrap">PhenoScope 0.5.0a1 documentation</span>
+      </a></div><button
+      class="inline-flex items-center justify-center h-10 px-0 py-2 mr-2 text-base font-medium transition-colors rounded-md hover:text-accent-foreground hover:bg-transparent md:hidden"
+      type="button" @click="showSidebar = true">
+      <svg xmlns="http://www.w3.org/2000/svg" height="24" width="24" viewBox="0 96 960 960" aria-hidden="true"
+        fill="currentColor">
+        <path
+          d="M152.587 825.087q-19.152 0-32.326-13.174t-13.174-32.326q0-19.152 13.174-32.326t32.326-13.174h440q19.152 0 32.326 13.174t13.174 32.326q0 19.152-13.174 32.326t-32.326 13.174h-440Zm0-203.587q-19.152 0-32.326-13.174T107.087 576q0-19.152 13.174-32.326t32.326-13.174h320q19.152 0 32.326 13.174T518.087 576q0 19.152-13.174 32.326T472.587 621.5h-320Zm0-203.587q-19.152 0-32.326-13.174t-13.174-32.326q0-19.152 13.174-32.326t32.326-13.174h440q19.152 0 32.326 13.174t13.174 32.326q0 19.152-13.174 32.326t-32.326 13.174h-440ZM708.913 576l112.174 112.174q12.674 12.674 12.674 31.826t-12.674 31.826Q808.413 764.5 789.261 764.5t-31.826-12.674l-144-144Q600 594.391 600 576t13.435-31.826l144-144q12.674-12.674 31.826-12.674t31.826 12.674q12.674 12.674 12.674 31.826t-12.674 31.826L708.913 576Z" />
+      </svg>
+      <span class="sr-only">Toggle navigation menu</span>
+    </button>
+    <div class="flex items-center justify-between flex-1 space-x-2 sm:space-x-4 md:justify-end">
+      <div class="flex-1 w-full md:w-auto md:flex-none"><form id="searchbox"
+      action="../../../search.html"
+      method="get"
+      class="relative flex items-center group"
+      @keydown.k.window.meta="$refs.search.focus()">
+  <input x-ref="search"
+          name="q"
+          id="search-input"
+          type="search"
+          aria-label="Search the docs"
+          placeholder="Search ..."
+          class="inline-flex items-center font-medium transition-colors bg-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background border border-input hover:bg-accent focus:bg-accent hover:text-accent-foreground focus:text-accent-foreground hover:placeholder-accent-foreground py-2 px-4 relative h-9 w-full justify-start rounded-[0.5rem] text-sm text-muted-foreground sm:pr-12 md:w-40 lg:w-64" />
+  <kbd class="pointer-events-none absolute right-1.5 top-2 hidden h-5 select-none text-muted-foreground items-center gap-1 rounded border border-border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex group-hover:bg-accent group-hover:text-accent-foreground">
+    <span class="text-xs">⌘</span>
+    K
+  </kbd>
+</form>
+      </div>
+      <nav class="flex items-center space-x-1">
+        <button @click="darkMode = darkMode === 'light' ? 'dark' : 'light'"
+          class="relative inline-flex items-center justify-center px-0 text-sm font-medium transition-colors rounded-md hover:bg-accent hover:text-accent-foreground h-9 w-9"
+          type="button"
+          aria-label="Color theme switcher">
+          <svg xmlns="http://www.w3.org/2000/svg" height="24" width="24" viewBox="0 96 960 960" fill="currentColor"
+            class="absolute transition-all scale-100 rotate-0 dark:-rotate-90 dark:scale-0">
+            <path
+              d="M480 685q45.456 0 77.228-31.772Q589 621.456 589 576q0-45.456-31.772-77.228Q525.456 467 480 467q-45.456 0-77.228 31.772Q371 530.544 371 576q0 45.456 31.772 77.228Q434.544 685 480 685Zm0 91q-83 0-141.5-58.5T280 576q0-83 58.5-141.5T480 376q83 0 141.5 58.5T680 576q0 83-58.5 141.5T480 776ZM80 621.5q-19.152 0-32.326-13.174T34.5 576q0-19.152 13.174-32.326T80 530.5h80q19.152 0 32.326 13.174T205.5 576q0 19.152-13.174 32.326T160 621.5H80Zm720 0q-19.152 0-32.326-13.174T754.5 576q0-19.152 13.174-32.326T800 530.5h80q19.152 0 32.326 13.174T925.5 576q0 19.152-13.174 32.326T880 621.5h-80Zm-320-320q-19.152 0-32.326-13.174T434.5 256v-80q0-19.152 13.174-32.326T480 130.5q19.152 0 32.326 13.174T525.5 176v80q0 19.152-13.174 32.326T480 301.5Zm0 720q-19.152 0-32.326-13.17Q434.5 995.152 434.5 976v-80q0-19.152 13.174-32.326T480 850.5q19.152 0 32.326 13.174T525.5 896v80q0 19.152-13.174 32.33-13.174 13.17-32.326 13.17ZM222.174 382.065l-43-42Q165.5 327.391 166 308.239t13.174-33.065q13.435-13.674 32.587-13.674t32.065 13.674l42.239 43q12.674 13.435 12.555 31.706-.12 18.272-12.555 31.946-12.674 13.674-31.445 13.413-18.772-.261-32.446-13.174Zm494 494.761-42.239-43q-12.674-13.435-12.674-32.087t12.674-31.565Q686.609 756.5 705.38 757q18.772.5 32.446 13.174l43 41.761Q794.5 824.609 794 843.761t-13.174 33.065Q767.391 890.5 748.239 890.5t-32.065-13.674Zm-42-494.761Q660.5 369.391 661 350.62q.5-18.772 13.174-32.446l41.761-43Q728.609 261.5 747.761 262t33.065 13.174q13.674 13.435 13.674 32.587t-13.674 32.065l-43 42.239q-13.435 12.674-31.706 12.555-18.272-.12-31.946-12.555Zm-495 494.761Q165.5 863.391 165.5 844.239t13.674-32.065l43-42.239q13.435-12.674 32.087-12.674t31.565 12.674Q299.5 782.609 299 801.38q-.5 18.772-13.174 32.446l-41.761 43Q231.391 890.5 212.239 890t-33.065-13.174ZM480 576Z" />
+          </svg>
+          <svg xmlns="http://www.w3.org/2000/svg" height="24" width="24" viewBox="0 96 960 960" fill="currentColor"
+            class="absolute transition-all scale-0 rotate-90 dark:rotate-0 dark:scale-100">
+            <path
+              d="M480 936q-151 0-255.5-104.5T120 576q0-138 90-239.5T440 218q25-3 39 18t-1 44q-17 26-25.5 55t-8.5 61q0 90 63 153t153 63q31 0 61.5-9t54.5-25q21-14 43-1.5t19 39.5q-14 138-117.5 229T480 936Zm0-80q88 0 158-48.5T740 681q-20 5-40 8t-40 3q-123 0-209.5-86.5T364 396q0-20 3-40t8-40q-78 32-126.5 102T200 576q0 116 82 198t198 82Zm-10-270Z" />
+          </svg>
+        </button>
+      </nav>
+    </div>
+  </div>
+</header>
+
+    <div class="flex-1"><div class="container flex-1 items-start md:grid md:grid-cols-[220px_minmax(0,1fr)] md:gap-6 lg:grid-cols-[240px_minmax(0,1fr)] lg:gap-10"><aside id="left-sidebar"
+  class="fixed inset-y-0 left-0 md:top-14 z-50 md:z-30 bg-background md:bg-transparent transition-all duration-100 -translate-x-full md:translate-x-0 ml-0 p-6 md:p-0 md:-ml-2 md:h-[calc(100vh-3.5rem)] w-5/6 md:w-full shrink-0 overflow-y-auto border-r border-border md:sticky"
+  :aria-hidden="!showSidebar" :class="{ 'translate-x-0': showSidebar }">
+
+    <a href="../../../index.html" class="!justify-start text-sm md:!hidden bg-background">
+        <img width="16" height="16" class="mr-2 hidden dark:block" src="../../../_static/PhenoScopeLogo-DarkMode.png" alt="Logo" />
+        <img width="16" height="16" class="mr-2 dark:hidden" src="../../../_static/PhenoScopeLogo.png" alt="Logo" /><span class="font-bold text-clip whitespace-nowrap">PhenoScope 0.5.0a1 documentation</span>
+    </a>
+
+    <div class="relative overflow-hidden md:overflow-auto my-4 md:my-0 h-[calc(100vh-8rem)] md:h-auto">
+      <div class="overflow-y-auto h-full w-full relative pr-6"><nav class="table w-full min-w-full my-6 lg:my-8">
+  <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../modules.html">phenoscope</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../phenoscope.core.html">phenoscope.core package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../phenoscope.core.accessors.html">phenoscope.core.accessors package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../phenoscope.data.html">phenoscope.data package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../phenoscope.detection.html">phenoscope.detection package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../phenoscope.grid.html">phenoscope.grid package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../phenoscope.measure.html">phenoscope.measure package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../phenoscope.morphology.html">phenoscope.morphology package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../phenoscope.objects.html">phenoscope.objects package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../phenoscope.pipeline.html">phenoscope.pipeline package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../phenoscope.preprocessing.html">phenoscope.preprocessing package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../phenoscope.transform.html">phenoscope.transform package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../phenoscope.abstract.html">phenoscope.abstract package</a></li>
+</ul>
+
+</nav>
+      </div>
+    </div>
+    <button type="button" @click="showSidebar = false"
+      class="absolute md:hidden right-4 top-4 rounded-sm opacity-70 transition-opacity hover:opacity-100">
+      <svg xmlns="http://www.w3.org/2000/svg" height="24" width="24" viewBox="0 96 960 960" fill="currentColor"
+        stroke="none" class="h-4 w-4">
+        <path
+          d="M480 632 284 828q-11 11-28 11t-28-11q-11-11-11-28t11-28l196-196-196-196q-11-11-11-28t11-28q11-11 28-11t28 11l196 196 196-196q11-11 28-11t28 11q11 11 11 28t-11 28L536 576l196 196q11 11 11 28t-11 28q-11 11-28 11t-28-11L480 632Z" />
+      </svg>
+    </button>
+  </aside>
+        <main class="relative py-6 lg:gap-10 lg:py-8 xl:grid xl:grid-cols-[1fr_300px]">
+<div class="w-full min-w-0 mx-auto">
+<nav aria-label="breadcrumbs"
+     class="flex items-center mb-4 space-x-1 text-sm text-muted-foreground">
+  <a class="overflow-hidden text-ellipsis whitespace-nowrap hover:text-foreground"
+     href="../../../index.html">
+    <span class="hidden md:inline">PhenoScope 0.5.0a1 documentation</span>
+    <svg xmlns="http://www.w3.org/2000/svg"
+         height="18"
+         width="18"
+         viewBox="0 96 960 960"
+         aria-label="Home"
+         fill="currentColor"
+         stroke="none"
+         class="md:hidden">
+      <path d="M240 856h120V616h240v240h120V496L480 316 240 496v360Zm-80 80V456l320-240 320 240v480H520V696h-80v240H160Zm320-350Z" />
+    </svg>
+  </a>
+  
+<div class="mr-1">/</div><a class="hover:text-foreground overflow-hidden text-ellipsis whitespace-nowrap"
+       href="../../index.html">Module code</a>
+    
+<div class="mr-1">/</div><span aria-current="page"
+        class="font-medium text-foreground overflow-hidden text-ellipsis whitespace-nowrap">phenoscope.core._image_handler</span>
+</nav>
+
+    <div id="content" role="main">
+      <h1>Source code for phenoscope.core._image_handler</h1><div class="highlight"><pre>
+<span></span><code><span id="line-1"><span class="kn">import</span><span class="w"> </span><span class="nn">uuid</span>
+</span><span id="line-2"><span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Union</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Tuple</span>
+</span><span id="line-3"><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+</span><span id="line-4"><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+</span><span id="line-5"><span class="kn">import</span><span class="w"> </span><span class="nn">skimage</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">ski</span>
+</span><span id="line-6"><span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+</span><span id="line-7"><span class="kn">from</span><span class="w"> </span><span class="nn">os</span><span class="w"> </span><span class="kn">import</span> <span class="n">PathLike</span>
+</span><span id="line-8"><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+</span><span id="line-9">
+</span><span id="line-10"><span class="kn">from</span><span class="w"> </span><span class="nn">skimage.color</span><span class="w"> </span><span class="kn">import</span> <span class="n">rgb2gray</span><span class="p">,</span> <span class="n">rgba2rgb</span>
+</span><span id="line-11"><span class="kn">from</span><span class="w"> </span><span class="nn">skimage.transform</span><span class="w"> </span><span class="kn">import</span> <span class="n">rotate</span> <span class="k">as</span> <span class="n">skimage_rotate</span>
+</span><span id="line-12"><span class="kn">from</span><span class="w"> </span><span class="nn">scipy.ndimage</span><span class="w"> </span><span class="kn">import</span> <span class="n">rotate</span> <span class="k">as</span> <span class="n">scipy_rotate</span>
+</span><span id="line-13"><span class="kn">from</span><span class="w"> </span><span class="nn">copy</span><span class="w"> </span><span class="kn">import</span> <span class="n">deepcopy</span>
+</span><span id="line-14"><span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TypeVar</span><span class="p">,</span> <span class="n">Type</span>
+</span><span id="line-15">
+</span><span id="line-16"><span class="kn">from</span><span class="w"> </span><span class="nn">scipy.sparse</span><span class="w"> </span><span class="kn">import</span> <span class="n">csc_matrix</span>
+</span><span id="line-17">
+</span><span id="line-18"><span class="kn">from</span><span class="w"> </span><span class="nn">.accessors</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+</span><span id="line-19">    <span class="n">ImageArray</span><span class="p">,</span>
+</span><span id="line-20">    <span class="n">ImageMatrix</span><span class="p">,</span>
+</span><span id="line-21">    <span class="n">ImageEnhancedMatrix</span><span class="p">,</span>
+</span><span id="line-22">    <span class="n">ObjectMask</span><span class="p">,</span>
+</span><span id="line-23">    <span class="n">ObjectMap</span><span class="p">,</span>
+</span><span id="line-24">    <span class="n">ImageObjects</span>
+</span><span id="line-25"><span class="p">)</span>
+</span><span id="line-26">
+</span><span id="line-27"><span class="kn">from</span><span class="w"> </span><span class="nn">phenoscope.util.constants</span><span class="w"> </span><span class="kn">import</span> <span class="n">C_ImageHandler</span><span class="p">,</span> <span class="n">C_ImageFormats</span><span class="p">,</span> <span class="n">C_Metadata</span>
+</span><span id="line-28">
+</span><span id="line-29"><span class="n">Image</span> <span class="o">=</span> <span class="n">TypeVar</span><span class="p">(</span><span class="s1">&#39;Image&#39;</span><span class="p">,</span> <span class="n">bound</span><span class="o">=</span><span class="s1">&#39;ImageHandler&#39;</span><span class="p">)</span>
+</span><span id="line-30">
+</span><span id="line-31">
+</span><span id="line-32"><span class="k">class</span><span class="w"> </span><span class="nc">ImageHandler</span><span class="p">:</span>
+</span><span id="line-33"><span class="w">    </span><span class="sd">&quot;&quot;&quot;A comprehensive class for handling image processing, including manipulation, information sync, metadata management, and format conversion.</span>
+</span><span id="line-34">
+</span><span id="line-35"><span class="sd">    The `ImageHandler` class is designed to load, process, and manage image data using different</span>
+</span><span id="line-36"><span class="sd">    representation formats (e.g., arrays and matrices). This class allows for metadata editing,</span>
+</span><span id="line-37"><span class="sd">    schema definition, and subcomponent handling to streamline image processing tasks.</span>
+</span><span id="line-38">
+</span><span id="line-39"><span class="sd">    Note:</span>
+</span><span id="line-40"><span class="sd">        If the input_image is 2-D, the ImageHandler leave the array form as None</span>
+</span><span id="line-41"><span class="sd">        If the input_image is 3-D, the ImageHandler will automatically set the matrix component to the grayscale representation.</span>
+</span><span id="line-42">
+</span><span id="line-43"><span class="sd">    Attributes:</span>
+</span><span id="line-44"><span class="sd">        _array (Optional[np.ndarray]): The numeric array representation of the image</span>
+</span><span id="line-45"><span class="sd">            used for multichannel data processing.</span>
+</span><span id="line-46"><span class="sd">        _matrix (Optional[np.ndarray]): The matrix representation of the image, primarily</span>
+</span><span id="line-47"><span class="sd">            used for 2D image data or grayscale formats.</span>
+</span><span id="line-48"><span class="sd">        _det_matrix (Optional[np.ndarray]): A detection matrix representation, useful for</span>
+</span><span id="line-49"><span class="sd">            object detection tasks and similar applications.</span>
+</span><span id="line-50"><span class="sd">        _sparse_object_map (Optional[csc_matrix]): A sparse object map for efficient</span>
+</span><span id="line-51"><span class="sd">            representation of object detection overlays.</span>
+</span><span id="line-52"><span class="sd">        __image_schema (Optional[str]): A schema defining the format of the image input,</span>
+</span><span id="line-53"><span class="sd">            influencing how data is interpreted or manipulated.</span>
+</span><span id="line-54"><span class="sd">        _private_metadata (Dict[str, Any]): Immutable metadata associated with the image,</span>
+</span><span id="line-55"><span class="sd">            including a universally unique identifier (UUID).</span>
+</span><span id="line-56"><span class="sd">        _protected_metadata (Dict[str, Optional[Union[int, float, str, bool, np.integer,</span>
+</span><span id="line-57"><span class="sd">            np.floating, np.bool_, np.complexfloating]]]): Editable protected metadata,</span>
+</span><span id="line-58"><span class="sd">            such as the image name, providing key image-related information.</span>
+</span><span id="line-59"><span class="sd">        _public_metadata (Dict[str, Union[int, float, str, bool, np.integer, np.floating,</span>
+</span><span id="line-60"><span class="sd">            np.bool_, np.complexfloating]]): Public metadata that can be fully edited or</span>
+</span><span id="line-61"><span class="sd">            removed without restrictions.</span>
+</span><span id="line-62"><span class="sd">        __array_subhandler (ImageArray): Subhandler responsible for array-based operations.</span>
+</span><span id="line-63"><span class="sd">            Extends functionality for working with image arrays.</span>
+</span><span id="line-64"><span class="sd">        __matrix_subhandler (ImageMatrix): Subhandler for performing operations on the image</span>
+</span><span id="line-65"><span class="sd">            matrix representation.</span>
+</span><span id="line-66"><span class="sd">        __det_matrix_subhandler (ImageDetectionMatrix): Subhandler for handling detection</span>
+</span><span id="line-67"><span class="sd">            matrix operations.</span>
+</span><span id="line-68"><span class="sd">        __object_mask_subhandler (ObjectMask): Subhandler for managing object masks in the</span>
+</span><span id="line-69"><span class="sd">            image.</span>
+</span><span id="line-70"><span class="sd">        __object_map_subhandler (ObjectMap): Subhandler for working with object maps.</span>
+</span><span id="line-71"><span class="sd">        __objects_subhandler (ImageObjects): Subhandler for managing objects detected in</span>
+</span><span id="line-72"><span class="sd">            the image.</span>
+</span><span id="line-73"><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="line-74">
+</span><span id="line-75">    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image_input</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">Type</span><span class="p">[</span><span class="n">Image</span><span class="p">],</span> <span class="n">PathLike</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="line-76">                 <span class="n">input_schema</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="line-77">                 <span class="n">name</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+</span><span id="line-78"><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+</span><span id="line-79"><span class="sd">        Initializes an image processing object with provided input image, schema, and name.</span>
+</span><span id="line-80">
+</span><span id="line-81"><span class="sd">        The class constructor initializes core backend variables, including the image schema,</span>
+</span><span id="line-82"><span class="sd">        protected and public metadata dictionaries, and various image component handlers</span>
+</span><span id="line-83"><span class="sd">        to manage subcomponents and data operations for image manipulations. It also sets up</span>
+</span><span id="line-84"><span class="sd">        private and protected metadata with specific handling for input names or defaults.</span>
+</span><span id="line-85">
+</span><span id="line-86"><span class="sd">        Args:</span>
+</span><span id="line-87"><span class="sd">            image_input: An optional input image represented as either a NumPy array or an image</span>
+</span><span id="line-88"><span class="sd">                object. Defaults to None.</span>
+</span><span id="line-89"><span class="sd">            input_schema: An optional string defining the schema for the input image to specify</span>
+</span><span id="line-90"><span class="sd">                how data should be interpreted or processed. Defaults to None.</span>
+</span><span id="line-91"><span class="sd">            name: An optional string to assign a name to the image, used as metadata. If not</span>
+</span><span id="line-92"><span class="sd">                provided, a universally unique identifier (UUID) will be generated and assigned.</span>
+</span><span id="line-93"><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="line-94">        <span class="bp">self</span><span class="o">.</span><span class="n">_array</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+</span><span id="line-95">        <span class="bp">self</span><span class="o">.</span><span class="n">_matrix</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+</span><span id="line-96">        <span class="bp">self</span><span class="o">.</span><span class="n">_det_matrix</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+</span><span id="line-97">        <span class="bp">self</span><span class="o">.</span><span class="n">_sparse_object_map</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">csc_matrix</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+</span><span id="line-98">
+</span><span id="line-99">        <span class="c1"># Initialize core backend variables</span>
+</span><span id="line-100">        <span class="bp">self</span><span class="o">.</span><span class="n">__image_schema</span> <span class="o">=</span> <span class="kc">None</span>
+</span><span id="line-101">
+</span><span id="line-102">        <span class="c1"># Private metadata cannot be edited and is not duplicated with copies of the class</span>
+</span><span id="line-103">        <span class="bp">self</span><span class="o">.</span><span class="n">_private_metadata</span> <span class="o">=</span> <span class="p">{</span>
+</span><span id="line-104">            <span class="n">C_Metadata</span><span class="o">.</span><span class="n">LABELS</span><span class="o">.</span><span class="n">UUID</span><span class="p">:</span> <span class="n">uuid</span><span class="o">.</span><span class="n">uuid4</span><span class="p">()</span>
+</span><span id="line-105">        <span class="p">}</span>
+</span><span id="line-106">
+</span><span id="line-107">        <span class="c1"># Protected Metadata can be edited, but not removed</span>
+</span><span id="line-108">        <span class="bp">self</span><span class="o">.</span><span class="n">_protected_metadata</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span>
+</span><span id="line-109">            <span class="nb">str</span><span class="p">,</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">str</span><span class="p">,</span> <span class="nb">bool</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">integer</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">floating</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">bool_</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">complexfloating</span><span class="p">]]]</span> <span class="o">=</span> <span class="p">{</span>
+</span><span id="line-110">            <span class="n">C_Metadata</span><span class="o">.</span><span class="n">LABELS</span><span class="o">.</span><span class="n">IMAGE_NAME</span><span class="p">:</span> <span class="n">name</span> <span class="k">if</span> <span class="n">name</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">_private_metadata</span><span class="p">[</span><span class="n">C_Metadata</span><span class="o">.</span><span class="n">LABELS</span><span class="o">.</span><span class="n">UUID</span><span class="p">],</span>
+</span><span id="line-111">        <span class="p">}</span>
+</span><span id="line-112">
+</span><span id="line-113">        <span class="c1"># Public metadata can be edited or removed</span>
+</span><span id="line-114">        <span class="bp">self</span><span class="o">.</span><span class="n">_public_metadata</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Union</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">str</span><span class="p">,</span> <span class="nb">bool</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">integer</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">floating</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">bool_</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">complexfloating</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>
+</span><span id="line-115">
+</span><span id="line-116">        <span class="c1"># Initialize image component handlers</span>
+</span><span id="line-117">        <span class="bp">self</span><span class="o">.</span><span class="n">__array_subhandler</span><span class="p">:</span> <span class="n">ImageArray</span> <span class="o">=</span> <span class="n">ImageArray</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+</span><span id="line-118">        <span class="bp">self</span><span class="o">.</span><span class="n">__matrix_subhandler</span><span class="p">:</span> <span class="n">ImageMatrix</span> <span class="o">=</span> <span class="n">ImageMatrix</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+</span><span id="line-119">        <span class="bp">self</span><span class="o">.</span><span class="n">__det_matrix_subhandler</span><span class="p">:</span> <span class="n">ImageEnhancedMatrix</span> <span class="o">=</span> <span class="n">ImageEnhancedMatrix</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+</span><span id="line-120">        <span class="bp">self</span><span class="o">.</span><span class="n">__object_mask_subhandler</span><span class="p">:</span> <span class="n">ObjectMask</span> <span class="o">=</span> <span class="n">ObjectMask</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+</span><span id="line-121">        <span class="bp">self</span><span class="o">.</span><span class="n">__object_map_subhandler</span><span class="p">:</span> <span class="n">ObjectMap</span> <span class="o">=</span> <span class="n">ObjectMap</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+</span><span id="line-122">        <span class="bp">self</span><span class="o">.</span><span class="n">__objects_subhandler</span><span class="p">:</span> <span class="n">ImageObjects</span> <span class="o">=</span> <span class="n">ImageObjects</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+</span><span id="line-123">
+</span><span id="line-124">        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">image_input</span><span class="p">,</span> <span class="p">(</span><span class="n">PathLike</span><span class="p">,</span> <span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">)):</span>
+</span><span id="line-125">            <span class="bp">self</span><span class="o">.</span><span class="n">imread</span><span class="p">(</span><span class="n">image_input</span><span class="p">)</span>
+</span><span id="line-126">        <span class="k">else</span><span class="p">:</span>
+</span><span id="line-127">            <span class="bp">self</span><span class="o">.</span><span class="n">set_image</span><span class="p">(</span><span class="n">input_image</span><span class="o">=</span><span class="n">image_input</span><span class="p">,</span> <span class="n">input_schema</span><span class="o">=</span><span class="n">input_schema</span><span class="p">)</span>
+</span><span id="line-128">
+</span><span id="line-129">    <span class="k">def</span><span class="w"> </span><span class="fm">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Type</span><span class="p">[</span><span class="n">Image</span><span class="p">]:</span>
+</span><span id="line-130"><span class="w">        </span><span class="sd">&quot;&quot;&quot;Returns a subimage from the current object based on the provided key. The subimage is initialized</span>
+</span><span id="line-131"><span class="sd">        as a new instance of the same class, maintaining the schema and format consistency as the original</span>
+</span><span id="line-132"><span class="sd">        image object. This method supports 2-dimensional slicing and indexing.</span>
+</span><span id="line-133">
+</span><span id="line-134"><span class="sd">        Args:</span>
+</span><span id="line-135"><span class="sd">            key: A slicing key or index used to extract a subset or part of the image object.</span>
+</span><span id="line-136">
+</span><span id="line-137"><span class="sd">        Returns:</span>
+</span><span id="line-138"><span class="sd">            An instance of the current class representing the subimage corresponding to the provided key.</span>
+</span><span id="line-139">
+</span><span id="line-140"><span class="sd">        Raises:</span>
+</span><span id="line-141"><span class="sd">            KeyError: If the provided key does not match the expected slicing format or dimensions.</span>
+</span><span id="line-142"><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="line-143">        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">schema</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">C_ImageFormats</span><span class="o">.</span><span class="n">MATRIX_FORMATS</span><span class="p">:</span>
+</span><span id="line-144">            <span class="n">subimage</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="p">(</span><span class="n">input_image</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">key</span><span class="p">],</span> <span class="n">input_schema</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">schema</span><span class="p">)</span>
+</span><span id="line-145">        <span class="k">else</span><span class="p">:</span>
+</span><span id="line-146">            <span class="n">subimage</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="p">(</span><span class="n">input_image</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">matrix</span><span class="p">[</span><span class="n">key</span><span class="p">],</span> <span class="n">input_schema</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">schema</span><span class="p">)</span>
+</span><span id="line-147">
+</span><span id="line-148">        <span class="n">subimage</span><span class="o">.</span><span class="n">enh_matrix</span><span class="p">[:]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">enh_matrix</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+</span><span id="line-149">        <span class="n">subimage</span><span class="o">.</span><span class="n">omap</span><span class="p">[:]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">omap</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+</span><span id="line-150">        <span class="k">return</span> <span class="n">subimage</span>
+</span><span id="line-151">
+</span><span id="line-152">    <span class="k">def</span><span class="w"> </span><span class="fm">__setitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+</span><span id="line-153"><span class="w">        </span><span class="sd">&quot;&quot;&quot;Sets an item in the object with a given key and Image object. Ensures that the Image being set matches the expected shape and type, and updates internal properties accordingly.</span>
+</span><span id="line-154">
+</span><span id="line-155"><span class="sd">        Args:</span>
+</span><span id="line-156"><span class="sd">            key (Any): The array slices for accesssing the elements of the image.</span>
+</span><span id="line-157"><span class="sd">            value (ImageHandler): The value to be set, which must match the shape of the</span>
+</span><span id="line-158"><span class="sd">                existing elements and conform to the expected schema.</span>
+</span><span id="line-159">
+</span><span id="line-160"><span class="sd">        Raises:</span>
+</span><span id="line-161"><span class="sd">            ValueError: If the shape of the `value` does not match the shape of the existing</span>
+</span><span id="line-162"><span class="sd">                elements being accessed.</span>
+</span><span id="line-163"><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="line-164">        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">array_equal</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">value</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="ow">is</span> <span class="kc">False</span><span class="p">:</span> <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+</span><span id="line-165">            <span class="s1">&#39;The image being set must be of the same shape as the image elements being accessed.&#39;</span>
+</span><span id="line-166">        <span class="p">)</span>
+</span><span id="line-167">        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">ImageHandler</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">issubclass</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">value</span><span class="p">),</span> <span class="n">ImageHandler</span><span class="p">):</span>
+</span><span id="line-168">            <span class="k">if</span> <span class="n">value</span><span class="o">.</span><span class="n">schema</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">C_ImageFormats</span><span class="o">.</span><span class="n">MATRIX_FORMATS</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">schema</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">C_ImageFormats</span><span class="o">.</span><span class="n">MATRIX_FORMATS</span><span class="p">:</span>
+</span><span id="line-169">                <span class="bp">self</span><span class="o">.</span><span class="n">_array</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span><span class="o">.</span><span class="n">array</span><span class="p">[:]</span>
+</span><span id="line-170">            <span class="bp">self</span><span class="o">.</span><span class="n">_matrix</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span><span class="o">.</span><span class="n">matrix</span><span class="p">[:]</span>
+</span><span id="line-171">            <span class="bp">self</span><span class="o">.</span><span class="n">_det_matrix</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span><span class="o">.</span><span class="n">enh_matrix</span><span class="p">[:]</span>
+</span><span id="line-172">            <span class="bp">self</span><span class="o">.</span><span class="n">omask</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span><span class="o">.</span><span class="n">omask</span><span class="p">[:]</span>
+</span><span id="line-173">
+</span><span id="line-174">    <span class="k">def</span><span class="w"> </span><span class="fm">__eq__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+</span><span id="line-175">        <span class="k">return</span> <span class="kc">True</span> <span class="k">if</span> <span class="p">(</span>
+</span><span id="line-176">                <span class="bp">self</span><span class="o">.</span><span class="n">schema</span> <span class="o">==</span> <span class="n">other</span><span class="o">.</span><span class="n">schema</span>
+</span><span id="line-177">                <span class="ow">and</span> <span class="n">np</span><span class="o">.</span><span class="n">array_equal</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">array</span><span class="p">[:],</span> <span class="n">other</span><span class="o">.</span><span class="n">array</span><span class="p">[:])</span>
+</span><span id="line-178">                <span class="ow">and</span> <span class="n">np</span><span class="o">.</span><span class="n">array_equal</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">matrix</span><span class="p">[:],</span> <span class="n">other</span><span class="o">.</span><span class="n">matrix</span><span class="p">[:])</span>
+</span><span id="line-179">                <span class="ow">and</span> <span class="n">np</span><span class="o">.</span><span class="n">array_equal</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">enh_matrix</span><span class="p">[:],</span> <span class="n">other</span><span class="o">.</span><span class="n">enh_matrix</span><span class="p">[:])</span>
+</span><span id="line-180">                <span class="ow">and</span> <span class="n">np</span><span class="o">.</span><span class="n">array_equal</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">omap</span><span class="p">[:],</span> <span class="n">other</span><span class="o">.</span><span class="n">omap</span><span class="p">[:])</span>
+</span><span id="line-181">                <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_protected_metadata</span> <span class="o">==</span> <span class="n">other</span><span class="o">.</span><span class="n">_protected_metadata</span>
+</span><span id="line-182">                <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_public_metadata</span> <span class="o">==</span> <span class="n">other</span><span class="o">.</span><span class="n">_public_metadata</span>
+</span><span id="line-183">        <span class="p">)</span> <span class="k">else</span> <span class="kc">False</span>
+</span><span id="line-184">
+</span><span id="line-185">    <span class="k">def</span><span class="w"> </span><span class="fm">__ne__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+</span><span id="line-186">        <span class="k">return</span> <span class="ow">not</span> <span class="bp">self</span> <span class="o">==</span> <span class="n">other</span>
+</span><span id="line-187">
+</span><span id="line-188">    <span class="k">def</span><span class="w"> </span><span class="nf">isempty</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+</span><span id="line-189"><span class="w">        </span><span class="sd">&quot;&quot;&quot;Returns True if there is no image data&quot;&quot;&quot;</span>
+</span><span id="line-190">        <span class="k">return</span> <span class="kc">True</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_matrix</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">False</span>
+</span><span id="line-191">
+</span><span id="line-192">    <span class="nd">@property</span>
+</span><span id="line-193">    <span class="k">def</span><span class="w"> </span><span class="nf">name</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span id="line-194"><span class="w">        </span><span class="sd">&quot;&quot;&quot;Returns the name of the image. If no name is set, the name will be the file stem of the image.&quot;&quot;&quot;</span>
+</span><span id="line-195">        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_protected_metadata</span><span class="p">[</span><span class="n">C_Metadata</span><span class="o">.</span><span class="n">LABELS</span><span class="o">.</span><span class="n">IMAGE_NAME</span><span class="p">]</span>
+</span><span id="line-196">
+</span><span id="line-197">    <span class="nd">@name</span><span class="o">.</span><span class="n">setter</span>
+</span><span id="line-198">    <span class="k">def</span><span class="w"> </span><span class="nf">name</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+</span><span id="line-199">        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">value</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">str</span><span class="p">:</span>
+</span><span id="line-200">            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Image name must be a string&#39;</span><span class="p">)</span>
+</span><span id="line-201">        <span class="bp">self</span><span class="o">.</span><span class="n">_protected_metadata</span><span class="p">[</span><span class="n">C_Metadata</span><span class="o">.</span><span class="n">LABELS</span><span class="o">.</span><span class="n">IMAGE_NAME</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+</span><span id="line-202">
+</span><span id="line-203">    <span class="nd">@property</span>
+</span><span id="line-204">    <span class="k">def</span><span class="w"> </span><span class="nf">uuid</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span id="line-205"><span class="w">        </span><span class="sd">&quot;&quot;&quot;Returns the UUID of the image&quot;&quot;&quot;</span>
+</span><span id="line-206">        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_private_metadata</span><span class="p">[</span><span class="n">C_Metadata</span><span class="o">.</span><span class="n">LABELS</span><span class="o">.</span><span class="n">UUID</span><span class="p">]</span>
+</span><span id="line-207">
+</span><span id="line-208">    <span class="nd">@property</span>
+</span><span id="line-209">    <span class="k">def</span><span class="w"> </span><span class="nf">shape</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span id="line-210"><span class="w">        </span><span class="sd">&quot;&quot;&quot;Returns the shape of the image array or matrix depending on input format or none if no image is set.</span>
+</span><span id="line-211">
+</span><span id="line-212"><span class="sd">        Returns:</span>
+</span><span id="line-213"><span class="sd">            Optional[Tuple(int,int,...)]: Returns the shape of the array or matrix depending on input format or none if no image is set.</span>
+</span><span id="line-214"><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="line-215">        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_array</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="line-216">            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_array</span><span class="o">.</span><span class="n">shape</span>
+</span><span id="line-217">        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">_matrix</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="line-218">            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_matrix</span><span class="o">.</span><span class="n">shape</span>
+</span><span id="line-219">        <span class="k">else</span><span class="p">:</span>
+</span><span id="line-220">            <span class="k">raise</span> <span class="n">C_ImageHandler</span><span class="o">.</span><span class="n">EmptyImageError</span>
+</span><span id="line-221">
+</span><span id="line-222">    <span class="nd">@property</span>
+</span><span id="line-223">    <span class="k">def</span><span class="w"> </span><span class="nf">schema</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+</span><span id="line-224"><span class="w">        </span><span class="sd">&quot;&quot;&quot;Returns the input format of the image array or matrix depending on input format&quot;&quot;&quot;</span>
+</span><span id="line-225">        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">__image_schema</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="line-226">            <span class="k">raise</span> <span class="n">C_ImageHandler</span><span class="o">.</span><span class="n">EmptyImageError</span>
+</span><span id="line-227">        <span class="k">else</span><span class="p">:</span>
+</span><span id="line-228">            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__image_schema</span>
+</span><span id="line-229">
+</span><span id="line-230">    <span class="nd">@property</span>
+</span><span id="line-231">    <span class="k">def</span><span class="w"> </span><span class="nf">array</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ImageArray</span><span class="p">:</span>
+</span><span id="line-232"><span class="w">        </span><span class="sd">&quot;&quot;&quot;The image&#39;s array representation. An image array can represent multi-channels, thus the array can be 3-D or 4-D</span>
+</span><span id="line-233">
+</span><span id="line-234"><span class="sd">        Note:</span>
+</span><span id="line-235"><span class="sd">            - array elements are not directly mutable in order to preserve image information integrity</span>
+</span><span id="line-236"><span class="sd">            - change array elements by changing the image being represented with Image.set_image()</span>
+</span><span id="line-237"><span class="sd">            - Raises an error if input image has no array form</span>
+</span><span id="line-238">
+</span><span id="line-239"><span class="sd">        Returns:</span>
+</span><span id="line-240"><span class="sd">            Optional[ImageArray]: A class that can be accessed like a numpy array, but has extra methods to streamline development, or None if not set</span>
+</span><span id="line-241">
+</span><span id="line-242"><span class="sd">        See Also: :class:`ImageArray`</span>
+</span><span id="line-243"><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="line-244">        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_array</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="line-245">            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_matrix</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="line-246">                <span class="k">raise</span> <span class="n">C_ImageHandler</span><span class="o">.</span><span class="n">EmptyImageError</span>
+</span><span id="line-247">            <span class="k">else</span><span class="p">:</span>
+</span><span id="line-248">                <span class="k">raise</span> <span class="n">C_ImageHandler</span><span class="o">.</span><span class="n">NoArrayError</span><span class="p">()</span>
+</span><span id="line-249">        <span class="k">else</span><span class="p">:</span>
+</span><span id="line-250">            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__array_subhandler</span>
+</span><span id="line-251">
+</span><span id="line-252">    <span class="nd">@array</span><span class="o">.</span><span class="n">setter</span>
+</span><span id="line-253">    <span class="k">def</span><span class="w"> </span><span class="nf">array</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">array</span><span class="p">):</span>
+</span><span id="line-254">        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">array</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+</span><span id="line-255">            <span class="bp">self</span><span class="o">.</span><span class="n">array</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">array</span>
+</span><span id="line-256">        <span class="k">else</span><span class="p">:</span>
+</span><span id="line-257">            <span class="k">raise</span> <span class="n">C_ImageHandler</span><span class="o">.</span><span class="n">IllegalAssignmentError</span><span class="p">(</span><span class="s1">&#39;array&#39;</span><span class="p">)</span>
+</span><span id="line-258">
+</span><span id="line-259">    <span class="nd">@property</span>
+</span><span id="line-260">    <span class="k">def</span><span class="w"> </span><span class="nf">matrix</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ImageMatrix</span><span class="p">:</span>
+</span><span id="line-261"><span class="w">        </span><span class="sd">&quot;&quot;&quot;The image&#39;s matrix representation. The array form is converted into a matrix form since some algorithm&#39;s only handle 2-D</span>
+</span><span id="line-262">
+</span><span id="line-263"><span class="sd">        Note:</span>
+</span><span id="line-264"><span class="sd">            - matrix elements are not directly mutable in order to preserve image information integrity</span>
+</span><span id="line-265"><span class="sd">            - Change matrix elements by changing the image being represented with Image.set_image()</span>
+</span><span id="line-266">
+</span><span id="line-267"><span class="sd">        Returns:</span>
+</span><span id="line-268"><span class="sd">            ImageMatrix: An immutable container for the image matrix that can be accessed like a numpy array, but has extra methods to streamline development.</span>
+</span><span id="line-269">
+</span><span id="line-270"><span class="sd">        See Also: :class:`ImageMatrix`</span>
+</span><span id="line-271"><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="line-272">        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_matrix</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="line-273">            <span class="k">raise</span> <span class="n">C_ImageHandler</span><span class="o">.</span><span class="n">EmptyImageError</span>
+</span><span id="line-274">        <span class="k">else</span><span class="p">:</span>
+</span><span id="line-275">            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__matrix_subhandler</span>
+</span><span id="line-276">
+</span><span id="line-277">    <span class="nd">@matrix</span><span class="o">.</span><span class="n">setter</span>
+</span><span id="line-278">    <span class="k">def</span><span class="w"> </span><span class="nf">matrix</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">matrix</span><span class="p">):</span>
+</span><span id="line-279">        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">matrix</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+</span><span id="line-280">            <span class="bp">self</span><span class="o">.</span><span class="n">matrix</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">matrix</span>
+</span><span id="line-281">        <span class="k">else</span><span class="p">:</span>
+</span><span id="line-282">            <span class="k">raise</span> <span class="n">C_ImageHandler</span><span class="o">.</span><span class="n">IllegalAssignmentError</span><span class="p">(</span><span class="s1">&#39;matrix&#39;</span><span class="p">)</span>
+</span><span id="line-283">
+</span><span id="line-284">    <span class="nd">@property</span>
+</span><span id="line-285">    <span class="k">def</span><span class="w"> </span><span class="nf">enh_matrix</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ImageEnhancedMatrix</span><span class="p">:</span>
+</span><span id="line-286"><span class="w">        </span><span class="sd">&quot;&quot;&quot;Returns the image&#39;s enhanced matrix accessor (See: :class:`ImageEnhancedMatrix`. Preprocessing steps can be applied to this component to improve detection performance.</span>
+</span><span id="line-287">
+</span><span id="line-288"><span class="sd">        The enhanceable matrix is a copy of the image&#39;s matrix form that can be modified and used to improve detection performance.</span>
+</span><span id="line-289"><span class="sd">        The original matrix data should be left intact in order to preserve image information integrity for measurements.&#39;</span>
+</span><span id="line-290">
+</span><span id="line-291"><span class="sd">        Returns:</span>
+</span><span id="line-292"><span class="sd">            ImageEnhancedMatrix: A mutable container that stores a copy of the image&#39;s matrix form</span>
+</span><span id="line-293">
+</span><span id="line-294"><span class="sd">        See Also: :class:`ImageEnhancedMatrix`</span>
+</span><span id="line-295"><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="line-296">        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_det_matrix</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="line-297">            <span class="k">raise</span> <span class="n">C_ImageHandler</span><span class="o">.</span><span class="n">EmptyImageError</span>
+</span><span id="line-298">        <span class="k">else</span><span class="p">:</span>
+</span><span id="line-299">            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__det_matrix_subhandler</span>
+</span><span id="line-300">
+</span><span id="line-301">    <span class="nd">@enh_matrix</span><span class="o">.</span><span class="n">setter</span>
+</span><span id="line-302">    <span class="k">def</span><span class="w"> </span><span class="nf">enh_matrix</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">det_matrix</span><span class="p">):</span>
+</span><span id="line-303">        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">det_matrix</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+</span><span id="line-304">            <span class="bp">self</span><span class="o">.</span><span class="n">_det_matrix</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">det_matrix</span>
+</span><span id="line-305">        <span class="k">else</span><span class="p">:</span>
+</span><span id="line-306">            <span class="k">raise</span> <span class="n">C_ImageHandler</span><span class="o">.</span><span class="n">IllegalAssignmentError</span><span class="p">(</span><span class="s1">&#39;enh_matrix&#39;</span><span class="p">)</span>
+</span><span id="line-307">
+</span><span id="line-308">    <span class="nd">@property</span>
+</span><span id="line-309">    <span class="k">def</span><span class="w"> </span><span class="nf">omask</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ObjectMask</span><span class="p">:</span>
+</span><span id="line-310"><span class="w">        </span><span class="sd">&quot;&quot;&quot;The Object Mask. A mutable binary representation of the objects in an image to be analyzed. Changing elements of the mask will reset object_map labeling.</span>
+</span><span id="line-311">
+</span><span id="line-312"><span class="sd">        Note:</span>
+</span><span id="line-313"><span class="sd">            - If the image has not been processed by a detector, the target for analysis is the entire image itself. Accessing the object_mask in this case</span>
+</span><span id="line-314"><span class="sd">                will return a 2-D array entirely with value 1 that is the same shape as the matrix</span>
+</span><span id="line-315"><span class="sd">            - Changing elements of the mask will relabel of objects in the object_map (A workaround to this issue may or may not come in future versions)</span>
+</span><span id="line-316">
+</span><span id="line-317"><span class="sd">        Returns:</span>
+</span><span id="line-318"><span class="sd">            ObjectMaskErrors: A mutable binary representation of the objects in an image to be analyzed.</span>
+</span><span id="line-319">
+</span><span id="line-320"><span class="sd">        See Also: :class:`ObjectMask`</span>
+</span><span id="line-321"><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="line-322">        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sparse_object_map</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="line-323">            <span class="k">raise</span> <span class="n">C_ImageHandler</span><span class="o">.</span><span class="n">EmptyImageError</span>
+</span><span id="line-324">        <span class="k">else</span><span class="p">:</span>
+</span><span id="line-325">            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__object_mask_subhandler</span>
+</span><span id="line-326">
+</span><span id="line-327">    <span class="nd">@omask</span><span class="o">.</span><span class="n">setter</span>
+</span><span id="line-328">    <span class="k">def</span><span class="w"> </span><span class="nf">omask</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">object_mask</span><span class="p">):</span>
+</span><span id="line-329">        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">object_mask</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+</span><span id="line-330">            <span class="bp">self</span><span class="o">.</span><span class="n">omask</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">object_mask</span>
+</span><span id="line-331">        <span class="k">else</span><span class="p">:</span>
+</span><span id="line-332">            <span class="k">raise</span> <span class="n">C_ImageHandler</span><span class="o">.</span><span class="n">IllegalAssignmentError</span><span class="p">(</span><span class="s1">&#39;object_mask&#39;</span><span class="p">)</span>
+</span><span id="line-333">
+</span><span id="line-334">    <span class="nd">@property</span>
+</span><span id="line-335">    <span class="k">def</span><span class="w"> </span><span class="nf">omap</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ObjectMap</span><span class="p">:</span>
+</span><span id="line-336"><span class="w">        </span><span class="sd">&quot;&quot;&quot;The Object Map. A mutable integer matrix that identifies the different objects in an image to be analyzed. Changes to elements of the object_map sync to the object_mask.</span>
+</span><span id="line-337">
+</span><span id="line-338"><span class="sd">        The object_map is stored as a compressed sparse column matrix in the backend. This is to save on memory consumption at the cost of adding</span>
+</span><span id="line-339"><span class="sd">        increased computational overhead between converting between sparse and dense matrices.</span>
+</span><span id="line-340">
+</span><span id="line-341"><span class="sd">        Note:</span>
+</span><span id="line-342"><span class="sd">            - Has accessor methods to get sparse representations of the object map that can streamline measurement calculations.</span>
+</span><span id="line-343">
+</span><span id="line-344"><span class="sd">        Returns:</span>
+</span><span id="line-345"><span class="sd">            ObjectMap: A mutable integer matrix that identifies the different objects in an image to be analyzed.</span>
+</span><span id="line-346">
+</span><span id="line-347"><span class="sd">        See Also: :class:`ObjectMap`</span>
+</span><span id="line-348"><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="line-349">        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sparse_object_map</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="line-350">            <span class="k">raise</span> <span class="n">C_ImageHandler</span><span class="o">.</span><span class="n">EmptyImageError</span>
+</span><span id="line-351">        <span class="k">else</span><span class="p">:</span>
+</span><span id="line-352">            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__object_map_subhandler</span>
+</span><span id="line-353">
+</span><span id="line-354">    <span class="nd">@omap</span><span class="o">.</span><span class="n">setter</span>
+</span><span id="line-355">    <span class="k">def</span><span class="w"> </span><span class="nf">omap</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">object_map</span><span class="p">):</span>
+</span><span id="line-356">        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">object_map</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+</span><span id="line-357">            <span class="bp">self</span><span class="o">.</span><span class="n">omap</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">object_map</span>
+</span><span id="line-358">        <span class="k">else</span><span class="p">:</span>
+</span><span id="line-359">            <span class="k">raise</span> <span class="n">C_ImageHandler</span><span class="o">.</span><span class="n">IllegalAssignmentError</span><span class="p">(</span><span class="s1">&#39;object_map&#39;</span><span class="p">)</span>
+</span><span id="line-360">
+</span><span id="line-361">    <span class="nd">@property</span>
+</span><span id="line-362">    <span class="k">def</span><span class="w"> </span><span class="nf">props</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span id="line-363"><span class="w">        </span><span class="sd">&quot;&quot;&quot;Fetches the properties of labeled regions in an image.</span>
+</span><span id="line-364">
+</span><span id="line-365"><span class="sd">        Calculates region properties for the entire image using the matrix representation.</span>
+</span><span id="line-366"><span class="sd">        The labeled image is generated as a full array with values of 1, and the</span>
+</span><span id="line-367"><span class="sd">        intensity image corresponds to the `_matrix` attribute of the object.</span>
+</span><span id="line-368"><span class="sd">        Cache is disabled in this configuration.</span>
+</span><span id="line-369">
+</span><span id="line-370"><span class="sd">        Returns:</span>
+</span><span id="line-371"><span class="sd">            list[skimage.measure._regionprops.RegionProperties]: A list of properties for the entire provided image.</span>
+</span><span id="line-372">
+</span><span id="line-373"><span class="sd">        Notes:</span>
+</span><span id="line-374"><span class="sd">            (Excerpt from skimage.measure.regionprops documentation on available properties. See more at :class:`skimage.measure.regionprops`.):</span>
+</span><span id="line-375">
+</span><span id="line-376"><span class="sd">            area: float</span>
+</span><span id="line-377"><span class="sd">                Area of the region i.e. number of pixels of the region scaled by pixel-area.</span>
+</span><span id="line-378">
+</span><span id="line-379"><span class="sd">            area_bbox: float</span>
+</span><span id="line-380"><span class="sd">                Area of the bounding box i.e. number of pixels of bounding box scaled by pixel-area.</span>
+</span><span id="line-381">
+</span><span id="line-382"><span class="sd">            area_convex: float</span>
+</span><span id="line-383"><span class="sd">                Area of the convex hull image, which is the smallest convex polygon that encloses the region.</span>
+</span><span id="line-384">
+</span><span id="line-385"><span class="sd">            area_filled: float</span>
+</span><span id="line-386"><span class="sd">                Area of the region with all the holes filled in.</span>
+</span><span id="line-387">
+</span><span id="line-388"><span class="sd">            axis_major_length: float</span>
+</span><span id="line-389"><span class="sd">                The length of the major axis of the ellipse that has the same normalized second central moments as the region.</span>
+</span><span id="line-390">
+</span><span id="line-391"><span class="sd">            axis_minor_length: float</span>
+</span><span id="line-392"><span class="sd">                The length of the minor axis of the ellipse that has the same normalized second central moments as the region.</span>
+</span><span id="line-393">
+</span><span id="line-394"><span class="sd">            bbox: tuple</span>
+</span><span id="line-395"><span class="sd">                Bounding box (min_row, min_col, max_row, max_col). Pixels belonging to the bounding box are in the half-open interval [min_row; max_row) and [min_col; max_col).</span>
+</span><span id="line-396">
+</span><span id="line-397"><span class="sd">            centroid: array</span>
+</span><span id="line-398"><span class="sd">                Centroid coordinate tuple (row, col).</span>
+</span><span id="line-399">
+</span><span id="line-400"><span class="sd">            centroid_local: array</span>
+</span><span id="line-401"><span class="sd">                Centroid coordinate tuple (row, col), relative to region bounding box.</span>
+</span><span id="line-402">
+</span><span id="line-403"><span class="sd">            centroid_weighted: array</span>
+</span><span id="line-404"><span class="sd">                Centroid coordinate tuple (row, col) weighted with intensity image.</span>
+</span><span id="line-405">
+</span><span id="line-406"><span class="sd">            centroid_weighted_local: array</span>
+</span><span id="line-407"><span class="sd">                Centroid coordinate tuple (row, col), relative to region bounding box, weighted with intensity image.</span>
+</span><span id="line-408">
+</span><span id="line-409"><span class="sd">            coords_scaled(K, 2): ndarray</span>
+</span><span id="line-410"><span class="sd">                Coordinate list (row, col) of the region scaled by spacing.</span>
+</span><span id="line-411">
+</span><span id="line-412"><span class="sd">            coords(K, 2): ndarray</span>
+</span><span id="line-413"><span class="sd">                Coordinate list (row, col) of the region.</span>
+</span><span id="line-414">
+</span><span id="line-415"><span class="sd">            eccentricity: float</span>
+</span><span id="line-416"><span class="sd">                Eccentricity of the ellipse that has the same second-moments as the region. The eccentricity is the ratio of the focal distance (distance between focal points) over the major axis length. The value is in the interval [0, 1). When it is 0, the ellipse becomes a circle.</span>
+</span><span id="line-417">
+</span><span id="line-418"><span class="sd">            equivalent_diameter_area: float</span>
+</span><span id="line-419"><span class="sd">                The diameter of a circle with the same area as the region.</span>
+</span><span id="line-420">
+</span><span id="line-421"><span class="sd">            euler_number: int</span>
+</span><span id="line-422"><span class="sd">                Euler characteristic of the set of non-zero pixels. Computed as number of connected components subtracted by number of holes (input.ndim connectivity). In 3D, number of connected components plus number of holes subtracted by number of tunnels.</span>
+</span><span id="line-423">
+</span><span id="line-424"><span class="sd">            extent: float</span>
+</span><span id="line-425"><span class="sd">                Ratio of pixels in the region to pixels in the total bounding box. Computed as area / (rows * cols)</span>
+</span><span id="line-426">
+</span><span id="line-427"><span class="sd">            feret_diameter_max: float</span>
+</span><span id="line-428"><span class="sd">                Maximum Feret’s diameter computed as the longest distance between points around a region’s convex hull contour as determined by find_contours. [5]</span>
+</span><span id="line-429">
+</span><span id="line-430"><span class="sd">            image(H, J): ndarray</span>
+</span><span id="line-431"><span class="sd">                Sliced binary region image which has the same size as bounding box.</span>
+</span><span id="line-432">
+</span><span id="line-433"><span class="sd">            image_convex(H, J): ndarray</span>
+</span><span id="line-434"><span class="sd">                Binary convex hull image which has the same size as bounding box.</span>
+</span><span id="line-435">
+</span><span id="line-436"><span class="sd">            image_filled(H, J): ndarray</span>
+</span><span id="line-437"><span class="sd">                Binary region image with filled holes which has the same size as bounding box.</span>
+</span><span id="line-438">
+</span><span id="line-439"><span class="sd">            image_intensity: ndarray</span>
+</span><span id="line-440"><span class="sd">                Image inside region bounding box.</span>
+</span><span id="line-441">
+</span><span id="line-442"><span class="sd">            inertia_tensor: ndarray</span>
+</span><span id="line-443"><span class="sd">                Inertia tensor of the region for the rotation around its mass.</span>
+</span><span id="line-444">
+</span><span id="line-445"><span class="sd">            inertia_tensor_eigvals: tuple</span>
+</span><span id="line-446"><span class="sd">                The eigenvalues of the inertia tensor in decreasing order.</span>
+</span><span id="line-447">
+</span><span id="line-448"><span class="sd">            intensity_max: float</span>
+</span><span id="line-449"><span class="sd">                Value with the greatest intensity in the region.</span>
+</span><span id="line-450">
+</span><span id="line-451"><span class="sd">            intensity_mean: float</span>
+</span><span id="line-452"><span class="sd">                Value with the mean intensity in the region.</span>
+</span><span id="line-453">
+</span><span id="line-454"><span class="sd">            intensity_min: float</span>
+</span><span id="line-455"><span class="sd">                Value with the least intensity in the region.</span>
+</span><span id="line-456">
+</span><span id="line-457"><span class="sd">            intensity_std: float</span>
+</span><span id="line-458"><span class="sd">                Standard deviation of the intensity in the region.</span>
+</span><span id="line-459">
+</span><span id="line-460"><span class="sd">            label: int</span>
+</span><span id="line-461"><span class="sd">                The label in the labeled input image.</span>
+</span><span id="line-462">
+</span><span id="line-463"><span class="sd">            moments(3, 3): ndarray</span>
+</span><span id="line-464"><span class="sd">                Spatial moments up to 3rd order::</span>
+</span><span id="line-465">
+</span><span id="line-466"><span class="sd">                    m_ij = sum{ array(row, col) * row^i * col^j }</span>
+</span><span id="line-467">
+</span><span id="line-468"><span class="sd">            where the sum is over the row, col coordinates of the region.</span>
+</span><span id="line-469">
+</span><span id="line-470"><span class="sd">            moments_central(3, 3): ndarray</span>
+</span><span id="line-471"><span class="sd">                Central moments (translation invariant) up to 3rd order::</span>
+</span><span id="line-472">
+</span><span id="line-473"><span class="sd">                    mu_ij = sum{ array(row, col) * (row - row_c)^i * (col - col_c)^j }</span>
+</span><span id="line-474">
+</span><span id="line-475"><span class="sd">                where the sum is over the row, col coordinates of the region, and row_c and col_c are the coordinates of the region’s centroid.</span>
+</span><span id="line-476">
+</span><span id="line-477"><span class="sd">            moments_hu: tuple</span>
+</span><span id="line-478"><span class="sd">                Hu moments (translation, scale and rotation invariant).</span>
+</span><span id="line-479">
+</span><span id="line-480"><span class="sd">            moments_normalized(3, 3): ndarray</span>
+</span><span id="line-481"><span class="sd">                Normalized moments (translation and scale invariant) up to 3rd order::</span>
+</span><span id="line-482">
+</span><span id="line-483"><span class="sd">                    nu_ij = mu_ij / m_00^[(i+j)/2 + 1]</span>
+</span><span id="line-484">
+</span><span id="line-485"><span class="sd">                where m_00 is the zeroth spatial moment.</span>
+</span><span id="line-486">
+</span><span id="line-487"><span class="sd">            moments_weighted(3, 3): ndarray</span>
+</span><span id="line-488"><span class="sd">                Spatial moments of intensity image up to 3rd order::</span>
+</span><span id="line-489">
+</span><span id="line-490"><span class="sd">                    wm_ij = sum{ array(row, col) * row^i * col^j }</span>
+</span><span id="line-491">
+</span><span id="line-492"><span class="sd">                where the sum is over the row, col coordinates of the region.</span>
+</span><span id="line-493">
+</span><span id="line-494"><span class="sd">            moments_weighted_central(3, 3): ndarray</span>
+</span><span id="line-495"><span class="sd">                Central moments (translation invariant) of intensity image up to 3rd order::</span>
+</span><span id="line-496">
+</span><span id="line-497"><span class="sd">                    wmu_ij = sum{ array(row, col) * (row - row_c)^i * (col - col_c)^j }</span>
+</span><span id="line-498">
+</span><span id="line-499"><span class="sd">                where the sum is over the row, col coordinates of the region, and row_c and col_c are the coordinates of the region’s weighted centroid.</span>
+</span><span id="line-500">
+</span><span id="line-501"><span class="sd">            moments_weighted_hu: tuple</span>
+</span><span id="line-502"><span class="sd">                Hu moments (translation, scale and rotation invariant) of intensity image.</span>
+</span><span id="line-503">
+</span><span id="line-504"><span class="sd">            moments_weighted_normalized(3, 3): ndarray</span>
+</span><span id="line-505"><span class="sd">                Normalized moments (translation and scale invariant) of intensity image up to 3rd order::</span>
+</span><span id="line-506">
+</span><span id="line-507"><span class="sd">                    wnu_ij = wmu_ij / wm_00^[(i+j)/2 + 1]</span>
+</span><span id="line-508">
+</span><span id="line-509"><span class="sd">                where wm_00 is the zeroth spatial moment (intensity-weighted area).</span>
+</span><span id="line-510">
+</span><span id="line-511"><span class="sd">            num_pixels: int</span>
+</span><span id="line-512"><span class="sd">                Number of foreground pixels.</span>
+</span><span id="line-513">
+</span><span id="line-514"><span class="sd">            orientation: float</span>
+</span><span id="line-515"><span class="sd">                Angle between the 0th axis (rows) and the major axis of the ellipse that has the same second moments as the region, ranging from -pi/2 to pi/2 counter-clockwise.</span>
+</span><span id="line-516">
+</span><span id="line-517"><span class="sd">            perimeter: float</span>
+</span><span id="line-518"><span class="sd">                Perimeter of object which approximates the contour as a line through the centers of border pixels using a 4-connectivity.</span>
+</span><span id="line-519">
+</span><span id="line-520"><span class="sd">            perimeter_crofton: float</span>
+</span><span id="line-521"><span class="sd">                Perimeter of object approximated by the Crofton formula in 4 directions.</span>
+</span><span id="line-522">
+</span><span id="line-523"><span class="sd">            slice: tuple of slices</span>
+</span><span id="line-524"><span class="sd">                A slice to extract the object from the source image.</span>
+</span><span id="line-525">
+</span><span id="line-526"><span class="sd">            solidity: float</span>
+</span><span id="line-527"><span class="sd">                Ratio of pixels in the region to pixels of the convex hull image.</span>
+</span><span id="line-528">
+</span><span id="line-529"><span class="sd">        References:</span>
+</span><span id="line-530"><span class="sd">            https://scikit-image.org/docs/stable/api/skimage.measure.html#skimage.measure.regionprops</span>
+</span><span id="line-531">
+</span><span id="line-532">
+</span><span id="line-533"><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="line-534">        <span class="k">return</span> <span class="n">ski</span><span class="o">.</span><span class="n">measure</span><span class="o">.</span><span class="n">regionprops</span><span class="p">(</span><span class="n">label_image</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">fill_value</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span> <span class="n">intensity_image</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_matrix</span><span class="p">,</span> <span class="n">cache</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+</span><span id="line-535">
+</span><span id="line-536">    <span class="nd">@property</span>
+</span><span id="line-537">    <span class="k">def</span><span class="w"> </span><span class="nf">objects</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ImageObjects</span><span class="p">:</span>
+</span><span id="line-538"><span class="w">        </span><span class="sd">&quot;&quot;&quot;Returns an abstract to access the objects in an image and perform operations on them, such as measurement calculations .</span>
+</span><span id="line-539">
+</span><span id="line-540"><span class="sd">        This method provides access to `ImageObjects`.</span>
+</span><span id="line-541">
+</span><span id="line-542"><span class="sd">        Returns:</span>
+</span><span id="line-543"><span class="sd">            ImageObjects: The subhandler instance that manages image-related objects.</span>
+</span><span id="line-544"><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="line-545">        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_objects</span><span class="o">==</span><span class="mi">0</span><span class="p">:</span>
+</span><span id="line-546">            <span class="k">raise</span> <span class="n">C_ImageHandler</span><span class="o">.</span><span class="n">NoObjectsError</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+</span><span id="line-547">        <span class="k">else</span><span class="p">:</span>
+</span><span id="line-548">            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__objects_subhandler</span>
+</span><span id="line-549">
+</span><span id="line-550">    <span class="nd">@objects</span><span class="o">.</span><span class="n">setter</span>
+</span><span id="line-551">    <span class="k">def</span><span class="w"> </span><span class="nf">objects</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">objects</span><span class="p">):</span>
+</span><span id="line-552">        <span class="k">raise</span> <span class="n">C_ImageHandler</span><span class="o">.</span><span class="n">IllegalAssignmentError</span><span class="p">(</span><span class="s1">&#39;objects&#39;</span><span class="p">)</span>
+</span><span id="line-553">
+</span><span id="line-554">    <span class="nd">@property</span>
+</span><span id="line-555">    <span class="k">def</span><span class="w"> </span><span class="nf">num_objects</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+</span><span id="line-556"><span class="w">        </span><span class="sd">&quot;&quot;&quot;Returns the number of objects in the image</span>
+</span><span id="line-557"><span class="sd">        Note:</span>
+</span><span id="line-558"><span class="sd">            If the number of objects is 0, the target for analysis is the entire image itself.</span>
+</span><span id="line-559"><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="line-560">        <span class="n">object_labels</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_sparse_object_map</span><span class="o">.</span><span class="n">data</span><span class="p">)</span>
+</span><span id="line-561">        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="n">object_labels</span><span class="p">[</span><span class="n">object_labels</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">])</span>
+</span><span id="line-562">
+</span><span id="line-563">    <span class="k">def</span><span class="w"> </span><span class="nf">copy</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span id="line-564"><span class="w">        </span><span class="sd">&quot;&quot;&quot;Creates a copy of the current Image instance, excluding the UUID.</span>
+</span><span id="line-565"><span class="sd">        Note:</span>
+</span><span id="line-566"><span class="sd">            - The new instance is only informationally a copy. The UUID of the new instance is different.</span>
+</span><span id="line-567">
+</span><span id="line-568"><span class="sd">        Returns:</span>
+</span><span id="line-569"><span class="sd">            Image: A copy of the current Image instance.</span>
+</span><span id="line-570"><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="line-571">        <span class="c1"># Create a new instance of ImageHandler</span>
+</span><span id="line-572">        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+</span><span id="line-573">
+</span><span id="line-574">    <span class="k">def</span><span class="w"> </span><span class="nf">imread</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filepath</span><span class="p">:</span> <span class="n">PathLike</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Type</span><span class="p">[</span><span class="n">Image</span><span class="p">]:</span>
+</span><span id="line-575"><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+</span><span id="line-576"><span class="sd">        Reads an image file from a given file path, processes it as per its format, and sets the image</span>
+</span><span id="line-577"><span class="sd">        along with its schema in the current instance. Supports RGB formats (png, jpg, jpeg) and</span>
+</span><span id="line-578"><span class="sd">        grayscale formats (tif, tiff). The name of the image processing instance is updated to match</span>
+</span><span id="line-579"><span class="sd">        the file name without the extension. If the file format is unsupported, an exception is raised.</span>
+</span><span id="line-580">
+</span><span id="line-581"><span class="sd">        Args:</span>
+</span><span id="line-582"><span class="sd">            filepath (PathLike): Path to the image file to be read.</span>
+</span><span id="line-583">
+</span><span id="line-584"><span class="sd">        Returns:</span>
+</span><span id="line-585"><span class="sd">            Type[Image]: The current instance with the newly loaded image and schema.</span>
+</span><span id="line-586">
+</span><span id="line-587"><span class="sd">        Raises:</span>
+</span><span id="line-588"><span class="sd">            C_ImageHandler.UnsupportedFileType: If the file format is not supported.</span>
+</span><span id="line-589"><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="line-590">        <span class="c1"># Convert to Path object</span>
+</span><span id="line-591">        <span class="n">filepath</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">filepath</span><span class="p">)</span>
+</span><span id="line-592">        <span class="k">if</span> <span class="n">filepath</span><span class="o">.</span><span class="n">suffix</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;.png&#39;</span><span class="p">,</span> <span class="s1">&#39;.jpg&#39;</span><span class="p">,</span> <span class="s1">&#39;.jpeg&#39;</span><span class="p">]:</span>
+</span><span id="line-593">            <span class="bp">self</span><span class="o">.</span><span class="n">set_image</span><span class="p">(</span>
+</span><span id="line-594">                <span class="n">input_image</span><span class="o">=</span><span class="n">ski</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">imread</span><span class="p">(</span><span class="n">filepath</span><span class="p">),</span> <span class="n">input_schema</span><span class="o">=</span><span class="n">C_ImageFormats</span><span class="o">.</span><span class="n">RGB</span>
+</span><span id="line-595">            <span class="p">)</span>
+</span><span id="line-596">            <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">filepath</span><span class="o">.</span><span class="n">stem</span>
+</span><span id="line-597">            <span class="k">return</span> <span class="bp">self</span>
+</span><span id="line-598">        <span class="k">elif</span> <span class="n">filepath</span><span class="o">.</span><span class="n">suffix</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;.tif&#39;</span><span class="p">,</span> <span class="s1">&#39;.tiff&#39;</span><span class="p">]:</span>
+</span><span id="line-599">            <span class="bp">self</span><span class="o">.</span><span class="n">set_image</span><span class="p">(</span>
+</span><span id="line-600">                <span class="n">input_image</span><span class="o">=</span><span class="n">ski</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">imread</span><span class="p">(</span><span class="n">filepath</span><span class="p">),</span> <span class="n">input_schema</span><span class="o">=</span><span class="n">C_ImageFormats</span><span class="o">.</span><span class="n">GRAYSCALE</span>
+</span><span id="line-601">            <span class="p">)</span>
+</span><span id="line-602">            <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">filepath</span><span class="o">.</span><span class="n">stem</span>
+</span><span id="line-603">            <span class="k">return</span> <span class="bp">self</span>
+</span><span id="line-604">        <span class="k">else</span><span class="p">:</span>
+</span><span id="line-605">            <span class="k">raise</span> <span class="n">C_ImageHandler</span><span class="o">.</span><span class="n">UnsupportedFileType</span><span class="p">(</span><span class="n">filepath</span><span class="o">.</span><span class="n">suffix</span><span class="p">)</span>
+</span><span id="line-606">
+</span><span id="line-607">    <span class="k">def</span><span class="w"> </span><span class="nf">set_image</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">input_image</span><span class="p">,</span> <span class="n">input_schema</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="line-608"><span class="w">        </span><span class="sd">&quot;&quot;&quot;Sets the image to the inputted array or Image</span>
+</span><span id="line-609">
+</span><span id="line-610"><span class="sd">        Args:</span>
+</span><span id="line-611"><span class="sd">            input_image: (np.ndarray, phenoscope.Image, optional) The image data to be set</span>
+</span><span id="line-612"><span class="sd">            input_schema: (str, optional) If input image is a np.ndarray and format is None, the image format will be guessed.</span>
+</span><span id="line-613"><span class="sd">                If the image format is ambiguous between RGB/BGR it will assume RGB unless otherwise specified.</span>
+</span><span id="line-614"><span class="sd">                Accepted formats are [&#39;RGB&#39;, &#39;RGBA&#39;,&#39;Grayscale&#39;,&#39;BGR&#39;,&#39;BGRA&#39;,&#39;HSV&#39;]</span>
+</span><span id="line-615"><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="line-616">        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">input_image</span><span class="p">)</span> <span class="o">==</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+</span><span id="line-617">            <span class="bp">self</span><span class="o">.</span><span class="n">_set_from_array</span><span class="p">(</span><span class="n">input_image</span><span class="p">,</span> <span class="n">input_schema</span><span class="p">)</span>
+</span><span id="line-618">        <span class="k">elif</span> <span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">input_image</span><span class="p">)</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span>
+</span><span id="line-619">              <span class="ow">or</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">input_image</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="p">)</span>
+</span><span id="line-620">              <span class="ow">or</span> <span class="nb">issubclass</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">input_image</span><span class="p">),</span> <span class="n">ImageHandler</span><span class="p">)):</span>
+</span><span id="line-621">            <span class="bp">self</span><span class="o">.</span><span class="n">_set_from_class_instance</span><span class="p">(</span><span class="n">input_image</span><span class="p">)</span>
+</span><span id="line-622">        <span class="k">elif</span> <span class="n">input_image</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="line-623">            <span class="bp">self</span><span class="o">.</span><span class="n">__image_schema</span> <span class="o">=</span> <span class="kc">None</span>
+</span><span id="line-624">            <span class="bp">self</span><span class="o">.</span><span class="n">_array</span> <span class="o">=</span> <span class="kc">None</span>
+</span><span id="line-625">            <span class="bp">self</span><span class="o">.</span><span class="n">_matrix</span> <span class="o">=</span> <span class="kc">None</span>
+</span><span id="line-626">            <span class="bp">self</span><span class="o">.</span><span class="n">_det_matrix</span> <span class="o">=</span> <span class="kc">None</span>
+</span><span id="line-627">            <span class="bp">self</span><span class="o">.</span><span class="n">_sparse_object_map</span> <span class="o">=</span> <span class="kc">None</span>
+</span><span id="line-628">
+</span><span id="line-629">    <span class="k">def</span><span class="w"> </span><span class="nf">_set_from_class_instance</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">class_instance</span><span class="p">):</span>
+</span><span id="line-630">        <span class="bp">self</span><span class="o">.</span><span class="n">__image_schema</span> <span class="o">=</span> <span class="n">class_instance</span><span class="o">.</span><span class="n">schema</span>
+</span><span id="line-631">
+</span><span id="line-632">        <span class="k">if</span> <span class="n">class_instance</span><span class="o">.</span><span class="n">schema</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">C_ImageFormats</span><span class="o">.</span><span class="n">MATRIX_FORMATS</span><span class="p">:</span>
+</span><span id="line-633">            <span class="bp">self</span><span class="o">.</span><span class="n">_set_from_array</span><span class="p">(</span><span class="n">class_instance</span><span class="o">.</span><span class="n">array</span><span class="p">[:]</span><span class="o">.</span><span class="n">copy</span><span class="p">(),</span> <span class="n">class_instance</span><span class="o">.</span><span class="n">schema</span><span class="p">)</span>
+</span><span id="line-634">        <span class="k">else</span><span class="p">:</span>
+</span><span id="line-635">            <span class="bp">self</span><span class="o">.</span><span class="n">_set_from_array</span><span class="p">(</span><span class="n">class_instance</span><span class="o">.</span><span class="n">matrix</span><span class="p">[:]</span><span class="o">.</span><span class="n">copy</span><span class="p">(),</span> <span class="n">class_instance</span><span class="o">.</span><span class="n">schema</span><span class="p">)</span>
+</span><span id="line-636">        <span class="bp">self</span><span class="o">.</span><span class="n">_det_matrix</span> <span class="o">=</span> <span class="n">class_instance</span><span class="o">.</span><span class="n">_det_matrix</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+</span><span id="line-637">        <span class="bp">self</span><span class="o">.</span><span class="n">_sparse_object_map</span> <span class="o">=</span> <span class="n">class_instance</span><span class="o">.</span><span class="n">_sparse_object_map</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+</span><span id="line-638">        <span class="bp">self</span><span class="o">.</span><span class="n">_protected_metadata</span> <span class="o">=</span> <span class="n">deepcopy</span><span class="p">(</span><span class="n">class_instance</span><span class="o">.</span><span class="n">_protected_metadata</span><span class="p">)</span>
+</span><span id="line-639">        <span class="bp">self</span><span class="o">.</span><span class="n">_public_metadata</span> <span class="o">=</span> <span class="n">deepcopy</span><span class="p">(</span><span class="n">class_instance</span><span class="o">.</span><span class="n">_public_metadata</span><span class="p">)</span>
+</span><span id="line-640">
+</span><span id="line-641">    <span class="k">def</span><span class="w"> </span><span class="nf">_set_from_matrix</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">matrix</span><span class="p">):</span>
+</span><span id="line-642"><span class="w">        </span><span class="sd">&quot;&quot;&quot;Initializes all the 2-D components of an image</span>
+</span><span id="line-643">
+</span><span id="line-644"><span class="sd">        Args:</span>
+</span><span id="line-645"><span class="sd">            matrix: A 2-D array form of an image</span>
+</span><span id="line-646"><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="line-647">        <span class="bp">self</span><span class="o">.</span><span class="n">_matrix</span> <span class="o">=</span> <span class="n">matrix</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+</span><span id="line-648">        <span class="bp">self</span><span class="o">.</span><span class="n">__det_matrix_subhandler</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span>
+</span><span id="line-649">        <span class="bp">self</span><span class="o">.</span><span class="n">__object_map_subhandler</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span>
+</span><span id="line-650">
+</span><span id="line-651">    <span class="k">def</span><span class="w"> </span><span class="nf">_set_from_array</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">input_schema</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="line-652"><span class="w">        </span><span class="sd">&quot;&quot;&quot;Initializes all the components of an image from an array</span>
+</span><span id="line-653">
+</span><span id="line-654"><span class="sd">        Note:</span>
+</span><span id="line-655"><span class="sd">            The format of the input should already have been set or guessed</span>
+</span><span id="line-656"><span class="sd">        Args:</span>
+</span><span id="line-657"><span class="sd">            image: the input image array</span>
+</span><span id="line-658"><span class="sd">            input_schema: (str, optional) The format of the input image</span>
+</span><span id="line-659"><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="line-660">
+</span><span id="line-661">        <span class="k">if</span> <span class="n">input_schema</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="line-662">            <span class="bp">self</span><span class="o">.</span><span class="n">__image_schema</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_guess_image_format</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
+</span><span id="line-663">            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">__image_schema</span> <span class="o">==</span> <span class="n">C_ImageFormats</span><span class="o">.</span><span class="n">RGB_OR_BGR</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">__image_schema</span> <span class="o">==</span> <span class="n">C_ImageFormats</span><span class="o">.</span><span class="n">RGBA_OR_BGRA</span><span class="p">:</span>
+</span><span id="line-664">                <span class="c1"># PhenoScope will assume in the event of rgb vs bgr that the input was rgb</span>
+</span><span id="line-665">                <span class="bp">self</span><span class="o">.</span><span class="n">__image_schema</span> <span class="o">=</span> <span class="n">C_ImageFormats</span><span class="o">.</span><span class="n">RGB</span>
+</span><span id="line-666">
+</span><span id="line-667">        <span class="k">else</span><span class="p">:</span>
+</span><span id="line-668">            <span class="c1"># Valid Format Check</span>
+</span><span id="line-669">            <span class="k">if</span> <span class="n">input_schema</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">C_ImageFormats</span><span class="o">.</span><span class="n">SUPPORTED_FORMATS</span><span class="p">:</span>
+</span><span id="line-670">                <span class="k">raise</span> <span class="n">C_ImageFormats</span><span class="o">.</span><span class="n">UnsupportedFormatError</span><span class="p">(</span><span class="n">input_schema</span><span class="p">)</span>
+</span><span id="line-671">            <span class="k">else</span><span class="p">:</span>
+</span><span id="line-672">                <span class="bp">self</span><span class="o">.</span><span class="n">__image_schema</span> <span class="o">=</span> <span class="n">input_schema</span>
+</span><span id="line-673">
+</span><span id="line-674">        <span class="c1"># Grayscale Formats</span>
+</span><span id="line-675">        <span class="k">if</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__image_schema</span> <span class="o">==</span> <span class="n">C_ImageFormats</span><span class="o">.</span><span class="n">GRAYSCALE</span>
+</span><span id="line-676">                <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">__image_schema</span> <span class="o">==</span> <span class="n">C_ImageFormats</span><span class="o">.</span><span class="n">GRAYSCALE_SINGLE_CHANNEL</span>
+</span><span id="line-677">        <span class="p">):</span> <span class="bp">self</span><span class="o">.</span><span class="n">_from_grayscale</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
+</span><span id="line-678">
+</span><span id="line-679">        <span class="c1"># RGB Formats</span>
+</span><span id="line-680">        <span class="k">if</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__image_schema</span> <span class="o">==</span> <span class="n">C_ImageFormats</span><span class="o">.</span><span class="n">RGB</span>
+</span><span id="line-681">                <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">__image_schema</span> <span class="o">==</span> <span class="n">C_ImageFormats</span><span class="o">.</span><span class="n">RGBA</span>
+</span><span id="line-682">        <span class="p">):</span> <span class="bp">self</span><span class="o">.</span><span class="n">_from_rgb_or_rgba</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
+</span><span id="line-683">
+</span><span id="line-684">        <span class="c1"># BGR Formats</span>
+</span><span id="line-685">        <span class="k">if</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__image_schema</span> <span class="o">==</span> <span class="n">C_ImageFormats</span><span class="o">.</span><span class="n">BGR</span>
+</span><span id="line-686">                <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">__image_schema</span> <span class="o">==</span> <span class="n">C_ImageFormats</span><span class="o">.</span><span class="n">BGRA</span>
+</span><span id="line-687">        <span class="p">):</span> <span class="bp">self</span><span class="o">.</span><span class="n">_from_bgr_or_bgra</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
+</span><span id="line-688">
+</span><span id="line-689">    <span class="k">def</span><span class="w"> </span><span class="nf">_from_grayscale</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">grayscale_array</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+</span><span id="line-690"><span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize class components from a grayscale image array&quot;&quot;&quot;</span>
+</span><span id="line-691">        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">__image_schema</span> <span class="o">==</span> <span class="n">C_ImageFormats</span><span class="o">.</span><span class="n">GRAYSCALE</span><span class="p">:</span>
+</span><span id="line-692">            <span class="bp">self</span><span class="o">.</span><span class="n">_set_from_matrix</span><span class="p">(</span><span class="n">grayscale_array</span><span class="p">)</span>
+</span><span id="line-693">
+</span><span id="line-694">        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">__image_schema</span> <span class="o">==</span> <span class="n">C_ImageFormats</span><span class="o">.</span><span class="n">GRAYSCALE_SINGLE_CHANNEL</span><span class="p">:</span>
+</span><span id="line-695">            <span class="bp">self</span><span class="o">.</span><span class="n">_set_from_matrix</span><span class="p">(</span><span class="n">grayscale_array</span><span class="p">[:,</span> <span class="p">:,</span> <span class="mi">0</span><span class="p">])</span>
+</span><span id="line-696">
+</span><span id="line-697">    <span class="k">def</span><span class="w"> </span><span class="nf">_from_rgb_or_rgba</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">rgb_or_rgba_array</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+</span><span id="line-698"><span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize class components from an RGB or RGBA image array&quot;&quot;&quot;</span>
+</span><span id="line-699">        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">__image_schema</span> <span class="o">==</span> <span class="n">C_ImageFormats</span><span class="o">.</span><span class="n">RGB</span><span class="p">:</span>
+</span><span id="line-700">            <span class="bp">self</span><span class="o">.</span><span class="n">_array</span> <span class="o">=</span> <span class="n">rgb_or_rgba_array</span>
+</span><span id="line-701">            <span class="bp">self</span><span class="o">.</span><span class="n">_set_from_matrix</span><span class="p">(</span>
+</span><span id="line-702">                <span class="n">matrix</span><span class="o">=</span><span class="n">rgb2gray</span><span class="p">(</span><span class="n">rgb_or_rgba_array</span><span class="p">)</span>
+</span><span id="line-703">            <span class="p">)</span>
+</span><span id="line-704">
+</span><span id="line-705">        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">__image_schema</span> <span class="o">==</span> <span class="n">C_ImageFormats</span><span class="o">.</span><span class="n">RGBA</span><span class="p">:</span>
+</span><span id="line-706">            <span class="bp">self</span><span class="o">.</span><span class="n">_array</span> <span class="o">=</span> <span class="n">rgb_or_rgba_array</span>
+</span><span id="line-707">            <span class="bp">self</span><span class="o">.</span><span class="n">_set_from_matrix</span><span class="p">(</span>
+</span><span id="line-708">                <span class="n">matrix</span><span class="o">=</span><span class="n">rgb2gray</span><span class="p">(</span>
+</span><span id="line-709">                    <span class="n">rgba2rgb</span><span class="p">(</span><span class="n">rgb_or_rgba_array</span><span class="p">)</span>
+</span><span id="line-710">                <span class="p">)</span>
+</span><span id="line-711">            <span class="p">)</span>
+</span><span id="line-712">
+</span><span id="line-713">    <span class="k">def</span><span class="w"> </span><span class="nf">_from_bgr_or_bgra</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">bgr_or_bgra_array</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+</span><span id="line-714"><span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize class components from a BGR or BGRA image array&quot;&quot;&quot;</span>
+</span><span id="line-715">        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">__image_schema</span> <span class="o">==</span> <span class="n">C_ImageFormats</span><span class="o">.</span><span class="n">BGR</span><span class="p">:</span>
+</span><span id="line-716">            <span class="bp">self</span><span class="o">.</span><span class="n">_array</span> <span class="o">=</span> <span class="n">bgr_or_bgra_array</span>
+</span><span id="line-717">            <span class="bp">self</span><span class="o">.</span><span class="n">_set_from_matrix</span><span class="p">(</span>
+</span><span id="line-718">                <span class="n">matrix</span><span class="o">=</span><span class="n">rgb2gray</span><span class="p">(</span>
+</span><span id="line-719">                    <span class="bp">self</span><span class="o">.</span><span class="n">_convert_bgr_to_rgb</span><span class="p">(</span><span class="n">bgr_or_bgra_array</span><span class="p">)</span>
+</span><span id="line-720">                <span class="p">)</span>
+</span><span id="line-721">            <span class="p">)</span>
+</span><span id="line-722">        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">__image_schema</span> <span class="o">==</span> <span class="n">C_ImageFormats</span><span class="o">.</span><span class="n">BGRA</span><span class="p">:</span>
+</span><span id="line-723">            <span class="bp">self</span><span class="o">.</span><span class="n">_array</span> <span class="o">=</span> <span class="n">bgr_or_bgra_array</span>
+</span><span id="line-724">            <span class="bp">self</span><span class="o">.</span><span class="n">_set_from_matrix</span><span class="p">(</span>
+</span><span id="line-725">                <span class="n">matrix</span><span class="o">=</span><span class="n">rgb2gray</span><span class="p">(</span>
+</span><span id="line-726">                    <span class="n">rgba2rgb</span><span class="p">(</span>
+</span><span id="line-727">                        <span class="bp">self</span><span class="o">.</span><span class="n">_convert_bgra_to_rgba</span><span class="p">(</span><span class="n">bgr_or_bgra_array</span><span class="p">)</span>
+</span><span id="line-728">                    <span class="p">)</span>
+</span><span id="line-729">                <span class="p">)</span>
+</span><span id="line-730">            <span class="p">)</span>
+</span><span id="line-731">
+</span><span id="line-732">    <span class="nd">@staticmethod</span>
+</span><span id="line-733">    <span class="k">def</span><span class="w"> </span><span class="nf">_convert_bgr_to_rgb</span><span class="p">(</span><span class="n">bgr_image</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+</span><span id="line-734"><span class="w">        </span><span class="sd">&quot;&quot;&quot;Rearranges the channels of a BGR array to an RGB array&quot;&quot;&quot;</span>
+</span><span id="line-735">        <span class="k">return</span> <span class="n">bgr_image</span><span class="p">[:,</span> <span class="p">:,</span> <span class="p">::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+</span><span id="line-736">
+</span><span id="line-737">    <span class="nd">@staticmethod</span>
+</span><span id="line-738">    <span class="k">def</span><span class="w"> </span><span class="nf">_convert_bgra_to_rgba</span><span class="p">(</span><span class="n">bgra_image</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+</span><span id="line-739"><span class="w">        </span><span class="sd">&quot;&quot;&quot;Rearranges the channels of a BGRA array to an RGBA array&quot;&quot;&quot;</span>
+</span><span id="line-740">        <span class="k">return</span> <span class="n">bgra_image</span><span class="p">[:,</span> <span class="p">:,</span> <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">]]</span>
+</span><span id="line-741">
+</span><span id="line-742">    <span class="nd">@staticmethod</span>
+</span><span id="line-743">    <span class="k">def</span><span class="w"> </span><span class="nf">_guess_image_format</span><span class="p">(</span><span class="n">img</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+</span><span id="line-744"><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+</span><span id="line-745"><span class="sd">        Attempts to determine the color format of an image represented as a NumPy array.</span>
+</span><span id="line-746">
+</span><span id="line-747"><span class="sd">        The function examines:</span>
+</span><span id="line-748"><span class="sd">          - The number of dimensions (ndim) and channels (shape)</span>
+</span><span id="line-749"><span class="sd">          - Basic statistics (min, max) for each channel in a 3-channel image</span>
+</span><span id="line-750">
+</span><span id="line-751"><span class="sd">        Returns a string that describes the likely image format.</span>
+</span><span id="line-752">
+</span><span id="line-753"><span class="sd">        Args:</span>
+</span><span id="line-754"><span class="sd">            img (np.ndarray): The input image as a NumPy array.</span>
+</span><span id="line-755">
+</span><span id="line-756"><span class="sd">        Returns:</span>
+</span><span id="line-757"><span class="sd">            str: A string describing the guessed image format.</span>
+</span><span id="line-758">
+</span><span id="line-759"><span class="sd">        Notes:</span>
+</span><span id="line-760"><span class="sd">            - A 2D array is assumed to be a grayscale image.</span>
+</span><span id="line-761"><span class="sd">            - A 3D array with one channel (shape: (H, W, 1)) is also treated as grayscale.</span>
+</span><span id="line-762"><span class="sd">            - A 3-channel image (shape: (H, W, 3)) may be RGB, BGR, or even HSV.</span>
+</span><span id="line-763"><span class="sd">              The heuristic here checks if the first channel’s maximum is within the typical</span>
+</span><span id="line-764"><span class="sd">              range for Hue in an HSV image (0–179 for OpenCV) while one of the other channels</span>
+</span><span id="line-765"><span class="sd">              exceeds that range.</span>
+</span><span id="line-766"><span class="sd">            - A 4-channel image is assumed to be some variant of RGBA (or BGRA), but the ordering</span>
+</span><span id="line-767"><span class="sd">              remains ambiguous without further metadata.</span>
+</span><span id="line-768"><span class="sd">            - In many cases (especially when values are normalized or images have been post-processed),</span>
+</span><span id="line-769"><span class="sd">              these heuristics may not be conclusive.</span>
+</span><span id="line-770"><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="line-771">        <span class="c1"># Ensure input is a numpy array</span>
+</span><span id="line-772">        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+</span><span id="line-773">            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;Input must be a numpy array.&quot;</span><span class="p">)</span>
+</span><span id="line-774">
+</span><span id="line-775">        <span class="c1"># Handle grayscale images: 2D arrays or 3D with a single channel.</span>
+</span><span id="line-776">        <span class="k">if</span> <span class="n">img</span><span class="o">.</span><span class="n">ndim</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+</span><span id="line-777">            <span class="k">return</span> <span class="n">C_ImageFormats</span><span class="o">.</span><span class="n">GRAYSCALE</span>
+</span><span id="line-778">        <span class="k">if</span> <span class="n">img</span><span class="o">.</span><span class="n">ndim</span> <span class="o">==</span> <span class="mi">3</span><span class="p">:</span>
+</span><span id="line-779">            <span class="n">h</span><span class="p">,</span> <span class="n">w</span><span class="p">,</span> <span class="n">c</span> <span class="o">=</span> <span class="n">img</span><span class="o">.</span><span class="n">shape</span>
+</span><span id="line-780">            <span class="k">if</span> <span class="n">c</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+</span><span id="line-781">                <span class="k">return</span> <span class="n">C_ImageFormats</span><span class="o">.</span><span class="n">GRAYSCALE_SINGLE_CHANNEL</span>
+</span><span id="line-782">
+</span><span id="line-783">            <span class="c1"># If there are 3 channels, we need to differentiate between several possibilities.</span>
+</span><span id="line-784">            <span class="k">if</span> <span class="n">c</span> <span class="o">==</span> <span class="mi">3</span><span class="p">:</span>
+</span><span id="line-785">                <span class="c1"># Compute basic statistics for each channel.</span>
+</span><span id="line-786">                <span class="c1"># (These are used in heuristics; formulas: ch_i_min = min(img[..., i]),</span>
+</span><span id="line-787">                <span class="c1"># ch_i_max = max(img[..., i]) for i in {0,1,2})</span>
+</span><span id="line-788">                <span class="n">ch0_min</span><span class="p">,</span> <span class="n">ch0_max</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">img</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">0</span><span class="p">]),</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">img</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">0</span><span class="p">])</span>
+</span><span id="line-789">                <span class="n">ch1_min</span><span class="p">,</span> <span class="n">ch1_max</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">img</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">1</span><span class="p">]),</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">img</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
+</span><span id="line-790">                <span class="n">ch2_min</span><span class="p">,</span> <span class="n">ch2_max</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">img</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">2</span><span class="p">]),</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">img</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">2</span><span class="p">])</span>
+</span><span id="line-791">
+</span><span id="line-792">                <span class="c1"># Heuristic for detecting an HSV image (using OpenCV’s convention):</span>
+</span><span id="line-793">                <span class="c1"># In an 8-bit image, Hue is in the range [0, 179] while Saturation and Value are in [0, 255].</span>
+</span><span id="line-794">                <span class="c1"># Here, if channel 0 (possible Hue) never exceeds 180 but at least one of the other channels does,</span>
+</span><span id="line-795">                <span class="c1"># it might be an HSV image.</span>
+</span><span id="line-796">                <span class="k">if</span> <span class="n">ch0_max</span> <span class="o">&lt;=</span> <span class="mi">180</span> <span class="ow">and</span> <span class="p">(</span><span class="n">ch1_max</span> <span class="o">&gt;</span> <span class="mi">180</span> <span class="ow">or</span> <span class="n">ch2_max</span> <span class="o">&gt;</span> <span class="mi">180</span><span class="p">):</span>
+</span><span id="line-797">                    <span class="k">return</span> <span class="n">C_ImageFormats</span><span class="o">.</span><span class="n">HSV</span>
+</span><span id="line-798">
+</span><span id="line-799">                <span class="c1"># Without further metadata, we cannot distinguish between RGB and BGR.</span>
+</span><span id="line-800">                <span class="c1"># Both are 3-channel images with similar ranges. This is left as ambiguous.</span>
+</span><span id="line-801">                <span class="k">return</span> <span class="n">C_ImageFormats</span><span class="o">.</span><span class="n">RGB_OR_BGR</span>
+</span><span id="line-802">
+</span><span id="line-803">            <span class="c1"># Handle 4-channel images.</span>
+</span><span id="line-804">            <span class="k">if</span> <span class="n">c</span> <span class="o">==</span> <span class="mi">4</span><span class="p">:</span>
+</span><span id="line-805">                <span class="c1"># In many cases a 4-channel image is either RGBA or BGRA.</span>
+</span><span id="line-806">                <span class="c1"># Without further context, we report it as ambiguous.</span>
+</span><span id="line-807">                <span class="k">return</span> <span class="n">C_ImageFormats</span><span class="o">.</span><span class="n">RGBA_OR_BGRA</span>
+</span><span id="line-808">
+</span><span id="line-809">            <span class="c1"># For any other number of channels, we note it as an unknown format.</span>
+</span><span id="line-810">            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Image with </span><span class="si">{</span><span class="n">c</span><span class="si">}</span><span class="s2"> channels (unknown format)&quot;</span><span class="p">)</span>
+</span><span id="line-811">
+</span><span id="line-812">        <span class="c1"># If the array has more than 3 dimensions, we don&#39;t have a standard interpretation.</span>
+</span><span id="line-813">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Unknown format (unsupported number of dimensions)&quot;</span><span class="p">)</span>
+</span><span id="line-814">
+</span><span id="line-815">    <span class="k">def</span><span class="w"> </span><span class="nf">show</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+</span><span id="line-816">             <span class="n">ax</span><span class="p">:</span> <span class="n">plt</span><span class="o">.</span><span class="n">Axes</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="line-817">             <span class="n">figsize</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mi">9</span><span class="p">,</span> <span class="mi">10</span><span class="p">)</span>
+</span><span id="line-818">             <span class="p">)</span> <span class="o">-&gt;</span> <span class="p">(</span><span class="n">plt</span><span class="o">.</span><span class="n">Figure</span><span class="p">,</span> <span class="n">plt</span><span class="o">.</span><span class="n">Axes</span><span class="p">):</span>
+</span><span id="line-819"><span class="w">        </span><span class="sd">&quot;&quot;&quot;Returns a matplotlib figure showing the input image&quot;&quot;&quot;</span>
+</span><span id="line-820">        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">schema</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">C_ImageFormats</span><span class="o">.</span><span class="n">MATRIX_FORMATS</span><span class="p">:</span>
+</span><span id="line-821">            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">array</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="n">figsize</span><span class="p">)</span>
+</span><span id="line-822">        <span class="k">else</span><span class="p">:</span>
+</span><span id="line-823">            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">matrix</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="n">figsize</span><span class="p">)</span>
+</span><span id="line-824">
+</span><span id="line-825">    <span class="k">def</span><span class="w"> </span><span class="nf">show_overlay</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">object_label</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">ax</span><span class="p">:</span> <span class="n">plt</span><span class="o">.</span><span class="n">Axes</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="line-826">                     <span class="n">figsize</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">5</span><span class="p">),</span>
+</span><span id="line-827">                     <span class="n">annotate</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+</span><span id="line-828">                     <span class="n">annotation_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">12</span><span class="p">,</span>
+</span><span id="line-829">                     <span class="n">annotation_color</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;white&#39;</span><span class="p">,</span>
+</span><span id="line-830">                     <span class="n">annotation_facecolor</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;red&#39;</span><span class="p">,</span>
+</span><span id="line-831">                     <span class="p">)</span> <span class="o">-&gt;</span> <span class="p">(</span><span class="n">plt</span><span class="o">.</span><span class="n">Figure</span><span class="p">,</span> <span class="n">plt</span><span class="o">.</span><span class="n">Axes</span><span class="p">):</span>
+</span><span id="line-832"><span class="w">        </span><span class="sd">&quot;&quot;&quot;Returns a matplotlib figure showing the overlay of the object map on the input image&quot;&quot;&quot;</span>
+</span><span id="line-833">        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">schema</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">C_ImageFormats</span><span class="o">.</span><span class="n">MATRIX_FORMATS</span><span class="p">:</span>
+</span><span id="line-834">            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">array</span><span class="o">.</span><span class="n">show_overlay</span><span class="p">(</span><span class="n">object_label</span><span class="o">=</span><span class="n">object_label</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="n">figsize</span><span class="p">,</span>
+</span><span id="line-835">                                           <span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">,</span> <span class="n">annotation_size</span><span class="o">=</span><span class="n">annotation_size</span><span class="p">,</span>
+</span><span id="line-836">                                           <span class="n">annotation_color</span><span class="o">=</span><span class="n">annotation_color</span><span class="p">,</span> <span class="n">annotation_facecolor</span><span class="o">=</span><span class="n">annotation_facecolor</span>
+</span><span id="line-837">                                           <span class="p">)</span>
+</span><span id="line-838">        <span class="k">else</span><span class="p">:</span>
+</span><span id="line-839">            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">matrix</span><span class="o">.</span><span class="n">show_overlay</span><span class="p">(</span><span class="n">object_label</span><span class="o">=</span><span class="n">object_label</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="n">figsize</span><span class="p">,</span>
+</span><span id="line-840">                                            <span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">,</span> <span class="n">annotation_size</span><span class="o">=</span><span class="n">annotation_size</span><span class="p">,</span>
+</span><span id="line-841">                                            <span class="n">annotation_color</span><span class="o">=</span><span class="n">annotation_color</span><span class="p">,</span> <span class="n">annotation_facecolor</span><span class="o">=</span><span class="n">annotation_facecolor</span>
+</span><span id="line-842">                                            <span class="p">)</span>
+</span><span id="line-843">
+</span><span id="line-844">    <span class="k">def</span><span class="w"> </span><span class="nf">rotate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">angle_of_rotation</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">mode</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;edge&#39;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="line-845"><span class="w">        </span><span class="sd">&quot;&quot;&quot;Rotate&#39;s the image and all its components&quot;&quot;&quot;</span>
+</span><span id="line-846">        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">schema</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">C_ImageFormats</span><span class="o">.</span><span class="n">MATRIX_FORMATS</span><span class="p">:</span>
+</span><span id="line-847">            <span class="bp">self</span><span class="o">.</span><span class="n">_array</span> <span class="o">=</span> <span class="n">skimage_rotate</span><span class="p">(</span><span class="n">image</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_array</span><span class="p">,</span> <span class="n">angle</span><span class="o">=</span><span class="n">angle_of_rotation</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="n">mode</span><span class="p">,</span> <span class="n">clip</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+</span><span id="line-848">
+</span><span id="line-849">        <span class="bp">self</span><span class="o">.</span><span class="n">_matrix</span> <span class="o">=</span> <span class="n">skimage_rotate</span><span class="p">(</span><span class="n">image</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_matrix</span><span class="p">,</span> <span class="n">angle</span><span class="o">=</span><span class="n">angle_of_rotation</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="n">mode</span><span class="p">,</span> <span class="n">clip</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+</span><span id="line-850">        <span class="bp">self</span><span class="o">.</span><span class="n">_det_matrix</span> <span class="o">=</span> <span class="n">skimage_rotate</span><span class="p">(</span><span class="n">image</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_det_matrix</span><span class="p">,</span> <span class="n">angle</span><span class="o">=</span><span class="n">angle_of_rotation</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="n">mode</span><span class="p">,</span> <span class="n">clip</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+</span><span id="line-851">
+</span><span id="line-852">        <span class="c1"># Rotate the object map while preserving the details and using nearest-neighbor interpolation</span>
+</span><span id="line-853">        <span class="bp">self</span><span class="o">.</span><span class="n">omap</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">scipy_rotate</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">omap</span><span class="p">[:],</span> <span class="n">angle</span><span class="o">=</span><span class="n">angle_of_rotation</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;constant&#39;</span><span class="p">,</span> <span class="n">cval</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">reshape</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+</span><span id="line-854">
+</span><span id="line-855">    <span class="k">def</span><span class="w"> </span><span class="nf">reset</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Type</span><span class="p">[</span><span class="n">Image</span><span class="p">]:</span>
+</span><span id="line-856"><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+</span><span id="line-857"><span class="sd">        Resets the internal state of the object and returns an updated instance.</span>
+</span><span id="line-858">
+</span><span id="line-859"><span class="sd">        This method resets the state of DetectionMatrix and ObjectMap components maintained</span>
+</span><span id="line-860"><span class="sd">        by the object. It ensures that the object is reset to its original state</span>
+</span><span id="line-861"><span class="sd">        while maintaining its type integrity. Upon execution, the instance of the</span>
+</span><span id="line-862"><span class="sd">        calling object itself is returned.</span>
+</span><span id="line-863">
+</span><span id="line-864"><span class="sd">        Returns:</span>
+</span><span id="line-865"><span class="sd">            Type[Image]: The instance of the object after resetting its internal</span>
+</span><span id="line-866"><span class="sd">            state.</span>
+</span><span id="line-867"><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="line-868">        <span class="bp">self</span><span class="o">.</span><span class="n">enh_matrix</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span>
+</span><span id="line-869">        <span class="bp">self</span><span class="o">.</span><span class="n">omap</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span>
+</span><span id="line-870">        <span class="k">return</span> <span class="bp">self</span>
+</span></code></pre></div>
+    </div></div>
+        </main>
+      </div>
+    </div><footer class="py-6 border-t border-border md:py-0">
+    <div class="container flex flex-col items-center justify-between gap-4 md:h-24 md:flex-row">
+      <div class="flex flex-col items-center gap-4 px-8 md:flex-row md:gap-2 md:px-0">
+        <p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2025, ExFAB BioFoundry&nbsp;Built with <a class="font-medium underline underline-offset-4"
+    href="https://www.sphinx-doc.org"
+    rel="noreferrer">Sphinx 8.1.3</a></p>
+</div>
+</div>
+</footer>
+  </div>
+  
+    <script src="../../../_static/documentation_options.js?v=0a971622"></script>
+    <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script defer="defer" src="../../../_static/theme.js?v=073f68d9"></script>
+  
+</body>
+</html>

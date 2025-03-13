@@ -1,0 +1,10 @@
+src.profiler package
+====================
+
+Module contents
+---------------
+
+.. automodule:: src.profiler
+   :members:
+   :undoc-members:
+   :show-inheritance:

@@ -7,7 +7,7 @@ from typing import Optional, Union
 
 from ._imageShow import ImageShow
 
-from core._image_components._metadata_container import MetadataContainer
+from core._image_component_interface._metadata_container import MetadataContainer
 from ..util.labels.metadata import IMAGE_NAME
 
 

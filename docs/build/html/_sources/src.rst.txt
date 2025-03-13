@@ -1,0 +1,30 @@
+src package
+===========
+
+Subpackages
+-----------
+
+.. toctree::
+   :maxdepth: 4
+
+   src.core
+   src.data
+   src.detection
+   src.grid
+   src.interface
+   src.measure
+   src.morphology
+   src.objects
+   src.pipeline
+   src.preprocessing
+   src.profiler
+   src.transform
+   src.util
+
+Module contents
+---------------
+
+.. automodule:: src
+   :members:
+   :undoc-members:
+   :show-inheritance:

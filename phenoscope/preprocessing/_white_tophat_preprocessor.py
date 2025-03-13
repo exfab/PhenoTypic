@@ -1,7 +1,7 @@
 import numpy as np
 from skimage.morphology import disk, square, white_tophat, cube, ball
 
-from ..interface import ImagePreprocessor
+from ..abstract import ImagePreprocessor
 from .. import Image
 
 
@@ -12,12 +12,12 @@ class WhiteTophatPreprocessor(ImagePreprocessor):
 
     def _operate(self, image: Image) -> Image:
         white_tophat_results = white_tophat(
-                image.det_matrix[:],
+            image.enh_matrix[:],
                 footprint=self._get_footprint(
-                        self._get_footprint_radius(detection_matrix=image.det_matrix[:])
+                        self._get_footprint_radius(detection_matrix=image.enh_matrix[:])
                 )
         )
-        image.det_matrix[:] = image.det_matrix[:] - white_tophat_results
+        image.enh_matrix[:] = image.enh_matrix[:] - white_tophat_results
 
         return image
 

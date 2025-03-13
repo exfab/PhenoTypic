@@ -1,25 +1,36 @@
 __version__ = "0.5.0"
 
-import platform
+from .core._image import Image
+from .core._imread import imread
+from .core._grid_image import GridImage
 
-# noinspection PyUnresolvedReferences
-from .core import Image, imread
-
-# noinspection PyUnresolvedReferences
 from . import (
     data,
     detection,
-    features,
+    measure,
     grid,
-    interface,
+    abstract,
     objects,
     morphology,
     pipeline,
     preprocessing,
-    profiler,
     transform,
-    util
+    util,
 )
 
-# if platform.system() == 'Linux' or platform.system() == 'Darwin':
-#     from . import cellprofiler_api
+__all__ = [
+    "Image",  # Class imported from core
+    "imread",  # Function imported from core
+    "GridImage",  # Class imported from core
+    "data",  # Submodule import
+    "detection",  # Submodule import
+    "measure",  # Submodule import
+    "grid",  # Submodule import
+    "abstract",  # Submodule import
+    "objects",  # Submodule import
+    "morphology",  # Submodule import
+    "pipeline",  # Submodule import
+    "preprocessing",  # Submodule import
+    "transform",  # Submodule import
+    "util",  # Submodule import
+]

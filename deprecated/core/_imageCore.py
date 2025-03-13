@@ -9,7 +9,7 @@ import skimage
 from skimage.color import rgb2gray
 import uuid
 
-from util.type_checks import is_binary_mask
+from util.funcs import is_binary_mask
 from util.constants import INVALID_MASK_SHAPE_MSG, INVALID_MAP_SHAPE_MSG, NO_IMAGE_DATA_ERROR_MSG
 from ..util.labels.object_info import (OBJECT_MAP_ID,
                                        CENTER_RR,

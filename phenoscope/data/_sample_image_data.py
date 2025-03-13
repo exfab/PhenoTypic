@@ -7,6 +7,7 @@ from skimage.io import imread
 
 
 def load_plate_12hr():
+    """Returns a plate image of K. Marxianus at 12 hrs in 96 array format"""
     return imread(current_file_dir / 'StandardDay1.jpg')
 
 

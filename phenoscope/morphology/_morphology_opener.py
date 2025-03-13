@@ -1,4 +1,4 @@
-from ..interface import MapModifier
+from ..abstract import MapModifier
 from .. import Image
 
 import numpy as np
@@ -10,5 +10,5 @@ class MorphologyOpener(MapModifier):
         self.__footprint: np.ndarray = footprint
 
     def _operate(self, image: Image) -> Image:
-        image.obj_mask[:] = binary_opening(image.obj_mask[:], footprint=self.__footprint)
+        image.omask[:] = binary_opening(image.omask[:], footprint=self.__footprint)
         return image

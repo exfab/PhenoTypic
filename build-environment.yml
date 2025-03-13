@@ -27,6 +27,12 @@ dependencies:
   - seaborn
   - jupyter
   - pip:
+      - sphinx
+      - sphinxcontrib-napoleon
+      - sphinx-autodoc-typehints
+      - sphinxawesome-theme
+      - furo
+
 #    - python-javabridge
 #    - centrosome
 #    - cellprofiler

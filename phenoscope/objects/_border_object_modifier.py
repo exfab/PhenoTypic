@@ -2,7 +2,7 @@ import numpy as np
 from typing import Optional, Union
 
 from phenoscope import Image
-from phenoscope.interface import MapModifier
+from phenoscope.abstract import MapModifier
 
 
 class BorderObjectRemover(MapModifier):
@@ -22,7 +22,7 @@ class BorderObjectRemover(MapModifier):
         else:
             raise TypeError('Invalid edge size. Should be int, float, or None to use default edge size.')
 
-        obj_map = image.obj_map[:]
+        obj_map = image.omap[:]
         edges = [obj_map[:edge_size - 1, :].ravel(),
                  obj_map[-edge_size:, :].ravel(),
                  obj_map[:, :edge_size - 1].ravel(),
@@ -32,5 +32,5 @@ class BorderObjectRemover(MapModifier):
         for label in edge_labels:
             obj_map[obj_map == label] = 0
 
-        image.obj_map = obj_map
+        image.omap = obj_map
         return image

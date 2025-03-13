@@ -2,7 +2,7 @@ import numpy as np
 from skimage.restoration import rolling_ball
 
 from .. import Image
-from ..interface import ImagePreprocessor
+from ..abstract import ImagePreprocessor
 
 
 class RollingBallPreprocessor(ImagePreprocessor):
@@ -13,9 +13,9 @@ class RollingBallPreprocessor(ImagePreprocessor):
         self._num_threads: int = num_threads
 
     def _operate(self, image: Image):
-        image.det_matrix[:] -= rolling_ball(image=image.det_matrix[:],
-                                              radius=self._radius,
-                                              kernel=self._kernel,
-                                              nansafe=self._nansafe,
-                                              num_threads=self._num_threads)
+        image.enh_matrix[:] -= rolling_ball(image=image.enh_matrix[:],
+                                            radius=self._radius,
+                                            kernel=self._kernel,
+                                            nansafe=self._nansafe,
+                                            num_threads=self._num_threads)
         return image
