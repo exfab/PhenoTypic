@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 from phenoscope import Image
 from phenoscope import GridImage
-from phenoscope.grid import OptimalCenterGridSetter
+from phenoscope.grid import OptimalCenterGridFinder
 from phenoscope.util.constants import C_ImageHandler
 
 from .resources.TestHelper import timeit
@@ -12,11 +12,11 @@ def test_gridimage_initialization():
     # Test default initialization
     grid_image = GridImage()
     assert grid_image is not None
-    assert isinstance(grid_image._grid_setter, OptimalCenterGridSetter)
+    assert isinstance(grid_image._grid_setter, OptimalCenterGridFinder)
 
     # Test custom initialization with image and grid setter
     input_image = np.zeros((100, 100))
-    grid_setter = OptimalCenterGridSetter(nrows=10, ncols=10)
+    grid_setter = OptimalCenterGridFinder(nrows=10, ncols=10)
     grid_image = GridImage(input_image=input_image, grid_setter=grid_setter)
     assert grid_image._grid_setter == grid_setter
 
@@ -54,6 +54,6 @@ def test_grid_show_overlay():
 def test_optimal_grid_setter_defaults():
     grid_image = GridImage()
     grid_setter = grid_image._grid_setter
-    assert isinstance(grid_setter, OptimalCenterGridSetter)
+    assert isinstance(grid_setter, OptimalCenterGridFinder)
     assert grid_setter.nrows == 8
     assert grid_setter.ncols == 12

@@ -1,173 +1,472 @@
+
 <!DOCTYPE html>
-<html lang="en"
-      data-content_root="./"
-      x-data="{ darkMode: localStorage.getItem('darkMode') || localStorage.setItem('darkMode', 'system'), activeSection: '' }"
-      x-init="$watch('darkMode', val => localStorage.setItem('darkMode', val))"
-      class="scroll-smooth"
-      :class="{'dark': darkMode === 'dark' || (darkMode === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)}"
->
-<head>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta charset="utf-8" />
-  <meta name="theme-color" media="(prefers-color-scheme: light)" content="white" />
-  <meta name="theme-color" media="(prefers-color-scheme: dark)" content="black" />
-  
-    <title>Index | PhenoScope 0.5.0a1 documentation</title>
-    <meta property="og:title" content="Index | PhenoScope 0.5.0a1 documentation" />
-    <meta name="twitter:title" content="Index | PhenoScope 0.5.0a1 documentation" />
-      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=e72c8e07" />
-      <link rel="stylesheet" type="text/css" href="_static/theme.css?v=42baaae4" />
-        <link rel="search" title="Search" href="search.html" />
-        <link rel="index" title="Index" href="#" />
 
-    <script>
-    <!-- Prevent Flash of wrong theme -->
-      const userPreference = localStorage.getItem('darkMode');
-      let mode;
-      if (userPreference === 'dark' || window.matchMedia('(prefers-color-scheme: dark)').matches) {
-        mode = 'dark';
-        document.documentElement.classList.add('dark');
-      } else {
-        mode = 'light';
-      }
-      if (!userPreference) {localStorage.setItem('darkMode', mode)}
-    </script>
-</head>
-  <body x-data="{ showSidebar: false, showScrollTop: false }" class="min-h-screen font-sans antialiased bg-background text-foreground" :class="{ 'overflow-hidden': showSidebar }">
-    <div x-cloak x-show="showSidebar" class="fixed inset-0 z-50 overflow-hidden bg-background/80 backdrop-blur-sm md:hidden" @click.self="showSidebar = false"></div><div id="page" class="relative flex flex-col min-h-screen"><a href="#content" class="absolute top-0 left-0 z-[100] block bg-background p-4 text-xl transition -translate-x-full opacity-0 focus:translate-x-0 focus:opacity-100">
-      Skip to content
-    </a><header
-  class="sticky top-0 z-40 w-full border-b shadow-sm border-border supports-backdrop-blur:bg-background/60 bg-background/95 backdrop-blur"><div class="container flex items-center h-14">
-    <div class="hidden mr-4 md:flex">
-      <a href="index.html" class="flex items-center mr-6">
-          <img width="24" height="24" class="mr-2 hidden dark:block" src="_static/PhenoScopeLogo-DarkMode.png" alt="Logo" />
-        <img width="24" height="24" class="mr-2 dark:hidden" src="_static/PhenoScopeLogo.png" alt="Logo" /><span class="hidden font-bold sm:inline-block text-clip whitespace-nowrap">PhenoScope 0.5.0a1 documentation</span>
-      </a></div><button
-      class="inline-flex items-center justify-center h-10 px-0 py-2 mr-2 text-base font-medium transition-colors rounded-md hover:text-accent-foreground hover:bg-transparent md:hidden"
-      type="button" @click="showSidebar = true">
-      <svg xmlns="http://www.w3.org/2000/svg" height="24" width="24" viewBox="0 96 960 960" aria-hidden="true"
-        fill="currentColor">
-        <path
-          d="M152.587 825.087q-19.152 0-32.326-13.174t-13.174-32.326q0-19.152 13.174-32.326t32.326-13.174h440q19.152 0 32.326 13.174t13.174 32.326q0 19.152-13.174 32.326t-32.326 13.174h-440Zm0-203.587q-19.152 0-32.326-13.174T107.087 576q0-19.152 13.174-32.326t32.326-13.174h320q19.152 0 32.326 13.174T518.087 576q0 19.152-13.174 32.326T472.587 621.5h-320Zm0-203.587q-19.152 0-32.326-13.174t-13.174-32.326q0-19.152 13.174-32.326t32.326-13.174h440q19.152 0 32.326 13.174t13.174 32.326q0 19.152-13.174 32.326t-32.326 13.174h-440ZM708.913 576l112.174 112.174q12.674 12.674 12.674 31.826t-12.674 31.826Q808.413 764.5 789.261 764.5t-31.826-12.674l-144-144Q600 594.391 600 576t13.435-31.826l144-144q12.674-12.674 31.826-12.674t31.826 12.674q12.674 12.674 12.674 31.826t-12.674 31.826L708.913 576Z" />
-      </svg>
-      <span class="sr-only">Toggle navigation menu</span>
-    </button>
-    <div class="flex items-center justify-between flex-1 space-x-2 sm:space-x-4 md:justify-end">
-      <div class="flex-1 w-full md:w-auto md:flex-none"><form id="searchbox"
+
+<html lang="en" data-content_root="./" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Index &#8212; PhenoScope 0.5.0 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="_static/documentation_options.js?v=1dd76d02"></script>
+    <script src="_static/doctools.js?v=9bcbadda"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'genindex';</script>
+    <link rel="index" title="Index" href="#" />
+    <link rel="search" title="Search" href="search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.5.0" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
       action="search.html"
-      method="get"
-      class="relative flex items-center group"
-      @keydown.k.window.meta="$refs.search.focus()">
-  <input x-ref="search"
-          name="q"
-          id="search-input"
-          type="search"
-          aria-label="Search the docs"
-          placeholder="Search ..."
-          class="inline-flex items-center font-medium transition-colors bg-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background border border-input hover:bg-accent focus:bg-accent hover:text-accent-foreground focus:text-accent-foreground hover:placeholder-accent-foreground py-2 px-4 relative h-9 w-full justify-start rounded-[0.5rem] text-sm text-muted-foreground sm:pr-12 md:w-40 lg:w-64" />
-  <kbd class="pointer-events-none absolute right-1.5 top-2 hidden h-5 select-none text-muted-foreground items-center gap-1 rounded border border-border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex group-hover:bg-accent group-hover:text-accent-foreground">
-    <span class="text-xs">⌘</span>
-    K
-  </kbd>
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
 </form>
-      </div>
-      <nav class="flex items-center space-x-1">
-        <button @click="darkMode = darkMode === 'light' ? 'dark' : 'light'"
-          class="relative inline-flex items-center justify-center px-0 text-sm font-medium transition-colors rounded-md hover:bg-accent hover:text-accent-foreground h-9 w-9"
-          type="button"
-          aria-label="Color theme switcher">
-          <svg xmlns="http://www.w3.org/2000/svg" height="24" width="24" viewBox="0 96 960 960" fill="currentColor"
-            class="absolute transition-all scale-100 rotate-0 dark:-rotate-90 dark:scale-0">
-            <path
-              d="M480 685q45.456 0 77.228-31.772Q589 621.456 589 576q0-45.456-31.772-77.228Q525.456 467 480 467q-45.456 0-77.228 31.772Q371 530.544 371 576q0 45.456 31.772 77.228Q434.544 685 480 685Zm0 91q-83 0-141.5-58.5T280 576q0-83 58.5-141.5T480 376q83 0 141.5 58.5T680 576q0 83-58.5 141.5T480 776ZM80 621.5q-19.152 0-32.326-13.174T34.5 576q0-19.152 13.174-32.326T80 530.5h80q19.152 0 32.326 13.174T205.5 576q0 19.152-13.174 32.326T160 621.5H80Zm720 0q-19.152 0-32.326-13.174T754.5 576q0-19.152 13.174-32.326T800 530.5h80q19.152 0 32.326 13.174T925.5 576q0 19.152-13.174 32.326T880 621.5h-80Zm-320-320q-19.152 0-32.326-13.174T434.5 256v-80q0-19.152 13.174-32.326T480 130.5q19.152 0 32.326 13.174T525.5 176v80q0 19.152-13.174 32.326T480 301.5Zm0 720q-19.152 0-32.326-13.17Q434.5 995.152 434.5 976v-80q0-19.152 13.174-32.326T480 850.5q19.152 0 32.326 13.174T525.5 896v80q0 19.152-13.174 32.33-13.174 13.17-32.326 13.17ZM222.174 382.065l-43-42Q165.5 327.391 166 308.239t13.174-33.065q13.435-13.674 32.587-13.674t32.065 13.674l42.239 43q12.674 13.435 12.555 31.706-.12 18.272-12.555 31.946-12.674 13.674-31.445 13.413-18.772-.261-32.446-13.174Zm494 494.761-42.239-43q-12.674-13.435-12.674-32.087t12.674-31.565Q686.609 756.5 705.38 757q18.772.5 32.446 13.174l43 41.761Q794.5 824.609 794 843.761t-13.174 33.065Q767.391 890.5 748.239 890.5t-32.065-13.674Zm-42-494.761Q660.5 369.391 661 350.62q.5-18.772 13.174-32.446l41.761-43Q728.609 261.5 747.761 262t33.065 13.174q13.674 13.435 13.674 32.587t-13.674 32.065l-43 42.239q-13.435 12.674-31.706 12.555-18.272-.12-31.946-12.555Zm-495 494.761Q165.5 863.391 165.5 844.239t13.674-32.065l43-42.239q13.435-12.674 32.087-12.674t31.565 12.674Q299.5 782.609 299 801.38q-.5 18.772-13.174 32.446l-41.761 43Q231.391 890.5 212.239 890t-33.065-13.174ZM480 576Z" />
-          </svg>
-          <svg xmlns="http://www.w3.org/2000/svg" height="24" width="24" viewBox="0 96 960 960" fill="currentColor"
-            class="absolute transition-all scale-0 rotate-90 dark:rotate-0 dark:scale-100">
-            <path
-              d="M480 936q-151 0-255.5-104.5T120 576q0-138 90-239.5T440 218q25-3 39 18t-1 44q-17 26-25.5 55t-8.5 61q0 90 63 153t153 63q31 0 61.5-9t54.5-25q21-14 43-1.5t19 39.5q-14 138-117.5 229T480 936Zm0-80q88 0 158-48.5T740 681q-20 5-40 8t-40 3q-123 0-209.5-86.5T364 396q0-20 3-40t8-40q-78 32-126.5 102T200 576q0 116 82 198t198 82Zm-10-270Z" />
-          </svg>
-        </button>
-      </nav>
-    </div>
-  </div>
-</header>
+  </dialog>
 
-    <div class="flex-1"><div class="container flex-1 items-start md:grid md:grid-cols-[220px_minmax(0,1fr)] md:gap-6 lg:grid-cols-[240px_minmax(0,1fr)] lg:gap-10"><aside id="left-sidebar"
-  class="fixed inset-y-0 left-0 md:top-14 z-50 md:z-30 bg-background md:bg-transparent transition-all duration-100 -translate-x-full md:translate-x-0 ml-0 p-6 md:p-0 md:-ml-2 md:h-[calc(100vh-3.5rem)] w-5/6 md:w-full shrink-0 overflow-y-auto border-r border-border md:sticky"
-  :aria-hidden="!showSidebar" :class="{ 'translate-x-0': showSidebar }">
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
 
-    <a href="index.html" class="!justify-start text-sm md:!hidden bg-background">
-        <img width="16" height="16" class="mr-2 hidden dark:block" src="_static/PhenoScopeLogo-DarkMode.png" alt="Logo" />
-        <img width="16" height="16" class="mr-2 dark:hidden" src="_static/PhenoScopeLogo.png" alt="Logo" /><span class="font-bold text-clip whitespace-nowrap">PhenoScope 0.5.0a1 documentation</span>
-    </a>
-
-    <div class="relative overflow-hidden md:overflow-auto my-4 md:my-0 h-[calc(100vh-8rem)] md:h-auto">
-      <div class="overflow-y-auto h-full w-full relative pr-6"><nav class="table w-full min-w-full my-6 lg:my-8">
-  <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="modules.html">phenoscope</a></li>
-<li class="toctree-l1"><a class="reference internal" href="phenoscope.core.html">phenoscope.core package</a></li>
-<li class="toctree-l1"><a class="reference internal" href="phenoscope.core.accessors.html">phenoscope.core.accessors package</a></li>
-<li class="toctree-l1"><a class="reference internal" href="phenoscope.data.html">phenoscope.data package</a></li>
-<li class="toctree-l1"><a class="reference internal" href="phenoscope.detection.html">phenoscope.detection package</a></li>
-<li class="toctree-l1"><a class="reference internal" href="phenoscope.grid.html">phenoscope.grid package</a></li>
-<li class="toctree-l1"><a class="reference internal" href="phenoscope.measure.html">phenoscope.measure package</a></li>
-<li class="toctree-l1"><a class="reference internal" href="phenoscope.morphology.html">phenoscope.morphology package</a></li>
-<li class="toctree-l1"><a class="reference internal" href="phenoscope.objects.html">phenoscope.objects package</a></li>
-<li class="toctree-l1"><a class="reference internal" href="phenoscope.pipeline.html">phenoscope.pipeline package</a></li>
-<li class="toctree-l1"><a class="reference internal" href="phenoscope.preprocessing.html">phenoscope.preprocessing package</a></li>
-<li class="toctree-l1"><a class="reference internal" href="phenoscope.transform.html">phenoscope.transform package</a></li>
-<li class="toctree-l1"><a class="reference internal" href="phenoscope.abstract.html">phenoscope.abstract package</a></li>
-</ul>
-
-</nav>
-      </div>
-    </div>
-    <button type="button" @click="showSidebar = false"
-      class="absolute md:hidden right-4 top-4 rounded-sm opacity-70 transition-opacity hover:opacity-100">
-      <svg xmlns="http://www.w3.org/2000/svg" height="24" width="24" viewBox="0 96 960 960" fill="currentColor"
-        stroke="none" class="h-4 w-4">
-        <path
-          d="M480 632 284 828q-11 11-28 11t-28-11q-11-11-11-28t11-28l196-196-196-196q-11-11-11-28t11-28q11-11 28-11t28 11l196 196 196-196q11-11 28-11t28 11q11 11 11 28t-11 28L536 576l196 196q11 11 11 28t-11 28q-11 11-28 11t-28-11L480 632Z" />
-      </svg>
-    </button>
-  </aside>
-        <main class="relative py-6 lg:gap-10 lg:py-8 xl:grid xl:grid-cols-[1fr_300px]">
-<div class="w-full min-w-0 mx-auto">
-<nav aria-label="breadcrumbs"
-     class="flex items-center mb-4 space-x-1 text-sm text-muted-foreground">
-  <a class="overflow-hidden text-ellipsis whitespace-nowrap hover:text-foreground"
-     href="index.html">
-    <span class="hidden md:inline">PhenoScope 0.5.0a1 documentation</span>
-    <svg xmlns="http://www.w3.org/2000/svg"
-         height="18"
-         width="18"
-         viewBox="0 96 960 960"
-         aria-label="Home"
-         fill="currentColor"
-         stroke="none"
-         class="md:hidden">
-      <path d="M240 856h120V616h240v240h120V496L480 316 240 496v360Zm-80 80V456l320-240 320 240v480H520V696h-80v240H160Zm320-350Z" />
-    </svg>
-  </a>
   
-<div class="mr-1">/</div><span aria-current="page"
-        class="font-medium text-foreground overflow-hidden text-ellipsis whitespace-nowrap">Index</span>
-</nav>
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
 
-<div id="content" role="main">
+  
+    
+  
 
-  <h1 id="index">Index</h1>
-  <h2 id="_">_</h2>
-  <table style="width: 100%" class="indextable genindextable"><tr>
-  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
+<a class="navbar-brand logo" href="index.html">
+  
+  
+  
+  
+  
+  
+    <p class="title logo__title">PhenoScope 0.5.0 documentation</p>
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="phenoscope.core.html">
+    phenoscope.core package
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="phenoscope.core.accessors.html">
+    phenoscope.core.accessors package
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="phenoscope.data.html">
+    phenoscope.data package
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="phenoscope.detection.html">
+    phenoscope.detection package
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="phenoscope.grid.html">
+    phenoscope.grid package
+  </a>
+</li>
+
+            <li class="nav-item dropdown">
+                <button class="btn dropdown-toggle nav-item" type="button"
+                data-bs-toggle="dropdown" aria-expanded="false"
+                aria-controls="pst-nav-more-links">
+                    More
+                </button>
+                <ul id="pst-nav-more-links" class="dropdown-menu">
+                    
+<li class=" ">
+  <a class="nav-link dropdown-item nav-internal" href="phenoscope.measure.html">
+    phenoscope.measure package
+  </a>
+</li>
+
+
+<li class=" ">
+  <a class="nav-link dropdown-item nav-internal" href="phenoscope.morphology.html">
+    phenoscope.morphology package
+  </a>
+</li>
+
+
+<li class=" ">
+  <a class="nav-link dropdown-item nav-internal" href="phenoscope.objects.html">
+    phenoscope.objects package
+  </a>
+</li>
+
+
+<li class=" ">
+  <a class="nav-link dropdown-item nav-internal" href="phenoscope.pipeline.html">
+    phenoscope.pipeline package
+  </a>
+</li>
+
+
+<li class=" ">
+  <a class="nav-link dropdown-item nav-internal" href="phenoscope.preprocessing.html">
+    phenoscope.preprocessing package
+  </a>
+</li>
+
+
+<li class=" ">
+  <a class="nav-link dropdown-item nav-internal" href="phenoscope.transform.html">
+    phenoscope.transform package
+  </a>
+</li>
+
+
+<li class=" ">
+  <a class="nav-link dropdown-item nav-internal" href="phenoscope.abstract.html">
+    phenoscope.abstract package
+  </a>
+</li>
+
+
+<li class=" ">
+  <a class="nav-link dropdown-item nav-internal" href="modules.html">
+    PhenoScope Modules
+  </a>
+</li>
+
+                </ul>
+            </li>
+            
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="phenoscope.core.html">
+    phenoscope.core package
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="phenoscope.core.accessors.html">
+    phenoscope.core.accessors package
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="phenoscope.data.html">
+    phenoscope.data package
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="phenoscope.detection.html">
+    phenoscope.detection package
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="phenoscope.grid.html">
+    phenoscope.grid package
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="phenoscope.measure.html">
+    phenoscope.measure package
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="phenoscope.morphology.html">
+    phenoscope.morphology package
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="phenoscope.objects.html">
+    phenoscope.objects package
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="phenoscope.pipeline.html">
+    phenoscope.pipeline package
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="phenoscope.preprocessing.html">
+    phenoscope.preprocessing package
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="phenoscope.transform.html">
+    phenoscope.transform package
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="phenoscope.abstract.html">
+    phenoscope.abstract package
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="modules.html">
+    PhenoScope Modules
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none"></div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+
+<h1 id="index">Index</h1>
+
+<div class="genindex-jumpbox">
+ <a href="#_"><strong>_</strong></a>
+ | <a href="#A"><strong>A</strong></a>
+ | <a href="#B"><strong>B</strong></a>
+ | <a href="#C"><strong>C</strong></a>
+ | <a href="#E"><strong>E</strong></a>
+ | <a href="#F"><strong>F</strong></a>
+ | <a href="#G"><strong>G</strong></a>
+ | <a href="#H"><strong>H</strong></a>
+ | <a href="#I"><strong>I</strong></a>
+ | <a href="#L"><strong>L</strong></a>
+ | <a href="#M"><strong>M</strong></a>
+ | <a href="#N"><strong>N</strong></a>
+ | <a href="#O"><strong>O</strong></a>
+ | <a href="#P"><strong>P</strong></a>
+ | <a href="#R"><strong>R</strong></a>
+ | <a href="#S"><strong>S</strong></a>
+ | <a href="#T"><strong>T</strong></a>
+ | <a href="#U"><strong>U</strong></a>
+ | <a href="#W"><strong>W</strong></a>
+ 
+</div>
+<h2 id="_">_</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="phenoscope.core.html#phenoscope.core.ImageHandler.__array_subhandler">__array_subhandler (phenoscope.core.ImageHandler attribute)</a>
 </li>
       <li><a href="phenoscope.core.html#phenoscope.core.ImageHandler.__det_matrix_subhandler">__det_matrix_subhandler (phenoscope.core.ImageHandler attribute)</a>
 </li>
       <li><a href="phenoscope.core.accessors.html#phenoscope.core.accessors.ImageArray.__getitem__">__getitem__() (phenoscope.core.accessors.ImageArray method)</a>
 
-      <ul style="list-style-type:none">
+      <ul>
         <li><a href="phenoscope.core.accessors.html#phenoscope.core.accessors.ImageEnhancedMatrix.__getitem__">(phenoscope.core.accessors.ImageEnhancedMatrix method)</a>
 </li>
         <li><a href="phenoscope.core.accessors.html#phenoscope.core.accessors.ImageMatrix.__getitem__">(phenoscope.core.accessors.ImageMatrix method)</a>
@@ -182,18 +481,18 @@
 </li>
         <li><a href="phenoscope.core.html#phenoscope.core.ImageHsv.__getitem__">(phenoscope.core.ImageHsv method)</a>
 </li>
-        <li><a href="modules.html#phenoscope.GridImage.__getitem__">(phenoscope.GridImage method)</a>, <a href="phenoscope.html#phenoscope.GridImage.__getitem__">[1]</a>
+        <li><a href="phenoscope.html#phenoscope.GridImage.__getitem__">(phenoscope.GridImage method)</a>
 </li>
-        <li><a href="modules.html#phenoscope.Image.__getitem__">(phenoscope.Image method)</a>, <a href="phenoscope.html#phenoscope.Image.__getitem__">[1]</a>
+        <li><a href="phenoscope.html#phenoscope.Image.__getitem__">(phenoscope.Image method)</a>
 </li>
       </ul></li>
-      <li><a href="modules.html#phenoscope.GridImage.__grid_subhandler">__grid_subhandler (phenoscope.GridImage attribute)</a>, <a href="phenoscope.html#phenoscope.GridImage.__grid_subhandler">[1]</a>
+      <li><a href="phenoscope.html#phenoscope.GridImage.__grid_subhandler">__grid_subhandler (phenoscope.GridImage attribute)</a>
 </li>
       <li><a href="phenoscope.core.html#phenoscope.core.ImageHandler.__image_schema">__image_schema (phenoscope.core.ImageHandler attribute)</a>
 </li>
       <li><a href="phenoscope.core.accessors.html#phenoscope.core.accessors.ImageMatrix.__init__">__init__() (phenoscope.core.accessors.ImageMatrix method)</a>
 
-      <ul style="list-style-type:none">
+      <ul>
         <li><a href="phenoscope.core.accessors.html#phenoscope.core.accessors.ObjectMap.__init__">(phenoscope.core.accessors.ObjectMap method)</a>
 </li>
         <li><a href="phenoscope.core.accessors.html#phenoscope.core.accessors.ObjectMask.__init__">(phenoscope.core.accessors.ObjectMask method)</a>
@@ -214,10 +513,10 @@
       <li><a href="phenoscope.core.html#phenoscope.core.ImageHandler.__objects_subhandler">__objects_subhandler (phenoscope.core.ImageHandler attribute)</a>
 </li>
   </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="phenoscope.core.accessors.html#phenoscope.core.accessors.ImageArray.__setitem__">__setitem__() (phenoscope.core.accessors.ImageArray method)</a>
 
-      <ul style="list-style-type:none">
+      <ul>
         <li><a href="phenoscope.core.accessors.html#phenoscope.core.accessors.ImageEnhancedMatrix.__setitem__">(phenoscope.core.accessors.ImageEnhancedMatrix method)</a>
 </li>
         <li><a href="phenoscope.core.accessors.html#phenoscope.core.accessors.ImageMatrix.__setitem__">(phenoscope.core.accessors.ImageMatrix method)</a>
@@ -230,18 +529,16 @@
 </li>
         <li><a href="phenoscope.core.html#phenoscope.core.ImageHsv.__setitem__">(phenoscope.core.ImageHsv method)</a>
 </li>
-        <li><a href="modules.html#phenoscope.GridImage.__setitem__">(phenoscope.GridImage method)</a>, <a href="phenoscope.html#phenoscope.GridImage.__setitem__">[1]</a>
+        <li><a href="phenoscope.html#phenoscope.GridImage.__setitem__">(phenoscope.GridImage method)</a>
 </li>
-        <li><a href="modules.html#phenoscope.Image.__setitem__">(phenoscope.Image method)</a>, <a href="phenoscope.html#phenoscope.Image.__setitem__">[1]</a>
+        <li><a href="phenoscope.html#phenoscope.Image.__setitem__">(phenoscope.Image method)</a>
 </li>
       </ul></li>
       <li><a href="phenoscope.core.html#phenoscope.core.ImageHandler._array">_array (phenoscope.core.ImageHandler attribute)</a>
 </li>
       <li><a href="phenoscope.core.html#phenoscope.core.ImageHandler._det_matrix">_det_matrix (phenoscope.core.ImageHandler attribute)</a>
 </li>
-      <li><a href="modules.html#phenoscope.GridImage._grid_setter">_grid_setter (phenoscope.GridImage attribute)</a>, <a href="phenoscope.html#phenoscope.GridImage._grid_setter">[1]</a>
-</li>
-      <li><a href="phenoscope.core.accessors.html#phenoscope.core.accessors.GridAccessor._idx_ref_matrix">_idx_ref_matrix (phenoscope.core.accessors.GridAccessor attribute)</a>
+      <li><a href="phenoscope.html#phenoscope.GridImage._grid_setter">_grid_setter (phenoscope.GridImage attribute)</a>
 </li>
       <li><a href="phenoscope.core.html#phenoscope.core.ImageHandler._matrix">_matrix (phenoscope.core.ImageHandler attribute)</a>
 </li>
@@ -253,7 +550,7 @@
 </li>
       <li><a href="phenoscope.core.accessors.html#phenoscope.core.accessors.GridAccessor._parent_image">_parent_image (phenoscope.core.accessors.GridAccessor attribute)</a>
 
-      <ul style="list-style-type:none">
+      <ul>
         <li><a href="phenoscope.core.accessors.html#phenoscope.core.accessors.HsvAccessor._parent_image">(phenoscope.core.accessors.HsvAccessor attribute)</a>
 </li>
         <li><a href="phenoscope.core.accessors.html#phenoscope.core.accessors.ImageArray._parent_image">(phenoscope.core.accessors.ImageArray attribute)</a>
@@ -270,15 +567,14 @@
       <li><a href="phenoscope.core.html#phenoscope.core.ImageHandler._sparse_object_map">_sparse_object_map (phenoscope.core.ImageHandler attribute)</a>
 </li>
   </ul></td>
-  </tr>
-      </table>
-  
-  <h2 id="A">A</h2>
-  <table style="width: 100%" class="indextable genindextable"><tr>
-  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
+</tr></table>
+
+<h2 id="A">A</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="phenoscope.abstract.html#id0">apply() (phenoscope.abstract.ImageOperation method)</a>, <a href="phenoscope.abstract.html#phenoscope.abstract.ImageOperation.apply">[1]</a>
 
-      <ul style="list-style-type:none">
+      <ul>
         <li><a href="phenoscope.abstract.html#phenoscope.abstract.ImagePreprocessor.apply">(phenoscope.abstract.ImagePreprocessor method)</a>
 </li>
         <li><a href="phenoscope.abstract.html#phenoscope.abstract.ImageTransformer.apply">(phenoscope.abstract.ImageTransformer method)</a>
@@ -289,9 +585,9 @@
 </li>
         <li><a href="phenoscope.abstract.html#phenoscope.abstract.ThresholdDetector.apply">(phenoscope.abstract.ThresholdDetector method)</a>
 </li>
-        <li><a href="phenoscope.detection.html#phenoscope.detection.OtsuDetector.apply">(phenoscope.detection.OtsuDetector method)</a>
+        <li><a href="phenoscope.detection.html#id0">(phenoscope.detection.OtsuDetector method)</a>, <a href="phenoscope.detection.html#phenoscope.detection.OtsuDetector.apply">[1]</a>
 </li>
-        <li><a href="phenoscope.detection.html#phenoscope.detection.TriangleDetector.apply">(phenoscope.detection.TriangleDetector method)</a>
+        <li><a href="phenoscope.detection.html#id1">(phenoscope.detection.TriangleDetector method)</a>, <a href="phenoscope.detection.html#phenoscope.detection.TriangleDetector.apply">[1]</a>
 </li>
         <li><a href="phenoscope.grid.abstract.html#phenoscope.grid.abstract.GridMapModifier.apply">(phenoscope.grid.abstract.GridMapModifier method)</a>
 </li>
@@ -339,37 +635,35 @@
 </li>
       </ul></li>
   </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="phenoscope.core.html#phenoscope.core.ImageHandler.array">array (phenoscope.core.ImageHandler property)</a>
 
-      <ul style="list-style-type:none">
+      <ul>
         <li><a href="phenoscope.core.html#phenoscope.core.ImageHsv.array">(phenoscope.core.ImageHsv property)</a>
 </li>
-        <li><a href="modules.html#phenoscope.GridImage.array">(phenoscope.GridImage property)</a>, <a href="phenoscope.html#phenoscope.GridImage.array">[1]</a>
+        <li><a href="phenoscope.html#phenoscope.GridImage.array">(phenoscope.GridImage property)</a>
 </li>
-        <li><a href="modules.html#phenoscope.Image.array">(phenoscope.Image property)</a>, <a href="phenoscope.html#phenoscope.Image.array">[1]</a>
+        <li><a href="phenoscope.html#phenoscope.Image.array">(phenoscope.Image property)</a>
 </li>
       </ul></li>
   </ul></td>
-  </tr>
-      </table>
-  
-  <h2 id="B">B</h2>
-  <table style="width: 100%" class="indextable genindextable"><tr>
-  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
+</tr></table>
+
+<h2 id="B">B</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="phenoscope.objects.html#phenoscope.objects.BorderObjectRemover">BorderObjectRemover (class in phenoscope.objects)</a>
 </li>
   </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="phenoscope.measure.html#phenoscope.measure.BoundaryExtractor">BoundaryExtractor (class in phenoscope.measure)</a>
 </li>
   </ul></td>
-  </tr>
-      </table>
-  
-  <h2 id="C">C</h2>
-  <table style="width: 100%" class="indextable genindextable"><tr>
-  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
+</tr></table>
+
+<h2 id="C">C</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="phenoscope.objects.html#phenoscope.objects.CenterDeviationReducer">CenterDeviationReducer (class in phenoscope.objects)</a>
 </li>
       <li><a href="phenoscope.objects.html#phenoscope.objects.CircularityRemovalModifier">CircularityRemovalModifier (class in phenoscope.objects)</a>
@@ -380,7 +674,7 @@
 </li>
       <li><a href="phenoscope.core.accessors.html#phenoscope.core.accessors.HsvAccessor.copy">copy() (phenoscope.core.accessors.HsvAccessor method)</a>
 
-      <ul style="list-style-type:none">
+      <ul>
         <li><a href="phenoscope.core.accessors.html#phenoscope.core.accessors.ImageArray.copy">(phenoscope.core.accessors.ImageArray method)</a>
 </li>
         <li><a href="phenoscope.core.accessors.html#phenoscope.core.accessors.ImageEnhancedMatrix.copy">(phenoscope.core.accessors.ImageEnhancedMatrix method)</a>
@@ -395,30 +689,33 @@
 </li>
         <li><a href="phenoscope.core.html#phenoscope.core.ImageHsv.copy">(phenoscope.core.ImageHsv method)</a>
 </li>
-        <li><a href="modules.html#phenoscope.GridImage.copy">(phenoscope.GridImage method)</a>, <a href="phenoscope.html#phenoscope.GridImage.copy">[1]</a>
+        <li><a href="phenoscope.html#phenoscope.GridImage.copy">(phenoscope.GridImage method)</a>
 </li>
-        <li><a href="modules.html#phenoscope.Image.copy">(phenoscope.Image method)</a>, <a href="phenoscope.html#phenoscope.Image.copy">[1]</a>
+        <li><a href="phenoscope.html#phenoscope.Image.copy">(phenoscope.Image method)</a>
 </li>
       </ul></li>
   </ul></td>
-  </tr>
-      </table>
-  
-  <h2 id="E">E</h2>
-  <table style="width: 100%" class="indextable genindextable"><tr>
-  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="phenoscope.preprocessing.html#phenoscope.preprocessing.MedianPreprocessor.cval">cval (phenoscope.preprocessing.MedianPreprocessor attribute)</a>
+</li>
+  </ul></td>
+</tr></table>
+
+<h2 id="E">E</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="phenoscope.core.html#phenoscope.core.ImageHandler.enh_matrix">enh_matrix (phenoscope.core.ImageHandler property)</a>
 
-      <ul style="list-style-type:none">
+      <ul>
         <li><a href="phenoscope.core.html#phenoscope.core.ImageHsv.enh_matrix">(phenoscope.core.ImageHsv property)</a>
 </li>
-        <li><a href="modules.html#phenoscope.GridImage.enh_matrix">(phenoscope.GridImage property)</a>, <a href="phenoscope.html#phenoscope.GridImage.enh_matrix">[1]</a>
+        <li><a href="phenoscope.html#phenoscope.GridImage.enh_matrix">(phenoscope.GridImage property)</a>
 </li>
-        <li><a href="modules.html#phenoscope.Image.enh_matrix">(phenoscope.Image property)</a>, <a href="phenoscope.html#phenoscope.Image.enh_matrix">[1]</a>
+        <li><a href="phenoscope.html#phenoscope.Image.enh_matrix">(phenoscope.Image property)</a>
 </li>
       </ul></li>
   </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="phenoscope.core.accessors.html#phenoscope.core.accessors.HsvAccessor.extract_obj">extract_obj() (phenoscope.core.accessors.HsvAccessor method)</a>
 </li>
       <li><a href="phenoscope.core.accessors.html#phenoscope.core.accessors.HsvAccessor.extract_obj_brightness">extract_obj_brightness() (phenoscope.core.accessors.HsvAccessor method)</a>
@@ -430,21 +727,19 @@
       <li><a href="phenoscope.core.accessors.html#phenoscope.core.accessors.ImageArray.extract_objects">extract_objects() (phenoscope.core.accessors.ImageArray method)</a>
 </li>
   </ul></td>
-  </tr>
-      </table>
-  
-  <h2 id="F">F</h2>
-  <table style="width: 100%" class="indextable genindextable"><tr>
-  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
+</tr></table>
+
+<h2 id="F">F</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="phenoscope.abstract.html#phenoscope.abstract.FeatureExtractor">FeatureExtractor (class in phenoscope.abstract)</a>
 </li>
   </ul></td>
-  </tr>
-      </table>
-  
-  <h2 id="G">G</h2>
-  <table style="width: 100%" class="indextable genindextable"><tr>
-  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
+</tr></table>
+
+<h2 id="G">G</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="phenoscope.preprocessing.html#phenoscope.preprocessing.GaussianPreprocessor">GaussianPreprocessor (class in phenoscope.preprocessing)</a>
 </li>
       <li><a href="phenoscope.core.accessors.html#phenoscope.core.accessors.GridAccessor.get_col_edges">get_col_edges() (phenoscope.core.accessors.GridAccessor method)</a>
@@ -466,8 +761,8 @@
       <li><a href="phenoscope.core.accessors.html#phenoscope.core.accessors.GridAccessor.get_section_map">get_section_map() (phenoscope.core.accessors.GridAccessor method)</a>
 </li>
   </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
-      <li><a href="modules.html#phenoscope.GridImage.grid">grid (phenoscope.GridImage property)</a>, <a href="phenoscope.html#phenoscope.GridImage.grid">[1]</a>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="phenoscope.html#phenoscope.GridImage.grid">grid (phenoscope.GridImage property)</a>
 </li>
       <li><a href="phenoscope.core.accessors.html#phenoscope.core.accessors.GridAccessor">GridAccessor (class in phenoscope.core.accessors)</a>
 </li>
@@ -477,7 +772,7 @@
 </li>
       <li><a href="phenoscope.grid.abstract.html#phenoscope.grid.abstract.GridFeatureExtractor">GridFeatureExtractor (class in phenoscope.grid.abstract)</a>
 </li>
-      <li><a href="modules.html#phenoscope.GridImage">GridImage (class in phenoscope)</a>, <a href="phenoscope.html#phenoscope.GridImage">[1]</a>
+      <li><a href="phenoscope.html#phenoscope.GridImage">GridImage (class in phenoscope)</a>
 </li>
       <li><a href="phenoscope.grid.html#phenoscope.grid.GridLinRegStatsExtractor">GridLinRegStatsExtractor (class in phenoscope.grid)</a>
 </li>
@@ -490,15 +785,14 @@
       <li><a href="phenoscope.grid.abstract.html#phenoscope.grid.abstract.GridTransformer">GridTransformer (class in phenoscope.grid.abstract)</a>
 </li>
   </ul></td>
-  </tr>
-      </table>
-  
-  <h2 id="H">H</h2>
-  <table style="width: 100%" class="indextable genindextable"><tr>
-  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
+</tr></table>
+
+<h2 id="H">H</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="phenoscope.core.accessors.html#phenoscope.core.accessors.HsvAccessor.histogram">histogram() (phenoscope.core.accessors.HsvAccessor method)</a>
 
-      <ul style="list-style-type:none">
+      <ul>
         <li><a href="phenoscope.core.accessors.html#phenoscope.core.accessors.ImageArray.histogram">(phenoscope.core.accessors.ImageArray method)</a>
 </li>
         <li><a href="phenoscope.core.accessors.html#phenoscope.core.accessors.ImageEnhancedMatrix.histogram">(phenoscope.core.accessors.ImageEnhancedMatrix method)</a>
@@ -507,27 +801,26 @@
 </li>
       </ul></li>
   </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="phenoscope.core.html#phenoscope.core.ImageHsv.hsv">hsv (phenoscope.core.ImageHsv property)</a>
 
-      <ul style="list-style-type:none">
-        <li><a href="modules.html#phenoscope.GridImage.hsv">(phenoscope.GridImage property)</a>, <a href="phenoscope.html#phenoscope.GridImage.hsv">[1]</a>
+      <ul>
+        <li><a href="phenoscope.html#phenoscope.GridImage.hsv">(phenoscope.GridImage property)</a>
 </li>
-        <li><a href="modules.html#phenoscope.Image.hsv">(phenoscope.Image property)</a>, <a href="phenoscope.html#phenoscope.Image.hsv">[1]</a>
+        <li><a href="phenoscope.html#phenoscope.Image.hsv">(phenoscope.Image property)</a>
 </li>
       </ul></li>
       <li><a href="phenoscope.core.accessors.html#phenoscope.core.accessors.HsvAccessor">HsvAccessor (class in phenoscope.core.accessors)</a>
 </li>
   </ul></td>
-  </tr>
-      </table>
-  
-  <h2 id="I">I</h2>
-  <table style="width: 100%" class="indextable genindextable"><tr>
-  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
+</tr></table>
+
+<h2 id="I">I</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="phenoscope.core.accessors.html#phenoscope.core.accessors.ImageObjects.iloc">iloc() (phenoscope.core.accessors.ImageObjects method)</a>
 </li>
-      <li><a href="modules.html#phenoscope.Image">Image (class in phenoscope)</a>, <a href="phenoscope.html#phenoscope.Image">[1]</a>
+      <li><a href="phenoscope.html#phenoscope.Image">Image (class in phenoscope)</a>
 </li>
       <li><a href="phenoscope.core.accessors.html#phenoscope.core.accessors.ImageArray">ImageArray (class in phenoscope.core.accessors)</a>
 </li>
@@ -552,48 +845,47 @@
       <li><a href="phenoscope.transform.html#phenoscope.transform.ImageResizer">ImageResizer (class in phenoscope.transform)</a>
 </li>
   </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="phenoscope.abstract.html#phenoscope.abstract.ImageTransformer">ImageTransformer (class in phenoscope.abstract)</a>
 </li>
       <li><a href="phenoscope.core.html#phenoscope.core.ImageHandler.imread">imread() (phenoscope.core.ImageHandler method)</a>
 
-      <ul style="list-style-type:none">
+      <ul>
         <li><a href="phenoscope.core.html#phenoscope.core.ImageHsv.imread">(phenoscope.core.ImageHsv method)</a>
 </li>
-        <li><a href="modules.html#phenoscope.GridImage.imread">(phenoscope.GridImage method)</a>, <a href="phenoscope.html#phenoscope.GridImage.imread">[1]</a>
+        <li><a href="phenoscope.html#phenoscope.GridImage.imread">(phenoscope.GridImage method)</a>
 </li>
-        <li><a href="modules.html#phenoscope.Image.imread">(phenoscope.Image method)</a>, <a href="phenoscope.html#phenoscope.Image.imread">[1]</a>
+        <li><a href="phenoscope.html#phenoscope.Image.imread">(phenoscope.Image method)</a>
 </li>
       </ul></li>
       <li><a href="phenoscope.core.accessors.html#phenoscope.core.accessors.GridAccessor.info">info() (phenoscope.core.accessors.GridAccessor method)</a>
 
-      <ul style="list-style-type:none">
+      <ul>
         <li><a href="phenoscope.core.accessors.html#phenoscope.core.accessors.ImageObjects.info">(phenoscope.core.accessors.ImageObjects method)</a>
 </li>
       </ul></li>
       <li><a href="phenoscope.util.html#phenoscope.util.is_binary_mask">is_binary_mask() (in module phenoscope.util)</a>
 
-      <ul style="list-style-type:none">
+      <ul>
         <li><a href="phenoscope.util.html#phenoscope.util.funcs.is_binary_mask">(in module phenoscope.util.funcs)</a>
 </li>
       </ul></li>
       <li><a href="phenoscope.core.html#phenoscope.core.ImageHandler.isempty">isempty() (phenoscope.core.ImageHandler method)</a>
 
-      <ul style="list-style-type:none">
+      <ul>
         <li><a href="phenoscope.core.html#phenoscope.core.ImageHsv.isempty">(phenoscope.core.ImageHsv method)</a>
 </li>
-        <li><a href="modules.html#phenoscope.GridImage.isempty">(phenoscope.GridImage method)</a>, <a href="phenoscope.html#phenoscope.GridImage.isempty">[1]</a>
+        <li><a href="phenoscope.html#phenoscope.GridImage.isempty">(phenoscope.GridImage method)</a>
 </li>
-        <li><a href="modules.html#phenoscope.Image.isempty">(phenoscope.Image method)</a>, <a href="phenoscope.html#phenoscope.Image.isempty">[1]</a>
+        <li><a href="phenoscope.html#phenoscope.Image.isempty">(phenoscope.Image method)</a>
 </li>
       </ul></li>
   </ul></td>
-  </tr>
-      </table>
-  
-  <h2 id="L">L</h2>
-  <table style="width: 100%" class="indextable genindextable"><tr>
-  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
+</tr></table>
+
+<h2 id="L">L</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="phenoscope.core.accessors.html#phenoscope.core.accessors.ImageObjects.label_table">label_table() (phenoscope.core.accessors.ImageObjects method)</a>
 </li>
       <li><a href="phenoscope.core.accessors.html#phenoscope.core.accessors.ImageObjects.labels">labels (phenoscope.core.accessors.ImageObjects property)</a>
@@ -607,7 +899,7 @@
       <li><a href="phenoscope.data.html#phenoscope.data.load_faint_colony_12hr">load_faint_colony_12hr() (in module phenoscope.data)</a>
 </li>
   </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="phenoscope.data.html#phenoscope.data.load_plate_12hr">load_plate_12hr() (in module phenoscope.data)</a>
 </li>
       <li><a href="phenoscope.data.html#phenoscope.data.load_plate_72hr">load_plate_72hr() (in module phenoscope.data)</a>
@@ -621,27 +913,26 @@
       <li><a href="phenoscope.core.accessors.html#phenoscope.core.accessors.ImageObjects.loc">loc() (phenoscope.core.accessors.ImageObjects method)</a>
 </li>
   </ul></td>
-  </tr>
-      </table>
-  
-  <h2 id="M">M</h2>
-  <table style="width: 100%" class="indextable genindextable"><tr>
-  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
+</tr></table>
+
+<h2 id="M">M</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="phenoscope.abstract.html#phenoscope.abstract.MapModifier">MapModifier (class in phenoscope.abstract)</a>
 </li>
       <li><a href="phenoscope.core.html#phenoscope.core.ImageHandler.matrix">matrix (phenoscope.core.ImageHandler property)</a>
 
-      <ul style="list-style-type:none">
+      <ul>
         <li><a href="phenoscope.core.html#phenoscope.core.ImageHsv.matrix">(phenoscope.core.ImageHsv property)</a>
 </li>
-        <li><a href="modules.html#phenoscope.GridImage.matrix">(phenoscope.GridImage property)</a>, <a href="phenoscope.html#phenoscope.GridImage.matrix">[1]</a>
+        <li><a href="phenoscope.html#phenoscope.GridImage.matrix">(phenoscope.GridImage property)</a>
 </li>
-        <li><a href="modules.html#phenoscope.Image.matrix">(phenoscope.Image property)</a>, <a href="phenoscope.html#phenoscope.Image.matrix">[1]</a>
+        <li><a href="phenoscope.html#phenoscope.Image.matrix">(phenoscope.Image property)</a>
 </li>
       </ul></li>
       <li><a href="phenoscope.abstract.html#phenoscope.abstract.FeatureExtractor.measure">measure() (phenoscope.abstract.FeatureExtractor method)</a>
 
-      <ul style="list-style-type:none">
+      <ul>
         <li><a href="phenoscope.grid.abstract.html#phenoscope.grid.abstract.GridFeatureExtractor.measure">(phenoscope.grid.abstract.GridFeatureExtractor method)</a>
 </li>
         <li><a href="phenoscope.grid.abstract.html#phenoscope.grid.abstract.GridSetter.measure">(phenoscope.grid.abstract.GridSetter method)</a>
@@ -663,10 +954,14 @@
 </li>
       <li><a href="phenoscope.grid.html#phenoscope.grid.MinResidualErrorRemover">MinResidualErrorRemover (class in phenoscope.grid)</a>
 </li>
+      <li><a href="phenoscope.preprocessing.html#phenoscope.preprocessing.MedianPreprocessor.mode">mode (phenoscope.preprocessing.MedianPreprocessor attribute)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li>
     module
 
-      <ul style="list-style-type:none">
+      <ul>
         <li><a href="phenoscope.abstract.html#module-phenoscope.abstract">phenoscope.abstract</a>
 </li>
         <li><a href="phenoscope.core.html#module-phenoscope.core">phenoscope.core</a>
@@ -698,66 +993,58 @@
         <li><a href="phenoscope.util.html#module-phenoscope.util.funcs">phenoscope.util.funcs</a>
 </li>
       </ul></li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
       <li><a href="phenoscope.morphology.html#phenoscope.morphology.MorphologyFiller">MorphologyFiller (class in phenoscope.morphology)</a>
 </li>
       <li><a href="phenoscope.morphology.html#phenoscope.morphology.MorphologyOpener">MorphologyOpener (class in phenoscope.morphology)</a>
 </li>
   </ul></td>
-  </tr>
-      </table>
-  
-  <h2 id="N">N</h2>
-  <table style="width: 100%" class="indextable genindextable"><tr>
-  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
+</tr></table>
+
+<h2 id="N">N</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="phenoscope.core.html#phenoscope.core.ImageHandler.name">name (phenoscope.core.ImageHandler property)</a>
 
-      <ul style="list-style-type:none">
+      <ul>
         <li><a href="phenoscope.core.html#phenoscope.core.ImageHsv.name">(phenoscope.core.ImageHsv property)</a>
 </li>
-        <li><a href="modules.html#phenoscope.GridImage.name">(phenoscope.GridImage property)</a>, <a href="phenoscope.html#phenoscope.GridImage.name">[1]</a>
+        <li><a href="phenoscope.html#phenoscope.GridImage.name">(phenoscope.GridImage property)</a>
 </li>
-        <li><a href="modules.html#phenoscope.Image.name">(phenoscope.Image property)</a>, <a href="phenoscope.html#phenoscope.Image.name">[1]</a>
+        <li><a href="phenoscope.html#phenoscope.Image.name">(phenoscope.Image property)</a>
 </li>
       </ul></li>
-      <li><a href="phenoscope.core.accessors.html#phenoscope.core.accessors.GridAccessor.ncols">ncols (phenoscope.core.accessors.GridAccessor attribute)</a>
+      <li><a href="phenoscope.core.accessors.html#phenoscope.core.accessors.GridAccessor.ncols">ncols (phenoscope.core.accessors.GridAccessor property)</a>
 
-      <ul style="list-style-type:none">
-        <li><a href="phenoscope.core.accessors.html#id0">(phenoscope.core.accessors.GridAccessor property)</a>
-</li>
+      <ul>
         <li><a href="phenoscope.grid.html#phenoscope.grid.OptimalCenterGridSetter.ncols">(phenoscope.grid.OptimalCenterGridSetter attribute)</a>
 </li>
       </ul></li>
   </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
-      <li><a href="phenoscope.core.accessors.html#phenoscope.core.accessors.GridAccessor.nrows">nrows (phenoscope.core.accessors.GridAccessor attribute)</a>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="phenoscope.core.accessors.html#phenoscope.core.accessors.GridAccessor.nrows">nrows (phenoscope.core.accessors.GridAccessor property)</a>
 
-      <ul style="list-style-type:none">
-        <li><a href="phenoscope.core.accessors.html#id1">(phenoscope.core.accessors.GridAccessor property)</a>
-</li>
+      <ul>
         <li><a href="phenoscope.grid.html#phenoscope.grid.OptimalCenterGridSetter.nrows">(phenoscope.grid.OptimalCenterGridSetter attribute)</a>
 </li>
       </ul></li>
       <li><a href="phenoscope.core.accessors.html#phenoscope.core.accessors.ImageObjects.num_objects">num_objects (phenoscope.core.accessors.ImageObjects property)</a>
 
-      <ul style="list-style-type:none">
+      <ul>
         <li><a href="phenoscope.core.html#phenoscope.core.ImageHandler.num_objects">(phenoscope.core.ImageHandler property)</a>
 </li>
         <li><a href="phenoscope.core.html#phenoscope.core.ImageHsv.num_objects">(phenoscope.core.ImageHsv property)</a>
 </li>
-        <li><a href="modules.html#phenoscope.GridImage.num_objects">(phenoscope.GridImage property)</a>, <a href="phenoscope.html#phenoscope.GridImage.num_objects">[1]</a>
+        <li><a href="phenoscope.html#phenoscope.GridImage.num_objects">(phenoscope.GridImage property)</a>
 </li>
-        <li><a href="modules.html#phenoscope.Image.num_objects">(phenoscope.Image property)</a>, <a href="phenoscope.html#phenoscope.Image.num_objects">[1]</a>
+        <li><a href="phenoscope.html#phenoscope.Image.num_objects">(phenoscope.Image property)</a>
 </li>
       </ul></li>
   </ul></td>
-  </tr>
-      </table>
-  
-  <h2 id="O">O</h2>
-  <table style="width: 100%" class="indextable genindextable"><tr>
-  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
+</tr></table>
+
+<h2 id="O">O</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="phenoscope.abstract.html#phenoscope.abstract.ObjectDetector">ObjectDetector (class in phenoscope.abstract)</a>
 </li>
       <li><a href="phenoscope.core.accessors.html#phenoscope.core.accessors.ObjectMap">ObjectMap (class in phenoscope.core.accessors)</a>
@@ -766,36 +1053,36 @@
 </li>
       <li><a href="phenoscope.core.html#phenoscope.core.ImageHandler.objects">objects (phenoscope.core.ImageHandler property)</a>
 
-      <ul style="list-style-type:none">
+      <ul>
         <li><a href="phenoscope.core.html#phenoscope.core.ImageHsv.objects">(phenoscope.core.ImageHsv property)</a>
 </li>
-        <li><a href="modules.html#phenoscope.GridImage.objects">(phenoscope.GridImage property)</a>, <a href="phenoscope.html#phenoscope.GridImage.objects">[1]</a>
+        <li><a href="phenoscope.html#phenoscope.GridImage.objects">(phenoscope.GridImage property)</a>
 </li>
-        <li><a href="modules.html#phenoscope.Image.objects">(phenoscope.Image property)</a>, <a href="phenoscope.html#phenoscope.Image.objects">[1]</a>
+        <li><a href="phenoscope.html#phenoscope.Image.objects">(phenoscope.Image property)</a>
 </li>
       </ul></li>
       <li><a href="phenoscope.grid.html#phenoscope.grid.ObjectSpreadExtractor">ObjectSpreadExtractor (class in phenoscope.grid)</a>
 </li>
       <li><a href="phenoscope.core.html#phenoscope.core.ImageHandler.omap">omap (phenoscope.core.ImageHandler property)</a>
 
-      <ul style="list-style-type:none">
+      <ul>
         <li><a href="phenoscope.core.html#phenoscope.core.ImageHsv.omap">(phenoscope.core.ImageHsv property)</a>
 </li>
-        <li><a href="modules.html#phenoscope.GridImage.omap">(phenoscope.GridImage property)</a>, <a href="phenoscope.html#phenoscope.GridImage.omap">[1]</a>
+        <li><a href="phenoscope.html#phenoscope.GridImage.omap">(phenoscope.GridImage property)</a>
 </li>
-        <li><a href="modules.html#phenoscope.Image.omap">(phenoscope.Image property)</a>, <a href="phenoscope.html#phenoscope.Image.omap">[1]</a>
+        <li><a href="phenoscope.html#phenoscope.Image.omap">(phenoscope.Image property)</a>
 </li>
       </ul></li>
   </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="phenoscope.core.html#phenoscope.core.ImageHandler.omask">omask (phenoscope.core.ImageHandler property)</a>
 
-      <ul style="list-style-type:none">
+      <ul>
         <li><a href="phenoscope.core.html#phenoscope.core.ImageHsv.omask">(phenoscope.core.ImageHsv property)</a>
 </li>
-        <li><a href="modules.html#phenoscope.GridImage.omask">(phenoscope.GridImage property)</a>, <a href="phenoscope.html#phenoscope.GridImage.omask">[1]</a>
+        <li><a href="phenoscope.html#phenoscope.GridImage.omask">(phenoscope.GridImage property)</a>
 </li>
-        <li><a href="modules.html#phenoscope.Image.omask">(phenoscope.Image property)</a>, <a href="phenoscope.html#phenoscope.Image.omask">[1]</a>
+        <li><a href="phenoscope.html#phenoscope.Image.omask">(phenoscope.Image property)</a>
 </li>
       </ul></li>
       <li><a href="phenoscope.grid.html#phenoscope.grid.OptimalCenterGridSetter">OptimalCenterGridSetter (class in phenoscope.grid)</a>
@@ -803,145 +1090,143 @@
       <li><a href="phenoscope.detection.html#phenoscope.detection.OtsuDetector">OtsuDetector (class in phenoscope.detection)</a>
 </li>
   </ul></td>
-  </tr>
-      </table>
-  
-  <h2 id="P">P</h2>
-  <table style="width: 100%" class="indextable genindextable"><tr>
-  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
+</tr></table>
+
+<h2 id="P">P</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li>
     phenoscope.abstract
 
-      <ul style="list-style-type:none">
+      <ul>
         <li><a href="phenoscope.abstract.html#module-phenoscope.abstract">module</a>
 </li>
       </ul></li>
       <li>
     phenoscope.core
 
-      <ul style="list-style-type:none">
+      <ul>
         <li><a href="phenoscope.core.html#module-phenoscope.core">module</a>
 </li>
       </ul></li>
       <li>
     phenoscope.core.accessors
 
-      <ul style="list-style-type:none">
+      <ul>
         <li><a href="phenoscope.core.accessors.html#module-phenoscope.core.accessors">module</a>
 </li>
       </ul></li>
       <li>
     phenoscope.data
 
-      <ul style="list-style-type:none">
+      <ul>
         <li><a href="phenoscope.data.html#module-phenoscope.data">module</a>
 </li>
       </ul></li>
       <li>
     phenoscope.detection
 
-      <ul style="list-style-type:none">
+      <ul>
         <li><a href="phenoscope.detection.html#module-phenoscope.detection">module</a>
 </li>
       </ul></li>
       <li>
     phenoscope.grid
 
-      <ul style="list-style-type:none">
+      <ul>
         <li><a href="phenoscope.grid.html#module-phenoscope.grid">module</a>
 </li>
       </ul></li>
       <li>
     phenoscope.grid.abstract
 
-      <ul style="list-style-type:none">
+      <ul>
         <li><a href="phenoscope.grid.abstract.html#module-phenoscope.grid.abstract">module</a>
 </li>
       </ul></li>
       <li>
     phenoscope.measure
 
-      <ul style="list-style-type:none">
+      <ul>
         <li><a href="phenoscope.measure.html#module-phenoscope.measure">module</a>
 </li>
       </ul></li>
       <li>
     phenoscope.morphology
 
-      <ul style="list-style-type:none">
+      <ul>
         <li><a href="phenoscope.morphology.html#module-phenoscope.morphology">module</a>
 </li>
       </ul></li>
   </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li>
     phenoscope.objects
 
-      <ul style="list-style-type:none">
+      <ul>
         <li><a href="phenoscope.objects.html#module-phenoscope.objects">module</a>
 </li>
       </ul></li>
       <li>
     phenoscope.pipeline
 
-      <ul style="list-style-type:none">
+      <ul>
         <li><a href="phenoscope.pipeline.html#module-phenoscope.pipeline">module</a>
 </li>
       </ul></li>
       <li>
     phenoscope.preprocessing
 
-      <ul style="list-style-type:none">
+      <ul>
         <li><a href="phenoscope.preprocessing.html#module-phenoscope.preprocessing">module</a>
 </li>
       </ul></li>
       <li>
     phenoscope.transform
 
-      <ul style="list-style-type:none">
+      <ul>
         <li><a href="phenoscope.transform.html#module-phenoscope.transform">module</a>
 </li>
       </ul></li>
       <li>
     phenoscope.util
 
-      <ul style="list-style-type:none">
+      <ul>
         <li><a href="phenoscope.util.html#module-phenoscope.util">module</a>
 </li>
       </ul></li>
       <li>
     phenoscope.util.funcs
 
-      <ul style="list-style-type:none">
+      <ul>
         <li><a href="phenoscope.util.html#module-phenoscope.util.funcs">module</a>
 </li>
       </ul></li>
       <li><a href="phenoscope.core.accessors.html#phenoscope.core.accessors.ImageObjects.props">props (phenoscope.core.accessors.ImageObjects property)</a>
 
-      <ul style="list-style-type:none">
+      <ul>
         <li><a href="phenoscope.core.html#phenoscope.core.ImageHandler.props">(phenoscope.core.ImageHandler property)</a>
 </li>
         <li><a href="phenoscope.core.html#phenoscope.core.ImageHsv.props">(phenoscope.core.ImageHsv property)</a>
 </li>
-        <li><a href="modules.html#phenoscope.GridImage.props">(phenoscope.GridImage property)</a>, <a href="phenoscope.html#phenoscope.GridImage.props">[1]</a>
+        <li><a href="phenoscope.html#phenoscope.GridImage.props">(phenoscope.GridImage property)</a>
 </li>
-        <li><a href="modules.html#phenoscope.Image.props">(phenoscope.Image property)</a>, <a href="phenoscope.html#phenoscope.Image.props">[1]</a>
+        <li><a href="phenoscope.html#phenoscope.Image.props">(phenoscope.Image property)</a>
 </li>
       </ul></li>
   </ul></td>
-  </tr>
-      </table>
-  
-  <h2 id="R">R</h2>
-  <table style="width: 100%" class="indextable genindextable"><tr>
-  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
+</tr></table>
+
+<h2 id="R">R</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="phenoscope.preprocessing.html#phenoscope.preprocessing.RankMedianPreprocessor">RankMedianPreprocessor (class in phenoscope.preprocessing)</a>
 </li>
       <li><a href="phenoscope.core.accessors.html#phenoscope.core.accessors.ObjectMap.relabel">relabel() (phenoscope.core.accessors.ObjectMap method)</a>
 </li>
       <li><a href="phenoscope.core.accessors.html#phenoscope.core.accessors.ImageEnhancedMatrix.reset">reset() (phenoscope.core.accessors.ImageEnhancedMatrix method)</a>
 
-      <ul style="list-style-type:none">
+      <ul>
         <li><a href="phenoscope.core.accessors.html#phenoscope.core.accessors.ImageObjects.reset">(phenoscope.core.accessors.ImageObjects method)</a>
 </li>
         <li><a href="phenoscope.core.accessors.html#phenoscope.core.accessors.ObjectMap.reset">(phenoscope.core.accessors.ObjectMap method)</a>
@@ -952,55 +1237,54 @@
 </li>
         <li><a href="phenoscope.core.html#phenoscope.core.ImageHsv.reset">(phenoscope.core.ImageHsv method)</a>
 </li>
-        <li><a href="modules.html#phenoscope.GridImage.reset">(phenoscope.GridImage method)</a>, <a href="phenoscope.html#phenoscope.GridImage.reset">[1]</a>
+        <li><a href="phenoscope.html#phenoscope.GridImage.reset">(phenoscope.GridImage method)</a>
 </li>
-        <li><a href="modules.html#phenoscope.Image.reset">(phenoscope.Image method)</a>, <a href="phenoscope.html#phenoscope.Image.reset">[1]</a>
+        <li><a href="phenoscope.html#phenoscope.Image.reset">(phenoscope.Image method)</a>
 </li>
       </ul></li>
   </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="phenoscope.preprocessing.html#phenoscope.preprocessing.RollingBallPreprocessor">RollingBallPreprocessor (class in phenoscope.preprocessing)</a>
 </li>
       <li><a href="phenoscope.core.html#phenoscope.core.ImageHandler.rotate">rotate() (phenoscope.core.ImageHandler method)</a>
 
-      <ul style="list-style-type:none">
+      <ul>
         <li><a href="phenoscope.core.html#phenoscope.core.ImageHsv.rotate">(phenoscope.core.ImageHsv method)</a>
 </li>
-        <li><a href="modules.html#phenoscope.GridImage.rotate">(phenoscope.GridImage method)</a>, <a href="phenoscope.html#phenoscope.GridImage.rotate">[1]</a>
+        <li><a href="phenoscope.html#phenoscope.GridImage.rotate">(phenoscope.GridImage method)</a>
 </li>
-        <li><a href="modules.html#phenoscope.Image.rotate">(phenoscope.Image method)</a>, <a href="phenoscope.html#phenoscope.Image.rotate">[1]</a>
+        <li><a href="phenoscope.html#phenoscope.Image.rotate">(phenoscope.Image method)</a>
 </li>
       </ul></li>
   </ul></td>
-  </tr>
-      </table>
-  
-  <h2 id="S">S</h2>
-  <table style="width: 100%" class="indextable genindextable"><tr>
-  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
+</tr></table>
+
+<h2 id="S">S</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="phenoscope.core.html#phenoscope.core.ImageHandler.schema">schema (phenoscope.core.ImageHandler property)</a>
 
-      <ul style="list-style-type:none">
+      <ul>
         <li><a href="phenoscope.core.html#phenoscope.core.ImageHsv.schema">(phenoscope.core.ImageHsv property)</a>
 </li>
-        <li><a href="modules.html#phenoscope.GridImage.schema">(phenoscope.GridImage property)</a>, <a href="phenoscope.html#phenoscope.GridImage.schema">[1]</a>
+        <li><a href="phenoscope.html#phenoscope.GridImage.schema">(phenoscope.GridImage property)</a>
 </li>
-        <li><a href="modules.html#phenoscope.Image.schema">(phenoscope.Image property)</a>, <a href="phenoscope.html#phenoscope.Image.schema">[1]</a>
+        <li><a href="phenoscope.html#phenoscope.Image.schema">(phenoscope.Image property)</a>
 </li>
       </ul></li>
       <li><a href="phenoscope.core.html#phenoscope.core.ImageHandler.set_image">set_image() (phenoscope.core.ImageHandler method)</a>
 
-      <ul style="list-style-type:none">
+      <ul>
         <li><a href="phenoscope.core.html#phenoscope.core.ImageHsv.set_image">(phenoscope.core.ImageHsv method)</a>
 </li>
-        <li><a href="modules.html#phenoscope.GridImage.set_image">(phenoscope.GridImage method)</a>, <a href="phenoscope.html#phenoscope.GridImage.set_image">[1]</a>
+        <li><a href="phenoscope.html#phenoscope.GridImage.set_image">(phenoscope.GridImage method)</a>
 </li>
-        <li><a href="modules.html#phenoscope.Image.set_image">(phenoscope.Image method)</a>, <a href="phenoscope.html#phenoscope.Image.set_image">[1]</a>
+        <li><a href="phenoscope.html#phenoscope.Image.set_image">(phenoscope.Image method)</a>
 </li>
       </ul></li>
       <li><a href="phenoscope.core.accessors.html#phenoscope.core.accessors.HsvAccessor.shape">shape (phenoscope.core.accessors.HsvAccessor property)</a>
 
-      <ul style="list-style-type:none">
+      <ul>
         <li><a href="phenoscope.core.accessors.html#phenoscope.core.accessors.ImageArray.shape">(phenoscope.core.accessors.ImageArray property)</a>
 </li>
         <li><a href="phenoscope.core.accessors.html#phenoscope.core.accessors.ImageEnhancedMatrix.shape">(phenoscope.core.accessors.ImageEnhancedMatrix property)</a>
@@ -1015,14 +1299,14 @@
 </li>
         <li><a href="phenoscope.core.html#phenoscope.core.ImageHsv.shape">(phenoscope.core.ImageHsv property)</a>
 </li>
-        <li><a href="modules.html#phenoscope.GridImage.shape">(phenoscope.GridImage property)</a>, <a href="phenoscope.html#phenoscope.GridImage.shape">[1]</a>
+        <li><a href="phenoscope.html#phenoscope.GridImage.shape">(phenoscope.GridImage property)</a>
 </li>
-        <li><a href="modules.html#phenoscope.Image.shape">(phenoscope.Image property)</a>, <a href="phenoscope.html#phenoscope.Image.shape">[1]</a>
+        <li><a href="phenoscope.html#phenoscope.Image.shape">(phenoscope.Image property)</a>
 </li>
       </ul></li>
       <li><a href="phenoscope.core.accessors.html#phenoscope.core.accessors.HsvAccessor.show">show() (phenoscope.core.accessors.HsvAccessor method)</a>
 
-      <ul style="list-style-type:none">
+      <ul>
         <li><a href="phenoscope.core.accessors.html#phenoscope.core.accessors.ImageArray.show">(phenoscope.core.accessors.ImageArray method)</a>
 </li>
         <li><a href="phenoscope.core.accessors.html#phenoscope.core.accessors.ImageEnhancedMatrix.show">(phenoscope.core.accessors.ImageEnhancedMatrix method)</a>
@@ -1037,24 +1321,24 @@
 </li>
         <li><a href="phenoscope.core.html#phenoscope.core.ImageHsv.show">(phenoscope.core.ImageHsv method)</a>
 </li>
-        <li><a href="modules.html#phenoscope.GridImage.show">(phenoscope.GridImage method)</a>, <a href="phenoscope.html#phenoscope.GridImage.show">[1]</a>
+        <li><a href="phenoscope.html#phenoscope.GridImage.show">(phenoscope.GridImage method)</a>
 </li>
-        <li><a href="modules.html#phenoscope.Image.show">(phenoscope.Image method)</a>, <a href="phenoscope.html#phenoscope.Image.show">[1]</a>
+        <li><a href="phenoscope.html#phenoscope.Image.show">(phenoscope.Image method)</a>
 </li>
       </ul></li>
   </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="phenoscope.core.accessors.html#phenoscope.core.accessors.GridAccessor.show_column_overlay">show_column_overlay() (phenoscope.core.accessors.GridAccessor method)</a>
 </li>
       <li><a href="phenoscope.core.accessors.html#phenoscope.core.accessors.HsvAccessor.show_objects">show_objects() (phenoscope.core.accessors.HsvAccessor method)</a>
 
-      <ul style="list-style-type:none">
+      <ul>
         <li><a href="phenoscope.core.accessors.html#phenoscope.core.accessors.ImageArray.show_objects">(phenoscope.core.accessors.ImageArray method)</a>
 </li>
       </ul></li>
       <li><a href="phenoscope.core.accessors.html#phenoscope.core.accessors.ImageArray.show_overlay">show_overlay() (phenoscope.core.accessors.ImageArray method)</a>
 
-      <ul style="list-style-type:none">
+      <ul>
         <li><a href="phenoscope.core.accessors.html#phenoscope.core.accessors.ImageEnhancedMatrix.show_overlay">(phenoscope.core.accessors.ImageEnhancedMatrix method)</a>
 </li>
         <li><a href="phenoscope.core.accessors.html#phenoscope.core.accessors.ImageMatrix.show_overlay">(phenoscope.core.accessors.ImageMatrix method)</a>
@@ -1063,9 +1347,9 @@
 </li>
         <li><a href="phenoscope.core.html#phenoscope.core.ImageHsv.show_overlay">(phenoscope.core.ImageHsv method)</a>
 </li>
-        <li><a href="modules.html#phenoscope.GridImage.show_overlay">(phenoscope.GridImage method)</a>, <a href="phenoscope.html#phenoscope.GridImage.show_overlay">[1]</a>
+        <li><a href="phenoscope.html#phenoscope.GridImage.show_overlay">(phenoscope.GridImage method)</a>
 </li>
-        <li><a href="modules.html#phenoscope.Image.show_overlay">(phenoscope.Image method)</a>, <a href="phenoscope.html#phenoscope.Image.show_overlay">[1]</a>
+        <li><a href="phenoscope.html#phenoscope.Image.show_overlay">(phenoscope.Image method)</a>
 </li>
       </ul></li>
       <li><a href="phenoscope.core.accessors.html#phenoscope.core.accessors.GridAccessor.show_row_overlay">show_row_overlay() (phenoscope.core.accessors.GridAccessor method)</a>
@@ -1075,22 +1359,21 @@
       <li><a href="phenoscope.objects.html#phenoscope.objects.SmallObjectRemovalModifier">SmallObjectRemovalModifier (class in phenoscope.objects)</a>
 </li>
   </ul></td>
-  </tr>
-      </table>
-  
-  <h2 id="T">T</h2>
-  <table style="width: 100%" class="indextable genindextable"><tr>
-  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
+</tr></table>
+
+<h2 id="T">T</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="phenoscope.abstract.html#phenoscope.abstract.ThresholdDetector">ThresholdDetector (class in phenoscope.abstract)</a>
 </li>
       <li><a href="phenoscope.util.html#phenoscope.util.timed_execution">timed_execution() (in module phenoscope.util)</a>
 
-      <ul style="list-style-type:none">
+      <ul>
         <li><a href="phenoscope.util.html#phenoscope.util.funcs.timed_execution">(in module phenoscope.util.funcs)</a>
 </li>
       </ul></li>
   </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="phenoscope.core.accessors.html#phenoscope.core.accessors.ObjectMap.to_coo">to_coo() (phenoscope.core.accessors.ObjectMap method)</a>
 </li>
       <li><a href="phenoscope.core.accessors.html#phenoscope.core.accessors.ObjectMap.to_csc">to_csc() (phenoscope.core.accessors.ObjectMap method)</a>
@@ -1098,63 +1381,107 @@
       <li><a href="phenoscope.detection.html#phenoscope.detection.TriangleDetector">TriangleDetector (class in phenoscope.detection)</a>
 </li>
   </ul></td>
-  </tr>
-      </table>
-  
-  <h2 id="U">U</h2>
-  <table style="width: 100%" class="indextable genindextable"><tr>
-  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
+</tr></table>
+
+<h2 id="U">U</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="phenoscope.core.html#phenoscope.core.ImageHandler.uuid">uuid (phenoscope.core.ImageHandler property)</a>
 
-      <ul style="list-style-type:none">
+      <ul>
         <li><a href="phenoscope.core.html#phenoscope.core.ImageHsv.uuid">(phenoscope.core.ImageHsv property)</a>
 </li>
-        <li><a href="modules.html#phenoscope.GridImage.uuid">(phenoscope.GridImage property)</a>, <a href="phenoscope.html#phenoscope.GridImage.uuid">[1]</a>
+        <li><a href="phenoscope.html#phenoscope.GridImage.uuid">(phenoscope.GridImage property)</a>
 </li>
-        <li><a href="modules.html#phenoscope.Image.uuid">(phenoscope.Image property)</a>, <a href="phenoscope.html#phenoscope.Image.uuid">[1]</a>
+        <li><a href="phenoscope.html#phenoscope.Image.uuid">(phenoscope.Image property)</a>
 </li>
       </ul></li>
   </ul></td>
-  </tr>
-      </table>
-  
-  <h2 id="W">W</h2>
-  <table style="width: 100%" class="indextable genindextable"><tr>
-  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
+</tr></table>
+
+<h2 id="W">W</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="phenoscope.morphology.html#phenoscope.morphology.WhiteTophatModifier">WhiteTophatModifier (class in phenoscope.morphology)</a>
 </li>
   </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="phenoscope.preprocessing.html#phenoscope.preprocessing.WhiteTophatPreprocessor">WhiteTophatPreprocessor (class in phenoscope.preprocessing)</a>
 </li>
   </ul></td>
-  </tr>
-      </table>
-  
+</tr></table>
 
-</div></div>
-<aside id="right-sidebar" class="hidden text-sm xl:block">
-<div class="sticky top-16 -mt-10 max-h-[calc(var(--vh)-4rem)] overflow-y-auto pt-6 space-y-2">
-<a class="pt-2 block text-muted-foreground no-underline transition-colors hover:text-foreground focus-visible:outline-offset-[-1px]" href="#_">_</a><a class="pt-2 block text-muted-foreground no-underline transition-colors hover:text-foreground focus-visible:outline-offset-[-1px]" href="#A">A</a><a class="pt-2 block text-muted-foreground no-underline transition-colors hover:text-foreground focus-visible:outline-offset-[-1px]" href="#B">B</a><a class="pt-2 block text-muted-foreground no-underline transition-colors hover:text-foreground focus-visible:outline-offset-[-1px]" href="#C">C</a><a class="pt-2 block text-muted-foreground no-underline transition-colors hover:text-foreground focus-visible:outline-offset-[-1px]" href="#E">E</a><a class="pt-2 block text-muted-foreground no-underline transition-colors hover:text-foreground focus-visible:outline-offset-[-1px]" href="#F">F</a><a class="pt-2 block text-muted-foreground no-underline transition-colors hover:text-foreground focus-visible:outline-offset-[-1px]" href="#G">G</a><a class="pt-2 block text-muted-foreground no-underline transition-colors hover:text-foreground focus-visible:outline-offset-[-1px]" href="#H">H</a><a class="pt-2 block text-muted-foreground no-underline transition-colors hover:text-foreground focus-visible:outline-offset-[-1px]" href="#I">I</a><a class="pt-2 block text-muted-foreground no-underline transition-colors hover:text-foreground focus-visible:outline-offset-[-1px]" href="#L">L</a><a class="pt-2 block text-muted-foreground no-underline transition-colors hover:text-foreground focus-visible:outline-offset-[-1px]" href="#M">M</a><a class="pt-2 block text-muted-foreground no-underline transition-colors hover:text-foreground focus-visible:outline-offset-[-1px]" href="#N">N</a><a class="pt-2 block text-muted-foreground no-underline transition-colors hover:text-foreground focus-visible:outline-offset-[-1px]" href="#O">O</a><a class="pt-2 block text-muted-foreground no-underline transition-colors hover:text-foreground focus-visible:outline-offset-[-1px]" href="#P">P</a><a class="pt-2 block text-muted-foreground no-underline transition-colors hover:text-foreground focus-visible:outline-offset-[-1px]" href="#R">R</a><a class="pt-2 block text-muted-foreground no-underline transition-colors hover:text-foreground focus-visible:outline-offset-[-1px]" href="#S">S</a><a class="pt-2 block text-muted-foreground no-underline transition-colors hover:text-foreground focus-visible:outline-offset-[-1px]" href="#T">T</a><a class="pt-2 block text-muted-foreground no-underline transition-colors hover:text-foreground focus-visible:outline-offset-[-1px]" href="#U">U</a><a class="pt-2 block text-muted-foreground no-underline transition-colors hover:text-foreground focus-visible:outline-offset-[-1px]" href="#W">W</a>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
 </div>
-</aside>
-        </main>
-      </div>
-    </div><footer class="py-6 border-t border-border md:py-0">
-    <div class="container flex flex-col items-center justify-between gap-4 md:h-24 md:flex-row">
-      <div class="flex flex-col items-center gap-4 px-8 md:flex-row md:gap-2 md:px-0">
-        <p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2025, ExFAB BioFoundry&nbsp;Built with <a class="font-medium underline underline-offset-4"
-    href="https://www.sphinx-doc.org"
-    rel="noreferrer">Sphinx 8.1.3</a></p>
-</div>
-</div>
-</footer>
+                </footer>
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
   </div>
   
-    <script src="_static/documentation_options.js?v=0a971622"></script>
-    <script src="_static/doctools.js?v=9bcbadda"></script>
-    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
-    <script defer="defer" src="_static/theme.js?v=073f68d9"></script>
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
   
-</body>
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, ExFAB BioFoundry.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.1.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
 </html>

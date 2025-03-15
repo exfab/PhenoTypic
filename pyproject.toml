@@ -3,6 +3,7 @@ requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
+where = ["./src"]
 
 [project]
 name = 'phenoscope'
@@ -52,4 +53,4 @@ testpaths = ["./tests/*"]
 addopts = "--verbose --capture=no"
 
 [tool.setuptools.dynamic]
-version = {attr = "phenoscope.__version__"}
+version = {attr = "src.phenoscope.__version__"}

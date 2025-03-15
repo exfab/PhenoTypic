@@ -30,7 +30,6 @@ API Reference
    :maxdepth: 1
    :caption: Contents:
 
-   modules
    phenoscope.core
    phenoscope.core.accessors
    phenoscope.data
@@ -43,4 +42,5 @@ API Reference
    phenoscope.preprocessing
    phenoscope.transform
    phenoscope.abstract
+   modules
 

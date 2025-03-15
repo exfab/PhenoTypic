@@ -12,8 +12,8 @@ An image processing framework created from NSF Ex-FAB BioFoundry
 ## Overview
 This framework aims to provide a toolkit & modular design framework that streamlines the process of creating image analysis tools and pipelines. 
 By following a structured design architecture, developers can integrate their own versions of computer vision operations into the ecosystem without 
-having to create entirely programs every time. The framework also works as a toolkit that integrates various developed tools from other available 
-tools into a unified packages.
+having to create entirely new packages every time. The framework also works as a toolkit that integrates various developed modules from other available 
+tools into a unified library.
 
 ## Installation
 ```  

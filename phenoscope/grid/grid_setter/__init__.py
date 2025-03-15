@@ -1,4 +1,0 @@
-
-# TODO: Fix AvgDistanceGridSectionSetter
-# from ._avg_distance_grid_extractor import AvgDistanceGridSectionSetter
-from ._optimal_center_grid_setter import OptimalCenterGridSetter

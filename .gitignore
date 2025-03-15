@@ -13,3 +13,7 @@ conda-recipe
 deprecated/*
 .git.backup/*
 .git.backup
+dist/
+phenoscope.egg-info
+deprecated
+.pytest_cache
