@@ -1,9 +1,8 @@
 import numpy as np
 import pytest
-from phenoscope import Image
-from phenoscope import GridImage
+from phenoscope import Image, GridImage
 from phenoscope.grid import OptimalCenterGridFinder
-from phenoscope.util.constants import C_ImageHandler
+from phenoscope.util.exceptions_ import IllegalAssignmentError
 
 from .resources.TestHelper import timeit
 
@@ -31,7 +30,7 @@ def test_grid_accessor_property():
 @timeit
 def test_grid_property_assignment_error():
     grid_image = GridImage()
-    with pytest.raises(C_ImageHandler.IllegalAssignmentError):
+    with pytest.raises(IllegalAssignmentError):
         grid_image.grid = "some value"
 
 @timeit

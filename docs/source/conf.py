@@ -8,13 +8,18 @@
 
 import os
 import sys
-import phenoscope
 sys.path.insert(0, os.path.abspath('../../src'))
 
 project = 'PhenoScope'
 copyright = '2025, ExFAB BioFoundry'
 author = 'Alexander Nguyen'
-version = str(phenoscope.__version__)
+
+# Try to get the version from phenoscope, but use a default if not available
+try:
+    import phenoscope
+    version = str(phenoscope.__version__)
+except ImportError:
+    version = '0.1.0'  # Default version if phenoscope is not installed
 release = version
 
 # -- General configuration ---------------------------------------------------

@@ -13,9 +13,46 @@
 PhenoScope Documentation
 ========================
 
-Add your content using ``reStructuredText`` syntax. See the
-`reStructuredText <https://www.sphinx-doc.org/en/master/usage/restructuredtext/index.html>`_
-documentation for details.
+Welcome to PhenoScope's documentation. Here you'll find comprehensive guides and examples to help you get the most out of PhenoScope.
+
+Quick Start
+-----------
+
+PhenoScope is a Python library for image analysis and phenotyping. It provides tools for processing, analyzing, and extracting features from images.
+
+**Installation**
+
+.. code-block:: bash
+
+   pip install phenoscope
+
+**Basic Usage**
+
+.. code-block:: python
+
+   import phenoscope as ps
+   
+   # Load an image
+   img = ps.imread('path/to/image.jpg')
+   
+   # Process the image
+   # ... your code here ...
+
+For more detailed installation instructions, see the :doc:`installation` page.
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Getting Started
+   
+   installation
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Documentation
+
+   user_guide/index
+   examples/index
+   api_reference/index
 
 Indices and Tables
 ==================
@@ -23,24 +60,3 @@ Indices and Tables
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
-
-API Reference
-=============
-.. toctree::
-   :maxdepth: 1
-   :caption: Contents:
-
-   phenoscope.core
-   phenoscope.core.accessors
-   phenoscope.data
-   phenoscope.detection
-   phenoscope.grid
-   phenoscope.measure
-   phenoscope.morphology
-   phenoscope.objects
-   phenoscope.pipeline
-   phenoscope.preprocessing
-   phenoscope.transform
-   phenoscope.abstract
-   modules
-
