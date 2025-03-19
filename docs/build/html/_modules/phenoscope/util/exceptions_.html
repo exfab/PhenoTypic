@@ -1,0 +1,776 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>phenoscope.util.exceptions_ &#8212; PhenoScope 0.5.0 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=8f2a1f02" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../../../_static/documentation_options.js?v=1dd76d02"></script>
+    <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/phenoscope/util/exceptions_';</script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.5.0" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../../../index.html">
+  
+  
+  
+  
+  
+  
+    <p class="title logo__title">PhenoScope 0.5.0 documentation</p>
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../installation.html">
+    Installation
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../user_guide/index.html">
+    User Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../examples/index.html">
+    Examples
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../api_reference/index.html">
+    API Reference
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../installation.html">
+    Installation
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../user_guide/index.html">
+    User Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../examples/index.html">
+    Examples
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../api_reference/index.html">
+    API Reference
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">phenoscope.util.exceptions_</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for phenoscope.util.exceptions_</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">PhenoScope Exceptions</span>
+
+<span class="sd">This module contains all exceptions used throughout the PhenoScope library.</span>
+<span class="sd">Exceptions are organized by module and functionality.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+
+<span class="c1"># Base exception class for all PhenoScope exceptions</span>
+<div class="viewcode-block" id="PhenoScopeError">
+<a class="viewcode-back" href="../../../api_reference/util.html#phenoscope.util.exceptions_.PhenoScopeError">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">PhenoScopeError</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Base exception class for all PhenoScope errors.&quot;&quot;&quot;</span>
+    <span class="k">pass</span></div>
+
+
+
+<span class="c1"># General exceptions</span>
+<div class="viewcode-block" id="UnknownError">
+<a class="viewcode-back" href="../../../api_reference/util.html#phenoscope.util.exceptions_.UnknownError">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">UnknownError</span><span class="p">(</span><span class="n">PhenoScopeError</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Exception raised when an unknown error occurs.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">message</span><span class="o">=</span><span class="s2">&quot;An unknown error occurred.&quot;</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">message</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="InterfaceError">
+<a class="viewcode-back" href="../../../api_reference/util.html#phenoscope.util.exceptions_.InterfaceError">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">InterfaceError</span><span class="p">(</span><span class="ne">NotImplementedError</span><span class="p">,</span> <span class="n">PhenoScopeError</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Exception raised when an abstract method is called when it&#39;s not supposed to be.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
+            <span class="s2">&quot;An abstract method was called when it was not supposed to be. Make sure any inherited classes properly overload this method.&quot;</span>
+            <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="NoOutputError">
+<a class="viewcode-back" href="../../../api_reference/util.html#phenoscope.util.exceptions_.NoOutputError">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">NoOutputError</span><span class="p">(</span><span class="n">PhenoScopeError</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Exception raised when no output was returned in an operation.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="s2">&quot;No output was returned in this operation&quot;</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="OutputValueError">
+<a class="viewcode-back" href="../../../api_reference/util.html#phenoscope.util.exceptions_.OutputValueError">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">OutputValueError</span><span class="p">(</span><span class="n">PhenoScopeError</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Exception raised when output is not of the expected type.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">expected_type</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;This method&#39;s output is not a </span><span class="si">{</span><span class="n">expected_type</span><span class="si">}</span><span class="s2"> object even though it should be.&quot;</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="UnsupportedSchemaError">
+<a class="viewcode-back" href="../../../api_reference/util.html#phenoscope.util.exceptions_.UnsupportedSchemaError">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">UnsupportedSchemaError</span><span class="p">(</span><span class="ne">ValueError</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Represents an error when an unsupported schema format is detected.</span>
+
+<span class="sd">    This error is raised when a specified schema format is not supported by the</span>
+<span class="sd">    application or library that utilizes this exception class.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        schema (str): The schema format that triggered this exception.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">schema</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;The format </span><span class="si">{</span><span class="n">schema</span><span class="si">}</span><span class="s2"> is not supported.&quot;</span><span class="p">)</span></div>
+
+
+
+<span class="c1"># Image-related exceptions</span>
+<div class="viewcode-block" id="NoImageDataError">
+<a class="viewcode-back" href="../../../api_reference/util.html#phenoscope.util.exceptions_.NoImageDataError">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">NoImageDataError</span><span class="p">(</span><span class="ne">AttributeError</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Exception raised when no image data is loaded.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
+            <span class="s2">&quot;No image has been loaded into this class. Use an io method or set the color_array or array equal to an image data array.&quot;</span>
+            <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="InvalidShapeError">
+<a class="viewcode-back" href="../../../api_reference/util.html#phenoscope.util.exceptions_.InvalidShapeError">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">InvalidShapeError</span><span class="p">(</span><span class="ne">ValueError</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Exception raised when a shape mismatch occurs.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">component</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Object </span><span class="si">{</span><span class="n">component</span><span class="si">}</span><span class="s2"> shape should be the same as the image shape.&quot;</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="DataIntegrityError">
+<a class="viewcode-back" href="../../../api_reference/util.html#phenoscope.util.exceptions_.DataIntegrityError">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">DataIntegrityError</span><span class="p">(</span><span class="ne">AttributeError</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Exception raised when data integrity is compromised.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">component</span><span class="p">,</span> <span class="n">operation</span><span class="p">,</span> <span class="n">image_name</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="n">image_str</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot; for image </span><span class="si">{</span><span class="n">image_name</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">if</span> <span class="n">image_name</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;The </span><span class="si">{</span><span class="n">component</span><span class="si">}</span><span class="s2"> of the input was changed</span><span class="si">{</span><span class="n">image_str</span><span class="si">}</span><span class="s2"> by operation: </span><span class="si">{</span><span class="n">operation</span><span class="si">}</span><span class="s2">. This operation should not change the </span><span class="si">{</span><span class="n">component</span><span class="si">}</span><span class="s2"> of the input.&quot;</span>
+            <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="NoComponentError">
+<a class="viewcode-back" href="../../../api_reference/util.html#phenoscope.util.exceptions_.NoComponentError">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">NoComponentError</span><span class="p">(</span><span class="ne">AttributeError</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Exception raised when a required object is missing.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">component</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;This image does not have a </span><span class="si">{</span><span class="n">component</span><span class="si">}</span><span class="s2">.&quot;</span><span class="p">)</span></div>
+
+
+
+<span class="c1"># Image Operation exceptions</span>
+<div class="viewcode-block" id="ImageOperationError">
+<a class="viewcode-back" href="../../../api_reference/util.html#phenoscope.util.exceptions_.ImageOperationError">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ImageOperationError</span><span class="p">(</span><span class="n">PhenoScopeError</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Base exception for image operation errors.&quot;&quot;&quot;</span>
+    <span class="k">pass</span></div>
+
+
+
+<div class="viewcode-block" id="OperationIntegrityError">
+<a class="viewcode-back" href="../../../api_reference/util.html#phenoscope.util.exceptions_.OperationIntegrityError">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">OperationIntegrityError</span><span class="p">(</span><span class="ne">AttributeError</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Exception raised when an operation attempts to change a component it shouldn&#39;t.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">component</span><span class="p">,</span> <span class="n">operation</span><span class="p">,</span> <span class="n">image_name</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="n">image_str</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot; for image </span><span class="si">{</span><span class="n">image_name</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">if</span> <span class="n">image_name</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;The </span><span class="si">{</span><span class="n">operation</span><span class="si">}</span><span class="s2"> operation attempted to change the component </span><span class="si">{</span><span class="n">component</span><span class="si">}{</span><span class="n">image_str</span><span class="si">}</span><span class="s2">. This operation should not change the component </span><span class="si">{</span><span class="n">component</span><span class="si">}</span><span class="s2">.&quot;</span>
+            <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="OperationFailedError">
+<a class="viewcode-back" href="../../../api_reference/util.html#phenoscope.util.exceptions_.OperationFailedError">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">OperationFailedError</span><span class="p">(</span><span class="n">ImageOperationError</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Exception raised when an operation fails.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">operation</span><span class="p">,</span> <span class="n">image_name</span><span class="p">,</span> <span class="n">err_type</span><span class="p">,</span> <span class="n">message</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;The operation: </span><span class="si">{</span><span class="n">operation</span><span class="si">}</span><span class="s2"> failed on image: </span><span class="si">{</span><span class="n">image_name</span><span class="si">}</span><span class="s2">. </span><span class="si">{</span><span class="n">err_type</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">message</span><span class="si">}</span><span class="s2">.&quot;</span><span class="p">)</span></div>
+
+
+
+<span class="c1"># Image Handler exceptions</span>
+<div class="viewcode-block" id="IllegalAssignmentError">
+<a class="viewcode-back" href="../../../api_reference/util.html#phenoscope.util.exceptions_.IllegalAssignmentError">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">IllegalAssignmentError</span><span class="p">(</span><span class="ne">ValueError</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Exception raised when trying to directly assign a new object to a protected attribute.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attr</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;The </span><span class="si">{</span><span class="n">attr</span><span class="si">}</span><span class="s2"> attribute should not be directly assigned to a new object. If trying to change array elements use Image.</span><span class="si">{</span><span class="n">attr</span><span class="si">}</span><span class="s2">[:]=value instead. If trying to change the image being represented use Image.set_image(new_image).&quot;</span>
+            <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="UuidAssignmentError">
+<a class="viewcode-back" href="../../../api_reference/util.html#phenoscope.util.exceptions_.UuidAssignmentError">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">UuidAssignmentError</span><span class="p">(</span><span class="ne">AttributeError</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Exception raised when trying to change the UUID of an image.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="s2">&quot;The Image uuid should not be changed as this can lead to errors with data integrity&quot;</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="NoArrayError">
+<a class="viewcode-back" href="../../../api_reference/util.html#phenoscope.util.exceptions_.NoArrayError">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">NoArrayError</span><span class="p">(</span><span class="ne">AttributeError</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Exception raised when no array is found.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
+            <span class="s2">&quot;No array form found. Either input image was 2-D and had no array form. Set a multi-channel image or use a FormatConverter&quot;</span>
+            <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="NoObjectsError">
+<a class="viewcode-back" href="../../../api_reference/util.html#phenoscope.util.exceptions_.NoObjectsError">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">NoObjectsError</span><span class="p">(</span><span class="ne">AttributeError</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Exception raised when no objects are found in an image.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image_name</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="n">image_str</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39; &quot;</span><span class="si">{</span><span class="n">image_name</span><span class="si">}</span><span class="s1">&quot;&#39;</span> <span class="k">if</span> <span class="n">image_name</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;No objects currently in image</span><span class="si">{</span><span class="n">image_str</span><span class="si">}</span><span class="s2">. Apply a `Detector` to the Image object first or access image-wide information using Image.props&quot;</span>
+            <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="EmptyImageError">
+<a class="viewcode-back" href="../../../api_reference/util.html#phenoscope.util.exceptions_.EmptyImageError">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">EmptyImageError</span><span class="p">(</span><span class="ne">AttributeError</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Exception raised when no image data is loaded.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="s2">&quot;No image data loaded. Use Image.set_image(new_image) to load data.&quot;</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="UnsupportedFileTypeError">
+<a class="viewcode-back" href="../../../api_reference/util.html#phenoscope.util.exceptions_.UnsupportedFileTypeError">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">UnsupportedFileTypeError</span><span class="p">(</span><span class="ne">ValueError</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Exception raised when trying to read an unsupported file type.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">suffix</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Image.imread() does not support file type: </span><span class="si">{</span><span class="n">suffix</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+
+
+<span class="c1"># Component exceptions</span>
+<div class="viewcode-block" id="ImmutableComponentError">
+<a class="viewcode-back" href="../../../api_reference/util.html#phenoscope.util.exceptions_.ImmutableComponentError">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ImmutableComponentError</span><span class="p">(</span><span class="ne">AttributeError</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Base exception for immutable component errors.&quot;&quot;&quot;</span>
+    <span class="k">pass</span></div>
+
+
+
+<div class="viewcode-block" id="IllegalElementAssignmentError">
+<a class="viewcode-back" href="../../../api_reference/util.html#phenoscope.util.exceptions_.IllegalElementAssignmentError">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">IllegalElementAssignmentError</span><span class="p">(</span><span class="n">ImmutableComponentError</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Exception raised when trying to change array/matrix elements directly.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">component_name</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">component_name</span><span class="si">}</span><span class="s2"> components should not be changed directly. Change the </span><span class="si">{</span><span class="n">component_name</span><span class="si">}</span><span class="s2"> elements by using Image.set_image(new_image).&quot;</span>
+            <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="InvalidHsvSchemaError">
+<a class="viewcode-back" href="../../../api_reference/util.html#phenoscope.util.exceptions_.InvalidHsvSchemaError">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">InvalidHsvSchemaError</span><span class="p">(</span><span class="ne">AttributeError</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Exception raised when trying to convert to HSV from a non-RGB schema.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">schema</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;To be converted to HSV format, the schema should be RGB, but got </span><span class="si">{</span><span class="n">schema</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+
+
+<span class="c1"># Mutable component exceptions</span>
+<div class="viewcode-block" id="ArrayKeyValueShapeMismatchError">
+<a class="viewcode-back" href="../../../api_reference/util.html#phenoscope.util.exceptions_.ArrayKeyValueShapeMismatchError">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ArrayKeyValueShapeMismatchError</span><span class="p">(</span><span class="ne">ValueError</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Exception raised when the shape of the value doesn&#39;t match the key&#39;s section.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="s2">&quot;The shape of the array being set does not match the shape of the section indicated being accessed&quot;</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="InputShapeMismatchError">
+<a class="viewcode-back" href="../../../api_reference/util.html#phenoscope.util.exceptions_.InputShapeMismatchError">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">InputShapeMismatchError</span><span class="p">(</span><span class="ne">ValueError</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Exception raised when input shape doesn&#39;t match the image matrix.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">param_name</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;The shape of </span><span class="si">{</span><span class="n">param_name</span><span class="si">}</span><span class="s2"> must be the same shape as the Image.matrix&quot;</span><span class="p">)</span></div>
+
+
+
+<span class="c1"># Mask exceptions</span>
+<div class="viewcode-block" id="InvalidMaskValueError">
+<a class="viewcode-back" href="../../../api_reference/util.html#phenoscope.util.exceptions_.InvalidMaskValueError">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">InvalidMaskValueError</span><span class="p">(</span><span class="ne">ValueError</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Exception raised when trying to set mask with invalid value type.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value_type</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;The mask array section was trying to be set with an array of type </span><span class="si">{</span><span class="n">value_type</span><span class="si">}</span><span class="s2"> and could not be cast to a boolean array.&quot;</span>
+            <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="InvalidMaskScalarValueError">
+<a class="viewcode-back" href="../../../api_reference/util.html#phenoscope.util.exceptions_.InvalidMaskScalarValueError">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">InvalidMaskScalarValueError</span><span class="p">(</span><span class="ne">ValueError</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Exception raised when trying to set mask with invalid scalar value.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="s2">&quot;The scalar value could not be converted to a boolean value. If value is an integer, it should be either 0 or 1.&quot;</span><span class="p">)</span></div>
+
+
+
+<span class="c1"># Object map exceptions</span>
+<div class="viewcode-block" id="InvalidMapValueError">
+<a class="viewcode-back" href="../../../api_reference/util.html#phenoscope.util.exceptions_.InvalidMapValueError">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">InvalidMapValueError</span><span class="p">(</span><span class="ne">ValueError</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Exception raised when trying to set object map with invalid value type.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value_type</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;ObjectMap elements were attempted to be set with </span><span class="si">{</span><span class="n">value_type</span><span class="si">}</span><span class="s2">, but should only be set to an array of integers or an integer&quot;</span>
+            <span class="p">)</span></div>
+
+
+
+<span class="c1"># Metadata exceptions</span>
+<div class="viewcode-block" id="UUIDReassignmentError">
+<a class="viewcode-back" href="../../../api_reference/util.html#phenoscope.util.exceptions_.UUIDReassignmentError">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">UUIDReassignmentError</span><span class="p">(</span><span class="ne">AttributeError</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Exception raised when trying to change the UUID metadata.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="s2">&quot;The uuid metadata should not be changed to preserve data integrity.&quot;</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="MetadataKeyValueError">
+<a class="viewcode-back" href="../../../api_reference/util.html#phenoscope.util.exceptions_.MetadataKeyValueError">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">MetadataKeyValueError</span><span class="p">(</span><span class="ne">ValueError</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Exception raised when metadata key is not a string.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">type_received</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;The metadata key type must be a string, but got type </span><span class="si">{</span><span class="n">type_received</span><span class="si">}</span><span class="s2">.&quot;</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="MetadataKeySpacesError">
+<a class="viewcode-back" href="../../../api_reference/util.html#phenoscope.util.exceptions_.MetadataKeySpacesError">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">MetadataKeySpacesError</span><span class="p">(</span><span class="ne">TypeError</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Exception raised when metadata key contains spaces.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="s2">&quot;The metadata keys should not have spaces in them.&quot;</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="MetadataValueNonScalarError">
+<a class="viewcode-back" href="../../../api_reference/util.html#phenoscope.util.exceptions_.MetadataValueNonScalarError">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">MetadataValueNonScalarError</span><span class="p">(</span><span class="ne">TypeError</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Exception raised when metadata value is not scalar.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">type_value</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;The metadata values should be scalar values. Got type </span><span class="si">{</span><span class="n">type_value</span><span class="si">}</span><span class="s2">.&quot;</span><span class="p">)</span></div>
+
+
+
+<span class="c1"># Object-related exceptions</span>
+<div class="viewcode-block" id="ObjectNotFoundError">
+<a class="viewcode-back" href="../../../api_reference/util.html#phenoscope.util.exceptions_.ObjectNotFoundError">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ObjectNotFoundError</span><span class="p">(</span><span class="ne">AttributeError</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Exception raised when an object with a specified label is not found.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">label</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;The object with label </span><span class="si">{</span><span class="n">label</span><span class="si">}</span><span class="s2"> is not in the object map. If you meant to access the object by index use Image.objects.at() instead&quot;</span>
+            <span class="p">)</span></div>
+
+
+
+<span class="c1"># Grid exceptions</span>
+<div class="viewcode-block" id="GridImageInputError">
+<a class="viewcode-back" href="../../../api_reference/util.html#phenoscope.util.exceptions_.GridImageInputError">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">GridImageInputError</span><span class="p">(</span><span class="ne">ValueError</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Exception raised when a non-GriddedImage object is provided as input.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
+            <span class="s2">&quot;For GridOperation classes with the exception of GridExtractor objects, the input must be an instance of the GriddedImage object type.&quot;</span>
+            <span class="p">)</span></div>
+
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, ExFAB BioFoundry.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.1.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

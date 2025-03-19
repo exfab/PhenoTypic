@@ -1,0 +1,75 @@
+Traceback (most recent call last):
+  File "/opt/anaconda3/envs/phenoscope-3.12/lib/python3.12/site-packages/jupyter_cache/executors/utils.py", line 58, in single_nb_execution
+    executenb(
+  File "/opt/anaconda3/envs/phenoscope-3.12/lib/python3.12/site-packages/nbclient/client.py", line 1319, in execute
+    return NotebookClient(nb=nb, resources=resources, km=km, **kwargs).execute()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/envs/phenoscope-3.12/lib/python3.12/site-packages/jupyter_core/utils/__init__.py", line 165, in wrapped
+    return loop.run_until_complete(inner)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/envs/phenoscope-3.12/lib/python3.12/asyncio/base_events.py", line 691, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/envs/phenoscope-3.12/lib/python3.12/site-packages/nbclient/client.py", line 709, in async_execute
+    await self.async_execute_cell(
+  File "/opt/anaconda3/envs/phenoscope-3.12/lib/python3.12/site-packages/nbclient/client.py", line 1062, in async_execute_cell
+    await self._check_raise_for_error(cell, cell_index, exec_reply)
+  File "/opt/anaconda3/envs/phenoscope-3.12/lib/python3.12/site-packages/nbclient/client.py", line 918, in _check_raise_for_error
+    raise CellExecutionError.from_cell_and_msg(cell, exec_reply_content)
+nbclient.exceptions.CellExecutionError: An error occurred while executing the following cell:
+------------------
+# Extract features from the image
+# For demonstration, we'll just get some basic statistics
+mean_values = np.mean(img.array, axis=(0, 1))
+print(f"Mean RGB values: R={mean_values[0]:.1f}, G={mean_values[1]:.1f}, B={mean_values[2]:.1f}")
+
+# Create a mask for the red square
+red_mask = img.array[:, :, 0] > 200
+plt.figure(figsize=(8, 8))
+plt.imshow(red_mask, cmap='gray')
+plt.title("Red Square Mask")
+plt.axis('off')
+plt.show()
+
+# Count the number of pixels in the red square
+red_pixel_count = np.sum(red_mask)
+print(f"Number of red pixels: {red_pixel_count}")
+print(f"Expected number of pixels: {50 * 50}")
+------------------
+
+
+[31m---------------------------------------------------------------------------[39m
+[31mAxisError[39m                                 Traceback (most recent call last)
+[36mCell[39m[36m [39m[32mIn[5][39m[32m, line 3[39m
+[32m      1[39m [38;5;66;03m# Extract features from the image[39;00m
+[32m      2[39m [38;5;66;03m# For demonstration, we'll just get some basic statistics[39;00m
+[32m----> [39m[32m3[39m mean_values = [43mnp[49m[43m.[49m[43mmean[49m[43m([49m[43mimg[49m[43m.[49m[43marray[49m[43m,[49m[43m [49m[43maxis[49m[43m=[49m[43m([49m[32;43m0[39;49m[43m,[49m[43m [49m[32;43m1[39;49m[43m)[49m[43m)[49m
+[32m      4[39m [38;5;28mprint[39m([33mf[39m[33m"[39m[33mMean RGB values: R=[39m[38;5;132;01m{[39;00mmean_values[[32m0[39m][38;5;132;01m:[39;00m[33m.1f[39m[38;5;132;01m}[39;00m[33m, G=[39m[38;5;132;01m{[39;00mmean_values[[32m1[39m][38;5;132;01m:[39;00m[33m.1f[39m[38;5;132;01m}[39;00m[33m, B=[39m[38;5;132;01m{[39;00mmean_values[[32m2[39m][38;5;132;01m:[39;00m[33m.1f[39m[38;5;132;01m}[39;00m[33m"[39m)
+[32m      6[39m [38;5;66;03m# Create a mask for the red square[39;00m
+
+[36mFile [39m[32m/opt/anaconda3/envs/phenoscope-3.12/lib/python3.12/site-packages/numpy/_core/fromnumeric.py:3860[39m, in [36mmean[39m[34m(a, axis, dtype, out, keepdims, where)[39m
+[32m   3857[39m     [38;5;28;01melse[39;00m:
+[32m   3858[39m         [38;5;28;01mreturn[39;00m mean(axis=axis, dtype=dtype, out=out, **kwargs)
+[32m-> [39m[32m3860[39m [38;5;28;01mreturn[39;00m [43m_methods[49m[43m.[49m[43m_mean[49m[43m([49m[43ma[49m[43m,[49m[43m [49m[43maxis[49m[43m=[49m[43maxis[49m[43m,[49m[43m [49m[43mdtype[49m[43m=[49m[43mdtype[49m[43m,[49m
+[32m   3861[39m [43m                      [49m[43mout[49m[43m=[49m[43mout[49m[43m,[49m[43m [49m[43m*[49m[43m*[49m[43mkwargs[49m[43m)[49m
+
+[36mFile [39m[32m/opt/anaconda3/envs/phenoscope-3.12/lib/python3.12/site-packages/numpy/_core/_methods.py:123[39m, in [36m_mean[39m[34m(a, axis, dtype, out, keepdims, where)[39m
+[32m    119[39m arr = asanyarray(a)
+[32m    121[39m is_float16_result = [38;5;28;01mFalse[39;00m
+[32m--> [39m[32m123[39m rcount = [43m_count_reduce_items[49m[43m([49m[43marr[49m[43m,[49m[43m [49m[43maxis[49m[43m,[49m[43m [49m[43mkeepdims[49m[43m=[49m[43mkeepdims[49m[43m,[49m[43m [49m[43mwhere[49m[43m=[49m[43mwhere[49m[43m)[49m
+[32m    124[39m [38;5;28;01mif[39;00m rcount == [32m0[39m [38;5;28;01mif[39;00m where [38;5;129;01mis[39;00m [38;5;28;01mTrue[39;00m [38;5;28;01melse[39;00m umr_any(rcount == [32m0[39m, axis=[38;5;28;01mNone[39;00m):
+[32m    125[39m     warnings.warn([33m"[39m[33mMean of empty slice.[39m[33m"[39m, [38;5;167;01mRuntimeWarning[39;00m, stacklevel=[32m2[39m)
+
+[36mFile [39m[32m/opt/anaconda3/envs/phenoscope-3.12/lib/python3.12/site-packages/numpy/_core/_methods.py:86[39m, in [36m_count_reduce_items[39m[34m(arr, axis, keepdims, where)[39m
+[32m     84[39m     items = [32m1[39m
+[32m     85[39m     [38;5;28;01mfor[39;00m ax [38;5;129;01min[39;00m axis:
+[32m---> [39m[32m86[39m         items *= arr.shape[[43mmu[49m[43m.[49m[43mnormalize_axis_index[49m[43m([49m[43max[49m[43m,[49m[43m [49m[43marr[49m[43m.[49m[43mndim[49m[43m)[49m]
+[32m     87[39m     items = nt.intp(items)
+[32m     88[39m [38;5;28;01melse[39;00m:
+[32m     89[39m     [38;5;66;03m# TODO: Optimize case when `where` is broadcast along a non-reduction[39;00m
+[32m     90[39m     [38;5;66;03m# axis and full sum is more excessive than needed.[39;00m
+[32m     91[39m 
+[32m     92[39m     [38;5;66;03m# guarded to protect circular imports[39;00m
+
+[31mAxisError[39m: axis 0 is out of bounds for array of dimension 0
+

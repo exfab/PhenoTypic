@@ -1,0 +1,10 @@
+phenoscope.grid.abstract
+================================
+
+Module contents
+---------------
+
+.. automodule:: phenoscope.grid.abstract
+   :members:
+   :undoc-members:
+   :show-inheritance:
