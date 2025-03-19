@@ -3,7 +3,7 @@ requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
-where = ["./src"]
+where = ["src"]
 
 [project]
 name = 'phenoscope'
@@ -17,14 +17,14 @@ description = "An image processing framework created for Ex-FAB NSF BioFoundry t
 
 readme="README.md"
 
-requires-python = "~=3.10"
+requires-python = "~=3.12"
 
 classifiers = [
     "Development Status :: 2 - Pre-Alpha",
     "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
     "Natural Language :: English",
     "Programming Language :: Python",
-    "Programming Language :: Python :: 3.10"
+    "Programming Language :: Python :: 3.12"
 ]
 
 dependencies = [
@@ -38,19 +38,33 @@ dependencies = [
     "h5py",
     "mahotas",
     "pillow",
+]
+
+[project.urls]
+Repository = "https://github.com/Xander-git/PhenoScope"
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-cov",
+    "mypy",
+    "sphinx-autobuild",
+    "nbsphinx",
+    "ipykernel",
+    "jupyter",
     "sphinx",
     "sphinxcontrib-napoleon",
     "sphinx-autodoc-typehints",
     "sphinxawesome-theme",
-    "furo"
+    "furo",
+    "pydata-sphinx-theme",
+    "sphinx-gallery",
+    "myst-nb"
 ]
-
-[projects.urls]
-Repository = "https://github.com/Xander-git/PhenoScope"
 
 [tool.pytest.ini_options]
 testpaths = ["./tests/*"]
 addopts = "--verbose --capture=no"
 
 [tool.setuptools.dynamic]
-version = {attr = "src.phenoscope.__version__"}
+version = {attr = "phenoscope.__version__"}

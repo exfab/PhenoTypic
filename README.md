@@ -2,22 +2,48 @@
   <img src="docs/assets/logo_background_svg/PhenoScopeLogo.svg" alt="PhenoScope Logo" style="width: 200px; height: auto;">
 </div>
 
-# PhenoScope: A Python Bio-Image Processing Development Framework
+# PhenoScope: A Python Framework for Bio-Image Analysis
 ![Development Status](https://img.shields.io/badge/status-Pre--Alpha-red)
 
-An image processing framework created from NSF Ex-FAB BioFoundry
+A modular image processing framework developed at the NSF Ex-FAB BioFoundry.
 
 ---
 
 ## Overview
-This framework aims to provide a toolkit & modular design framework that streamlines the process of creating image analysis tools and pipelines. 
-By following a structured design architecture, developers can integrate their own versions of computer vision operations into the ecosystem without 
-having to create entirely new packages every time. The framework also works as a toolkit that integrates various developed modules from other available 
-tools into a unified library.
+PhenoScope provides a modular toolkit designed to simplify and accelerate the development of bio-image analysis pipelines. 
+Its structured architecture allows researchers and developers to seamlessly integrate custom computer vision modules, avoiding 
+the need to build entirely new packages from scratch. Additionally, PhenoScope supports incorporating components from 
+other existing image analysis tools into a cohesive, unified ecosystem.
+
 
 ## Installation
+
+### Pip
+```
+pip install phenoscope
+```
+
+### Manual Installation
 ```  
 git clone https://github.com/Xander-git/PhenoScope.git
 cd PhenoScope
 pip install -e .
 ```  
+
+## Dev Installation
+```  
+git clone https://github.com/Xander-git/PhenoScope.git
+cd PhenoScope
+pip install -e ".[dev]"
+```  
+
+## Acknowledgements
+
+### CellProfiler
+PhenoScope has drawn inspiration and foundational concepts from [CellProfiler](https://github.com/CellProfiler/CellProfiler), 
+an open-source software platform for bio-image analysis developed by the Broad Institute Imaging Platform. CellProfiler's modularity, 
+pipeline-oriented design, and extensive documentation have significantly influenced the development approach and structure of PhenoScope.
+
+**Reference:**
+- [CellProfiler GitHub Repository](https://github.com/CellProfiler/CellProfiler)
+- [CellProfiler Official Website](https://cellprofiler.org/)

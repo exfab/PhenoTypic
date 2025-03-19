@@ -331,7 +331,7 @@
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">..</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">..abstract</span><span class="w"> </span><span class="kn">import</span> <span class="n">MapModifier</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">..util.constants</span><span class="w"> </span><span class="kn">import</span> <span class="n">C_ObjectInfo</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..util.constants_</span><span class="w"> </span><span class="kn">import</span> <span class="n">OBJECT_INFO</span>
 
 
 <div class="viewcode-block" id="CircularityRemovalModifier">
@@ -364,7 +364,7 @@
 <span class="sd">    lower scores approaching 0.</span>
 
 <span class="sd">    Attributes:</span>
-<span class="sd">        __cutoff (float): The minimum threshold for the circularity score of</span>
+<span class="sd">        cutoff (float): The minimum threshold for the circularity score of</span>
 <span class="sd">            objects. Must be a value between 0 and 1.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cutoff</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.785</span><span class="p">):</span>
@@ -377,8 +377,8 @@
                                                 <span class="n">properties</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;label&#39;</span><span class="p">,</span> <span class="s1">&#39;area&#39;</span><span class="p">,</span> <span class="s1">&#39;perimeter&#39;</span><span class="p">]</span>
                                                 <span class="p">)</span>
                               <span class="p">)</span>
-                 <span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;label&#39;</span><span class="p">:</span> <span class="n">C_ObjectInfo</span><span class="o">.</span><span class="n">OBJECT_LABELS</span><span class="p">})</span>
-                 <span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="n">C_ObjectInfo</span><span class="o">.</span><span class="n">OBJECT_LABELS</span><span class="p">))</span>
+                 <span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;label&#39;</span><span class="p">:</span> <span class="n">OBJECT_INFO</span><span class="o">.</span><span class="n">OBJECT_LABELS</span><span class="p">})</span>
+                 <span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="n">OBJECT_INFO</span><span class="o">.</span><span class="n">OBJECT_LABELS</span><span class="p">))</span>
 
         <span class="c1"># Calculate circularity based on Polsby-Popper Score</span>
         <span class="n">table</span><span class="p">[</span><span class="s1">&#39;circularity&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mi">4</span> <span class="o">*</span> <span class="n">math</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">table</span><span class="p">[</span><span class="s1">&#39;area&#39;</span><span class="p">])</span> <span class="o">/</span> <span class="p">(</span><span class="n">table</span><span class="p">[</span><span class="s1">&#39;perimeter&#39;</span><span class="p">]</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span>

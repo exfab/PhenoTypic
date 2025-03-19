@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>phenoscope &#8212; PhenoScope 0.5.0 documentation</title>
+    <title>phenoscope &#8212; PhenoScope 0.5.1 documentation</title>
   
   
   
@@ -31,6 +31,11 @@
 <link href="_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
 
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="_static/mystnb.4510f1fc1dee50b3e5859aac5469c37c29e427902b24a333a5f9fcb2f0b3ac41.css" />
+    <link rel="stylesheet" type="text/css" href="_static/sg_gallery.css?v=d2d258e8" />
+    <link rel="stylesheet" type="text/css" href="_static/sg_gallery-binder.css?v=f4aeca0c" />
+    <link rel="stylesheet" type="text/css" href="_static/sg_gallery-dataframe.css?v=2082cf3c" />
+    <link rel="stylesheet" type="text/css" href="_static/sg_gallery-rendered-html.css?v=1277b6f3" />
   
   <!-- So that users can add custom icons -->
   <script src="_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
@@ -38,15 +43,16 @@
   <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="_static/documentation_options.js?v=1dd76d02"></script>
+    <script src="_static/documentation_options.js?v=b9afe91b"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = 'phenoscope';</script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.5.0" />
+  <meta name="docsearch:version" content="0.5.1" />
   </head>
   
   
@@ -108,7 +114,7 @@
   
   
   
-    <p class="title logo__title">PhenoScope 0.5.0 documentation</p>
+    <p class="title logo__title">PhenoScope 0.5.1 documentation</p>
   
 </a></div>
     
@@ -339,7 +345,7 @@
 <dl class="py class">
 <dt class="sig sig-object py" id="phenoscope.Image">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenoscope.</span></span><span class="sig-name descname"><span class="pre">Image</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">input_image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">np.ndarray</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="#phenoscope.Image" title="phenoscope.Image"><span class="pre">Image</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">PathLike</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">input_schema</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/phenoscope/core/_image.html#Image"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenoscope.Image" title="Link to this definition">#</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">ImageHsvHandler</span></code></p>
+<dd><p>Bases: <a class="reference internal" href="api_reference/core.handlers.html#phenoscope.core.handlers.ImageHsvHandler" title="phenoscope.core.handlers._image_hsv_handler.ImageHsvHandler"><code class="xref py py-class docutils literal notranslate"><span class="pre">ImageHsvHandler</span></code></a></p>
 <p>A comprehensive class for handling image processing, including manipulation, information sync, metadata management, and format conversion.</p>
 <p>The <cite>Image</cite> class is designed to load, process, and manage image data using different
 representation formats (e.g., arrays and matrices). This class allows for metadata editing,
@@ -390,7 +396,7 @@ image object. This method supports 2-dimensional slicing and indexing.</p>
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>key</strong> (<em>Any</em>) – The array slices for accesssing the elements of the image.</p></li>
-<li><p><strong>value</strong> (<em>ImageHandler</em>) – The value to be set, which must match the shape of the
+<li><p><strong>value</strong> (<a class="reference internal" href="api_reference/core.handlers.html#phenoscope.core.handlers.ImageHandler" title="phenoscope.core.handlers.ImageHandler"><em>ImageHandler</em></a>) – The value to be set, which must match the shape of the
 existing elements and conform to the expected schema.</p></li>
 </ul>
 </dd>
@@ -434,7 +440,7 @@ the file name without the extension. If the file format is unsupported, an excep
 <dd class="field-odd"><p>Type[<a class="reference internal" href="#phenoscope.Image" title="phenoscope.Image">Image</a>]</p>
 </dd>
 <dt class="field-even">Raises<span class="colon">:</span></dt>
-<dd class="field-even"><p><strong>C_ImageHandler.UnsupportedFileType</strong> – If the file format is not supported.</p>
+<dd class="field-even"><p><strong>UnsupportedFileType</strong> – If the file format is not supported.</p>
 </dd>
 </dl>
 </dd></dl>
@@ -488,13 +494,13 @@ state.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenoscope.Image.set_image">
-<span class="sig-name descname"><span class="pre">set_image</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">input_image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">input_schema</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#phenoscope.Image.set_image" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">set_image</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">input_image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">input_schema</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#phenoscope.Image.set_image" title="Link to this definition">#</a></dt>
 <dd><p>Sets the image to the inputted array or Image</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>input_image</strong> – (np.ndarray, phenoscope.Image, optional) The image data to be set</p></li>
-<li><p><strong>input_schema</strong> (<em>str</em><em> | </em><em>None</em>) – (str, optional) If input image is a np.ndarray and format is None, the image format will be guessed.
+<li><p><strong>input_schema</strong> (<em>str</em>) – (str, optional) If input image is a np.ndarray and format is None, the image format will be guessed.
 If the image format is ambiguous between RGB/BGR it will assume RGB unless otherwise specified.
 Accepted formats are [‘RGB’, ‘RGBA’,’Grayscale’,’BGR’,’BGRA’,’HSV’]</p></li>
 </ul>
@@ -875,8 +881,8 @@ Cache is disabled in this configuration.</p>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="phenoscope.GridImage">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenoscope.</span></span><span class="sig-name descname"><span class="pre">GridImage</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">input_image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="#phenoscope.Image" title="phenoscope.core._image.Image"><span class="pre">Image</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">input_schema</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">grid_setter</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="api_reference/gridabstract.html#phenoscope.grid.abstract.GridFinder" title="phenoscope.grid.abstract._grid_finder.GridFinder"><span class="pre">GridFinder</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nrows</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">8</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ncols</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">12</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/phenoscope/core/_grid_image.html#GridImage"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenoscope.GridImage" title="Link to this definition">#</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">ImageGridHandler</span></code></p>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenoscope.</span></span><span class="sig-name descname"><span class="pre">GridImage</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">input_image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="#phenoscope.Image" title="phenoscope.core._image.Image"><span class="pre">Image</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">input_schema</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">grid_setter</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="api_reference/grid.abstract.html#phenoscope.grid.abstract.GridFinder" title="phenoscope.grid.abstract._grid_finder.GridFinder"><span class="pre">GridFinder</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nrows</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">8</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ncols</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">12</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/phenoscope/core/_grid_image.html#GridImage"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenoscope.GridImage" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="api_reference/core.handlers.html#phenoscope.core.handlers.ImageGridHandler" title="phenoscope.core.handlers._image_grid_handler.ImageGridHandler"><code class="xref py py-class docutils literal notranslate"><span class="pre">ImageGridHandler</span></code></a></p>
 <p>A specialized Image object that supports grid-based processing and overlay visualization.</p>
 <p>This class extends the base <cite>Image</cite> class functionality to include grid handling,
 grid-based slicing, and advanced visualization capabilities such as displaying overlay information
@@ -887,7 +893,7 @@ to determine grid structure and assign/overlay it effectively on the image.</p>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>input_image</strong> (<em>ndarray</em><em> | </em><a class="reference internal" href="#phenoscope.Image" title="phenoscope.core._image.Image"><em>Image</em></a><em> | </em><em>None</em>)</p></li>
 <li><p><strong>input_schema</strong> (<em>str</em>)</p></li>
-<li><p><strong>grid_setter</strong> (<a class="reference internal" href="api_reference/gridabstract.html#phenoscope.grid.abstract.GridFinder" title="phenoscope.grid.abstract._grid_finder.GridFinder"><em>GridFinder</em></a><em> | </em><em>None</em>)</p></li>
+<li><p><strong>grid_setter</strong> (<a class="reference internal" href="api_reference/grid.abstract.html#phenoscope.grid.abstract.GridFinder" title="phenoscope.grid.abstract._grid_finder.GridFinder"><em>GridFinder</em></a><em> | </em><em>None</em>)</p></li>
 <li><p><strong>nrows</strong> (<em>int</em>)</p></li>
 <li><p><strong>ncols</strong> (<em>int</em>)</p></li>
 </ul>
@@ -909,7 +915,7 @@ to determine grid structure and assign/overlay it effectively on the image.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenoscope.GridImage.__init__">
-<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">input_image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="#phenoscope.Image" title="phenoscope.core._image.Image"><span class="pre">Image</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">input_schema</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">grid_setter</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="api_reference/gridabstract.html#phenoscope.grid.abstract.GridFinder" title="phenoscope.grid.abstract._grid_finder.GridFinder"><span class="pre">GridFinder</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nrows</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">8</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ncols</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">12</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenoscope.GridImage.__init__" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">input_image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="#phenoscope.Image" title="phenoscope.core._image.Image"><span class="pre">Image</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">input_schema</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">grid_setter</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="api_reference/grid.abstract.html#phenoscope.grid.abstract.GridFinder" title="phenoscope.grid.abstract._grid_finder.GridFinder"><span class="pre">GridFinder</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nrows</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">8</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ncols</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">12</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenoscope.GridImage.__init__" title="Link to this definition">#</a></dt>
 <dd><p>Represents an image processor with grid management capabilities. This class
 is initialized with an image, schema, and optional grid settings. It manages
 grids on the image and provides utility functions for grid-related
@@ -922,7 +928,7 @@ image, which can be a NumPy array or an image-like object. If
 this parameter is not provided, it defaults to None.</p></li>
 <li><p><strong>input_schema</strong> (<em>str</em>) – A string representing the schema of the input
 image. It defaults to None if not provided.</p></li>
-<li><p><strong>grid_setter</strong> (<em>Optional</em><em>[</em><a class="reference internal" href="api_reference/gridabstract.html#phenoscope.grid.abstract.GridFinder" title="phenoscope.grid.abstract.GridFinder"><em>GridFinder</em></a><em>]</em>) – An optional GridFinder instance
+<li><p><strong>grid_setter</strong> (<em>Optional</em><em>[</em><a class="reference internal" href="api_reference/grid.abstract.html#phenoscope.grid.abstract.GridFinder" title="phenoscope.grid.abstract.GridFinder"><em>GridFinder</em></a><em>]</em>) – An optional GridFinder instance
 for defining grids on the image. If not provided, it defaults to
 a center grid setter.</p></li>
 <li><p><strong>nrows</strong> (<em>int</em>) – An integer specifying the number of rows in the grid.
@@ -942,7 +948,7 @@ Defaults to 12.</p></li>
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>key</strong> (<em>Any</em>) – The array slices for accesssing the elements of the image.</p></li>
-<li><p><strong>value</strong> (<em>ImageHandler</em>) – The value to be set, which must match the shape of the
+<li><p><strong>value</strong> (<a class="reference internal" href="api_reference/core.handlers.html#phenoscope.core.handlers.ImageHandler" title="phenoscope.core.handlers.ImageHandler"><em>ImageHandler</em></a>) – The value to be set, which must match the shape of the
 existing elements and conform to the expected schema.</p></li>
 </ul>
 </dd>
@@ -986,7 +992,7 @@ the file name without the extension. If the file format is unsupported, an excep
 <dd class="field-odd"><p>Type[<a class="reference internal" href="#phenoscope.Image" title="phenoscope.Image">Image</a>]</p>
 </dd>
 <dt class="field-even">Raises<span class="colon">:</span></dt>
-<dd class="field-even"><p><strong>C_ImageHandler.UnsupportedFileType</strong> – If the file format is not supported.</p>
+<dd class="field-even"><p><strong>UnsupportedFileType</strong> – If the file format is not supported.</p>
 </dd>
 </dl>
 </dd></dl>
@@ -1040,13 +1046,13 @@ state.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenoscope.GridImage.set_image">
-<span class="sig-name descname"><span class="pre">set_image</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">input_image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">input_schema</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#phenoscope.GridImage.set_image" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">set_image</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">input_image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">input_schema</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#phenoscope.GridImage.set_image" title="Link to this definition">#</a></dt>
 <dd><p>Sets the image to the inputted array or Image</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>input_image</strong> – (np.ndarray, phenoscope.Image, optional) The image data to be set</p></li>
-<li><p><strong>input_schema</strong> (<em>str</em><em> | </em><em>None</em>) – (str, optional) If input image is a np.ndarray and format is None, the image format will be guessed.
+<li><p><strong>input_schema</strong> (<em>str</em>) – (str, optional) If input image is a np.ndarray and format is None, the image format will be guessed.
 If the image format is ambiguous between RGB/BGR it will assume RGB unless otherwise specified.
 Accepted formats are [‘RGB’, ‘RGBA’,’Grayscale’,’BGR’,’BGRA’,’HSV’]</p></li>
 </ul>
@@ -1076,7 +1082,7 @@ Accepted formats are [‘RGB’, ‘RGBA’,’Grayscale’,’BGR’,’BGRA’
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenoscope.GridImage.show_overlay">
-<span class="sig-name descname"><span class="pre">show_overlay</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">object_label:</span> <span class="pre">int</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show_gridlines:</span> <span class="pre">bool</span> <span class="pre">=</span> <span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show_linreg:</span> <span class="pre">bool</span> <span class="pre">=</span> <span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">figsize:</span> <span class="pre">~typing.Tuple[int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">int]</span> <span class="pre">=</span> <span class="pre">(9</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">10)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">annotate:</span> <span class="pre">bool</span> <span class="pre">=</span> <span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">annotation_size:</span> <span class="pre">int</span> <span class="pre">=</span> <span class="pre">12</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">annotation_color:</span> <span class="pre">str</span> <span class="pre">=</span> <span class="pre">'white'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">annotation_facecolor:</span> <span class="pre">str</span> <span class="pre">=</span> <span class="pre">'red'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ax:</span> <span class="pre">~matplotlib.axes._axes.Axes</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None)</span> <span class="pre">-&gt;</span> <span class="pre">(&lt;class</span> <span class="pre">'matplotlib.figure.Figure'&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">&lt;class</span> <span class="pre">'matplotlib.axes._axes.Axes'&gt;</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenoscope.GridImage.show_overlay" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">show_overlay</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">object_label:</span> <span class="pre">int</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show_gridlines:</span> <span class="pre">bool</span> <span class="pre">=</span> <span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show_linreg:</span> <span class="pre">bool</span> <span class="pre">=</span> <span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">figsize:</span> <span class="pre">~typing.Tuple[int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">int]</span> <span class="pre">=</span> <span class="pre">(9</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">10)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">annotate:</span> <span class="pre">bool</span> <span class="pre">=</span> <span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">annotation_size:</span> <span class="pre">int</span> <span class="pre">=</span> <span class="pre">12</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">annotation_color:</span> <span class="pre">str</span> <span class="pre">=</span> <span class="pre">'white'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">annotation_facecolor:</span> <span class="pre">str</span> <span class="pre">=</span> <span class="pre">'red'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ax:</span> <span class="pre">~matplotlib.axes._axes.Axes</span> <span class="pre">=</span> <span class="pre">None)</span> <span class="pre">-&gt;</span> <span class="pre">(&lt;class</span> <span class="pre">'matplotlib.figure.Figure'&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">&lt;class</span> <span class="pre">'matplotlib.axes._axes.Axes'&gt;</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenoscope.GridImage.show_overlay" title="Link to this definition">#</a></dt>
 <dd><p>Displays an overlay of data with optional annotations, linear regression lines, and gridlines on a
 grid-based figure. The figure can be customized with various parameters to suit visualization needs.</p>
 <dl class="field-list simple">

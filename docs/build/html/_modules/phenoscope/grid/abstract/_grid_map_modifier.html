@@ -327,11 +327,11 @@
 <span></span><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span>
 
-<span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span> <span class="kn">from</span><span class="w"> </span><span class="nn">phenoscope</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImageGridHandler</span>
+<span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span> <span class="kn">from</span><span class="w"> </span><span class="nn">phenoscope</span><span class="w"> </span><span class="kn">import</span> <span class="n">GridImage</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenoscope.abstract</span><span class="w"> </span><span class="kn">import</span> <span class="n">MapModifier</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenoscope.grid.abstract</span><span class="w"> </span><span class="kn">import</span> <span class="n">GridOperation</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">phenoscope.util.constants</span><span class="w"> </span><span class="kn">import</span> <span class="n">GRID_SERIES_INPUT_IMAGE_ERROR_MSG</span><span class="p">,</span> <span class="n">INTERFACE_ERROR_MSG</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenoscope.util.exceptions_</span><span class="w"> </span><span class="kn">import</span> <span class="n">GridImageInputError</span><span class="p">,</span> <span class="n">InterfaceError</span>
 
 
 <div class="viewcode-block" id="GridMapModifier">
@@ -339,15 +339,15 @@
 <span class="k">class</span><span class="w"> </span><span class="nc">GridMapModifier</span><span class="p">(</span><span class="n">MapModifier</span><span class="p">,</span> <span class="n">GridOperation</span><span class="p">):</span>
 <div class="viewcode-block" id="GridMapModifier.apply">
 <a class="viewcode-back" href="../../../../api_reference/gridabstract.html#phenoscope.grid.abstract.GridMapModifier.apply">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">apply</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">ImageGridHandler</span><span class="p">,</span> <span class="n">inplace</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ImageGridHandler</span><span class="p">:</span>
-        <span class="kn">from</span><span class="w"> </span><span class="nn">phenoscope</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImageGridHandler</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">ImageGridHandler</span><span class="p">):</span> <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">GRID_SERIES_INPUT_IMAGE_ERROR_MSG</span><span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">apply</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">GridImage</span><span class="p">,</span> <span class="n">inplace</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">GridImage</span><span class="p">:</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">phenoscope</span><span class="w"> </span><span class="kn">import</span> <span class="n">GridImage</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">GridImage</span><span class="p">):</span> <span class="k">raise</span> <span class="n">GridImageInputError</span><span class="p">()</span>
         <span class="n">output</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">image</span><span class="o">=</span><span class="n">image</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="n">inplace</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">output</span></div>
 
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">ImageGridHandler</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ImageGridHandler</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="n">INTERFACE_ERROR_MSG</span><span class="p">)</span></div>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">GridImage</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">GridImage</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">InterfaceError</span><span class="p">()</span></div>
 
 </pre></div>
 

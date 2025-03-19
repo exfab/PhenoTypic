@@ -327,11 +327,12 @@
 <span></span><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span>
 
+
 <span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span> <span class="kn">from</span><span class="w"> </span><span class="nn">phenoscope</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">._image_operation</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImageOperation</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">..util.constants</span><span class="w"> </span><span class="kn">import</span> <span class="n">INTERFACE_ERROR_MSG</span><span class="p">,</span> <span class="n">ARRAY_CHANGE_ERROR_MSG</span><span class="p">,</span> <span class="n">ENHANCED_ARRAY_CHANGE_ERROR_MSG</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenoscope.util.exceptions_</span><span class="w"> </span><span class="kn">import</span> <span class="n">OperationFailedError</span><span class="p">,</span> <span class="n">DataIntegrityError</span><span class="p">,</span> <span class="n">InterfaceError</span>
 
 
 <span class="c1"># &lt;&lt;Interface&gt;&gt;</span>
@@ -339,28 +340,44 @@
 <a class="viewcode-back" href="../../../api_reference/abstract.html#phenoscope.abstract.ObjectDetector">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">ObjectDetector</span><span class="p">(</span><span class="n">ImageOperation</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;ObjectDetectors are for detecting objects in an image. They change the image object mask and map.&quot;&quot;&quot;</span>
+
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">pass</span>
 
 <div class="viewcode-block" id="ObjectDetector.apply">
 <a class="viewcode-back" href="../../../api_reference/abstract.html#phenoscope.abstract.ObjectDetector.apply">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">apply</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">,</span> <span class="n">inplace</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span><span class="p">:</span>
-        <span class="n">imcopy</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">imcopy</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
 
-        <span class="k">if</span> <span class="n">inplace</span><span class="p">:</span>
-            <span class="n">output</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_operate</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">output</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_operate</span><span class="p">(</span><span class="n">image</span><span class="o">.</span><span class="n">copy</span><span class="p">())</span>
+            <span class="k">if</span> <span class="n">inplace</span><span class="p">:</span>
+                <span class="n">output</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_operate</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">output</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_operate</span><span class="p">(</span><span class="n">image</span><span class="o">.</span><span class="n">copy</span><span class="p">())</span>
 
-        <span class="c1"># Post Operation Checks</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">array_equal</span><span class="p">(</span><span class="n">imcopy</span><span class="o">.</span><span class="n">matrix</span><span class="p">[:],</span> <span class="n">output</span><span class="o">.</span><span class="n">matrix</span><span class="p">[:]):</span> <span class="k">raise</span> <span class="ne">AttributeError</span><span class="p">(</span><span class="n">ARRAY_CHANGE_ERROR_MSG</span><span class="p">)</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">array_equal</span><span class="p">(</span><span class="n">imcopy</span><span class="o">.</span><span class="n">enh_matrix</span><span class="p">[:],</span> <span class="n">output</span><span class="o">.</span><span class="n">enh_matrix</span><span class="p">[:]):</span> <span class="k">raise</span> <span class="ne">AttributeError</span><span class="p">(</span><span class="n">ENHANCED_ARRAY_CHANGE_ERROR_MSG</span><span class="p">)</span>
+            <span class="c1"># Post Operation Checks</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">array_equal</span><span class="p">(</span><span class="n">imcopy</span><span class="o">.</span><span class="n">matrix</span><span class="p">[:],</span> <span class="n">output</span><span class="o">.</span><span class="n">matrix</span><span class="p">[:]):</span> <span class="k">raise</span> <span class="n">DataIntegrityError</span><span class="p">(</span><span class="n">component</span><span class="o">=</span><span class="s1">&#39;matrix&#39;</span><span class="p">,</span>
+                                                                                                <span class="n">operation</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span>
+                                                                                                <span class="n">image_name</span><span class="o">=</span><span class="n">image</span><span class="o">.</span><span class="n">name</span>
+                                                                                                <span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">array_equal</span><span class="p">(</span><span class="n">imcopy</span><span class="o">.</span><span class="n">enh_matrix</span><span class="p">[:],</span> <span class="n">output</span><span class="o">.</span><span class="n">enh_matrix</span><span class="p">[:]):</span> <span class="k">raise</span> <span class="n">DataIntegrityError</span><span class="p">(</span><span class="n">component</span><span class="o">=</span><span class="s1">&#39;enh_matrix&#39;</span><span class="p">,</span>
+                                                                                                        <span class="n">operation</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span>
+                                                                                                        <span class="n">image_name</span><span class="o">=</span><span class="n">image</span><span class="o">.</span><span class="n">name</span>
+                                                                                                        <span class="p">)</span>
 
-        <span class="k">return</span> <span class="n">output</span></div>
+            <span class="k">return</span> <span class="n">output</span>
+        <span class="k">except</span> <span class="n">DataIntegrityError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">e</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">OperationFailedError</span><span class="p">(</span><span class="n">operation</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span>
+                                       <span class="n">image_name</span><span class="o">=</span><span class="n">image</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+                                       <span class="n">err_type</span><span class="o">=</span><span class="nb">type</span><span class="p">(</span><span class="n">e</span><span class="p">),</span>
+                                       <span class="n">message</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+                                       <span class="p">)</span></div>
 
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="n">INTERFACE_ERROR_MSG</span><span class="p">)</span></div>
+        <span class="k">raise</span> <span class="n">InterfaceError</span></div>
 
 </pre></div>
 

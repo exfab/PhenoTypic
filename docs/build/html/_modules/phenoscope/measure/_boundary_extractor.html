@@ -334,7 +334,7 @@
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenoscope.abstract</span><span class="w"> </span><span class="kn">import</span> <span class="n">FeatureExtractor</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">..util.constants</span><span class="w"> </span><span class="kn">import</span> <span class="n">C_ObjectInfo</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..util.constants_</span><span class="w"> </span><span class="kn">import</span> <span class="n">OBJECT_INFO</span>
 
 <div class="viewcode-block" id="BoundaryExtractor">
 <a class="viewcode-back" href="../../../api_reference/measure.html#phenoscope.measure.BoundaryExtractor">[docs]</a>
@@ -350,14 +350,14 @@
                 <span class="n">properties</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;label&#39;</span><span class="p">,</span> <span class="s1">&#39;centroid&#39;</span><span class="p">,</span> <span class="s1">&#39;bbox&#39;</span><span class="p">]</span>
             <span class="p">)</span>
         <span class="p">)</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">{</span>
-            <span class="s1">&#39;label&#39;</span><span class="p">:</span> <span class="n">C_ObjectInfo</span><span class="o">.</span><span class="n">OBJECT_LABELS</span><span class="p">,</span>
-            <span class="s1">&#39;centroid-0&#39;</span><span class="p">:</span> <span class="n">C_ObjectInfo</span><span class="o">.</span><span class="n">CENTER_RR</span><span class="p">,</span>
-            <span class="s1">&#39;centroid-1&#39;</span><span class="p">:</span> <span class="n">C_ObjectInfo</span><span class="o">.</span><span class="n">CENTER_CC</span><span class="p">,</span>
-            <span class="s1">&#39;bbox-0&#39;</span><span class="p">:</span> <span class="n">C_ObjectInfo</span><span class="o">.</span><span class="n">MIN_RR</span><span class="p">,</span>
-            <span class="s1">&#39;bbox-1&#39;</span><span class="p">:</span> <span class="n">C_ObjectInfo</span><span class="o">.</span><span class="n">MIN_CC</span><span class="p">,</span>
-            <span class="s1">&#39;bbox-2&#39;</span><span class="p">:</span> <span class="n">C_ObjectInfo</span><span class="o">.</span><span class="n">MAX_RR</span><span class="p">,</span>
-            <span class="s1">&#39;bbox-3&#39;</span><span class="p">:</span> <span class="n">C_ObjectInfo</span><span class="o">.</span><span class="n">MAX_CC</span><span class="p">,</span>
-        <span class="p">})</span><span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="n">keys</span><span class="o">=</span><span class="n">C_ObjectInfo</span><span class="o">.</span><span class="n">OBJECT_LABELS</span><span class="p">)</span>
+            <span class="s1">&#39;label&#39;</span><span class="p">:</span> <span class="n">OBJECT_INFO</span><span class="o">.</span><span class="n">OBJECT_LABELS</span><span class="p">,</span>
+            <span class="s1">&#39;centroid-0&#39;</span><span class="p">:</span> <span class="n">OBJECT_INFO</span><span class="o">.</span><span class="n">CENTER_RR</span><span class="p">,</span>
+            <span class="s1">&#39;centroid-1&#39;</span><span class="p">:</span> <span class="n">OBJECT_INFO</span><span class="o">.</span><span class="n">CENTER_CC</span><span class="p">,</span>
+            <span class="s1">&#39;bbox-0&#39;</span><span class="p">:</span> <span class="n">OBJECT_INFO</span><span class="o">.</span><span class="n">MIN_RR</span><span class="p">,</span>
+            <span class="s1">&#39;bbox-1&#39;</span><span class="p">:</span> <span class="n">OBJECT_INFO</span><span class="o">.</span><span class="n">MIN_CC</span><span class="p">,</span>
+            <span class="s1">&#39;bbox-2&#39;</span><span class="p">:</span> <span class="n">OBJECT_INFO</span><span class="o">.</span><span class="n">MAX_RR</span><span class="p">,</span>
+            <span class="s1">&#39;bbox-3&#39;</span><span class="p">:</span> <span class="n">OBJECT_INFO</span><span class="o">.</span><span class="n">MAX_CC</span><span class="p">,</span>
+        <span class="p">})</span><span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="n">keys</span><span class="o">=</span><span class="n">OBJECT_INFO</span><span class="o">.</span><span class="n">OBJECT_LABELS</span><span class="p">)</span>
 
         <span class="k">return</span> <span class="n">results</span></div>
 

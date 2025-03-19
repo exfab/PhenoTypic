@@ -334,7 +334,7 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenoscope.abstract</span><span class="w"> </span><span class="kn">import</span> <span class="n">FeatureExtractor</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">phenoscope.util.constants</span><span class="w"> </span><span class="kn">import</span> <span class="n">C_ObjectInfo</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenoscope.util.constants_</span><span class="w"> </span><span class="kn">import</span> <span class="n">OBJECT_INFO</span>
 
 <span class="n">OBJ_LABEL</span> <span class="o">=</span> <span class="s1">&#39;ObjLabel&#39;</span>
 <span class="n">AREA</span> <span class="o">=</span> <span class="s1">&#39;Area&#39;</span>
@@ -387,9 +387,9 @@
         <span class="n">brightness_texture</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compute_matrix_texture</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">image</span><span class="o">.</span><span class="n">hsv</span><span class="o">.</span><span class="n">extract_obj_brightness</span><span class="p">())</span>
         <span class="n">brightness_texture</span> <span class="o">=</span> <span class="p">{</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">BRIGHTNESS</span><span class="si">}</span><span class="s1"> </span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">:</span> <span class="n">value</span> <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">brightness_texture</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
 
-        <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span><span class="n">C_ObjectInfo</span><span class="o">.</span><span class="n">OBJECT_LABELS</span><span class="p">:</span> <span class="n">image</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">labels</span><span class="p">,</span>
+        <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span><span class="n">OBJECT_INFO</span><span class="o">.</span><span class="n">OBJECT_LABELS</span><span class="p">:</span> <span class="n">image</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">labels</span><span class="p">,</span>
                              <span class="o">**</span><span class="n">hue_texture</span><span class="p">,</span> <span class="o">**</span><span class="n">saturation_texture</span><span class="p">,</span> <span class="o">**</span><span class="n">brightness_texture</span><span class="p">}</span>
-                            <span class="p">)</span><span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="n">C_ObjectInfo</span><span class="o">.</span><span class="n">OBJECT_LABELS</span><span class="p">)</span>
+                            <span class="p">)</span><span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="n">OBJECT_INFO</span><span class="o">.</span><span class="n">OBJECT_LABELS</span><span class="p">)</span>
 
     <span class="nd">@staticmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">_compute_matrix_texture</span><span class="p">(</span><span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">,</span> <span class="n">foreground_array</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>

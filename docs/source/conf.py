@@ -34,7 +34,10 @@ extensions = [
     'sphinx.ext.coverage',
     'sphinx.ext.doctest',
     'sphinx.ext.ifconfig',
-    'sphinx.ext.autosectionlabel'
+    'sphinx.ext.autosectionlabel',
+    'nbsphinx',
+    'sphinx_gallery.gen_gallery',
+    'myst_nb'
 ]
 
 autodoc_default_options = {
@@ -49,7 +52,41 @@ autodoc_typehints = 'both'
 autodoc_member_order = 'groupwise'
 
 templates_path = ['_templates']
-exclude_patterns = []
+
+# nbsphinx configuration
+nbsphinx_execute = 'auto'
+nbsphinx_allow_errors = False
+nbsphinx_kernel_name = 'python3'
+
+# myst_nb configuration
+myst_enable_extensions = [
+    "amsmath",
+    "colon_fence",
+    "deflist",
+    "dollarmath",
+    "html_admonition",
+    "html_image",
+    "replacements",
+    "smartquotes",
+    "substitution",
+    "tasklist",
+]
+myst_nb_output_stderr = "remove"
+
+# sphinx-gallery configuration
+sphinx_gallery_conf = {
+    'examples_dirs': '../../examples',   # path to your example scripts
+    'gallery_dirs': 'auto_examples',     # path to where to save gallery generated output
+    'filename_pattern': '/example_',     # pattern to match example files
+    'ignore_pattern': '__init__\.py',   # pattern to ignore
+    'plot_gallery': 'True',             # generate plots
+    'thumbnail_size': (400, 300),       # thumbnail size
+    'download_all_examples': True,      # download all examples as a zip file
+    'line_numbers': True,               # show line numbers in code blocks
+    'remove_config_comments': True,     # remove config comments from code blocks
+    'capture_repr': ('_repr_html_', '__repr__'),  # capture representations for display
+}
+exclude_patterns = ['_build', '**.ipynb_checkpoints', '*.ipynb', 'auto_examples']
 
 
 

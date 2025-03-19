@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>PhenoScope Documentation &#8212; PhenoScope 0.5.0 documentation</title>
+    <title>PhenoScope Documentation &#8212; PhenoScope 0.5.1 documentation</title>
   
   
   
@@ -31,6 +31,11 @@
 <link href="_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
 
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="_static/mystnb.4510f1fc1dee50b3e5859aac5469c37c29e427902b24a333a5f9fcb2f0b3ac41.css?v=be8a1c11" />
+    <link rel="stylesheet" type="text/css" href="_static/sg_gallery.css?v=d2d258e8" />
+    <link rel="stylesheet" type="text/css" href="_static/sg_gallery-binder.css?v=f4aeca0c" />
+    <link rel="stylesheet" type="text/css" href="_static/sg_gallery-dataframe.css?v=2082cf3c" />
+    <link rel="stylesheet" type="text/css" href="_static/sg_gallery-rendered-html.css?v=1277b6f3" />
   
   <!-- So that users can add custom icons -->
   <script src="_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
@@ -38,17 +43,19 @@
   <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="_static/documentation_options.js?v=1dd76d02"></script>
+    <script src="_static/documentation_options.js?v=b9afe91b"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
-    <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+    <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = 'index';</script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="Installation" href="installation.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.5.0" />
+  <meta name="docsearch:version" content="0.5.1" />
   </head>
   
   
@@ -110,7 +117,7 @@
   
   
   
-    <p class="title logo__title">PhenoScope 0.5.0 documentation</p>
+    <p class="title logo__title">PhenoScope 0.5.1 documentation</p>
   
 </a></div>
     
@@ -341,10 +348,9 @@
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="examples/index.html">Examples</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="examples/basic_examples.html">Basic Examples</a></li>
-<li class="toctree-l2"><a class="reference internal" href="examples/advanced_examples.html">Advanced Examples</a></li>
 <li class="toctree-l2"><a class="reference internal" href="examples/use_cases.html">Use Cases</a></li>
-<li class="toctree-l2"><a class="reference internal" href="examples/index.html#placeholder-examples">Placeholder Examples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="examples/index.html#gallery-examples">Gallery Examples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="examples/index.html#jupyter-notebook-examples">Jupyter Notebook Examples</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="api_reference/index.html">API Reference</a><ul>
@@ -354,12 +360,14 @@
 <li class="toctree-l2"><a class="reference internal" href="api_reference/data.html">phenoscope.data</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api_reference/detection.html">phenoscope.detection</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api_reference/grid.html">phenoscope.grid</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api_reference/grid.abstract.html">phenoscope.grid.abstract</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api_reference/measure.html">phenoscope.measure</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api_reference/morphology.html">phenoscope.morphology</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api_reference/objects.html">phenoscope.objects</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api_reference/pipeline.html">phenoscope.pipeline</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api_reference/preprocessing.html">phenoscope.preprocessing</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api_reference/transform.html">phenoscope.transform</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api_reference/util.html">phenoscope.util</a></li>
 </ul>
 </li>
 </ul>

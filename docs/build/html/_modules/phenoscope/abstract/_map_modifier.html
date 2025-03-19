@@ -332,7 +332,8 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">._image_operation</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImageOperation</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">..util.constants</span><span class="w"> </span><span class="kn">import</span> <span class="n">INTERFACE_ERROR_MSG</span><span class="p">,</span> <span class="n">C_ImageOperation</span><span class="p">,</span> <span class="n">C_ImageFormats</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..util.constants_</span><span class="w"> </span><span class="kn">import</span> <span class="n">IMAGE_FORMATS</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenoscope.util.exceptions_</span><span class="w"> </span><span class="kn">import</span> <span class="n">OperationFailedError</span><span class="p">,</span> <span class="n">InterfaceError</span><span class="p">,</span> <span class="n">DataIntegrityError</span>
 
 
 <span class="c1"># &lt;&lt;Interface&gt;&gt;</span>
@@ -353,22 +354,23 @@
                 <span class="n">output</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_operate</span><span class="p">(</span><span class="n">image</span><span class="o">.</span><span class="n">copy</span><span class="p">())</span>
 
             <span class="c1"># TODO: Fix this check</span>
-            <span class="k">if</span> <span class="n">output</span><span class="o">.</span><span class="n">schema</span> <span class="ow">in</span> <span class="n">C_ImageFormats</span><span class="o">.</span><span class="n">MATRIX_FORMATS</span><span class="p">:</span>
-                <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">array_equal</span><span class="p">(</span><span class="n">imcopy</span><span class="o">.</span><span class="n">array</span><span class="p">[:],</span> <span class="n">output</span><span class="o">.</span><span class="n">array</span><span class="p">[:]):</span> <span class="k">raise</span> <span class="n">C_ImageOperation</span><span class="o">.</span><span class="n">IntegrityError</span><span class="p">(</span>
+            <span class="k">if</span> <span class="n">output</span><span class="o">.</span><span class="n">schema</span> <span class="ow">in</span> <span class="n">IMAGE_FORMATS</span><span class="o">.</span><span class="n">MATRIX_FORMATS</span><span class="p">:</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">array_equal</span><span class="p">(</span><span class="n">imcopy</span><span class="o">.</span><span class="n">array</span><span class="p">[:],</span> <span class="n">output</span><span class="o">.</span><span class="n">array</span><span class="p">[:]):</span> <span class="k">raise</span> <span class="n">DataIntegrityError</span><span class="p">(</span>
                     <span class="n">component</span><span class="o">=</span><span class="s1">&#39;array&#39;</span><span class="p">,</span> <span class="n">operation</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span> <span class="n">image_name</span><span class="o">=</span><span class="n">image</span><span class="o">.</span><span class="n">name</span>
                 <span class="p">)</span>
 
-            <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">array_equal</span><span class="p">(</span><span class="n">imcopy</span><span class="o">.</span><span class="n">matrix</span><span class="p">[:],</span> <span class="n">output</span><span class="o">.</span><span class="n">matrix</span><span class="p">[:]):</span> <span class="k">raise</span> <span class="n">C_ImageOperation</span><span class="o">.</span><span class="n">IntegrityError</span><span class="p">(</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">array_equal</span><span class="p">(</span><span class="n">imcopy</span><span class="o">.</span><span class="n">matrix</span><span class="p">[:],</span> <span class="n">output</span><span class="o">.</span><span class="n">matrix</span><span class="p">[:]):</span> <span class="k">raise</span> <span class="n">DataIntegrityError</span><span class="p">(</span>
                 <span class="n">component</span><span class="o">=</span><span class="s1">&#39;matrix&#39;</span><span class="p">,</span> <span class="n">operation</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span> <span class="n">image_name</span><span class="o">=</span><span class="n">image</span><span class="o">.</span><span class="n">name</span>
             <span class="p">)</span>
 
-            <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">array_equal</span><span class="p">(</span><span class="n">imcopy</span><span class="o">.</span><span class="n">enh_matrix</span><span class="p">[:],</span> <span class="n">output</span><span class="o">.</span><span class="n">enh_matrix</span><span class="p">[:]):</span> <span class="k">raise</span> <span class="n">C_ImageOperation</span><span class="o">.</span><span class="n">IntegrityError</span><span class="p">(</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">array_equal</span><span class="p">(</span><span class="n">imcopy</span><span class="o">.</span><span class="n">enh_matrix</span><span class="p">[:],</span> <span class="n">output</span><span class="o">.</span><span class="n">enh_matrix</span><span class="p">[:]):</span> <span class="k">raise</span> <span class="n">DataIntegrityError</span><span class="p">(</span>
                 <span class="n">component</span><span class="o">=</span><span class="s1">&#39;enh_matrix&#39;</span><span class="p">,</span> <span class="n">operation</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span> <span class="n">image_name</span><span class="o">=</span><span class="n">image</span><span class="o">.</span><span class="n">name</span>
             <span class="p">)</span>
             <span class="k">return</span> <span class="n">output</span>
-
+        <span class="k">except</span> <span class="n">DataIntegrityError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">e</span>
         <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="n">C_ImageOperation</span><span class="o">.</span><span class="n">OperationError</span><span class="p">(</span><span class="n">operation</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span>
+            <span class="k">raise</span> <span class="n">OperationFailedError</span><span class="p">(</span><span class="n">operation</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span>
                                                   <span class="n">image_name</span><span class="o">=</span><span class="n">image</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
                                                   <span class="n">err_type</span><span class="o">=</span><span class="nb">type</span><span class="p">(</span><span class="n">e</span><span class="p">),</span>
                                                   <span class="n">message</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
@@ -376,7 +378,7 @@
 
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="n">INTERFACE_ERROR_MSG</span><span class="p">)</span></div>
+        <span class="k">raise</span> <span class="n">InterfaceError</span></div>
 
 </pre></div>
 

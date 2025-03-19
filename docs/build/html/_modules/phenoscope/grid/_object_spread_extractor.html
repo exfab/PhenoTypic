@@ -326,7 +326,7 @@
   <h1>Source code for phenoscope.grid._object_spread_extractor</h1><div class="highlight"><pre>
 <span></span><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span>
-<span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span> <span class="kn">from</span><span class="w"> </span><span class="nn">phenoscope</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImageGridHandler</span>
+<span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span> <span class="kn">from</span><span class="w"> </span><span class="nn">phenoscope</span><span class="w"> </span><span class="kn">import</span> <span class="n">GridImage</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenoscope.grid.abstract</span><span class="w"> </span><span class="kn">import</span> <span class="n">GridFeatureExtractor</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
@@ -341,7 +341,7 @@
 <span class="sd">    This module measure&#39;s an objects spread from the grid section&#39;s center points</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">ImageGridHandler</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">GridImage</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
         <span class="n">gs_table</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">grid</span><span class="o">.</span><span class="n">info</span><span class="p">()</span>
         <span class="n">gs_counts</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">gs_table</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="s1">&#39;grid_section_bin&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">value_counts</span><span class="p">())</span>
 

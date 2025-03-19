@@ -334,8 +334,8 @@
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">._docstring_metaclass</span><span class="w"> </span><span class="kn">import</span> <span class="n">MeasureDocstringMeta</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">._image_operation</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImageOperation</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">..util.constants</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span><span class="n">INTERFACE_ERROR_MSG</span><span class="p">,</span> <span class="n">ARRAY_CHANGE_ERROR_MSG</span><span class="p">,</span> <span class="n">ENHANCED_ARRAY_CHANGE_ERROR_MSG</span><span class="p">,</span> <span class="n">MASK_CHANGE_ERROR_MSG</span><span class="p">,</span>
-                              <span class="n">MAP_CHANGE_ERROR_MSG</span><span class="p">,</span> <span class="n">C_ImageOperation</span><span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenoscope.util.exceptions_</span><span class="w"> </span><span class="kn">import</span> <span class="n">OperationFailedError</span><span class="p">,</span> <span class="n">InterfaceError</span>
+
 
 <span class="c1"># &lt;&lt;Interface&gt;&gt;</span>
 <div class="viewcode-block" id="FeatureExtractor">
@@ -363,15 +363,15 @@
 
             <span class="k">return</span> <span class="n">measurement</span>
         <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="n">C_ImageOperation</span><span class="o">.</span><span class="n">OperationError</span><span class="p">(</span><span class="n">operation</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span>
-                                                  <span class="n">image_name</span><span class="o">=</span><span class="n">image</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
-                                                  <span class="n">err_type</span><span class="o">=</span><span class="nb">type</span><span class="p">(</span><span class="n">e</span><span class="p">),</span>
-                                                  <span class="n">message</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
-                                                  <span class="p">)</span></div>
+            <span class="k">raise</span> <span class="n">OperationFailedError</span><span class="p">(</span><span class="n">operation</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span>
+                                       <span class="n">image_name</span><span class="o">=</span><span class="n">image</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+                                       <span class="n">err_type</span><span class="o">=</span><span class="nb">type</span><span class="p">(</span><span class="n">e</span><span class="p">),</span>
+                                       <span class="n">message</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+                                       <span class="p">)</span></div>
 
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="n">INTERFACE_ERROR_MSG</span><span class="p">)</span></div>
+        <span class="k">raise</span> <span class="n">InterfaceError</span></div>
 
 </pre></div>
 
