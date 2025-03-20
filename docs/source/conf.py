@@ -13,6 +13,7 @@ sys.path.insert(0, os.path.abspath('../../src'))
 project = 'PhenoScope'
 copyright = '2025, ExFAB BioFoundry'
 author = 'Alexander Nguyen'
+github_url
 
 # Try to get the version from phenoscope, but use a default if not available
 try:
@@ -102,6 +103,18 @@ html_static_path = ['_static']
 
 if html_theme == "furo":
     html_theme_options = {
+        "logo": {
+            "alt_text": "PhenoScope",
+            "link": "index"
+        },
+        "icon_links": [
+            {
+                "name": "GitHub",
+                "url": "https://github.com/ExFAB-BioFoundry/PhenoScope",
+                "icon": "fa-brands fa-github",
+            }
+        ],
+        "use_edit_page_button": False,
         'light_css_variables': {
         },
         'dark_css_variables': {
@@ -110,12 +123,37 @@ if html_theme == "furo":
 
 if html_theme == 'sphinxawesome_theme':
     html_theme_options = {
+        "logo": {
+            "alt_text": "PhenoScope",
+            "link": "index"
+        },
+        "icon_links": [
+            {
+                "name": "GitHub",
+                "url": "https://github.com/ExFAB-BioFoundry/PhenoScope",
+                "icon": "fa-brands fa-github",
+            }
+        ],
+        "use_edit_page_button": False,
         "logo_light":"../assets/logo_background_svg/PhenoScopeLogo.svg",
         "logo_dark":"../assets/logo_background_svg/PhenoScopeLogo-DarkMode.svg"
     }
 
 if html_theme == 'pydata_sphinx_theme':
+    html_logo = "../assets/logo_background_svg/PhenoScopeLogo.svg"
     html_theme_options = {
+        "logo": {
+            "alt_text": "PhenoScope",
+            "link": "index"
+        },
+        "icon_links": [
+            {
+                "name": "GitHub",
+                "url": "https://github.com/ExFAB-BioFoundry/PhenoScope",
+                "icon": "fa-brands fa-github",
+            }
+        ],
+        "use_edit_page_button": False,
     }
 
 # Napoleon Settings

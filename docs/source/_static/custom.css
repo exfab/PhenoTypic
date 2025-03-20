@@ -14,3 +14,15 @@
         display: block;
     }
 }
+
+/* Make the logo larger */
+.navbar-brand img {
+    width: 600px; /* Adjust this value to make the logo larger or smaller */
+    height: auto;
+    max-height: none !important;
+}
+
+/* Dark mode logo support for pydata theme */
+html[data-theme="dark"] .navbar-brand img {
+    content: url("../../assets/logo_background_svg/PhenoScopeLogo-DarkMode.svg");
+}

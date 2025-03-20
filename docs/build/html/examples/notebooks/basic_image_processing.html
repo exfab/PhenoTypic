@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>General Basic Image Processing &#8212; PhenoScope 0.5.1 documentation</title>
+    <title>Creating a Test Image &#8212; PhenoScope 0.5.1 documentation</title>
   
   
   
@@ -31,7 +31,7 @@
 <link href="../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
 
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=8f2a1f02" />
-    <link rel="stylesheet" type="text/css" href="../../_static/mystnb.4510f1fc1dee50b3e5859aac5469c37c29e427902b24a333a5f9fcb2f0b3ac41.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/mystnb.4510f1fc1dee50b3e5859aac5469c37c29e427902b24a333a5f9fcb2f0b3ac41.css?v=be8a1c11" />
     <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery.css?v=d2d258e8" />
     <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-binder.css?v=f4aeca0c" />
     <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
@@ -106,7 +106,7 @@
       <div class="navbar-item">
 
   
-    
+     
   
 
 <a class="navbar-brand logo" href="../../index.html">
@@ -115,8 +115,14 @@
   
   
   
+    
+    
+      
+    
+    
+    <img src="../../_static/PhenoScopeLogo.svg" class="logo__image only-light" alt="PhenoScope"/>
+    <img src="../../_static/PhenoScopeLogo.svg" class="logo__image only-dark pst-js-only" alt="PhenoScope"/>
   
-    <p class="title logo__title">PhenoScope 0.5.1 documentation</p>
   
 </a></div>
     
@@ -183,6 +189,22 @@
   <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
   <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
 </button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/ExFAB-BioFoundry/PhenoScope" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
       
     </div>
     
@@ -275,6 +297,22 @@
   <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
 </button></div>
         
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/ExFAB-BioFoundry/PhenoScope" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
       </div>
     
   </div>
@@ -290,7 +328,8 @@
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Notebooks</span></p>
 <ul class="current nav bd-sidenav">
-<li class="toctree-l1 current active"><a class="current reference internal" href="#">General Basic Image Processing</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">Creating a Test Image</a></li>
+
 
 </ul>
 </div>
@@ -335,7 +374,7 @@
     
     <li class="breadcrumb-item"><a href="../index.html" class="nav-link">Examples</a></li>
     
-    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">General Basic Image Processing</span></li>
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">Creating a Test Image</span></li>
   </ul>
 </nav>
 </div>
@@ -352,9 +391,8 @@
 <div id="searchbox"></div>
                 <article class="bd-article">
                   
-  <section class="tex2jax_ignore mathjax_ignore" id="general-basic-image-processing">
-<h1>General Basic Image Processing<a class="headerlink" href="#general-basic-image-processing" title="Link to this heading">#</a></h1>
-<p>This notebook demonstrates basic image processing capabilities of PhenoScope.</p>
+  <p>The Image Class
+This notebook introduces the image class and how to access the different elements</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
 <div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
@@ -365,7 +403,7 @@
 </div>
 </div>
 <section id="creating-a-test-image">
-<h2>Creating a Test Image<a class="headerlink" href="#creating-a-test-image" title="Link to this heading">#</a></h2>
+<h1>Creating a Test Image<a class="headerlink" href="#creating-a-test-image" title="Link to this heading">#</a></h1>
 <p>Let’s create a simple test image with some shapes.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
@@ -389,7 +427,7 @@
 </div>
 </section>
 <section id="loading-the-image-into-phenoscope">
-<h2>Loading the Image into PhenoScope<a class="headerlink" href="#loading-the-image-into-phenoscope" title="Link to this heading">#</a></h2>
+<h1>Loading the Image into PhenoScope<a class="headerlink" href="#loading-the-image-into-phenoscope" title="Link to this heading">#</a></h1>
 <p>Now let’s load this image into a PhenoScope <code class="docutils literal notranslate"><span class="pre">Image</span></code> object.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
@@ -407,13 +445,12 @@ Image schema: RGB
 </pre></div>
 </div>
 <div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>(&lt;Figure size 900x1000 with 1 Axes&gt;,
- &lt;Axes: title={&#39;center&#39;: &#39;9ebff6e8-72dd-4809-bf78-0bc5d2ccdf43&#39;}&gt;)
+ &lt;Axes: title={&#39;center&#39;: &#39;9a1bd1d6-967e-4554-a605-a3a1a7c8bb98&#39;}&gt;)
 </pre></div>
 </div>
-<img alt="../../_images/66b3e9fdfa785208e5fef585eeb98650e21188f5d8eda0b1a790887db15fb72b.png" src="../../_images/66b3e9fdfa785208e5fef585eeb98650e21188f5d8eda0b1a790887db15fb72b.png" />
+<img alt="../../_images/d8cad7674e1e0acbe14705ffad753e3eb00b78486ed9c5c746fd2e83a820479c.png" src="../../_images/d8cad7674e1e0acbe14705ffad753e3eb00b78486ed9c5c746fd2e83a820479c.png" />
 </div>
 </div>
-</section>
 </section>
 <section class="tex2jax_ignore mathjax_ignore" id="accessing-componenent-elements">
 <h1>Accessing Componenent Elements<a class="headerlink" href="#accessing-componenent-elements" title="Link to this heading">#</a></h1>
@@ -549,11 +586,8 @@ Expected number of pixels: 2500
   </div>
   <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
-<li class="toc-h1 nav-item toc-entry"><a class="reference internal nav-link" href="#">General Basic Image Processing</a><ul class="visible nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#creating-a-test-image">Creating a Test Image</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#loading-the-image-into-phenoscope">Loading the Image into PhenoScope</a></li>
-</ul>
-</li>
+<li class="toc-h1 nav-item toc-entry"><a class="reference internal nav-link" href="#">Creating a Test Image</a></li>
+<li class="toc-h1 nav-item toc-entry"><a class="reference internal nav-link" href="#loading-the-image-into-phenoscope">Loading the Image into PhenoScope</a></li>
 <li class="toc-h1 nav-item toc-entry"><a class="reference internal nav-link" href="#accessing-componenent-elements">Accessing Componenent Elements</a><ul class="visible nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#streamlined-prototyping">Streamlined Prototyping</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#basic-image-analysis">Basic Image Analysis</a></li>
