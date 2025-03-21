@@ -66,7 +66,7 @@ class ImageGridHandler(Image):
 
     @property
     def grid(self) -> GridAccessor:
-        """Returns the GridAccessor object for managing grid-related operations.
+        """Returns the GridAccessor object for grid-related operations.
 
         Returns:
             GridAccessor: Provides access to Grid-related operations.

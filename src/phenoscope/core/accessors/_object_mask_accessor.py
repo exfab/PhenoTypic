@@ -7,33 +7,20 @@ from skimage.measure import label
 import matplotlib.pyplot as plt
 import numpy as np
 
+from phenoscope.core.accessors import ImageAccessor
 from phenoscope.util.exceptions_ import InvalidMaskValueError, InvalidMaskScalarValueError, ArrayKeyValueShapeMismatchError
 
 
-class ObjectMask:
+class ObjectMask(ImageAccessor):
     """Represents a binary object mask linked to a parent image.
 
     This class allows for manipulation and analysis of a binary object mask associated with a parent image. It provides
     functionality to access, modify, display, and extract object regions of the mask. The object mask is tightly linked
     to the parent image, which is used as the source for the binary map.
 
-    Args:
-        parent_image (Image): The parent Image that the ObjectMask is associated with.
-
     Note:
         - Changes to the object mask will reset the labeling of the object map.
-
-    Attributes:
-        _parent_image (Image): The parent Image that the ObjectMask belongs to.
     """
-
-    def __init__(self, parent_image:Image):
-        """Initiallizes the ObjectMask object.
-
-        Args:
-            parent_image: (Image) The parent Image that the ObjectMask belongs to.
-        """
-        self._parent_image = parent_image
 
     def __getitem__(self, key):
         """Returns a copy of the binary object mask in array form"""

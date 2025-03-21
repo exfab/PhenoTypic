@@ -36,6 +36,8 @@
     <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-binder.css?v=f4aeca0c" />
     <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-dataframe.css?v=2082cf3c" />
     <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+    <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=39e7dd36" />
   
   <!-- So that users can add custom icons -->
   <script src="../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
@@ -46,13 +48,14 @@
     <script src="../_static/documentation_options.js?v=b9afe91b"></script>
     <script src="../_static/doctools.js?v=9bcbadda"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/design-tabs.js?v=f930bc37"></script>
     <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
     <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
     <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = 'api_reference/index';</script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="phenoscope.abstract" href="abstract.html" />
+    <link rel="next" title="phenoscope.Image" href="Image/phenoscope.Image.html" />
     <link rel="prev" title="Creating a Test Image" href="../examples/notebooks/basic_image_processing.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
@@ -122,8 +125,8 @@
       
     
     
-    <img src="../_static/PhenoScopeLogo.svg" class="logo__image only-light" alt="PhenoScope"/>
-    <img src="../_static/PhenoScopeLogo.svg" class="logo__image only-dark pst-js-only" alt="PhenoScope"/>
+    <img src="../_static/light_logo_sponsor.svg" class="logo__image only-light" alt="PhenoScope"/>
+    <img src="../_static/dark_logo_sponsor.svg" class="logo__image only-dark pst-js-only" alt="PhenoScope"/>
   
   
 </a></div>
@@ -165,6 +168,13 @@
   </a>
 </li>
 
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../dev_guide/index.html">
+    Developer Guide
+  </a>
+</li>
+
   </ul>
 </nav></div>
       
@@ -203,7 +213,7 @@
           
           
           
-          <a href="https://github.com/ExFAB-BioFoundry/PhenoScope" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+          <a href="https://github.com/Wheeldon-Lab/PhenoScope#" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
             <span class="sr-only">GitHub</span></a>
         </li>
 </ul></div>
@@ -281,6 +291,13 @@
   </a>
 </li>
 
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../dev_guide/index.html">
+    Developer Guide
+  </a>
+</li>
+
   </ul>
 </nav></div>
           
@@ -310,7 +327,7 @@
           
           
           
-          <a href="https://github.com/ExFAB-BioFoundry/PhenoScope" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+          <a href="https://github.com/Wheeldon-Lab/PhenoScope#" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
             <span class="sr-only">GitHub</span></a>
         </li>
 </ul></div>
@@ -324,29 +341,45 @@
 <nav class="bd-docs-nav bd-links"
      aria-label="Section Navigation">
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
-  <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+  <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">Image</span></p>
 <ul class="nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="abstract.html">phenoscope.abstract</a></li>
-<li class="toctree-l1 has-children"><a class="reference internal" href="core.html">phenoscope.core</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
-<li class="toctree-l2"><a class="reference internal" href="core.accessors.html">phenoscope.core.accessors</a></li>
-<li class="toctree-l2"><a class="reference internal" href="core.handlers.html">phenoscope.core.handlers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Image/phenoscope.Image.html">phenoscope.Image</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Image/phenoscope.Image.array.html">phenoscope.Image.array</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Image/phenoscope.Image.matrix.html">phenoscope.Image.matrix</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Image/phenoscope.Image.enh_matrix.html">phenoscope.Image.enh_matrix</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Image/phenoscope.Image.omask.html">phenoscope.Image.omask</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Image/phenoscope.Image.omap.html">phenoscope.Image.omap</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Image/phenoscope.Image.hsv.html">phenoscope.Image.hsv</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">GridImage</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="GridImage/phenoscope.GridImage.html">phenoscope.GridImage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="GridImage/phenoscope.GridImage.grid.html">phenoscope.GridImage.grid</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Modules</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1 has-children"><a class="reference internal" href="phenoscope.html">phenoscope package</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="phenoscope.abstract.html">phenoscope.abstract package</a></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="phenoscope.core.html">phenoscope.core package</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l3"><a class="reference internal" href="phenoscope.core.accessors.html">phenoscope.core.accessors package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenoscope.core.handlers.html">phenoscope.core.handlers package</a></li>
 </ul>
 </details></li>
-<li class="toctree-l1"><a class="reference internal" href="core.accessors.html">phenoscope.core.accessors</a></li>
-<li class="toctree-l1"><a class="reference internal" href="data.html">phenoscope.data</a></li>
-<li class="toctree-l1"><a class="reference internal" href="detection.html">phenoscope.detection</a></li>
-<li class="toctree-l1 has-children"><a class="reference internal" href="grid.html">phenoscope.grid</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
-<li class="toctree-l2"><a class="reference internal" href="grid.abstract.html">phenoscope.grid.abstract</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenoscope.data.html">phenoscope.data package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenoscope.detection.html">phenoscope.detection package</a></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="phenoscope.grid.html">phenoscope.grid package</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l3"><a class="reference internal" href="phenoscope.grid.abstract.html">phenoscope.grid.abstract package</a></li>
 </ul>
 </details></li>
-<li class="toctree-l1"><a class="reference internal" href="grid.abstract.html">phenoscope.grid.abstract</a></li>
-<li class="toctree-l1"><a class="reference internal" href="measure.html">phenoscope.measure</a></li>
-<li class="toctree-l1"><a class="reference internal" href="morphology.html">phenoscope.morphology</a></li>
-<li class="toctree-l1"><a class="reference internal" href="objects.html">phenoscope.objects</a></li>
-<li class="toctree-l1"><a class="reference internal" href="pipeline.html">phenoscope.pipeline</a></li>
-<li class="toctree-l1"><a class="reference internal" href="preprocessing.html">phenoscope.preprocessing</a></li>
-<li class="toctree-l1"><a class="reference internal" href="transform.html">phenoscope.transform</a></li>
-<li class="toctree-l1"><a class="reference internal" href="util.html">phenoscope.util</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenoscope.measure.html">phenoscope.measure package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenoscope.morphology.html">phenoscope.morphology package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenoscope.objects.html">phenoscope.objects package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenoscope.pipeline.html">phenoscope.pipeline package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenoscope.preprocessing.html">phenoscope.preprocessing package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenoscope.transform.html">phenoscope.transform package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenoscope.util.html">phenoscope.util package</a></li>
+</ul>
+</details></li>
 </ul>
 </div>
 </nav></div>
@@ -406,70 +439,50 @@
                   
   <section id="api-reference">
 <h1>API Reference<a class="headerlink" href="#api-reference" title="Link to this heading">#</a></h1>
-<p>This section contains detailed API documentation for PhenoScope.</p>
+<p>This section provides detailed API documentation for all PhenoScope modules and functions.</p>
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table autosummary">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="phenoscope.html#phenoscope.Image" title="phenoscope.Image"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Image</span></code></a>([input_image, input_schema])</p></td>
+<td><p>A comprehensive class for handling image processing, including manipulation, information sync, metadata management, and format conversion.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="Image/phenoscope.Image.array.html#phenoscope.Image.array" title="phenoscope.Image.array"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Image.array</span></code></a></p></td>
+<td><p>The image's array representation.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="Image/phenoscope.Image.matrix.html#phenoscope.Image.matrix" title="phenoscope.Image.matrix"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Image.matrix</span></code></a></p></td>
+<td><p>The image's matrix representation.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="Image/phenoscope.Image.enh_matrix.html#phenoscope.Image.enh_matrix" title="phenoscope.Image.enh_matrix"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Image.enh_matrix</span></code></a></p></td>
+<td><p><code class="xref py py-class docutils literal notranslate"><span class="pre">ImageEnhancedMatrix</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="Image/phenoscope.Image.omask.html#phenoscope.Image.omask" title="phenoscope.Image.omask"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Image.omask</span></code></a></p></td>
+<td><p>The Object Mask.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="Image/phenoscope.Image.omap.html#phenoscope.Image.omap" title="phenoscope.Image.omap"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Image.omap</span></code></a></p></td>
+<td><p>The Object Map.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="Image/phenoscope.Image.hsv.html#phenoscope.Image.hsv" title="phenoscope.Image.hsv"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Image.hsv</span></code></a></p></td>
+<td><p>Returns the HSV accessor.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table autosummary">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="phenoscope.html#phenoscope.GridImage" title="phenoscope.GridImage"><code class="xref py py-obj docutils literal notranslate"><span class="pre">GridImage</span></code></a>([input_image, input_schema, ...])</p></td>
+<td><p>A specialized Image object that supports grid-based processing and overlay visualization.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="GridImage/phenoscope.GridImage.grid.html#phenoscope.GridImage.grid" title="phenoscope.GridImage.grid"><code class="xref py py-obj docutils literal notranslate"><span class="pre">GridImage.grid</span></code></a></p></td>
+<td><p>Returns the GridAccessor object for grid-related operations.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
 <div class="toctree-wrapper compound">
-<p aria-level="2" class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Modules</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="abstract.html">phenoscope.abstract</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="abstract.html#module-phenoscope.abstract">Module contents</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="core.html">phenoscope.core</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="core.html#subpackages">Subpackages</a></li>
-<li class="toctree-l2"><a class="reference internal" href="core.html#module-phenoscope.core">Module contents</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="core.accessors.html">phenoscope.core.accessors</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="core.accessors.html#module-phenoscope.core.accessors">Module contents</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="data.html">phenoscope.data</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="data.html#module-phenoscope.data">Module contents</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="detection.html">phenoscope.detection</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="detection.html#module-phenoscope.detection">Module contents</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="grid.html">phenoscope.grid</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="grid.html#subpackages">Subpackages</a></li>
-<li class="toctree-l2"><a class="reference internal" href="grid.html#module-phenoscope.grid">Module contents</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="grid.abstract.html">phenoscope.grid.abstract</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="grid.abstract.html#module-phenoscope.grid.abstract">Module contents</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="measure.html">phenoscope.measure</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="measure.html#module-phenoscope.measure">Module contents</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="morphology.html">phenoscope.morphology</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="morphology.html#module-phenoscope.morphology">Module contents</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="objects.html">phenoscope.objects</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="objects.html#module-phenoscope.objects">Module contents</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="pipeline.html">phenoscope.pipeline</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="pipeline.html#module-phenoscope.pipeline">Module contents</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="preprocessing.html">phenoscope.preprocessing</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="preprocessing.html#module-phenoscope.preprocessing">Module contents</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="transform.html">phenoscope.transform</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="transform.html#module-phenoscope.transform">Module contents</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="util.html">phenoscope.util</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="util.html#submodules">Submodules</a></li>
-<li class="toctree-l2"><a class="reference internal" href="util.html#phenoscope-util-constants">phenoscope.util.constants</a></li>
-<li class="toctree-l2"><a class="reference internal" href="util.html#phenoscope-util-exceptions">phenoscope.util.exceptions</a></li>
-<li class="toctree-l2"><a class="reference internal" href="util.html#module-phenoscope.util.funcs">phenoscope.util.funcs module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="util.html#module-phenoscope.util">Module contents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="phenoscope.html">phenoscope package</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="phenoscope.html#subpackages">Subpackages</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenoscope.html#module-phenoscope">Module contents</a></li>
 </ul>
 </li>
 </ul>
@@ -496,11 +509,11 @@
       </div>
     </a>
     <a class="right-next"
-       href="abstract.html"
+       href="Image/phenoscope.Image.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">phenoscope.abstract</p>
+        <p class="prev-next-title">phenoscope.Image</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>

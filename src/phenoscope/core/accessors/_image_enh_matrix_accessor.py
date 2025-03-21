@@ -11,27 +11,18 @@ import matplotlib.pyplot as plt
 from skimage.color import label2rgb
 from skimage.exposure import histogram
 
+from phenoscope.core.accessors import ImageAccessor
 from phenoscope.util.exceptions_ import ArrayKeyValueShapeMismatchError
 
 
-class ImageEnhancedMatrix:
+class ImageEnhancedMatrix(ImageAccessor):
     """An accessor class to an image's enhanced matrix which is a copy of the original image matrix that is preprocessed for enhanced detection.
 
     Provides functionalities to manipulate and visualize the image enhanced matrix. This includes
     retrieving and setting data, resetting the matrix, visualizing histograms, viewing the matrix
     with overlays, and accessing matrix properties. The class relies on a handler for matrix operations
     and object mapping.
-
-    Parameters:
-        parent_image: The ImageHandler instance that contains the image enhanced matrix.
-
-    Attributes:
-        _parent_image (Image): The :class:`Image` instance that contains the image enhanced matrix and related data.
-
     """
-
-    def __init__(self, parent_image: Image):
-        self._parent_image = parent_image
 
     def __getitem__(self, key) -> np.ndarray:
         """

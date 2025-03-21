@@ -10,12 +10,13 @@ from matplotlib import pyplot as plt
 from skimage.color import label2rgb
 from skimage.exposure import histogram
 
+from phenoscope.core.accessors import ImageAccessor
 from phenoscope.util.constants_ import IMAGE_FORMATS
 from phenoscope.util.exceptions_ import IllegalAssignmentError
 
 
-class HsvAccessor:
-    """A accessor class to handle and analyze HSV (Hue, Saturation, Value) image data efficiently.
+class HsvAccessor(ImageAccessor):
+    """An accessor class to handle and analyze HSV (Hue, Saturation, Value) image data efficiently.
 
     This class provides functionality for accessing and processing HSV image data.
     Users can retrieve components (hue, saturation, brightness) of the image, generate
@@ -29,9 +30,6 @@ class HsvAccessor:
     Attributes:
         _parent_image (Image): The parent Image object that manages image data and operations.
     """
-
-    def __init__(self, parent_image: Image):
-        self._parent_image = parent_image
 
     def __getitem__(self, key) -> np.ndarray:
         return self._parent_image._hsv[key].copy()

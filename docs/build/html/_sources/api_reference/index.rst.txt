@@ -1,23 +1,36 @@
 API Reference
 =============
 
-This section contains detailed API documentation for PhenoScope.
+This section provides detailed API documentation for all PhenoScope modules and functions.
+
+.. currentmodule:: phenoscope
+.. autosummary::
+    :toctree: Image
+    :recursive:
+    :template: image_accessor.rst
+    :caption: Image
+
+    Image 
+    Image.array
+    Image.matrix
+    Image.enh_matrix
+    Image.omask
+    Image.omap
+    Image.object
+    Image.hsv
+
+.. currentmodule:: phenoscope
+.. autosummary::
+    :toctree: GridImage
+    :recursive:
+    :template: image_accessor.rst
+    :caption: GridImage
+
+    GridImage
+    GridImage.grid
 
 .. toctree::
    :maxdepth: 2
-   :caption: API Reference
+   :caption: Modules
 
-   abstract
-   core
-   core.accessors
-   data
-   detection
-   grid
-   grid.abstract
-   measure
-   morphology
-   objects
-   pipeline
-   preprocessing
-   transform
-   util
+   phenoscope

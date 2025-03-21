@@ -91,6 +91,7 @@ The ``accessors`` submodule is designed for developers and researchers working o
     - Advanced mathematical and matrix operations on image data.
 
 """
+from ._image_accessor import ImageAccessor
 from ._image_array_accessor import ImageArray
 from ._image_matrix_accessor import ImageMatrix
 from ._image_enh_matrix_accessor import ImageEnhancedMatrix
@@ -106,6 +107,7 @@ from ._grid_accessor import GridAccessor
 
 # Define __all__ to include all imported objects
 __all__ = [
+    "ImageAccessor",
     "ImageArray",
     "ImageMatrix",
     "ImageEnhancedMatrix",

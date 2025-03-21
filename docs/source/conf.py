@@ -8,12 +8,17 @@
 
 import os
 import sys
+import sphinx_autosummary_accessors
 sys.path.insert(0, os.path.abspath('../../src'))
 
 project = 'PhenoScope'
 copyright = '2025, ExFAB BioFoundry'
 author = 'Alexander Nguyen'
-github_url
+
+# Variables
+github_url = 'https://github.com/Wheeldon-Lab/PhenoScope#'
+LIGHT_LOGO_PATH = './_static/assets/500x225/no_background_svg/light_logo_sponsor.svg'
+DARK_LOGO_PATH = './_static/assets/500x225/no_background_svg/dark_logo_sponsor.svg'
 
 # Try to get the version from phenoscope, but use a default if not available
 try:
@@ -38,8 +43,12 @@ extensions = [
     'sphinx.ext.autosectionlabel',
     'nbsphinx',
     'sphinx_gallery.gen_gallery',
+    'sphinx_autosummary_accessors',
+    'sphinx_design',
     'myst_nb'
 ]
+
+autosummary_generate = True
 
 autodoc_default_options = {
     'members': True,  # Document class members
@@ -52,7 +61,7 @@ autodoc_default_options = {
 autodoc_typehints = 'both'
 autodoc_member_order = 'groupwise'
 
-templates_path = ['_templates']
+templates_path = ['_templates', sphinx_autosummary_accessors.templates_path]
 
 # nbsphinx configuration
 nbsphinx_execute = 'auto'
@@ -97,59 +106,23 @@ exclude_patterns = ['_build', '**.ipynb_checkpoints', '*.ipynb', 'auto_examples'
 # Themes: 'sphinxawesome_theme', 'furo', 'pydata_sphinx_theme'
 html_theme = 'pydata_sphinx_theme'
 html_static_path = ['_static']
-# html_css_files = [
-#     'custom.css',
-# ]
-
-if html_theme == "furo":
-    html_theme_options = {
-        "logo": {
-            "alt_text": "PhenoScope",
-            "link": "index"
-        },
-        "icon_links": [
-            {
-                "name": "GitHub",
-                "url": "https://github.com/ExFAB-BioFoundry/PhenoScope",
-                "icon": "fa-brands fa-github",
-            }
-        ],
-        "use_edit_page_button": False,
-        'light_css_variables': {
-        },
-        'dark_css_variables': {
-        }
-    }
-
-if html_theme == 'sphinxawesome_theme':
-    html_theme_options = {
-        "logo": {
-            "alt_text": "PhenoScope",
-            "link": "index"
-        },
-        "icon_links": [
-            {
-                "name": "GitHub",
-                "url": "https://github.com/ExFAB-BioFoundry/PhenoScope",
-                "icon": "fa-brands fa-github",
-            }
-        ],
-        "use_edit_page_button": False,
-        "logo_light":"../assets/logo_background_svg/PhenoScopeLogo.svg",
-        "logo_dark":"../assets/logo_background_svg/PhenoScopeLogo-DarkMode.svg"
-    }
+html_css_files = [
+    'custom.css',
+]
 
 if html_theme == 'pydata_sphinx_theme':
-    html_logo = "../assets/logo_background_svg/PhenoScopeLogo.svg"
+    html_logo = LIGHT_LOGO_PATH
     html_theme_options = {
         "logo": {
             "alt_text": "PhenoScope",
-            "link": "index"
+            "link": "index",
+            "image_light":LIGHT_LOGO_PATH,
+            "image_dark":DARK_LOGO_PATH
         },
         "icon_links": [
             {
                 "name": "GitHub",
-                "url": "https://github.com/ExFAB-BioFoundry/PhenoScope",
+                "url": github_url,
                 "icon": "fa-brands fa-github",
             }
         ],

@@ -11,10 +11,11 @@ import pandas as pd
 from skimage.color import label2rgb
 
 import phenoscope
+from phenoscope.core.accessors import ImageAccessor
 from phenoscope.util.constants_ import OBJECT_INFO, GRID
 
 
-class GridAccessor:
+class GridAccessor(ImageAccessor):
     """A class for accessing and manipulating grid-based data from a parent image object.
 
     This class is designed to facilitate operations on grid structures within a parent image. It provides methods

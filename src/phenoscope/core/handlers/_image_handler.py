@@ -246,6 +246,8 @@ class ImageHandler:
         Returns:
             Optional[ImageArray]: A class that can be accessed like a numpy array, but has extra methods to streamline development, or None if not set
 
+        Raises:
+            NoArrayError: If the input image was not an array
         See Also: :class:`ImageArray`
         """
         if self._array is None:
@@ -653,7 +655,9 @@ class ImageHandler:
         """
         self._matrix = matrix.copy()
         self.__det_matrix_subhandler.reset()
-        self.__object_map_subhandler.reset()
+
+        if self._sparse_object_map is None or matrix.shape!=self._sparse_object_map.shape:
+            self.__object_map_subhandler.reset()
 
     def _set_from_array(self, image: np.ndarray, input_schema: str) -> None:
         """Initializes all the components of an image from an array

@@ -17,13 +17,15 @@ description = "An image processing framework created for Ex-FAB NSF BioFoundry t
 
 readme="README.md"
 
-requires-python = "~=3.12"
+requires-python = ">=3.10"
 
 classifiers = [
     "Development Status :: 2 - Pre-Alpha",
     "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
     "Natural Language :: English",
     "Programming Language :: Python",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12"
 ]
 
@@ -59,7 +61,9 @@ dev = [
     "furo",
     "pydata-sphinx-theme",
     "sphinx-gallery",
-    "myst-nb"
+    "myst-nb",
+    "sphinx-autosummary-accessors",
+    "sphinx-design"
 ]
 
 [tool.pytest.ini_options]

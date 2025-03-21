@@ -8,12 +8,15 @@ from typing import Optional, Tuple
 import numpy as np
 
 import matplotlib.pyplot as plt
-from skimage.color import label2rgb
+from skimage.color import label2rgb, gray2rgb
 from skimage.exposure import histogram
 
-from phenoscope.util.exceptions_ import IllegalElementAssignmentError
+from phenoscope.core.accessors import ImageAccessor
+from phenoscope.util.exceptions_ import ArrayKeyValueShapeMismatchError
+from phenoscope.util.constants_ import IMAGE_FORMATS
 
-class ImageMatrix:
+
+class ImageMatrix(ImageAccessor):
     """An accessor for managing and visualizing image matrix data. This is the greyscale representation converted using weighted luminance
 
     This class provides a set of tools to access image data, analyze it through
@@ -22,45 +25,45 @@ class ImageMatrix:
     maintaining immutability for direct external modifications.
     Additionally, it supports overlaying annotations and labels on the image
     for data analysis purposes.
-
-    Attributes:
-        _parent_image (ImageHandler): The parent image handler object that manages
-            the image matrix and associated data.
     """
 
-    def __init__(self, parent_image: Image):
-        """Initiallizes the ImageMatrixSubhandler object.
-
-              Args:
-                  parent_image: (Image) The parent ImageHandler that the ImageMatrixSubhandler belongs to.
-              """
-        self._parent_image = parent_image
-
-    def __getitem__(self, key):
+    def __getitem__(self, key) -> np.ndarray:
         """
-        Provides the ability to access and return a copy of an internal matrix element from
-        the parent image using key-based indexing.
+        Provides functionality to retrieve a copy of a specified portion of the parent image's
+        matrix. This class method is used to access the image matrix data, or slices of the parent image
+        matrix based on the provided key.
 
         Args:
-            key: The index or slice used to access the corresponding element in the
-                parent image's matrix.
+            key (any): A key used to index or slice the parent image's matrix.
 
         Returns:
-            A copy of the matrix element or slice of the parent image's internal
-            matrix corresponding to the provided key.
-
+            np.ndarray: A copy of the accessed subset of the parent image's matrix.
         """
         return self._parent_image._matrix[key].copy()
 
     def __setitem__(self, key, value):
         """
-        Handles operations for managing and assigning sub-elements in an image matrix. The image matrix should be changed through the Image.set_images() method.
+        Sets the value for a given key in the parent image's matrix. Updates the parent
+        image data and schema accordingly to ensure consistency with the provided value.
+
+        Args:
+            key: The key in the matrix to update.
+            value: The new value to assign to the key. Must be an array of a compatible
+                shape or a primitive type like int, float, or bool.
 
         Raises:
-            IllegalElementAssignmentError: If an attempt is made to assign an invalid element to the image matrix.
-
+            ArrayKeyValueShapeMismatchError: If the shape of the value does not match
+                the shape of the existing key in the parent image's matrix.
         """
-        raise IllegalElementAssignmentError('Image.matrix')
+        if type(value) not in [int, float, bool]:
+            if self._parent_image._matrix[key].shape != value.shape:
+                raise ArrayKeyValueShapeMismatchError
+
+        self._parent_image._matrix[key] = value
+        if self._parent_image.schema not in IMAGE_FORMATS.MATRIX_FORMATS:
+            self._parent_image.set_image(input_image=gray2rgb(self._parent_image._matrix), input_schema=IMAGE_FORMATS.RGB)
+        else:
+            self._parent_image.set_image(input_image=self._parent_image._matrix, input_schema=IMAGE_FORMATS.GRAYSCALE)
 
     @property
     def shape(self) -> tuple:
@@ -88,7 +91,7 @@ class ImageMatrix:
         """
         return self._parent_image._matrix.copy()
 
-    def histogram(self, figsize: Tuple[int, int] = (10, 5))-> Tuple[plt.Figure, np.ndarray]:
+    def histogram(self, figsize: Tuple[int, int] = (10, 5)) -> Tuple[plt.Figure, np.ndarray]:
         """
         Generates a 2x2 subplot figure that includes the parent image and its grayscale histogram.
 

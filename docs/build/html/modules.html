@@ -36,6 +36,8 @@
     <link rel="stylesheet" type="text/css" href="_static/sg_gallery-binder.css?v=f4aeca0c" />
     <link rel="stylesheet" type="text/css" href="_static/sg_gallery-dataframe.css?v=2082cf3c" />
     <link rel="stylesheet" type="text/css" href="_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+    <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=39e7dd36" />
   
   <!-- So that users can add custom icons -->
   <script src="_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
@@ -46,7 +48,10 @@
     <script src="_static/documentation_options.js?v=b9afe91b"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/design-tabs.js?v=f930bc37"></script>
     <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+    <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = 'modules';</script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
@@ -118,8 +123,8 @@
       
     
     
-    <img src="_static/PhenoScopeLogo.svg" class="logo__image only-light" alt="PhenoScope"/>
-    <img src="_static/PhenoScopeLogo.svg" class="logo__image only-dark pst-js-only" alt="PhenoScope"/>
+    <img src="_static/light_logo_sponsor.svg" class="logo__image only-light" alt="PhenoScope"/>
+    <img src="_static/dark_logo_sponsor.svg" class="logo__image only-dark pst-js-only" alt="PhenoScope"/>
   
   
 </a></div>
@@ -161,6 +166,13 @@
   </a>
 </li>
 
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="dev_guide/index.html">
+    Developer Guide
+  </a>
+</li>
+
   </ul>
 </nav></div>
       
@@ -199,7 +211,7 @@
           
           
           
-          <a href="https://github.com/ExFAB-BioFoundry/PhenoScope" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+          <a href="https://github.com/Wheeldon-Lab/PhenoScope#" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
             <span class="sr-only">GitHub</span></a>
         </li>
 </ul></div>
@@ -279,6 +291,13 @@
   </a>
 </li>
 
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="dev_guide/index.html">
+    Developer Guide
+  </a>
+</li>
+
   </ul>
 </nav></div>
           
@@ -308,7 +327,7 @@
           
           
           
-          <a href="https://github.com/ExFAB-BioFoundry/PhenoScope" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+          <a href="https://github.com/Wheeldon-Lab/PhenoScope#" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
             <span class="sr-only">GitHub</span></a>
         </li>
 </ul></div>
@@ -376,65 +395,123 @@
 <div class="toctree-wrapper compound">
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Modules</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="phenoscope.html">phenoscope</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="phenoscope.html#classes">Classes</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="phenoscope.html#phenoscope.Image"><code class="docutils literal notranslate"><span class="pre">Image</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="phenoscope.html#phenoscope.Image.__getitem__"><code class="docutils literal notranslate"><span class="pre">Image.__getitem__()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="phenoscope.html#phenoscope.Image.__setitem__"><code class="docutils literal notranslate"><span class="pre">Image.__setitem__()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="phenoscope.html#phenoscope.Image.copy"><code class="docutils literal notranslate"><span class="pre">Image.copy()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="phenoscope.html#phenoscope.Image.imread"><code class="docutils literal notranslate"><span class="pre">Image.imread()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="phenoscope.html#phenoscope.Image.isempty"><code class="docutils literal notranslate"><span class="pre">Image.isempty()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="phenoscope.html#phenoscope.Image.reset"><code class="docutils literal notranslate"><span class="pre">Image.reset()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="phenoscope.html#phenoscope.Image.rotate"><code class="docutils literal notranslate"><span class="pre">Image.rotate()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="phenoscope.html#phenoscope.Image.set_image"><code class="docutils literal notranslate"><span class="pre">Image.set_image()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="phenoscope.html#phenoscope.Image.show"><code class="docutils literal notranslate"><span class="pre">Image.show()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="phenoscope.html#phenoscope.Image.show_overlay"><code class="docutils literal notranslate"><span class="pre">Image.show_overlay()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="phenoscope.html#phenoscope.Image.array"><code class="docutils literal notranslate"><span class="pre">Image.array</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="phenoscope.html#phenoscope.Image.enh_matrix"><code class="docutils literal notranslate"><span class="pre">Image.enh_matrix</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="phenoscope.html#phenoscope.Image.hsv"><code class="docutils literal notranslate"><span class="pre">Image.hsv</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="phenoscope.html#phenoscope.Image.matrix"><code class="docutils literal notranslate"><span class="pre">Image.matrix</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="phenoscope.html#phenoscope.Image.name"><code class="docutils literal notranslate"><span class="pre">Image.name</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="phenoscope.html#phenoscope.Image.num_objects"><code class="docutils literal notranslate"><span class="pre">Image.num_objects</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="phenoscope.html#phenoscope.Image.objects"><code class="docutils literal notranslate"><span class="pre">Image.objects</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="phenoscope.html#phenoscope.Image.omap"><code class="docutils literal notranslate"><span class="pre">Image.omap</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="phenoscope.html#phenoscope.Image.omask"><code class="docutils literal notranslate"><span class="pre">Image.omask</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="phenoscope.html#phenoscope.Image.props"><code class="docutils literal notranslate"><span class="pre">Image.props</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="phenoscope.html#phenoscope.Image.schema"><code class="docutils literal notranslate"><span class="pre">Image.schema</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="phenoscope.html#phenoscope.Image.shape"><code class="docutils literal notranslate"><span class="pre">Image.shape</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="phenoscope.html#phenoscope.Image.uuid"><code class="docutils literal notranslate"><span class="pre">Image.uuid</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="api_reference/phenoscope.html">phenoscope package</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="api_reference/phenoscope.html#subpackages">Subpackages</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="api_reference/phenoscope.abstract.html">phenoscope.abstract package</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="api_reference/phenoscope.abstract.html#module-phenoscope.abstract">Module contents</a></li>
 </ul>
 </li>
-<li class="toctree-l3"><a class="reference internal" href="phenoscope.html#phenoscope.GridImage"><code class="docutils literal notranslate"><span class="pre">GridImage</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="phenoscope.html#phenoscope.GridImage.__getitem__"><code class="docutils literal notranslate"><span class="pre">GridImage.__getitem__()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="phenoscope.html#phenoscope.GridImage.__init__"><code class="docutils literal notranslate"><span class="pre">GridImage.__init__()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="phenoscope.html#phenoscope.GridImage.__setitem__"><code class="docutils literal notranslate"><span class="pre">GridImage.__setitem__()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="phenoscope.html#phenoscope.GridImage.copy"><code class="docutils literal notranslate"><span class="pre">GridImage.copy()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="phenoscope.html#phenoscope.GridImage.imread"><code class="docutils literal notranslate"><span class="pre">GridImage.imread()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="phenoscope.html#phenoscope.GridImage.isempty"><code class="docutils literal notranslate"><span class="pre">GridImage.isempty()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="phenoscope.html#phenoscope.GridImage.reset"><code class="docutils literal notranslate"><span class="pre">GridImage.reset()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="phenoscope.html#phenoscope.GridImage.rotate"><code class="docutils literal notranslate"><span class="pre">GridImage.rotate()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="phenoscope.html#phenoscope.GridImage.set_image"><code class="docutils literal notranslate"><span class="pre">GridImage.set_image()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="phenoscope.html#phenoscope.GridImage.show"><code class="docutils literal notranslate"><span class="pre">GridImage.show()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="phenoscope.html#phenoscope.GridImage.show_overlay"><code class="docutils literal notranslate"><span class="pre">GridImage.show_overlay()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="phenoscope.html#phenoscope.GridImage.array"><code class="docutils literal notranslate"><span class="pre">GridImage.array</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="phenoscope.html#phenoscope.GridImage.enh_matrix"><code class="docutils literal notranslate"><span class="pre">GridImage.enh_matrix</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="phenoscope.html#phenoscope.GridImage.grid"><code class="docutils literal notranslate"><span class="pre">GridImage.grid</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="phenoscope.html#phenoscope.GridImage.hsv"><code class="docutils literal notranslate"><span class="pre">GridImage.hsv</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="phenoscope.html#phenoscope.GridImage.matrix"><code class="docutils literal notranslate"><span class="pre">GridImage.matrix</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="phenoscope.html#phenoscope.GridImage.name"><code class="docutils literal notranslate"><span class="pre">GridImage.name</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="phenoscope.html#phenoscope.GridImage.num_objects"><code class="docutils literal notranslate"><span class="pre">GridImage.num_objects</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="phenoscope.html#phenoscope.GridImage.objects"><code class="docutils literal notranslate"><span class="pre">GridImage.objects</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="phenoscope.html#phenoscope.GridImage.omap"><code class="docutils literal notranslate"><span class="pre">GridImage.omap</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="phenoscope.html#phenoscope.GridImage.omask"><code class="docutils literal notranslate"><span class="pre">GridImage.omask</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="phenoscope.html#phenoscope.GridImage.props"><code class="docutils literal notranslate"><span class="pre">GridImage.props</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="phenoscope.html#phenoscope.GridImage.schema"><code class="docutils literal notranslate"><span class="pre">GridImage.schema</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="phenoscope.html#phenoscope.GridImage.shape"><code class="docutils literal notranslate"><span class="pre">GridImage.shape</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="phenoscope.html#phenoscope.GridImage.uuid"><code class="docutils literal notranslate"><span class="pre">GridImage.uuid</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="api_reference/phenoscope.core.html">phenoscope.core package</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="api_reference/phenoscope.core.html#subpackages">Subpackages</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api_reference/phenoscope.core.html#module-phenoscope.core">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="api_reference/phenoscope.data.html">phenoscope.data package</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="api_reference/phenoscope.data.html#module-phenoscope.data">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="api_reference/phenoscope.detection.html">phenoscope.detection package</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="api_reference/phenoscope.detection.html#module-phenoscope.detection">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="api_reference/phenoscope.grid.html">phenoscope.grid package</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="api_reference/phenoscope.grid.html#subpackages">Subpackages</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api_reference/phenoscope.grid.html#module-phenoscope.grid">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="api_reference/phenoscope.measure.html">phenoscope.measure package</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="api_reference/phenoscope.measure.html#module-phenoscope.measure">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="api_reference/phenoscope.morphology.html">phenoscope.morphology package</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="api_reference/phenoscope.morphology.html#module-phenoscope.morphology">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="api_reference/phenoscope.objects.html">phenoscope.objects package</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="api_reference/phenoscope.objects.html#module-phenoscope.objects">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="api_reference/phenoscope.pipeline.html">phenoscope.pipeline package</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="api_reference/phenoscope.pipeline.html#module-phenoscope.pipeline">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="api_reference/phenoscope.preprocessing.html">phenoscope.preprocessing package</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="api_reference/phenoscope.preprocessing.html#module-phenoscope.preprocessing">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="api_reference/phenoscope.transform.html">phenoscope.transform package</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="api_reference/phenoscope.transform.html#module-phenoscope.transform">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="api_reference/phenoscope.util.html">phenoscope.util package</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="api_reference/phenoscope.util.html#submodules">Submodules</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api_reference/phenoscope.util.html#module-phenoscope.util.constants_">phenoscope.util.constants_ module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api_reference/phenoscope.util.html#module-phenoscope.util.exceptions_">phenoscope.util.exceptions_ module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api_reference/phenoscope.util.html#module-phenoscope.util.funcs">phenoscope.util.funcs module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api_reference/phenoscope.util.html#module-phenoscope.util.labels">phenoscope.util.labels module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api_reference/phenoscope.util.html#module-phenoscope.util">Module contents</a></li>
 </ul>
 </li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="phenoscope.html#methods">Methods</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api_reference/phenoscope.html#module-phenoscope">Module contents</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="api_reference/phenoscope.html#phenoscope.GridImage"><code class="docutils literal notranslate"><span class="pre">GridImage</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="api_reference/phenoscope.html#phenoscope.GridImage.__getitem__"><code class="docutils literal notranslate"><span class="pre">GridImage.__getitem__()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api_reference/phenoscope.html#phenoscope.GridImage.__init__"><code class="docutils literal notranslate"><span class="pre">GridImage.__init__()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api_reference/phenoscope.html#phenoscope.GridImage.__setitem__"><code class="docutils literal notranslate"><span class="pre">GridImage.__setitem__()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api_reference/phenoscope.html#phenoscope.GridImage.copy"><code class="docutils literal notranslate"><span class="pre">GridImage.copy()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api_reference/phenoscope.html#phenoscope.GridImage.imread"><code class="docutils literal notranslate"><span class="pre">GridImage.imread()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api_reference/phenoscope.html#phenoscope.GridImage.isempty"><code class="docutils literal notranslate"><span class="pre">GridImage.isempty()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api_reference/phenoscope.html#phenoscope.GridImage.reset"><code class="docutils literal notranslate"><span class="pre">GridImage.reset()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api_reference/phenoscope.html#phenoscope.GridImage.rotate"><code class="docutils literal notranslate"><span class="pre">GridImage.rotate()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api_reference/phenoscope.html#phenoscope.GridImage.set_image"><code class="docutils literal notranslate"><span class="pre">GridImage.set_image()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api_reference/phenoscope.html#phenoscope.GridImage.show"><code class="docutils literal notranslate"><span class="pre">GridImage.show()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api_reference/phenoscope.html#phenoscope.GridImage.show_overlay"><code class="docutils literal notranslate"><span class="pre">GridImage.show_overlay()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api_reference/phenoscope.html#phenoscope.GridImage.array"><code class="docutils literal notranslate"><span class="pre">GridImage.array</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api_reference/phenoscope.html#phenoscope.GridImage.enh_matrix"><code class="docutils literal notranslate"><span class="pre">GridImage.enh_matrix</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api_reference/phenoscope.html#phenoscope.GridImage.grid"><code class="docutils literal notranslate"><span class="pre">GridImage.grid</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api_reference/phenoscope.html#phenoscope.GridImage.hsv"><code class="docutils literal notranslate"><span class="pre">GridImage.hsv</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api_reference/phenoscope.html#phenoscope.GridImage.matrix"><code class="docutils literal notranslate"><span class="pre">GridImage.matrix</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api_reference/phenoscope.html#phenoscope.GridImage.name"><code class="docutils literal notranslate"><span class="pre">GridImage.name</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api_reference/phenoscope.html#phenoscope.GridImage.num_objects"><code class="docutils literal notranslate"><span class="pre">GridImage.num_objects</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api_reference/phenoscope.html#phenoscope.GridImage.objects"><code class="docutils literal notranslate"><span class="pre">GridImage.objects</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api_reference/phenoscope.html#phenoscope.GridImage.omap"><code class="docutils literal notranslate"><span class="pre">GridImage.omap</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api_reference/phenoscope.html#phenoscope.GridImage.omask"><code class="docutils literal notranslate"><span class="pre">GridImage.omask</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api_reference/phenoscope.html#phenoscope.GridImage.props"><code class="docutils literal notranslate"><span class="pre">GridImage.props</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api_reference/phenoscope.html#phenoscope.GridImage.schema"><code class="docutils literal notranslate"><span class="pre">GridImage.schema</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api_reference/phenoscope.html#phenoscope.GridImage.shape"><code class="docutils literal notranslate"><span class="pre">GridImage.shape</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api_reference/phenoscope.html#phenoscope.GridImage.uuid"><code class="docutils literal notranslate"><span class="pre">GridImage.uuid</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="api_reference/phenoscope.html#phenoscope.Image"><code class="docutils literal notranslate"><span class="pre">Image</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="api_reference/phenoscope.html#phenoscope.Image.__getitem__"><code class="docutils literal notranslate"><span class="pre">Image.__getitem__()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api_reference/phenoscope.html#phenoscope.Image.__setitem__"><code class="docutils literal notranslate"><span class="pre">Image.__setitem__()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api_reference/phenoscope.html#phenoscope.Image.copy"><code class="docutils literal notranslate"><span class="pre">Image.copy()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api_reference/phenoscope.html#phenoscope.Image.imread"><code class="docutils literal notranslate"><span class="pre">Image.imread()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api_reference/phenoscope.html#phenoscope.Image.isempty"><code class="docutils literal notranslate"><span class="pre">Image.isempty()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api_reference/phenoscope.html#phenoscope.Image.reset"><code class="docutils literal notranslate"><span class="pre">Image.reset()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api_reference/phenoscope.html#phenoscope.Image.rotate"><code class="docutils literal notranslate"><span class="pre">Image.rotate()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api_reference/phenoscope.html#phenoscope.Image.set_image"><code class="docutils literal notranslate"><span class="pre">Image.set_image()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api_reference/phenoscope.html#phenoscope.Image.show"><code class="docutils literal notranslate"><span class="pre">Image.show()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api_reference/phenoscope.html#phenoscope.Image.show_overlay"><code class="docutils literal notranslate"><span class="pre">Image.show_overlay()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api_reference/phenoscope.html#phenoscope.Image.array"><code class="docutils literal notranslate"><span class="pre">Image.array</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api_reference/phenoscope.html#phenoscope.Image.enh_matrix"><code class="docutils literal notranslate"><span class="pre">Image.enh_matrix</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api_reference/phenoscope.html#phenoscope.Image.hsv"><code class="docutils literal notranslate"><span class="pre">Image.hsv</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api_reference/phenoscope.html#phenoscope.Image.matrix"><code class="docutils literal notranslate"><span class="pre">Image.matrix</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api_reference/phenoscope.html#phenoscope.Image.name"><code class="docutils literal notranslate"><span class="pre">Image.name</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api_reference/phenoscope.html#phenoscope.Image.num_objects"><code class="docutils literal notranslate"><span class="pre">Image.num_objects</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api_reference/phenoscope.html#phenoscope.Image.objects"><code class="docutils literal notranslate"><span class="pre">Image.objects</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api_reference/phenoscope.html#phenoscope.Image.omap"><code class="docutils literal notranslate"><span class="pre">Image.omap</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api_reference/phenoscope.html#phenoscope.Image.omask"><code class="docutils literal notranslate"><span class="pre">Image.omask</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api_reference/phenoscope.html#phenoscope.Image.props"><code class="docutils literal notranslate"><span class="pre">Image.props</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api_reference/phenoscope.html#phenoscope.Image.schema"><code class="docutils literal notranslate"><span class="pre">Image.schema</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api_reference/phenoscope.html#phenoscope.Image.shape"><code class="docutils literal notranslate"><span class="pre">Image.shape</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api_reference/phenoscope.html#phenoscope.Image.uuid"><code class="docutils literal notranslate"><span class="pre">Image.uuid</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="api_reference/phenoscope.html#phenoscope.imread"><code class="docutils literal notranslate"><span class="pre">imread()</span></code></a></li>
+</ul>
+</li>
 </ul>
 </li>
 </ul>

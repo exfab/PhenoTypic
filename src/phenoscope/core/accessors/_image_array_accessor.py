@@ -10,11 +10,12 @@ from typing import Tuple, Optional
 from skimage.color import label2rgb
 from skimage.exposure import histogram
 
+from phenoscope.core.accessors import ImageAccessor
 from phenoscope.util.constants_ import IMAGE_FORMATS
-from phenoscope.util.exceptions_ import IllegalElementAssignmentError
+from phenoscope.util.exceptions_ import IllegalElementAssignmentError, ArrayKeyValueShapeMismatchError
 
 
-class ImageArray:
+class ImageArray(ImageAccessor):
     """An accessor for handling image arrays with helper methods for accessing, modifying, visualizing, and analyzing the multichannel image data.
 
     It relies on the parent image handler object that serves as the bridge to the underlying image
@@ -30,14 +31,7 @@ class ImageArray:
     image (including overlays and highlighted objects), generating channel-specific
     histograms, and accessing image data attributes, such as shape.
 
-    Attributes:
-        _parent_image: An internal attribute referring to the parent :class:`Image` object that mediates
-            interactions with the underlying image array, properties (shape, name, schema),
-            and associated object maps or labels.
     """
-
-    def __init__(self, parent_image: Image):
-        self._parent_image: Image = parent_image
 
     def __getitem__(self, key) -> np.ndarray:
         """
@@ -54,13 +48,29 @@ class ImageArray:
         return self._parent_image._array[key].copy()
 
     def __setitem__(self, key, value):
-        """Represents an exception that occurs when an illegal assignment is attempted on the images array. Use Image.set_image() to change image array data.
+        """
+        Sets a value for a given key in the parent image array. The value must either be of
+        type int, float, or bool, or it must match the shape of the corresponding key's value
+        in the parent image array. If the value's shape does not align with the required shape,
+        an exception is raised.
+
+        Note: If you want to change the entire image array, use Image.set_image() instead.
+
+        Args:
+            key: Index key specifying the location in the parent image array to modify.
+            value: The new value to assign to the specified key in the array. Can be of types
+                int, float, or bool. If not, it must match the shape of the target array segment.
 
         Raises:
-            IllegalElementAssignmentError: Raised when an illegal
-                element assignment is attempted within the image array subhandler.
+            ArrayKeyValueShapeMismatchError: If the value is an array and its shape does not match
         """
-        raise IllegalElementAssignmentError('Image.array')
+        if type(value) not in [int, float, bool]:
+            if value.shape != self._parent_image._array[key].shape:
+                raise ArrayKeyValueShapeMismatchError
+
+        self._parent_image._array[key] = value
+        self._parent_image._set_from_array(self._parent_image._array, input_schema=IMAGE_FORMATS.RGB)
+
 
     @property
     def shape(self) -> Optional[tuple[int, ...]]:
@@ -251,8 +261,7 @@ class ImageArray:
                 to the name of the image handler.
 
         Returns:
-            Tuple[plt.Figure, plt.Axes]: A tuple containing the matplotlib Figure and
-                Axes objects used for rendering the visualization.
+            Tuple[plt.Figure, plt.Axes]: A tuple containing the matplotlib Figure and Axes objects used for rendering the visualization.
         """
         if ax is None:
             fig, ax = plt.subplots(figsize=figsize)
@@ -287,5 +296,19 @@ class ImageArray:
         return fig, ax
 
     def extract_objects(self, bg_color: int = 0) -> np.ndarray:
-        """Extracts the objects from the image array. With the background elements set to 0"""
+        """
+        Extracts connected components (objects) from the image based on the given background color.
+
+        This method identifies and extracts all the connected components (objects) within the image
+        that are not of the specified background color. The operation relies on internal references
+        to the parent image and its associated mask processing capabilities.
+
+        Args:
+            bg_color (int): The background color to exclude when extracting objects.
+                Pixels within the image matching this color will be treated as background
+                and ignored during the extraction process.
+
+        Returns:
+            np.ndarray: A Numpy array containing the extracted objects from the image.
+        """
         return self._parent_image.omask._extract_objects(self._parent_image.array[:], bg_color=bg_color)

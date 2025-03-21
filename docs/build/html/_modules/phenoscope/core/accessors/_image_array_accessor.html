@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>phenoscope.core.accessors._image_array_accessor &#8212; PhenoScope 0.5.0 documentation</title>
+    <title>phenoscope.core.accessors._image_array_accessor &#8212; PhenoScope 0.5.1 documentation</title>
   
   
   
@@ -30,6 +30,13 @@
 <link href="../../../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
 
     <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/mystnb.4510f1fc1dee50b3e5859aac5469c37c29e427902b24a333a5f9fcb2f0b3ac41.css?v=be8a1c11" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/sg_gallery.css?v=d2d258e8" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/sg_gallery-binder.css?v=f4aeca0c" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/custom.css?v=39e7dd36" />
   
   <!-- So that users can add custom icons -->
   <script src="../../../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
@@ -37,15 +44,17 @@
   <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../../_static/documentation_options.js?v=1dd76d02"></script>
+    <script src="../../../../_static/documentation_options.js?v=b9afe91b"></script>
     <script src="../../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../../_static/design-tabs.js?v=f930bc37"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = '_modules/phenoscope/core/accessors/_image_array_accessor';</script>
     <link rel="index" title="Index" href="../../../../genindex.html" />
     <link rel="search" title="Search" href="../../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.5.0" />
+  <meta name="docsearch:version" content="0.5.1" />
   </head>
   
   
@@ -97,7 +106,7 @@
       <div class="navbar-item">
 
   
-    
+     
   
 
 <a class="navbar-brand logo" href="../../../../index.html">
@@ -106,8 +115,14 @@
   
   
   
+    
+    
+      
+    
+    
+    <img src="../../../../_static/light_logo_sponsor.svg" class="logo__image only-light" alt="PhenoScope"/>
+    <img src="../../../../_static/dark_logo_sponsor.svg" class="logo__image only-dark pst-js-only" alt="PhenoScope"/>
   
-    <p class="title logo__title">PhenoScope 0.5.0 documentation</p>
   
 </a></div>
     
@@ -148,6 +163,13 @@
   </a>
 </li>
 
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../dev_guide/index.html">
+    Developer Guide
+  </a>
+</li>
+
   </ul>
 </nav></div>
       
@@ -174,6 +196,22 @@
   <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
   <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
 </button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/Wheeldon-Lab/PhenoScope#" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
       
     </div>
     
@@ -246,6 +284,13 @@
   </a>
 </li>
 
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../dev_guide/index.html">
+    Developer Guide
+  </a>
+</li>
+
   </ul>
 </nav></div>
           
@@ -263,6 +308,22 @@
   <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
   <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
 </button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/Wheeldon-Lab/PhenoScope#" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
         
       </div>
     
@@ -337,11 +398,11 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">skimage.exposure</span><span class="w"> </span><span class="kn">import</span> <span class="n">histogram</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenoscope.util.constants_</span><span class="w"> </span><span class="kn">import</span> <span class="n">IMAGE_FORMATS</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">phenoscope.util.exceptions_</span><span class="w"> </span><span class="kn">import</span> <span class="n">IllegalElementAssignmentError</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenoscope.util.exceptions_</span><span class="w"> </span><span class="kn">import</span> <span class="n">IllegalElementAssignmentError</span><span class="p">,</span> <span class="n">ArrayKeyValueShapeMismatchError</span>
 
 
 <div class="viewcode-block" id="ImageArray">
-<a class="viewcode-back" href="../../../../api_reference/core.accessors.html#phenoscope.core.accessors.ImageArray">[docs]</a>
+<a class="viewcode-back" href="../../../../api_reference/phenoscope.core.accessors.html#phenoscope.core.accessors.ImageArray">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">ImageArray</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;An accessor for handling image arrays with helper methods for accessing, modifying, visualizing, and analyzing the multichannel image data.</span>
 
@@ -368,7 +429,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_parent_image</span><span class="p">:</span> <span class="n">Image</span> <span class="o">=</span> <span class="n">parent_image</span>
 
 <div class="viewcode-block" id="ImageArray.__getitem__">
-<a class="viewcode-back" href="../../../../api_reference/core.accessors.html#phenoscope.core.accessors.ImageArray.__getitem__">[docs]</a>
+<a class="viewcode-back" href="../../../../api_reference/phenoscope.core.accessors.html#phenoscope.core.accessors.ImageArray.__getitem__">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="fm">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Returns a copy of the elements at the subregion specified by the given key.</span>
@@ -385,15 +446,31 @@
 
 
 <div class="viewcode-block" id="ImageArray.__setitem__">
-<a class="viewcode-back" href="../../../../api_reference/core.accessors.html#phenoscope.core.accessors.ImageArray.__setitem__">[docs]</a>
+<a class="viewcode-back" href="../../../../api_reference/phenoscope.core.accessors.html#phenoscope.core.accessors.ImageArray.__setitem__">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="fm">__setitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Represents an exception that occurs when an illegal assignment is attempted on the images array. Use Image.set_image() to change image array data.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Sets a value for a given key in the parent image array. The value must either be of</span>
+<span class="sd">        type int, float, or bool, or it must match the shape of the corresponding key&#39;s value</span>
+<span class="sd">        in the parent image array. If the value&#39;s shape does not align with the required shape,</span>
+<span class="sd">        an exception is raised.</span>
+
+<span class="sd">        Note: If you want to change the entire image array, use Image.set_image() instead.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            key: Index key specifying the location in the parent image array to modify.</span>
+<span class="sd">            value: The new value to assign to the specified key in the array. Can be of types</span>
+<span class="sd">                int, float, or bool. If not, it must match the shape of the target array segment.</span>
 
 <span class="sd">        Raises:</span>
-<span class="sd">            IllegalElementAssignmentError: Raised when an illegal</span>
-<span class="sd">                element assignment is attempted within the image array subhandler.</span>
+<span class="sd">            ArrayKeyValueShapeMismatchError: If the value is an array and its shape does not match</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="n">IllegalElementAssignmentError</span><span class="p">(</span><span class="s1">&#39;Image.array&#39;</span><span class="p">)</span></div>
+        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">value</span><span class="p">)</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">bool</span><span class="p">]:</span>
+            <span class="k">if</span> <span class="n">value</span><span class="o">.</span><span class="n">shape</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parent_image</span><span class="o">.</span><span class="n">_array</span><span class="p">[</span><span class="n">key</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="n">ArrayKeyValueShapeMismatchError</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_parent_image</span><span class="o">.</span><span class="n">_array</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_parent_image</span><span class="o">.</span><span class="n">_set_from_array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_parent_image</span><span class="o">.</span><span class="n">_array</span><span class="p">,</span> <span class="n">input_schema</span><span class="o">=</span><span class="n">IMAGE_FORMATS</span><span class="o">.</span><span class="n">RGB</span><span class="p">)</span></div>
+
 
 
     <span class="nd">@property</span>
@@ -402,14 +479,14 @@
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parent_image</span><span class="o">.</span><span class="n">_array</span><span class="o">.</span><span class="n">shape</span>
 
 <div class="viewcode-block" id="ImageArray.copy">
-<a class="viewcode-back" href="../../../../api_reference/core.accessors.html#phenoscope.core.accessors.ImageArray.copy">[docs]</a>
+<a class="viewcode-back" href="../../../../api_reference/phenoscope.core.accessors.html#phenoscope.core.accessors.ImageArray.copy">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">copy</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Returns a copy of the image array&quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parent_image</span><span class="o">.</span><span class="n">_array</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span></div>
 
 
 <div class="viewcode-block" id="ImageArray.histogram">
-<a class="viewcode-back" href="../../../../api_reference/core.accessors.html#phenoscope.core.accessors.ImageArray.histogram">[docs]</a>
+<a class="viewcode-back" href="../../../../api_reference/phenoscope.core.accessors.html#phenoscope.core.accessors.ImageArray.histogram">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">histogram</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">figsize</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">5</span><span class="p">),</span> <span class="n">linewidth</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">plt</span><span class="o">.</span><span class="n">Figure</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Generates histograms for each channel of the image represented in the provided handler</span>
@@ -462,7 +539,7 @@
 
 
 <div class="viewcode-block" id="ImageArray.show">
-<a class="viewcode-back" href="../../../../api_reference/core.accessors.html#phenoscope.core.accessors.ImageArray.show">[docs]</a>
+<a class="viewcode-back" href="../../../../api_reference/phenoscope.core.accessors.html#phenoscope.core.accessors.ImageArray.show">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">show</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
              <span class="n">channel</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
              <span class="n">ax</span><span class="p">:</span> <span class="n">plt</span><span class="o">.</span><span class="n">Axes</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
@@ -501,7 +578,7 @@
 
 
 <div class="viewcode-block" id="ImageArray.show_overlay">
-<a class="viewcode-back" href="../../../../api_reference/core.accessors.html#phenoscope.core.accessors.ImageArray.show_overlay">[docs]</a>
+<a class="viewcode-back" href="../../../../api_reference/phenoscope.core.accessors.html#phenoscope.core.accessors.ImageArray.show_overlay">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">show_overlay</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">object_label</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">ax</span><span class="p">:</span> <span class="n">plt</span><span class="o">.</span><span class="n">Axes</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
                      <span class="n">figsize</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">5</span><span class="p">),</span>
                      <span class="n">annotate</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
@@ -571,7 +648,7 @@
 
 
 <div class="viewcode-block" id="ImageArray.show_objects">
-<a class="viewcode-back" href="../../../../api_reference/core.accessors.html#phenoscope.core.accessors.ImageArray.show_objects">[docs]</a>
+<a class="viewcode-back" href="../../../../api_reference/phenoscope.core.accessors.html#phenoscope.core.accessors.ImageArray.show_objects">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">show_objects</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">channel</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
                      <span class="n">bg_color</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">cmap</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;gray&#39;</span><span class="p">,</span>
                      <span class="n">ax</span><span class="p">:</span> <span class="n">plt</span><span class="o">.</span><span class="n">Axes</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">figsize</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">5</span><span class="p">),</span>
@@ -636,7 +713,7 @@
 
 
 <div class="viewcode-block" id="ImageArray.extract_objects">
-<a class="viewcode-back" href="../../../../api_reference/core.accessors.html#phenoscope.core.accessors.ImageArray.extract_objects">[docs]</a>
+<a class="viewcode-back" href="../../../../api_reference/phenoscope.core.accessors.html#phenoscope.core.accessors.ImageArray.extract_objects">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">extract_objects</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">bg_color</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Extracts the objects from the image array. With the background elements set to 0&quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parent_image</span><span class="o">.</span><span class="n">omask</span><span class="o">.</span><span class="n">_extract_objects</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_parent_image</span><span class="o">.</span><span class="n">array</span><span class="p">[:],</span> <span class="n">bg_color</span><span class="o">=</span><span class="n">bg_color</span><span class="p">)</span></div>

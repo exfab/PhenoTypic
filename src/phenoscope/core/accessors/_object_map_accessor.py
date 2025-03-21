@@ -9,10 +9,11 @@ from scipy.sparse import csc_matrix, coo_matrix
 import matplotlib.pyplot as plt
 from skimage.measure import regionprops_table, label
 
+from phenoscope.core.accessors import ImageAccessor
 from phenoscope.util.exceptions_ import UnknownError, ArrayKeyValueShapeMismatchError, InvalidMapValueError
 
 
-class ObjectMap:
+class ObjectMap(ImageAccessor):
     """Manages an object map for labeled regions in an image.
 
     This class provides a mechanism to manipulate and access labeled object maps
@@ -20,20 +21,9 @@ class ObjectMap:
     provides methods for accessing sparse and dense representations, relabeling,
     resetting, and visualization.
 
-    Args:
-        parent_image (ImageHandler): The image handler that the ObjectMap belongs to.
+    Note: changes to the object map shapes, will be automatically reflected in the object mask
 
-    Attributes:
-        _parent_image (ImageHandler): Reference to the parent image handler.
     """
-
-    def __init__(self, parent_image:Image):
-        """
-
-        Args:
-            parent_image: (ImageHandler) The image handler that the ObjectMap belongs to.
-        """
-        self._parent_image = parent_image
 
     @property
     def _num_objects(self):

@@ -9,8 +9,10 @@ from skimage.measure import regionprops_table, regionprops
 from ...util.constants_ import OBJECT_INFO
 from typing import List
 
+from phenoscope.core.accessors import ImageAccessor
 
-class ImageObjects:
+
+class ImageObjects(ImageAccessor):
     """An accessor for an image objects and provides various utilities for interacting with labeled objects in an image.
 
     This class provides methods to retrieve information about labeled objects, interact with object properties,
@@ -19,15 +21,9 @@ class ImageObjects:
     labeling and analysis tools like `skimage.regionprops`.
 
     Notes:
-        - Can only be called if a :class:`phenoscope.abstract.ObjectDetector` has been applied to the :class:`phenoscope.Image` object.
+        - Can only be called if an :class:`phenoscope.abstract.ObjectDetector` has been applied to the :class:`phenoscope.Image` object.
 
-    Attributes:
-        _parent_image (Handler): The handler object that manages the image data, including labeled object mappings
-            and raw intensity matrices.
     """
-
-    def __init__(self, parent_image: Image):
-        self._parent_image = parent_image
 
     @property
     def props(self):

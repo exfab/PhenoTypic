@@ -36,6 +36,8 @@
     <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-binder.css?v=f4aeca0c" />
     <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
     <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=39e7dd36" />
   
   <!-- So that users can add custom icons -->
   <script src="../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
@@ -46,6 +48,7 @@
     <script src="../../_static/documentation_options.js?v=b9afe91b"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/design-tabs.js?v=f930bc37"></script>
     <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = 'examples/notebooks/basic_image_processing';</script>
     <link rel="index" title="Index" href="../../genindex.html" />
@@ -120,8 +123,8 @@
       
     
     
-    <img src="../../_static/PhenoScopeLogo.svg" class="logo__image only-light" alt="PhenoScope"/>
-    <img src="../../_static/PhenoScopeLogo.svg" class="logo__image only-dark pst-js-only" alt="PhenoScope"/>
+    <img src="../../_static/light_logo_sponsor.svg" class="logo__image only-light" alt="PhenoScope"/>
+    <img src="../../_static/dark_logo_sponsor.svg" class="logo__image only-dark pst-js-only" alt="PhenoScope"/>
   
   
 </a></div>
@@ -163,6 +166,13 @@
   </a>
 </li>
 
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../dev_guide/index.html">
+    Developer Guide
+  </a>
+</li>
+
   </ul>
 </nav></div>
       
@@ -201,7 +211,7 @@
           
           
           
-          <a href="https://github.com/ExFAB-BioFoundry/PhenoScope" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+          <a href="https://github.com/Wheeldon-Lab/PhenoScope#" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
             <span class="sr-only">GitHub</span></a>
         </li>
 </ul></div>
@@ -279,6 +289,13 @@
   </a>
 </li>
 
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../dev_guide/index.html">
+    Developer Guide
+  </a>
+</li>
+
   </ul>
 </nav></div>
           
@@ -308,7 +325,7 @@
           
           
           
-          <a href="https://github.com/ExFAB-BioFoundry/PhenoScope" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+          <a href="https://github.com/Wheeldon-Lab/PhenoScope#" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
             <span class="sr-only">GitHub</span></a>
         </li>
 </ul></div>
@@ -422,7 +439,7 @@ This notebook introduces the image class and how to access the different element
 </div>
 </div>
 <div class="cell_output docutils container">
-<img alt="../../_images/01fb2b5e10a7cda33ac49d005e330e52cff1f201073a48f63259126160ee9348.png" src="../../_images/01fb2b5e10a7cda33ac49d005e330e52cff1f201073a48f63259126160ee9348.png" />
+<img alt="../../_images/c1def15f843eae8e23f9623e828c6f777dd66501acc4e7468a3a68e1ef2ac224.png" src="../../_images/c1def15f843eae8e23f9623e828c6f777dd66501acc4e7468a3a68e1ef2ac224.png" />
 </div>
 </div>
 </section>
@@ -445,10 +462,10 @@ Image schema: RGB
 </pre></div>
 </div>
 <div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>(&lt;Figure size 900x1000 with 1 Axes&gt;,
- &lt;Axes: title={&#39;center&#39;: &#39;9a1bd1d6-967e-4554-a605-a3a1a7c8bb98&#39;}&gt;)
+ &lt;Axes: title={&#39;center&#39;: &#39;a41a5392-ab01-468d-8c0f-730adf010f34&#39;}&gt;)
 </pre></div>
 </div>
-<img alt="../../_images/d8cad7674e1e0acbe14705ffad753e3eb00b78486ed9c5c746fd2e83a820479c.png" src="../../_images/d8cad7674e1e0acbe14705ffad753e3eb00b78486ed9c5c746fd2e83a820479c.png" />
+<img alt="../../_images/a1b48e691edc8400a35d36ccf10c89610bc36e26ef8521bf9808081e106cf76b.png" src="../../_images/a1b48e691edc8400a35d36ccf10c89610bc36e26ef8521bf9808081e106cf76b.png" />
 </div>
 </div>
 </section>
@@ -492,7 +509,7 @@ Image Matrix: Type=&lt;class &#39;numpy.ndarray&#39;&gt;, Shape=(100, 100)
 <div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Text(0.5, 1.0, &#39;Test&#39;)
 </pre></div>
 </div>
-<img alt="../../_images/5506b6189fadd89fda9bc306c0574fed3add0bc05c070ee39ccc0b12d35f8f7e.png" src="../../_images/5506b6189fadd89fda9bc306c0574fed3add0bc05c070ee39ccc0b12d35f8f7e.png" />
+<img alt="../../_images/d91a1cef8f0593d51f96f2f725cdebc20bb2f6cfe46622afde4daedbbc085c3c.png" src="../../_images/d91a1cef8f0593d51f96f2f725cdebc20bb2f6cfe46622afde4daedbbc085c3c.png" />
 </div>
 </div>
 </section>
@@ -525,7 +542,7 @@ Image Matrix: Type=&lt;class &#39;numpy.ndarray&#39;&gt;, Shape=(100, 100)
 <div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Mean RGB values: R=63.8, G=10.2, B=0.0
 </pre></div>
 </div>
-<img alt="../../_images/60821ee64351461fccc78b75aecf3a6b1f028acad5dd36a79049a3ad4f6ef99e.png" src="../../_images/60821ee64351461fccc78b75aecf3a6b1f028acad5dd36a79049a3ad4f6ef99e.png" />
+<img alt="../../_images/87f625076e5f567c8da2b02e9ac8c25e2aa1ec88b8d68ae3ee620504dffa5433.png" src="../../_images/87f625076e5f567c8da2b02e9ac8c25e2aa1ec88b8d68ae3ee620504dffa5433.png" />
 <div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Number of red pixels: 2500
 Expected number of pixels: 2500
 </pre></div>

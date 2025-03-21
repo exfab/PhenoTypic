@@ -7,4 +7,4 @@ Modules
    :maxdepth: 4
    :caption: Modules
 
-   phenoscope
+   api_reference/phenoscope
