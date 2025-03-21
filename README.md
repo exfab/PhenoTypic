@@ -1,5 +1,5 @@
 <div style="background-color: white; display: inline-block; padding: 10px; border-radius: 5px;">
-  <img src="docs/assets/logo_background_svg/PhenoScopeLogo.svg" alt="PhenoScope Logo" style="width: 200px; height: auto;">
+  <img src="./docs/source/_static/assets/logo_background_svg/PhenoScopeLogo.svg" alt="PhenoScope Logo" style="width: 200px; height: auto;">
 </div>
 
 # PhenoScope: A Python Framework for Bio-Image Analysis
