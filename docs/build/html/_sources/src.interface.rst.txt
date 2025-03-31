@@ -1,0 +1,10 @@
+src.interface package
+=====================
+
+Module contents
+---------------
+
+.. automodule:: src.interface
+   :members:
+   :undoc-members:
+   :show-inheritance:

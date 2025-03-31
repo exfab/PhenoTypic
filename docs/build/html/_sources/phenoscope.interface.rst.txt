@@ -1,0 +1,10 @@
+phenoscope.interface package
+============================
+
+Module contents
+---------------
+
+.. automodule:: phenoscope.interface
+   :members:
+   :undoc-members:
+   :show-inheritance:

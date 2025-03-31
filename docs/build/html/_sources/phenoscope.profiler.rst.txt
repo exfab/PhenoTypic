@@ -1,0 +1,10 @@
+phenoscope.profiler package
+===========================
+
+Module contents
+---------------
+
+.. automodule:: phenoscope.profiler
+   :members:
+   :undoc-members:
+   :show-inheritance:

@@ -1,0 +1,10 @@
+src.detection package
+=====================
+
+Module contents
+---------------
+
+.. automodule:: src.detection
+   :members:
+   :undoc-members:
+   :show-inheritance:

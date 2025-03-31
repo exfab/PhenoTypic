@@ -1,0 +1,10 @@
+src.pipeline.preprocessing package
+==================================
+
+Module contents
+---------------
+
+.. automodule:: src.pipeline.preprocessing
+   :members:
+   :undoc-members:
+   :show-inheritance:

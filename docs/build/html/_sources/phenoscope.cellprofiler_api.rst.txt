@@ -1,0 +1,10 @@
+phenoscope.cellprofiler\_api package
+====================================
+
+Module contents
+---------------
+
+.. automodule:: phenoscope.cellprofiler_api
+   :members:
+   :undoc-members:
+   :show-inheritance:

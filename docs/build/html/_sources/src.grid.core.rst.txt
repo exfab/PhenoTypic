@@ -1,0 +1,10 @@
+src.grid.core package
+=====================
+
+Module contents
+---------------
+
+.. automodule:: src.grid.core
+   :members:
+   :undoc-members:
+   :show-inheritance:

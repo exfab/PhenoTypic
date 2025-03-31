@@ -1,0 +1,10 @@
+src.grid.grid\_setter package
+=============================
+
+Module contents
+---------------
+
+.. automodule:: src.grid.grid_setter
+   :members:
+   :undoc-members:
+   :show-inheritance:

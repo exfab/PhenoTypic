@@ -1,0 +1,10 @@
+phenoscope.core.image\_component\_interface
+===================================================
+
+Module contents
+---------------
+
+.. automodule:: phenoscope.core.image_component_interface
+   :members:
+   :undoc-members:
+   :show-inheritance:

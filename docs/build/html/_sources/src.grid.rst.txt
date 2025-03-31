@@ -1,0 +1,23 @@
+src.grid package
+================
+
+Subpackages
+-----------
+
+.. toctree::
+   :maxdepth: 4
+
+   src.grid.core
+   src.grid.features
+   src.grid.grid_setter
+   src.grid.interface
+   src.grid.objects
+   src.grid.transform
+
+Module contents
+---------------
+
+.. automodule:: src.grid
+   :members:
+   :undoc-members:
+   :show-inheritance:
