@@ -127,6 +127,7 @@ if html_theme == 'pydata_sphinx_theme':
             }
         ],
         "use_edit_page_button": False,
+        "show_toc_level": 3
     }
 
 # Napoleon Settings

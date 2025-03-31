@@ -1,5 +1,5 @@
-phenoscope.pipeline package
-===========================
+phenoscope.pipeline
+===================
 
 Module contents
 ---------------

@@ -1,5 +1,5 @@
-phenoscope.abstract package
-===========================
+phenoscope.abstract
+===================
 
 Module contents
 ---------------

@@ -16,7 +16,7 @@ This section provides detailed API documentation for all PhenoScope modules and 
     Image.enh_matrix
     Image.omask
     Image.omap
-    Image.object
+    Image.obj
     Image.hsv
 
 .. currentmodule:: phenoscope
@@ -33,4 +33,15 @@ This section provides detailed API documentation for all PhenoScope modules and 
    :maxdepth: 2
    :caption: Modules
 
-   phenoscope
+   phenoscope.abstract
+   phenoscope.core
+   phenoscope.data
+   phenoscope.detection
+   phenoscope.grid
+   phenoscope.measure
+   phenoscope.morphology
+   phenoscope.objects
+   phenoscope.pipeline
+   phenoscope.preprocessing
+   phenoscope.transform
+   phenoscope.util

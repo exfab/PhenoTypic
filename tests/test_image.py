@@ -162,7 +162,7 @@ def test_image_object_map_access(sample_image_arrays):
 
         assert not np.array_equal(ps_image.omap[:], np.full(shape=ps_image.matrix.shape, fill_value=1, dtype=np.uint32))
         assert ps_image.num_objects > 0
-        assert ps_image.objects.num_objects > 0
+        assert ps_image.obj.num_objects > 0
 
 @timeit
 def test_image_copy(sample_image_arrays):
@@ -209,8 +209,8 @@ def test_image_object_size_label_consistency(sample_image_arrays):
         ps_image.omap[-10:, -10:] = 2
 
         assert ps_image.num_objects == 2
-        assert ps_image.num_objects == ps_image.objects.num_objects
-        assert ps_image.num_objects == len(ps_image.objects.labels)
+        assert ps_image.num_objects == ps_image.obj.num_objects
+        assert ps_image.num_objects == len(ps_image.obj.labels)
 
 @timeit
 def test_image_object_label_consistency_with_skimage(sample_image_arrays):
@@ -221,4 +221,4 @@ def test_image_object_label_consistency_with_skimage(sample_image_arrays):
         ps_image.omap[:10, :10] = 1
         ps_image.omap[-10:, -10:] = 2
 
-        assert ps_image.objects.label_table().equals(pd.Series(skimage.measure.regionprops_table(ps_image.omap[:], properties=['label'])['label']))
+        assert ps_image.obj.label_table().equals(pd.Series(skimage.measure.regionprops_table(ps_image.omap[:], properties=['label'])['label']))

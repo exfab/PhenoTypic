@@ -3,7 +3,7 @@
 
 .. currentmodule:: phenoscope
 
-.. autoaccessor:: Image
+.. autoproperty:: Image
 
 
 

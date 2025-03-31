@@ -33,5 +33,3 @@ class CLAHE(ImagePreprocessor):
                     kernel_size=self.kernel_size
             )
             return image
-
-CLAHE.apply.__doc__ = CLAHE._operate.__doc__

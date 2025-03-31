@@ -1,5 +1,5 @@
-phenoscope.grid.abstract package
-================================
+phenoscope.grid.abstract
+========================
 
 Module contents
 ---------------

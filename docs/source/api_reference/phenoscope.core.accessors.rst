@@ -1,5 +1,5 @@
-phenoscope.core.accessors package
-=================================
+phenoscope.core.accessors
+=========================
 
 Module contents
 ---------------

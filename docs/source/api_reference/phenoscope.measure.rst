@@ -1,5 +1,5 @@
-phenoscope.measure package
-==========================
+phenoscope.measure
+==================
 
 Module contents
 ---------------

@@ -1,5 +1,5 @@
-phenoscope.morphology package
-=============================
+phenoscope.morphology
+=====================
 
 Module contents
 ---------------

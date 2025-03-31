@@ -2,7 +2,7 @@
 
 .. currentmodule:: {{ module }}
 
-.. autoaccessor:: {{ objname }}
+.. autoproperty:: {{ objname }}
 
 {% set accessor_class = objname.split('.')[-1] %}
 {% set accessor_module = "phenoscope.core.accessors" %}
@@ -25,4 +25,5 @@
    :members:
    :undoc-members:
    :show-inheritance:
+   :no-index:
 {% endif %}

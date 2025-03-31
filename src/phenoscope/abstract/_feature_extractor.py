@@ -12,7 +12,7 @@ from phenoscope.util.exceptions_ import OperationFailedError, InterfaceError
 
 
 # <<Interface>>
-class FeatureExtractor(metaclass=MeasureDocstringMeta):
+class FeatureExtractor:
     """
     A FeatureExtractor is an abstract object intended to calculate measurements on the values within detected objects of
     the image array. The __init__ constructor & _operate method are meant to be the only parts overloaded in inherited classes. This is so

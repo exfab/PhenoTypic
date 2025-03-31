@@ -83,29 +83,31 @@ class ObjectMap(ImageAccessor):
         """Returns a copy of the object map in COOrdinate format or ijv matrix"""
         return self._parent_image._sparse_object_map.tocoo()
 
-    def show(self, ax=None, figsize=None, cmap='gray', title=None) -> (plt.Figure, plt.Axes):
-        """Display the object_map with matplotlib.
+    def show(self, figsize=None,title=None, cmap:str='tab20',ax:None|plt.Axes=None, mpl_params:None|dict=None) -> (plt.Figure, plt.Axes):
+        """
+        Displays the object map using matplotlib's imshow.
+
+        This method visualizes the object map from the parent image instance.
+        It offers customization options, including figure size, title, colormap, and matplotlib
+        parameters, leveraging matplotlib's plotting capabilities.
 
         Args:
-            ax: (plt.Axes) Axes object to use for plotting.
-            figsize: (Tuple[int, int]): Figure size in inches.
-            cmap: (str, optional) Colormap to use.
-            title: (str) a title for the plot
+            figsize (tuple, optional): Tuple specifying the figure size in inches (width, height).
+                If None, defaults to (6, 4).
+            title (str, optional): Title text for the plot. If None, no title is displayed.
+            cmap (str, optional): The colormap name used for rendering the sparse object map.
+                Defaults to 'tab20'.
+            ax (plt.Axes, optional): Existing Axes where the sparse object map will be plotted.
+                If None, a new figure and axes are created.
+            mpl_params (dict, optional): Additional parameters for matplotlib. If None, no extra
+                parameters are applied.
 
         Returns:
-            tuple(plt.Figure, plt.Axes): matplotlib figure and axes object
+            tuple: A tuple containing the matplotlib Figure and Axes objects, where the
+                sparse object map is rendered.
         """
-        if figsize is None: figsize = (6, 4)
-        if ax is None:
-            fig, ax = plt.subplots(figsize=figsize)
-        else:
-            fig = ax.figure
-
-        ax.imshow(self._parent_image._sparse_object_map.toarray(), cmap=cmap)
-        if title is not None: ax.set_title(title)
-        ax.grid(False)
-
-        return fig, ax
+        return self._plot(arr=self._parent_image._sparse_object_map.toarray(),
+                          figsize=figsize, title=title, ax=ax, cmap=cmap, mpl_params=mpl_params)
 
     def reset(self) -> None:
         """Resets the object_map to an empty map array with no objects in it."""

@@ -12,15 +12,30 @@ Welcome to PhenoScope's documentation. Here you'll find comprehensive guides and
 
 
 
-.. grid:: 1 2 2 2
+.. grid:: 1 2 3 3
    :gutter: 4
    :padding: 2 2 0 0
    :class-container: sd-text-center
 
+   .. grid-item-card::  Getting Started
+      :img-top: ./_static/assets/200x150/getting_started_rocket.svg
+      :class-card: intro-card
+      :shadow: md
 
+      The getting started guide explains how to install and get started with PhenoScope.
+
+      +++
+
+      .. button-ref:: getting_started
+         :ref-type: doc
+         :click-parent:
+         :color: secondary
+         :expand:
+
+         To getting started
 
    .. grid-item-card::  User guide
-      :img-top: ./_static/assets/500x300/no_background_svg/user_guide_book.svg
+      :img-top: ./_static/assets/200x150/user_guide_book.svg
       :class-card: intro-card
       :shadow: md
 
@@ -37,8 +52,25 @@ Welcome to PhenoScope's documentation. Here you'll find comprehensive guides and
 
          To the user guide
 
+   .. grid-item-card::  Tutorial
+      :img-top: ./_static/assets/200x150/tutorial.svg
+      :class-card: intro-card
+      :shadow: md
+
+      The tutorial provides longer, more in-depth examples of image processing concepts through PhenoScope. Start here if you're starting out with image processing.
+
+      +++
+
+      .. button-ref:: tutorial/index
+         :ref-type: doc
+         :click-parent:
+         :color: secondary
+         :expand:
+
+         To the tutorials
+
    .. grid-item-card:: Examples
-      :img-top: ./_static/assets/500x300/no_background_svg/getting_started_rocket.svg
+      :img-top: ./_static/assets/200x150/examples.svg
       :class-card: intro-card
       :shadow: md
 
@@ -55,7 +87,7 @@ Welcome to PhenoScope's documentation. Here you'll find comprehensive guides and
          To the examples
 
    .. grid-item-card::  API reference
-      :img-top: ./_static/assets/500x300/no_background_svg/api_ref_sign.svg
+      :img-top: ./_static/assets/200x150/api_ref_sign.svg
       :class-card: intro-card
       :shadow: md
 
@@ -74,7 +106,7 @@ Welcome to PhenoScope's documentation. Here you'll find comprehensive guides and
          To the reference guide
 
    .. grid-item-card::  Developer guide
-      :img-top: ./_static/assets/500x300/no_background_svg/dev_guide.svg
+      :img-top: ./_static/assets/200x150/dev_guide.svg
       :class-card: intro-card
       :shadow: md
 
@@ -112,13 +144,16 @@ For more detailed installation instructions, see the :doc:`installation` page.
    :maxdepth: 1
    :caption: Getting Started
    
+   getting_started
    installation
 
 .. toctree::
    :maxdepth: 2
    :caption: Documentation
 
+   getting_started/index
    user_guide/index
+   tutorial/index
    examples/index
    api_reference/index
    dev_guide/index

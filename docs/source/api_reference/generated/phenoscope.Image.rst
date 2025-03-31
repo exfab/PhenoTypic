@@ -3,4 +3,4 @@
 
 .. currentmodule:: phenoscope
 
-.. autoaccessorattribute:: Image
+.. autoclass:: Image

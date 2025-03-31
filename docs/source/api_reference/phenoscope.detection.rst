@@ -1,5 +1,5 @@
-phenoscope.detection package
-============================
+phenoscope.detection
+====================
 
 Module contents
 ---------------

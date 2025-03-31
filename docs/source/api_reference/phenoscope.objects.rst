@@ -1,5 +1,5 @@
-phenoscope.objects package
-==========================
+phenoscope.objects
+==================
 
 Module contents
 ---------------

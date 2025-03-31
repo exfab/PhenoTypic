@@ -1,5 +1,5 @@
-phenoscope.core package
-=======================
+phenoscope.core
+===============
 
 Subpackages
 -----------

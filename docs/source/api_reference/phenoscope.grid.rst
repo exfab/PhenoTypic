@@ -1,5 +1,5 @@
-phenoscope.grid package
-=======================
+phenoscope.grid
+================
 
 Subpackages
 -----------

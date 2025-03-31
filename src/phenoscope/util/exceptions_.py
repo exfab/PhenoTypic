@@ -141,12 +141,12 @@ class NoArrayError(AttributeError):
 
 
 class NoObjectsError(AttributeError):
-    """Exception raised when no objects are found in an image."""
+    """Exception raised when no obj are found in an image."""
 
     def __init__(self, image_name=None):
         image_str = f' "{image_name}"' if image_name else ""
         super().__init__(
-            f"No objects currently in image{image_str}. Apply a `Detector` to the Image object first or access image-wide information using Image.props"
+            f"No obj currently in image{image_str}. Apply a `Detector` to the Image object first or access image-wide information using Image.props"
             )
 
 
@@ -263,7 +263,7 @@ class ObjectNotFoundError(AttributeError):
 
     def __init__(self, label):
         super().__init__(
-            f"The object with label {label} is not in the object map. If you meant to access the object by index use Image.objects.at() instead"
+            f"The object with label {label} is not in the object map. If you meant to access the object by index use Image.obj.at() instead"
             )
 
 
@@ -273,5 +273,5 @@ class GridImageInputError(ValueError):
 
     def __init__(self):
         super().__init__(
-            "For GridOperation classes with the exception of GridExtractor objects, the input must be an instance of the GriddedImage object type."
+            "For GridOperation classes with the exception of GridExtractor obj, the input must be an instance of the GriddedImage object type."
             )

@@ -9,6 +9,8 @@ A modular image processing framework developed at the NSF Ex-FAB BioFoundry.
 
 ---
 
+*Documentation* [here](https://wheeldon-lab.github.io/PhenoScope/)
+
 ## Overview
 PhenoScope provides a modular toolkit designed to simplify and accelerate the development of bio-image analysis pipelines. 
 Its structured architecture allows researchers and developers to seamlessly integrate custom computer vision modules, avoiding 
@@ -25,14 +27,14 @@ pip install phenoscope
 
 ### Manual Installation
 ```  
-git clone https://github.com/Xander-git/PhenoScope.git
+git clone https://github.com/Wheeldon-Lab/PhenoScope.git
 cd PhenoScope
 pip install -e .
 ```  
 
 ## Dev Installation
 ```  
-git clone https://github.com/Xander-git/PhenoScope.git
+git clone https://github.com/Wheeldon-Lab/PhenoScope.git
 cd PhenoScope
 pip install -e ".[dev]"
 ```  

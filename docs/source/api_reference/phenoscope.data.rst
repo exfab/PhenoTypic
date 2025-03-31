@@ -1,5 +1,5 @@
-phenoscope.data package
-=======================
+phenoscope.data
+===============
 
 Module contents
 ---------------

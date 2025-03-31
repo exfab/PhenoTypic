@@ -1,5 +1,5 @@
-phenoscope.core.handlers package
-================================
+phenoscope.core.handlers
+========================
 
 Module contents
 ---------------

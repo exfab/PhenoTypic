@@ -95,25 +95,13 @@ class ObjectMask(ImageAccessor):
         Returns:
             tuple(plt.Figure, plt.Axes): matplotlib figure and axes object
         """
-        if figsize is None: figsize = (6, 4)
-        if ax is None:
-            fig, ax = plt.subplots(figsize=figsize)
-        else:
-            fig = ax.get_figure()
+        return self._plot(arr=self._parent_image.omap[:] > 0, figsize=figsize, ax=ax, title=title, cmap=cmap)
 
-        ax.imshow(self._parent_image.omap[:] > 0, cmap=cmap)
-        if title is not None: ax.set_title(title)
-        ax.grid(False)
+    def _extract_objects(self, array: np.ndarray, bg_color: int = 0) -> np.ndarray:
+        """Returns a copy of the array with every non-object pixel set to 0. Equivalent to np.ma.array.filled(bg_color)"""
+        mask = self._parent_image.omap[:] > 0
+        if array.ndim == 3: mask = np.dstack([(mask > 0) for _ in range(array.shape[-1])])
 
-        return fig, ax
-
-    def _extract_objects(self, array: np.ndarray, bg_color: int = 0):
-        """Returns the array with every non-object pixel set to 0. Equivalent to np.ma.array.filled(bg_color)"""
-        if array.ndim == 3:
-            mask = np.dstack(
-                [(self._parent_image.omap[:] > 0) for _ in range(array.shape[-1])]
-            )
-        else: mask = self._parent_image.omap[:] > 0
         new_arr = array.copy()
         new_arr[~mask] = bg_color
         return new_arr

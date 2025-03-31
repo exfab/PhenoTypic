@@ -59,7 +59,7 @@ class ColorExtractor(FeatureExtractor):
         brightness_texture = self._compute_matrix_texture(image, image.hsv.extract_obj_brightness())
         brightness_texture = {f'{BRIGHTNESS} {key}': value for key, value in brightness_texture.items()}
 
-        return pd.DataFrame({OBJECT_INFO.OBJECT_LABELS: image.objects.labels,
+        return pd.DataFrame({OBJECT_INFO.OBJECT_LABELS: image.obj.labels,
                              **hue_texture, **saturation_texture, **brightness_texture}
                             ).set_index(OBJECT_INFO.OBJECT_LABELS)
 
@@ -103,8 +103,8 @@ class ColorExtractor(FeatureExtractor):
             IMC1: [],
             IMC2: [],
         }
-        for i, label in enumerate(image.objects.labels):
-            slices = image.objects.props[i].slice
+        for i, label in enumerate(image.obj.labels):
+            slices = image.obj.props[i].slice
             obj_extracted = foreground_array[slices]
 
             # In case there's more than one object in the crop

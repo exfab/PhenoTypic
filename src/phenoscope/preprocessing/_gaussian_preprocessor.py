@@ -37,5 +37,3 @@ class GaussianPreprocessor(ImagePreprocessor):
                 channel_axis=self.channel_axis
         )
         return image
-
-GaussianPreprocessor.apply.__doc__ = GaussianPreprocessor._operate.__doc__

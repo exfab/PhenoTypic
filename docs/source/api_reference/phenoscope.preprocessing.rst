@@ -1,5 +1,5 @@
-phenoscope.preprocessing package
-================================
+phenoscope.preprocessing
+========================
 
 Module contents
 ---------------

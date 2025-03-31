@@ -1,12 +1,12 @@
 /* Make the logo larger */
 .navbar-brand img {
     width: 500px; /* Adjust this value to make the logo larger or smaller */
-    height: 500px;
+    height: 300px;
     max-height: none !important;
 }
 
 html {
-    --pst-header-height: 6rem;
+    --pst-header-height: 5rem;
 }
 
 /* Increase navbar height and adjust padding */
@@ -17,5 +17,5 @@ html {
 
 /* Adjust logo size to fit in the larger header */
 .navbar-brand img {
-    max-height: 6rem !important;
+    max-height: 5rem !important;
 }

@@ -3,7 +3,7 @@
 
 .. currentmodule:: phenoscope
 
-.. autoaccessor:: Image.enh_matrix
+.. autoproperty:: Image.enh_matrix
 
 
 
@@ -17,3 +17,4 @@
    :members:
    :undoc-members:
    :show-inheritance:
+   :no-index:

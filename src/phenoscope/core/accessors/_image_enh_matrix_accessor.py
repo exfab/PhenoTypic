@@ -106,61 +106,76 @@ class ImageEnhancedMatrix(ImageAccessor):
         axes[1].set_title('Grayscale Histogram (Detection Matrix)')
         return fig, axes
 
-    def show(self, ax: plt.Axes = None, figsize: str = None, cmap: str = 'gray', title: str = None) -> (plt.Figure, plt.Axes):
-        """Display the image's enhanced matrix with matplotlib.
+    def show(self,
+             figsize: str = None,
+             cmap: str = 'gray',
+             title: str = None,
+             ax: plt.Axes = None,
+             mpl_params: None | dict = None) -> (plt.Figure, plt.Axes):
+        """Displays the enhanced matrix of the parent image.
+
+        This method is used to visualize the enhanced matrix of the parent image using
+        matplotlib. Different parameters can be configured for customization such as
+        figure size, colormap, title of the plot, and specific matplotlib axes. Additional
+        matplotlib parameters can also be passed for further customization.
 
         Args:
-            ax: (plt.Axes) Axes object to use for plotting.
-            figsize: (Tuple[int, int]): Figure size in inches.
-            cmap: (str) Colormap name.
-            title: (str) a title for the plot
+            figsize (tuple[int, int] | None): Tuple defining the width and height of
+                the figure in inches. If None, defaults to matplotlib's standard size.
+            cmap (str): Colormap used for plotting. Defaults to 'gray'.
+            title (str | None): Title of the plot. If None, no title is set.
+            ax (plt.Axes | None): Matplotlib axes on which the plot will be rendered.
+                If None, a new figure and axes will be created.
+            mpl_params (dict | None): Additional matplotlib parameters in dictionary
+                format for adjusting plot properties. If None, no additional parameters
+                are applied.
 
         Returns:
-            tuple(plt.Figure, plt.Axes): matplotlib figure and axes object
+            tuple[plt.Figure, plt.Axes]: A tuple containing the matplotlib Figure and
+            Axes objects corresponding to the rendered plot.
+
+        Raises:
+            None
         """
-        # Defaults
-        if figsize is None: figsize = (6, 4)
-        if ax is None:
-            fig, ax = plt.subplots(figsize=figsize)
-        else:
-            fig = ax.figure
 
-        # Plot array
-        ax.imshow(self._parent_image.enh_matrix[:], cmap=cmap)
-
-        # Adjust ax settings
-        if title is not None: ax.set_title(title)
-        ax.grid(False)
-
-        return fig, ax
+        return self._plot(
+            arr=self._parent_image.enh_matrix[:],
+            figsize=figsize,
+            ax=ax,
+            title=title,
+            cmap=cmap,
+            mpl_params=mpl_params,
+        )
 
     def show_overlay(
             self,
-            object_label: Optional[int] = None,
-            figsize: Tuple[int, int] = None,
+            object_label: int | None = None,
+            figsize: Tuple[int, int] = (10, 5),
             annotate: bool = False,
             annotation_size: int = 12,
             annotation_color: str = 'white',
             annotation_facecolor: str = 'red',
             ax: plt.Axes = None,
+            overlay_params: None | dict = None,
+            mpl_params: None | dict = None,
     ) -> (plt.Figure, plt.Axes):
-        if ax is None:
-            fig, ax = plt.subplots(figsize=figsize)
-        else:
-            fig = ax.get_figure()
+        objmap = self._parent_image.omap[:]
+        if object_label is not None: objmap[objmap == object_label] = 0
 
-        ax.grid(False)
-
-        map_copy = self._parent_image.omap[:]
-        if object_label is not None:
-            map_copy[map_copy == object_label] = 0
-
-        ax.imshow(label2rgb(label=map_copy, image=self._parent_image.enh_matrix[:]))
+        fig, ax = self._plot(
+            arr=self._parent_image.enh_matrix[:],
+            objmap=objmap,
+            figsize=figsize,
+            title=self._parent_image.name,
+            ax=ax,
+            mpl_params = mpl_params,
+            overlay_params = overlay_params,
+        )
 
         if annotate:
-            for i, label in enumerate(self._parent_image.objects.labels):
+            for i, label in enumerate(self._parent_image.obj.labels):
                 if object_label is None:
-                    text_rr, text_cc = self._parent_image.objects.props[i].centroid
+                    text_rr, text_cc = self._parent_image.obj.props[i].centroid
                     ax.text(
                         x=text_cc, y=text_rr,
                         s=f'{label}',
@@ -169,7 +184,7 @@ class ImageEnhancedMatrix(ImageAccessor):
                         bbox=dict(facecolor=annotation_facecolor, edgecolor='none', alpha=0.6, boxstyle='round')
                     )
                 elif object_label == label:
-                    text_rr, text_cc = self._parent_image.objects.props[i].centroid
+                    text_rr, text_cc = self._parent_image.obj.props[i].centroid
                     ax.text(
                         x=text_cc, y=text_rr,
                         s=f'{label}',

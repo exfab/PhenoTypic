@@ -3,7 +3,7 @@
 
 .. currentmodule:: phenoscope
 
-.. autoaccessor:: Image.omask
+.. autoproperty:: Image.omask
 
 
 
@@ -17,3 +17,4 @@
    :members:
    :undoc-members:
    :show-inheritance:
+   :no-index:

@@ -3,7 +3,7 @@
 
 .. currentmodule:: phenoscope
 
-.. autoaccessor:: GridImage.grid
+.. autoproperty:: GridImage.grid
 
 
 
@@ -17,3 +17,4 @@
    :members:
    :undoc-members:
    :show-inheritance:
+   :no-index:

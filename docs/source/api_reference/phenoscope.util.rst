@@ -1,5 +1,5 @@
-phenoscope.util package
-=======================
+phenoscope.util
+===============
 
 Submodules
 ----------

@@ -31,5 +31,3 @@ class LaplacePreprocessor(ImagePreprocessor):
                 mask=self.mask,
         )
         return image
-
-LaplacePreprocessor.apply.__doc__ = LaplacePreprocessor._operate.__doc__

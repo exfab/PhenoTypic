@@ -543,7 +543,7 @@ class ImageHandler:
         return ski.measure.regionprops(label_image=np.full(shape=self.shape, fill_value=1), intensity_image=self._matrix, cache=False)
 
     @property
-    def objects(self) -> ImageObjects:
+    def obj(self) -> ImageObjects:
         """Returns an abstract to access the objects in an image and perform operations on them, such as measurement calculations .
 
         This method provides access to `ImageObjects`.
@@ -556,8 +556,8 @@ class ImageHandler:
         else:
             return self.__objects_subhandler
 
-    @objects.setter
-    def objects(self, objects):
+    @obj.setter
+    def obj(self, objects):
         raise IllegalAssignmentError('objects')
 
     @property
@@ -827,7 +827,7 @@ class ImageHandler:
              ax: plt.Axes = None,
              figsize: Tuple[int, int] = (9, 10)
              ) -> (plt.Figure, plt.Axes):
-        """Returns a matplotlib figure showing the input image"""
+        """Returns a matplotlib figure and axes showing the input image"""
         if self.schema not in IMAGE_FORMATS.MATRIX_FORMATS:
             return self.array.show(ax=ax, figsize=figsize)
         else:

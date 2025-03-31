@@ -1,7 +1,7 @@
 User Guide
 ==========
 
-This section contains comprehensive guides for using PhenoScope.
+This section contains comprehensive guides for using PhenoScope. It includes installation instructions, short examples, and step-by-step tutorials.
 
 .. note::
    The User Guide is currently under development. The following sections will be available soon.
@@ -10,9 +10,12 @@ This section contains comprehensive guides for using PhenoScope.
    :maxdepth: 2
    :caption: User Guide Topics
 
+   ../installation
    getting_started
    basic_concepts
    advanced_usage
+   examples/index
+   tutorial/index
 
 Placeholder Pages
 ----------------

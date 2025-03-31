@@ -1,5 +1,5 @@
-phenoscope.transform package
-============================
+phenoscope.transform
+====================
 
 Module contents
 ---------------
