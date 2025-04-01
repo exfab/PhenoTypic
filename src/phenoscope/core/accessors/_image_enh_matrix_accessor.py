@@ -173,9 +173,9 @@ class ImageEnhancedMatrix(ImageAccessor):
         )
 
         if annotate:
-            for i, label in enumerate(self._parent_image.obj.labels):
+            for i, label in enumerate(self._parent_image.objects.labels):
                 if object_label is None:
-                    text_rr, text_cc = self._parent_image.obj.props[i].centroid
+                    text_rr, text_cc = self._parent_image.objects.props[i].centroid
                     ax.text(
                         x=text_cc, y=text_rr,
                         s=f'{label}',
@@ -184,7 +184,7 @@ class ImageEnhancedMatrix(ImageAccessor):
                         bbox=dict(facecolor=annotation_facecolor, edgecolor='none', alpha=0.6, boxstyle='round')
                     )
                 elif object_label == label:
-                    text_rr, text_cc = self._parent_image.obj.props[i].centroid
+                    text_rr, text_cc = self._parent_image.objects.props[i].centroid
                     ax.text(
                         x=text_cc, y=text_rr,
                         s=f'{label}',

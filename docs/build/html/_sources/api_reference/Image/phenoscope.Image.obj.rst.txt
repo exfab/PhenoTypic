@@ -1,11 +1,11 @@
 ﻿
 
-phenoscope.Image.obj
+phenoscope.Image.objects
 ====================
 
 .. currentmodule:: phenoscope
 
-.. autoproperty:: Image.obj
+.. autoproperty:: Image.objects
 
 
 

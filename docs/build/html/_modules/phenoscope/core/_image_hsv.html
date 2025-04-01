@@ -343,16 +343,16 @@
 <span class="sd">        Returns:</span>
 <span class="sd">            np.ndarray: The hsv array of the current image.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">schema</span> <span class="ow">in</span> <span class="n">C_ImageFormats</span><span class="o">.</span><span class="n">MATRIX_FORMATS</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">imformat</span> <span class="ow">in</span> <span class="n">C_ImageFormats</span><span class="o">.</span><span class="n">MATRIX_FORMATS</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">AttributeError</span><span class="p">(</span><span class="s1">&#39;Grayscale images cannot be directly converted to hsv. Convert to RGB first&#39;</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="k">match</span> <span class="bp">self</span><span class="o">.</span><span class="n">schema</span><span class="p">:</span>
+            <span class="k">match</span> <span class="bp">self</span><span class="o">.</span><span class="n">imformat</span><span class="p">:</span>
                 <span class="k">case</span> <span class="n">C_ImageFormats</span><span class="o">.</span><span class="n">RGB</span><span class="p">:</span>
                     <span class="k">return</span> <span class="n">rgb2hsv</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">array</span><span class="p">[:])</span>
                 <span class="k">case</span> <span class="n">C_ImageFormats</span><span class="o">.</span><span class="n">BGR</span><span class="p">:</span>
                     <span class="k">return</span> <span class="n">rgb2hsv</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_convert_bgr_to_rgb</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">array</span><span class="p">[:]))</span>
                 <span class="k">case</span><span class="w"> </span><span class="k">_</span><span class="p">:</span>
-                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Unsupported schema </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">schema</span><span class="si">}</span><span class="s1"> for HSV conversion&#39;</span><span class="p">)</span>
+                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Unsupported imformat </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">imformat</span><span class="si">}</span><span class="s1"> for HSV conversion&#39;</span><span class="p">)</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">hsv</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">-&gt;</span><span class="n">HsvAccessor</span><span class="p">:</span>

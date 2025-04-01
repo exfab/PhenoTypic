@@ -44,16 +44,16 @@ class OutputValueError(PhenoScopeError):
 
 
 class UnsupportedSchemaError(ValueError):
-    """Represents an error when an unsupported schema format is detected.
+    """Represents an error when an unsupported imformat format is detected.
 
-    This error is raised when a specified schema format is not supported by the
+    This error is raised when a specified imformat format is not supported by the
     application or library that utilizes this exception class.
 
     Args:
-        schema (str): The schema format that triggered this exception.
+        schema (str): The imformat format that triggered this exception.
     """
 
-    def __init__(self, schema):
+    def __init__(self, imformat):
         super().__init__(f"The format {schema} is not supported.")
 
 
@@ -141,12 +141,12 @@ class NoArrayError(AttributeError):
 
 
 class NoObjectsError(AttributeError):
-    """Exception raised when no obj are found in an image."""
+    """Exception raised when no objects are found in an image."""
 
     def __init__(self, image_name=None):
         image_str = f' "{image_name}"' if image_name else ""
         super().__init__(
-            f"No obj currently in image{image_str}. Apply a `Detector` to the Image object first or access image-wide information using Image.props"
+            f"No objects currently in image{image_str}. Apply a `Detector` to the Image object first or access image-wide information using Image.props"
             )
 
 
@@ -180,10 +180,10 @@ class IllegalElementAssignmentError(ImmutableComponentError):
 
 
 class InvalidHsvSchemaError(AttributeError):
-    """Exception raised when trying to convert to HSV from a non-RGB schema."""
+    """Exception raised when trying to convert to HSV from a non-RGB imformat."""
 
-    def __init__(self, schema):
-        super().__init__(f"To be converted to HSV format, the schema should be RGB, but got {schema}")
+    def __init__(self, imformat):
+        super().__init__(f"To be converted to HSV format, the imformat should be RGB, but got {schema}")
 
 
 # Mutable component exceptions
@@ -263,7 +263,7 @@ class ObjectNotFoundError(AttributeError):
 
     def __init__(self, label):
         super().__init__(
-            f"The object with label {label} is not in the object map. If you meant to access the object by index use Image.obj.at() instead"
+            f"The object with label {label} is not in the object map. If you meant to access the object by index use Image.objects.at() instead"
             )
 
 
@@ -273,5 +273,5 @@ class GridImageInputError(ValueError):
 
     def __init__(self):
         super().__init__(
-            "For GridOperation classes with the exception of GridExtractor obj, the input must be an instance of the GriddedImage object type."
+            "For GridOperation classes with the exception of GridExtractor objects, the input must be an instance of the GriddedImage object type."
             )

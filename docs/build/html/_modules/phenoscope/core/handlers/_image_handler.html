@@ -430,15 +430,15 @@
 <span class="sd">            object detection tasks and similar applications.</span>
 <span class="sd">        _sparse_object_map (Optional[csc_matrix]): A sparse object map for efficient</span>
 <span class="sd">            representation of object detection overlays.</span>
-<span class="sd">        __image_schema (Optional[str]): A schema defining the format of the image input,</span>
+<span class="sd">        __image_format (Optional[str]): A schema defining the format of the image input,</span>
 <span class="sd">            influencing how data is interpreted or manipulated.</span>
 <span class="sd">        _private_metadata (Dict[str, Any]): Immutable metadata associated with the image,</span>
 <span class="sd">            including a universally unique identifier (UUID).</span>
 <span class="sd">        _protected_metadata (Dict[str, Optional[Union[int, float, str, bool, np.integer,</span>
-<span class="sd">            np.floating, np.bool_, np.complexfloating]]]): Editable protected metadata,</span>
+<span class="sd">            np.floating, np.complexfloating]]]): Editable protected metadata,</span>
 <span class="sd">            such as the image name, providing key image-related information.</span>
 <span class="sd">        _public_metadata (Dict[str, Union[int, float, str, bool, np.integer, np.floating,</span>
-<span class="sd">            np.bool_, np.complexfloating]]): Public metadata that can be fully edited or</span>
+<span class="sd">            np.complexfloating]]): Public metadata that can be fully edited or</span>
 <span class="sd">            removed without restrictions.</span>
 <span class="sd">        __array_subhandler (ImageArray): Subhandler responsible for array-based operations.</span>
 <span class="sd">            Extends functionality for working with image arrays.</span>
@@ -455,21 +455,15 @@
 
 <div class="viewcode-block" id="ImageHandler.__init__">
 <a class="viewcode-back" href="../../../../api_reference/phenoscope.core.handlers.html#phenoscope.core.handlers.ImageHandler.__init__">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">input_image</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">Image</span><span class="p">,</span> <span class="n">PathLike</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-                 <span class="n">input_schema</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                 <span class="n">input_image</span><span class="p">:</span> <span class="kc">None</span> <span class="o">|</span> <span class="n">Union</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">Image</span><span class="p">,</span> <span class="n">PathLike</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                 <span class="n">imformat</span><span class="p">:</span> <span class="kc">None</span> <span class="o">|</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
                  <span class="n">name</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Initializes an image processing object with provided input image, schema, and name.</span>
-
-<span class="sd">        The class constructor initializes core backend variables, including the image schema,</span>
-<span class="sd">        protected and public metadata dictionaries, and various image component handlers</span>
-<span class="sd">        to manage subcomponents and data operations for image manipulations. It also sets up</span>
-<span class="sd">        private and protected metadata with specific handling for input names or defaults.</span>
-
 <span class="sd">        Args:</span>
 <span class="sd">            input_image: An optional input image represented as either a NumPy array or an image</span>
 <span class="sd">                object. Defaults to None.</span>
-<span class="sd">            input_schema: An optional string defining the schema for the input image to specify</span>
+<span class="sd">            imformat: An optional string defining the schema for the input image to specify</span>
 <span class="sd">                how data should be interpreted or processed. Defaults to None.</span>
 <span class="sd">            name: An optional string to assign a name to the image, used as metadata. If not</span>
 <span class="sd">                provided, a universally unique identifier (UUID) will be generated and assigned.</span>
@@ -480,7 +474,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_sparse_object_map</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">csc_matrix</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
 
         <span class="c1"># Initialize core backend variables</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">__image_schema</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__image_format</span> <span class="o">=</span> <span class="kc">None</span>
 
         <span class="c1"># Private metadata cannot be edited and is not duplicated with copies of the class</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_private_metadata</span> <span class="o">=</span> <span class="p">{</span>
@@ -508,7 +502,7 @@
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">input_image</span><span class="p">,</span> <span class="p">(</span><span class="n">PathLike</span><span class="p">,</span> <span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">)):</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">imread</span><span class="p">(</span><span class="n">input_image</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">set_image</span><span class="p">(</span><span class="n">input_image</span><span class="o">=</span><span class="n">input_image</span><span class="p">,</span> <span class="n">input_schema</span><span class="o">=</span><span class="n">input_schema</span><span class="p">)</span></div>
+            <span class="bp">self</span><span class="o">.</span><span class="n">set_image</span><span class="p">(</span><span class="n">input_image</span><span class="o">=</span><span class="n">input_image</span><span class="p">,</span> <span class="n">imformat</span><span class="o">=</span><span class="n">imformat</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="ImageHandler.__getitem__">
@@ -527,10 +521,10 @@
 <span class="sd">        Raises:</span>
 <span class="sd">            KeyError: If the provided key does not match the expected slicing format or dimensions.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">schema</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">IMAGE_FORMATS</span><span class="o">.</span><span class="n">MATRIX_FORMATS</span><span class="p">:</span>
-            <span class="n">subimage</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="p">(</span><span class="n">input_image</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">key</span><span class="p">],</span> <span class="n">input_schema</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">schema</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">imformat</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">IMAGE_FORMATS</span><span class="o">.</span><span class="n">MATRIX_FORMATS</span><span class="p">:</span>
+            <span class="n">subimage</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="p">(</span><span class="n">input_image</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">key</span><span class="p">],</span> <span class="n">imformat</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">imformat</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="n">subimage</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="p">(</span><span class="n">input_image</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">matrix</span><span class="p">[</span><span class="n">key</span><span class="p">],</span> <span class="n">input_schema</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">schema</span><span class="p">)</span>
+            <span class="n">subimage</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="p">(</span><span class="n">input_image</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">matrix</span><span class="p">[</span><span class="n">key</span><span class="p">],</span> <span class="n">imformat</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">imformat</span><span class="p">)</span>
 
         <span class="n">subimage</span><span class="o">.</span><span class="n">enh_matrix</span><span class="p">[:]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">enh_matrix</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
         <span class="n">subimage</span><span class="o">.</span><span class="n">objmap</span><span class="p">[:]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">objmap</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
@@ -555,7 +549,7 @@
             <span class="s1">&#39;The image being set must be of the same shape as the image elements being accessed.&#39;</span>
         <span class="p">)</span>
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">ImageHandler</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">issubclass</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">value</span><span class="p">),</span> <span class="n">ImageHandler</span><span class="p">):</span>
-            <span class="k">if</span> <span class="n">value</span><span class="o">.</span><span class="n">schema</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">IMAGE_FORMATS</span><span class="o">.</span><span class="n">MATRIX_FORMATS</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">schema</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">IMAGE_FORMATS</span><span class="o">.</span><span class="n">MATRIX_FORMATS</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">value</span><span class="o">.</span><span class="n">imformat</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">IMAGE_FORMATS</span><span class="o">.</span><span class="n">MATRIX_FORMATS</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">imformat</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">IMAGE_FORMATS</span><span class="o">.</span><span class="n">MATRIX_FORMATS</span><span class="p">:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">_array</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span><span class="o">.</span><span class="n">array</span><span class="p">[:]</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_matrix</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span><span class="o">.</span><span class="n">matrix</span><span class="p">[:]</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_det_matrix</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span><span class="o">.</span><span class="n">enh_matrix</span><span class="p">[:]</span>
@@ -564,7 +558,7 @@
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__eq__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
         <span class="k">return</span> <span class="kc">True</span> <span class="k">if</span> <span class="p">(</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">schema</span> <span class="o">==</span> <span class="n">other</span><span class="o">.</span><span class="n">schema</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">imformat</span> <span class="o">==</span> <span class="n">other</span><span class="o">.</span><span class="n">imformat</span>
                 <span class="ow">and</span> <span class="n">np</span><span class="o">.</span><span class="n">array_equal</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">array</span><span class="p">[:],</span> <span class="n">other</span><span class="o">.</span><span class="n">array</span><span class="p">[:])</span>
                 <span class="ow">and</span> <span class="n">np</span><span class="o">.</span><span class="n">array_equal</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">matrix</span><span class="p">[:],</span> <span class="n">other</span><span class="o">.</span><span class="n">matrix</span><span class="p">[:])</span>
                 <span class="ow">and</span> <span class="n">np</span><span class="o">.</span><span class="n">array_equal</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">enh_matrix</span><span class="p">[:],</span> <span class="n">other</span><span class="o">.</span><span class="n">enh_matrix</span><span class="p">[:])</span>
@@ -614,27 +608,33 @@
             <span class="k">raise</span> <span class="n">EmptyImageError</span>
 
     <span class="nd">@property</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">schema</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">imformat</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Returns the input format of the image array or matrix depending on input format&quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">__image_schema</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">__image_format</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">raise</span> <span class="n">EmptyImageError</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__image_schema</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__image_format</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">array</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ImageArray</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;The image&#39;s array representation. An image array can represent multi-channels, thus the array can be 3-D or 4-D</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Returns the ImageArray accessor; An image array represents the multichannel information</span>
 
 <span class="sd">        Note:</span>
-<span class="sd">            - array elements are not directly mutable in order to preserve image information integrity</span>
-<span class="sd">            - change array elements by changing the image being represented with Image.set_image()</span>
+<span class="sd">            - array/matrix element data is synced</span>
+<span class="sd">            - change image shape by changing the image being represented with Image.set_image()</span>
 <span class="sd">            - Raises an error if input image has no array form</span>
 
+<span class="sd">        .. currentmodule:: phenoscope.core.accessors</span>
+<span class="sd">        .. autosummary::</span>
+<span class="sd">            :template: autosummary/class.rst</span>
+
+<span class="sd">            ImageArray</span>
+
 <span class="sd">        Returns:</span>
-<span class="sd">            Optional[ImageArray]: A class that can be accessed like a numpy array, but has extra methods to streamline development, or None if not set</span>
+<span class="sd">            ImageArray: A class that can be accessed like a numpy array, but has extra methods to streamline development, or None if not set</span>
 
 <span class="sd">        Raises:</span>
-<span class="sd">            NoArrayError: If the input image was not an array</span>
+<span class="sd">            NoArrayError: If no multichannel image data is set as input.</span>
 <span class="sd">        See Also: :class:`ImageArray`</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_array</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
@@ -755,7 +755,7 @@
             <span class="k">raise</span> <span class="n">IllegalAssignmentError</span><span class="p">(</span><span class="s1">&#39;object_map&#39;</span><span class="p">)</span>
 
     <span class="nd">@property</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">props</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">props</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">-&gt;</span><span class="nb">list</span><span class="p">[</span><span class="n">ski</span><span class="o">.</span><span class="n">measure</span><span class="o">.</span><span class="n">_regionprops</span><span class="o">.</span><span class="n">RegionProperties</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Fetches the properties of labeled regions in an image.</span>
 
 <span class="sd">        Calculates region properties for the entire image using the matrix representation.</span>
@@ -767,7 +767,9 @@
 <span class="sd">            list[skimage.measure._regionprops.RegionProperties]: A list of properties for the entire provided image.</span>
 
 <span class="sd">        Notes:</span>
-<span class="sd">            (Excerpt from skimage.measure.regionprops documentation on available properties. See more at :class:`skimage.measure.regionprops`.):</span>
+<span class="sd">            (Excerpt from skimage.measure.regionprops documentation on available properties.):</span>
+
+<span class="sd">            Read more at :class:`skimage.measure.regionprops`</span>
 
 <span class="sd">            area: float</span>
 <span class="sd">                Area of the region i.e. number of pixels of the region scaled by pixel-area.</span>
@@ -930,21 +932,24 @@
         <span class="k">return</span> <span class="n">ski</span><span class="o">.</span><span class="n">measure</span><span class="o">.</span><span class="n">regionprops</span><span class="p">(</span><span class="n">label_image</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">fill_value</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span> <span class="n">intensity_image</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_matrix</span><span class="p">,</span> <span class="n">cache</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 
     <span class="nd">@property</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">obj</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ImageObjects</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Returns an abstract to access the objects in an image and perform operations on them, such as measurement calculations .</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">objects</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ImageObjects</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Returns an acessor to the objects in an image and perform operations on them, such as measurement calculations.</span>
 
 <span class="sd">        This method provides access to `ImageObjects`.</span>
 
 <span class="sd">        Returns:</span>
 <span class="sd">            ImageObjects: The subhandler instance that manages image-related objects.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            NoObjectsError: If no objects are targeted in the image. Apply an ObjectDetector first.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_objects</span><span class="o">==</span><span class="mi">0</span><span class="p">:</span>
             <span class="k">raise</span> <span class="n">NoObjectsError</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__objects_subhandler</span>
 
-    <span class="nd">@obj</span><span class="o">.</span><span class="n">setter</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">obj</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">objects</span><span class="p">):</span>
+    <span class="nd">@objects</span><span class="o">.</span><span class="n">setter</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">objects</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">objects</span><span class="p">):</span>
         <span class="k">raise</span> <span class="n">IllegalAssignmentError</span><span class="p">(</span><span class="s1">&#39;objects&#39;</span><span class="p">)</span>
 
     <span class="nd">@property</span>
@@ -992,13 +997,13 @@
         <span class="n">filepath</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">filepath</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">filepath</span><span class="o">.</span><span class="n">suffix</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;.png&#39;</span><span class="p">,</span> <span class="s1">&#39;.jpg&#39;</span><span class="p">,</span> <span class="s1">&#39;.jpeg&#39;</span><span class="p">]:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">set_image</span><span class="p">(</span>
-                <span class="n">input_image</span><span class="o">=</span><span class="n">ski</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">imread</span><span class="p">(</span><span class="n">filepath</span><span class="p">),</span> <span class="n">input_schema</span><span class="o">=</span><span class="n">IMAGE_FORMATS</span><span class="o">.</span><span class="n">RGB</span>
+                <span class="n">input_image</span><span class="o">=</span><span class="n">ski</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">imread</span><span class="p">(</span><span class="n">filepath</span><span class="p">),</span> <span class="n">imformat</span><span class="o">=</span><span class="n">IMAGE_FORMATS</span><span class="o">.</span><span class="n">RGB</span>
             <span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">filepath</span><span class="o">.</span><span class="n">stem</span>
             <span class="k">return</span> <span class="bp">self</span>
         <span class="k">elif</span> <span class="n">filepath</span><span class="o">.</span><span class="n">suffix</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;.tif&#39;</span><span class="p">,</span> <span class="s1">&#39;.tiff&#39;</span><span class="p">]:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">set_image</span><span class="p">(</span>
-                <span class="n">input_image</span><span class="o">=</span><span class="n">ski</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">imread</span><span class="p">(</span><span class="n">filepath</span><span class="p">),</span> <span class="n">input_schema</span><span class="o">=</span><span class="n">IMAGE_FORMATS</span><span class="o">.</span><span class="n">GRAYSCALE</span>
+                <span class="n">input_image</span><span class="o">=</span><span class="n">ski</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">imread</span><span class="p">(</span><span class="n">filepath</span><span class="p">),</span> <span class="n">imformat</span><span class="o">=</span><span class="n">IMAGE_FORMATS</span><span class="o">.</span><span class="n">GRAYSCALE</span>
             <span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">filepath</span><span class="o">.</span><span class="n">stem</span>
             <span class="k">return</span> <span class="bp">self</span>
@@ -1008,23 +1013,23 @@
 
 <div class="viewcode-block" id="ImageHandler.set_image">
 <a class="viewcode-back" href="../../../../api_reference/phenoscope.core.handlers.html#phenoscope.core.handlers.ImageHandler.set_image">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">set_image</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">input_image</span><span class="p">,</span> <span class="n">input_schema</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">set_image</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">input_image</span><span class="p">:</span><span class="n">Image</span><span class="o">|</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">imformat</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Sets the image to the inputted array or Image</span>
 
 <span class="sd">        Args:</span>
-<span class="sd">            input_image: (np.ndarray, phenoscope.Image, optional) The image data to be set</span>
-<span class="sd">            input_schema: (str, optional) If input image is a np.ndarray and format is None, the image format will be guessed.</span>
+<span class="sd">            input_image: (np.ndarray, phenoscope.Image) The image data to be set</span>
+<span class="sd">            imformat: (str, optional) If input image is a np.ndarray and format is None, the image format will be guessed.</span>
 <span class="sd">                If the image format is ambiguous between RGB/BGR it will assume RGB unless otherwise specified.</span>
 <span class="sd">                Accepted formats are [&#39;RGB&#39;, &#39;RGBA&#39;,&#39;Grayscale&#39;,&#39;BGR&#39;,&#39;BGRA&#39;,&#39;HSV&#39;]</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">input_image</span><span class="p">)</span> <span class="o">==</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_set_from_array</span><span class="p">(</span><span class="n">input_image</span><span class="p">,</span> <span class="n">input_schema</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_set_from_array</span><span class="p">(</span><span class="n">input_image</span><span class="p">,</span> <span class="n">imformat</span><span class="p">)</span>
         <span class="k">elif</span> <span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">input_image</span><span class="p">)</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span>
               <span class="ow">or</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">input_image</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="p">)</span>
               <span class="ow">or</span> <span class="nb">issubclass</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">input_image</span><span class="p">),</span> <span class="n">ImageHandler</span><span class="p">)):</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_set_from_class_instance</span><span class="p">(</span><span class="n">input_image</span><span class="p">)</span>
         <span class="k">elif</span> <span class="n">input_image</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">__image_schema</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">__image_format</span> <span class="o">=</span> <span class="kc">None</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_array</span> <span class="o">=</span> <span class="kc">None</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_matrix</span> <span class="o">=</span> <span class="kc">None</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_det_matrix</span> <span class="o">=</span> <span class="kc">None</span>
@@ -1032,12 +1037,12 @@
 
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_set_from_class_instance</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">class_instance</span><span class="p">):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">__image_schema</span> <span class="o">=</span> <span class="n">class_instance</span><span class="o">.</span><span class="n">schema</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__image_format</span> <span class="o">=</span> <span class="n">class_instance</span><span class="o">.</span><span class="n">imformat</span>
 
-        <span class="k">if</span> <span class="n">class_instance</span><span class="o">.</span><span class="n">schema</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">IMAGE_FORMATS</span><span class="o">.</span><span class="n">MATRIX_FORMATS</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_set_from_array</span><span class="p">(</span><span class="n">class_instance</span><span class="o">.</span><span class="n">array</span><span class="p">[:]</span><span class="o">.</span><span class="n">copy</span><span class="p">(),</span> <span class="n">class_instance</span><span class="o">.</span><span class="n">schema</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">class_instance</span><span class="o">.</span><span class="n">imformat</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">IMAGE_FORMATS</span><span class="o">.</span><span class="n">MATRIX_FORMATS</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_set_from_array</span><span class="p">(</span><span class="n">class_instance</span><span class="o">.</span><span class="n">array</span><span class="p">[:]</span><span class="o">.</span><span class="n">copy</span><span class="p">(),</span> <span class="n">class_instance</span><span class="o">.</span><span class="n">imformat</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_set_from_array</span><span class="p">(</span><span class="n">class_instance</span><span class="o">.</span><span class="n">matrix</span><span class="p">[:]</span><span class="o">.</span><span class="n">copy</span><span class="p">(),</span> <span class="n">class_instance</span><span class="o">.</span><span class="n">schema</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_set_from_array</span><span class="p">(</span><span class="n">class_instance</span><span class="o">.</span><span class="n">matrix</span><span class="p">[:]</span><span class="o">.</span><span class="n">copy</span><span class="p">(),</span> <span class="n">class_instance</span><span class="o">.</span><span class="n">imformat</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_det_matrix</span> <span class="o">=</span> <span class="n">class_instance</span><span class="o">.</span><span class="n">_det_matrix</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_sparse_object_map</span> <span class="o">=</span> <span class="n">class_instance</span><span class="o">.</span><span class="n">_sparse_object_map</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_protected_metadata</span> <span class="o">=</span> <span class="n">deepcopy</span><span class="p">(</span><span class="n">class_instance</span><span class="o">.</span><span class="n">_protected_metadata</span><span class="p">)</span>
@@ -1066,50 +1071,50 @@
 <span class="sd">        &quot;&quot;&quot;</span>
 
         <span class="k">if</span> <span class="n">input_schema</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">__image_schema</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_guess_image_format</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
-            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">__image_schema</span> <span class="o">==</span> <span class="n">IMAGE_FORMATS</span><span class="o">.</span><span class="n">RGB_OR_BGR</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">__image_schema</span> <span class="o">==</span> <span class="n">IMAGE_FORMATS</span><span class="o">.</span><span class="n">RGBA_OR_BGRA</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">__image_format</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_guess_image_format</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">__image_format</span> <span class="o">==</span> <span class="n">IMAGE_FORMATS</span><span class="o">.</span><span class="n">RGB_OR_BGR</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">__image_format</span> <span class="o">==</span> <span class="n">IMAGE_FORMATS</span><span class="o">.</span><span class="n">RGBA_OR_BGRA</span><span class="p">:</span>
                 <span class="c1"># PhenoScope will assume in the event of rgb vs bgr that the input was rgb</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">__image_schema</span> <span class="o">=</span> <span class="n">IMAGE_FORMATS</span><span class="o">.</span><span class="n">RGB</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">__image_format</span> <span class="o">=</span> <span class="n">IMAGE_FORMATS</span><span class="o">.</span><span class="n">RGB</span>
 
         <span class="k">else</span><span class="p">:</span>
             <span class="c1"># Valid Format Check</span>
             <span class="k">if</span> <span class="n">input_schema</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">IMAGE_FORMATS</span><span class="o">.</span><span class="n">SUPPORTED_FORMATS</span><span class="p">:</span>
                 <span class="k">raise</span> <span class="n">UnsupportedSchemaError</span><span class="p">(</span><span class="n">input_schema</span><span class="p">)</span>
             <span class="k">else</span><span class="p">:</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">__image_schema</span> <span class="o">=</span> <span class="n">input_schema</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">__image_format</span> <span class="o">=</span> <span class="n">input_schema</span>
 
         <span class="c1"># Grayscale Formats</span>
-        <span class="k">if</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__image_schema</span> <span class="o">==</span> <span class="n">IMAGE_FORMATS</span><span class="o">.</span><span class="n">GRAYSCALE</span>
-                <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">__image_schema</span> <span class="o">==</span> <span class="n">IMAGE_FORMATS</span><span class="o">.</span><span class="n">GRAYSCALE_SINGLE_CHANNEL</span>
+        <span class="k">if</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__image_format</span> <span class="o">==</span> <span class="n">IMAGE_FORMATS</span><span class="o">.</span><span class="n">GRAYSCALE</span>
+                <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">__image_format</span> <span class="o">==</span> <span class="n">IMAGE_FORMATS</span><span class="o">.</span><span class="n">GRAYSCALE_SINGLE_CHANNEL</span>
         <span class="p">):</span> <span class="bp">self</span><span class="o">.</span><span class="n">_from_grayscale</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
 
         <span class="c1"># RGB Formats</span>
-        <span class="k">if</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__image_schema</span> <span class="o">==</span> <span class="n">IMAGE_FORMATS</span><span class="o">.</span><span class="n">RGB</span>
-                <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">__image_schema</span> <span class="o">==</span> <span class="n">IMAGE_FORMATS</span><span class="o">.</span><span class="n">RGBA</span>
+        <span class="k">if</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__image_format</span> <span class="o">==</span> <span class="n">IMAGE_FORMATS</span><span class="o">.</span><span class="n">RGB</span>
+                <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">__image_format</span> <span class="o">==</span> <span class="n">IMAGE_FORMATS</span><span class="o">.</span><span class="n">RGBA</span>
         <span class="p">):</span> <span class="bp">self</span><span class="o">.</span><span class="n">_from_rgb_or_rgba</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
 
         <span class="c1"># BGR Formats</span>
-        <span class="k">if</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__image_schema</span> <span class="o">==</span> <span class="n">IMAGE_FORMATS</span><span class="o">.</span><span class="n">BGR</span>
-                <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">__image_schema</span> <span class="o">==</span> <span class="n">IMAGE_FORMATS</span><span class="o">.</span><span class="n">BGRA</span>
+        <span class="k">if</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__image_format</span> <span class="o">==</span> <span class="n">IMAGE_FORMATS</span><span class="o">.</span><span class="n">BGR</span>
+                <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">__image_format</span> <span class="o">==</span> <span class="n">IMAGE_FORMATS</span><span class="o">.</span><span class="n">BGRA</span>
         <span class="p">):</span> <span class="bp">self</span><span class="o">.</span><span class="n">_from_bgr_or_bgra</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_from_grayscale</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">grayscale_array</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize class components from a grayscale image array&quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">__image_schema</span> <span class="o">==</span> <span class="n">IMAGE_FORMATS</span><span class="o">.</span><span class="n">GRAYSCALE</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">__image_format</span> <span class="o">==</span> <span class="n">IMAGE_FORMATS</span><span class="o">.</span><span class="n">GRAYSCALE</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_set_from_matrix</span><span class="p">(</span><span class="n">grayscale_array</span><span class="p">)</span>
 
-        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">__image_schema</span> <span class="o">==</span> <span class="n">IMAGE_FORMATS</span><span class="o">.</span><span class="n">GRAYSCALE_SINGLE_CHANNEL</span><span class="p">:</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">__image_format</span> <span class="o">==</span> <span class="n">IMAGE_FORMATS</span><span class="o">.</span><span class="n">GRAYSCALE_SINGLE_CHANNEL</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_set_from_matrix</span><span class="p">(</span><span class="n">grayscale_array</span><span class="p">[:,</span> <span class="p">:,</span> <span class="mi">0</span><span class="p">])</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_from_rgb_or_rgba</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">rgb_or_rgba_array</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize class components from an RGB or RGBA image array&quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">__image_schema</span> <span class="o">==</span> <span class="n">IMAGE_FORMATS</span><span class="o">.</span><span class="n">RGB</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">__image_format</span> <span class="o">==</span> <span class="n">IMAGE_FORMATS</span><span class="o">.</span><span class="n">RGB</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_array</span> <span class="o">=</span> <span class="n">rgb_or_rgba_array</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_set_from_matrix</span><span class="p">(</span>
                 <span class="n">matrix</span><span class="o">=</span><span class="n">rgb2gray</span><span class="p">(</span><span class="n">rgb_or_rgba_array</span><span class="p">)</span>
             <span class="p">)</span>
 
-        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">__image_schema</span> <span class="o">==</span> <span class="n">IMAGE_FORMATS</span><span class="o">.</span><span class="n">RGBA</span><span class="p">:</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">__image_format</span> <span class="o">==</span> <span class="n">IMAGE_FORMATS</span><span class="o">.</span><span class="n">RGBA</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_array</span> <span class="o">=</span> <span class="n">rgb_or_rgba_array</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_set_from_matrix</span><span class="p">(</span>
                 <span class="n">matrix</span><span class="o">=</span><span class="n">rgb2gray</span><span class="p">(</span>
@@ -1119,14 +1124,14 @@
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_from_bgr_or_bgra</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">bgr_or_bgra_array</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize class components from a BGR or BGRA image array&quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">__image_schema</span> <span class="o">==</span> <span class="n">IMAGE_FORMATS</span><span class="o">.</span><span class="n">BGR</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">__image_format</span> <span class="o">==</span> <span class="n">IMAGE_FORMATS</span><span class="o">.</span><span class="n">BGR</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_array</span> <span class="o">=</span> <span class="n">bgr_or_bgra_array</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_set_from_matrix</span><span class="p">(</span>
                 <span class="n">matrix</span><span class="o">=</span><span class="n">rgb2gray</span><span class="p">(</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">_convert_bgr_to_rgb</span><span class="p">(</span><span class="n">bgr_or_bgra_array</span><span class="p">)</span>
                 <span class="p">)</span>
             <span class="p">)</span>
-        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">__image_schema</span> <span class="o">==</span> <span class="n">IMAGE_FORMATS</span><span class="o">.</span><span class="n">BGRA</span><span class="p">:</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">__image_format</span> <span class="o">==</span> <span class="n">IMAGE_FORMATS</span><span class="o">.</span><span class="n">BGRA</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_array</span> <span class="o">=</span> <span class="n">bgr_or_bgra_array</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_set_from_matrix</span><span class="p">(</span>
                 <span class="n">matrix</span><span class="o">=</span><span class="n">rgb2gray</span><span class="p">(</span>
@@ -1226,7 +1231,7 @@
              <span class="n">figsize</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mi">9</span><span class="p">,</span> <span class="mi">10</span><span class="p">)</span>
              <span class="p">)</span> <span class="o">-&gt;</span> <span class="p">(</span><span class="n">plt</span><span class="o">.</span><span class="n">Figure</span><span class="p">,</span> <span class="n">plt</span><span class="o">.</span><span class="n">Axes</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Returns a matplotlib figure and axes showing the input image&quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">schema</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">IMAGE_FORMATS</span><span class="o">.</span><span class="n">MATRIX_FORMATS</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">imformat</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">IMAGE_FORMATS</span><span class="o">.</span><span class="n">MATRIX_FORMATS</span><span class="p">:</span>
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">array</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="n">figsize</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">matrix</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="n">figsize</span><span class="p">)</span></div>
@@ -1272,7 +1277,7 @@
 <span class="sd">            Axes objects used to render the overlay.</span>
 
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">schema</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">IMAGE_FORMATS</span><span class="o">.</span><span class="n">MATRIX_FORMATS</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">imformat</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">IMAGE_FORMATS</span><span class="o">.</span><span class="n">MATRIX_FORMATS</span><span class="p">:</span>
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">array</span><span class="o">.</span><span class="n">show_overlay</span><span class="p">(</span><span class="n">object_label</span><span class="o">=</span><span class="n">object_label</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="n">figsize</span><span class="p">,</span>
                                            <span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">,</span> <span class="n">annotation_size</span><span class="o">=</span><span class="n">annotation_size</span><span class="p">,</span>
                                            <span class="n">annotation_color</span><span class="o">=</span><span class="n">annotation_color</span><span class="p">,</span> <span class="n">annotation_facecolor</span><span class="o">=</span><span class="n">annotation_facecolor</span>
@@ -1287,8 +1292,8 @@
 <div class="viewcode-block" id="ImageHandler.rotate">
 <a class="viewcode-back" href="../../../../api_reference/phenoscope.core.handlers.html#phenoscope.core.handlers.ImageHandler.rotate">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">rotate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">angle_of_rotation</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">mode</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;edge&#39;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Rotate&#39;s the image and all its components&quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">schema</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">IMAGE_FORMATS</span><span class="o">.</span><span class="n">MATRIX_FORMATS</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Rotate the image and all its components&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">imformat</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">IMAGE_FORMATS</span><span class="o">.</span><span class="n">MATRIX_FORMATS</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_array</span> <span class="o">=</span> <span class="n">skimage_rotate</span><span class="p">(</span><span class="n">image</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_array</span><span class="p">,</span> <span class="n">angle</span><span class="o">=</span><span class="n">angle_of_rotation</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="n">mode</span><span class="p">,</span> <span class="n">clip</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_matrix</span> <span class="o">=</span> <span class="n">skimage_rotate</span><span class="p">(</span><span class="n">image</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_matrix</span><span class="p">,</span> <span class="n">angle</span><span class="o">=</span><span class="n">angle_of_rotation</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="n">mode</span><span class="p">,</span> <span class="n">clip</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>

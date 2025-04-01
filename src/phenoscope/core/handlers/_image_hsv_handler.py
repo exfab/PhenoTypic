@@ -17,8 +17,8 @@ from phenoscope.util.exceptions_ import IllegalAssignmentError
 class ImageHsvHandler(ImageHandler):
     """Adds HSV format support for the color measurement module."""
 
-    def __init__(self, input_image: Optional[Union[np.ndarray, Image, PathLike]] = None, input_schema:str=None):
-        super().__init__(input_image=input_image, input_schema=input_schema)
+    def __init__(self, input_image: Optional[Union[np.ndarray, Image, PathLike]] = None, imformat:str=None):
+        super().__init__(input_image=input_image, imformat=imformat)
         self.__hsv_handler = HsvAccessor(self)
 
     @property
@@ -30,16 +30,16 @@ class ImageHsvHandler(ImageHandler):
         Returns:
             np.ndarray: The hsv array of the current image.
         """
-        if self.schema in IMAGE_FORMATS.MATRIX_FORMATS:
+        if self.imformat in IMAGE_FORMATS.MATRIX_FORMATS:
             raise AttributeError('Grayscale images cannot be directly converted to hsv. Convert to RGB first')
         else:
-            match self.schema:
+            match self.imformat:
                 case IMAGE_FORMATS.RGB:
                     return rgb2hsv(self.array[:])
                 case IMAGE_FORMATS.BGR:
                     return rgb2hsv(self._convert_bgr_to_rgb(self.array[:]))
                 case _:
-                    raise ValueError(f'Unsupported schema {self.schema} for HSV conversion')
+                    raise ValueError(f'Unsupported imformat {self.imformat} for HSV conversion')
 
     @property
     def hsv(self)->HsvAccessor:

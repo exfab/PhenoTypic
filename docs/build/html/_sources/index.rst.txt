@@ -33,7 +33,7 @@ Welcome to PhenoScope's documentation. Here you'll find comprehensive guides and
 
       +++
 
-      .. button-ref:: getting_started
+      .. button-ref:: user_guide/getting_started
          :ref-type: doc
          :click-parent:
          :color: secondary
@@ -139,7 +139,6 @@ Welcome to PhenoScope's documentation. Here you'll find comprehensive guides and
 
    installation
    user_guide/index
-   tutorial/index
    api_reference/index
    contrib_guide/index
 

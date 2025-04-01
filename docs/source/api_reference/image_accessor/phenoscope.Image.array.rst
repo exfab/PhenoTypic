@@ -1,11 +1,11 @@
 ﻿
 
-phenoscope.Image.objmap
-=====================
+phenoscope.Image.array
+======================
 
 .. currentmodule:: phenoscope
 
-.. autoproperty:: Image.objmap
+.. autoproperty:: Image.array
 
 
 
@@ -14,7 +14,7 @@ phenoscope.Image.objmap
 
 .. currentmodule:: phenoscope.core.accessors
 
-.. autoclass:: ImageObjects
+.. autoclass:: ImageArray
    :private-members: False 
    :members:
    :undoc-members:

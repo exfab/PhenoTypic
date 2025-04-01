@@ -467,26 +467,26 @@ This notebook introduces the image class and how to access the different element
 <div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Create an Image object from the numpy array</span>
 <span class="n">img</span> <span class="o">=</span> <span class="n">ps</span><span class="o">.</span><span class="n">Image</span><span class="p">(</span><span class="n">test_image</span><span class="p">,</span> <span class="n">input_schema</span><span class="o">=</span><span class="s1">&#39;RGB&#39;</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Image shape: </span><span class="si">{</span><span class="n">img</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Image schema: </span><span class="si">{</span><span class="n">img</span><span class="o">.</span><span class="n">schema</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Image imformat: </span><span class="si">{</span><span class="n">img</span><span class="o">.</span><span class="n">imformat</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 <span class="n">img</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 </pre></div>
 </div>
 </div>
 <div class="cell_output docutils container">
 <div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Image shape: (100, 100, 3)
-Image schema: RGB
+Image imformat: RGB
 </pre></div>
 </div>
 <div class="output traceback highlight-ipythontb notranslate"><div class="highlight"><pre><span></span><span class="gt">---------------------------------------------------------------------------</span>
 <span class="ne">TypeError</span><span class="g g-Whitespace">                                 </span>Traceback (most recent call last)
 <span class="n">Cell</span> <span class="n">In</span><span class="p">[</span><span class="mi">3</span><span class="p">],</span> <span class="n">line</span> <span class="mi">5</span>
 <span class="g g-Whitespace">      </span><span class="mi">3</span> <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Image shape: </span><span class="si">{</span><span class="n">img</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-<span class="g g-Whitespace">      </span><span class="mi">4</span> <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Image schema: </span><span class="si">{</span><span class="n">img</span><span class="o">.</span><span class="n">schema</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="g g-Whitespace">      </span><span class="mi">4</span> <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Image imformat: </span><span class="si">{</span><span class="n">img</span><span class="o">.</span><span class="n">imformat</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 <span class="ne">----&gt; </span><span class="mi">5</span> <span class="n">img</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 
 <span class="nn">File ~/Library/CloudStorage/ProtonDrive-alxxander.nguyen@protonmail.com-folder/Research/Wheeldon/Active Projects/PhenoScope/src/phenoscope/core/handlers/_image_handler.py:832,</span> in <span class="ni">ImageHandler.show</span><span class="nt">(self, ax, figsize)</span>
 <span class="g g-Whitespace">    </span><span class="mi">830</span><span class="w"> </span><span class="sd">&quot;&quot;&quot;Returns a matplotlib figure and axes showing the input image&quot;&quot;&quot;</span>
-<span class="g g-Whitespace">    </span><span class="mi">831</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">schema</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">IMAGE_FORMATS</span><span class="o">.</span><span class="n">MATRIX_FORMATS</span><span class="p">:</span>
+<span class="g g-Whitespace">    </span><span class="mi">831</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">imformat</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">IMAGE_FORMATS</span><span class="o">.</span><span class="n">MATRIX_FORMATS</span><span class="p">:</span>
 <span class="ne">--&gt; </span><span class="mi">832</span>     <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">array</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="n">figsize</span><span class="p">)</span>
 <span class="g g-Whitespace">    </span><span class="mi">833</span> <span class="k">else</span><span class="p">:</span>
 <span class="g g-Whitespace">    </span><span class="mi">834</span>     <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">matrix</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="n">figsize</span><span class="p">)</span>

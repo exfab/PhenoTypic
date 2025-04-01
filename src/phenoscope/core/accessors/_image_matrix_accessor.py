@@ -59,10 +59,10 @@ class ImageMatrix(ImageAccessor):
                 raise ArrayKeyValueShapeMismatchError
 
         self._parent_image._matrix[key] = value
-        if self._parent_image.schema not in IMAGE_FORMATS.MATRIX_FORMATS:
-            self._parent_image.set_image(input_image=gray2rgb(self._parent_image._matrix), input_schema=IMAGE_FORMATS.RGB)
+        if self._parent_image.imformat not in IMAGE_FORMATS.MATRIX_FORMATS:
+            self._parent_image.set_image(input_image=gray2rgb(self._parent_image._matrix), imformat=IMAGE_FORMATS.RGB)
         else:
-            self._parent_image.set_image(input_image=self._parent_image._matrix, input_schema=IMAGE_FORMATS.GRAYSCALE)
+            self._parent_image.set_image(input_image=self._parent_image._matrix, imformat=IMAGE_FORMATS.GRAYSCALE)
 
     @property
     def shape(self) -> tuple:

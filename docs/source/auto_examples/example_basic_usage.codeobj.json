@@ -101,83 +101,83 @@
    "name": "ImageHandler.array"
   }
  ],
- "img.schema": [
+ "img.imformat": [
   {
    "is_class": false,
    "is_explicit": false,
    "module": "phenoscope.core._image",
    "module_short": "phenoscope.core._image",
-   "name": "Image.schema"
+   "name": "Image.imformat"
   },
   {
    "is_class": false,
    "is_explicit": false,
    "module": "phenoscope.core",
    "module_short": "phenoscope.core",
-   "name": "Image.schema"
+   "name": "Image.imformat"
   },
   {
    "is_class": false,
    "is_explicit": false,
    "module": "phenoscope",
    "module_short": "phenoscope",
-   "name": "Image.schema"
+   "name": "Image.imformat"
   },
   {
    "is_class": false,
    "is_explicit": false,
    "module": "phenoscope.core.handlers._image_hsv_handler",
    "module_short": "phenoscope.core.handlers",
-   "name": "ImageHsvHandler.schema"
+   "name": "ImageHsvHandler.imformat"
   },
   {
    "is_class": false,
    "is_explicit": false,
    "module": "phenoscope.core.handlers",
    "module_short": "phenoscope.core.handlers",
-   "name": "ImageHsvHandler.schema"
+   "name": "ImageHsvHandler.imformat"
   },
   {
    "is_class": false,
    "is_explicit": false,
    "module": "phenoscope.core",
    "module_short": "phenoscope.core",
-   "name": "ImageHsvHandler.schema"
+   "name": "ImageHsvHandler.imformat"
   },
   {
    "is_class": false,
    "is_explicit": false,
    "module": "phenoscope",
    "module_short": "phenoscope",
-   "name": "ImageHsvHandler.schema"
+   "name": "ImageHsvHandler.imformat"
   },
   {
    "is_class": false,
    "is_explicit": false,
    "module": "phenoscope.core.handlers._image_handler",
    "module_short": "phenoscope.core.handlers",
-   "name": "ImageHandler.schema"
+   "name": "ImageHandler.imformat"
   },
   {
    "is_class": false,
    "is_explicit": false,
    "module": "phenoscope.core.handlers",
    "module_short": "phenoscope.core.handlers",
-   "name": "ImageHandler.schema"
+   "name": "ImageHandler.imformat"
   },
   {
    "is_class": false,
    "is_explicit": false,
    "module": "phenoscope.core",
    "module_short": "phenoscope.core",
-   "name": "ImageHandler.schema"
+   "name": "ImageHandler.imformat"
   },
   {
    "is_class": false,
    "is_explicit": false,
    "module": "phenoscope",
    "module_short": "phenoscope",
-   "name": "ImageHandler.schema"
+   "name": "ImageHandler.imformat"
   }
  ],
  "img.shape": [

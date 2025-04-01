@@ -17,12 +17,26 @@ from ..accessors import GridAccessor
 
 class ImageGridHandler(Image):
     """
-    The handler class that enables grid-based processing and overlay visualization.
+    A specialized Image object that supports grid-based processing and overlay visualization.
 
     This class extends the base `Image` class functionality to include grid handling,
     grid-based slicing, and advanced visualization capabilities such as displaying overlay information
     with gridlines and annotations. It interacts with the provided grid handling utilities
     to determine grid structure and assign/overlay it effectively on the image.
+
+    Args:
+            input_image (Optional[Union[np.ndarray, Type[Image]]]): The input
+                image, which can be a NumPy array or an image-like object. If
+                this parameter is not provided, it defaults to None.
+            imformat (str): A string representing the schema of the input
+                image. It defaults to None if not provided.
+            grid_finder (Optional[GridFinder]): An optional GridFinder instance
+                for defining grids on the image. If not provided, it defaults to
+                a center grid setter.
+            nrows (int): An integer passed to the grid setter to specify the number of rows in the grid
+                (Defaults to 8).
+            ncols (int): An integer passed to the grid setter to specify the number of columns in the grid
+                (Defaults to 12).
 
     Attributes:
         _grid_setter (Optional[GridFinder]): An object responsible for defining and optimizing the grid
@@ -31,8 +45,8 @@ class ImageGridHandler(Image):
             accessing row and column edges and generating section maps for the image's grid system.
     """
 
-    def __init__(self, input_image: Optional[Union[np.ndarray, Image]] = None, input_schema: str = None,
-                 grid_setter: Optional[GridFinder] = None,
+    def __init__(self, input_image: Optional[Union[np.ndarray, Image]] = None, imformat: str = None,
+                 grid_finder: Optional[GridFinder] = None,
                  nrows: int = 8, ncols: int = 12):
         """
         Represents an image processor with grid management capabilities. This class
@@ -44,9 +58,9 @@ class ImageGridHandler(Image):
             input_image (Optional[Union[np.ndarray, Type[Image]]]): The input
                 image, which can be a NumPy array or an image-like object. If
                 this parameter is not provided, it defaults to None.
-            input_schema (str): A string representing the schema of the input
+            imformat (str): A string representing the schema of the input
                 image. It defaults to None if not provided.
-            grid_setter (Optional[GridFinder]): An optional GridFinder instance
+            grid_finder (Optional[GridFinder]): An optional GridFinder instance
                 for defining grids on the image. If not provided, it defaults to
                 a center grid setter.
             nrows (int): An integer specifying the number of rows in the grid.
@@ -54,14 +68,14 @@ class ImageGridHandler(Image):
             ncols (int): An integer specifying the number of columns in the grid.
                 Defaults to 12.
         """
-        super().__init__(input_image=input_image, input_schema=input_schema)
+        super().__init__(input_image=input_image, imformat=imformat)
 
         if hasattr(input_image, '_grid_setter'):
-            grid_setter = input_image._grid_setter
-        elif grid_setter is None:
-            grid_setter = OptimalCenterGridFinder(nrows=nrows, ncols=ncols)
+            grid_finder = input_image._grid_setter
+        elif grid_finder is None:
+            grid_finder = OptimalCenterGridFinder(nrows=nrows, ncols=ncols)
 
-        self._grid_setter: Optional[GridFinder] = grid_setter
+        self._grid_setter: Optional[GridFinder] = grid_finder
         self.__grid_subhandler = GridAccessor(self)
 
     @property
@@ -85,10 +99,10 @@ class ImageGridHandler(Image):
         Returns:
             Image: A copy of the image at the slices indicated
         """
-        if self.schema not in IMAGE_FORMATS.MATRIX_FORMATS:
-            subimage = Image(input_image=self.array[key], input_schema=self.schema)
+        if self.imformat not in IMAGE_FORMATS.MATRIX_FORMATS:
+            subimage = Image(input_image=self.array[key], imformat=self.imformat)
         else:
-            subimage = Image(input_image=self.matrix[key], input_schema=self.schema)
+            subimage = Image(input_image=self.matrix[key], imformat=self.imformat)
 
         subimage.enh_matrix[:] = self.enh_matrix[key]
         subimage.objmap[:] = self.objmap[key]

@@ -518,7 +518,7 @@
 <span class="sd">        and visualizes them along with the original image. It supports RGB and non-RGB image</span>
 <span class="sd">        schemas by adjusting the channel histograms accordingly. The method plots the original</span>
 <span class="sd">        image and histograms for three channels side by side, customizing titles to correspond</span>
-<span class="sd">        to the image schema (e.g., RGB or other channels).</span>
+<span class="sd">        to the image imformat (e.g., RGB or other channels).</span>
 
 <span class="sd">        Args:</span>
 <span class="sd">            figsize (Tuple[int, int]): Tuple representing the figure size (width, height) for</span>
@@ -543,7 +543,7 @@
 
         <span class="n">hist_one</span><span class="p">,</span> <span class="n">histc_one</span> <span class="o">=</span> <span class="n">skimage</span><span class="o">.</span><span class="n">exposure</span><span class="o">.</span><span class="n">histogram</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_parent_image</span><span class="o">.</span><span class="n">_array</span><span class="p">[:,</span> <span class="p">:,</span> <span class="mi">0</span><span class="p">])</span>
         <span class="n">axes_</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">histc_one</span><span class="p">,</span> <span class="n">hist_one</span><span class="p">,</span> <span class="n">lw</span><span class="o">=</span><span class="n">linewidth</span><span class="p">)</span>
-        <span class="k">match</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parent_image</span><span class="o">.</span><span class="n">schema</span><span class="p">:</span>
+        <span class="k">match</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parent_image</span><span class="o">.</span><span class="n">imformat</span><span class="p">:</span>
             <span class="k">case</span> <span class="n">IMAGE_FORMATS</span><span class="o">.</span><span class="n">RGB</span><span class="p">:</span>
                 <span class="n">axes_</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">&quot;Red Histogram&quot;</span><span class="p">)</span>
             <span class="k">case</span><span class="w"> </span><span class="k">_</span><span class="p">:</span>
@@ -551,7 +551,7 @@
 
         <span class="n">hist_two</span><span class="p">,</span> <span class="n">histc_two</span> <span class="o">=</span> <span class="n">skimage</span><span class="o">.</span><span class="n">exposure</span><span class="o">.</span><span class="n">histogram</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_parent_image</span><span class="o">.</span><span class="n">_array</span><span class="p">[:,</span> <span class="p">:,</span> <span class="mi">1</span><span class="p">])</span>
         <span class="n">axes_</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">histc_two</span><span class="p">,</span> <span class="n">hist_two</span><span class="p">,</span> <span class="n">lw</span><span class="o">=</span><span class="n">linewidth</span><span class="p">)</span>
-        <span class="k">match</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parent_image</span><span class="o">.</span><span class="n">schema</span><span class="p">:</span>
+        <span class="k">match</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parent_image</span><span class="o">.</span><span class="n">imformat</span><span class="p">:</span>
             <span class="k">case</span> <span class="n">IMAGE_FORMATS</span><span class="o">.</span><span class="n">RGB</span><span class="p">:</span>
                 <span class="n">axes_</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s1">&#39;Green Histogram&#39;</span><span class="p">)</span>
             <span class="k">case</span><span class="w"> </span><span class="k">_</span><span class="p">:</span>
@@ -559,7 +559,7 @@
 
         <span class="n">hist_three</span><span class="p">,</span> <span class="n">histc_three</span> <span class="o">=</span> <span class="n">skimage</span><span class="o">.</span><span class="n">exposure</span><span class="o">.</span><span class="n">histogram</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_parent_image</span><span class="o">.</span><span class="n">_array</span><span class="p">[:,</span> <span class="p">:,</span> <span class="mi">2</span><span class="p">])</span>
         <span class="n">axes_</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">histc_three</span><span class="p">,</span> <span class="n">hist_three</span><span class="p">,</span> <span class="n">lw</span><span class="o">=</span><span class="n">linewidth</span><span class="p">)</span>
-        <span class="k">match</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parent_image</span><span class="o">.</span><span class="n">schema</span><span class="p">:</span>
+        <span class="k">match</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parent_image</span><span class="o">.</span><span class="n">imformat</span><span class="p">:</span>
             <span class="k">case</span> <span class="n">IMAGE_FORMATS</span><span class="o">.</span><span class="n">RGB</span><span class="p">:</span>
                 <span class="n">axes_</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s1">&#39;Blue Histogram&#39;</span><span class="p">)</span>
             <span class="k">case</span><span class="w"> </span><span class="k">_</span><span class="p">:</span>

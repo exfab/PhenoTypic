@@ -16,7 +16,7 @@ def test_gridimage_initialization():
     # Test custom initialization with image and grid setter
     input_image = np.zeros((100, 100))
     grid_setter = OptimalCenterGridFinder(nrows=10, ncols=10)
-    grid_image = GridImage(input_image=input_image, grid_setter=grid_setter)
+    grid_image = GridImage(input_image=input_image, grid_finder=grid_setter)
     assert grid_image._grid_setter == grid_setter
 
 @timeit

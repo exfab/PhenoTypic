@@ -18,20 +18,20 @@ nbclient.exceptions.CellExecutionError: An error occurred while executing the fo
 # Create an Image object from the numpy array
 img = ps.Image(test_image, input_schema='RGB')
 print(f"Image shape: {img.shape}")
-print(f"Image schema: {img.schema}")
+print(f"Image imformat: {img.imformat}")
 img.show()
 ------------------
 
 ----- stdout -----
 Image shape: (100, 100, 3)
-Image schema: RGB
+Image imformat: RGB
 ------------------
 
 [0;31m---------------------------------------------------------------------------[0m
 [0;31mTypeError[0m                                 Traceback (most recent call last)
 Cell [0;32mIn[3], line 5[0m
 [1;32m      3[0m [38;5;28mprint[39m([38;5;124mf[39m[38;5;124m"[39m[38;5;124mImage shape: [39m[38;5;132;01m{[39;00mimg[38;5;241m.[39mshape[38;5;132;01m}[39;00m[38;5;124m"[39m)
-[1;32m      4[0m [38;5;28mprint[39m([38;5;124mf[39m[38;5;124m"[39m[38;5;124mImage schema: [39m[38;5;132;01m{[39;00mimg[38;5;241m.[39mschema[38;5;132;01m}[39;00m[38;5;124m"[39m)
+[1;32m      4[0m [38;5;28mprint[39m([38;5;124mf[39m[38;5;124m"[39m[38;5;124mImage imformat: [39m[38;5;132;01m{[39;00mimg[38;5;241m.[39mschema[38;5;132;01m}[39;00m[38;5;124m"[39m)
 [0;32m----> 5[0m [43mimg[49m[38;5;241;43m.[39;49m[43mshow[49m[43m([49m[43m)[49m
 
 File [0;32m~/Library/CloudStorage/ProtonDrive-alxxander.nguyen@protonmail.com-folder/Research/Wheeldon/Active Projects/PhenoScope/src/phenoscope/core/handlers/_image_handler.py:832[0m, in [0;36mImageHandler.show[0;34m(self, ax, figsize)[0m

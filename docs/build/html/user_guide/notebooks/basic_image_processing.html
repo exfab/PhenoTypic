@@ -413,42 +413,23 @@ This notebook introduces the image class and how to access the different element
 <div class="cell docutils container">
 <div class="cell_input docutils container">
 <div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Create an Image object from the numpy array</span>
-<span class="n">img</span> <span class="o">=</span> <span class="n">ps</span><span class="o">.</span><span class="n">Image</span><span class="p">(</span><span class="n">test_image</span><span class="p">,</span> <span class="n">input_schema</span><span class="o">=</span><span class="s1">&#39;RGB&#39;</span><span class="p">)</span>
+<span class="n">img</span> <span class="o">=</span> <span class="n">ps</span><span class="o">.</span><span class="n">Image</span><span class="p">(</span><span class="n">test_image</span><span class="p">,</span> <span class="n">imformat</span><span class="o">=</span><span class="s1">&#39;RGB&#39;</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Image shape: </span><span class="si">{</span><span class="n">img</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Image schema: </span><span class="si">{</span><span class="n">img</span><span class="o">.</span><span class="n">schema</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Image imformat: </span><span class="si">{</span><span class="n">img</span><span class="o">.</span><span class="n">imformat</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 <span class="n">img</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 </pre></div>
 </div>
 </div>
 <div class="cell_output docutils container">
 <div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Image shape: (100, 100, 3)
-Image schema: RGB
+Image imformat: RGB
 </pre></div>
 </div>
-<div class="output traceback highlight-ipythontb notranslate"><div class="highlight"><pre><span></span><span class="gt">---------------------------------------------------------------------------</span>
-<span class="ne">TypeError</span><span class="g g-Whitespace">                                 </span>Traceback (most recent call last)
-<span class="n">Cell</span> <span class="n">In</span><span class="p">[</span><span class="mi">3</span><span class="p">],</span> <span class="n">line</span> <span class="mi">5</span>
-<span class="g g-Whitespace">      </span><span class="mi">3</span> <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Image shape: </span><span class="si">{</span><span class="n">img</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-<span class="g g-Whitespace">      </span><span class="mi">4</span> <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Image schema: </span><span class="si">{</span><span class="n">img</span><span class="o">.</span><span class="n">schema</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-<span class="ne">----&gt; </span><span class="mi">5</span> <span class="n">img</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
-
-<span class="nn">File ~/Library/CloudStorage/ProtonDrive-alxxander.nguyen@protonmail.com-folder/Research/Wheeldon/Active Projects/PhenoScope/src/phenoscope/core/handlers/_image_handler.py:832,</span> in <span class="ni">ImageHandler.show</span><span class="nt">(self, ax, figsize)</span>
-<span class="g g-Whitespace">    </span><span class="mi">830</span><span class="w"> </span><span class="sd">&quot;&quot;&quot;Returns a matplotlib figure and axes showing the input image&quot;&quot;&quot;</span>
-<span class="g g-Whitespace">    </span><span class="mi">831</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">schema</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">IMAGE_FORMATS</span><span class="o">.</span><span class="n">MATRIX_FORMATS</span><span class="p">:</span>
-<span class="ne">--&gt; </span><span class="mi">832</span>     <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">array</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="n">figsize</span><span class="p">)</span>
-<span class="g g-Whitespace">    </span><span class="mi">833</span> <span class="k">else</span><span class="p">:</span>
-<span class="g g-Whitespace">    </span><span class="mi">834</span>     <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">matrix</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="n">figsize</span><span class="p">)</span>
-
-<span class="nn">File ~/Library/CloudStorage/ProtonDrive-alxxander.nguyen@protonmail.com-folder/Research/Wheeldon/Active Projects/PhenoScope/src/phenoscope/core/accessors/_image_array_accessor.py:152,</span> in <span class="ni">ImageArray.show</span><span class="nt">(self, channel, ax, figsize, title)</span>
-<span class="g g-Whitespace">    </span><span class="mi">150</span> <span class="c1"># Plot array</span>
-<span class="g g-Whitespace">    </span><span class="mi">151</span> <span class="k">if</span> <span class="n">channel</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-<span class="ne">--&gt; </span><span class="mi">152</span>     <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="n">arr</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_parent_image</span><span class="o">.</span><span class="n">array</span><span class="p">[:],</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="n">figsize</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="n">title</span><span class="p">)</span>
-<span class="g g-Whitespace">    </span><span class="mi">154</span> <span class="k">else</span><span class="p">:</span>
-<span class="g g-Whitespace">    </span><span class="mi">155</span>     <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="n">arr</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_parent_image</span><span class="o">.</span><span class="n">array</span><span class="p">[:,</span> <span class="p">:,</span> <span class="n">channel</span><span class="p">],</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="n">figsize</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="n">title</span><span class="p">)</span>
-
-<span class="ne">TypeError</span>: ImageAccessor.show() missing 1 required positional argument: &#39;objmap&#39;
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>(&lt;Figure size 900x1000 with 1 Axes&gt;,
+ &lt;Axes: title={&#39;center&#39;: &#39;2a34097c-ebeb-40cd-8d99-b7376b941a9e&#39;}&gt;)
 </pre></div>
 </div>
+<img alt="../../_images/46cb2520a754854884607e66accd6f62cdc7af4df5f938399b21915a3ab00515.png" src="../../_images/46cb2520a754854884607e66accd6f62cdc7af4df5f938399b21915a3ab00515.png" />
 </div>
 </div>
 </section>
@@ -489,10 +470,10 @@ Image Matrix: Type=&lt;class &#39;numpy.ndarray&#39;&gt;, Shape=(100, 100)
 </div>
 </div>
 <div class="cell_output docutils container">
-<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Text(0.5, 1.0, &#39;Test Image&#39;)
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Text(0.5, 1.0, &#39;Test&#39;)
 </pre></div>
 </div>
-<img alt="../../_images/857aad1272985d5570f3324bd5966762a134f27ff3d00a2728cf0ffacb98cb51.png" src="../../_images/857aad1272985d5570f3324bd5966762a134f27ff3d00a2728cf0ffacb98cb51.png" />
+<img alt="../../_images/d91a1cef8f0593d51f96f2f725cdebc20bb2f6cfe46622afde4daedbbc085c3c.png" src="../../_images/d91a1cef8f0593d51f96f2f725cdebc20bb2f6cfe46622afde4daedbbc085c3c.png" />
 </div>
 </div>
 </section>

@@ -24,7 +24,7 @@ class MapModifier(ImageOperation):
                 output = self._operate(image.copy())
 
             # TODO: Fix this check
-            if output.schema in IMAGE_FORMATS.MATRIX_FORMATS:
+            if output.imformat in IMAGE_FORMATS.MATRIX_FORMATS:
                 if not np.array_equal(imcopy.array[:], output.array[:]): raise DataIntegrityError(
                     component='array', operation=self.__class__.__name__, image_name=image.name
                 )

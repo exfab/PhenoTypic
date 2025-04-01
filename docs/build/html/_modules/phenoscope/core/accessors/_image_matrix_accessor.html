@@ -475,7 +475,7 @@
     <span class="k">def</span><span class="w"> </span><span class="fm">__setitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Sets the value for a given key in the parent image&#39;s matrix. Updates the parent</span>
-<span class="sd">        image data and schema accordingly to ensure consistency with the provided value.</span>
+<span class="sd">        image data and imformat accordingly to ensure consistency with the provided value.</span>
 
 <span class="sd">        Args:</span>
 <span class="sd">            key: The key in the matrix to update.</span>
@@ -491,7 +491,7 @@
                 <span class="k">raise</span> <span class="n">ArrayKeyValueShapeMismatchError</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_parent_image</span><span class="o">.</span><span class="n">_matrix</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parent_image</span><span class="o">.</span><span class="n">schema</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">IMAGE_FORMATS</span><span class="o">.</span><span class="n">MATRIX_FORMATS</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parent_image</span><span class="o">.</span><span class="n">imformat</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">IMAGE_FORMATS</span><span class="o">.</span><span class="n">MATRIX_FORMATS</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_parent_image</span><span class="o">.</span><span class="n">set_image</span><span class="p">(</span><span class="n">input_image</span><span class="o">=</span><span class="n">gray2rgb</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_parent_image</span><span class="o">.</span><span class="n">_matrix</span><span class="p">),</span> <span class="n">input_schema</span><span class="o">=</span><span class="n">IMAGE_FORMATS</span><span class="o">.</span><span class="n">RGB</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_parent_image</span><span class="o">.</span><span class="n">set_image</span><span class="p">(</span><span class="n">input_image</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_parent_image</span><span class="o">.</span><span class="n">_matrix</span><span class="p">,</span> <span class="n">input_schema</span><span class="o">=</span><span class="n">IMAGE_FORMATS</span><span class="o">.</span><span class="n">GRAYSCALE</span><span class="p">)</span></div>

@@ -53,8 +53,6 @@
     <script>DOCUMENTATION_OPTIONS.pagename = 'api_reference/Image/phenoscope.Image.array';</script>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
-    <link rel="next" title="phenoscope.Image.matrix" href="phenoscope.Image.matrix.html" />
-    <link rel="prev" title="API Reference" href="../index.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
   <meta name="docsearch:version" content="0.5.1" />
@@ -153,7 +151,7 @@
 </li>
 
 
-<li class="nav-item current active">
+<li class="nav-item ">
   <a class="nav-link nav-internal" href="../index.html">
     API Reference
   </a>
@@ -239,8 +237,10 @@
       
       
       
+        
+      
       <dialog id="pst-primary-sidebar-modal"></dialog>
-      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
         
 
   
@@ -269,7 +269,7 @@
 </li>
 
 
-<li class="nav-item current active">
+<li class="nav-item ">
   <a class="nav-link nav-internal" href="../index.html">
     API Reference
   </a>
@@ -320,49 +320,6 @@
     
   </div>
   
-    <div class="sidebar-primary-items__start sidebar-primary__section">
-        <div class="sidebar-primary-item">
-<nav class="bd-docs-nav bd-links"
-     aria-label="Section Navigation">
-  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
-  <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
-<li class="toctree-l1 current active"><a class="current reference internal" href="#">phenoscope.Image.array</a></li>
-<li class="toctree-l1"><a class="reference internal" href="phenoscope.Image.matrix.html">phenoscope.Image.matrix</a></li>
-<li class="toctree-l1"><a class="reference internal" href="phenoscope.Image.enh_matrix.html">phenoscope.Image.enh_matrix</a></li>
-<li class="toctree-l1"><a class="reference internal" href="phenoscope.Image.objmask.html">phenoscope.Image.objmask</a></li>
-<li class="toctree-l1"><a class="reference internal" href="phenoscope.Image.objmap.html">phenoscope.Image.objmap</a></li>
-<li class="toctree-l1"><a class="reference internal" href="phenoscope.Image.obj.html">phenoscope.Image.obj</a></li>
-<li class="toctree-l1"><a class="reference internal" href="phenoscope.Image.hsv.html">phenoscope.Image.hsv</a></li>
-</ul>
-<ul class="nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="../GridImage/phenoscope.GridImage.grid.html">phenoscope.GridImage.grid</a></li>
-</ul>
-<p aria-level="2" class="caption" role="heading"><span class="caption-text">Modules</span></p>
-<ul class="nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="../phenoscope.abstract.html">phenoscope.abstract</a></li>
-<li class="toctree-l1 has-children"><a class="reference internal" href="../phenoscope.core.html">phenoscope.core</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
-<li class="toctree-l2"><a class="reference internal" href="../phenoscope.core.accessors.html">phenoscope.core.accessors</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../phenoscope.core.handlers.html">phenoscope.core.handlers</a></li>
-</ul>
-</details></li>
-<li class="toctree-l1"><a class="reference internal" href="../phenoscope.data.html">phenoscope.data</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../phenoscope.detection.html">phenoscope.detection</a></li>
-<li class="toctree-l1 has-children"><a class="reference internal" href="../phenoscope.grid.html">phenoscope.grid</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
-<li class="toctree-l2"><a class="reference internal" href="../phenoscope.grid.abstract.html">phenoscope.grid.abstract</a></li>
-</ul>
-</details></li>
-<li class="toctree-l1"><a class="reference internal" href="../phenoscope.measure.html">phenoscope.measure</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../phenoscope.morphology.html">phenoscope.morphology</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../phenoscope.objects.html">phenoscope.objects</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../phenoscope.pipeline.html">phenoscope.pipeline</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../phenoscope.preprocessing.html">phenoscope.preprocessing</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../phenoscope.transform.html">phenoscope.transform</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../phenoscope.util.html">phenoscope.util</a></li>
-</ul>
-</div>
-</nav></div>
-    </div>
-  
   
   <div class="sidebar-primary-items__end sidebar-primary__section">
       <div class="sidebar-primary-item">
@@ -398,9 +355,6 @@
         <i class="fa-solid fa-home"></i>
       </a>
     </li>
-    
-    <li class="breadcrumb-item"><a href="../index.html" class="nav-link">API Reference</a></li>
-    
     <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">phenoscope.Image.array</span></li>
   </ul>
 </nav>
@@ -423,27 +377,35 @@
 <dl class="py property">
 <dt class="sig sig-object py" id="phenoscope.Image.array">
 <em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">Image.</span></span><span class="sig-name descname"><span class="pre">array</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="../phenoscope.core.accessors.html#phenoscope.core.accessors.ImageArray" title="phenoscope.core.accessors._image_array_accessor.ImageArray"><span class="pre">ImageArray</span></a></em><a class="headerlink" href="#phenoscope.Image.array" title="Link to this definition">#</a></dt>
-<dd><p>The image’s array representation. An image array can represent multi-channels, thus the array can be 3-D or 4-D</p>
+<dd><p>Returns the ImageArray accessor; An image array represents the multichannel information</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <ul class="simple">
-<li><p>array elements are not directly mutable in order to preserve image information integrity</p></li>
-<li><p>change array elements by changing the image being represented with Image.set_image()</p></li>
+<li><p>array/matrix element data is synced</p></li>
+<li><p>change image shape by changing the image being represented with Image.set_image()</p></li>
 <li><p>Raises an error if input image has no array form</p></li>
 </ul>
+</div>
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table autosummary">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="../phenoscope.core.accessors.html#phenoscope.core.accessors.ImageArray" title="phenoscope.core.accessors.ImageArray"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ImageArray</span></code></a>(parent_image)</p></td>
+<td><p>An accessor for handling image arrays with helper methods for accessing, modifying, visualizing, and analyzing the multichannel image data.</p></td>
+</tr>
+</tbody>
+</table>
 </div>
 <dl class="field-list simple">
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
 <dd class="field-odd"><p>A class that can be accessed like a numpy array, but has extra methods to streamline development, or None if not set</p>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p>Optional[<a class="reference internal" href="../phenoscope.core.accessors.html#phenoscope.core.accessors.ImageArray" title="phenoscope.core.accessors.ImageArray">ImageArray</a>]</p>
+<dd class="field-even"><p><a class="reference internal" href="../phenoscope.core.accessors.html#phenoscope.core.accessors.ImageArray" title="phenoscope.core.accessors.ImageArray">ImageArray</a></p>
 </dd>
 <dt class="field-odd">Raises<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference internal" href="../phenoscope.util.html#phenoscope.util.exceptions_.NoArrayError" title="phenoscope.util.exceptions_.NoArrayError"><strong>NoArrayError</strong></a> – If the input image was not an array</p>
+<dd class="field-odd"><p><a class="reference internal" href="../phenoscope.util.html#phenoscope.util.exceptions_.NoArrayError" title="phenoscope.util.exceptions_.NoArrayError"><strong>NoArrayError</strong></a> – If no multichannel image data is set as input.</p>
 </dd>
 </dl>
-<p>See Also: <code class="xref py py-class docutils literal notranslate"><span class="pre">ImageArray</span></code></p>
+<p>See Also: <a class="reference internal" href="../phenoscope.core.accessors.html#phenoscope.core.accessors.ImageArray" title="phenoscope.core.accessors.ImageArray"><code class="xref py py-class docutils literal notranslate"><span class="pre">ImageArray</span></code></a></p>
 </dd></dl>
 
 <dl class="py class">

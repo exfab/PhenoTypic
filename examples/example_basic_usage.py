@@ -19,9 +19,9 @@ test_image[40:60, 40:60, 1] = 255  # Green square inside
 
 # %%
 # Create an Image object from the numpy array
-img = ps.Image(test_image, input_schema='RGB')
+img = ps.Image(test_image, imformat='RGB')
 print(f"Image shape: {img.shape}")
-print(f"Image schema: {img.schema}")
+print(f"Image imformat: {img.imformat}")
 
 # %%
 # Display the image

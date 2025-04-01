@@ -325,20 +325,18 @@
 <nav class="bd-docs-nav bd-links"
      aria-label="Section Navigation">
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
-  <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">Image</span></p>
+  <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">Image Accessors</span></p>
 <ul class="nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="Image/phenoscope.Image.html">phenoscope.Image</a></li>
-<li class="toctree-l1"><a class="reference internal" href="Image/phenoscope.Image.array.html">phenoscope.Image.array</a></li>
-<li class="toctree-l1"><a class="reference internal" href="Image/phenoscope.Image.matrix.html">phenoscope.Image.matrix</a></li>
-<li class="toctree-l1"><a class="reference internal" href="Image/phenoscope.Image.enh_matrix.html">phenoscope.Image.enh_matrix</a></li>
-<li class="toctree-l1"><a class="reference internal" href="Image/phenoscope.Image.omask.html">phenoscope.Image.objmask</a></li>
-<li class="toctree-l1"><a class="reference internal" href="Image/phenoscope.Image.omap.html">phenoscope.Image.objmap</a></li>
-<li class="toctree-l1"><a class="reference internal" href="Image/phenoscope.Image.obj.html">phenoscope.Image.obj</a></li>
-<li class="toctree-l1"><a class="reference internal" href="Image/phenoscope.Image.hsv.html">phenoscope.Image.hsv</a></li>
+<li class="toctree-l1"><a class="reference internal" href="image_accessor/phenoscope.Image.array.html">phenoscope.Image.array</a></li>
+<li class="toctree-l1"><a class="reference internal" href="image_accessor/phenoscope.Image.matrix.html">phenoscope.Image.matrix</a></li>
+<li class="toctree-l1"><a class="reference internal" href="image_accessor/phenoscope.Image.enh_matrix.html">phenoscope.Image.enh_matrix</a></li>
+<li class="toctree-l1"><a class="reference internal" href="image_accessor/phenoscope.Image.objmask.html">phenoscope.Image.objmask</a></li>
+<li class="toctree-l1"><a class="reference internal" href="image_accessor/phenoscope.Image.objmap.html">phenoscope.Image.objmap</a></li>
+<li class="toctree-l1"><a class="reference internal" href="image_accessor/phenoscope.Image.objects.html">phenoscope.Image.objects</a></li>
+<li class="toctree-l1"><a class="reference internal" href="image_accessor/phenoscope.Image.hsv.html">phenoscope.Image.hsv</a></li>
 </ul>
-<p aria-level="2" class="caption" role="heading"><span class="caption-text">GridImage</span></p>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">GridImage Accessors</span></p>
 <ul class="nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="GridImage/phenoscope.GridImage.html">phenoscope.GridImage</a></li>
 <li class="toctree-l1"><a class="reference internal" href="GridImage/phenoscope.GridImage.grid.html">phenoscope.GridImage.grid</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Modules</span></p>
@@ -911,9 +909,9 @@ set self.__traceback__ to tb and return self.</p>
 
 <dl class="py exception">
 <dt class="sig sig-object py" id="phenoscope.util.exceptions_.InvalidHsvSchemaError">
-<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenoscope.util.exceptions_.</span></span><span class="sig-name descname"><span class="pre">InvalidHsvSchemaError</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">schema</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenoscope/util/exceptions_.html#InvalidHsvSchemaError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenoscope.util.exceptions_.InvalidHsvSchemaError" title="Link to this definition">#</a></dt>
+<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenoscope.util.exceptions_.</span></span><span class="sig-name descname"><span class="pre">InvalidHsvSchemaError</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">imformat</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenoscope/util/exceptions_.html#InvalidHsvSchemaError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenoscope.util.exceptions_.InvalidHsvSchemaError" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">AttributeError</span></code></p>
-<p>Exception raised when trying to convert to HSV from a non-RGB schema.</p>
+<p>Exception raised when trying to convert to HSV from a non-RGB imformat.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="phenoscope.util.exceptions_.InvalidHsvSchemaError.with_traceback">
 <span class="sig-name descname"><span class="pre">with_traceback</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenoscope.util.exceptions_.InvalidHsvSchemaError.with_traceback" title="Link to this definition">#</a></dt>
@@ -1170,7 +1168,7 @@ set self.__traceback__ to tb and return self.</p>
 <dt class="sig sig-object py" id="phenoscope.util.exceptions_.NoObjectsError">
 <em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenoscope.util.exceptions_.</span></span><span class="sig-name descname"><span class="pre">NoObjectsError</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenoscope/util/exceptions_.html#NoObjectsError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenoscope.util.exceptions_.NoObjectsError" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">AttributeError</span></code></p>
-<p>Exception raised when no obj are found in an image.</p>
+<p>Exception raised when no objects are found in an image.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="phenoscope.util.exceptions_.NoObjectsError.with_traceback">
 <span class="sig-name descname"><span class="pre">with_traceback</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenoscope.util.exceptions_.NoObjectsError.with_traceback" title="Link to this definition">#</a></dt>
@@ -1406,14 +1404,14 @@ set self.__traceback__ to tb and return self.</p>
 
 <dl class="py exception">
 <dt class="sig sig-object py" id="phenoscope.util.exceptions_.UnsupportedSchemaError">
-<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenoscope.util.exceptions_.</span></span><span class="sig-name descname"><span class="pre">UnsupportedSchemaError</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">schema</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenoscope/util/exceptions_.html#UnsupportedSchemaError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenoscope.util.exceptions_.UnsupportedSchemaError" title="Link to this definition">#</a></dt>
+<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenoscope.util.exceptions_.</span></span><span class="sig-name descname"><span class="pre">UnsupportedSchemaError</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">imformat</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenoscope/util/exceptions_.html#UnsupportedSchemaError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenoscope.util.exceptions_.UnsupportedSchemaError" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">ValueError</span></code></p>
-<p>Represents an error when an unsupported schema format is detected.</p>
-<p>This error is raised when a specified schema format is not supported by the
+<p>Represents an error when an unsupported imformat format is detected.</p>
+<p>This error is raised when a specified imformat format is not supported by the
 application or library that utilizes this exception class.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>schema</strong> (<em>str</em>) – The schema format that triggered this exception.</p>
+<dd class="field-odd"><p><strong>schema</strong> (<em>str</em>) – The imformat format that triggered this exception.</p>
 </dd>
 </dl>
 <dl class="py method">

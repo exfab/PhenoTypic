@@ -72,9 +72,9 @@ Create an Image object from the numpy array
 .. code-block:: Python
    :lineno-start: 22
 
-    img = ps.Image(test_image, input_schema='RGB')
+    img = ps.Image(test_image, imformat='RGB')
     print(f"Image shape: {img.shape}")
-    print(f"Image schema: {img.schema}")
+    print(f"Image imformat: {img.imformat}")
 
 
 
@@ -85,7 +85,7 @@ Create an Image object from the numpy array
  .. code-block:: none
 
     Image shape: (100, 100, 3)
-    Image schema: RGB
+    Image imformat: RGB
 
 
 
@@ -202,7 +202,7 @@ Count the number of pixels in the red square
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (0 minutes 0.047 seconds)
+   **Total running time of the script:** (0 minutes 0.063 seconds)
 
 
 .. _sphx_glr_download_auto_examples_example_basic_usage.py:

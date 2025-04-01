@@ -59,7 +59,7 @@ class GridAccessor(ImageAccessor):
         return np.reshape(np.arange(self.nrows * self.ncols), newshape=(self.nrows, self.ncols))
 
     def __getitem__(self, idx):
-        if self._parent_image.obj.num_objects != 0:
+        if self._parent_image.objects.num_objects != 0:
             """Returns a crop of the grid section based on it's flattened index. Ordered left to right, top to bottom."""
             row_edges, col_edges = self.get_row_edges(), self.get_col_edges()
             row_pos, col_pos = np.where(self._idx_ref_matrix == idx)

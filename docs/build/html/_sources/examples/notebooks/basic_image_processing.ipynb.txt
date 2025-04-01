@@ -80,7 +80,7 @@
      "output_type": "stream",
      "text": [
       "Image shape: (183, 166, 3)\n",
-      "Image schema: RGB\n"
+      "Image imformat: RGB\n"
      ]
     },
     {
@@ -109,7 +109,7 @@
     "# Create an Image object from the numpy array\n",
     "img = ps.Image(test_image, input_schema='RGB')\n",
     "print(f\"Image shape: {img.shape}\")\n",
-    "print(f\"Image schema: {img.schema}\")\n",
+    "print(f\"Image imformat: {img.imformat}\")\n",
     "img.show()"
    ]
   },

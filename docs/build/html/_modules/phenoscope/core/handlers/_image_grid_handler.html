@@ -392,12 +392,26 @@
 <a class="viewcode-back" href="../../../../api_reference/phenoscope.core.handlers.html#phenoscope.core.handlers.ImageGridHandler">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">ImageGridHandler</span><span class="p">(</span><span class="n">Image</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    The handler class that enables grid-based processing and overlay visualization.</span>
+<span class="sd">    A specialized Image object that supports grid-based processing and overlay visualization.</span>
 
 <span class="sd">    This class extends the base `Image` class functionality to include grid handling,</span>
 <span class="sd">    grid-based slicing, and advanced visualization capabilities such as displaying overlay information</span>
 <span class="sd">    with gridlines and annotations. It interacts with the provided grid handling utilities</span>
 <span class="sd">    to determine grid structure and assign/overlay it effectively on the image.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">            input_image (Optional[Union[np.ndarray, Type[Image]]]): The input</span>
+<span class="sd">                image, which can be a NumPy array or an image-like object. If</span>
+<span class="sd">                this parameter is not provided, it defaults to None.</span>
+<span class="sd">            imformat (str): A string representing the schema of the input</span>
+<span class="sd">                image. It defaults to None if not provided.</span>
+<span class="sd">            grid_finder (Optional[GridFinder]): An optional GridFinder instance</span>
+<span class="sd">                for defining grids on the image. If not provided, it defaults to</span>
+<span class="sd">                a center grid setter.</span>
+<span class="sd">            nrows (int): An integer passed to the grid setter to specify the number of rows in the grid</span>
+<span class="sd">                (Defaults to 8).</span>
+<span class="sd">            ncols (int): An integer passed to the grid setter to specify the number of columns in the grid</span>
+<span class="sd">                (Defaults to 12).</span>
 
 <span class="sd">    Attributes:</span>
 <span class="sd">        _grid_setter (Optional[GridFinder]): An object responsible for defining and optimizing the grid</span>
@@ -408,8 +422,8 @@
 
 <div class="viewcode-block" id="ImageGridHandler.__init__">
 <a class="viewcode-back" href="../../../../api_reference/phenoscope.core.handlers.html#phenoscope.core.handlers.ImageGridHandler.__init__">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">input_image</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">Image</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">input_schema</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-                 <span class="n">grid_setter</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">GridFinder</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">input_image</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">Image</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">imformat</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                 <span class="n">grid_finder</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">GridFinder</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
                  <span class="n">nrows</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">8</span><span class="p">,</span> <span class="n">ncols</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">12</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Represents an image processor with grid management capabilities. This class</span>
@@ -421,9 +435,9 @@
 <span class="sd">            input_image (Optional[Union[np.ndarray, Type[Image]]]): The input</span>
 <span class="sd">                image, which can be a NumPy array or an image-like object. If</span>
 <span class="sd">                this parameter is not provided, it defaults to None.</span>
-<span class="sd">            input_schema (str): A string representing the schema of the input</span>
+<span class="sd">            imformat (str): A string representing the schema of the input</span>
 <span class="sd">                image. It defaults to None if not provided.</span>
-<span class="sd">            grid_setter (Optional[GridFinder]): An optional GridFinder instance</span>
+<span class="sd">            grid_finder (Optional[GridFinder]): An optional GridFinder instance</span>
 <span class="sd">                for defining grids on the image. If not provided, it defaults to</span>
 <span class="sd">                a center grid setter.</span>
 <span class="sd">            nrows (int): An integer specifying the number of rows in the grid.</span>
@@ -431,14 +445,14 @@
 <span class="sd">            ncols (int): An integer specifying the number of columns in the grid.</span>
 <span class="sd">                Defaults to 12.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">input_image</span><span class="o">=</span><span class="n">input_image</span><span class="p">,</span> <span class="n">input_schema</span><span class="o">=</span><span class="n">input_schema</span><span class="p">)</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">input_image</span><span class="o">=</span><span class="n">input_image</span><span class="p">,</span> <span class="n">imformat</span><span class="o">=</span><span class="n">imformat</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">input_image</span><span class="p">,</span> <span class="s1">&#39;_grid_setter&#39;</span><span class="p">):</span>
-            <span class="n">grid_setter</span> <span class="o">=</span> <span class="n">input_image</span><span class="o">.</span><span class="n">_grid_setter</span>
-        <span class="k">elif</span> <span class="n">grid_setter</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">grid_setter</span> <span class="o">=</span> <span class="n">OptimalCenterGridFinder</span><span class="p">(</span><span class="n">nrows</span><span class="o">=</span><span class="n">nrows</span><span class="p">,</span> <span class="n">ncols</span><span class="o">=</span><span class="n">ncols</span><span class="p">)</span>
+            <span class="n">grid_finder</span> <span class="o">=</span> <span class="n">input_image</span><span class="o">.</span><span class="n">_grid_setter</span>
+        <span class="k">elif</span> <span class="n">grid_finder</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">grid_finder</span> <span class="o">=</span> <span class="n">OptimalCenterGridFinder</span><span class="p">(</span><span class="n">nrows</span><span class="o">=</span><span class="n">nrows</span><span class="p">,</span> <span class="n">ncols</span><span class="o">=</span><span class="n">ncols</span><span class="p">)</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">_grid_setter</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">GridFinder</span><span class="p">]</span> <span class="o">=</span> <span class="n">grid_setter</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_grid_setter</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">GridFinder</span><span class="p">]</span> <span class="o">=</span> <span class="n">grid_finder</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">__grid_subhandler</span> <span class="o">=</span> <span class="n">GridAccessor</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span></div>
 
 
@@ -465,10 +479,10 @@
 <span class="sd">        Returns:</span>
 <span class="sd">            Image: A copy of the image at the slices indicated</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">schema</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">IMAGE_FORMATS</span><span class="o">.</span><span class="n">MATRIX_FORMATS</span><span class="p">:</span>
-            <span class="n">subimage</span> <span class="o">=</span> <span class="n">Image</span><span class="p">(</span><span class="n">input_image</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">key</span><span class="p">],</span> <span class="n">input_schema</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">schema</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">imformat</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">IMAGE_FORMATS</span><span class="o">.</span><span class="n">MATRIX_FORMATS</span><span class="p">:</span>
+            <span class="n">subimage</span> <span class="o">=</span> <span class="n">Image</span><span class="p">(</span><span class="n">input_image</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">key</span><span class="p">],</span> <span class="n">imformat</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">imformat</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="n">subimage</span> <span class="o">=</span> <span class="n">Image</span><span class="p">(</span><span class="n">input_image</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">matrix</span><span class="p">[</span><span class="n">key</span><span class="p">],</span> <span class="n">input_schema</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">schema</span><span class="p">)</span>
+            <span class="n">subimage</span> <span class="o">=</span> <span class="n">Image</span><span class="p">(</span><span class="n">input_image</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">matrix</span><span class="p">[</span><span class="n">key</span><span class="p">],</span> <span class="n">imformat</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">imformat</span><span class="p">)</span>
 
         <span class="n">subimage</span><span class="o">.</span><span class="n">enh_matrix</span><span class="p">[:]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">enh_matrix</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
         <span class="n">subimage</span><span class="o">.</span><span class="n">objmap</span><span class="p">[:]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">objmap</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>

@@ -23,7 +23,7 @@ class ImagePreprocessor(ImageOperation):
             else:
                 output = self._operate(image.copy())
 
-            if image.schema not in IMAGE_FORMATS.MATRIX_FORMATS:
+            if image.imformat not in IMAGE_FORMATS.MATRIX_FORMATS:
                 if not np.array_equal(output.array[:], imcopy.array[:]):
                     raise DataIntegrityError(component='array', operation=self.__class__.__name__)
 

@@ -1,11 +1,11 @@
 ﻿
 
-phenoscope.Image.objmask
-======================
+phenoscope.Image.hsv
+====================
 
 .. currentmodule:: phenoscope
 
-.. autoproperty:: Image.objmask
+.. autoproperty:: Image.hsv
 
 
 
@@ -14,7 +14,7 @@ phenoscope.Image.objmask
 
 .. currentmodule:: phenoscope.core.accessors
 
-.. autoclass:: ImageObjects
+.. autoclass:: HsvAccessor
    :private-members: False 
    :members:
    :undoc-members:

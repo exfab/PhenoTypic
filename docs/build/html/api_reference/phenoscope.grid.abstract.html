@@ -325,20 +325,18 @@
 <nav class="bd-docs-nav bd-links"
      aria-label="Section Navigation">
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
-  <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">Image</span></p>
+  <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">Image Accessors</span></p>
 <ul class="nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="Image/phenoscope.Image.html">phenoscope.Image</a></li>
-<li class="toctree-l1"><a class="reference internal" href="Image/phenoscope.Image.array.html">phenoscope.Image.array</a></li>
-<li class="toctree-l1"><a class="reference internal" href="Image/phenoscope.Image.matrix.html">phenoscope.Image.matrix</a></li>
-<li class="toctree-l1"><a class="reference internal" href="Image/phenoscope.Image.enh_matrix.html">phenoscope.Image.enh_matrix</a></li>
-<li class="toctree-l1"><a class="reference internal" href="Image/phenoscope.Image.omask.html">phenoscope.Image.objmask</a></li>
-<li class="toctree-l1"><a class="reference internal" href="Image/phenoscope.Image.omap.html">phenoscope.Image.objmap</a></li>
-<li class="toctree-l1"><a class="reference internal" href="Image/phenoscope.Image.obj.html">phenoscope.Image.obj</a></li>
-<li class="toctree-l1"><a class="reference internal" href="Image/phenoscope.Image.hsv.html">phenoscope.Image.hsv</a></li>
+<li class="toctree-l1"><a class="reference internal" href="image_accessor/phenoscope.Image.array.html">phenoscope.Image.array</a></li>
+<li class="toctree-l1"><a class="reference internal" href="image_accessor/phenoscope.Image.matrix.html">phenoscope.Image.matrix</a></li>
+<li class="toctree-l1"><a class="reference internal" href="image_accessor/phenoscope.Image.enh_matrix.html">phenoscope.Image.enh_matrix</a></li>
+<li class="toctree-l1"><a class="reference internal" href="image_accessor/phenoscope.Image.objmask.html">phenoscope.Image.objmask</a></li>
+<li class="toctree-l1"><a class="reference internal" href="image_accessor/phenoscope.Image.objmap.html">phenoscope.Image.objmap</a></li>
+<li class="toctree-l1"><a class="reference internal" href="image_accessor/phenoscope.Image.objects.html">phenoscope.Image.objects</a></li>
+<li class="toctree-l1"><a class="reference internal" href="image_accessor/phenoscope.Image.hsv.html">phenoscope.Image.hsv</a></li>
 </ul>
-<p aria-level="2" class="caption" role="heading"><span class="caption-text">GridImage</span></p>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">GridImage Accessors</span></p>
 <ul class="nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="GridImage/phenoscope.GridImage.html">phenoscope.GridImage</a></li>
 <li class="toctree-l1"><a class="reference internal" href="GridImage/phenoscope.GridImage.grid.html">phenoscope.GridImage.grid</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Modules</span></p>
@@ -443,10 +441,10 @@
 </dl>
 <dl class="py method">
 <dt class="sig sig-object py" id="phenoscope.grid.abstract.GridFeatureExtractor.measure">
-<span class="sig-name descname"><span class="pre">measure</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">GridImage</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">pd.DataFrame</span></span></span><a class="reference internal" href="../_modules/phenoscope/grid/abstract/_grid_feature_extractor.html#GridFeatureExtractor.measure"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenoscope.grid.abstract.GridFeatureExtractor.measure" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">measure</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="index.html#phenoscope.GridImage" title="phenoscope.GridImage"><span class="pre">GridImage</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">pd.DataFrame</span></span></span><a class="reference internal" href="../_modules/phenoscope/grid/abstract/_grid_feature_extractor.html#GridFeatureExtractor.measure"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenoscope.grid.abstract.GridFeatureExtractor.measure" title="Link to this definition">#</a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>image</strong> (<em>GridImage</em>)</p>
+<dd class="field-odd"><p><strong>image</strong> (<a class="reference internal" href="index.html#phenoscope.GridImage" title="phenoscope.GridImage"><em>GridImage</em></a>)</p>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p>pd.DataFrame</p>
@@ -464,10 +462,10 @@
 Unlike other Grid series interfaces, GridExtractors can work on regular images, and should not be dependent on the GridImage class.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="phenoscope.grid.abstract.GridFinder.measure">
-<span class="sig-name descname"><span class="pre">measure</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="generated/phenoscope.Image.html#phenoscope.Image" title="phenoscope.core._image.Image"><span class="pre">Image</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">pd.DataFrame</span></span></span><a class="headerlink" href="#phenoscope.grid.abstract.GridFinder.measure" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">measure</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="index.html#phenoscope.Image" title="phenoscope.Image"><span class="pre">Image</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">pd.DataFrame</span></span></span><a class="headerlink" href="#phenoscope.grid.abstract.GridFinder.measure" title="Link to this definition">#</a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>image</strong> (<a class="reference internal" href="generated/phenoscope.Image.html#phenoscope.Image" title="phenoscope.core._image.Image"><em>Image</em></a>)</p>
+<dd class="field-odd"><p><strong>image</strong> (<a class="reference internal" href="index.html#phenoscope.Image" title="phenoscope.Image"><em>Image</em></a>)</p>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p>pd.DataFrame</p>
@@ -483,12 +481,12 @@ Unlike other Grid series interfaces, GridExtractors can work on regular images, 
 <dd><p>Bases: <a class="reference internal" href="phenoscope.abstract.html#phenoscope.abstract.MapModifier" title="phenoscope.abstract._map_modifier.MapModifier"><code class="xref py py-class docutils literal notranslate"><span class="pre">MapModifier</span></code></a>, <a class="reference internal" href="#phenoscope.grid.abstract.GridOperation" title="phenoscope.grid.abstract._grid_operation.GridOperation"><code class="xref py py-class docutils literal notranslate"><span class="pre">GridOperation</span></code></a></p>
 <dl class="py method">
 <dt class="sig sig-object py" id="phenoscope.grid.abstract.GridMapModifier.apply">
-<span class="sig-name descname"><span class="pre">apply</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">GridImage</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">inplace</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">GridImage</span></span></span><a class="reference internal" href="../_modules/phenoscope/grid/abstract/_grid_map_modifier.html#GridMapModifier.apply"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenoscope.grid.abstract.GridMapModifier.apply" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">apply</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="index.html#phenoscope.GridImage" title="phenoscope.GridImage"><span class="pre">GridImage</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">inplace</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="index.html#phenoscope.GridImage" title="phenoscope.GridImage"><span class="pre">GridImage</span></a></span></span><a class="reference internal" href="../_modules/phenoscope/grid/abstract/_grid_map_modifier.html#GridMapModifier.apply"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenoscope.grid.abstract.GridMapModifier.apply" title="Link to this definition">#</a></dt>
 <dd><p>Applies a certain operation to an image, either in-place or on a copy.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>image</strong> (<a class="reference internal" href="generated/phenoscope.Image.html#phenoscope.Image" title="phenoscope.core._image.Image"><em>Image</em></a>) – The input image to apply the operation on.</p></li>
+<li><p><strong>image</strong> (<a class="reference internal" href="index.html#phenoscope.Image" title="phenoscope.Image"><em>Image</em></a>) – The input image to apply the operation on.</p></li>
 <li><p><strong>inplace</strong> (<em>bool</em>) – If True, modifies the image in place; otherwise,
 operates on a copy of the image.</p></li>
 </ul>
@@ -497,7 +495,7 @@ operates on a copy of the image.</p></li>
 <dd class="field-even"><p>The modified image after applying the operation.</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference internal" href="generated/phenoscope.Image.html#phenoscope.Image" title="phenoscope.core._image.Image">Image</a></p>
+<dd class="field-odd"><p><a class="reference internal" href="index.html#phenoscope.Image" title="phenoscope.Image">Image</a></p>
 </dd>
 </dl>
 </dd></dl>
@@ -524,7 +522,7 @@ operates on a copy of the image.</p></li>
 </dl>
 <dl class="py method">
 <dt class="sig sig-object py" id="phenoscope.grid.abstract.GridTransformer.apply">
-<span class="sig-name descname"><span class="pre">apply</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">GridImage</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">inplace</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">GridImage</span></span></span><a class="reference internal" href="../_modules/phenoscope/grid/abstract/_grid_morpher.html#GridTransformer.apply"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenoscope.grid.abstract.GridTransformer.apply" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">apply</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="index.html#phenoscope.GridImage" title="phenoscope.GridImage"><span class="pre">GridImage</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">inplace</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="index.html#phenoscope.GridImage" title="phenoscope.GridImage"><span class="pre">GridImage</span></a></span></span><a class="reference internal" href="../_modules/phenoscope/grid/abstract/_grid_morpher.html#GridTransformer.apply"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenoscope.grid.abstract.GridTransformer.apply" title="Link to this definition">#</a></dt>
 <dd><p>Calculates the optimal rotation angle and applies it to a grid image for alignment along the specified axis.</p>
 <p>The method performs alignment of a <cite>GridImage</cite> object along either rows or columns based on the specified
 axis. It calculates the linear regression slope and intercept for the axis, determines geometric properties of the grid
@@ -535,13 +533,13 @@ across all computed angles, and the image is rotated accordingly.</p>
 <dd class="field-odd"><p><strong>ValueError</strong> – If the axis is not 0 (row-wise) or 1 (column-wise).</p>
 </dd>
 <dt class="field-even">Parameters<span class="colon">:</span></dt>
-<dd class="field-even"><p><strong>image</strong> (<a class="reference internal" href="phenoscope.core.handlers.html#phenoscope.core.handlers.ImageGridHandler" title="phenoscope.core.handlers.ImageGridHandler"><em>ImageGridHandler</em></a>) – The input grid image object to be aligned.</p>
+<dd class="field-even"><p><strong>image</strong> (<em>ImageGridHandler</em>) – The input grid image object to be aligned.</p>
 </dd>
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
 <dd class="field-odd"><p>The rotated grid image object after alignment.</p>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p><a class="reference internal" href="phenoscope.core.handlers.html#phenoscope.core.handlers.ImageGridHandler" title="phenoscope.core.handlers.ImageGridHandler">ImageGridHandler</a></p>
+<dd class="field-even"><p>ImageGridHandler</p>
 </dd>
 </dl>
 </dd></dl>

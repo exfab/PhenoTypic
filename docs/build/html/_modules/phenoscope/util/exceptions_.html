@@ -486,17 +486,17 @@
 <div class="viewcode-block" id="UnsupportedSchemaError">
 <a class="viewcode-back" href="../../../api_reference/phenoscope.util.html#phenoscope.util.exceptions_.UnsupportedSchemaError">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">UnsupportedSchemaError</span><span class="p">(</span><span class="ne">ValueError</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Represents an error when an unsupported schema format is detected.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Represents an error when an unsupported imformat format is detected.</span>
 
-<span class="sd">    This error is raised when a specified schema format is not supported by the</span>
+<span class="sd">    This error is raised when a specified imformat format is not supported by the</span>
 <span class="sd">    application or library that utilizes this exception class.</span>
 
 <span class="sd">    Args:</span>
-<span class="sd">        schema (str): The schema format that triggered this exception.</span>
+<span class="sd">        imformat (str): The imformat format that triggered this exception.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">schema</span><span class="p">):</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;The format </span><span class="si">{</span><span class="n">schema</span><span class="si">}</span><span class="s2"> is not supported.&quot;</span><span class="p">)</span></div>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">imformat</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;The format </span><span class="si">{</span><span class="n">imformat</span><span class="si">}</span><span class="s2"> is not supported.&quot;</span><span class="p">)</span></div>
 
 
 
@@ -616,12 +616,12 @@
 <div class="viewcode-block" id="NoObjectsError">
 <a class="viewcode-back" href="../../../api_reference/phenoscope.util.html#phenoscope.util.exceptions_.NoObjectsError">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">NoObjectsError</span><span class="p">(</span><span class="ne">AttributeError</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Exception raised when no obj are found in an image.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Exception raised when no objects are found in an image.&quot;&quot;&quot;</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image_name</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="n">image_str</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39; &quot;</span><span class="si">{</span><span class="n">image_name</span><span class="si">}</span><span class="s1">&quot;&#39;</span> <span class="k">if</span> <span class="n">image_name</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
-            <span class="sa">f</span><span class="s2">&quot;No obj currently in image</span><span class="si">{</span><span class="n">image_str</span><span class="si">}</span><span class="s2">. Apply a `Detector` to the Image object first or access image-wide information using Image.props&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;No objects currently in image</span><span class="si">{</span><span class="n">image_str</span><span class="si">}</span><span class="s2">. Apply a `Detector` to the Image object first or access image-wide information using Image.props&quot;</span>
             <span class="p">)</span></div>
 
 
@@ -670,10 +670,10 @@
 <div class="viewcode-block" id="InvalidHsvSchemaError">
 <a class="viewcode-back" href="../../../api_reference/phenoscope.util.html#phenoscope.util.exceptions_.InvalidHsvSchemaError">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">InvalidHsvSchemaError</span><span class="p">(</span><span class="ne">AttributeError</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Exception raised when trying to convert to HSV from a non-RGB schema.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Exception raised when trying to convert to HSV from a non-RGB imformat.&quot;&quot;&quot;</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">schema</span><span class="p">):</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;To be converted to HSV format, the schema should be RGB, but got </span><span class="si">{</span><span class="n">schema</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">imformat</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;To be converted to HSV format, the imformat should be RGB, but got </span><span class="si">{</span><span class="n">imformat</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
 
 
 
@@ -783,7 +783,7 @@
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">label</span><span class="p">):</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
-            <span class="sa">f</span><span class="s2">&quot;The object with label </span><span class="si">{</span><span class="n">label</span><span class="si">}</span><span class="s2"> is not in the object map. If you meant to access the object by index use Image.obj.at() instead&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;The object with label </span><span class="si">{</span><span class="n">label</span><span class="si">}</span><span class="s2"> is not in the object map. If you meant to access the object by index use Image.objects.at() instead&quot;</span>
             <span class="p">)</span></div>
 
 
@@ -796,7 +796,7 @@
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
-            <span class="s2">&quot;For GridOperation classes with the exception of GridExtractor obj, the input must be an instance of the GriddedImage object type.&quot;</span>
+            <span class="s2">&quot;For GridOperation classes with the exception of GridExtractor objects, the input must be an instance of the GriddedImage object type.&quot;</span>
             <span class="p">)</span></div>
 
 </pre></div>

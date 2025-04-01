@@ -119,8 +119,8 @@ class ImageAccessor:
         return fig, ax
 
     def _plot_annotations(self, ax:plt.Axes, color:str, size:int, facecolor:str, object_label:None | int):
-        props = self._parent_image.obj.props
-        for i, label in enumerate(self._parent_image.obj.labels):
+        props = self._parent_image.objects.props
+        for i, label in enumerate(self._parent_image.objects.labels):
             if object_label is None:
                 text_rr, text_cc = props[i].centroid
                 ax.text(

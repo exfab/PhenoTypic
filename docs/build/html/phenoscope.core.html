@@ -629,7 +629,7 @@
 <p>A comprehensive class for handling image processing, including manipulation, information sync, metadata management, and format conversion.</p>
 <p>The <cite>ImageHandler</cite> class is designed to load, process, and manage image data using different
 representation formats (e.g., arrays and matrices). This class allows for metadata editing,
-schema definition, and subcomponent handling to streamline image processing tasks.</p>
+imformat definition, and subcomponent handling to streamline image processing tasks.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <p>If the input_image is 2-D, the ImageHandler leave the array form as None
@@ -695,7 +695,7 @@ representation of object detection overlays.</p>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="phenoscope.core.ImageHandler.__image_schema">
 <span class="sig-name descname"><span class="pre">__image_schema</span></span><a class="headerlink" href="#phenoscope.core.ImageHandler.__image_schema" title="Link to this definition">#</a></dt>
-<dd><p>A schema defining the format of the image input,
+<dd><p>A imformat defining the format of the image input,
 influencing how data is interpreted or manipulated.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Type<span class="colon">:</span></dt>
@@ -805,7 +805,7 @@ the image.</p>
 <dt class="sig sig-object py" id="phenoscope.core.ImageHandler.__getitem__">
 <span class="sig-name descname"><span class="pre">__getitem__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Type</span><span class="p"><span class="pre">[</span></span><span class="pre">Image</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/phenoscope/core/_image_handler.html#ImageHandler.__getitem__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenoscope.core.ImageHandler.__getitem__" title="Link to this definition">#</a></dt>
 <dd><p>Returns a subimage from the current object based on the provided key. The subimage is initialized
-as a new instance of the same class, maintaining the schema and format consistency as the original
+as a new instance of the same class, maintaining the imformat and format consistency as the original
 image object. This method supports 2-dimensional slicing and indexing.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -826,8 +826,8 @@ image object. This method supports 2-dimensional slicing and indexing.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="phenoscope.core.ImageHandler.__init__">
 <span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image_input</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Type</span><span class="p"><span class="pre">[</span></span><span class="pre">Image</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">PathLike</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">input_schema</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/phenoscope/core/_image_handler.html#ImageHandler.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenoscope.core.ImageHandler.__init__" title="Link to this definition">#</a></dt>
-<dd><p>Initializes an image processing object with provided input image, schema, and name.</p>
-<p>The class constructor initializes core backend variables, including the image schema,
+<dd><p>Initializes an image processing object with provided input image, imformat, and name.</p>
+<p>The class constructor initializes core backend variables, including the image imformat,
 protected and public metadata dictionaries, and various image component handlers
 to manage subcomponents and data operations for image manipulations. It also sets up
 private and protected metadata with specific handling for input names or defaults.</p>
@@ -836,7 +836,7 @@ private and protected metadata with specific handling for input names or default
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>image_input</strong> (<em>ndarray</em><em> | </em><em>Type</em><em>[</em><em>Image</em><em>] </em><em>| </em><em>PathLike</em><em> | </em><em>None</em>) – An optional input image represented as either a NumPy array or an image
 object. Defaults to None.</p></li>
-<li><p><strong>input_schema</strong> (<em>str</em><em> | </em><em>None</em>) – An optional string defining the schema for the input image to specify
+<li><p><strong>input_schema</strong> (<em>str</em><em> | </em><em>None</em>) – An optional string defining the imformat for the input image to specify
 how data should be interpreted or processed. Defaults to None.</p></li>
 <li><p><strong>name</strong> (<em>str</em><em> | </em><em>None</em>) – An optional string to assign a name to the image, used as metadata. If not
 provided, a universally unique identifier (UUID) will be generated and assigned.</p></li>
@@ -854,7 +854,7 @@ provided, a universally unique identifier (UUID) will be generated and assigned.
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>key</strong> (<em>Any</em>) – The array slices for accesssing the elements of the image.</p></li>
 <li><p><strong>value</strong> (<a class="reference internal" href="#phenoscope.core.ImageHandler" title="phenoscope.core.ImageHandler"><em>ImageHandler</em></a>) – The value to be set, which must match the shape of the
-existing elements and conform to the expected schema.</p></li>
+existing elements and conform to the expected imformat.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Raises<span class="colon">:</span></dt>
@@ -883,7 +883,7 @@ existing elements and conform to the expected schema.</p></li>
 <dt class="sig sig-object py" id="phenoscope.core.ImageHandler.imread">
 <span class="sig-name descname"><span class="pre">imread</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filepath</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">PathLike</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Type</span><span class="p"><span class="pre">[</span></span><span class="pre">Image</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/phenoscope/core/_image_handler.html#ImageHandler.imread"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenoscope.core.ImageHandler.imread" title="Link to this definition">#</a></dt>
 <dd><p>Reads an image file from a given file path, processes it as per its format, and sets the image
-along with its schema in the current instance. Supports RGB formats (png, jpg, jpeg) and
+along with its imformat in the current instance. Supports RGB formats (png, jpg, jpeg) and
 grayscale formats (tif, tiff). The name of the image processing instance is updated to match
 the file name without the extension. If the file format is unsupported, an exception is raised.</p>
 <dl class="field-list simple">
@@ -891,7 +891,7 @@ the file name without the extension. If the file format is unsupported, an excep
 <dd class="field-odd"><p><strong>filepath</strong> (<em>PathLike</em>) – Path to the image file to be read.</p>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>The current instance with the newly loaded image and schema.</p>
+<dd class="field-even"><p>The current instance with the newly loaded image and imformat.</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p>Type[<a class="reference internal" href="phenoscope.html#phenoscope.Image" title="phenoscope.Image">Image</a>]</p>
@@ -1293,7 +1293,7 @@ Cache is disabled in this configuration.</p>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="phenoscope.core.ImageHandler.schema">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">schema</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#phenoscope.core.ImageHandler.schema" title="Link to this definition">#</a></dt>
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">imformat</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#phenoscope.core.ImageHandler.schema" title="Link to this definition">#</a></dt>
 <dd><p>Returns the input format of the image array or matrix depending on input format</p>
 </dd></dl>
 
@@ -1333,7 +1333,7 @@ Cache is disabled in this configuration.</p>
 <dt class="sig sig-object py" id="phenoscope.core.ImageHsv.__getitem__">
 <span class="sig-name descname"><span class="pre">__getitem__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Type</span><span class="p"><span class="pre">[</span></span><span class="pre">Image</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#phenoscope.core.ImageHsv.__getitem__" title="Link to this definition">#</a></dt>
 <dd><p>Returns a subimage from the current object based on the provided key. The subimage is initialized
-as a new instance of the same class, maintaining the schema and format consistency as the original
+as a new instance of the same class, maintaining the imformat and format consistency as the original
 image object. This method supports 2-dimensional slicing and indexing.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -1360,7 +1360,7 @@ image object. This method supports 2-dimensional slicing and indexing.</p>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>key</strong> (<em>Any</em>) – The array slices for accesssing the elements of the image.</p></li>
 <li><p><strong>value</strong> (<a class="reference internal" href="#phenoscope.core.ImageHandler" title="phenoscope.core.ImageHandler"><em>ImageHandler</em></a>) – The value to be set, which must match the shape of the
-existing elements and conform to the expected schema.</p></li>
+existing elements and conform to the expected imformat.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Raises<span class="colon">:</span></dt>
@@ -1389,7 +1389,7 @@ existing elements and conform to the expected schema.</p></li>
 <dt class="sig sig-object py" id="phenoscope.core.ImageHsv.imread">
 <span class="sig-name descname"><span class="pre">imread</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filepath</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">PathLike</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Type</span><span class="p"><span class="pre">[</span></span><span class="pre">Image</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#phenoscope.core.ImageHsv.imread" title="Link to this definition">#</a></dt>
 <dd><p>Reads an image file from a given file path, processes it as per its format, and sets the image
-along with its schema in the current instance. Supports RGB formats (png, jpg, jpeg) and
+along with its imformat in the current instance. Supports RGB formats (png, jpg, jpeg) and
 grayscale formats (tif, tiff). The name of the image processing instance is updated to match
 the file name without the extension. If the file format is unsupported, an exception is raised.</p>
 <dl class="field-list simple">
@@ -1397,7 +1397,7 @@ the file name without the extension. If the file format is unsupported, an excep
 <dd class="field-odd"><p><strong>filepath</strong> (<em>PathLike</em>) – Path to the image file to be read.</p>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>The current instance with the newly loaded image and schema.</p>
+<dd class="field-even"><p>The current instance with the newly loaded image and imformat.</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p>Type[<a class="reference internal" href="phenoscope.html#phenoscope.Image" title="phenoscope.Image">Image</a>]</p>
@@ -1816,7 +1816,7 @@ Cache is disabled in this configuration.</p>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="phenoscope.core.ImageHsv.schema">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">schema</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#phenoscope.core.ImageHsv.schema" title="Link to this definition">#</a></dt>
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">imformat</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#phenoscope.core.ImageHsv.schema" title="Link to this definition">#</a></dt>
 <dd><p>Returns the input format of the image array or matrix depending on input format</p>
 </dd></dl>
 
@@ -1927,7 +1927,7 @@ Cache is disabled in this configuration.</p>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#phenoscope.core.ImageHandler.omap"><code class="docutils literal notranslate"><span class="pre">ImageHandler.objmap</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#phenoscope.core.ImageHandler.omask"><code class="docutils literal notranslate"><span class="pre">ImageHandler.objmask</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#phenoscope.core.ImageHandler.props"><code class="docutils literal notranslate"><span class="pre">ImageHandler.props</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#phenoscope.core.ImageHandler.schema"><code class="docutils literal notranslate"><span class="pre">ImageHandler.schema</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#phenoscope.core.ImageHandler.schema"><code class="docutils literal notranslate"><span class="pre">ImageHandler.imformat</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#phenoscope.core.ImageHandler.shape"><code class="docutils literal notranslate"><span class="pre">ImageHandler.shape</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#phenoscope.core.ImageHandler.uuid"><code class="docutils literal notranslate"><span class="pre">ImageHandler.uuid</span></code></a></li>
 </ul>
@@ -1953,7 +1953,7 @@ Cache is disabled in this configuration.</p>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#phenoscope.core.ImageHsv.omap"><code class="docutils literal notranslate"><span class="pre">ImageHsv.objmap</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#phenoscope.core.ImageHsv.omask"><code class="docutils literal notranslate"><span class="pre">ImageHsv.objmask</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#phenoscope.core.ImageHsv.props"><code class="docutils literal notranslate"><span class="pre">ImageHsv.props</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#phenoscope.core.ImageHsv.schema"><code class="docutils literal notranslate"><span class="pre">ImageHsv.schema</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#phenoscope.core.ImageHsv.schema"><code class="docutils literal notranslate"><span class="pre">ImageHsv.imformat</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#phenoscope.core.ImageHsv.shape"><code class="docutils literal notranslate"><span class="pre">ImageHsv.shape</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#phenoscope.core.ImageHsv.uuid"><code class="docutils literal notranslate"><span class="pre">ImageHsv.uuid</span></code></a></li>
 </ul>

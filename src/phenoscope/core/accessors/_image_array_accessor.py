@@ -105,7 +105,7 @@ class ImageArray(ImageAccessor):
 
         hist_one, histc_one = skimage.exposure.histogram(self._parent_image._array[:, :, 0])
         axes_[1].plot(histc_one, hist_one, lw=linewidth)
-        match self._parent_image.schema:
+        match self._parent_image.imformat:
             case IMAGE_FORMATS.RGB:
                 axes_[1].set_title("Red Histogram")
             case _:
@@ -113,7 +113,7 @@ class ImageArray(ImageAccessor):
 
         hist_two, histc_two = skimage.exposure.histogram(self._parent_image._array[:, :, 1])
         axes_[2].plot(histc_two, hist_two, lw=linewidth)
-        match self._parent_image.schema:
+        match self._parent_image.imformat:
             case IMAGE_FORMATS.RGB:
                 axes_[2].set_title('Green Histogram')
             case _:
@@ -121,7 +121,7 @@ class ImageArray(ImageAccessor):
 
         hist_three, histc_three = skimage.exposure.histogram(self._parent_image._array[:, :, 2])
         axes_[3].plot(histc_three, hist_three, lw=linewidth)
-        match self._parent_image.schema:
+        match self._parent_image.imformat:
             case IMAGE_FORMATS.RGB:
                 axes_[3].set_title('Blue Histogram')
             case _:

@@ -19,7 +19,7 @@ DEBUG = False
 
 @pytest.fixture(scope='session')
 def sample_image_arrays():
-    """Fixture that returns (image_array, input_schema,schema)"""
+    """Fixture that returns (image_array, input_schema,imformat)"""
     return [
         (load_colony_12_hr(), None, 'RGB'),  # Test Auto Formatter
         (load_colony_72hr(), 'RGB', 'RGB'),
@@ -33,7 +33,7 @@ def sample_image_arrays():
 def print_inputs(image_array, input_schema, true_schema):
     if DEBUG:
         print(
-            f'input_type:{type(image_array)} input_schema:{input_schema} schema:{true_schema}'
+            f'input_type:{type(image_array)} input_schema:{input_schema} imformat:{true_schema}'
         )
 
 @timeit
@@ -54,7 +54,7 @@ def test_set_image_from_array(sample_image_arrays):
 
     Args:
         sample_image_arrays (list[tuple]): A list of tuples, where each tuple contains
-            an image array, input schema details, and schema details. Each tuple in the
+            an image array, input imformat details, and imformat details. Each tuple in the
             input provides the data needed for testing the behavior of the `set_image`
             method.
     """
@@ -76,12 +76,12 @@ def test_set_image_from_image(sample_image_arrays):
 
     Args:
         sample_image_arrays (list): A list of tuples where each tuple contains an
-            image mock (numpy.ndarray), an input schema, and a corresponding schema.
+            image mock (numpy.ndarray), an input imformat, and a corresponding imformat.
     """
     for image, input_schema, true_schema in sample_image_arrays:
         print_inputs(image, input_schema, true_schema)
         phenoscope_image = Image()
-        phenoscope_image.set_image(Image(input_image=image, input_schema=input_schema))
+        phenoscope_image.set_image(Image(input_image=image, imformat=input_schema))
 
         phenoscope_image_2 = Image()
         phenoscope_image_2.set_image(phenoscope_image)
@@ -99,7 +99,7 @@ def test_set_image_from_image(sample_image_arrays):
 def test_image_construct_from_array(sample_image_arrays):
     for image, input_schema, true_schema in sample_image_arrays:
         print_inputs(image, input_schema, true_schema)
-        phenoscope_image = Image(input_image=image, input_schema=input_schema)
+        phenoscope_image = Image(input_image=image, imformat=input_schema)
         assert phenoscope_image is not None
         assert phenoscope_image.isempty() is False
         assert phenoscope_image.shape == image.shape
@@ -108,7 +108,7 @@ def test_image_construct_from_array(sample_image_arrays):
 def test_image_array_access(sample_image_arrays):
     for image, input_schema, true_schema in sample_image_arrays:
         print_inputs(image, input_schema, true_schema)
-        phenoscope_image = Image(input_image=image, input_schema=true_schema)
+        phenoscope_image = Image(input_image=image, imformat=true_schema)
         if true_schema != 'Grayscale':
             assert np.array_equal(phenoscope_image.array[:], image)
 
@@ -116,7 +116,7 @@ def test_image_array_access(sample_image_arrays):
 def test_image_matrix_access(sample_image_arrays):
     for image, input_schema, true_schema in sample_image_arrays:
         print_inputs(image, input_schema, true_schema)
-        ps_image = Image(input_image=image, input_schema=input_schema)
+        ps_image = Image(input_image=image, imformat=input_schema)
         if input_schema == 'RGB':
             assert np.array_equal(ps_image.matrix[:], skimage.color.rgb2gray(image))
         elif input_schema == 'Grayscale':
@@ -126,7 +126,7 @@ def test_image_matrix_access(sample_image_arrays):
 def test_image_det_matrix_access(sample_image_arrays):
     for image, input_schema, true_schema in sample_image_arrays:
         print_inputs(image, input_schema, true_schema)
-        ps_image = Image(input_image=image, input_schema=true_schema)
+        ps_image = Image(input_image=image, imformat=true_schema)
         assert np.array_equal(ps_image.enh_matrix[:], ps_image.matrix[:])
 
         ps_image.enh_matrix[:10, :10] = 0
@@ -137,7 +137,7 @@ def test_image_det_matrix_access(sample_image_arrays):
 def test_image_object_mask_access(sample_image_arrays):
     for image, input_schema, true_schema in sample_image_arrays:
         print_inputs(image, input_schema, true_schema)
-        ps_image = Image(input_image=image, input_schema=true_schema)
+        ps_image = Image(input_image=image, imformat=true_schema)
 
         # When no objects in image
         assert np.array_equal(ps_image.objmask[:], np.full(shape=ps_image.matrix.shape, fill_value=True))
@@ -151,7 +151,7 @@ def test_image_object_mask_access(sample_image_arrays):
 def test_image_object_map_access(sample_image_arrays):
     for image, input_schema, true_schema in sample_image_arrays:
         print_inputs(image, input_schema, true_schema)
-        ps_image = Image(input_image=image, input_schema=true_schema)
+        ps_image = Image(input_image=image, imformat=true_schema)
 
         # When no objects in image
         assert np.array_equal(ps_image.objmap[:], np.full(shape=ps_image.matrix.shape, fill_value=1, dtype=np.uint32))
@@ -162,13 +162,13 @@ def test_image_object_map_access(sample_image_arrays):
 
         assert not np.array_equal(ps_image.objmap[:], np.full(shape=ps_image.matrix.shape, fill_value=1, dtype=np.uint32))
         assert ps_image.num_objects > 0
-        assert ps_image.obj.num_objects > 0
+        assert ps_image.objects.num_objects > 0
 
 @timeit
 def test_image_copy(sample_image_arrays):
     for image, input_schema, true_schema in sample_image_arrays:
         print_inputs(image, input_schema, true_schema)
-        ps_image = Image(input_image=image, input_schema=true_schema)
+        ps_image = Image(input_image=image, imformat=true_schema)
         ps_image_copy = ps_image.copy()
         assert ps_image_copy is not ps_image
         assert ps_image_copy.isempty() is False
@@ -188,7 +188,7 @@ def test_image_copy(sample_image_arrays):
 def test_slicing(sample_image_arrays):
     for image, input_schema, true_schema in sample_image_arrays:
         print_inputs(image, input_schema, true_schema)
-        ps_image = Image(input_image=image, input_schema=true_schema)
+        ps_image = Image(input_image=image, imformat=true_schema)
         row_slice, col_slice = 10, 10
         sliced_ps_image = ps_image[:row_slice, :col_slice]
         if true_schema != 'Grayscale':
@@ -202,23 +202,23 @@ def test_slicing(sample_image_arrays):
 def test_image_object_size_label_consistency(sample_image_arrays):
     for image, input_schema, true_schema in sample_image_arrays:
         print_inputs(image, input_schema, true_schema)
-        ps_image = Image(input_image=image, input_schema=true_schema)
+        ps_image = Image(input_image=image, imformat=true_schema)
         assert ps_image.num_objects == 0
 
         ps_image.objmap[:10, :10] = 1
         ps_image.objmap[-10:, -10:] = 2
 
         assert ps_image.num_objects == 2
-        assert ps_image.num_objects == ps_image.obj.num_objects
-        assert ps_image.num_objects == len(ps_image.obj.labels)
+        assert ps_image.num_objects == ps_image.objects.num_objects
+        assert ps_image.num_objects == len(ps_image.objects.labels)
 
 @timeit
 def test_image_object_label_consistency_with_skimage(sample_image_arrays):
     for image, input_schema, true_schema in sample_image_arrays:
         print_inputs(image, input_schema, true_schema)
-        ps_image = Image(input_image=image, input_schema=true_schema)
+        ps_image = Image(input_image=image, imformat=true_schema)
 
         ps_image.objmap[:10, :10] = 1
         ps_image.objmap[-10:, -10:] = 2
 
-        assert ps_image.obj.label_table().equals(pd.Series(skimage.measure.regionprops_table(ps_image.objmap[:], properties=['label'])['label']))
+        assert ps_image.objects.label_table().equals(pd.Series(skimage.measure.regionprops_table(ps_image.objmap[:], properties=['label'])['label']))
