@@ -196,14 +196,14 @@
 <a class="viewcode-back" href="../../../../phenoscope.core.accessors.html#phenoscope.core.accessors.ObjectMask.__getitem__">[docs]</a>
 </span><span id="line-24">    <span class="k">def</span><span class="w"> </span><span class="fm">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">):</span>
 </span><span id="line-25"><span class="w">        </span><span class="sd">&quot;&quot;&quot;Returns a copy of the binary object mask in array form&quot;&quot;&quot;</span>
-</span><span id="line-26">        <span class="k">return</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_handler</span><span class="o">.</span><span class="n">omap</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">bool_</span><span class="p">)</span></div>
+</span><span id="line-26">        <span class="k">return</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_handler</span><span class="o">.</span><span class="n">objmap</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">bool_</span><span class="p">)</span></div>
 
 </span><span id="line-27">
 <div class="viewcode-block" id="ObjectMask.__setitem__">
 <a class="viewcode-back" href="../../../../phenoscope.core.accessors.html#phenoscope.core.accessors.ObjectMask.__setitem__">[docs]</a>
 </span><span id="line-28">    <span class="k">def</span><span class="w"> </span><span class="fm">__setitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
 </span><span id="line-29"><span class="w">        </span><span class="sd">&quot;&quot;&quot;Sets values of the object mask to value and resets the labeling in the map&quot;&quot;&quot;</span>
-</span><span id="line-30">        <span class="n">mask</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_handler</span><span class="o">.</span><span class="n">omap</span><span class="p">[:]</span> <span class="o">&gt;</span> <span class="mi">0</span>
+</span><span id="line-30">        <span class="n">mask</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_handler</span><span class="o">.</span><span class="n">objmap</span><span class="p">[:]</span> <span class="o">&gt;</span> <span class="mi">0</span>
 </span><span id="line-31">
 </span><span id="line-32">        <span class="c1"># Check to make sure the section of the mask the key accesses is the same as the value</span>
 </span><span id="line-33">        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">value</span><span class="p">)</span> <span class="ow">in</span> <span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">bool</span><span class="p">]:</span>
@@ -224,24 +224,24 @@
 </span><span id="line-48">
 </span><span id="line-49">        <span class="c1"># Relabel the mask and set the underlying csc matrix to the new mask</span>
 </span><span id="line-50">        <span class="c1"># Where the reset of labeling occurs. May eventually add way to sync without label reset in future</span>
-</span><span id="line-51">        <span class="bp">self</span><span class="o">.</span><span class="n">_handler</span><span class="o">.</span><span class="n">omap</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">label</span><span class="p">(</span><span class="n">mask</span><span class="p">)</span></div>
+</span><span id="line-51">        <span class="bp">self</span><span class="o">.</span><span class="n">_handler</span><span class="o">.</span><span class="n">objmap</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">label</span><span class="p">(</span><span class="n">mask</span><span class="p">)</span></div>
 
 </span><span id="line-52">
 </span><span id="line-53">    <span class="nd">@property</span>
 </span><span id="line-54">    <span class="k">def</span><span class="w"> </span><span class="nf">shape</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-</span><span id="line-55">        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_handler</span><span class="o">.</span><span class="n">omap</span><span class="o">.</span><span class="n">shape</span>
+</span><span id="line-55">        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_handler</span><span class="o">.</span><span class="n">objmap</span><span class="o">.</span><span class="n">shape</span>
 </span><span id="line-56">
 <div class="viewcode-block" id="ObjectMask.copy">
 <a class="viewcode-back" href="../../../../phenoscope.core.accessors.html#phenoscope.core.accessors.ObjectMask.copy">[docs]</a>
 </span><span id="line-57">    <span class="k">def</span><span class="w"> </span><span class="nf">copy</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
 </span><span id="line-58"><span class="w">        </span><span class="sd">&quot;&quot;&quot;Returns a copy of the binary object mask&quot;&quot;&quot;</span>
-</span><span id="line-59">        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_handler</span><span class="o">.</span><span class="n">omask</span><span class="p">[:]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span></div>
+</span><span id="line-59">        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_handler</span><span class="o">.</span><span class="n">objmask</span><span class="p">[:]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span></div>
 
 </span><span id="line-60">
 <div class="viewcode-block" id="ObjectMask.reset">
 <a class="viewcode-back" href="../../../../phenoscope.core.accessors.html#phenoscope.core.accessors.ObjectMask.reset">[docs]</a>
 </span><span id="line-61">    <span class="k">def</span><span class="w"> </span><span class="nf">reset</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-</span><span id="line-62">        <span class="bp">self</span><span class="o">.</span><span class="n">_handler</span><span class="o">.</span><span class="n">omap</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span></div>
+</span><span id="line-62">        <span class="bp">self</span><span class="o">.</span><span class="n">_handler</span><span class="o">.</span><span class="n">objmap</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span></div>
 
 </span><span id="line-63">
 <div class="viewcode-block" id="ObjectMask.show">
@@ -270,7 +270,7 @@
 </span><span id="line-85">        <span class="k">else</span><span class="p">:</span>
 </span><span id="line-86">            <span class="n">fig</span> <span class="o">=</span> <span class="n">ax</span><span class="o">.</span><span class="n">get_figure</span><span class="p">()</span>
 </span><span id="line-87">
-</span><span id="line-88">        <span class="n">ax</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_handler</span><span class="o">.</span><span class="n">omap</span><span class="p">[:]</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="n">cmap</span><span class="p">)</span>
+</span><span id="line-88">        <span class="n">ax</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_handler</span><span class="o">.</span><span class="n">objmap</span><span class="p">[:]</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="n">cmap</span><span class="p">)</span>
 </span><span id="line-89">        <span class="k">if</span> <span class="n">title</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span> <span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="n">title</span><span class="p">)</span>
 </span><span id="line-90">        <span class="n">ax</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span>
 </span><span id="line-91">
@@ -281,9 +281,9 @@
 </span><span id="line-95"><span class="w">        </span><span class="sd">&quot;&quot;&quot;Returns the array with every non-object pixel set to 0. Equivalent to np.ma.array.filled(bg_color)&quot;&quot;&quot;</span>
 </span><span id="line-96">        <span class="k">if</span> <span class="n">array</span><span class="o">.</span><span class="n">ndim</span> <span class="o">==</span> <span class="mi">3</span><span class="p">:</span>
 </span><span id="line-97">            <span class="n">mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dstack</span><span class="p">(</span>
-</span><span id="line-98">                <span class="p">[(</span><span class="bp">self</span><span class="o">.</span><span class="n">_handler</span><span class="o">.</span><span class="n">omap</span><span class="p">[:]</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">array</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])]</span>
+</span><span id="line-98">                <span class="p">[(</span><span class="bp">self</span><span class="o">.</span><span class="n">_handler</span><span class="o">.</span><span class="n">objmap</span><span class="p">[:]</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">array</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])]</span>
 </span><span id="line-99">            <span class="p">)</span>
-</span><span id="line-100">        <span class="k">else</span><span class="p">:</span> <span class="n">mask</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_handler</span><span class="o">.</span><span class="n">omap</span><span class="p">[:]</span> <span class="o">&gt;</span> <span class="mi">0</span>
+</span><span id="line-100">        <span class="k">else</span><span class="p">:</span> <span class="n">mask</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_handler</span><span class="o">.</span><span class="n">objmap</span><span class="p">[:]</span> <span class="o">&gt;</span> <span class="mi">0</span>
 </span><span id="line-101">        <span class="n">new_arr</span> <span class="o">=</span> <span class="n">array</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
 </span><span id="line-102">        <span class="n">new_arr</span><span class="p">[</span><span class="o">~</span><span class="n">mask</span><span class="p">]</span> <span class="o">=</span> <span class="n">bg_color</span>
 </span><span id="line-103">        <span class="k">return</span> <span class="n">new_arr</span></div>

@@ -108,7 +108,7 @@ class ColorExtractor(FeatureExtractor):
             obj_extracted = foreground_array[slices]
 
             # In case there's more than one object in the crop
-            obj_extracted[image.omap[slices] != label] = 0
+            obj_extracted[image.objmap[slices] != label] = 0
 
             measurements[MEAN].append(np.mean(obj_extracted[obj_extracted.nonzero()]))
             measurements[MEDIAN].append(np.median(obj_extracted[obj_extracted.nonzero()]))

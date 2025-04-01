@@ -646,7 +646,7 @@
 <span class="sd">            Tuple[plt.Figure, plt.Axes]: A tuple containing the Matplotlib figure and</span>
 <span class="sd">                axes where the overlay is displayed.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">objmap</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parent_image</span><span class="o">.</span><span class="n">omap</span><span class="p">[:]</span>
+        <span class="n">objmap</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parent_image</span><span class="o">.</span><span class="n">objmap</span><span class="p">[:]</span>
         <span class="k">if</span> <span class="n">object_label</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span> <span class="n">objmap</span><span class="p">[</span><span class="n">objmap</span> <span class="o">==</span> <span class="n">object_label</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
 
         <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_plot_overlay</span><span class="p">(</span>

@@ -50,10 +50,10 @@ class GriddedImage(Image):
             new_img.enhanced_matrix = self.enhanced_matrix[index]
 
         if self.omask is not None:
-            new_img.omask = self.omask[index]
+            new_img.objmask = self.omask[index]
 
         if self.omap is not None:
-            new_img.omap = self.omap[index]
+            new_img.objmap = self.omap[index]
 
         return new_img
 
@@ -298,7 +298,7 @@ class GriddedImage(Image):
             cmap = plt.get_cmap('tab20')
             cmap_cycle = cycle(cmap(i) for i in range(cmap.N))
             img = self.copy()
-            img.omap = self.grid_section_map
+            img.objmap = self.grid_section_map
             gs_table = self._bound_extractor.measure(img)
             for obj_label in gs_table.index.unique():
                 subtable = gs_table.loc[obj_label, :]

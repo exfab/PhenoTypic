@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>phenoscope.Image.omask &#8212; PhenoScope 0.5.1 documentation</title>
+    <title>phenoscope.Image.objmask &#8212; PhenoScope</title>
   
   
   
@@ -37,7 +37,7 @@
     <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
     <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
     <link rel="stylesheet" type="text/css" href="../../_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=d3610054" />
+    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=800a184d" />
   
   <!-- So that users can add custom icons -->
   <script src="../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
@@ -45,7 +45,7 @@
   <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../_static/documentation_options.js?v=b9afe91b"></script>
+    <script src="../../_static/documentation_options.js?v=d9b85e4f"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/design-tabs.js?v=f930bc37"></script>
@@ -138,13 +138,6 @@
   <ul class="bd-navbar-elements navbar-nav">
     
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="../../getting_started.html">
-    Getting Started
-  </a>
-</li>
-
-
-<li class="nav-item ">
   <a class="nav-link nav-internal" href="../../installation.html">
     Installation
   </a>
@@ -159,42 +152,18 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="../../tutorial/index.html">
-    Tutorials
-  </a>
-</li>
-
-
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="../../examples/index.html">
-    Examples
-  </a>
-</li>
-
-            <li class="nav-item dropdown">
-                <button class="btn dropdown-toggle nav-item" type="button"
-                data-bs-toggle="dropdown" aria-expanded="false"
-                aria-controls="pst-nav-more-links">
-                    More
-                </button>
-                <ul id="pst-nav-more-links" class="dropdown-menu">
-                    
-<li class=" ">
-  <a class="nav-link dropdown-item nav-internal" href="../index.html">
+  <a class="nav-link nav-internal" href="../index.html">
     API Reference
   </a>
 </li>
 
 
-<li class=" ">
-  <a class="nav-link dropdown-item nav-internal" href="../../dev_guide/index.html">
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../contrib_guide/index.html">
     Developer Guide
   </a>
 </li>
 
-                </ul>
-            </li>
-            
   </ul>
 </nav></div>
       
@@ -287,13 +256,6 @@
   <ul class="bd-navbar-elements navbar-nav">
     
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="../../getting_started.html">
-    Getting Started
-  </a>
-</li>
-
-
-<li class="nav-item ">
   <a class="nav-link nav-internal" href="../../installation.html">
     Installation
   </a>
@@ -308,20 +270,6 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="../../tutorial/index.html">
-    Tutorials
-  </a>
-</li>
-
-
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="../../examples/index.html">
-    Examples
-  </a>
-</li>
-
-
-<li class="nav-item ">
   <a class="nav-link nav-internal" href="../index.html">
     API Reference
   </a>
@@ -329,7 +277,7 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="../../dev_guide/index.html">
+  <a class="nav-link nav-internal" href="../../contrib_guide/index.html">
     Developer Guide
   </a>
 </li>
@@ -407,7 +355,7 @@
         <i class="fa-solid fa-home"></i>
       </a>
     </li>
-    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">phenoscope.Image.omask</span></li>
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">phenoscope.Image.objmask</span></li>
   </ul>
 </nav>
 </div>
@@ -424,12 +372,12 @@
 <div id="searchbox"></div>
                 <article class="bd-article">
                   
-  <section id="phenoscope-image-omask">
-<h1>phenoscope.Image.omask<a class="headerlink" href="#phenoscope-image-omask" title="Link to this heading">#</a></h1>
+  <section id="phenoscope-image-objmask">
+<h1>phenoscope.Image.objmask<a class="headerlink" href="#phenoscope-image-objmask" title="Link to this heading">#</a></h1>
 <dl class="py method">
-<dt class="sig sig-object py" id="phenoscope.Image.omask">
-<span class="sig-prename descclassname"><span class="pre">Image.</span></span><span class="sig-name descname"><span class="pre">omask</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenoscope.Image.omask" title="Link to this definition">#</a></dt>
-<dd><p>The Object Mask. A mutable binary representation of the objects in an image to be analyzed. Changing elements of the mask will reset object_map labeling.</p>
+<dt class="sig sig-object py" id="phenoscope.Image.objmask">
+<span class="sig-prename descclassname"><span class="pre">Image.</span></span><span class="sig-name descname"><span class="pre">objmask</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenoscope.Image.objmask" title="Link to this definition">#</a></dt>
+<dd><p>Returns the ObjectMask Accessor; The object mask is a mutable binary representation of the objects in an image to be analyzed. Changing elements of the mask will reset object_map labeling.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <ul class="simple">
@@ -454,7 +402,7 @@
 
 <dl class="py class">
 <dt class="sig sig-object py" id="phenoscope.core.accessors.ImageObjects">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenoscope.core.accessors.</span></span><span class="sig-name descname"><span class="pre">ImageObjects</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">parent_image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="phenoscope.Image.html#phenoscope.Image" title="phenoscope.core._image.Image"><span class="pre">Image</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/phenoscope/core/accessors/_image_objects_accessor.html#ImageObjects"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenoscope.core.accessors.ImageObjects" title="Link to this definition">#</a></dt>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenoscope.core.accessors.</span></span><span class="sig-name descname"><span class="pre">ImageObjects</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">parent_image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../index.html#phenoscope.Image" title="phenoscope.Image"><span class="pre">Image</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/phenoscope/core/accessors/_image_objects_accessor.html#ImageObjects"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenoscope.core.accessors.ImageObjects" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference internal" href="../phenoscope.core.accessors.html#phenoscope.core.accessors.ImageAccessor" title="phenoscope.core.accessors._image_accessor.ImageAccessor"><code class="xref py py-class docutils literal notranslate"><span class="pre">ImageAccessor</span></code></a></p>
 <p>An accessor for an image objects and provides various utilities for interacting with labeled objects in an image.</p>
 <p>This class provides methods to retrieve information about labeled objects, interact with object properties,
@@ -464,24 +412,24 @@ labeling and analysis tools like <cite>skimage.regionprops</cite>.</p>
 <div class="admonition-notes admonition">
 <p class="admonition-title">Notes</p>
 <ul class="simple">
-<li><p>Can only be called if an <a class="reference internal" href="../phenoscope.abstract.html#phenoscope.abstract.ObjectDetector" title="phenoscope.abstract.ObjectDetector"><code class="xref py py-class docutils literal notranslate"><span class="pre">phenoscope.abstract.ObjectDetector</span></code></a> has been applied to the <code class="xref py py-class docutils literal notranslate"><span class="pre">phenoscope.Image</span></code> object.</p></li>
+<li><p>Can only be called if an <a class="reference internal" href="../phenoscope.abstract.html#phenoscope.abstract.ObjectDetector" title="phenoscope.abstract.ObjectDetector"><code class="xref py py-class docutils literal notranslate"><span class="pre">phenoscope.abstract.ObjectDetector</span></code></a> has been applied to the <a class="reference internal" href="../index.html#phenoscope.Image" title="phenoscope.Image"><code class="xref py py-class docutils literal notranslate"><span class="pre">phenoscope.Image</span></code></a> object.</p></li>
 </ul>
 </div>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>parent_image</strong> (<a class="reference internal" href="phenoscope.Image.html#phenoscope.Image" title="phenoscope.core._image.Image"><em>Image</em></a>)</p>
+<dd class="field-odd"><p><strong>parent_image</strong> (<a class="reference internal" href="../index.html#phenoscope.Image" title="phenoscope.Image"><em>Image</em></a>)</p>
 </dd>
 </dl>
 <dl class="py method">
 <dt class="sig sig-object py" id="phenoscope.core.accessors.ImageObjects.__getitem__">
-<span class="sig-name descname"><span class="pre">__getitem__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">index</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="phenoscope.Image.html#phenoscope.Image" title="phenoscope.core._image.Image"><span class="pre">Image</span></a></span></span><a class="reference internal" href="../../_modules/phenoscope/core/accessors/_image_objects_accessor.html#ImageObjects.__getitem__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenoscope.core.accessors.ImageObjects.__getitem__" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">__getitem__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">index</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="../index.html#phenoscope.Image" title="phenoscope.Image"><span class="pre">Image</span></a></span></span><a class="reference internal" href="../../_modules/phenoscope/core/accessors/_image_objects_accessor.html#ImageObjects.__getitem__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenoscope.core.accessors.ImageObjects.__getitem__" title="Link to this definition">#</a></dt>
 <dd><p>Returns a slice of the object image based on the object’s index.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>index</strong> (<em>int</em>)</p>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p><a class="reference internal" href="phenoscope.Image.html#phenoscope.Image" title="phenoscope.core._image.Image">Image</a></p>
+<dd class="field-even"><p><a class="reference internal" href="../index.html#phenoscope.Image" title="phenoscope.Image">Image</a></p>
 </dd>
 </dl>
 </dd></dl>
@@ -494,14 +442,14 @@ labeling and analysis tools like <cite>skimage.regionprops</cite>.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenoscope.core.accessors.ImageObjects.iloc">
-<span class="sig-name descname"><span class="pre">iloc</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">index</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="phenoscope.Image.html#phenoscope.Image" title="phenoscope.core._image.Image"><span class="pre">Image</span></a></span></span><a class="reference internal" href="../../_modules/phenoscope/core/accessors/_image_objects_accessor.html#ImageObjects.iloc"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenoscope.core.accessors.ImageObjects.iloc" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">iloc</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">index</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="../index.html#phenoscope.Image" title="phenoscope.Image"><span class="pre">Image</span></a></span></span><a class="reference internal" href="../../_modules/phenoscope/core/accessors/_image_objects_accessor.html#ImageObjects.iloc"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenoscope.core.accessors.ImageObjects.iloc" title="Link to this definition">#</a></dt>
 <dd><p>Returns a slice of the object image based on the object’s index.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>index</strong> (<em>int</em>)</p>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p><a class="reference internal" href="phenoscope.Image.html#phenoscope.Image" title="phenoscope.core._image.Image">Image</a></p>
+<dd class="field-even"><p><a class="reference internal" href="../index.html#phenoscope.Image" title="phenoscope.Image">Image</a></p>
 </dd>
 </dl>
 </dd></dl>
@@ -531,7 +479,7 @@ labeling and analysis tools like <cite>skimage.regionprops</cite>.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenoscope.core.accessors.ImageObjects.loc">
-<span class="sig-name descname"><span class="pre">loc</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">label_number</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="phenoscope.Image.html#phenoscope.Image" title="phenoscope.core._image.Image"><span class="pre">Image</span></a></span></span><a class="reference internal" href="../../_modules/phenoscope/core/accessors/_image_objects_accessor.html#ImageObjects.loc"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenoscope.core.accessors.ImageObjects.loc" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">loc</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">label_number</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="../index.html#phenoscope.Image" title="phenoscope.Image"><span class="pre">Image</span></a></span></span><a class="reference internal" href="../../_modules/phenoscope/core/accessors/_image_objects_accessor.html#ImageObjects.loc"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenoscope.core.accessors.ImageObjects.loc" title="Link to this definition">#</a></dt>
 <dd><p>Returns a crop of object from the image based on its label number.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -541,7 +489,7 @@ labeling and analysis tools like <cite>skimage.regionprops</cite>.</p>
 <dd class="field-even"><p>(Image) The cropped bounding box of an object as an Image</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference internal" href="phenoscope.Image.html#phenoscope.Image" title="phenoscope.core._image.Image">Image</a></p>
+<dd class="field-odd"><p><a class="reference internal" href="../index.html#phenoscope.Image" title="phenoscope.Image">Image</a></p>
 </dd>
 </dl>
 </dd></dl>
@@ -605,12 +553,6 @@ labeling and analysis tools like <cite>skimage.regionprops</cite>.</p>
               
               
               
-                <footer class="prev-next-footer d-print-none">
-                  
-<div class="prev-next-area">
-</div>
-                </footer>
-              
             </div>
             
             
@@ -627,7 +569,7 @@ labeling and analysis tools like <cite>skimage.regionprops</cite>.</p>
   </div>
   <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenoscope.Image.omask"><code class="docutils literal notranslate"><span class="pre">Image.omask()</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenoscope.Image.objmask"><code class="docutils literal notranslate"><span class="pre">Image.objmask()</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenoscope.core.accessors.ImageObjects"><code class="docutils literal notranslate"><span class="pre">ImageObjects</span></code></a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenoscope.core.accessors.ImageObjects.__getitem__"><code class="docutils literal notranslate"><span class="pre">ImageObjects.__getitem__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenoscope.core.accessors.ImageObjects.get_object_idx"><code class="docutils literal notranslate"><span class="pre">ImageObjects.get_object_idx()</span></code></a></li>

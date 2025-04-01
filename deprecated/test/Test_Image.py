@@ -20,8 +20,8 @@ def test_blank_image():
     assert img.array is None
     assert img.matrix is None
     assert img.enhanced_matrix is None
-    assert img.omask is None
-    assert img.omap is None
+    assert img.objmask is None
+    assert img.objmap is None
 
 def test_image(sample_data):
     img = Image(sample_data['image'])
@@ -30,8 +30,8 @@ def test_image(sample_data):
     assert img.matrix is not None
     assert img.enhanced_matrix is not None
 
-    assert np.array_equal(img.omask, np.full(shape=img.shape, fill_value=1))
-    assert np.array_equal(img.omap, np.full(shape=img.shape, fill_value=1))
+    assert np.array_equal(img.objmask, np.full(shape=img.shape, fill_value=1))
+    assert np.array_equal(img.objmap, np.full(shape=img.shape, fill_value=1))
 
 def test_image_show_array(sample_data):
     img = Image(sample_data['image'])
@@ -91,8 +91,8 @@ def test_image_savez_loadz(sample_data):
     original_array = img.array
     original_matrix = img.matrix
     original_enhanced_matrix = img.enhanced_matrix
-    original_object_mask = img.omask
-    original_object_map = img.omap
+    original_object_mask = img.objmask
+    original_object_map = img.objmap
 
     img.name = 'test_image'
     img.set_metadata(key='test_int', value=100)
@@ -111,8 +111,8 @@ def test_image_savez_loadz(sample_data):
     assert np.array_equal(original_array, new_img.array)
     assert np.array_equal(original_matrix, new_img.matrix)
     assert np.array_equal(original_enhanced_matrix, new_img.enh_matrix)
-    assert np.array_equal(original_object_mask, new_img.omask)
-    assert np.array_equal(original_object_map, new_img.omap)
+    assert np.array_equal(original_object_mask, new_img.objmask)
+    assert np.array_equal(original_object_map, new_img.objmap)
 
     assert new_img.name == 'test_image'
     assert new_img.get_metadata(key='test_int') == 100

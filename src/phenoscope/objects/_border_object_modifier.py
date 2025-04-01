@@ -22,7 +22,7 @@ class BorderObjectRemover(MapModifier):
         else:
             raise TypeError('Invalid edge size. Should be int, float, or None to use default edge size.')
 
-        obj_map = image.omap[:]
+        obj_map = image.objmap[:]
         edges = [obj_map[:edge_size - 1, :].ravel(),
                  obj_map[-edge_size:, :].ravel(),
                  obj_map[:, :edge_size - 1].ravel(),
@@ -32,5 +32,5 @@ class BorderObjectRemover(MapModifier):
         for label in edge_labels:
             obj_map[obj_map == label] = 0
 
-        image.omap = obj_map
+        image.objmap = obj_map
         return image

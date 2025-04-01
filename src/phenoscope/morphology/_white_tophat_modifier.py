@@ -12,12 +12,12 @@ class WhiteTophatModifier(MapModifier):
 
     def _operate(self, image: Image) -> Image:
         white_tophat_results = white_tophat(
-            image.omask[:],
+            image.objmask[:],
             footprint=self._get_footprint(
-                self._get_footprint_radius(array=image.omask[:])
+                self._get_footprint_radius(array=image.objmask[:])
             )
         )
-        image.omask[:] = image.omask[:] & ~white_tophat_results
+        image.objmask[:] = image.objmask[:] & ~white_tophat_results
         return image
 
     def _get_footprint_radius(self, array: np.ndarray) -> int:

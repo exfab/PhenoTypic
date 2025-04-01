@@ -1,9 +1,9 @@
-﻿phenoscope.Image.omask
+﻿phenoscope.Image.objmask
 ======================
 
 .. currentmodule:: phenoscope
 
-.. autoaccessor:: Image.omask
+.. autoaccessor:: Image.objmask
 
 
 

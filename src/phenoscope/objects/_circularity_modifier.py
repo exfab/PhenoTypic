@@ -45,7 +45,7 @@ class CircularityRemovalModifier(MapModifier):
 
     def _operate(self, image: Image) -> Image:
         # Create intial measurement table
-        table = (pd.DataFrame(regionprops_table(label_image=image.omap[:], intensity_image=image.matrix[:],
+        table = (pd.DataFrame(regionprops_table(label_image=image.objmap[:], intensity_image=image.matrix[:],
                                                 properties=['label', 'area', 'perimeter']
                                                 )
                               )
@@ -56,6 +56,6 @@ class CircularityRemovalModifier(MapModifier):
         table['circularity'] = (4 * math.pi * table['area']) / (table['perimeter'] ** 2)
 
         passing_objects = table[table['circularity'] > self.cutoff]
-        failed_object_boolean_indices = ~(np.isin(element=image.omap[:], test_elements=passing_objects.index.to_numpy()))
-        image.omap[failed_object_boolean_indices] = 0
+        failed_object_boolean_indices = ~(np.isin(element=image.objmap[:], test_elements=passing_objects.index.to_numpy()))
+        image.objmap[failed_object_boolean_indices] = 0
         return image

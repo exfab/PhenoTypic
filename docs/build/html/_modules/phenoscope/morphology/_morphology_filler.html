@@ -355,8 +355,8 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_origin</span> <span class="o">=</span> <span class="n">origin</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span><span class="p">:</span>
-        <span class="n">image</span><span class="o">.</span><span class="n">omask</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">binary_fill_holes</span><span class="p">(</span>
-            <span class="nb">input</span><span class="o">=</span><span class="n">image</span><span class="o">.</span><span class="n">omask</span><span class="p">[:],</span>
+        <span class="n">image</span><span class="o">.</span><span class="n">objmask</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">binary_fill_holes</span><span class="p">(</span>
+            <span class="nb">input</span><span class="o">=</span><span class="n">image</span><span class="o">.</span><span class="n">objmask</span><span class="p">[:],</span>
             <span class="n">structure</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_structure</span><span class="p">,</span>
             <span class="n">origin</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_origin</span>
         <span class="p">)</span>

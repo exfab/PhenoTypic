@@ -1,9 +1,11 @@
-﻿phenoscope.Image.omask
+﻿
+
+phenoscope.Image.objmask
 ======================
 
 .. currentmodule:: phenoscope
 
-.. autoproperty:: Image.omask
+.. autoproperty:: Image.objmask
 
 
 

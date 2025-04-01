@@ -24,11 +24,11 @@ class ObjectMask(ImageAccessor):
 
     def __getitem__(self, key):
         """Returns a copy of the binary object mask in array form"""
-        return (self._parent_image.omap[key] > 0).astype(np.bool_)
+        return (self._parent_image.objmap[key] > 0).astype(np.bool_)
 
     def __setitem__(self, key, value: np.ndarray):
         """Sets values of the object mask to value and resets the labeling in the map"""
-        mask = self._parent_image.omap[:] > 0
+        mask = self._parent_image.objmap[:] > 0
 
         # Check to make sure the section of the mask the key accesses is the same as the value
         if type(value) in [int, bool]:
@@ -49,7 +49,7 @@ class ObjectMask(ImageAccessor):
 
         # Relabel the mask and set the underlying csc matrix to the new mask
         # Where the reset of labeling occurs. May eventually add way to sync without label reset in future
-        self._parent_image.omap[:] = label(mask)
+        self._parent_image.objmap[:] = label(mask)
 
     @property
     def shape(self):
@@ -62,11 +62,11 @@ class ObjectMask(ImageAccessor):
         Returns:
             The shape of the object map
         """
-        return self._parent_image.omap.shape
+        return self._parent_image.objmap.shape
 
     def copy(self) -> np.ndarray:
         """Returns a copy of the binary object mask"""
-        return self._parent_image.omask[:].copy()
+        return self._parent_image.objmask[:].copy()
 
     def reset(self):
         """
@@ -75,7 +75,7 @@ class ObjectMask(ImageAccessor):
         to it.
 
         """
-        self._parent_image.omap.reset()
+        self._parent_image.objmap.reset()
 
     def show(self, ax: plt.Axes = None,
              figsize: str = None,
@@ -95,11 +95,11 @@ class ObjectMask(ImageAccessor):
         Returns:
             tuple(plt.Figure, plt.Axes): matplotlib figure and axes object
         """
-        return self._plot(arr=self._parent_image.omap[:] > 0, figsize=figsize, ax=ax, title=title, cmap=cmap)
+        return self._plot(arr=self._parent_image.objmap[:] > 0, figsize=figsize, ax=ax, title=title, cmap=cmap)
 
     def _extract_objects(self, array: np.ndarray, bg_color: int = 0) -> np.ndarray:
         """Returns a copy of the array with every non-object pixel set to 0. Equivalent to np.ma.array.filled(bg_color)"""
-        mask = self._parent_image.omap[:] > 0
+        mask = self._parent_image.objmap[:] > 0
         if array.ndim == 3: mask = np.dstack([(mask > 0) for _ in range(array.shape[-1])])
 
         new_arr = array.copy()

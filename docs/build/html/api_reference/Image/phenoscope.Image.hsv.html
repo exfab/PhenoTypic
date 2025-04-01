@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>phenoscope.Image.hsv &#8212; PhenoScope 0.5.1 documentation</title>
+    <title>phenoscope.Image.hsv &#8212; PhenoScope</title>
   
   
   
@@ -37,7 +37,7 @@
     <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
     <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
     <link rel="stylesheet" type="text/css" href="../../_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=d3610054" />
+    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=800a184d" />
   
   <!-- So that users can add custom icons -->
   <script src="../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
@@ -45,7 +45,7 @@
   <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../_static/documentation_options.js?v=b9afe91b"></script>
+    <script src="../../_static/documentation_options.js?v=d9b85e4f"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/design-tabs.js?v=f930bc37"></script>
@@ -53,8 +53,8 @@
     <script>DOCUMENTATION_OPTIONS.pagename = 'api_reference/Image/phenoscope.Image.hsv';</script>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
-    <link rel="next" title="phenoscope.GridImage" href="../GridImage/phenoscope.GridImage.html" />
-    <link rel="prev" title="phenoscope.Image.omap" href="phenoscope.Image.omap.html" />
+    <link rel="next" title="phenoscope.GridImage.grid" href="../GridImage/phenoscope.GridImage.grid.html" />
+    <link rel="prev" title="phenoscope.Image.obj" href="phenoscope.Image.obj.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
   <meta name="docsearch:version" content="0.5.1" />
@@ -140,13 +140,6 @@
   <ul class="bd-navbar-elements navbar-nav">
     
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="../../getting_started.html">
-    Getting Started
-  </a>
-</li>
-
-
-<li class="nav-item ">
   <a class="nav-link nav-internal" href="../../installation.html">
     Installation
   </a>
@@ -160,43 +153,19 @@
 </li>
 
 
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="../../tutorial/index.html">
-    Tutorials
-  </a>
-</li>
-
-
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="../../examples/index.html">
-    Examples
-  </a>
-</li>
-
-            <li class="nav-item dropdown">
-                <button class="btn dropdown-toggle nav-item" type="button"
-                data-bs-toggle="dropdown" aria-expanded="false"
-                aria-controls="pst-nav-more-links">
-                    More
-                </button>
-                <ul id="pst-nav-more-links" class="dropdown-menu">
-                    
-<li class=" current active">
-  <a class="nav-link dropdown-item nav-internal" href="../index.html">
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="../index.html">
     API Reference
   </a>
 </li>
 
 
-<li class=" ">
-  <a class="nav-link dropdown-item nav-internal" href="../../dev_guide/index.html">
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../contrib_guide/index.html">
     Developer Guide
   </a>
 </li>
 
-                </ul>
-            </li>
-            
   </ul>
 </nav></div>
       
@@ -287,13 +256,6 @@
   <ul class="bd-navbar-elements navbar-nav">
     
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="../../getting_started.html">
-    Getting Started
-  </a>
-</li>
-
-
-<li class="nav-item ">
   <a class="nav-link nav-internal" href="../../installation.html">
     Installation
   </a>
@@ -307,20 +269,6 @@
 </li>
 
 
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="../../tutorial/index.html">
-    Tutorials
-  </a>
-</li>
-
-
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="../../examples/index.html">
-    Examples
-  </a>
-</li>
-
-
 <li class="nav-item current active">
   <a class="nav-link nav-internal" href="../index.html">
     API Reference
@@ -329,7 +277,7 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="../../dev_guide/index.html">
+  <a class="nav-link nav-internal" href="../../contrib_guide/index.html">
     Developer Guide
   </a>
 </li>
@@ -377,45 +325,39 @@
 <nav class="bd-docs-nav bd-links"
      aria-label="Section Navigation">
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
-  <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">Image</span></p>
-<ul class="current nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="phenoscope.Image.html">phenoscope.Image</a></li>
+  <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="phenoscope.Image.array.html">phenoscope.Image.array</a></li>
 <li class="toctree-l1"><a class="reference internal" href="phenoscope.Image.matrix.html">phenoscope.Image.matrix</a></li>
 <li class="toctree-l1"><a class="reference internal" href="phenoscope.Image.enh_matrix.html">phenoscope.Image.enh_matrix</a></li>
-<li class="toctree-l1"><a class="reference internal" href="phenoscope.Image.omask.html">phenoscope.Image.omask</a></li>
-<li class="toctree-l1"><a class="reference internal" href="phenoscope.Image.omap.html">phenoscope.Image.omap</a></li>
+<li class="toctree-l1"><a class="reference internal" href="phenoscope.Image.objmask.html">phenoscope.Image.objmask</a></li>
+<li class="toctree-l1"><a class="reference internal" href="phenoscope.Image.objmap.html">phenoscope.Image.objmap</a></li>
+<li class="toctree-l1"><a class="reference internal" href="phenoscope.Image.obj.html">phenoscope.Image.obj</a></li>
 <li class="toctree-l1 current active"><a class="current reference internal" href="#">phenoscope.Image.hsv</a></li>
 </ul>
-<p aria-level="2" class="caption" role="heading"><span class="caption-text">GridImage</span></p>
 <ul class="nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="../GridImage/phenoscope.GridImage.html">phenoscope.GridImage</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../GridImage/phenoscope.GridImage.grid.html">phenoscope.GridImage.grid</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Modules</span></p>
 <ul class="nav bd-sidenav">
-<li class="toctree-l1 has-children"><a class="reference internal" href="../phenoscope.html">phenoscope</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
-<li class="toctree-l2"><a class="reference internal" href="../phenoscope.abstract.html">phenoscope.abstract</a></li>
-<li class="toctree-l2 has-children"><a class="reference internal" href="../phenoscope.core.html">phenoscope.core</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
-<li class="toctree-l3"><a class="reference internal" href="../phenoscope.core.accessors.html">phenoscope.core.accessors</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../phenoscope.core.handlers.html">phenoscope.core.handlers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../phenoscope.abstract.html">phenoscope.abstract</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../phenoscope.core.html">phenoscope.core</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../phenoscope.core.accessors.html">phenoscope.core.accessors</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../phenoscope.core.handlers.html">phenoscope.core.handlers</a></li>
 </ul>
 </details></li>
-<li class="toctree-l2"><a class="reference internal" href="../phenoscope.data.html">phenoscope.data</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../phenoscope.detection.html">phenoscope.detection</a></li>
-<li class="toctree-l2 has-children"><a class="reference internal" href="../phenoscope.grid.html">phenoscope.grid</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
-<li class="toctree-l3"><a class="reference internal" href="../phenoscope.grid.abstract.html">phenoscope.grid.abstract</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../phenoscope.data.html">phenoscope.data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../phenoscope.detection.html">phenoscope.detection</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../phenoscope.grid.html">phenoscope.grid</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../phenoscope.grid.abstract.html">phenoscope.grid.abstract</a></li>
 </ul>
 </details></li>
-<li class="toctree-l2"><a class="reference internal" href="../phenoscope.measure.html">phenoscope.measure</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../phenoscope.morphology.html">phenoscope.morphology</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../phenoscope.objects.html">phenoscope.objects</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../phenoscope.pipeline.html">phenoscope.pipeline</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../phenoscope.preprocessing.html">phenoscope.preprocessing</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../phenoscope.transform.html">phenoscope.transform</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../phenoscope.util.html">phenoscope.util</a></li>
-</ul>
-</details></li>
+<li class="toctree-l1"><a class="reference internal" href="../phenoscope.measure.html">phenoscope.measure</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../phenoscope.morphology.html">phenoscope.morphology</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../phenoscope.objects.html">phenoscope.objects</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../phenoscope.pipeline.html">phenoscope.pipeline</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../phenoscope.preprocessing.html">phenoscope.preprocessing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../phenoscope.transform.html">phenoscope.transform</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../phenoscope.util.html">phenoscope.util</a></li>
 </ul>
 </div>
 </nav></div>
@@ -480,7 +422,7 @@
 <h1>phenoscope.Image.hsv<a class="headerlink" href="#phenoscope-image-hsv" title="Link to this heading">#</a></h1>
 <dl class="py property">
 <dt class="sig sig-object py" id="phenoscope.Image.hsv">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">Image.</span></span><span class="sig-name descname"><span class="pre">hsv</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">HsvAccessor</span></em><a class="headerlink" href="#phenoscope.Image.hsv" title="Link to this definition">#</a></dt>
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">Image.</span></span><span class="sig-name descname"><span class="pre">hsv</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="../phenoscope.core.accessors.html#phenoscope.core.accessors.HsvAccessor" title="phenoscope.core.accessors._hsv_accessor.HsvAccessor"><span class="pre">HsvAccessor</span></a></em><a class="headerlink" href="#phenoscope.Image.hsv" title="Link to this definition">#</a></dt>
 <dd><p>Returns the HSV accessor.</p>
 <p>This property returns an instance of the HsvAccessor associated with the
 current object, allowing access to HSV (hue, saturation, value) related
@@ -490,14 +432,14 @@ functionalities controlled by this handler.</p>
 <dd class="field-odd"><p>The instance of the HSV accessor.</p>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p>HsvAccessor</p>
+<dd class="field-even"><p><a class="reference internal" href="../phenoscope.core.accessors.html#phenoscope.core.accessors.HsvAccessor" title="phenoscope.core.accessors.HsvAccessor">HsvAccessor</a></p>
 </dd>
 </dl>
 </dd></dl>
 
 <dl class="py class">
 <dt class="sig sig-object py">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenoscope.core.accessors.</span></span><span class="sig-name descname"><span class="pre">HsvAccessor</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">parent_image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../generated/phenoscope.Image.html#phenoscope.Image" title="phenoscope.core._image.Image"><span class="pre">Image</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/phenoscope/core/accessors/_hsv_accessor.html#HsvAccessor"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenoscope.core.accessors.</span></span><span class="sig-name descname"><span class="pre">HsvAccessor</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">parent_image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../index.html#phenoscope.Image" title="phenoscope.Image"><span class="pre">Image</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/phenoscope/core/accessors/_hsv_accessor.html#HsvAccessor"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
 <dd><p>Bases: <a class="reference internal" href="../phenoscope.core.accessors.html#phenoscope.core.accessors.ImageAccessor" title="phenoscope.core.accessors._image_accessor.ImageAccessor"><code class="xref py py-class docutils literal notranslate"><span class="pre">ImageAccessor</span></code></a></p>
 <p>An accessor class to handle and analyze HSV (Hue, Saturation, Value) image data efficiently.</p>
 <p>This class provides functionality for accessing and processing HSV image data.
@@ -509,7 +451,7 @@ and their masked variations. This class is ideal for image analysis tasks where 
 properties play a significant role.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>parent_image</strong> (<a class="reference internal" href="../generated/phenoscope.Image.html#phenoscope.Image" title="phenoscope.core._image.Image"><em>Image</em></a>)</p>
+<dd class="field-odd"><p><strong>parent_image</strong> (<a class="reference internal" href="../index.html#phenoscope.Image" title="phenoscope.Image"><em>Image</em></a>)</p>
 </dd>
 </dl>
 <dl class="py attribute">
@@ -518,7 +460,7 @@ properties play a significant role.</p>
 <dd><p>The parent Image object that manages image data and operations.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference internal" href="../generated/phenoscope.Image.html#phenoscope.Image" title="phenoscope.core._image.Image">Image</a></p>
+<dd class="field-odd"><p><a class="reference internal" href="../index.html#phenoscope.Image" title="phenoscope.Image">Image</a></p>
 </dd>
 </dl>
 </dd></dl>
@@ -713,30 +655,6 @@ for further customization or display.</p>
               
               
               
-              
-                <footer class="prev-next-footer d-print-none">
-                  
-<div class="prev-next-area">
-    <a class="left-prev"
-       href="phenoscope.Image.omap.html"
-       title="previous page">
-      <i class="fa-solid fa-angle-left"></i>
-      <div class="prev-next-info">
-        <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">phenoscope.Image.omap</p>
-      </div>
-    </a>
-    <a class="right-next"
-       href="../GridImage/phenoscope.GridImage.html"
-       title="next page">
-      <div class="prev-next-info">
-        <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">phenoscope.GridImage</p>
-      </div>
-      <i class="fa-solid fa-angle-right"></i>
-    </a>
-</div>
-                </footer>
               
             </div>
             

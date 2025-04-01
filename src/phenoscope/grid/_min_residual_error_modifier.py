@@ -32,7 +32,7 @@ class MinResidualErrorRemover(GridMapModifier):
         # Check that there exist sections with more than one object
         while n_iters < max_iter and (section_obj_counts > 1).any():
             # Get the current object map. This is inside the loop to ensure latest version each iteration
-            obj_map = image.omap[:]
+            obj_map = image.objmap[:]
 
             # Get the section idx with the most objects
             section_with_most_obj = section_obj_counts.idxmax()
@@ -52,7 +52,7 @@ class MinResidualErrorRemover(GridMapModifier):
             # Set the objects with the labels to the background value
             obj_map[np.isin(obj_map, objects_to_drop)] = 0
 
-            image.omap = obj_map
+            image.objmap = obj_map
 
             # Reset section obj count and add counter
             section_obj_counts = image.grid.get_section_counts(ascending=False)

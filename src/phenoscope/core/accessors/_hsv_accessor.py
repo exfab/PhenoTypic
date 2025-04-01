@@ -155,21 +155,21 @@ class HsvAccessor(ImageAccessor):
         fig, axes = plt.subplots(nrows=3, figsize=figsize)
         ax = axes.ravel()
 
-        hue = ax[0].imshow(np.ma.array(self._parent_image._hsv[:, :, 0] * 360, mask=~self._parent_image.omask[:]),
+        hue = ax[0].imshow(np.ma.array(self._parent_image._hsv[:, :, 0] * 360, mask=~self._parent_image.objmask[:]),
                            cmap='hsv', vmin=0, vmax=360
                            )
         ax[0].set_title('Hue')
         ax[0].grid(False)
         fig.colorbar(mappable=hue, ax=ax[0], shrink=shrink)
 
-        saturation = ax[1].imshow(np.ma.array(self._parent_image._hsv[:, :, 1], mask=~self._parent_image.omask[:]),
+        saturation = ax[1].imshow(np.ma.array(self._parent_image._hsv[:, :, 1], mask=~self._parent_image.objmask[:]),
                                   cmap='viridis', vmin=0, vmax=1
                                   )
         ax[1].set_title('Saturation')
         ax[1].grid(False)
         fig.colorbar(mappable=saturation, ax=ax[1], shrink=shrink)
 
-        brightness = ax[2].imshow(np.ma.array(self._parent_image._hsv[:, :, 2], mask=~self._parent_image.omask[:]),
+        brightness = ax[2].imshow(np.ma.array(self._parent_image._hsv[:, :, 2], mask=~self._parent_image.objmask[:]),
                                   cmap='gray', vmin=0, vmax=1
                                   )
         ax[2].set_title('Brightness')
@@ -188,7 +188,7 @@ class HsvAccessor(ImageAccessor):
             - Unnormalized Range: 0-360 degrees.
             - Normalized Range: 0-1
         """
-        return self._parent_image.omask._extract_objects(
+        return self._parent_image.objmask._extract_objects(
             self._parent_image._hsv[:, :, 0] if normalized else self._parent_image._hsv[:, :, 0] * 360,
             bg_color=bg_color
         )
@@ -201,7 +201,7 @@ class HsvAccessor(ImageAccessor):
             - Normalized Range: 0-1
 
         """
-        return self._parent_image.omask._extract_objects(
+        return self._parent_image.objmask._extract_objects(
             self._parent_image._hsv[:, :, 1] if normalized else self._parent_image._hsv[:, :, 1] * 255,
             bg_color=bg_color
         )
@@ -214,11 +214,11 @@ class HsvAccessor(ImageAccessor):
             - Normalized Range: 0-1
 
         """
-        return self._parent_image.omask._extract_objects(
+        return self._parent_image.objmask._extract_objects(
             self._parent_image._hsv[:, :, 2] if normalized else self._parent_image._hsv[:, :, 2] * 255,
             bg_color=bg_color
         )
 
     def extract_obj(self, bg_color: int = 0):
         """Extracts the object hue, saturation, and brightness from the HSV image. With the background elements set to 0"""
-        return self._parent_image.omask._extract_objects(self._parent_image._hsv[:, :, :], bg_color=bg_color)
+        return self._parent_image.objmask._extract_objects(self._parent_image._hsv[:, :, :], bg_color=bg_color)

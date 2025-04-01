@@ -34,7 +34,7 @@ class OtsuDetector(ThresholdDetector):
             Image: The input image object with its `omask` attribute updated
                 to the computed binary mask value.
         """
-        image.omask = image.enh_matrix[:] > threshold_otsu(image.enh_matrix[:])
+        image.objmask = image.enh_matrix[:] > threshold_otsu(image.enh_matrix[:])
         return image
 
 # Set the docstring so that it appears in the sphinx documentation

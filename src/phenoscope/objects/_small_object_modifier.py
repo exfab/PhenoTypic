@@ -10,5 +10,5 @@ class SmallObjectRemovalModifier(MapModifier):
         self.__min_size = min_size
 
     def _operate(self, image: Image) -> Image:
-        image.omap[:] = remove_small_objects(image.omap[:], min_size=self.__min_size)
+        image.objmap[:] = remove_small_objects(image.objmap[:], min_size=self.__min_size)
         return image

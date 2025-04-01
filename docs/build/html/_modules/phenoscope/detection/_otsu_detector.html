@@ -349,12 +349,12 @@
 
 <span class="sd">    This class inherits from the `ThresholdDetector` and provides the functionality</span>
 <span class="sd">    to apply Otsu&#39;s thresholding method on the enhancement matrix (`enh_matrix`) of an</span>
-<span class="sd">    input image. The operation generates a binary mask (`omask`) depending on the</span>
+<span class="sd">    input image. The operation generates a binary mask (`objmask`) depending on the</span>
 <span class="sd">    computed threshold value.</span>
 
 <span class="sd">    Methods:</span>
 <span class="sd">        apply: Applies Otsu&#39;s thresholding on the input image object and modifies its</span>
-<span class="sd">            omask attribute accordingly.</span>
+<span class="sd">            objmask attribute accordingly.</span>
 
 <span class="sd">    &quot;&quot;&quot;</span>
 
@@ -364,17 +364,17 @@
 <span class="sd">        This function modifies the input image by applying a binary mask to</span>
 <span class="sd">        its enhanced matrix (`enh_matrix`). The binarization threshold is</span>
 <span class="sd">        automatically determined using Otsu&#39;s method. The resulting binary</span>
-<span class="sd">        mask is stored in the image&#39;s `omask` attribute.</span>
+<span class="sd">        mask is stored in the image&#39;s `objmask` attribute.</span>
 
 <span class="sd">        Args:</span>
 <span class="sd">            image (Image): The input image object. It must have an `enh_matrix`</span>
 <span class="sd">                attribute, which is used as the basis for creating the binary mask.</span>
 
 <span class="sd">        Returns:</span>
-<span class="sd">            Image: The input image object with its `omask` attribute updated</span>
+<span class="sd">            Image: The input image object with its `objmask` attribute updated</span>
 <span class="sd">                to the computed binary mask value.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">image</span><span class="o">.</span><span class="n">omask</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">enh_matrix</span><span class="p">[:]</span> <span class="o">&gt;</span> <span class="n">threshold_otsu</span><span class="p">(</span><span class="n">image</span><span class="o">.</span><span class="n">enh_matrix</span><span class="p">[:])</span>
+        <span class="n">image</span><span class="o">.</span><span class="n">objmask</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">enh_matrix</span><span class="p">[:]</span> <span class="o">&gt;</span> <span class="n">threshold_otsu</span><span class="p">(</span><span class="n">image</span><span class="o">.</span><span class="n">enh_matrix</span><span class="p">[:])</span>
         <span class="k">return</span> <span class="n">image</span></div>
 
 

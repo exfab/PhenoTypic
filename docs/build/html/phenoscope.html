@@ -719,7 +719,7 @@ functionalities controlled by this handler.</p>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="phenoscope.Image.omap">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">omap</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="api_reference/phenoscope.core.accessors.html#phenoscope.core.accessors.ObjectMap" title="phenoscope.core.accessors._object_map_accessor.ObjectMap"><span class="pre">ObjectMap</span></a></em><a class="headerlink" href="#phenoscope.Image.omap" title="Link to this definition">#</a></dt>
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">objmap</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="api_reference/phenoscope.core.accessors.html#phenoscope.core.accessors.ObjectMap" title="phenoscope.core.accessors._object_map_accessor.ObjectMap"><span class="pre">ObjectMap</span></a></em><a class="headerlink" href="#phenoscope.Image.omap" title="Link to this definition">#</a></dt>
 <dd><p>The Object Map. A mutable integer matrix that identifies the different objects in an image to be analyzed. Changes to elements of the object_map sync to the object_mask.</p>
 <p>The object_map is stored as a compressed sparse column matrix in the backend. This is to save on memory consumption at the cost of adding
 increased computational overhead between converting between sparse and dense matrices.</p>
@@ -742,7 +742,7 @@ increased computational overhead between converting between sparse and dense mat
 
 <dl class="py property">
 <dt class="sig sig-object py" id="phenoscope.Image.omask">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">omask</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="api_reference/phenoscope.core.accessors.html#phenoscope.core.accessors.ObjectMask" title="phenoscope.core.accessors._object_mask_accessor.ObjectMask"><span class="pre">ObjectMask</span></a></em><a class="headerlink" href="#phenoscope.Image.omask" title="Link to this definition">#</a></dt>
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">objmask</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="api_reference/phenoscope.core.accessors.html#phenoscope.core.accessors.ObjectMask" title="phenoscope.core.accessors._object_mask_accessor.ObjectMask"><span class="pre">ObjectMask</span></a></em><a class="headerlink" href="#phenoscope.Image.omask" title="Link to this definition">#</a></dt>
 <dd><p>The Object Mask. A mutable binary representation of the objects in an image to be analyzed. Changing elements of the mask will reset object_map labeling.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
@@ -1293,7 +1293,7 @@ functionalities controlled by this handler.</p>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="phenoscope.GridImage.omap">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">omap</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="api_reference/phenoscope.core.accessors.html#phenoscope.core.accessors.ObjectMap" title="phenoscope.core.accessors._object_map_accessor.ObjectMap"><span class="pre">ObjectMap</span></a></em><a class="headerlink" href="#phenoscope.GridImage.omap" title="Link to this definition">#</a></dt>
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">objmap</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="api_reference/phenoscope.core.accessors.html#phenoscope.core.accessors.ObjectMap" title="phenoscope.core.accessors._object_map_accessor.ObjectMap"><span class="pre">ObjectMap</span></a></em><a class="headerlink" href="#phenoscope.GridImage.omap" title="Link to this definition">#</a></dt>
 <dd><p>The Object Map. A mutable integer matrix that identifies the different objects in an image to be analyzed. Changes to elements of the object_map sync to the object_mask.</p>
 <p>The object_map is stored as a compressed sparse column matrix in the backend. This is to save on memory consumption at the cost of adding
 increased computational overhead between converting between sparse and dense matrices.</p>
@@ -1316,7 +1316,7 @@ increased computational overhead between converting between sparse and dense mat
 
 <dl class="py property">
 <dt class="sig sig-object py" id="phenoscope.GridImage.omask">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">omask</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="api_reference/phenoscope.core.accessors.html#phenoscope.core.accessors.ObjectMask" title="phenoscope.core.accessors._object_mask_accessor.ObjectMask"><span class="pre">ObjectMask</span></a></em><a class="headerlink" href="#phenoscope.GridImage.omask" title="Link to this definition">#</a></dt>
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">objmask</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="api_reference/phenoscope.core.accessors.html#phenoscope.core.accessors.ObjectMask" title="phenoscope.core.accessors._object_mask_accessor.ObjectMask"><span class="pre">ObjectMask</span></a></em><a class="headerlink" href="#phenoscope.GridImage.omask" title="Link to this definition">#</a></dt>
 <dd><p>The Object Mask. A mutable binary representation of the objects in an image to be analyzed. Changing elements of the mask will reset object_map labeling.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
@@ -1562,8 +1562,8 @@ Cache is disabled in this configuration.</p>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#phenoscope.Image.name"><code class="docutils literal notranslate"><span class="pre">Image.name</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#phenoscope.Image.num_objects"><code class="docutils literal notranslate"><span class="pre">Image.num_objects</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#phenoscope.Image.objects"><code class="docutils literal notranslate"><span class="pre">Image.objects</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#phenoscope.Image.omap"><code class="docutils literal notranslate"><span class="pre">Image.omap</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#phenoscope.Image.omask"><code class="docutils literal notranslate"><span class="pre">Image.omask</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#phenoscope.Image.omap"><code class="docutils literal notranslate"><span class="pre">Image.objmap</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#phenoscope.Image.omask"><code class="docutils literal notranslate"><span class="pre">Image.objmask</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#phenoscope.Image.props"><code class="docutils literal notranslate"><span class="pre">Image.props</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#phenoscope.Image.schema"><code class="docutils literal notranslate"><span class="pre">Image.schema</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#phenoscope.Image.shape"><code class="docutils literal notranslate"><span class="pre">Image.shape</span></code></a></li>
@@ -1590,8 +1590,8 @@ Cache is disabled in this configuration.</p>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#phenoscope.GridImage.name"><code class="docutils literal notranslate"><span class="pre">GridImage.name</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#phenoscope.GridImage.num_objects"><code class="docutils literal notranslate"><span class="pre">GridImage.num_objects</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#phenoscope.GridImage.objects"><code class="docutils literal notranslate"><span class="pre">GridImage.objects</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#phenoscope.GridImage.omap"><code class="docutils literal notranslate"><span class="pre">GridImage.omap</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#phenoscope.GridImage.omask"><code class="docutils literal notranslate"><span class="pre">GridImage.omask</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#phenoscope.GridImage.omap"><code class="docutils literal notranslate"><span class="pre">GridImage.objmap</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#phenoscope.GridImage.omask"><code class="docutils literal notranslate"><span class="pre">GridImage.objmask</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#phenoscope.GridImage.props"><code class="docutils literal notranslate"><span class="pre">GridImage.props</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#phenoscope.GridImage.schema"><code class="docutils literal notranslate"><span class="pre">GridImage.schema</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#phenoscope.GridImage.shape"><code class="docutils literal notranslate"><span class="pre">GridImage.shape</span></code></a></li>

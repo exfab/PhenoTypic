@@ -56,6 +56,6 @@ class GridOversizedObjectRemover(GridMapModifier):
         obj_to_remove = np.array(over_width_obj + over_height_obj)
 
         # Set the target objects to the background val of 0
-        image.omap[np.isin(image.omap[:], obj_to_remove)] = 0
+        image.objmap[np.isin(image.objmap[:], obj_to_remove)] = 0
 
         return image

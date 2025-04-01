@@ -372,7 +372,7 @@
         <span class="c1"># Check that there exist sections with more than one object</span>
         <span class="k">while</span> <span class="n">n_iters</span> <span class="o">&lt;</span> <span class="n">max_iter</span> <span class="ow">and</span> <span class="p">(</span><span class="n">section_obj_counts</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
             <span class="c1"># Get the current object map. This is inside the loop to ensure latest version each iteration</span>
-            <span class="n">obj_map</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">omap</span><span class="p">[:]</span>
+            <span class="n">obj_map</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">objmap</span><span class="p">[:]</span>
 
             <span class="c1"># Get the section idx with the most objects</span>
             <span class="n">section_with_most_obj</span> <span class="o">=</span> <span class="n">section_obj_counts</span><span class="o">.</span><span class="n">idxmax</span><span class="p">()</span>
@@ -392,7 +392,7 @@
             <span class="c1"># Set the objects with the labels to the background value</span>
             <span class="n">obj_map</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">obj_map</span><span class="p">,</span> <span class="n">objects_to_drop</span><span class="p">)]</span> <span class="o">=</span> <span class="mi">0</span>
 
-            <span class="n">image</span><span class="o">.</span><span class="n">omap</span> <span class="o">=</span> <span class="n">obj_map</span>
+            <span class="n">image</span><span class="o">.</span><span class="n">objmap</span> <span class="o">=</span> <span class="n">obj_map</span>
 
             <span class="c1"># Reset section obj count and add counter</span>
             <span class="n">section_obj_counts</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">grid</span><span class="o">.</span><span class="n">get_section_counts</span><span class="p">(</span><span class="n">ascending</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>

@@ -153,7 +153,7 @@ class ImageHandler:
             subimage = self.__class__(input_image=self.matrix[key], input_schema=self.schema)
 
         subimage.enh_matrix[:] = self.enh_matrix[key]
-        subimage.omap[:] = self.omap[key]
+        subimage.objmap[:] = self.objmap[key]
         return subimage
 
     def __setitem__(self, key, value):
@@ -176,7 +176,7 @@ class ImageHandler:
                 self._array[key] = value.array[:]
             self._matrix[key] = value.matrix[:]
             self._det_matrix[key] = value.enh_matrix[:]
-            self.omask[key] = value.omask[:]
+            self.objmask[key] = value.objmask[:]
 
     def __eq__(self, other) -> bool:
         return True if (
@@ -184,7 +184,7 @@ class ImageHandler:
                 and np.array_equal(self.array[:], other.array[:])
                 and np.array_equal(self.matrix[:], other.matrix[:])
                 and np.array_equal(self.enh_matrix[:], other.enh_matrix[:])
-                and np.array_equal(self.omap[:], other.omap[:])
+                and np.array_equal(self.objmap[:], other.objmap[:])
                 and self._protected_metadata == other._protected_metadata
                 and self._public_metadata == other._public_metadata
         ) else False
@@ -315,8 +315,8 @@ class ImageHandler:
             raise IllegalAssignmentError('enh_matrix')
 
     @property
-    def omask(self) -> ObjectMask:
-        """The Object Mask. A mutable binary representation of the objects in an image to be analyzed. Changing elements of the mask will reset object_map labeling.
+    def objmask(self) -> ObjectMask:
+        """Returns the ObjectMask Accessor; The object mask is a mutable binary representation of the objects in an image to be analyzed. Changing elements of the mask will reset object_map labeling.
 
         Note:
             - If the image has not been processed by a detector, the target for analysis is the entire image itself. Accessing the object_mask in this case
@@ -333,16 +333,16 @@ class ImageHandler:
         else:
             return self.__object_mask_subhandler
 
-    @omask.setter
-    def omask(self, object_mask):
+    @objmask.setter
+    def objmask(self, object_mask):
         if isinstance(object_mask, np.ndarray):
-            self.omask[:] = object_mask
+            self.objmask[:] = object_mask
         else:
             raise IllegalAssignmentError('object_mask')
 
     @property
-    def omap(self) -> ObjectMap:
-        """The Object Map. A mutable integer matrix that identifies the different objects in an image to be analyzed. Changes to elements of the object_map sync to the object_mask.
+    def objmap(self) -> ObjectMap:
+        """Returns the ObjectMap accessor; The object map is a mutable integer matrix that identifies the different objects in an image to be analyzed. Changes to elements of the object_map sync to the object_mask.
 
         The object_map is stored as a compressed sparse column matrix in the backend. This is to save on memory consumption at the cost of adding
         increased computational overhead between converting between sparse and dense matrices.
@@ -360,10 +360,10 @@ class ImageHandler:
         else:
             return self.__object_map_subhandler
 
-    @omap.setter
-    def omap(self, object_map):
+    @objmap.setter
+    def objmap(self, object_map):
         if isinstance(object_map, np.ndarray):
-            self.omap[:] = object_map
+            self.objmap[:] = object_map
         else:
             raise IllegalAssignmentError('object_map')
 
@@ -840,7 +840,37 @@ class ImageHandler:
                      annotation_color: str = 'white',
                      annotation_facecolor: str = 'red',
                      ) -> (plt.Figure, plt.Axes):
-        """Returns a matplotlib figure showing the overlay of the object map on the input image"""
+        """
+        Displays an overlay of the object specified by the given label on an image or
+        matrix with optional annotations.
+
+        This method checks the schema of the object to determine whether it belongs to
+        matrix formats or image formats, and delegates the overlay rendering to the
+        appropriate method accordingly. It optionally allows annotations to be added
+        for the specified object label with customizable style settings.
+
+        Args:
+            object_label (Optional[int]): The label of the object to overlay. If None,
+                the entire image or matrix is displayed without a specific object
+                highlighted.
+            ax (Optional[plt.Axes]): The matplotlib Axes instance to render the overlay
+                on. If None, a new figure and axes are created for rendering.
+            figsize (Tuple[int, int]): Tuple specifying the size (width, height) of the
+                figure to create if no axes are provided.
+            annotate (bool): Whether to annotate the image/matrix using the given
+                annotation settings.
+            annotation_size (int): The font size of the annotations, applicable only
+                when `annotate` is True.
+            annotation_color (str): The color of the text annotations, applicable only
+                when `annotate` is True.
+            annotation_facecolor (str): The color of the annotation marker background,
+                applicable only when `annotate` is True.
+
+        Returns:
+            Tuple[plt.Figure, plt.Axes]: A tuple containing the matplotlib Figure and
+            Axes objects used to render the overlay.
+
+        """
         if self.schema not in IMAGE_FORMATS.MATRIX_FORMATS:
             return self.array.show_overlay(object_label=object_label, ax=ax, figsize=figsize,
                                            annotate=annotate, annotation_size=annotation_size,
@@ -861,7 +891,7 @@ class ImageHandler:
         self._det_matrix = skimage_rotate(image=self._det_matrix, angle=angle_of_rotation, mode=mode, clip=True, **kwargs)
 
         # Rotate the object map while preserving the details and using nearest-neighbor interpolation
-        self.omap[:] = scipy_rotate(input=self.omap[:], angle=angle_of_rotation, mode='constant', cval=0, order=0, reshape=False)
+        self.objmap[:] = scipy_rotate(input=self.objmap[:], angle=angle_of_rotation, mode='constant', cval=0, order=0, reshape=False)
 
     def reset(self) -> Type[Image]:
         """
@@ -877,5 +907,5 @@ class ImageHandler:
             state.
         """
         self.enh_matrix.reset()
-        self.omap.reset()
+        self.objmap.reset()
         return self

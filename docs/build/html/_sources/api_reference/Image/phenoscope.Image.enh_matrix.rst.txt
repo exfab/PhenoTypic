@@ -1,4 +1,6 @@
-﻿phenoscope.Image.enh\_matrix
+﻿
+
+phenoscope.Image.enh\_matrix
 ============================
 
 .. currentmodule:: phenoscope

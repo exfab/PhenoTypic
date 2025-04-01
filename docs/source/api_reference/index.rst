@@ -3,30 +3,46 @@ API Reference
 
 This section provides detailed API documentation for all PhenoScope modules and functions.
 
+.. autoclass:: phenoscope.Image
+   :members: __init__, from_file, from_array, show, save
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+Image Accessors
+--------------
+
 .. currentmodule:: phenoscope
 .. autosummary::
     :toctree: Image
     :recursive:
+    :caption: Image Accessors
     :template: image_accessor.rst
-    :caption: Image
 
-    Image 
     Image.array
     Image.matrix
     Image.enh_matrix
-    Image.omask
-    Image.omap
+    Image.objmask
+    Image.objmap
     Image.obj
     Image.hsv
+
+.. autoclass:: phenoscope.GridImage
+   :members: __init__, from_file, from_array, show, save
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+GridImage Accessors
+------------------
 
 .. currentmodule:: phenoscope
 .. autosummary::
     :toctree: GridImage
     :recursive:
     :template: image_accessor.rst
-    :caption: GridImage
+    :caption: GridImage Accessors
 
-    GridImage
     GridImage.grid
 
 .. toctree::

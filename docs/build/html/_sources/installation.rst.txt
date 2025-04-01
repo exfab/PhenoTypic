@@ -22,7 +22,7 @@ The simplest way to install PhenoScope is via pip:
    pip install phenoscope
 
 From Source
-~~~~~~~~~~
+~~~~~~~~~~~
 
 To install from source:
 

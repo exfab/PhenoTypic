@@ -18,7 +18,7 @@ class BoundaryExtractor(FeatureExtractor):
     def _operate(self, image: Image) -> pd.DataFrame:
         results = pd.DataFrame(
             data=regionprops_table(
-                label_image=image.omap[:],
+                label_image=image.objmap[:],
                 properties=['label', 'centroid', 'bbox']
             )
         ).rename(columns={

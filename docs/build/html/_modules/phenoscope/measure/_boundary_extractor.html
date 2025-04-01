@@ -358,7 +358,7 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
         <span class="n">results</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span>
             <span class="n">data</span><span class="o">=</span><span class="n">regionprops_table</span><span class="p">(</span>
-                <span class="n">label_image</span><span class="o">=</span><span class="n">image</span><span class="o">.</span><span class="n">omap</span><span class="p">[:],</span>
+                <span class="n">label_image</span><span class="o">=</span><span class="n">image</span><span class="o">.</span><span class="n">objmap</span><span class="p">[:],</span>
                 <span class="n">properties</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;label&#39;</span><span class="p">,</span> <span class="s1">&#39;centroid&#39;</span><span class="p">,</span> <span class="s1">&#39;bbox&#39;</span><span class="p">]</span>
             <span class="p">)</span>
         <span class="p">)</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">{</span>

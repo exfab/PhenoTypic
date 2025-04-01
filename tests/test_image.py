@@ -92,8 +92,8 @@ def test_set_image_from_image(sample_image_arrays):
             assert np.array_equal(phenoscope_image_2.array[:], phenoscope_image.array[:])
         assert np.array_equal(phenoscope_image_2.matrix[:], phenoscope_image.matrix[:])
         assert np.array_equal(phenoscope_image_2.enh_matrix[:], phenoscope_image.enh_matrix[:])
-        assert np.array_equal(phenoscope_image_2.omask[:], phenoscope_image.omask[:])
-        assert np.array_equal(phenoscope_image_2.omap[:], phenoscope_image.omap[:])
+        assert np.array_equal(phenoscope_image_2.objmask[:], phenoscope_image.objmask[:])
+        assert np.array_equal(phenoscope_image_2.objmap[:], phenoscope_image.objmap[:])
 
 @timeit
 def test_image_construct_from_array(sample_image_arrays):
@@ -140,12 +140,12 @@ def test_image_object_mask_access(sample_image_arrays):
         ps_image = Image(input_image=image, input_schema=true_schema)
 
         # When no objects in image
-        assert np.array_equal(ps_image.omask[:], np.full(shape=ps_image.matrix.shape, fill_value=True))
+        assert np.array_equal(ps_image.objmask[:], np.full(shape=ps_image.matrix.shape, fill_value=True))
 
-        ps_image.omask[:10, :10] = 0
-        ps_image.omask[-10:, -10:] = 1
+        ps_image.objmask[:10, :10] = 0
+        ps_image.objmask[-10:, -10:] = 1
 
-        assert not np.array_equal(ps_image.omask[:], np.full(shape=ps_image.matrix.shape, fill_value=True))
+        assert not np.array_equal(ps_image.objmask[:], np.full(shape=ps_image.matrix.shape, fill_value=True))
 
 @timeit
 def test_image_object_map_access(sample_image_arrays):
@@ -154,13 +154,13 @@ def test_image_object_map_access(sample_image_arrays):
         ps_image = Image(input_image=image, input_schema=true_schema)
 
         # When no objects in image
-        assert np.array_equal(ps_image.omap[:], np.full(shape=ps_image.matrix.shape, fill_value=1, dtype=np.uint32))
+        assert np.array_equal(ps_image.objmap[:], np.full(shape=ps_image.matrix.shape, fill_value=1, dtype=np.uint32))
         assert ps_image.num_objects == 0
 
-        ps_image.omap[:10, :10] = 1
-        ps_image.omap[-10:, -10:] = 2
+        ps_image.objmap[:10, :10] = 1
+        ps_image.objmap[-10:, -10:] = 2
 
-        assert not np.array_equal(ps_image.omap[:], np.full(shape=ps_image.matrix.shape, fill_value=1, dtype=np.uint32))
+        assert not np.array_equal(ps_image.objmap[:], np.full(shape=ps_image.matrix.shape, fill_value=1, dtype=np.uint32))
         assert ps_image.num_objects > 0
         assert ps_image.obj.num_objects > 0
 
@@ -181,8 +181,8 @@ def test_image_copy(sample_image_arrays):
             assert np.array_equal(ps_image.array[:], ps_image.array[:])
         assert np.array_equal(ps_image.matrix[:], ps_image_copy.matrix[:])
         assert np.array_equal(ps_image.enh_matrix[:], ps_image_copy.enh_matrix[:])
-        assert np.array_equal(ps_image.omask[:], ps_image_copy.omask[:])
-        assert np.array_equal(ps_image.omap[:], ps_image_copy.omap[:])
+        assert np.array_equal(ps_image.objmask[:], ps_image_copy.objmask[:])
+        assert np.array_equal(ps_image.objmap[:], ps_image_copy.objmap[:])
 
 @timeit
 def test_slicing(sample_image_arrays):
@@ -195,8 +195,8 @@ def test_slicing(sample_image_arrays):
             assert np.array_equal(sliced_ps_image.array[:], ps_image.array[:row_slice, :col_slice])
         assert np.array_equal(sliced_ps_image.matrix[:], ps_image.matrix[:row_slice, :col_slice])
         assert np.array_equal(sliced_ps_image.enh_matrix[:], ps_image.enh_matrix[:row_slice, :col_slice])
-        assert np.array_equal(sliced_ps_image.omask[:], ps_image.omask[:row_slice, :col_slice])
-        assert np.array_equal(sliced_ps_image.omap[:], ps_image.omap[:row_slice, :col_slice])
+        assert np.array_equal(sliced_ps_image.objmask[:], ps_image.objmask[:row_slice, :col_slice])
+        assert np.array_equal(sliced_ps_image.objmap[:], ps_image.objmap[:row_slice, :col_slice])
 
 @timeit
 def test_image_object_size_label_consistency(sample_image_arrays):
@@ -205,8 +205,8 @@ def test_image_object_size_label_consistency(sample_image_arrays):
         ps_image = Image(input_image=image, input_schema=true_schema)
         assert ps_image.num_objects == 0
 
-        ps_image.omap[:10, :10] = 1
-        ps_image.omap[-10:, -10:] = 2
+        ps_image.objmap[:10, :10] = 1
+        ps_image.objmap[-10:, -10:] = 2
 
         assert ps_image.num_objects == 2
         assert ps_image.num_objects == ps_image.obj.num_objects
@@ -218,7 +218,7 @@ def test_image_object_label_consistency_with_skimage(sample_image_arrays):
         print_inputs(image, input_schema, true_schema)
         ps_image = Image(input_image=image, input_schema=true_schema)
 
-        ps_image.omap[:10, :10] = 1
-        ps_image.omap[-10:, -10:] = 2
+        ps_image.objmap[:10, :10] = 1
+        ps_image.objmap[-10:, -10:] = 2
 
-        assert ps_image.obj.label_table().equals(pd.Series(skimage.measure.regionprops_table(ps_image.omap[:], properties=['label'])['label']))
+        assert ps_image.obj.label_table().equals(pd.Series(skimage.measure.regionprops_table(ps_image.objmap[:], properties=['label'])['label']))

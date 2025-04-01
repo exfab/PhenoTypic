@@ -3,10 +3,17 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
+:notoc:
+
 .. module:: phenoscope
 
-PhenoScope Documentation
-========================
+PhenoScope
+==========================================
+
+.. container:: subtitle
+
+   A modular framework for bioimage analysis and visualization
+
 
 Welcome to PhenoScope's documentation. Here you'll find comprehensive guides and examples to help you get the most out of PhenoScope.
 
@@ -61,7 +68,7 @@ Welcome to PhenoScope's documentation. Here you'll find comprehensive guides and
 
       +++
 
-      .. button-ref:: tutorial/index
+      .. button-ref:: user_guide/tutorial/index
          :ref-type: doc
          :click-parent:
          :color: secondary
@@ -103,64 +110,36 @@ Welcome to PhenoScope's documentation. Here you'll find comprehensive guides and
          :color: secondary
          :expand:
 
-         To the reference guide
+         To the API reference
 
-   .. grid-item-card::  Developer guide
+   .. grid-item-card::  Contributor guide
       :img-top: ./_static/assets/200x150/dev_guide.svg
       :class-card: intro-card
       :shadow: md
 
-      PhenoScope's strength is in its ability to integrate new modules and workflows. Learn how to make your own module and workflow here. 
-      Learn how to contribute your new module to the codebase here. Found a typo in the documentation? The contributing guidelines will guide
-      you through the process of making your own module and improving PhenoScope.
+      PhenoScope's strength is in its ability to integrate new modules and workflows. 
+      Learn how to make your own module and contribute to the codebase here!
 
       +++
 
-      .. button-ref:: dev_guide/index
+      .. button-ref:: contrib_guide/index
          :ref-type: doc
          :click-parent:
          :color: secondary
          :expand:
 
-         To the development guide
+         To the contributor guide
 
-
-Quick Start
------------
-
-PhenoScope is a Python library for image analysis and phenotyping. It provides tools for processing, analyzing, and extracting features from images.
-
-**Installation**
-
-.. code-block:: bash
-
-   pip install phenoscope
-
-
-
-For more detailed installation instructions, see the :doc:`installation` page.
 
 .. toctree::
-   :maxdepth: 1
-   :caption: Getting Started
-   
-   getting_started
-   installation
-
-.. toctree::
-   :maxdepth: 2
+   :maxdepth: 3
    :caption: Documentation
+   :hidden:
+   :titlesonly:
 
-   getting_started/index
+   installation
    user_guide/index
    tutorial/index
-   examples/index
    api_reference/index
-   dev_guide/index
+   contrib_guide/index
 
-Indices and Tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`

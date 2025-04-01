@@ -1,9 +1,11 @@
-﻿phenoscope.Image.omap
+﻿
+
+phenoscope.Image.objmap
 =====================
 
 .. currentmodule:: phenoscope
 
-.. autoproperty:: Image.omap
+.. autoproperty:: Image.objmap
 
 
 

@@ -33,7 +33,7 @@ class ImageObjects(ImageAccessor):
             list[skimage.measure._regionprops.RegionProperties]: A list of properties for all
                 regions in the provided image.
         """
-        return regionprops(label_image=self._parent_image.omap[:], intensity_image=self._parent_image.matrix[:], cache=False)
+        return regionprops(label_image=self._parent_image.objmap[:], intensity_image=self._parent_image.matrix[:], cache=False)
 
     @property
     def labels(self) -> List[str]:
@@ -62,7 +62,7 @@ class ImageObjects(ImageAccessor):
 
     def reset(self):
         """Resets the image object map such that the analysis target is the entire image."""
-        self._parent_image.omap.reset()
+        self._parent_image.objmap.reset()
 
     def __getitem__(self, index: int) -> Image:
         """Returns a slice of the object image based on the object's index."""
@@ -90,7 +90,7 @@ class ImageObjects(ImageAccessor):
         """
         return pd.DataFrame(
             data=regionprops_table(
-                label_image=self._parent_image.omap[:],
+                label_image=self._parent_image.objmap[:],
                 properties=['label', 'centroid', 'bbox']
             )
         ).rename(columns={

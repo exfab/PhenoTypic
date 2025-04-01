@@ -1104,7 +1104,7 @@ The original matrix data should be left intact in order to preserve image inform
 
 <dl class="py property">
 <dt class="sig sig-object py" id="phenoscope.core.ImageHandler.omap">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">omap</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="phenoscope.core.accessors.html#phenoscope.core.accessors.ObjectMap" title="phenoscope.core.accessors._object_map.ObjectMap"><span class="pre">ObjectMap</span></a></em><a class="headerlink" href="#phenoscope.core.ImageHandler.omap" title="Link to this definition">#</a></dt>
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">objmap</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="phenoscope.core.accessors.html#phenoscope.core.accessors.ObjectMap" title="phenoscope.core.accessors._object_map.ObjectMap"><span class="pre">ObjectMap</span></a></em><a class="headerlink" href="#phenoscope.core.ImageHandler.omap" title="Link to this definition">#</a></dt>
 <dd><p>The Object Map. A mutable integer matrix that identifies the different objects in an image to be analyzed. Changes to elements of the object_map sync to the object_mask.</p>
 <p>The object_map is stored as a compressed sparse column matrix in the backend. This is to save on memory consumption at the cost of adding
 increased computational overhead between converting between sparse and dense matrices.</p>
@@ -1127,7 +1127,7 @@ increased computational overhead between converting between sparse and dense mat
 
 <dl class="py property">
 <dt class="sig sig-object py" id="phenoscope.core.ImageHandler.omask">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">omask</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="phenoscope.core.accessors.html#phenoscope.core.accessors.ObjectMask" title="phenoscope.core.accessors._object_mask.ObjectMask"><span class="pre">ObjectMask</span></a></em><a class="headerlink" href="#phenoscope.core.ImageHandler.omask" title="Link to this definition">#</a></dt>
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">objmask</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="phenoscope.core.accessors.html#phenoscope.core.accessors.ObjectMask" title="phenoscope.core.accessors._object_mask.ObjectMask"><span class="pre">ObjectMask</span></a></em><a class="headerlink" href="#phenoscope.core.ImageHandler.omask" title="Link to this definition">#</a></dt>
 <dd><p>The Object Mask. A mutable binary representation of the objects in an image to be analyzed. Changing elements of the mask will reset object_map labeling.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
@@ -1627,7 +1627,7 @@ functionalities controlled by this handler.</p>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="phenoscope.core.ImageHsv.omap">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">omap</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="phenoscope.core.accessors.html#phenoscope.core.accessors.ObjectMap" title="phenoscope.core.accessors._object_map.ObjectMap"><span class="pre">ObjectMap</span></a></em><a class="headerlink" href="#phenoscope.core.ImageHsv.omap" title="Link to this definition">#</a></dt>
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">objmap</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="phenoscope.core.accessors.html#phenoscope.core.accessors.ObjectMap" title="phenoscope.core.accessors._object_map.ObjectMap"><span class="pre">ObjectMap</span></a></em><a class="headerlink" href="#phenoscope.core.ImageHsv.omap" title="Link to this definition">#</a></dt>
 <dd><p>The Object Map. A mutable integer matrix that identifies the different objects in an image to be analyzed. Changes to elements of the object_map sync to the object_mask.</p>
 <p>The object_map is stored as a compressed sparse column matrix in the backend. This is to save on memory consumption at the cost of adding
 increased computational overhead between converting between sparse and dense matrices.</p>
@@ -1650,7 +1650,7 @@ increased computational overhead between converting between sparse and dense mat
 
 <dl class="py property">
 <dt class="sig sig-object py" id="phenoscope.core.ImageHsv.omask">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">omask</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="phenoscope.core.accessors.html#phenoscope.core.accessors.ObjectMask" title="phenoscope.core.accessors._object_mask.ObjectMask"><span class="pre">ObjectMask</span></a></em><a class="headerlink" href="#phenoscope.core.ImageHsv.omask" title="Link to this definition">#</a></dt>
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">objmask</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="phenoscope.core.accessors.html#phenoscope.core.accessors.ObjectMask" title="phenoscope.core.accessors._object_mask.ObjectMask"><span class="pre">ObjectMask</span></a></em><a class="headerlink" href="#phenoscope.core.ImageHsv.omask" title="Link to this definition">#</a></dt>
 <dd><p>The Object Mask. A mutable binary representation of the objects in an image to be analyzed. Changing elements of the mask will reset object_map labeling.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
@@ -1924,8 +1924,8 @@ Cache is disabled in this configuration.</p>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#phenoscope.core.ImageHandler.name"><code class="docutils literal notranslate"><span class="pre">ImageHandler.name</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#phenoscope.core.ImageHandler.num_objects"><code class="docutils literal notranslate"><span class="pre">ImageHandler.num_objects</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#phenoscope.core.ImageHandler.objects"><code class="docutils literal notranslate"><span class="pre">ImageHandler.objects</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#phenoscope.core.ImageHandler.omap"><code class="docutils literal notranslate"><span class="pre">ImageHandler.omap</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#phenoscope.core.ImageHandler.omask"><code class="docutils literal notranslate"><span class="pre">ImageHandler.omask</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#phenoscope.core.ImageHandler.omap"><code class="docutils literal notranslate"><span class="pre">ImageHandler.objmap</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#phenoscope.core.ImageHandler.omask"><code class="docutils literal notranslate"><span class="pre">ImageHandler.objmask</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#phenoscope.core.ImageHandler.props"><code class="docutils literal notranslate"><span class="pre">ImageHandler.props</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#phenoscope.core.ImageHandler.schema"><code class="docutils literal notranslate"><span class="pre">ImageHandler.schema</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#phenoscope.core.ImageHandler.shape"><code class="docutils literal notranslate"><span class="pre">ImageHandler.shape</span></code></a></li>
@@ -1950,8 +1950,8 @@ Cache is disabled in this configuration.</p>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#phenoscope.core.ImageHsv.name"><code class="docutils literal notranslate"><span class="pre">ImageHsv.name</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#phenoscope.core.ImageHsv.num_objects"><code class="docutils literal notranslate"><span class="pre">ImageHsv.num_objects</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#phenoscope.core.ImageHsv.objects"><code class="docutils literal notranslate"><span class="pre">ImageHsv.objects</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#phenoscope.core.ImageHsv.omap"><code class="docutils literal notranslate"><span class="pre">ImageHsv.omap</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#phenoscope.core.ImageHsv.omask"><code class="docutils literal notranslate"><span class="pre">ImageHsv.omask</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#phenoscope.core.ImageHsv.omap"><code class="docutils literal notranslate"><span class="pre">ImageHsv.objmap</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#phenoscope.core.ImageHsv.omask"><code class="docutils literal notranslate"><span class="pre">ImageHsv.objmask</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#phenoscope.core.ImageHsv.props"><code class="docutils literal notranslate"><span class="pre">ImageHsv.props</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#phenoscope.core.ImageHsv.schema"><code class="docutils literal notranslate"><span class="pre">ImageHsv.schema</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#phenoscope.core.ImageHsv.shape"><code class="docutils literal notranslate"><span class="pre">ImageHsv.shape</span></code></a></li>

@@ -111,6 +111,6 @@ class LinRegResidualOutlierRemover(GridMapModifier):
                 outlier_obj_ids += col_err.loc[col_err >= upper_col_cutoff].index.tolist()
 
         # Remove objects from obj map
-        image.omap[np.isin(image.omap[:], outlier_obj_ids)] = 0
+        image.objmap[np.isin(image.objmap[:], outlier_obj_ids)] = 0
 
         return image

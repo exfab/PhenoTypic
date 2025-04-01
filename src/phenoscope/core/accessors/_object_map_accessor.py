@@ -118,7 +118,7 @@ class ObjectMap(ImageAccessor):
 
     def relabel(self):
         """Relables all the objects based on their connectivity"""
-        self._dense_to_sparse(label(self._parent_image.omask[:]))
+        self._dense_to_sparse(label(self._parent_image.objmask[:]))
 
 
     @staticmethod

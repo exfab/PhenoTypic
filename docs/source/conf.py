@@ -6,6 +6,32 @@
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
+""" Color Palette
+Primary (Sky Blue)
+    #00AEEF
+    Bright sky blue for branding focus
+Accent 1
+    #0077B6
+    Deeper blue for headers/navs
+Accent 2
+#90E0EF
+Soft sky tint for backgrounds
+Background
+#F4FAFD
+Very light blue-white background
+Text (Dark)
+#023047
+Almost black with blue undertone
+Text (Light)
+#FFFFFF
+For light-on-dark components
+Link
+#219EBC
+Soft blue for hyperlinks
+
+"""
+
+
 import os
 import sys
 import sphinx_autosummary_accessors
@@ -111,6 +137,10 @@ html_css_files = [
 ]
 
 if html_theme == 'pydata_sphinx_theme':
+    html_title = "PhenoScope"
+    html_theme_options = {
+        "subtitle": "A modular framework for bioimage analysis and visualization"
+    }
     html_logo = LIGHT_LOGO_PATH
     html_theme_options = {
         "logo": {
@@ -127,7 +157,10 @@ if html_theme == 'pydata_sphinx_theme':
             }
         ],
         "use_edit_page_button": False,
-        "show_toc_level": 3
+        "show_toc_level": 3,
+
+        "navigation_with_keys": True,
+        "show_prev_next": False,
     }
 
 # Napoleon Settings

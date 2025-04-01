@@ -1,9 +1,9 @@
-﻿phenoscope.Image.omap
+﻿phenoscope.Image.objmap
 =====================
 
 .. currentmodule:: phenoscope
 
-.. autoaccessor:: Image.omap
+.. autoaccessor:: Image.objmap
 
 
 

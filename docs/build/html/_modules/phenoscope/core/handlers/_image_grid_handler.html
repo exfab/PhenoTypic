@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>phenoscope.core.handlers._image_grid_handler &#8212; PhenoScope 0.5.1 documentation</title>
+    <title>phenoscope.core.handlers._image_grid_handler &#8212; PhenoScope</title>
   
   
   
@@ -35,6 +35,8 @@
     <link rel="stylesheet" type="text/css" href="../../../../_static/sg_gallery-binder.css?v=f4aeca0c" />
     <link rel="stylesheet" type="text/css" href="../../../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
     <link rel="stylesheet" type="text/css" href="../../../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/custom.css?v=800a184d" />
   
   <!-- So that users can add custom icons -->
   <script src="../../../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
@@ -42,9 +44,10 @@
   <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../../_static/documentation_options.js?v=b9afe91b"></script>
+    <script src="../../../../_static/documentation_options.js?v=d9b85e4f"></script>
     <script src="../../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../../_static/design-tabs.js?v=f930bc37"></script>
     <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = '_modules/phenoscope/core/handlers/_image_grid_handler';</script>
     <link rel="index" title="Index" href="../../../../genindex.html" />
@@ -112,8 +115,14 @@
   
   
   
+    
+    
+      
+    
+    
+    <img src="../../../../_static/light_logo_sponsor.svg" class="logo__image only-light" alt="PhenoScope"/>
+    <img src="../../../../_static/dark_logo_sponsor.svg" class="logo__image only-dark pst-js-only" alt="PhenoScope"/>
   
-    <p class="title logo__title">PhenoScope 0.5.1 documentation</p>
   
 </a></div>
     
@@ -142,15 +151,15 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="../../../../examples/index.html">
-    Examples
+  <a class="nav-link nav-internal" href="../../../../api_reference/index.html">
+    API Reference
   </a>
 </li>
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="../../../../api_reference/index.html">
-    API Reference
+  <a class="nav-link nav-internal" href="../../../../contrib_guide/index.html">
+    Developer Guide
   </a>
 </li>
 
@@ -256,15 +265,15 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="../../../../examples/index.html">
-    Examples
+  <a class="nav-link nav-internal" href="../../../../api_reference/index.html">
+    API Reference
   </a>
 </li>
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="../../../../api_reference/index.html">
-    API Reference
+  <a class="nav-link nav-internal" href="../../../../contrib_guide/index.html">
+    Developer Guide
   </a>
 </li>
 
@@ -380,7 +389,7 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">..accessors</span><span class="w"> </span><span class="kn">import</span> <span class="n">GridAccessor</span>
 
 <div class="viewcode-block" id="ImageGridHandler">
-<a class="viewcode-back" href="../../../../api_references/phenoscope.core.handlers.html#phenoscope.core.handlers.ImageGridHandler">[docs]</a>
+<a class="viewcode-back" href="../../../../api_reference/phenoscope.core.handlers.html#phenoscope.core.handlers.ImageGridHandler">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">ImageGridHandler</span><span class="p">(</span><span class="n">Image</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    The handler class that enables grid-based processing and overlay visualization.</span>
@@ -398,7 +407,7 @@
 <span class="sd">    &quot;&quot;&quot;</span>
 
 <div class="viewcode-block" id="ImageGridHandler.__init__">
-<a class="viewcode-back" href="../../../../api_references/phenoscope.core.handlers.html#phenoscope.core.handlers.ImageGridHandler.__init__">[docs]</a>
+<a class="viewcode-back" href="../../../../api_reference/phenoscope.core.handlers.html#phenoscope.core.handlers.ImageGridHandler.__init__">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">input_image</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">Image</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">input_schema</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
                  <span class="n">grid_setter</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">GridFinder</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
                  <span class="n">nrows</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">8</span><span class="p">,</span> <span class="n">ncols</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">12</span><span class="p">):</span>
@@ -449,7 +458,7 @@
         <span class="k">raise</span> <span class="n">IllegalAssignmentError</span><span class="p">(</span><span class="s1">&#39;grid&#39;</span><span class="p">)</span>
 
 <div class="viewcode-block" id="ImageGridHandler.__getitem__">
-<a class="viewcode-back" href="../../../../api_references/phenoscope.core.handlers.html#phenoscope.core.handlers.ImageGridHandler.__getitem__">[docs]</a>
+<a class="viewcode-back" href="../../../../api_reference/phenoscope.core.handlers.html#phenoscope.core.handlers.ImageGridHandler.__getitem__">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="fm">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Returns a copy of the image at the slices specified as a regular Image object.</span>
 
@@ -462,12 +471,12 @@
             <span class="n">subimage</span> <span class="o">=</span> <span class="n">Image</span><span class="p">(</span><span class="n">input_image</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">matrix</span><span class="p">[</span><span class="n">key</span><span class="p">],</span> <span class="n">input_schema</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">schema</span><span class="p">)</span>
 
         <span class="n">subimage</span><span class="o">.</span><span class="n">enh_matrix</span><span class="p">[:]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">enh_matrix</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
-        <span class="n">subimage</span><span class="o">.</span><span class="n">omap</span><span class="p">[:]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">omap</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+        <span class="n">subimage</span><span class="o">.</span><span class="n">objmap</span><span class="p">[:]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">objmap</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
         <span class="k">return</span> <span class="n">subimage</span></div>
 
 
 <div class="viewcode-block" id="ImageGridHandler.show_overlay">
-<a class="viewcode-back" href="../../../../api_references/phenoscope.core.handlers.html#phenoscope.core.handlers.ImageGridHandler.show_overlay">[docs]</a>
+<a class="viewcode-back" href="../../../../api_reference/phenoscope.core.handlers.html#phenoscope.core.handlers.ImageGridHandler.show_overlay">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">show_overlay</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">object_label</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
                      <span class="n">show_gridlines</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
                      <span class="n">show_linreg</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
@@ -511,7 +520,7 @@
             <span class="n">cmap</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">get_cmap</span><span class="p">(</span><span class="s1">&#39;tab20&#39;</span><span class="p">)</span>
             <span class="n">cmap_cycle</span> <span class="o">=</span> <span class="n">cycle</span><span class="p">(</span><span class="n">cmap</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">cmap</span><span class="o">.</span><span class="n">N</span><span class="p">))</span>
             <span class="n">img</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
-            <span class="n">img</span><span class="o">.</span><span class="n">omap</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">grid</span><span class="o">.</span><span class="n">get_section_map</span><span class="p">()</span>
+            <span class="n">img</span><span class="o">.</span><span class="n">objmap</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">grid</span><span class="o">.</span><span class="n">get_section_map</span><span class="p">()</span>
             <span class="n">gs_table</span> <span class="o">=</span> <span class="n">BoundaryExtractor</span><span class="p">()</span><span class="o">.</span><span class="n">measure</span><span class="p">(</span><span class="n">img</span><span class="p">)</span>
 
             <span class="c1"># Add squares that denote object grid belonging. Useful for cases where objects are larger than grid sections</span>
@@ -543,12 +552,6 @@
               
               
               
-              
-                <footer class="prev-next-footer d-print-none">
-                  
-<div class="prev-next-area">
-</div>
-                </footer>
               
             </div>
             

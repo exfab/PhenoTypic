@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>phenoscope.abstract &#8212; PhenoScope 0.5.1 documentation</title>
+    <title>phenoscope.abstract &#8212; PhenoScope</title>
   
   
   
@@ -37,7 +37,7 @@
     <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-dataframe.css?v=2082cf3c" />
     <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
     <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=d3610054" />
+    <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=800a184d" />
   
   <!-- So that users can add custom icons -->
   <script src="../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
@@ -45,7 +45,7 @@
   <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../_static/documentation_options.js?v=b9afe91b"></script>
+    <script src="../_static/documentation_options.js?v=d9b85e4f"></script>
     <script src="../_static/doctools.js?v=9bcbadda"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/design-tabs.js?v=f930bc37"></script>
@@ -54,7 +54,7 @@
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
     <link rel="next" title="phenoscope.core" href="phenoscope.core.html" />
-    <link rel="prev" title="phenoscope" href="phenoscope.html" />
+    <link rel="prev" title="phenoscope.GridImage.grid" href="GridImage/phenoscope.GridImage.grid.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
   <meta name="docsearch:version" content="0.5.1" />
@@ -140,13 +140,6 @@
   <ul class="bd-navbar-elements navbar-nav">
     
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="../getting_started.html">
-    Getting Started
-  </a>
-</li>
-
-
-<li class="nav-item ">
   <a class="nav-link nav-internal" href="../installation.html">
     Installation
   </a>
@@ -160,43 +153,19 @@
 </li>
 
 
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="../tutorial/index.html">
-    Tutorials
-  </a>
-</li>
-
-
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="../examples/index.html">
-    Examples
-  </a>
-</li>
-
-            <li class="nav-item dropdown">
-                <button class="btn dropdown-toggle nav-item" type="button"
-                data-bs-toggle="dropdown" aria-expanded="false"
-                aria-controls="pst-nav-more-links">
-                    More
-                </button>
-                <ul id="pst-nav-more-links" class="dropdown-menu">
-                    
-<li class=" ">
-  <a class="nav-link dropdown-item nav-internal" href="index.html">
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="index.html">
     API Reference
   </a>
 </li>
 
 
-<li class=" ">
-  <a class="nav-link dropdown-item nav-internal" href="../dev_guide/index.html">
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../contrib_guide/index.html">
     Developer Guide
   </a>
 </li>
 
-                </ul>
-            </li>
-            
   </ul>
 </nav></div>
       
@@ -287,13 +256,6 @@
   <ul class="bd-navbar-elements navbar-nav">
     
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="../getting_started.html">
-    Getting Started
-  </a>
-</li>
-
-
-<li class="nav-item ">
   <a class="nav-link nav-internal" href="../installation.html">
     Installation
   </a>
@@ -307,21 +269,7 @@
 </li>
 
 
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="../tutorial/index.html">
-    Tutorials
-  </a>
-</li>
-
-
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="../examples/index.html">
-    Examples
-  </a>
-</li>
-
-
-<li class="nav-item ">
+<li class="nav-item current active">
   <a class="nav-link nav-internal" href="index.html">
     API Reference
   </a>
@@ -329,7 +277,7 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="../dev_guide/index.html">
+  <a class="nav-link nav-internal" href="../contrib_guide/index.html">
     Developer Guide
   </a>
 </li>
@@ -377,7 +325,24 @@
 <nav class="bd-docs-nav bd-links"
      aria-label="Section Navigation">
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
-  <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
+  <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">Image</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="Image/phenoscope.Image.html">phenoscope.Image</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Image/phenoscope.Image.array.html">phenoscope.Image.array</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Image/phenoscope.Image.matrix.html">phenoscope.Image.matrix</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Image/phenoscope.Image.enh_matrix.html">phenoscope.Image.enh_matrix</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Image/phenoscope.Image.omask.html">phenoscope.Image.objmask</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Image/phenoscope.Image.omap.html">phenoscope.Image.objmap</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Image/phenoscope.Image.obj.html">phenoscope.Image.obj</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Image/phenoscope.Image.hsv.html">phenoscope.Image.hsv</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">GridImage</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="GridImage/phenoscope.GridImage.html">phenoscope.GridImage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="GridImage/phenoscope.GridImage.grid.html">phenoscope.GridImage.grid</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Modules</span></p>
+<ul class="current nav bd-sidenav">
 <li class="toctree-l1 current active"><a class="current reference internal" href="#">phenoscope.abstract</a></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="phenoscope.core.html">phenoscope.core</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2"><a class="reference internal" href="phenoscope.core.accessors.html">phenoscope.core.accessors</a></li>
@@ -440,9 +405,6 @@
     
     <li class="breadcrumb-item"><a href="index.html" class="nav-link">API Reference</a></li>
     
-    
-    <li class="breadcrumb-item"><a href="phenoscope.html" class="nav-link">phenoscope</a></li>
-    
     <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">phenoscope.abstract</span></li>
   </ul>
 </nav>
@@ -473,10 +435,10 @@ the image array. The __init__ constructor &amp; _operate method are meant to be 
 that the main measure method call can contain all the necessary type validation and output validation checks to streamline development.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="phenoscope.abstract.FeatureExtractor.measure">
-<span class="sig-name descname"><span class="pre">measure</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="phenoscope.html#phenoscope.Image" title="phenoscope.Image"><span class="pre">Image</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">pd.DataFrame</span></span></span><a class="reference internal" href="../_modules/phenoscope/abstract/_feature_extractor.html#FeatureExtractor.measure"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenoscope.abstract.FeatureExtractor.measure" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">measure</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="generated/phenoscope.Image.html#phenoscope.Image" title="phenoscope.core._image.Image"><span class="pre">Image</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">pd.DataFrame</span></span></span><a class="reference internal" href="../_modules/phenoscope/abstract/_feature_extractor.html#FeatureExtractor.measure"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenoscope.abstract.FeatureExtractor.measure" title="Link to this definition">#</a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>image</strong> (<a class="reference internal" href="phenoscope.html#phenoscope.Image" title="phenoscope.Image"><em>Image</em></a>)</p>
+<dd class="field-odd"><p><strong>image</strong> (<a class="reference internal" href="generated/phenoscope.Image.html#phenoscope.Image" title="phenoscope.core._image.Image"><em>Image</em></a>)</p>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p>pd.DataFrame</p>
@@ -497,12 +459,12 @@ enforces the implementation of the specific operation in a subclass.
 Users can apply operations either in-place or on a copy of the image.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="phenoscope.abstract.ImageOperation.apply">
-<span class="sig-name descname"><span class="pre">apply</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">inplace</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="phenoscope.html#phenoscope.Image" title="phenoscope.Image"><span class="pre">Image</span></a></span></span><a class="reference internal" href="../_modules/phenoscope/abstract/_image_operation.html#ImageOperation.apply"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenoscope.abstract.ImageOperation.apply" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">apply</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">inplace</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="generated/phenoscope.Image.html#phenoscope.Image" title="phenoscope.core._image.Image"><span class="pre">Image</span></a></span></span><a class="reference internal" href="../_modules/phenoscope/abstract/_image_operation.html#ImageOperation.apply"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenoscope.abstract.ImageOperation.apply" title="Link to this definition">#</a></dt>
 <dd><p>Applies a certain operation to an image, either in-place or on a copy.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>image</strong> (<a class="reference internal" href="phenoscope.html#phenoscope.Image" title="phenoscope.Image"><em>Image</em></a>) – The input image to apply the operation on.</p></li>
+<li><p><strong>image</strong> (<a class="reference internal" href="generated/phenoscope.Image.html#phenoscope.Image" title="phenoscope.core._image.Image"><em>Image</em></a>) – The input image to apply the operation on.</p></li>
 <li><p><strong>inplace</strong> (<em>bool</em>) – If True, modifies the image in place; otherwise,
 operates on a copy of the image.</p></li>
 </ul>
@@ -511,7 +473,7 @@ operates on a copy of the image.</p></li>
 <dd class="field-even"><p>The modified image after applying the operation.</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference internal" href="phenoscope.html#phenoscope.Image" title="phenoscope.Image">Image</a></p>
+<dd class="field-odd"><p><a class="reference internal" href="generated/phenoscope.Image.html#phenoscope.Image" title="phenoscope.core._image.Image">Image</a></p>
 </dd>
 </dl>
 </dd></dl>
@@ -524,12 +486,12 @@ operates on a copy of the image.</p></li>
 <dd><p>Bases: <a class="reference internal" href="#phenoscope.abstract.ImageOperation" title="phenoscope.abstract._image_operation.ImageOperation"><code class="xref py py-class docutils literal notranslate"><span class="pre">ImageOperation</span></code></a></p>
 <dl class="py method">
 <dt class="sig sig-object py" id="phenoscope.abstract.ImagePreprocessor.apply">
-<span class="sig-name descname"><span class="pre">apply</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="phenoscope.html#phenoscope.Image" title="phenoscope.Image"><span class="pre">Image</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">inplace</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="phenoscope.html#phenoscope.Image" title="phenoscope.Image"><span class="pre">Image</span></a></span></span><a class="reference internal" href="../_modules/phenoscope/abstract/_image_preprocessor.html#ImagePreprocessor.apply"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenoscope.abstract.ImagePreprocessor.apply" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">apply</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="generated/phenoscope.Image.html#phenoscope.Image" title="phenoscope.core._image.Image"><span class="pre">Image</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">inplace</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="generated/phenoscope.Image.html#phenoscope.Image" title="phenoscope.core._image.Image"><span class="pre">Image</span></a></span></span><a class="reference internal" href="../_modules/phenoscope/abstract/_image_preprocessor.html#ImagePreprocessor.apply"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenoscope.abstract.ImagePreprocessor.apply" title="Link to this definition">#</a></dt>
 <dd><p>Applies a certain operation to an image, either in-place or on a copy.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>image</strong> (<a class="reference internal" href="phenoscope.html#phenoscope.Image" title="phenoscope.Image"><em>Image</em></a>) – The input image to apply the operation on.</p></li>
+<li><p><strong>image</strong> (<a class="reference internal" href="generated/phenoscope.Image.html#phenoscope.Image" title="phenoscope.core._image.Image"><em>Image</em></a>) – The input image to apply the operation on.</p></li>
 <li><p><strong>inplace</strong> (<em>bool</em>) – If True, modifies the image in place; otherwise,
 operates on a copy of the image.</p></li>
 </ul>
@@ -538,7 +500,7 @@ operates on a copy of the image.</p></li>
 <dd class="field-even"><p>The modified image after applying the operation.</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference internal" href="phenoscope.html#phenoscope.Image" title="phenoscope.Image">Image</a></p>
+<dd class="field-odd"><p><a class="reference internal" href="generated/phenoscope.Image.html#phenoscope.Image" title="phenoscope.core._image.Image">Image</a></p>
 </dd>
 </dl>
 </dd></dl>
@@ -552,12 +514,12 @@ operates on a copy of the image.</p></li>
 <p>ImageTransformers are for general operations that alter every image component such as rotating. These have no integrity checks.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="phenoscope.abstract.ImageTransformer.apply">
-<span class="sig-name descname"><span class="pre">apply</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="phenoscope.html#phenoscope.Image" title="phenoscope.Image"><span class="pre">Image</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">inplace</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="phenoscope.html#phenoscope.Image" title="phenoscope.Image"><span class="pre">Image</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="phenoscope.html#phenoscope.Image" title="phenoscope.Image"><span class="pre">Image</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/phenoscope/abstract/_image_transformer.html#ImageTransformer.apply"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenoscope.abstract.ImageTransformer.apply" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">apply</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="generated/phenoscope.Image.html#phenoscope.Image" title="phenoscope.core._image.Image"><span class="pre">Image</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">inplace</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="generated/phenoscope.Image.html#phenoscope.Image" title="phenoscope.core._image.Image"><span class="pre">Image</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="generated/phenoscope.Image.html#phenoscope.Image" title="phenoscope.core._image.Image"><span class="pre">Image</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/phenoscope/abstract/_image_transformer.html#ImageTransformer.apply"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenoscope.abstract.ImageTransformer.apply" title="Link to this definition">#</a></dt>
 <dd><p>Applies a certain operation to an image, either in-place or on a copy.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>image</strong> (<a class="reference internal" href="phenoscope.html#phenoscope.Image" title="phenoscope.Image"><em>Image</em></a>) – The input image to apply the operation on.</p></li>
+<li><p><strong>image</strong> (<a class="reference internal" href="generated/phenoscope.Image.html#phenoscope.Image" title="phenoscope.core._image.Image"><em>Image</em></a>) – The input image to apply the operation on.</p></li>
 <li><p><strong>inplace</strong> (<em>bool</em>) – If True, modifies the image in place; otherwise,
 operates on a copy of the image.</p></li>
 </ul>
@@ -566,7 +528,7 @@ operates on a copy of the image.</p></li>
 <dd class="field-even"><p>The modified image after applying the operation.</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference internal" href="phenoscope.html#phenoscope.Image" title="phenoscope.Image">Image</a></p>
+<dd class="field-odd"><p><a class="reference internal" href="generated/phenoscope.Image.html#phenoscope.Image" title="phenoscope.core._image.Image">Image</a></p>
 </dd>
 </dl>
 </dd></dl>
@@ -580,12 +542,12 @@ operates on a copy of the image.</p></li>
 <p>Map modifiers edit the object map and are used for removing, combining, and re-ordering objects.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="phenoscope.abstract.MapModifier.apply">
-<span class="sig-name descname"><span class="pre">apply</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="phenoscope.html#phenoscope.Image" title="phenoscope.Image"><span class="pre">Image</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">inplace</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="phenoscope.html#phenoscope.Image" title="phenoscope.Image"><span class="pre">Image</span></a></span></span><a class="reference internal" href="../_modules/phenoscope/abstract/_map_modifier.html#MapModifier.apply"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenoscope.abstract.MapModifier.apply" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">apply</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="generated/phenoscope.Image.html#phenoscope.Image" title="phenoscope.core._image.Image"><span class="pre">Image</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">inplace</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="generated/phenoscope.Image.html#phenoscope.Image" title="phenoscope.core._image.Image"><span class="pre">Image</span></a></span></span><a class="reference internal" href="../_modules/phenoscope/abstract/_map_modifier.html#MapModifier.apply"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenoscope.abstract.MapModifier.apply" title="Link to this definition">#</a></dt>
 <dd><p>Applies a certain operation to an image, either in-place or on a copy.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>image</strong> (<a class="reference internal" href="phenoscope.html#phenoscope.Image" title="phenoscope.Image"><em>Image</em></a>) – The input image to apply the operation on.</p></li>
+<li><p><strong>image</strong> (<a class="reference internal" href="generated/phenoscope.Image.html#phenoscope.Image" title="phenoscope.core._image.Image"><em>Image</em></a>) – The input image to apply the operation on.</p></li>
 <li><p><strong>inplace</strong> (<em>bool</em>) – If True, modifies the image in place; otherwise,
 operates on a copy of the image.</p></li>
 </ul>
@@ -594,7 +556,7 @@ operates on a copy of the image.</p></li>
 <dd class="field-even"><p>The modified image after applying the operation.</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference internal" href="phenoscope.html#phenoscope.Image" title="phenoscope.Image">Image</a></p>
+<dd class="field-odd"><p><a class="reference internal" href="generated/phenoscope.Image.html#phenoscope.Image" title="phenoscope.core._image.Image">Image</a></p>
 </dd>
 </dl>
 </dd></dl>
@@ -608,25 +570,25 @@ operates on a copy of the image.</p></li>
 <p>ObjectDetectors are for detecting objects in an image. They change the image object mask and map.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="phenoscope.abstract.ObjectDetector.apply">
-<span class="sig-name descname"><span class="pre">apply</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="phenoscope.html#phenoscope.Image" title="phenoscope.Image"><span class="pre">Image</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">inplace</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="phenoscope.html#phenoscope.Image" title="phenoscope.Image"><span class="pre">Image</span></a></span></span><a class="reference internal" href="../_modules/phenoscope/abstract/_object_detector.html#ObjectDetector.apply"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenoscope.abstract.ObjectDetector.apply" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">apply</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="generated/phenoscope.Image.html#phenoscope.Image" title="phenoscope.core._image.Image"><span class="pre">Image</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">inplace</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="generated/phenoscope.Image.html#phenoscope.Image" title="phenoscope.core._image.Image"><span class="pre">Image</span></a></span></span><a class="reference internal" href="../_modules/phenoscope/abstract/_object_detector.html#ObjectDetector.apply"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenoscope.abstract.ObjectDetector.apply" title="Link to this definition">#</a></dt>
 <dd><p>Applies a thresholding operation on the enhanced matrix of an image using
 the triangle method.</p>
 <p>Thresholding is performed by comparing each element in the enhanced matrix
 to the computed triangular threshold, setting the corresponding value in
-the output mask (<cite>omask</cite>) to True if the condition is satisfied.</p>
+the output mask (<cite>objmask</cite>) to True if the condition is satisfied.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>image</strong> (<a class="reference internal" href="phenoscope.html#phenoscope.Image" title="phenoscope.Image"><em>Image</em></a>) – The input image object containing an enhanced matrix
+<li><p><strong>image</strong> (<a class="reference internal" href="generated/phenoscope.Image.html#phenoscope.Image" title="phenoscope.core._image.Image"><em>Image</em></a>) – The input image object containing an enhanced matrix
 (<cite>enh_matrix</cite>) which will be processed to generate an output mask.</p></li>
 <li><p><strong>inplace</strong> (<em>bool</em>)</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>The modified image object with an updated output mask (<cite>omask</cite>).</p>
+<dd class="field-even"><p>The modified image object with an updated output mask (<cite>objmask</cite>).</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference internal" href="phenoscope.html#phenoscope.Image" title="phenoscope.Image">Image</a></p>
+<dd class="field-odd"><p><a class="reference internal" href="generated/phenoscope.Image.html#phenoscope.Image" title="phenoscope.core._image.Image">Image</a></p>
 </dd>
 </dl>
 </dd></dl>
@@ -640,25 +602,25 @@ the output mask (<cite>omask</cite>) to True if the condition is satisfied.</p>
 <p>ThresholdDetectors are a type of ObjectDetector that use a threshold, such as Otsu’s threshold, to detect objects in an image. They change the image object mask and map.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="phenoscope.abstract.ThresholdDetector.apply">
-<span class="sig-name descname"><span class="pre">apply</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="phenoscope.html#phenoscope.Image" title="phenoscope.Image"><span class="pre">Image</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">inplace</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="phenoscope.html#phenoscope.Image" title="phenoscope.Image"><span class="pre">Image</span></a></span></span><a class="headerlink" href="#phenoscope.abstract.ThresholdDetector.apply" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">apply</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="generated/phenoscope.Image.html#phenoscope.Image" title="phenoscope.core._image.Image"><span class="pre">Image</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">inplace</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="generated/phenoscope.Image.html#phenoscope.Image" title="phenoscope.core._image.Image"><span class="pre">Image</span></a></span></span><a class="headerlink" href="#phenoscope.abstract.ThresholdDetector.apply" title="Link to this definition">#</a></dt>
 <dd><p>Applies a thresholding operation on the enhanced matrix of an image using
 the triangle method.</p>
 <p>Thresholding is performed by comparing each element in the enhanced matrix
 to the computed triangular threshold, setting the corresponding value in
-the output mask (<cite>omask</cite>) to True if the condition is satisfied.</p>
+the output mask (<cite>objmask</cite>) to True if the condition is satisfied.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>image</strong> (<a class="reference internal" href="phenoscope.html#phenoscope.Image" title="phenoscope.Image"><em>Image</em></a>) – The input image object containing an enhanced matrix
+<li><p><strong>image</strong> (<a class="reference internal" href="generated/phenoscope.Image.html#phenoscope.Image" title="phenoscope.core._image.Image"><em>Image</em></a>) – The input image object containing an enhanced matrix
 (<cite>enh_matrix</cite>) which will be processed to generate an output mask.</p></li>
 <li><p><strong>inplace</strong> (<em>bool</em>)</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>The modified image object with an updated output mask (<cite>omask</cite>).</p>
+<dd class="field-even"><p>The modified image object with an updated output mask (<cite>objmask</cite>).</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference internal" href="phenoscope.html#phenoscope.Image" title="phenoscope.Image">Image</a></p>
+<dd class="field-odd"><p><a class="reference internal" href="generated/phenoscope.Image.html#phenoscope.Image" title="phenoscope.core._image.Image">Image</a></p>
 </dd>
 </dl>
 </dd></dl>
@@ -674,30 +636,6 @@ the output mask (<cite>omask</cite>) to True if the condition is satisfied.</p>
               
               
               
-              
-                <footer class="prev-next-footer d-print-none">
-                  
-<div class="prev-next-area">
-    <a class="left-prev"
-       href="phenoscope.html"
-       title="previous page">
-      <i class="fa-solid fa-angle-left"></i>
-      <div class="prev-next-info">
-        <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">phenoscope</p>
-      </div>
-    </a>
-    <a class="right-next"
-       href="phenoscope.core.html"
-       title="next page">
-      <div class="prev-next-info">
-        <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">phenoscope.core</p>
-      </div>
-      <i class="fa-solid fa-angle-right"></i>
-    </a>
-</div>
-                </footer>
               
             </div>
             

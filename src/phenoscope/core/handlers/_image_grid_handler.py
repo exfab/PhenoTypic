@@ -91,7 +91,7 @@ class ImageGridHandler(Image):
             subimage = Image(input_image=self.matrix[key], input_schema=self.schema)
 
         subimage.enh_matrix[:] = self.enh_matrix[key]
-        subimage.omap[:] = self.omap[key]
+        subimage.objmap[:] = self.objmap[key]
         return subimage
 
     def show_overlay(self, object_label: Optional[int] = None,
@@ -137,7 +137,7 @@ class ImageGridHandler(Image):
             cmap = plt.get_cmap('tab20')
             cmap_cycle = cycle(cmap(i) for i in range(cmap.N))
             img = self.copy()
-            img.omap = self.grid.get_section_map()
+            img.objmap = self.grid.get_section_map()
             gs_table = BoundaryExtractor().measure(img)
 
             # Add squares that denote object grid belonging. Useful for cases where objects are larger than grid sections

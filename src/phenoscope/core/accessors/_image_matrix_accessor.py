@@ -202,7 +202,7 @@ class ImageMatrix(ImageAccessor):
             Tuple[plt.Figure, plt.Axes]: A tuple containing the Matplotlib figure and
                 axes where the overlay is displayed.
         """
-        objmap = self._parent_image.omap[:]
+        objmap = self._parent_image.objmap[:]
         if object_label is not None: objmap[objmap == object_label] = 0
 
         fig, ax = self._plot_overlay(

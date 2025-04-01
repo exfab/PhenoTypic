@@ -112,7 +112,7 @@
             <span class="n">subimage</span> <span class="o">=</span> <span class="n">Image</span><span class="p">(</span><span class="n">input_image</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">matrix</span><span class="p">[</span><span class="n">slices</span><span class="p">],</span> <span class="n">input_schema</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">schema</span><span class="p">)</span>
 
         <span class="n">subimage</span><span class="o">.</span><span class="n">enh_matrix</span><span class="p">[:]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">enh_matrix</span><span class="p">[</span><span class="n">slices</span><span class="p">]</span>
-        <span class="n">subimage</span><span class="o">.</span><span class="n">omap</span><span class="p">[:]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">omap</span><span class="p">[</span><span class="n">slices</span><span class="p">]</span>
+        <span class="n">subimage</span><span class="o">.</span><span class="n">objmap</span><span class="p">[:]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">objmap</span><span class="p">[</span><span class="n">slices</span><span class="p">]</span>
         <span class="k">return</span> <span class="n">subimage</span></div>
 
 
@@ -142,7 +142,7 @@
             <span class="n">cmap</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">get_cmap</span><span class="p">(</span><span class="s1">&#39;tab20&#39;</span><span class="p">)</span>
             <span class="n">cmap_cycle</span> <span class="o">=</span> <span class="n">cycle</span><span class="p">(</span><span class="n">cmap</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">cmap</span><span class="o">.</span><span class="n">N</span><span class="p">))</span>
             <span class="n">img</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
-            <span class="n">img</span><span class="o">.</span><span class="n">omap</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">grid</span><span class="o">.</span><span class="n">get_section_map</span><span class="p">()</span>
+            <span class="n">img</span><span class="o">.</span><span class="n">objmap</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">grid</span><span class="o">.</span><span class="n">get_section_map</span><span class="p">()</span>
             <span class="n">gs_table</span> <span class="o">=</span> <span class="n">BoundaryExtractor</span><span class="p">()</span><span class="o">.</span><span class="n">measure</span><span class="p">(</span><span class="n">img</span><span class="p">)</span>
 
             <span class="c1"># Add squares that denote object grid belonging. Useful for cases where objects are larger than grid sections</span>

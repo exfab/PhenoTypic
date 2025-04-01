@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>phenoscope.core.handlers._image_handler &#8212; PhenoScope 0.5.1 documentation</title>
+    <title>phenoscope.core.handlers._image_handler &#8212; PhenoScope</title>
   
   
   
@@ -36,7 +36,7 @@
     <link rel="stylesheet" type="text/css" href="../../../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
     <link rel="stylesheet" type="text/css" href="../../../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
     <link rel="stylesheet" type="text/css" href="../../../../_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="../../../../_static/custom.css?v=39e7dd36" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/custom.css?v=800a184d" />
   
   <!-- So that users can add custom icons -->
   <script src="../../../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
@@ -44,7 +44,7 @@
   <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../../_static/documentation_options.js?v=b9afe91b"></script>
+    <script src="../../../../_static/documentation_options.js?v=d9b85e4f"></script>
     <script src="../../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../../_static/design-tabs.js?v=f930bc37"></script>
@@ -137,13 +137,6 @@
   <ul class="bd-navbar-elements navbar-nav">
     
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="../../../../getting_started.html">
-    Getting Started with PhenoScope
-  </a>
-</li>
-
-
-<li class="nav-item ">
   <a class="nav-link nav-internal" href="../../../../installation.html">
     Installation
   </a>
@@ -158,42 +151,18 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="../../../../tutorial/index.html">
-    PhenoScope Tutorials
-  </a>
-</li>
-
-
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="../../../../examples/index.html">
-    Examples
-  </a>
-</li>
-
-            <li class="nav-item dropdown">
-                <button class="btn dropdown-toggle nav-item" type="button"
-                data-bs-toggle="dropdown" aria-expanded="false"
-                aria-controls="pst-nav-more-links">
-                    More
-                </button>
-                <ul id="pst-nav-more-links" class="dropdown-menu">
-                    
-<li class=" ">
-  <a class="nav-link dropdown-item nav-internal" href="../../../../api_reference/index.html">
+  <a class="nav-link nav-internal" href="../../../../api_reference/index.html">
     API Reference
   </a>
 </li>
 
 
-<li class=" ">
-  <a class="nav-link dropdown-item nav-internal" href="../../../../dev_guide/index.html">
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../contrib_guide/index.html">
     Developer Guide
   </a>
 </li>
 
-                </ul>
-            </li>
-            
   </ul>
 </nav></div>
       
@@ -282,13 +251,6 @@
   <ul class="bd-navbar-elements navbar-nav">
     
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="../../../../getting_started.html">
-    Getting Started with PhenoScope
-  </a>
-</li>
-
-
-<li class="nav-item ">
   <a class="nav-link nav-internal" href="../../../../installation.html">
     Installation
   </a>
@@ -303,20 +265,6 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="../../../../tutorial/index.html">
-    PhenoScope Tutorials
-  </a>
-</li>
-
-
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="../../../../examples/index.html">
-    Examples
-  </a>
-</li>
-
-
-<li class="nav-item ">
   <a class="nav-link nav-internal" href="../../../../api_reference/index.html">
     API Reference
   </a>
@@ -324,7 +272,7 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="../../../../dev_guide/index.html">
+  <a class="nav-link nav-internal" href="../../../../contrib_guide/index.html">
     Developer Guide
   </a>
 </li>
@@ -585,7 +533,7 @@
             <span class="n">subimage</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="p">(</span><span class="n">input_image</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">matrix</span><span class="p">[</span><span class="n">key</span><span class="p">],</span> <span class="n">input_schema</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">schema</span><span class="p">)</span>
 
         <span class="n">subimage</span><span class="o">.</span><span class="n">enh_matrix</span><span class="p">[:]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">enh_matrix</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
-        <span class="n">subimage</span><span class="o">.</span><span class="n">omap</span><span class="p">[:]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">omap</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+        <span class="n">subimage</span><span class="o">.</span><span class="n">objmap</span><span class="p">[:]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">objmap</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
         <span class="k">return</span> <span class="n">subimage</span></div>
 
 
@@ -611,7 +559,7 @@
                 <span class="bp">self</span><span class="o">.</span><span class="n">_array</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span><span class="o">.</span><span class="n">array</span><span class="p">[:]</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_matrix</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span><span class="o">.</span><span class="n">matrix</span><span class="p">[:]</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_det_matrix</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span><span class="o">.</span><span class="n">enh_matrix</span><span class="p">[:]</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">omask</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span><span class="o">.</span><span class="n">omask</span><span class="p">[:]</span></div>
+            <span class="bp">self</span><span class="o">.</span><span class="n">objmask</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span><span class="o">.</span><span class="n">objmask</span><span class="p">[:]</span></div>
 
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__eq__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
@@ -620,7 +568,7 @@
                 <span class="ow">and</span> <span class="n">np</span><span class="o">.</span><span class="n">array_equal</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">array</span><span class="p">[:],</span> <span class="n">other</span><span class="o">.</span><span class="n">array</span><span class="p">[:])</span>
                 <span class="ow">and</span> <span class="n">np</span><span class="o">.</span><span class="n">array_equal</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">matrix</span><span class="p">[:],</span> <span class="n">other</span><span class="o">.</span><span class="n">matrix</span><span class="p">[:])</span>
                 <span class="ow">and</span> <span class="n">np</span><span class="o">.</span><span class="n">array_equal</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">enh_matrix</span><span class="p">[:],</span> <span class="n">other</span><span class="o">.</span><span class="n">enh_matrix</span><span class="p">[:])</span>
-                <span class="ow">and</span> <span class="n">np</span><span class="o">.</span><span class="n">array_equal</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">omap</span><span class="p">[:],</span> <span class="n">other</span><span class="o">.</span><span class="n">omap</span><span class="p">[:])</span>
+                <span class="ow">and</span> <span class="n">np</span><span class="o">.</span><span class="n">array_equal</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">objmap</span><span class="p">[:],</span> <span class="n">other</span><span class="o">.</span><span class="n">objmap</span><span class="p">[:])</span>
                 <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_protected_metadata</span> <span class="o">==</span> <span class="n">other</span><span class="o">.</span><span class="n">_protected_metadata</span>
                 <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_public_metadata</span> <span class="o">==</span> <span class="n">other</span><span class="o">.</span><span class="n">_public_metadata</span>
         <span class="p">)</span> <span class="k">else</span> <span class="kc">False</span>
@@ -754,8 +702,8 @@
             <span class="k">raise</span> <span class="n">IllegalAssignmentError</span><span class="p">(</span><span class="s1">&#39;enh_matrix&#39;</span><span class="p">)</span>
 
     <span class="nd">@property</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">omask</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ObjectMask</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;The Object Mask. A mutable binary representation of the objects in an image to be analyzed. Changing elements of the mask will reset object_map labeling.</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">objmask</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ObjectMask</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Returns the ObjectMask Accessor; The object mask is a mutable binary representation of the objects in an image to be analyzed. Changing elements of the mask will reset object_map labeling.</span>
 
 <span class="sd">        Note:</span>
 <span class="sd">            - If the image has not been processed by a detector, the target for analysis is the entire image itself. Accessing the object_mask in this case</span>
@@ -772,16 +720,16 @@
         <span class="k">else</span><span class="p">:</span>
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__object_mask_subhandler</span>
 
-    <span class="nd">@omask</span><span class="o">.</span><span class="n">setter</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">omask</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">object_mask</span><span class="p">):</span>
+    <span class="nd">@objmask</span><span class="o">.</span><span class="n">setter</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">objmask</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">object_mask</span><span class="p">):</span>
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">object_mask</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">omask</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">object_mask</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">objmask</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">object_mask</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="k">raise</span> <span class="n">IllegalAssignmentError</span><span class="p">(</span><span class="s1">&#39;object_mask&#39;</span><span class="p">)</span>
 
     <span class="nd">@property</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">omap</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ObjectMap</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;The Object Map. A mutable integer matrix that identifies the different objects in an image to be analyzed. Changes to elements of the object_map sync to the object_mask.</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">objmap</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ObjectMap</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Returns the ObjectMap accessor; The object map is a mutable integer matrix that identifies the different objects in an image to be analyzed. Changes to elements of the object_map sync to the object_mask.</span>
 
 <span class="sd">        The object_map is stored as a compressed sparse column matrix in the backend. This is to save on memory consumption at the cost of adding</span>
 <span class="sd">        increased computational overhead between converting between sparse and dense matrices.</span>
@@ -799,10 +747,10 @@
         <span class="k">else</span><span class="p">:</span>
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__object_map_subhandler</span>
 
-    <span class="nd">@omap</span><span class="o">.</span><span class="n">setter</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">omap</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">object_map</span><span class="p">):</span>
+    <span class="nd">@objmap</span><span class="o">.</span><span class="n">setter</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">objmap</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">object_map</span><span class="p">):</span>
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">object_map</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">omap</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">object_map</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">objmap</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">object_map</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="k">raise</span> <span class="n">IllegalAssignmentError</span><span class="p">(</span><span class="s1">&#39;object_map&#39;</span><span class="p">)</span>
 
@@ -1293,7 +1241,37 @@
                      <span class="n">annotation_color</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;white&#39;</span><span class="p">,</span>
                      <span class="n">annotation_facecolor</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;red&#39;</span><span class="p">,</span>
                      <span class="p">)</span> <span class="o">-&gt;</span> <span class="p">(</span><span class="n">plt</span><span class="o">.</span><span class="n">Figure</span><span class="p">,</span> <span class="n">plt</span><span class="o">.</span><span class="n">Axes</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Returns a matplotlib figure showing the overlay of the object map on the input image&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Displays an overlay of the object specified by the given label on an image or</span>
+<span class="sd">        matrix with optional annotations.</span>
+
+<span class="sd">        This method checks the schema of the object to determine whether it belongs to</span>
+<span class="sd">        matrix formats or image formats, and delegates the overlay rendering to the</span>
+<span class="sd">        appropriate method accordingly. It optionally allows annotations to be added</span>
+<span class="sd">        for the specified object label with customizable style settings.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            object_label (Optional[int]): The label of the object to overlay. If None,</span>
+<span class="sd">                the entire image or matrix is displayed without a specific object</span>
+<span class="sd">                highlighted.</span>
+<span class="sd">            ax (Optional[plt.Axes]): The matplotlib Axes instance to render the overlay</span>
+<span class="sd">                on. If None, a new figure and axes are created for rendering.</span>
+<span class="sd">            figsize (Tuple[int, int]): Tuple specifying the size (width, height) of the</span>
+<span class="sd">                figure to create if no axes are provided.</span>
+<span class="sd">            annotate (bool): Whether to annotate the image/matrix using the given</span>
+<span class="sd">                annotation settings.</span>
+<span class="sd">            annotation_size (int): The font size of the annotations, applicable only</span>
+<span class="sd">                when `annotate` is True.</span>
+<span class="sd">            annotation_color (str): The color of the text annotations, applicable only</span>
+<span class="sd">                when `annotate` is True.</span>
+<span class="sd">            annotation_facecolor (str): The color of the annotation marker background,</span>
+<span class="sd">                applicable only when `annotate` is True.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Tuple[plt.Figure, plt.Axes]: A tuple containing the matplotlib Figure and</span>
+<span class="sd">            Axes objects used to render the overlay.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">schema</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">IMAGE_FORMATS</span><span class="o">.</span><span class="n">MATRIX_FORMATS</span><span class="p">:</span>
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">array</span><span class="o">.</span><span class="n">show_overlay</span><span class="p">(</span><span class="n">object_label</span><span class="o">=</span><span class="n">object_label</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="n">figsize</span><span class="p">,</span>
                                            <span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">,</span> <span class="n">annotation_size</span><span class="o">=</span><span class="n">annotation_size</span><span class="p">,</span>
@@ -1317,7 +1295,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_det_matrix</span> <span class="o">=</span> <span class="n">skimage_rotate</span><span class="p">(</span><span class="n">image</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_det_matrix</span><span class="p">,</span> <span class="n">angle</span><span class="o">=</span><span class="n">angle_of_rotation</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="n">mode</span><span class="p">,</span> <span class="n">clip</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
 
         <span class="c1"># Rotate the object map while preserving the details and using nearest-neighbor interpolation</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">omap</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">scipy_rotate</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">omap</span><span class="p">[:],</span> <span class="n">angle</span><span class="o">=</span><span class="n">angle_of_rotation</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;constant&#39;</span><span class="p">,</span> <span class="n">cval</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">reshape</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">objmap</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">scipy_rotate</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">objmap</span><span class="p">[:],</span> <span class="n">angle</span><span class="o">=</span><span class="n">angle_of_rotation</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;constant&#39;</span><span class="p">,</span> <span class="n">cval</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">reshape</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="ImageHandler.reset">
@@ -1336,7 +1314,7 @@
 <span class="sd">            state.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">enh_matrix</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">omap</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">objmap</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span>
         <span class="k">return</span> <span class="bp">self</span></div>
 </div>
 
@@ -1347,12 +1325,6 @@
               
               
               
-              
-                <footer class="prev-next-footer d-print-none">
-                  
-<div class="prev-next-area">
-</div>
-                </footer>
               
             </div>
             

@@ -372,13 +372,13 @@
         <span class="n">obj_to_keep</span> <span class="o">=</span> <span class="n">bound_info</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span><span class="s1">&#39;Measurement_CenterDeviation&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">idxmin</span><span class="p">()</span>
 
         <span class="c1"># Get a working copy of the object map</span>
-        <span class="n">obj_map</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">omap</span>
+        <span class="n">obj_map</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">objmap</span>
 
         <span class="c1"># Set other objects to background</span>
         <span class="n">obj_map</span><span class="p">[</span><span class="n">obj_map</span><span class="o">!=</span><span class="n">obj_to_keep</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
 
         <span class="c1"># Set Image object map to new value</span>
-        <span class="n">image</span><span class="o">.</span><span class="n">omap</span> <span class="o">=</span> <span class="n">obj_map</span>
+        <span class="n">image</span><span class="o">.</span><span class="n">objmap</span> <span class="o">=</span> <span class="n">obj_map</span>
 
         <span class="k">return</span> <span class="n">image</span></div>
 

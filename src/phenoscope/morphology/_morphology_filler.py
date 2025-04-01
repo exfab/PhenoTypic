@@ -15,8 +15,8 @@ class MorphologyFiller(MapModifier):
         self._origin = origin
 
     def _operate(self, image: Image) -> Image:
-        image.omask[:] = binary_fill_holes(
-            input=image.omask[:],
+        image.objmask[:] = binary_fill_holes(
+            input=image.objmask[:],
             structure=self._structure,
             origin=self._origin
         )

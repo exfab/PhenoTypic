@@ -1,3 +1,7 @@
+{%- if title is defined %}
+.. rubric:: {{ title }}
+{%- endif %}
+
 {{ fullname | escape | underline }}
 
 .. currentmodule:: {{ module }}
@@ -10,8 +14,8 @@
     "array": "ImageArray",
     "matrix": "ImageMatrix",
     "enh_matrix": "ImageEnhancedMatrix",
-    "omap": "ImageObjects",
-    "omask": "ImageObjects",
+    "objmap": "ImageObjects",
+    "objmask": "ImageObjects",
     "object": "ImageObjects",
     "hsv": "HsvAccessor",
     "grid": "GridAccessor"

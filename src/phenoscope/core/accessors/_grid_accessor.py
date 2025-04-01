@@ -127,13 +127,13 @@ class GridAccessor(ImageAccessor):
     def get_col_map(self) -> np.ndarray:
         """Returns a version of the object map with each object numbered according to their grid column number"""
         grid_info = self.info()
-        col_map = self._parent_image.omap[:]
+        col_map = self._parent_image.objmap[:]
         for n, col_bidx in enumerate(np.sort(grid_info.loc[:, GRID.GRID_COL_NUM].unique())):
             subtable = grid_info.loc[grid_info.loc[:, GRID.GRID_COL_NUM] == col_bidx, :]
 
             # Edit the new map's objects to equal the column number
             col_map[np.isin(
-                element=self._parent_image.omap[:],
+                element=self._parent_image.objmap[:],
                 test_elements=subtable.index.to_numpy()
             )] = n + 1
         return col_map
@@ -181,13 +181,13 @@ class GridAccessor(ImageAccessor):
     def get_row_map(self) -> np.ndarray:
         """Returns a version of the object map with each object numbered according to their grid row number"""
         grid_info = self.info()
-        row_map = self._parent_image.omap[:]
+        row_map = self._parent_image.objmap[:]
         for n, col_bidx in enumerate(np.sort(grid_info.loc[:, GRID.GRID_ROW_NUM].unique())):
             subtable = grid_info.loc[grid_info.loc[:, GRID.GRID_ROW_NUM] == col_bidx, :]
 
             # Edit the new map's objects to equal the column number
             row_map[np.isin(
-                element=self._parent_image.omap[:],
+                element=self._parent_image.objmap[:],
                 test_elements=subtable.index.to_numpy()
             )] = n + 1
         return row_map
@@ -224,11 +224,11 @@ class GridAccessor(ImageAccessor):
         """Returns a version of the object map with each object numbered according to their section number"""
         grid_info = self.info()
 
-        section_map = self._parent_image.omap[:]
+        section_map = self._parent_image.objmap[:]
         for n, bidx in enumerate(np.sort(grid_info.loc[:, GRID.GRID_SECTION_NUM].unique())):
             subtable = grid_info.loc[grid_info.loc[:, GRID.GRID_SECTION_NUM] == bidx, :]
             section_map[np.isin(
-                element=self._parent_image.omap[:],
+                element=self._parent_image.objmap[:],
                 test_elements=subtable.index.to_numpy()
             )] = n + 1
 

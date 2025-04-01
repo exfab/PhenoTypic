@@ -468,7 +468,7 @@
             <span class="n">subimage</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="p">(</span><span class="n">input_image</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">matrix</span><span class="p">[</span><span class="n">key</span><span class="p">],</span> <span class="n">input_schema</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">schema</span><span class="p">)</span>
 
         <span class="n">subimage</span><span class="o">.</span><span class="n">enh_matrix</span><span class="p">[:]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">enh_matrix</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
-        <span class="n">subimage</span><span class="o">.</span><span class="n">omap</span><span class="p">[:]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">omap</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+        <span class="n">subimage</span><span class="o">.</span><span class="n">objmap</span><span class="p">[:]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">objmap</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
         <span class="k">return</span> <span class="n">subimage</span></div>
 
 
@@ -494,7 +494,7 @@
                 <span class="bp">self</span><span class="o">.</span><span class="n">_array</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span><span class="o">.</span><span class="n">array</span><span class="p">[:]</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_matrix</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span><span class="o">.</span><span class="n">matrix</span><span class="p">[:]</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_det_matrix</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span><span class="o">.</span><span class="n">enh_matrix</span><span class="p">[:]</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">omask</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span><span class="o">.</span><span class="n">omask</span><span class="p">[:]</span></div>
+            <span class="bp">self</span><span class="o">.</span><span class="n">objmask</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span><span class="o">.</span><span class="n">objmask</span><span class="p">[:]</span></div>
 
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__eq__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
@@ -503,7 +503,7 @@
                 <span class="ow">and</span> <span class="n">np</span><span class="o">.</span><span class="n">array_equal</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">array</span><span class="p">[:],</span> <span class="n">other</span><span class="o">.</span><span class="n">array</span><span class="p">[:])</span>
                 <span class="ow">and</span> <span class="n">np</span><span class="o">.</span><span class="n">array_equal</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">matrix</span><span class="p">[:],</span> <span class="n">other</span><span class="o">.</span><span class="n">matrix</span><span class="p">[:])</span>
                 <span class="ow">and</span> <span class="n">np</span><span class="o">.</span><span class="n">array_equal</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">enh_matrix</span><span class="p">[:],</span> <span class="n">other</span><span class="o">.</span><span class="n">enh_matrix</span><span class="p">[:])</span>
-                <span class="ow">and</span> <span class="n">np</span><span class="o">.</span><span class="n">array_equal</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">omap</span><span class="p">[:],</span> <span class="n">other</span><span class="o">.</span><span class="n">omap</span><span class="p">[:])</span>
+                <span class="ow">and</span> <span class="n">np</span><span class="o">.</span><span class="n">array_equal</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">objmap</span><span class="p">[:],</span> <span class="n">other</span><span class="o">.</span><span class="n">objmap</span><span class="p">[:])</span>
                 <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_protected_metadata</span> <span class="o">==</span> <span class="n">other</span><span class="o">.</span><span class="n">_protected_metadata</span>
                 <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_public_metadata</span> <span class="o">==</span> <span class="n">other</span><span class="o">.</span><span class="n">_public_metadata</span>
         <span class="p">)</span> <span class="k">else</span> <span class="kc">False</span>
@@ -635,7 +635,7 @@
             <span class="k">raise</span> <span class="n">C_ImageHandler</span><span class="o">.</span><span class="n">IllegalAssignmentError</span><span class="p">(</span><span class="s1">&#39;enh_matrix&#39;</span><span class="p">)</span>
 
     <span class="nd">@property</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">omask</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ObjectMask</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">objmask</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ObjectMask</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;The Object Mask. A mutable binary representation of the objects in an image to be analyzed. Changing elements of the mask will reset object_map labeling.</span>
 
 <span class="sd">        Note:</span>
@@ -653,15 +653,15 @@
         <span class="k">else</span><span class="p">:</span>
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__object_mask_subhandler</span>
 
-    <span class="nd">@omask</span><span class="o">.</span><span class="n">setter</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">omask</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">object_mask</span><span class="p">):</span>
+    <span class="nd">@objmask</span><span class="o">.</span><span class="n">setter</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">objmask</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">object_mask</span><span class="p">):</span>
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">object_mask</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">omask</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">object_mask</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">objmask</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">object_mask</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="k">raise</span> <span class="n">C_ImageHandler</span><span class="o">.</span><span class="n">IllegalAssignmentError</span><span class="p">(</span><span class="s1">&#39;object_mask&#39;</span><span class="p">)</span>
 
     <span class="nd">@property</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">omap</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ObjectMap</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">objmap</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ObjectMap</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;The Object Map. A mutable integer matrix that identifies the different objects in an image to be analyzed. Changes to elements of the object_map sync to the object_mask.</span>
 
 <span class="sd">        The object_map is stored as a compressed sparse column matrix in the backend. This is to save on memory consumption at the cost of adding</span>
@@ -680,10 +680,10 @@
         <span class="k">else</span><span class="p">:</span>
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__object_map_subhandler</span>
 
-    <span class="nd">@omap</span><span class="o">.</span><span class="n">setter</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">omap</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">object_map</span><span class="p">):</span>
+    <span class="nd">@objmap</span><span class="o">.</span><span class="n">setter</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">objmap</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">object_map</span><span class="p">):</span>
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">object_map</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">omap</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">object_map</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">objmap</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">object_map</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="k">raise</span> <span class="n">C_ImageHandler</span><span class="o">.</span><span class="n">IllegalAssignmentError</span><span class="p">(</span><span class="s1">&#39;object_map&#39;</span><span class="p">)</span>
 
@@ -1196,7 +1196,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_det_matrix</span> <span class="o">=</span> <span class="n">skimage_rotate</span><span class="p">(</span><span class="n">image</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_det_matrix</span><span class="p">,</span> <span class="n">angle</span><span class="o">=</span><span class="n">angle_of_rotation</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="n">mode</span><span class="p">,</span> <span class="n">clip</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
 
         <span class="c1"># Rotate the object map while preserving the details and using nearest-neighbor interpolation</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">omap</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">scipy_rotate</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">omap</span><span class="p">[:],</span> <span class="n">angle</span><span class="o">=</span><span class="n">angle_of_rotation</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;constant&#39;</span><span class="p">,</span> <span class="n">cval</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">reshape</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">objmap</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">scipy_rotate</span><span class="p">(</span><span class="nb">input</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">objmap</span><span class="p">[:],</span> <span class="n">angle</span><span class="o">=</span><span class="n">angle_of_rotation</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;constant&#39;</span><span class="p">,</span> <span class="n">cval</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">reshape</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="ImageHandler.reset">
@@ -1215,7 +1215,7 @@
 <span class="sd">            state.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">enh_matrix</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">omap</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">objmap</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span>
         <span class="k">return</span> <span class="bp">self</span></div>
 </div>
 

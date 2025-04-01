@@ -66,7 +66,7 @@ class ImageEnhancedMatrix(ImageAccessor):
                 raise ArrayKeyValueShapeMismatchError
         else:
             self._parent_image._det_matrix[key] = value
-            self._parent_image.omap.reset()
+            self._parent_image.objmap.reset()
 
     @property
     def shape(self):
@@ -159,7 +159,7 @@ class ImageEnhancedMatrix(ImageAccessor):
             overlay_params: None | dict = None,
             mpl_params: None | dict = None,
     ) -> (plt.Figure, plt.Axes):
-        objmap = self._parent_image.omap[:]
+        objmap = self._parent_image.objmap[:]
         if object_label is not None: objmap[objmap == object_label] = 0
 
         fig, ax = self._plot(

@@ -208,7 +208,7 @@ class ImageArray(ImageAccessor):
             the generated plot.
 
         """
-        objmap = self._parent_image.omap[:]
+        objmap = self._parent_image.objmap[:]
         if object_label is not None: objmap[objmap != object_label] = 0
 
         fig, ax = self._plot_overlay(
@@ -269,10 +269,10 @@ class ImageArray(ImageAccessor):
         # Set non-object pixels to zero
         if channel:
             display_arr = self._parent_image.array[:, :, channel]
-            display_arr[self._parent_image.omask[:] == 0] = bg_color
+            display_arr[self._parent_image.objmask[:] == 0] = bg_color
         else:
             display_arr = self._parent_image.array[:]
-            display_arr[np.dstack([self._parent_image.omask[:] for _ in range(display_arr.shape[2])]) == 0] = bg_color
+            display_arr[np.dstack([self._parent_image.objmask[:] for _ in range(display_arr.shape[2])]) == 0] = bg_color
 
         fig, ax = self._plot(
             arr=display_arr,
@@ -302,4 +302,4 @@ class ImageArray(ImageAccessor):
         Returns:
             np.ndarray: A Numpy array with non-object pixels set to the specified background color.
         """
-        return self._parent_image.omask._extract_objects(self._parent_image.array[:], bg_color=bg_color)
+        return self._parent_image.objmask._extract_objects(self._parent_image.array[:], bg_color=bg_color)
