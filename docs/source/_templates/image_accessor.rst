@@ -24,10 +24,17 @@
 {% if accessor_class in class_map %}
 .. currentmodule:: {{ accessor_module }}
 
+.. class-members:: {{ accessor_module }}.{{ class_map[accessor_class] }}
+   :attributes:
+   :properties:
+   :methods:
+
+.. rubric:: {{ class_map[accessor_class] }} API Reference
+{# Generate the class documentation with autoclass, showing all members directly #}
 .. autoclass:: {{ class_map[accessor_class] }}
-   :private-members: False 
    :members:
-   :undoc-members:
    :show-inheritance:
-   :no-index:
+   :special-members: __getitem__, __setitem__, __len__, __call__
+   :member-order: groupwise
+   :noindex:
 {% endif %}

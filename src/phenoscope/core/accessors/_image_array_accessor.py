@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from typing import Tuple, Optional
+import matplotlib as mpl
+from typing import Optional
 
 import skimage
 
@@ -48,7 +49,8 @@ class ImageArray(ImageAccessor):
         in the parent image array. If the value's shape does not align with the required shape,
         an exception is raised.
 
-        Note: If you want to change the entire image array, use Image.set_image() instead.
+        Note:
+            If you want to change the entire image array data, use Image.set_image() instead.
 
         Args:
             key: Index key specifying the location in the parent image array to modify.
@@ -66,15 +68,24 @@ class ImageArray(ImageAccessor):
         self._parent_image._set_from_array(self._parent_image._array, input_schema=IMAGE_FORMATS.RGB)
 
     @property
-    def shape(self) -> Optional[tuple[int, ...]]:
-        """Returns the shape of the image"""
+    def shape(self) -> tuple[int, ...]:
+        """Returns the shape of the parent image's underlying array.
+
+        Returns:
+            tuple[int, ...]: A tuple representing the shape of the parent image's
+            underlying array.
+        """
         return self._parent_image._array.shape
 
     def copy(self) -> np.ndarray:
-        """Returns a copy of the image array"""
+        """Creates and returns a deep copy of the parent image array.
+
+        Returns:
+            np.ndarray: A copy of the parent image array.
+        """
         return self._parent_image._array.copy()
 
-    def histogram(self, figsize: Tuple[int, int] = (10, 5), linewidth: int = 1) -> Tuple[plt.Figure, np.ndarray]:
+    def histogram(self, figsize: tuple[int, int] = (10, 5), linewidth: int = 1) -> tuple[plt.Figure, plt.Axes]:
         """
         Generates histograms for each channel of the image represented in the provided handler
         and visualizes them along with the original image. It supports RGB and non-RGB image
@@ -83,12 +94,12 @@ class ImageArray(ImageAccessor):
         to the image schema (e.g., RGB or other channels).
 
         Args:
-            figsize (Tuple[int, int]): Tuple representing the figure size (width, height) for
+            figsize (tuple[int, int]): tuple representing the figure size (width, height) for
                 the plot layout. Defaults to (10, 5).
             linewidth (int): Width of the lines used in the histogram plots. Defaults to 1.
 
         Returns:
-            Tuple[plt.Figure, np.ndarray]: A tuple where the first element is the figure
+            tuple[plt.Figure, np.ndarray]: A tuple where the first element is the figure
                 containing the visualized plots (original image and histograms). The second
                 element is the array of axes represented by subplots.
         """
@@ -130,29 +141,29 @@ class ImageArray(ImageAccessor):
         return fig, axes
 
     def show(self,
-             channel: None | int = None,
-             figsize: None | Tuple[int, int] = None,
-             title: None | str = None,
-             ax: plt.Axes = None,
-             mpl_params: None | dict = None) -> (plt.Figure, plt.Axes):
+             channel: int | None = None,
+             figsize: tuple[int, int] | None = None,
+             title: str | None = None,
+             ax: plt.Axes | None = None,
+             mpl_params: dict | None = None) -> tuple[plt.Figure, plt.Axes]:
         """
         Displays the image array, either the full array or a specific channel, using matplotlib.
 
         Args:
-            channel (None | int): Specifies the channel to display from the image array. If None,
+            channel (int | None): Specifies the channel to display from the image array. If None,
                 the entire array is displayed. If an integer is provided, only the specified
                 channel is displayed.
-            figsize (None | Tuple[int, int]): Optional tuple specifying the width and height of
+            figsize (None | tuple[int, int]): Optional tuple specifying the width and height of
                 the figure in inches. If None, defaults to matplotlib's standard figure size.
-            title (None | str): Title text for the plot. If None, no title will be displayed.
+            title (str | None): Title text for the plot. If None, no title will be displayed.
             ax (plt.Axes): Optional matplotlib Axes instance. If provided, the plot will be
                 drawn on this axes object. If None, a new figure and axes will be created.
-            mpl_params (None | dict): Optional dictionary of keyword arguments for customizing
+            mpl_params (dict | None): Optional dictionary of keyword arguments for customizing
                 matplotlib parameters (e.g., color maps, fonts). If None, default settings will
                 be used.
 
         Returns:
-            Tuple[plt.Figure, plt.Axes]: A tuple containing the matplotlib Figure and Axes objects
+            tuple[plt.Figure, plt.Axes]: A tuple containing the matplotlib Figure and Axes objects
                 associated with the plot. If `ax` is provided in the arguments, the returned
                 tuple will include that Axes instance; otherwise, a new Figure and Axes pair
                 will be returned.
@@ -167,8 +178,8 @@ class ImageArray(ImageAccessor):
             return self._plot(arr=self._parent_image.array[:, :, channel], ax=ax, figsize=figsize, title=title, mpl_params=mpl_params)
 
     def show_overlay(self, object_label: None | int = None,
-                     figsize: Tuple[int, int] = (10, 5),
-                     title: None | str = None,
+                     figsize: tuple[int, int] = (10, 5),
+                     title: str | None = None,
                      annotate: bool = False,
                      annotation_size: int = 12,
                      annotation_color: str = 'white',
@@ -176,7 +187,7 @@ class ImageArray(ImageAccessor):
                      ax: plt.Axes = None,
                      overlay_params: None | dict = None,
                      mpl_params: None | dict = None,
-                     ) -> (plt.Figure, plt.Axes):
+                     ) -> tuple[plt.Figure, plt.Axes]:
         """
         Displays an overlay of the object map on the parent image with optional annotations.
 
@@ -187,7 +198,7 @@ class ImageArray(ImageAccessor):
         Args:
             object_label (None | int): Specific object label to be highlighted. If None,
                 all objects are displayed.
-            figsize (Tuple[int, int]): Size of the figure in inches (width, height).
+            figsize (tuple[int, int]): Size of the figure in inches (width, height).
             title (None | str): Title for the plot. If None, the parent image's name
                 is used.
             annotate (bool): If True, displays annotations for object labels on the
@@ -204,7 +215,7 @@ class ImageArray(ImageAccessor):
                 the plot.
 
         Returns:
-            Tuple[plt.Figure, plt.Axes]: Matplotlib Figure and Axes objects containing
+            tuple[plt.Figure, plt.Axes]: Matplotlib Figure and Axes objects containing
             the generated plot.
 
         """
@@ -232,14 +243,14 @@ class ImageArray(ImageAccessor):
         return fig, ax
 
     def show_objects(self,
-                     channel: Optional[int] = None,
+                     channel: int | None = None,
                      bg_color: int = 0,
                      cmap: str = 'gray',
-                     figsize: Tuple[int, int] = (10, 5),
-                     title: str = None,
-                     ax: plt.Axes = None,
-                     mpl_params: None | dict = None,
-                     ) -> (plt.Figure, plt.Axes):
+                     figsize: tuple[int, int] = (10, 5),
+                     title: str | None = None,
+                     ax: plt.Axes | None = None,
+                     mpl_params: dict | None = None,
+                     ) -> tuple[plt.Figure, plt.Axes]:
         """
         Displays the image objects with customizable visualization parameters.
 
@@ -255,7 +266,7 @@ class ImageArray(ImageAccessor):
             bg_color (int): Background color for non-object pixels. Non-object pixels will be
                 set to this value.
             cmap (str): Colormap to be used for rendering the image. Default is 'gray'.
-            figsize (Tuple[int, int]): Dimensions of the output figure in inches (width, height).
+            figsize (tuple[int, int]): Dimensions of the output figure in inches (width, height).
             title (str): Title of the plot. If None, uses the name of the parent image.
             ax (plt.Axes): Pre-existing matplotlib Axes object to plot in. If None, a new Axes and
                 Figure are created.
@@ -263,7 +274,7 @@ class ImageArray(ImageAccessor):
                 no extra parameters are applied.
 
         Returns:
-            Tuple[plt.Figure, plt.Axes]: A tuple containing the Figure and Axes objects of the plot.
+            tuple[plt.Figure, plt.Axes]: A tuple containing the Figure and Axes objects of the plot.
 
         """
         # Set non-object pixels to zero

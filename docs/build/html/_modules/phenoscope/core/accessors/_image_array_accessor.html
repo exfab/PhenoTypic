@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>phenoscope.core.accessors._image_array_accessor &#8212; PhenoScope 0.5.1 documentation</title>
+    <title>phenoscope.core.accessors._image_array_accessor &#8212; PhenoScope</title>
   
   
   
@@ -36,7 +36,7 @@
     <link rel="stylesheet" type="text/css" href="../../../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
     <link rel="stylesheet" type="text/css" href="../../../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
     <link rel="stylesheet" type="text/css" href="../../../../_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="../../../../_static/custom.css?v=d3610054" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/custom.css?v=800a184d" />
   
   <!-- So that users can add custom icons -->
   <script src="../../../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
@@ -44,7 +44,7 @@
   <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../../_static/documentation_options.js?v=b9afe91b"></script>
+    <script src="../../../../_static/documentation_options.js?v=d9b85e4f"></script>
     <script src="../../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../../_static/design-tabs.js?v=f930bc37"></script>
@@ -137,13 +137,6 @@
   <ul class="bd-navbar-elements navbar-nav">
     
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="../../../../getting_started.html">
-    Getting Started
-  </a>
-</li>
-
-
-<li class="nav-item ">
   <a class="nav-link nav-internal" href="../../../../installation.html">
     Installation
   </a>
@@ -158,42 +151,18 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="../../../../tutorial/index.html">
-    Tutorials
-  </a>
-</li>
-
-
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="../../../../examples/index.html">
-    Examples
-  </a>
-</li>
-
-            <li class="nav-item dropdown">
-                <button class="btn dropdown-toggle nav-item" type="button"
-                data-bs-toggle="dropdown" aria-expanded="false"
-                aria-controls="pst-nav-more-links">
-                    More
-                </button>
-                <ul id="pst-nav-more-links" class="dropdown-menu">
-                    
-<li class=" ">
-  <a class="nav-link dropdown-item nav-internal" href="../../../../api_reference/index.html">
+  <a class="nav-link nav-internal" href="../../../../api_reference/index.html">
     API Reference
   </a>
 </li>
 
 
-<li class=" ">
-  <a class="nav-link dropdown-item nav-internal" href="../../../../dev_guide/index.html">
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../contrib_guide/index.html">
     Developer Guide
   </a>
 </li>
 
-                </ul>
-            </li>
-            
   </ul>
 </nav></div>
       
@@ -282,13 +251,6 @@
   <ul class="bd-navbar-elements navbar-nav">
     
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="../../../../getting_started.html">
-    Getting Started
-  </a>
-</li>
-
-
-<li class="nav-item ">
   <a class="nav-link nav-internal" href="../../../../installation.html">
     Installation
   </a>
@@ -303,20 +265,6 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="../../../../tutorial/index.html">
-    Tutorials
-  </a>
-</li>
-
-
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="../../../../examples/index.html">
-    Examples
-  </a>
-</li>
-
-
-<li class="nav-item ">
   <a class="nav-link nav-internal" href="../../../../api_reference/index.html">
     API Reference
   </a>
@@ -324,7 +272,7 @@
 
 
 <li class="nav-item ">
-  <a class="nav-link nav-internal" href="../../../../dev_guide/index.html">
+  <a class="nav-link nav-internal" href="../../../../contrib_guide/index.html">
     Developer Guide
   </a>
 </li>
@@ -425,7 +373,8 @@
   <h1>Source code for phenoscope.core.accessors._image_array_accessor</h1><div class="highlight"><pre>
 <span></span><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Optional</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">mpl</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Optional</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">skimage</span>
 
@@ -480,7 +429,8 @@
 <span class="sd">        in the parent image array. If the value&#39;s shape does not align with the required shape,</span>
 <span class="sd">        an exception is raised.</span>
 
-<span class="sd">        Note: If you want to change the entire image array, use Image.set_image() instead.</span>
+<span class="sd">        Note:</span>
+<span class="sd">            If you want to change the entire image array data, use Image.set_image() instead.</span>
 
 <span class="sd">        Args:</span>
 <span class="sd">            key: Index key specifying the location in the parent image array to modify.</span>
@@ -499,34 +449,43 @@
 
 
     <span class="nd">@property</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">shape</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="o">...</span><span class="p">]]:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Returns the shape of the image&quot;&quot;&quot;</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">shape</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="o">...</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Returns the shape of the parent image&#39;s underlying array.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            tuple[int, ...]: A tuple representing the shape of the parent image&#39;s</span>
+<span class="sd">            underlying array.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parent_image</span><span class="o">.</span><span class="n">_array</span><span class="o">.</span><span class="n">shape</span>
 
 <div class="viewcode-block" id="ImageArray.copy">
 <a class="viewcode-back" href="../../../../api_reference/phenoscope.core.accessors.html#phenoscope.core.accessors.ImageArray.copy">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">copy</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Returns a copy of the image array&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Creates and returns a deep copy of the parent image array.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: A copy of the parent image array.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parent_image</span><span class="o">.</span><span class="n">_array</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span></div>
 
 
 <div class="viewcode-block" id="ImageArray.histogram">
 <a class="viewcode-back" href="../../../../api_reference/phenoscope.core.accessors.html#phenoscope.core.accessors.ImageArray.histogram">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">histogram</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">figsize</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">5</span><span class="p">),</span> <span class="n">linewidth</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">plt</span><span class="o">.</span><span class="n">Figure</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">histogram</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">figsize</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">5</span><span class="p">),</span> <span class="n">linewidth</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">plt</span><span class="o">.</span><span class="n">Figure</span><span class="p">,</span> <span class="n">plt</span><span class="o">.</span><span class="n">Axes</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Generates histograms for each channel of the image represented in the provided handler</span>
 <span class="sd">        and visualizes them along with the original image. It supports RGB and non-RGB image</span>
 <span class="sd">        schemas by adjusting the channel histograms accordingly. The method plots the original</span>
 <span class="sd">        image and histograms for three channels side by side, customizing titles to correspond</span>
-<span class="sd">        to the image imformat (e.g., RGB or other channels).</span>
+<span class="sd">        to the image schema (e.g., RGB or other channels).</span>
 
 <span class="sd">        Args:</span>
-<span class="sd">            figsize (Tuple[int, int]): Tuple representing the figure size (width, height) for</span>
+<span class="sd">            figsize (tuple[int, int]): tuple representing the figure size (width, height) for</span>
 <span class="sd">                the plot layout. Defaults to (10, 5).</span>
 <span class="sd">            linewidth (int): Width of the lines used in the histogram plots. Defaults to 1.</span>
 
 <span class="sd">        Returns:</span>
-<span class="sd">            Tuple[plt.Figure, np.ndarray]: A tuple where the first element is the figure</span>
+<span class="sd">            tuple[plt.Figure, np.ndarray]: A tuple where the first element is the figure</span>
 <span class="sd">                containing the visualized plots (original image and histograms). The second</span>
 <span class="sd">                element is the array of axes represented by subplots.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
@@ -571,29 +530,29 @@
 <div class="viewcode-block" id="ImageArray.show">
 <a class="viewcode-back" href="../../../../api_reference/phenoscope.core.accessors.html#phenoscope.core.accessors.ImageArray.show">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">show</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
-             <span class="n">channel</span><span class="p">:</span> <span class="kc">None</span> <span class="o">|</span> <span class="nb">int</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-             <span class="n">figsize</span><span class="p">:</span> <span class="kc">None</span> <span class="o">|</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-             <span class="n">title</span><span class="p">:</span> <span class="kc">None</span> <span class="o">|</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-             <span class="n">ax</span><span class="p">:</span> <span class="n">plt</span><span class="o">.</span><span class="n">Axes</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-             <span class="n">mpl_params</span><span class="p">:</span> <span class="kc">None</span> <span class="o">|</span> <span class="nb">dict</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="p">(</span><span class="n">plt</span><span class="o">.</span><span class="n">Figure</span><span class="p">,</span> <span class="n">plt</span><span class="o">.</span><span class="n">Axes</span><span class="p">):</span>
+             <span class="n">channel</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+             <span class="n">figsize</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+             <span class="n">title</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+             <span class="n">ax</span><span class="p">:</span> <span class="n">plt</span><span class="o">.</span><span class="n">Axes</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+             <span class="n">mpl_params</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">plt</span><span class="o">.</span><span class="n">Figure</span><span class="p">,</span> <span class="n">plt</span><span class="o">.</span><span class="n">Axes</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Displays the image array, either the full array or a specific channel, using matplotlib.</span>
 
 <span class="sd">        Args:</span>
-<span class="sd">            channel (None | int): Specifies the channel to display from the image array. If None,</span>
+<span class="sd">            channel (int | None): Specifies the channel to display from the image array. If None,</span>
 <span class="sd">                the entire array is displayed. If an integer is provided, only the specified</span>
 <span class="sd">                channel is displayed.</span>
-<span class="sd">            figsize (None | Tuple[int, int]): Optional tuple specifying the width and height of</span>
+<span class="sd">            figsize (None | tuple[int, int]): Optional tuple specifying the width and height of</span>
 <span class="sd">                the figure in inches. If None, defaults to matplotlib&#39;s standard figure size.</span>
-<span class="sd">            title (None | str): Title text for the plot. If None, no title will be displayed.</span>
+<span class="sd">            title (str | None): Title text for the plot. If None, no title will be displayed.</span>
 <span class="sd">            ax (plt.Axes): Optional matplotlib Axes instance. If provided, the plot will be</span>
 <span class="sd">                drawn on this axes object. If None, a new figure and axes will be created.</span>
-<span class="sd">            mpl_params (None | dict): Optional dictionary of keyword arguments for customizing</span>
+<span class="sd">            mpl_params (dict | None): Optional dictionary of keyword arguments for customizing</span>
 <span class="sd">                matplotlib parameters (e.g., color maps, fonts). If None, default settings will</span>
 <span class="sd">                be used.</span>
 
 <span class="sd">        Returns:</span>
-<span class="sd">            Tuple[plt.Figure, plt.Axes]: A tuple containing the matplotlib Figure and Axes objects</span>
+<span class="sd">            tuple[plt.Figure, plt.Axes]: A tuple containing the matplotlib Figure and Axes objects</span>
 <span class="sd">                associated with the plot. If `ax` is provided in the arguments, the returned</span>
 <span class="sd">                tuple will include that Axes instance; otherwise, a new Figure and Axes pair</span>
 <span class="sd">                will be returned.</span>
@@ -611,8 +570,8 @@
 <div class="viewcode-block" id="ImageArray.show_overlay">
 <a class="viewcode-back" href="../../../../api_reference/phenoscope.core.accessors.html#phenoscope.core.accessors.ImageArray.show_overlay">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">show_overlay</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">object_label</span><span class="p">:</span> <span class="kc">None</span> <span class="o">|</span> <span class="nb">int</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-                     <span class="n">figsize</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">5</span><span class="p">),</span>
-                     <span class="n">title</span><span class="p">:</span> <span class="kc">None</span> <span class="o">|</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                     <span class="n">figsize</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">5</span><span class="p">),</span>
+                     <span class="n">title</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
                      <span class="n">annotate</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
                      <span class="n">annotation_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">12</span><span class="p">,</span>
                      <span class="n">annotation_color</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;white&#39;</span><span class="p">,</span>
@@ -620,7 +579,7 @@
                      <span class="n">ax</span><span class="p">:</span> <span class="n">plt</span><span class="o">.</span><span class="n">Axes</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
                      <span class="n">overlay_params</span><span class="p">:</span> <span class="kc">None</span> <span class="o">|</span> <span class="nb">dict</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
                      <span class="n">mpl_params</span><span class="p">:</span> <span class="kc">None</span> <span class="o">|</span> <span class="nb">dict</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-                     <span class="p">)</span> <span class="o">-&gt;</span> <span class="p">(</span><span class="n">plt</span><span class="o">.</span><span class="n">Figure</span><span class="p">,</span> <span class="n">plt</span><span class="o">.</span><span class="n">Axes</span><span class="p">):</span>
+                     <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">plt</span><span class="o">.</span><span class="n">Figure</span><span class="p">,</span> <span class="n">plt</span><span class="o">.</span><span class="n">Axes</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Displays an overlay of the object map on the parent image with optional annotations.</span>
 
@@ -631,7 +590,7 @@
 <span class="sd">        Args:</span>
 <span class="sd">            object_label (None | int): Specific object label to be highlighted. If None,</span>
 <span class="sd">                all objects are displayed.</span>
-<span class="sd">            figsize (Tuple[int, int]): Size of the figure in inches (width, height).</span>
+<span class="sd">            figsize (tuple[int, int]): Size of the figure in inches (width, height).</span>
 <span class="sd">            title (None | str): Title for the plot. If None, the parent image&#39;s name</span>
 <span class="sd">                is used.</span>
 <span class="sd">            annotate (bool): If True, displays annotations for object labels on the</span>
@@ -648,7 +607,7 @@
 <span class="sd">                the plot.</span>
 
 <span class="sd">        Returns:</span>
-<span class="sd">            Tuple[plt.Figure, plt.Axes]: Matplotlib Figure and Axes objects containing</span>
+<span class="sd">            tuple[plt.Figure, plt.Axes]: Matplotlib Figure and Axes objects containing</span>
 <span class="sd">            the generated plot.</span>
 
 <span class="sd">        &quot;&quot;&quot;</span>
@@ -679,14 +638,14 @@
 <div class="viewcode-block" id="ImageArray.show_objects">
 <a class="viewcode-back" href="../../../../api_reference/phenoscope.core.accessors.html#phenoscope.core.accessors.ImageArray.show_objects">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">show_objects</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
-                     <span class="n">channel</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                     <span class="n">channel</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
                      <span class="n">bg_color</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
                      <span class="n">cmap</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;gray&#39;</span><span class="p">,</span>
-                     <span class="n">figsize</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">5</span><span class="p">),</span>
-                     <span class="n">title</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-                     <span class="n">ax</span><span class="p">:</span> <span class="n">plt</span><span class="o">.</span><span class="n">Axes</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-                     <span class="n">mpl_params</span><span class="p">:</span> <span class="kc">None</span> <span class="o">|</span> <span class="nb">dict</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-                     <span class="p">)</span> <span class="o">-&gt;</span> <span class="p">(</span><span class="n">plt</span><span class="o">.</span><span class="n">Figure</span><span class="p">,</span> <span class="n">plt</span><span class="o">.</span><span class="n">Axes</span><span class="p">):</span>
+                     <span class="n">figsize</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">5</span><span class="p">),</span>
+                     <span class="n">title</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                     <span class="n">ax</span><span class="p">:</span> <span class="n">plt</span><span class="o">.</span><span class="n">Axes</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                     <span class="n">mpl_params</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                     <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">plt</span><span class="o">.</span><span class="n">Figure</span><span class="p">,</span> <span class="n">plt</span><span class="o">.</span><span class="n">Axes</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Displays the image objects with customizable visualization parameters.</span>
 
@@ -702,7 +661,7 @@
 <span class="sd">            bg_color (int): Background color for non-object pixels. Non-object pixels will be</span>
 <span class="sd">                set to this value.</span>
 <span class="sd">            cmap (str): Colormap to be used for rendering the image. Default is &#39;gray&#39;.</span>
-<span class="sd">            figsize (Tuple[int, int]): Dimensions of the output figure in inches (width, height).</span>
+<span class="sd">            figsize (tuple[int, int]): Dimensions of the output figure in inches (width, height).</span>
 <span class="sd">            title (str): Title of the plot. If None, uses the name of the parent image.</span>
 <span class="sd">            ax (plt.Axes): Pre-existing matplotlib Axes object to plot in. If None, a new Axes and</span>
 <span class="sd">                Figure are created.</span>
@@ -710,7 +669,7 @@
 <span class="sd">                no extra parameters are applied.</span>
 
 <span class="sd">        Returns:</span>
-<span class="sd">            Tuple[plt.Figure, plt.Axes]: A tuple containing the Figure and Axes objects of the plot.</span>
+<span class="sd">            tuple[plt.Figure, plt.Axes]: A tuple containing the Figure and Axes objects of the plot.</span>
 
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="c1"># Set non-object pixels to zero</span>
@@ -762,12 +721,6 @@
               
               
               
-              
-                <footer class="prev-next-footer d-print-none">
-                  
-<div class="prev-next-area">
-</div>
-                </footer>
               
             </div>
             

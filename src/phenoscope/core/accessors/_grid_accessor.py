@@ -35,22 +35,35 @@ class GridAccessor(ImageAccessor):
         self._parent_image = parent_image
 
     @property
-    def nrows(self):
+    def nrows(self)->int:
         return self._parent_image._grid_setter.nrows
 
     @nrows.setter
-    def nrows(self, nrows):
+    def nrows(self, nrows:int):
+        if nrows < 1: raise ValueError('Number of rows must be greater than 0')
+        if type(nrows) != int: raise TypeError('Number of rows must be an integer')
+
         self._parent_image._grid_setter.nrows = nrows
 
     @property
-    def ncols(self):
+    def ncols(self)->int:
         return self._parent_image._grid_setter.ncols
 
     @ncols.setter
-    def ncols(self, ncols):
+    def ncols(self, ncols:int):
+        if ncols < 1: raise ValueError('Number of columns must be greater than 0')
+        if type(ncols) != int: raise TypeError('Number of columns must be an integer')
+
         self._parent_image._grid_setter.ncols = ncols
 
-    def info(self):
+    def info(self)->pd.DataFrame:
+        """
+        Returns a DataFrame containing basic bounding box measurement data plus any object's grid membership.
+
+        Returns:
+            pd.DataFrame: A DataFrame with measurement data derived from the
+            parent's image grid settings.
+        """
         return self._parent_image._grid_setter.measure(self._parent_image)
 
     @property

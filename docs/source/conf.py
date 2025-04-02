@@ -14,20 +14,20 @@ Accent 1
     #0077B6
     Deeper blue for headers/navs
 Accent 2
-#90E0EF
-Soft sky tint for backgrounds
+    #90E0EF
+    Soft sky tint for backgrounds
 Background
-#F4FAFD
-Very light blue-white background
+    #F4FAFD
+    Very light blue-white background
 Text (Dark)
-#023047
-Almost black with blue undertone
+    #023047
+    Almost black with blue undertone
 Text (Light)
-#FFFFFF
-For light-on-dark components
+    #FFFFFF
+    For light-on-dark components
 Link
-#219EBC
-Soft blue for hyperlinks
+    #219EBC
+    Soft blue for hyperlinks
 
 """
 
@@ -36,6 +36,7 @@ import os
 import sys
 import sphinx_autosummary_accessors
 sys.path.insert(0, os.path.abspath('../../src'))
+sys.path.insert(0, os.path.abspath('./_extensions'))
 
 project = 'PhenoScope'
 copyright = '2025, ExFAB BioFoundry'
@@ -71,7 +72,8 @@ extensions = [
     'sphinx_gallery.gen_gallery',
     'sphinx_autosummary_accessors',
     'sphinx_design',
-    'myst_nb'
+    'myst_nb',
+    'class_members'
 ]
 
 autosummary_generate = True
@@ -85,6 +87,7 @@ autodoc_default_options = {
 }
 
 autodoc_typehints = 'both'
+autodoc_typehints_format = 'short'
 autodoc_member_order = 'groupwise'
 
 templates_path = ['_templates', sphinx_autosummary_accessors.templates_path]
@@ -176,3 +179,8 @@ napoleon_use_ivar = False
 napoleon_use_param = True
 napoleon_use_rtype = True
 
+# Type aliases for cleaner documentation
+python_type_aliases = {
+    'matplotlib.axes._axes.Axes': 'matplotlib.axes.Axes',
+    'matplotlib.figure.Figure': 'matplotlib.figure.Figure'
+}

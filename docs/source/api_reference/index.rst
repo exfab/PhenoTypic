@@ -6,19 +6,16 @@ This section provides detailed API documentation for all PhenoScope modules and 
 Image
 -----
 .. currentmodule:: phenoscope
+
 .. autosummary::
-    :toctree: image
+    :toctree: image_class
     :caption: Image
+    :template: image_class.rst
     
     Image
 
-Image Accessors
-^^^^^^^^^^^^^^^
-
-.. currentmodule:: phenoscope
 .. autosummary::
-    :toctree: image_accessor
-    :caption: Image Accessors
+    :toctree: image_class
     :template: image_accessor.rst
 
     Image.array
@@ -52,7 +49,7 @@ GridImage Accessors
     GridImage.grid
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
    :caption: Modules
    
    Image

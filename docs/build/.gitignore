@@ -1,5 +1,0 @@
-./build/*#
-*
-
-# But not these files...
-!.gitignore

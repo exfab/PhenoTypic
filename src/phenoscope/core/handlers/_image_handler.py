@@ -237,12 +237,6 @@ class ImageHandler:
             - change image shape by changing the image being represented with Image.set_image()
             - Raises an error if input image has no array form
 
-        .. currentmodule:: phenoscope.core.accessors
-        .. autosummary::
-            :template: autosummary/class.rst
-
-            ImageArray
-
         Returns:
             ImageArray: A class that can be accessed like a numpy array, but has extra methods to streamline development, or None if not set
 

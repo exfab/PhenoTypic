@@ -406,28 +406,44 @@
 <span class="sd">            and perform grid-related operations.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
+<div class="viewcode-block" id="GridAccessor.__init__">
+<a class="viewcode-back" href="../../../../api_reference/grid_image_accessors/grid/phenoscope.core.accessors.GridAccessor.html#phenoscope.core.accessors.GridAccessor.__init__">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">parent_image</span><span class="p">:</span><span class="n">GridImage</span><span class="p">):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_parent_image</span> <span class="o">=</span> <span class="n">parent_image</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_parent_image</span> <span class="o">=</span> <span class="n">parent_image</span></div>
+
 
     <span class="nd">@property</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">nrows</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">nrows</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">-&gt;</span><span class="nb">int</span><span class="p">:</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parent_image</span><span class="o">.</span><span class="n">_grid_setter</span><span class="o">.</span><span class="n">nrows</span>
 
     <span class="nd">@nrows</span><span class="o">.</span><span class="n">setter</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">nrows</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nrows</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">nrows</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nrows</span><span class="p">:</span><span class="nb">int</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">nrows</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span> <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Number of rows must be greater than 0&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">nrows</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">int</span><span class="p">:</span> <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s1">&#39;Number of rows must be an integer&#39;</span><span class="p">)</span>
+
         <span class="bp">self</span><span class="o">.</span><span class="n">_parent_image</span><span class="o">.</span><span class="n">_grid_setter</span><span class="o">.</span><span class="n">nrows</span> <span class="o">=</span> <span class="n">nrows</span>
 
     <span class="nd">@property</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">ncols</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">ncols</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">-&gt;</span><span class="nb">int</span><span class="p">:</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parent_image</span><span class="o">.</span><span class="n">_grid_setter</span><span class="o">.</span><span class="n">ncols</span>
 
     <span class="nd">@ncols</span><span class="o">.</span><span class="n">setter</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">ncols</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ncols</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">ncols</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ncols</span><span class="p">:</span><span class="nb">int</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">ncols</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span> <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Number of columns must be greater than 0&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">ncols</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">int</span><span class="p">:</span> <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s1">&#39;Number of columns must be an integer&#39;</span><span class="p">)</span>
+
         <span class="bp">self</span><span class="o">.</span><span class="n">_parent_image</span><span class="o">.</span><span class="n">_grid_setter</span><span class="o">.</span><span class="n">ncols</span> <span class="o">=</span> <span class="n">ncols</span>
 
 <div class="viewcode-block" id="GridAccessor.info">
 <a class="viewcode-back" href="../../../../api_reference/phenoscope.core.accessors.html#phenoscope.core.accessors.GridAccessor.info">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">info</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">info</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">-&gt;</span><span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Returns a DataFrame containing basic bounding box measurement data plus any object&#39;s grid membership.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            pd.DataFrame: A DataFrame with measurement data derived from the</span>
+<span class="sd">            parent&#39;s image grid settings.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parent_image</span><span class="o">.</span><span class="n">_grid_setter</span><span class="o">.</span><span class="n">measure</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_parent_image</span><span class="p">)</span></div>
 
 
@@ -436,6 +452,8 @@
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Returns a matrix of grid positions to help with indexing&quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nrows</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">ncols</span><span class="p">),</span> <span class="n">newshape</span><span class="o">=</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nrows</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ncols</span><span class="p">))</span>
 
+<div class="viewcode-block" id="GridAccessor.__getitem__">
+<a class="viewcode-back" href="../../../../api_reference/grid_image_accessors/phenoscope.GridImage.grid.html#phenoscope.core.accessors.GridAccessor.__getitem__">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="fm">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">idx</span><span class="p">):</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parent_image</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">num_objects</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
 <span class="w">            </span><span class="sd">&quot;&quot;&quot;Returns a crop of the grid section based on it&#39;s flattened index. Ordered left to right, top to bottom.&quot;&quot;&quot;</span>
@@ -447,7 +465,8 @@
             <span class="n">max_rr</span> <span class="o">=</span> <span class="n">row_edges</span><span class="p">[</span><span class="n">row_pos</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span>
             <span class="k">return</span> <span class="n">phenoscope</span><span class="o">.</span><span class="n">Image</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_parent_image</span><span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">min_rr</span><span class="p">):</span><span class="nb">int</span><span class="p">(</span><span class="n">max_rr</span><span class="p">),</span> <span class="nb">int</span><span class="p">(</span><span class="n">min_cc</span><span class="p">):</span><span class="nb">int</span><span class="p">(</span><span class="n">max_cc</span><span class="p">)])</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="k">return</span> <span class="n">phenoscope</span><span class="o">.</span><span class="n">Image</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_parent_image</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">phenoscope</span><span class="o">.</span><span class="n">Image</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_parent_image</span><span class="p">)</span></div>
+
 
 <div class="viewcode-block" id="GridAccessor.get_linreg_info">
 <a class="viewcode-back" href="../../../../api_reference/phenoscope.core.accessors.html#phenoscope.core.accessors.GridAccessor.get_linreg_info">[docs]</a>

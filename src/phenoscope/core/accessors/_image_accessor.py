@@ -27,11 +27,11 @@ class ImageAccessor:
     def _plot(self,
               arr: np.ndarray,
               figsize: (int, int) = (8, 6),
-              title: None | str = None,
+              title: str|None = None,
               cmap: str = 'gray',
-              ax: None | plt.Axes = None,
+              ax: plt.Axes|None = None,
               mpl_params: dict | None = None,
-              ) -> (plt.Figure, plt.Axes):
+              ) -> tuple[plt.Figure, plt.Axes]:
         """
         Plots an image array using Matplotlib.
 

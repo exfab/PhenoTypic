@@ -4,17 +4,14 @@
 .. currentmodule:: phenoscope
 
 .. autoclass:: GridImage
-   :members:
-   :undoc-members:
-   :show-inheritance:
-   :member-order: bysource
+
    
-   
+   .. automethod:: __init__
+
    
    .. rubric:: Methods
 
    .. autosummary::
-      :nosignatures:
    
       ~GridImage.__init__
       ~GridImage.copy
