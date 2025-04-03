@@ -14,8 +14,8 @@
     "array": "ImageArray",
     "matrix": "ImageMatrix",
     "enh_matrix": "ImageEnhancedMatrix",
-    "objmap": "ImageObjects",
-    "objmask": "ImageObjects",
+    "objmap": "ObjectMap",
+    "objmask": "ObjectMask",
     "objects": "ImageObjects",
     "hsv": "HsvAccessor",
     "grid": "GridAccessor"

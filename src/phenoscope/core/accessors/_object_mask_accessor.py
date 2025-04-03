@@ -77,10 +77,10 @@ class ObjectMask(ImageAccessor):
         """
         self._parent_image.objmap.reset()
 
-    def show(self, ax: plt.Axes = None,
-             figsize: str = None,
-             cmap: str = 'tab20',
-             title: str = None
+    def show(self, ax: plt.Axes | None = None,
+             figsize: str | None = None,
+             cmap: str = 'gray',
+             title: str | None = None
              ) -> (plt.Figure, plt.Axes):
         """Display the boolean object mask with matplotlib.
 

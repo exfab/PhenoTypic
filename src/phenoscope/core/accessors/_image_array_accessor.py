@@ -178,7 +178,7 @@ class ImageArray(ImageAccessor):
             return self._plot(arr=self._parent_image.array[:, :, channel], ax=ax, figsize=figsize, title=title, mpl_params=mpl_params)
 
     def show_overlay(self, object_label: None | int = None,
-                     figsize: tuple[int, int] = (10, 5),
+                     figsize: tuple[int, int] | None = None,
                      title: str | None = None,
                      annotate: bool = False,
                      annotation_size: int = 12,
@@ -297,9 +297,9 @@ class ImageArray(ImageAccessor):
 
         return fig, ax
 
-    def extract_objects(self, bg_color: int = 0) -> np.ndarray:
+    def get_foreground(self, bg_color: int = 0) -> np.ndarray:
         """
-        Extracts connected components (objects) from the image based on the given background color.
+        Returns the image foreground based on the object mask, and set's the background to the specified background color.
 
         This method identifies and extracts all the connected components (objects) within the image
         that are not of the specified background color. The operation relies on internal references

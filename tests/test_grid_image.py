@@ -2,9 +2,11 @@ import numpy as np
 import pytest
 from phenoscope import Image, GridImage
 from phenoscope.grid import OptimalCenterGridFinder
+from phenoscope.detection import OtsuDetector
 from phenoscope.util.exceptions_ import IllegalAssignmentError
 
 from .resources.TestHelper import timeit
+
 
 @timeit
 def test_gridimage_initialization():
@@ -19,6 +21,7 @@ def test_gridimage_initialization():
     grid_image = GridImage(input_image=input_image, grid_finder=grid_setter)
     assert grid_image._grid_setter == grid_setter
 
+
 @timeit
 def test_grid_accessor_property():
     grid_image = GridImage()
@@ -27,11 +30,13 @@ def test_grid_accessor_property():
     assert grid_accessor.nrows == 8
     assert grid_accessor.ncols == 12
 
+
 @timeit
 def test_grid_property_assignment_error():
     grid_image = GridImage()
     with pytest.raises(IllegalAssignmentError):
         grid_image.grid = "some value"
+
 
 @timeit
 def test_image_grid_section_retrieval():
@@ -41,13 +46,16 @@ def test_image_grid_section_retrieval():
     assert isinstance(sub_image, Image)
     assert sub_image.shape == (10, 10)
 
+
 @timeit
 def test_grid_show_overlay():
     input_image = np.random.rand(100, 100)
     grid_image = GridImage(input_image=input_image)
-    fig, ax = grid_image.show_overlay(show_gridlines=True, annotate=False)
+    grid_image = OtsuDetector().apply(grid_image)
+    fig, ax = grid_image.show_overlay(annotate=False)
     assert fig is not None
     assert ax is not None
+
 
 @timeit
 def test_optimal_grid_setter_defaults():
