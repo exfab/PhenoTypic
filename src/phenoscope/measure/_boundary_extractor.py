@@ -6,11 +6,11 @@ if TYPE_CHECKING: from phenoscope import Image
 import pandas as pd
 from skimage.measure import regionprops_table
 
-from phenoscope.abstract import FeatureExtractor
+from phenoscope.abstract import FeatureMeasure
 
 from ..util.constants_ import OBJECT_INFO
 
-class BoundaryExtractor(FeatureExtractor):
+class BoundaryMeasure(FeatureMeasure):
     """
     Extracts the object boundary coordinate info within the image using the object map
     """

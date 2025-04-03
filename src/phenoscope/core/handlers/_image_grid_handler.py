@@ -7,7 +7,7 @@ from matplotlib.patches import Rectangle
 from itertools import cycle
 
 from .._image import Image
-from phenoscope.measure import BoundaryExtractor
+from phenoscope.measure import BoundaryMeasure
 from phenoscope.grid.abstract import GridFinder
 from phenoscope.util.constants_ import IMAGE_FORMATS, OBJECT_INFO
 from phenoscope.util.exceptions_ import IllegalAssignmentError
@@ -152,7 +152,7 @@ class ImageGridHandler(Image):
             cmap_cycle = cycle(cmap(i) for i in range(cmap.N))
             img = self.copy()
             img.objmap = self.grid.get_section_map()
-            gs_table = BoundaryExtractor().measure(img)
+            gs_table = BoundaryMeasure().measure(img)
 
             # Add squares that denote object grid belonging. Useful for cases where objects are larger than grid sections
             for obj_label in gs_table.index.unique():

@@ -2,7 +2,7 @@ from scipy.spatial.distance import euclidean
 
 from ..abstract import MapModifier
 from .. import Image
-from ..measure import BoundaryExtractor
+from ..measure import BoundaryMeasure
 
 
 class CenterDeviationReducer(MapModifier):
@@ -16,7 +16,7 @@ class CenterDeviationReducer(MapModifier):
         img_center_cc = round(image.shape[1] / 2)
         img_center_rr = round(image.shape[0] / 2)
 
-        bound_extractor = BoundaryExtractor()
+        bound_extractor = BoundaryMeasure()
         bound_info = bound_extractor.measure(image)
 
         # bound_info.loc[:, 'Measurement_CenterDeviation'] = bound_info.apply(

@@ -12,7 +12,7 @@ log.addHandler(console_handler)
 console_handler.setFormatter(formatter)
 
 from typing import Dict, Optional, List
-from phenoscope.abstract import FeatureExtractor, ImageOperation
+from phenoscope.abstract import FeatureMeasure, ImageOperation
 from phenoscope import Image
 
 class ImagePipeline(ImageOperation):
@@ -31,11 +31,11 @@ class ImagePipeline(ImageOperation):
         _operational_queue (Dict[str, ImageOperation]): A dictionary where keys are string
             identifiers and values are `ImageOperation` objects representing operations to apply
             to an image.
-        _measurement_queue (Dict[str, FeatureExtractor]): A dictionary where keys are string
+        _measurement_queue (Dict[str, FeatureMeasure]): A dictionary where keys are string
             identifiers and values are `FeatureExtractor` objects for extracting features
             from images.
     """
-    def __init__(self, processing_queue: Optional[Dict[str, ImageOperation]], measurement_queue: Optional[Dict[str, FeatureExtractor]]=None):
+    def __init__(self, processing_queue: Optional[Dict[str, ImageOperation]], measurement_queue: Optional[Dict[str, FeatureMeasure]]=None):
         """
         This class represents a processing and measurement abstract for image operations
         and feature extraction. It initializes operational and measurement queues based
@@ -50,7 +50,7 @@ class ImagePipeline(ImageOperation):
                 extracting specific features.
         """
         self._operational_queue: Dict[str, ImageOperation] = processing_queue if processing_queue is not None else {}
-        self._measurement_queue: Dict[str, FeatureExtractor] = measurement_queue if measurement_queue is not None else {}
+        self._measurement_queue: Dict[str, FeatureMeasure] = measurement_queue if measurement_queue is not None else {}
 
     def apply(self, image: Image, inplace:bool = False) -> Image:
         """

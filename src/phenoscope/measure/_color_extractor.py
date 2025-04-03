@@ -7,7 +7,7 @@ import mahotas as mh
 import numpy as np
 import pandas as pd
 
-from phenoscope.abstract import FeatureExtractor
+from phenoscope.abstract import FeatureMeasure
 from phenoscope.util.constants_ import OBJECT_INFO
 
 OBJ_LABEL = 'ObjLabel'
@@ -37,7 +37,7 @@ STDDEV = 'Standard Deviation'
 COEFF_VARIANCE = 'Coefficient Variance'
 
 
-class ColorExtractor(FeatureExtractor):
+class ColorMeasure(FeatureMeasure):
     """
     Represents a feature extractor for color-based texture analysis.
 
@@ -141,4 +141,4 @@ class ColorExtractor(FeatureExtractor):
         return measurements
 
 # Set documentation of measure to match operate
-ColorExtractor.measure.__doc__ = ColorExtractor._operate.__doc__
+ColorMeasure.measure.__doc__ = ColorMeasure._operate.__doc__

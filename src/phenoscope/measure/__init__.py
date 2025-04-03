@@ -1,4 +1,4 @@
-from ._boundary_extractor import BoundaryExtractor
-from ._color_extractor import ColorExtractor
+from ._boundary_extractor import BoundaryMeasure
+from ._color_extractor import ColorMeasure
 
-__all__ = ["BoundaryExtractor", "ColorExtractor"]
+__all__ = ["BoundaryMeasure", "ColorMeasure"]

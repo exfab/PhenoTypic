@@ -5,12 +5,12 @@ if TYPE_CHECKING: from phenoscope import GridImage
 import pandas as pd
 
 
-from phenoscope.abstract import FeatureExtractor
+from phenoscope.abstract import FeatureMeasure
 from phenoscope.grid.abstract import GridOperation
 from phenoscope.util.exceptions_ import GridImageInputError, OutputValueError
 
 
-class GridFeatureExtractor(FeatureExtractor, GridOperation):
+class GridFeatureMeasure(FeatureMeasure, GridOperation):
     def __init__(self, n_rows: int, n_cols: int):
         self.n_rows = n_rows
         self.n_cols = n_cols

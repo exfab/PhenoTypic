@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING: from phenoscope import Image
 
 from phenoscope.grid.abstract import GridFinder
-from phenoscope.measure import BoundaryExtractor
+from phenoscope.measure import BoundaryMeasure
 
 import pandas as pd
 import numpy as np
