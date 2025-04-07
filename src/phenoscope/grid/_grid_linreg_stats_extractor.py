@@ -5,7 +5,7 @@ if TYPE_CHECKING: from phenoscope import GridImage
 import pandas as pd
 from scipy.spatial.distance import euclidean
 
-from phenoscope.grid.abstract import GridFeatureMeasure
+from phenoscope.abstract import GridFeatureMeasure
 from phenoscope.util.constants_ import GRID, GRID_LINREG_STATS_EXTRACTOR, OBJECT_INFO
 
 class GridLinRegStatsExtractor(GridFeatureMeasure):

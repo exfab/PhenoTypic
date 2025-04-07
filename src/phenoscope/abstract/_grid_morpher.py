@@ -6,7 +6,7 @@ import pandas as pd
 if TYPE_CHECKING: from phenoscope import GridImage
 
 from phenoscope.abstract import ImageTransformer
-from phenoscope.grid.abstract import GridOperation
+from phenoscope.abstract import GridOperation
 from phenoscope.util.exceptions_ import GridImageInputError, OutputValueError
 
 

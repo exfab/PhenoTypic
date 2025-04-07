@@ -5,7 +5,7 @@ if TYPE_CHECKING: from phenoscope import GridImage
 import numpy as np
 from typing import Optional
 
-from phenoscope.grid.abstract import GridMapModifier
+from phenoscope.abstract import GridMapModifier
 from phenoscope.grid import GridLinRegStatsExtractor
 from phenoscope.util.constants_ import GRID, GRID_LINREG_STATS_EXTRACTOR
 

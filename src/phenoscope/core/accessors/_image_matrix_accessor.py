@@ -54,7 +54,7 @@ class ImageMatrix(ImageAccessor):
             ArrayKeyValueShapeMismatchError: If the shape of the value does not match
                 the shape of the existing key in the parent image's matrix.
         """
-        if type(value) not in [int, float, bool]:
+        if isinstance(value, np.ndarray):
             if self._parent_image._matrix[key].shape != value.shape:
                 raise ArrayKeyValueShapeMismatchError
 

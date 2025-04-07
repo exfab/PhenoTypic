@@ -8,7 +8,7 @@ from itertools import cycle
 
 from .._image import Image
 from phenoscope.measure import BoundaryMeasure
-from phenoscope.grid.abstract import GridFinder
+from phenoscope.abstract import GridFinder
 from phenoscope.util.constants_ import IMAGE_FORMATS, OBJECT_INFO
 from phenoscope.util.exceptions_ import IllegalAssignmentError
 from phenoscope.grid import OptimalCenterGridFinder

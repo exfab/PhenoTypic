@@ -52,7 +52,7 @@ class ObjectMap(ImageAccessor):
         """Uncompresses the csc array & changes the values at the specified coordinates before recompressing the object map array."""
         dense = self._parent_image._sparse_object_map.toarray()
 
-        if type(value) == np.ndarray:
+        if isinstance(value, np.ndarray):
             value = value.astype(self._parent_image._sparse_object_map.dtype)
             if dense[key].shape != value.shape:
                 raise ArrayKeyValueShapeMismatchError
@@ -75,11 +75,11 @@ class ObjectMap(ImageAccessor):
         """Returns a copy of the object_map."""
         return self._parent_image._sparse_object_map.toarray().copy()
 
-    def to_csc(self) -> csc_matrix:
+    def as_csc(self) -> csc_matrix:
         """Returns a copy of the object map as a compressed sparse column matrix"""
         return self._parent_image._sparse_object_map.tocsc()
 
-    def to_coo(self) -> coo_matrix:
+    def as_coo(self) -> coo_matrix:
         """Returns a copy of the object map in COOrdinate format or ijv matrix"""
         return self._parent_image._sparse_object_map.tocoo()
 

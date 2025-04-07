@@ -4,7 +4,7 @@ if TYPE_CHECKING: from phenoscope import GridImage
 
 import numpy as np
 
-from phenoscope.grid.abstract import GridMapModifier
+from phenoscope.abstract import GridMapModifier
 from phenoscope.util.constants_ import OBJECT_INFO
 
 

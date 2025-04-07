@@ -461,14 +461,14 @@
 
 <div class="viewcode-block" id="ObjectMap.to_csc">
 <a class="viewcode-back" href="../../../../api_reference/phenoscope.core.accessors.html#phenoscope.core.accessors.ObjectMap.to_csc">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">to_csc</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">csc_matrix</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">as_csc</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">csc_matrix</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Returns a copy of the object map as a compressed sparse column matrix&quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parent_image</span><span class="o">.</span><span class="n">_sparse_object_map</span><span class="o">.</span><span class="n">tocsc</span><span class="p">()</span></div>
 
 
 <div class="viewcode-block" id="ObjectMap.to_coo">
 <a class="viewcode-back" href="../../../../api_reference/phenoscope.core.accessors.html#phenoscope.core.accessors.ObjectMap.to_coo">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">to_coo</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">coo_matrix</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">as_coo</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">coo_matrix</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Returns a copy of the object map in COOrdinate format or ijv matrix&quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parent_image</span><span class="o">.</span><span class="n">_sparse_object_map</span><span class="o">.</span><span class="n">tocoo</span><span class="p">()</span></div>
 

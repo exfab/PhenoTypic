@@ -7,7 +7,7 @@ import numpy as np
 from scipy.spatial.distance import euclidean
 from scipy.optimize import minimize_scalar
 
-from phenoscope.grid.abstract import GridTransformer
+from phenoscope.abstract import GridTransformer
 from phenoscope.util.constants_ import OBJECT_INFO, GRID
 
 

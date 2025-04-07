@@ -1,7 +1,7 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
 if TYPE_CHECKING: from phenoscope import GridImage
-from phenoscope.grid.abstract import GridFeatureMeasure
+from phenoscope.abstract import GridFeatureMeasure
 
 import pandas as pd
 import numpy as np

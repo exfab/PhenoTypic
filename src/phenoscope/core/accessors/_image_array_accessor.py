@@ -65,7 +65,7 @@ class ImageArray(ImageAccessor):
                 raise ArrayKeyValueShapeMismatchError
 
         self._parent_image._array[key] = value
-        self._parent_image._set_from_array(self._parent_image._array, input_schema=IMAGE_FORMATS.RGB)
+        self._parent_image._set_from_array(self._parent_image._array, imformat=IMAGE_FORMATS.RGB)
 
     @property
     def shape(self) -> tuple[int, ...]:

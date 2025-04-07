@@ -6,7 +6,7 @@ import pandas as pd
 
 
 from phenoscope.abstract import FeatureMeasure
-from phenoscope.grid.abstract import GridOperation
+from phenoscope.abstract import GridOperation
 from phenoscope.util.exceptions_ import GridImageInputError, OutputValueError
 
 

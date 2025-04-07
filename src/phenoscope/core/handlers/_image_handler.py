@@ -10,6 +10,7 @@ import skimage as ski
 import matplotlib.pyplot as plt
 from os import PathLike
 from pathlib import Path
+import warnings
 
 from skimage.color import rgb2gray, rgba2rgb
 from skimage.transform import rotate as skimage_rotate
@@ -51,7 +52,7 @@ class ImageHandler:
             used for multichannel data processing.
         _matrix (Optional[np.ndarray]): The matrix representation of the image, primarily
             used for 2D image data or grayscale formats.
-        _det_matrix (Optional[np.ndarray]): A detection matrix representation, useful for
+        _enh_matrix (Optional[np.ndarray]): A detection matrix representation, useful for
             object detection tasks and similar applications.
         _sparse_object_map (Optional[csc_matrix]): A sparse object map for efficient
             representation of object detection overlays.
@@ -67,9 +68,9 @@ class ImageHandler:
             removed without restrictions.
         __array_subhandler (ImageArray): Subhandler responsible for array-based operations.
             Extends functionality for working with image arrays.
-        __matrix_subhandler (ImageMatrix): Subhandler for performing operations on the image
+        __matrix_accessor (ImageMatrix): Subhandler for performing operations on the image
             matrix representation.
-        __det_matrix_subhandler (ImageDetectionMatrix): Subhandler for handling detection
+        __enh_matrix_accessor (ImageDetectionMatrix): Subhandler for handling detection
             matrix operations.
         __object_mask_subhandler (ObjectMask): Subhandler for managing object masks in the
             image.
@@ -93,7 +94,7 @@ class ImageHandler:
         """
         self._array: Optional[np.ndarray] = None
         self._matrix: Optional[np.ndarray] = None
-        self._det_matrix: Optional[np.ndarray] = None
+        self._enh_matrix: Optional[np.ndarray] = None
         self._sparse_object_map: Optional[csc_matrix] = None
 
         # Initialize core backend variables
@@ -116,8 +117,8 @@ class ImageHandler:
 
         # Initialize image component handlers
         self.__array_subhandler: ImageArray = ImageArray(self)
-        self.__matrix_subhandler: ImageMatrix = ImageMatrix(self)
-        self.__det_matrix_subhandler: ImageEnhancedMatrix = ImageEnhancedMatrix(self)
+        self.__matrix_accessor: ImageMatrix = ImageMatrix(self)
+        self.__enh_matrix_accessor: ImageEnhancedMatrix = ImageEnhancedMatrix(self)
         self.__object_mask_subhandler: ObjectMask = ObjectMask(self)
         self.__object_map_subhandler: ObjectMap = ObjectMap(self)
         self.__objects_subhandler: ImageObjects = ImageObjects(self)
@@ -169,7 +170,7 @@ class ImageHandler:
             if value.imformat not in IMAGE_FORMATS.MATRIX_FORMATS and self.imformat not in IMAGE_FORMATS.MATRIX_FORMATS:
                 self._array[key] = value.array[:]
             self._matrix[key] = value.matrix[:]
-            self._det_matrix[key] = value.enh_matrix[:]
+            self._enh_matrix[key] = value.enh_matrix[:]
             self.objmask[key] = value.objmask[:]
 
     def __eq__(self, other) -> bool:
@@ -223,10 +224,10 @@ class ImageHandler:
     @property
     def imformat(self) -> Optional[str]:
         """Returns the input format of the image array or matrix depending on input format"""
-        if self.__image_format is None:
-            raise EmptyImageError
-        else:
+        if self.__image_format:
             return self.__image_format
+        else:
+            raise EmptyImageError
 
     @property
     def array(self) -> ImageArray:
@@ -248,14 +249,14 @@ class ImageHandler:
             if self._matrix is None:
                 raise EmptyImageError
             else:
-                raise NoArrayError()
+                raise NoArrayError
         else:
             return self.__array_subhandler
 
     @array.setter
-    def array(self, array):
-        if isinstance(array, np.ndarray):
-            self.array[:] = array
+    def array(self, value):
+        if isinstance(value, np.ndarray) | value in {int, float, bool}:
+            self.array[:] = value
         else:
             raise IllegalAssignmentError('array')
 
@@ -275,12 +276,12 @@ class ImageHandler:
         if self._matrix is None:
             raise EmptyImageError
         else:
-            return self.__matrix_subhandler
+            return self.__matrix_accessor
 
     @matrix.setter
-    def matrix(self, matrix):
-        if isinstance(matrix, np.ndarray):
-            self.matrix[:] = matrix
+    def matrix(self, value):
+        if isinstance(value, np.ndarray) | value in {int, float, bool}:
+            self.matrix[:] = value
         else:
             raise IllegalAssignmentError('matrix')
 
@@ -296,15 +297,15 @@ class ImageHandler:
 
         See Also: :class:`ImageEnhancedMatrix`
         """
-        if self._det_matrix is None:
+        if self._enh_matrix is None:
             raise EmptyImageError
         else:
-            return self.__det_matrix_subhandler
+            return self.__enh_matrix_accessor
 
     @enh_matrix.setter
-    def enh_matrix(self, det_matrix):
-        if isinstance(det_matrix, np.ndarray):
-            self._det_matrix[:] = det_matrix
+    def enh_matrix(self, value):
+        if isinstance(value, np.ndarray) | type(value) in {int, float, bool}:
+            self._enh_matrix[:] = value
         else:
             raise IllegalAssignmentError('enh_matrix')
 
@@ -362,7 +363,7 @@ class ImageHandler:
             raise IllegalAssignmentError('object_map')
 
     @property
-    def props(self)->list[ski.measure._regionprops.RegionProperties]:
+    def props(self) -> list[ski.measure._regionprops.RegionProperties]:
         """Fetches the properties of labeled regions in an image.
 
         Calculates region properties for the entire image using the matrix representation.
@@ -550,7 +551,7 @@ class ImageHandler:
         Raises:
             NoObjectsError: If no objects are targeted in the image. Apply an ObjectDetector first.
         """
-        if self.num_objects==0:
+        if self.num_objects == 0:
             raise NoObjectsError(self.name)
         else:
             return self.__objects_subhandler
@@ -612,7 +613,7 @@ class ImageHandler:
         else:
             raise UnsupportedFileTypeError(filepath.suffix)
 
-    def set_image(self, input_image:Image|np.ndarray, imformat: str = None) -> None:
+    def set_image(self, input_image: Image | np.ndarray, imformat: str = None) -> None:
         """Sets the image to the inputted array or Image
 
         Args:
@@ -631,7 +632,7 @@ class ImageHandler:
             self.__image_format = None
             self._array = None
             self._matrix = None
-            self._det_matrix = None
+            self._enh_matrix = None
             self._sparse_object_map = None
 
     def _set_from_class_instance(self, class_instance):
@@ -641,116 +642,77 @@ class ImageHandler:
             self._set_from_array(class_instance.array[:].copy(), class_instance.imformat)
         else:
             self._set_from_array(class_instance.matrix[:].copy(), class_instance.imformat)
-        self._det_matrix = class_instance._det_matrix.copy()
+        self._enh_matrix = class_instance._enh_matrix.copy()
         self._sparse_object_map = class_instance._sparse_object_map.copy()
         self._protected_metadata = deepcopy(class_instance._protected_metadata)
         self._public_metadata = deepcopy(class_instance._public_metadata)
 
-    def _set_from_matrix(self, matrix):
+    def _set_from_matrix(self, matrix: np.ndarray):
         """Initializes all the 2-D components of an image
 
         Args:
             matrix: A 2-D array form of an image
         """
         self._matrix = matrix.copy()
-        self.__det_matrix_subhandler.reset()
+        self.__enh_matrix_accessor.reset()
 
-        if self._sparse_object_map is None or matrix.shape!=self._sparse_object_map.shape:
+        if self._sparse_object_map is None or matrix.shape != self._sparse_object_map.shape:
             self.__object_map_subhandler.reset()
 
-    def _set_from_array(self, image: np.ndarray, input_schema: str) -> None:
+    def _set_from_rgb(self, rgb_array: np.ndarray):
+        """Initializes all the components of an image from an RGB array
+
+        """
+        self._array = rgb_array.copy()
+        self._set_from_matrix(rgb2gray(self._array.copy()))
+
+    def _set_from_array(self, imarr: np.ndarray, imformat: str) -> None:
         """Initializes all the components of an image from an array
 
         Note:
             The format of the input should already have been set or guessed
         Args:
-            image: the input image array
-            input_schema: (str, optional) The format of the input image
+            imarr: the input image array
+            imformat: (str, optional) The format of the input image
         """
 
-        if input_schema is None:
-            self.__image_format = self._guess_image_format(image)
-            if self.__image_format == IMAGE_FORMATS.RGB_OR_BGR or self.__image_format == IMAGE_FORMATS.RGBA_OR_BGRA:
+        # In the event of None for schema, PhenoScope guesses the format
+        if imformat is None:
+            imformat = self._guess_image_format(imarr)
+            if imformat in IMAGE_FORMATS.AMBIGUOUS_FORMATS:
                 # PhenoScope will assume in the event of rgb vs bgr that the input was rgb
                 self.__image_format = IMAGE_FORMATS.RGB
 
-        else:
-            # Valid Format Check
-            if input_schema not in IMAGE_FORMATS.SUPPORTED_FORMATS:
-                raise UnsupportedSchemaError(input_schema)
-            else:
-                self.__image_format = input_schema
-
-        # Grayscale Formats
-        if (self.__image_format == IMAGE_FORMATS.GRAYSCALE
-                or self.__image_format == IMAGE_FORMATS.GRAYSCALE_SINGLE_CHANNEL
-        ): self._from_grayscale(image)
-
-        # RGB Formats
-        if (self.__image_format == IMAGE_FORMATS.RGB
-                or self.__image_format == IMAGE_FORMATS.RGBA
-        ): self._from_rgb_or_rgba(image)
-
-        # BGR Formats
-        if (self.__image_format == IMAGE_FORMATS.BGR
-                or self.__image_format == IMAGE_FORMATS.BGRA
-        ): self._from_bgr_or_bgra(image)
-
-    def _from_grayscale(self, grayscale_array: np.ndarray):
-        """Initialize class components from a grayscale image array"""
-        if self.__image_format == IMAGE_FORMATS.GRAYSCALE:
-            self._set_from_matrix(grayscale_array)
-
-        elif self.__image_format == IMAGE_FORMATS.GRAYSCALE_SINGLE_CHANNEL:
-            self._set_from_matrix(grayscale_array[:, :, 0])
-
-    def _from_rgb_or_rgba(self, rgb_or_rgba_array: np.ndarray):
-        """Initialize class components from an RGB or RGBA image array"""
-        if self.__image_format == IMAGE_FORMATS.RGB:
-            self._array = rgb_or_rgba_array
-            self._set_from_matrix(
-                matrix=rgb2gray(rgb_or_rgba_array)
-            )
-
-        elif self.__image_format == IMAGE_FORMATS.RGBA:
-            self._array = rgb_or_rgba_array
-            self._set_from_matrix(
-                matrix=rgb2gray(
-                    rgba2rgb(rgb_or_rgba_array)
+        match imformat:
+            case 'Grayscale' | IMAGE_FORMATS.GRAYSCALE | IMAGE_FORMATS.GRAYSCALE_SINGLE_CHANNEL:
+                self.__image_format = IMAGE_FORMATS.GRAYSCALE
+                self._set_from_matrix(
+                    imarr if imarr.ndim == 2 else imarr[:, :, 0]
                 )
-            )
 
-    def _from_bgr_or_bgra(self, bgr_or_bgra_array: np.ndarray):
-        """Initialize class components from a BGR or BGRA image array"""
-        if self.__image_format == IMAGE_FORMATS.BGR:
-            self._array = bgr_or_bgra_array
-            self._set_from_matrix(
-                matrix=rgb2gray(
-                    self._convert_bgr_to_rgb(bgr_or_bgra_array)
-                )
-            )
-        elif self.__image_format == IMAGE_FORMATS.BGRA:
-            self._array = bgr_or_bgra_array
-            self._set_from_matrix(
-                matrix=rgb2gray(
-                    rgba2rgb(
-                        self._convert_bgra_to_rgba(bgr_or_bgra_array)
-                    )
-                )
-            )
+            case 'RGB' | IMAGE_FORMATS.RGB | IMAGE_FORMATS.RGB_OR_BGR:
+                self.__image_format = IMAGE_FORMATS.RGB
+                self._set_from_rgb(imarr)
+
+            case 'RGBA' | IMAGE_FORMATS.RGBA | IMAGE_FORMATS.RGBA_OR_BGRA:
+                self.__image_format = IMAGE_FORMATS.RGB
+                self._set_from_rgb(rgba2rgb(imarr))
+
+            case 'BGR' | IMAGE_FORMATS.BGR:
+                self.__image_format = IMAGE_FORMATS.RGB
+                warnings.warn('BGR Images are automatically converted to RGB')
+                self._set_from_rgb(imarr[:, :, ::-1])
+
+            case 'BGRA' | IMAGE_FORMATS.BGRA:
+                self.__image_format = IMAGE_FORMATS.RGB
+                warnings.warn('BGRA Images are automatically converted to RGB')
+                self._set_from_rgb(imarr[:, :, [2, 1, 0, 3]])
+
+            case _:
+                raise ValueError(f'Unsupported image format: {imformat}')
 
     @staticmethod
-    def _convert_bgr_to_rgb(bgr_image: np.ndarray) -> np.ndarray:
-        """Rearranges the channels of a BGR array to an RGB array"""
-        return bgr_image[:, :, ::-1]
-
-    @staticmethod
-    def _convert_bgra_to_rgba(bgra_image: np.ndarray) -> np.ndarray:
-        """Rearranges the channels of a BGRA array to an RGBA array"""
-        return bgra_image[:, :, [2, 1, 0, 3]]
-
-    @staticmethod
-    def _guess_image_format(img: np.ndarray) -> str:
+    def _guess_image_format(img: np.ndarray) -> IMAGE_FORMATS:
         """
         Attempts to determine the color format of an image represented as a NumPy array.
 
@@ -887,7 +849,7 @@ class ImageHandler:
             self._array = skimage_rotate(image=self._array, angle=angle_of_rotation, mode=mode, clip=True, **kwargs)
 
         self._matrix = skimage_rotate(image=self._matrix, angle=angle_of_rotation, mode=mode, clip=True, **kwargs)
-        self._det_matrix = skimage_rotate(image=self._det_matrix, angle=angle_of_rotation, mode=mode, clip=True, **kwargs)
+        self._enh_matrix = skimage_rotate(image=self._enh_matrix, angle=angle_of_rotation, mode=mode, clip=True, **kwargs)
 
         # Rotate the object map while preserving the details and using nearest-neighbor interpolation
         self.objmap[:] = scipy_rotate(input=self.objmap[:], angle=angle_of_rotation, mode='constant', cval=0, order=0, reshape=False)

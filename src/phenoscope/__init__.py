@@ -13,7 +13,8 @@ from . import (
     objects,
     morphology,
     pipeline,
-    preprocessing,
+    correction,
+    enhancement,
     transform,
     util,
 )
@@ -22,15 +23,16 @@ __all__ = [
     "Image",  # Class imported from core
     "imread",  # Function imported from core
     "GridImage",  # Class imported from core
-    "data",  # Submodule import
-    "detection",  # Submodule import
-    "measure",  # Submodule import
-    "grid",  # Submodule import
-    "abstract",  # Submodule import
-    "objects",  # Submodule import
-    "morphology",  # Submodule import
-    "pipeline",  # Submodule import
-    "preprocessing",  # Submodule import
-    "transform",  # Submodule import
-    "util",  # Submodule import
+    "data",  
+    "detection",  
+    "measure",  
+    "grid",  
+    "abstract",  
+    "objects",  
+    "morphology",  
+    "pipeline",  
+    "correction",  
+    "enhancement",
+    "transform",  
+    "util",  
 ]

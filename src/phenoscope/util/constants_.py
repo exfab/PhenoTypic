@@ -10,8 +10,6 @@ in the codebase (e.g., GRID vs an actual Grid class). When importing, use the fo
 """
 
 from types import SimpleNamespace
-
-
 # Image format constants
 class IMAGE_FORMATS:
     """Constants for supported image formats."""
@@ -24,8 +22,9 @@ class IMAGE_FORMATS:
     RGBA = 'RGBA'
     BGR = 'BGR'
     BGRA = 'BGRA'
-    SUPPORTED_FORMATS = [RGB, RGBA, GRAYSCALE, BGR, BGRA]
-    MATRIX_FORMATS = [GRAYSCALE, GRAYSCALE_SINGLE_CHANNEL]
+    SUPPORTED_FORMATS = (RGB, RGBA, GRAYSCALE, BGR, BGRA)
+    MATRIX_FORMATS = (GRAYSCALE, GRAYSCALE_SINGLE_CHANNEL)
+    AMBIGUOUS_FORMATS = (RGB_OR_BGR, RGBA_OR_BGRA)
 
     CHANNELS_DEFAULT = 3
     DEFAULT_SCHEMA = RGB
@@ -77,3 +76,25 @@ class METADATA_LABELS:
     PARENT_IMAGE_NAME = 'ParentImageName'
     PARENT_UUID = 'ParentUUID'
     SCHEMA = 'Schema'
+
+class GEOM_MEASUREMENTS:
+    CATEGORY = 'Geometry'
+    AREA = 'Area'
+    PERIMETER = 'Perimeter'
+    FORM_FACTOR = 'FormFactor'
+    CONVEX_AREA = 'ConvexArea'
+    EXTENT = 'Extent'
+    BBOX_AREA = 'BboxArea'
+    BBOX_PERIMETER = 'BboxPerimeter'
+    EULER_NUMBER = 'EulerNumber'
+    MAJOR_AXIS_LENGTH = 'MajorAxisLength'
+    MINOR_AXIS_LENGTH = 'MinorAxisLength'
+    ORIENTATION = 'Orientation'
+    COMPACTNESS = 'Compactness'
+    INERTIA_TENSOR = 'InertiaTensor'
+    RADIUS_MAX = 'RadiusMax'
+    RADIUS_MEAN = 'RadiusMean'
+    RADIUS_MEDIAN = 'RadiusMedian'
+    RADIUS_VARIANCE = 'RadiusVariance'
+
+

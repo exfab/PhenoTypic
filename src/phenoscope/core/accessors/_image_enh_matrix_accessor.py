@@ -37,7 +37,7 @@ class ImageEnhancedMatrix(ImageAccessor):
             numpy.ndarray: A copy of the corresponding portion of the parent image's detection
                 matrix.
         """
-        return self._parent_image._det_matrix[key].copy()
+        return self._parent_image._enh_matrix[key].copy()
 
     def __setitem__(self, key, value):
         """
@@ -48,7 +48,7 @@ class ImageEnhancedMatrix(ImageAccessor):
         is not of type `int`, `float`, or `bool`, its shape matches the shape of the
         existing value at the specified key. If the shape does not match,
         `ArrayKeyValueShapeMismatchError` is raised. When the value is successfully set,
-        the object map (`omap`) of the parent image is reset.
+        the object map (`objmap`) of the parent image is reset.
 
         Args:
             key: The key in the detection matrix where the value will be set.
@@ -61,12 +61,13 @@ class ImageEnhancedMatrix(ImageAccessor):
                 does not match the shape of the existing value in `_parent_image._det_matrix`
                 for the specified key.
         """
-        if type(value) not in [int, float, bool]:
-            if self._parent_image._det_matrix[key].shape != value.shape:
+        if isinstance(value, np.ndarray):
+            if self._parent_image._enh_matrix[key].shape != value.shape:
                 raise ArrayKeyValueShapeMismatchError
-        else:
-            self._parent_image._det_matrix[key] = value
-            self._parent_image.objmap.reset()
+
+        self._parent_image._enh_matrix[key] = value
+        self._parent_image.objmap.reset()
+        print('Set enh_matrix')
 
     @property
     def shape(self):
@@ -79,15 +80,15 @@ class ImageEnhancedMatrix(ImageAccessor):
         Returns:
             tuple: The shape of the determinant matrix.
         """
-        return self._parent_image._det_matrix.shape
+        return self._parent_image._enh_matrix.shape
 
     def copy(self) -> np.ndarray:
         """Returns a copy of the Detection Matrix."""
-        return self._parent_image._det_matrix.copy()
+        return self._parent_image._enh_matrix.copy()
 
     def reset(self):
         """Resets the image's enhanced matrix to the original matrix representation."""
-        self._parent_image._det_matrix = self._parent_image.matrix[:].copy()
+        self._parent_image._enh_matrix = self._parent_image.matrix[:].copy()
 
     def histogram(self, figsize: Tuple[int, int] = (10, 5)):
         """Returns a histogram of the image matrix. Useful for troubleshooting detection results.

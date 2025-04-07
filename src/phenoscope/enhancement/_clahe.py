@@ -17,19 +17,18 @@ class CLAHE(ImagePreprocessor):
         kernel_size (int): The size of the kernel used for the local histogram. If not
             provided, an adaptive size based on the image dimensions is used.
     """
+
     def __init__(self, kernel_size: int = None):
         self.kernel_size: int = kernel_size
 
     def _operate(self, image: Image) -> Image:
-        if self.kernel_size is None:
-            image.enh_matrix[:] = equalize_adapthist(
-                    image=image.enh_matrix[:],
-                    kernel_size=int(min(image.matrix.shape[:1]) * (1.0 / 15.0))
-            )
-            return image
-        else:
-            image.enh_matrix[:] = equalize_adapthist(
-                    image=image.enh_matrix[:],
-                    kernel_size=self.kernel_size
-            )
-            return image
+        image.enh_matrix[:] = equalize_adapthist(
+            image=image.enh_matrix[:],
+            kernel_size=self.kernel_size if self.kernel_size \
+                else self._auto_kernel_size(image),
+        )
+        return image
+
+    @staticmethod
+    def _auto_kernel_size(image: Image) -> int:
+        return int(min(image.matrix.shape[:1]) * (1.0 / 15.0))
