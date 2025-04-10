@@ -9,9 +9,9 @@ from phenoscope.grid import GridLinRegStatsExtractor
 from phenoscope.util.constants_ import GRID_LINREG_STATS_EXTRACTOR
 
 
-class MinResidualErrorRemover(GridMapModifier):
+class MinResidualErrorReducer(GridMapModifier):
     """
-    This map modifier removes objects from sctions where there are multiple based on their distance from the linreg predicted location.
+    This map modifier reduces the amount of objects in sections where there are multiple based on their distance from the linreg predicted location.
     This modifier is relatively slow, but shows good results in removing the correct obj when paired with small object removers and other filters.
     """
 

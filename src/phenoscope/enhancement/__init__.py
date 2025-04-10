@@ -4,7 +4,7 @@ in order to improve detection & segmentation results.
 """
 
 from ._clahe import CLAHE
-from ._gaussian_preprocessor import GaussianPreprocessor
+from ._gaussian_preprocessor import GaussianSmoother
 from ._median_preprocessor import MedianPreprocessor
 from ._rank_median_preprocessor import RankMedianPreprocessor
 from ._rolling_ball_preprocessor import RollingBallPreprocessor
@@ -14,7 +14,7 @@ from ._contrast_streching import ContrastStretching
 
 __all__ = [
     "CLAHE",
-    "GaussianPreprocessor",
+    "GaussianSmoother",
     "MedianPreprocessor",
     "RankMedianPreprocessor",
     "RollingBallPreprocessor",

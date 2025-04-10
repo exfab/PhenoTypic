@@ -9,7 +9,9 @@ in the codebase (e.g., GRID vs an actual Grid class). When importing, use the fo
     from phenoscope.util.constants import IMAGE_FORMATS, OBJECT_INFO
 """
 
-from types import SimpleNamespace
+from enum import Enum
+
+
 # Image format constants
 class IMAGE_FORMATS:
     """Constants for supported image formats."""
@@ -77,12 +79,14 @@ class METADATA_LABELS:
     PARENT_UUID = 'ParentUUID'
     SCHEMA = 'Schema'
 
-class GEOM_MEASUREMENTS:
-    CATEGORY = 'Geometry'
-    AREA = 'Area'
-    PERIMETER = 'Perimeter'
-    FORM_FACTOR = 'FormFactor'
-    CONVEX_AREA = 'ConvexArea'
+
+class GEOM_LABELS(Enum):
+    CATEGORY = ('Geometry', 'The category of the measurements')
+
+    AREA = ('Area', "The sum of the object's pixels")
+    PERIMETER = ('Perimeter', "The perimeter of the object's pixels")
+    FORM_FACTOR = ('FormFactor', r'Calculated as :math:`\frac{4\pi*Area}{Perimeter^2}`. A perfect circle has a value of 1.')
+    CONVEX_AREA = ('ConvexArea', 'The area of the convex hull of the object')
     EXTENT = 'Extent'
     BBOX_AREA = 'BboxArea'
     BBOX_PERIMETER = 'BboxPerimeter'
@@ -96,5 +100,8 @@ class GEOM_MEASUREMENTS:
     RADIUS_MEAN = 'RadiusMean'
     RADIUS_MEDIAN = 'RadiusMedian'
     RADIUS_VARIANCE = 'RadiusVariance'
+    MIN_FERET_DIAMETER = 'MinFeretDiameter'
+    MAX_FERET_DIAMETER = 'MaxFeretDiameter'
 
-
+    def __init__(self, label, desc=None):
+        self.label, self.desc = label, desc

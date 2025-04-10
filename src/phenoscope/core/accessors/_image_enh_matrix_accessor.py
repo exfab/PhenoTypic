@@ -67,7 +67,6 @@ class ImageEnhancedMatrix(ImageAccessor):
 
         self._parent_image._enh_matrix[key] = value
         self._parent_image.objmap.reset()
-        print('Set enh_matrix')
 
     @property
     def shape(self):

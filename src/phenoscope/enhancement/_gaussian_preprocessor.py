@@ -4,9 +4,9 @@ from ..abstract import ImagePreprocessor
 from .. import Image
 
 
-class GaussianPreprocessor(ImagePreprocessor):
+class GaussianSmoother(ImagePreprocessor):
     """
-    Applies Gaussian filtering to enhance the image's enhanced matrix data.
+    Applies Gaussian smoothing (blurring) to the enhanced matrix of an image; Helps with salt & pepper noise.
 
     The GaussianPreprocessor class is used to enhance the pixel quality of an image by applying a
     Gaussian filter. It operates on the enhanced matrix of an image object. It allows customization

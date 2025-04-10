@@ -3,13 +3,12 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING: from phenoscope import Image
 
-from phenoscope.abstract import GridFinder
-from phenoscope.measure import BoundaryMeasure
-
 import pandas as pd
 import numpy as np
 from scipy.optimize import minimize_scalar
+from functools import partial
 
+from phenoscope.abstract import GridFinder
 from phenoscope.util.constants_ import OBJECT_INFO, GRID
 
 
@@ -64,16 +63,16 @@ class OptimalCenterGridFinder(GridFinder):
 
         first_row_group = initial_grid_results.loc[initial_grid_results.loc[:, GRID.GRID_ROW_NUM] == 0, OBJECT_INFO.CENTER_RR]
         last_row_group = initial_grid_results.loc[initial_grid_results.loc[:, GRID.GRID_ROW_NUM] == self.nrows - 1, OBJECT_INFO.CENTER_RR]
+        partial_row_pad_finder = partial(self._optimal_pad_finder,
+                                         centerpoint_array=initial_grid_results.loc[:, OBJECT_INFO.CENTER_RR].values,
+                                         num_bins=self.nrows,
+                                         overall_bound_min=initial_grid_results.loc[:, OBJECT_INFO.MIN_RR].min(),
+                                         overall_bound_max=initial_grid_results.loc[:, OBJECT_INFO.MAX_RR].max(),
+                                         first_grid_group_center_mean=first_row_group.mean(),
+                                         last_grid_group_center_mean=last_row_group.mean()
+                                         )
         optimal_row_padding = round(minimize_scalar(
-            self._optimal_pad_finder,
-            args=(
-                initial_grid_results.loc[:, OBJECT_INFO.CENTER_RR].values,  # centerpoint_array
-                self.nrows,  # num_bins
-                initial_grid_results.loc[:, OBJECT_INFO.MIN_RR].min(),  # overall_bound_min
-                initial_grid_results.loc[:, OBJECT_INFO.MAX_RR].max(),  # overall_bound_max
-                first_row_group.mean(),  # obj_lower_group_center_mean
-                last_row_group.mean(),  # obj_upper_group_center_mean
-            ),
+            partial_row_pad_finder,
             bounds=(0, max_row_pad_size)
         ).x
                                     )
@@ -86,16 +85,15 @@ class OptimalCenterGridFinder(GridFinder):
 
         first_col_group = initial_grid_results.loc[initial_grid_results.loc[:, GRID.GRID_COL_NUM] == 0, OBJECT_INFO.CENTER_CC]
         last_col_group = initial_grid_results.loc[initial_grid_results.loc[:, GRID.GRID_COL_NUM] == self.ncols - 1, OBJECT_INFO.CENTER_CC]
+        partial_col_pad_finder = partial(self._optimal_pad_finder,
+                                         centerpoint_array=initial_grid_results.loc[:, OBJECT_INFO.CENTER_CC].values,
+                                         num_bins=self.ncols,
+                                         overall_bound_min=initial_grid_results.loc[:, OBJECT_INFO.MIN_CC].min(),
+                                         overall_bound_max=initial_grid_results.loc[:, OBJECT_INFO.MAX_CC].max(),
+                                         first_grid_group_center_mean=first_col_group.mean(),
+                                         last_grid_group_center_mean=last_col_group.mean())
         optimal_col_padding = round(minimize_scalar(
-            self._optimal_pad_finder,
-            args=(
-                initial_grid_results.loc[:, OBJECT_INFO.CENTER_CC].values,
-                self.ncols,
-                initial_grid_results.loc[:, OBJECT_INFO.MIN_CC].min(),
-                initial_grid_results.loc[:, OBJECT_INFO.MAX_CC].max(),
-                first_col_group.mean(),
-                last_col_group.mean(),
-            ),
+            partial_col_pad_finder,
             bounds=(0, max_col_pad_size)
         ).x
                                     )
