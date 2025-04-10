@@ -38,7 +38,7 @@ import sphinx_autosummary_accessors
 sys.path.insert(0, os.path.abspath('../../src'))
 sys.path.insert(0, os.path.abspath('./_extensions'))
 
-project = 'PhenoScope'
+project = 'PhenoTypic'
 copyright = '2025, ExFAB BioFoundry'
 author = 'Alexander Nguyen'
 
@@ -47,12 +47,12 @@ github_url = 'https://github.com/Wheeldon-Lab/PhenoScope#'
 LIGHT_LOGO_PATH = './_static/assets/500x225/no_background_svg/light_logo_sponsor.svg'
 DARK_LOGO_PATH = './_static/assets/500x225/no_background_svg/dark_logo_sponsor.svg'
 
-# Try to get the version from phenoscope, but use a default if not available
+# Try to get the version from PhenoTypic, but use a default if not available
 try:
-    import phenoscope
-    version = str(phenoscope.__version__)
+    import phenotypic
+    version = str(phenotypic.__version__)
 except ImportError:
-    version = '0.1.0'  # Default version if phenoscope is not installed
+    version = '0.1.0'  # Default version if PhenoTypic is not installed
 release = version
 
 # -- General configuration ---------------------------------------------------
@@ -140,14 +140,14 @@ html_css_files = [
 ]
 
 if html_theme == 'pydata_sphinx_theme':
-    html_title = "PhenoScope"
+    html_title = "PhenoTypic"
     html_theme_options = {
         "subtitle": "A modular framework for bioimage analysis and visualization"
     }
     html_logo = LIGHT_LOGO_PATH
     html_theme_options = {
         "logo": {
-            "alt_text": "PhenoScope",
+            "alt_text": "PhenoTypic",
             "link": "index",
             "image_light":LIGHT_LOGO_PATH,
             "image_dark":DARK_LOGO_PATH

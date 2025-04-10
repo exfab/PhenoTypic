@@ -2,14 +2,14 @@
 Basic Usage Example
 ==================
 
-This example demonstrates basic usage of PhenoScope for image processing.
+This example demonstrates basic usage of PhenoTypic for image processing.
 """
 
 # %%
 # First, let's import the necessary modules
 import numpy as np
 import matplotlib.pyplot as plt
-import phenoscope as ps
+import phenotypic as ps
 
 # %%
 # Create a simple test image

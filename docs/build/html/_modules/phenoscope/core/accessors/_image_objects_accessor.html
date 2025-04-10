@@ -499,7 +499,7 @@
 
 <div class="viewcode-block" id="ImageObjects.label_table">
 <a class="viewcode-back" href="../../../../api_reference/phenoscope.core.accessors.html#phenoscope.core.accessors.ImageObjects.label_table">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">label_table</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">-&gt;</span><span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_labels_series</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">-&gt;</span><span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Returns a consistently named pandas.Series containing the label number for each object in the image. Useful as an index for joining different measurements&quot;&quot;&quot;</span>
         <span class="n">labels</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">labels</span>
         <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span>

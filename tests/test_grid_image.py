@@ -1,9 +1,9 @@
 import numpy as np
 import pytest
-from phenoscope import Image, GridImage
-from phenoscope.grid import OptimalCenterGridFinder
-from phenoscope.detection import OtsuDetector
-from phenoscope.util.exceptions_ import IllegalAssignmentError
+from phenotypic import Image, GridImage
+from phenotypic.grid import OptimalCenterGridFinder
+from phenotypic.detection import OtsuDetector
+from phenotypic.util.exceptions_ import IllegalAssignmentError
 
 from .resources.TestHelper import timeit
 

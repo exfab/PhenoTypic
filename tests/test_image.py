@@ -4,14 +4,14 @@ import pytest
 import numpy as np
 import skimage
 
-from phenoscope.data import (
+from phenotypic.data import (
     load_colony_12_hr,
     load_colony_72hr,
     load_plate_12hr,
     load_plate_72hr,
 )
 
-from phenoscope import Image
+from phenotypic import Image
 
 from .resources.TestHelper import timeit
 DEBUG = False
@@ -221,4 +221,4 @@ def test_image_object_label_consistency_with_skimage(sample_image_arrays):
         ps_image.objmap[:10, :10] = 1
         ps_image.objmap[-10:, -10:] = 2
 
-        assert ps_image.objects.label_table().equals(pd.Series(skimage.measure.regionprops_table(ps_image.objmap[:], properties=['label'])['label']))
+        assert ps_image.objects.get_labels_series().equals(pd.Series(skimage.measure.regionprops_table(ps_image.objmap[:], properties=['label'])['label']))
