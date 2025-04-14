@@ -20,4 +20,5 @@ __all__ = [
     "RollingBallPreprocessor",
     "WhiteTophatPreprocessor",
     "LaplacePreprocessor",
+    "ContrastStretching"
 ]

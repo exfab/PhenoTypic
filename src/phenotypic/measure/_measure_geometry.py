@@ -11,14 +11,15 @@ from phenotypic.abstract import FeatureMeasure
 
 from phenotypic.util.constants_ import GEOM_LABELS as C
 
-class GeometryMeasure(FeatureMeasure):
+# TODO: Add more measurements
+class MeasureGeometry(FeatureMeasure):
     """Calculates various geometric measures of the objects in the image.
 
     Returns:
         pd.DataFrame: A dataframe containing the geometric measures of the objects in the image.
 
     Notes:
-        Area: The sum of the pixel's in the object
+        Area: The sum of the individual pixel's in the object's footprint
         Perimeter: The length of the object's boundary
         Circularity: Calculated as :math:`\frac{4\pi*Area}{Perimeter^2}
         ConvexArea: The area of the convex hull of the object
@@ -37,7 +38,7 @@ class GeometryMeasure(FeatureMeasure):
             str(C.CIRCULARITY): [],
             str(C.CONVEX_AREA): [],
         }
-        for i, obj_props in image.objects.props:
+        for obj_props in image.objects.props:
             measurements[str(C.AREA)].append(obj_props.area)
             measurements[str(C.PERIMETER)].append(obj_props.perimeter)
 

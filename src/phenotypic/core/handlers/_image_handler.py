@@ -163,12 +163,13 @@ class ImageHandler:
             ValueError: If the shape of the `value` does not match the shape of the existing
                 elements being accessed.
         """
-        if np.array_equal(self.shape, value.shape) is False: raise ValueError(
-            'The image being set must be of the same shape as the image elements being accessed.'
-        )
+
         if isinstance(value, ImageHandler) or issubclass(type(value), ImageHandler):
             if value.imformat not in IMAGE_FORMATS.MATRIX_FORMATS and self.imformat not in IMAGE_FORMATS.MATRIX_FORMATS:
+                if np.array_equal(self.array[key].shape, value.array.shape) is False: raise ValueError('The image being set must be of the same shape as the image elements being accessed.')
                 self._array[key] = value.array[:]
+
+            if np.array_equal(self.matrix[key].shape, value.matrix.shape) is False: raise ValueError('The image being set must be of the same shape as the image elements being accessed.')
             self._matrix[key] = value.matrix[:]
             self._enh_matrix[key] = value.enh_matrix[:]
             self.objmask[key] = value.objmask[:]

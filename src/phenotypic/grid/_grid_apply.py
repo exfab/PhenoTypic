@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING: from phenotypic import GridImage
 
 from phenotypic.abstract import ImageOperation
+from phenotypic.pipeline import ImagePipeline
 
 
 class GridApply:
@@ -14,7 +15,8 @@ class GridApply:
         reset_enh_matrix (bool): Whether to reset the enh_matrix attribute of the image before applying the operation.
     """
 
-    def __init__(self, phenoscope_operation: ImageOperation, reset_enh_matrix: bool = True):
+    def __init__(self, phenoscope_operation: ImageOperation | ImagePipeline,
+                 reset_enh_matrix: bool = True):
         self.operation = phenoscope_operation
         self.reset_enh_matrix = reset_enh_matrix
 
@@ -33,15 +35,5 @@ class GridApply:
                 row_edges[row_i]:row_edges[row_i + 1],
                 col_edges[col_i]:col_edges[col_i + 1]
                 ] = subimage
-
-                # image.enh_matrix[
-                # row_edges[row_i]:row_edges[row_i + 1],
-                # col_edges[col_i]:col_edges[col_i + 1]
-                # ] = subimage.enh_matrix[:]
-                #
-                # image.omap[
-                # row_edges[row_i]:row_edges[row_i + 1],
-                # col_edges[col_i]:col_edges[col_i + 1]
-                # ] = subimage.omap[:]
 
         return image

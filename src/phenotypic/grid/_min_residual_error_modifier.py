@@ -50,9 +50,8 @@ class MinResidualErrorReducer(GridMapModifier):
             objects_to_drop = section_info.index.drop(min_err_obj_id).to_numpy()
 
             # Set the objects with the labels to the background value
-            obj_map[np.isin(obj_map, objects_to_drop)] = 0
+            image.objmap[np.isin(obj_map, objects_to_drop)] = 0
 
-            image.objmap = obj_map
 
             # Reset section obj count and add counter
             section_obj_counts = image.grid.get_section_counts(ascending=False)

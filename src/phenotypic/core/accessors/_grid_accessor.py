@@ -112,9 +112,10 @@ class GridAccessor(ImageAccessor):
 
         # Collect slope & intercept for the rows or columns
         for idx in range(N):
-            warnings.simplefilter('ignore',
-                                  np.RankWarning
-                                  )  # TODO: When upgrading numpy version this will need to change
+            if hasattr(np, 'RankWarning'):
+                warnings.simplefilter('ignore',
+                                      np.RankWarning
+                                      )  # TODO: When upgrading numpy version this will need to change
             m_slope[idx], b_intercept[idx] = np.polyfit(
                 x=grid_info.loc[grid_info.loc[:, x_group] == idx, x_val],
                 y=grid_info.loc[grid_info.loc[:, x_group] == idx, y_val],

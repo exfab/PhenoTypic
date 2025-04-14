@@ -5,6 +5,7 @@ from ._min_residual_error_modifier import MinResidualErrorReducer
 from ._object_spread_extractor import ObjectSpreadExtractor
 from ._optimal_center_grid_finder import OptimalCenterGridFinder
 from ._grid_aligner import GridAligner
+from ._linreg_residual_outlier_modifier import LinRegResidualOutlierRemover
 
 __all__ = [
     "GridApply",
@@ -13,4 +14,5 @@ __all__ = [
     "ObjectSpreadExtractor",
     "OptimalCenterGridFinder",
     "GridAligner",
+    LinRegResidualOutlierRemover
 ]

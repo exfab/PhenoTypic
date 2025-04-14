@@ -93,3 +93,14 @@ class GEOM_LABELS(Enum):
 
     def __str__(self):
         return f'{self.CATEGORY}_{self.label}'
+
+
+class INTENSITY_LABELS(Enum):
+    CATEGORY = ('Intensity', 'The category of the measurements')
+
+    INTEGRATED_INTENSITY = ('IntegratedIntensity', 'The sum of the object\'s pixels')
+    def __init__(self, label, desc=None):
+        self.label, self.desc = label, desc
+
+    def __str__(self):
+        return f'{self.CATEGORY}_{self.label}'

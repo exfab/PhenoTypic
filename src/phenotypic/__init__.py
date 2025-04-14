@@ -1,4 +1,4 @@
-__version__ = "dev"
+__version__ = "0.5.2"
 
 from .core._image import Image
 from .core._imread import imread

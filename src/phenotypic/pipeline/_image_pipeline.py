@@ -1,19 +1,13 @@
-import logging
+from __future__ import annotations
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING: from phenotypic import Image
 
 import pandas as pd
-
-formatter = logging.Formatter(
-        fmt=f'[%(asctime)s|%(name)s] %(levelname)s - %(message)s',
-        datefmt='%m/%d/%Y %I:%M:%S'
-)
-console_handler = logging.StreamHandler()
-log = logging.getLogger(__name__)
-log.addHandler(console_handler)
-console_handler.setFormatter(formatter)
-
 from typing import Dict, Optional, List
+import inspect
+
 from phenotypic.abstract import FeatureMeasure, ImageOperation
-from phenotypic import Image
 
 class ImagePipeline(ImageOperation):
     """
@@ -68,7 +62,11 @@ class ImagePipeline(ImageOperation):
         """
         img = image if inplace else image.copy()
         for key in self._operational_queue.keys():
-            self._operational_queue[key].apply(img, inplace=True)
+            sig = inspect.signature(self._operational_queue[key].apply)
+            if 'inplace' in sig.parameters:
+                self._operational_queue[key].apply(img, inplace=True)
+            else:
+                self._operational_queue[key].apply(img)
         return img
 
 
