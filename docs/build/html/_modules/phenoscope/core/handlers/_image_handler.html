@@ -398,7 +398,7 @@
     <span class="n">ImageEnhancedMatrix</span><span class="p">,</span>
     <span class="n">ObjectMask</span><span class="p">,</span>
     <span class="n">ObjectMap</span><span class="p">,</span>
-    <span class="n">ImageObjects</span>
+    <span class="n">ObjectsAccessor</span>
 <span class="p">)</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenoscope.util.constants_</span><span class="w"> </span><span class="kn">import</span> <span class="n">IMAGE_FORMATS</span><span class="p">,</span> <span class="n">METADATA_LABELS</span>
@@ -449,7 +449,7 @@
 <span class="sd">        __object_mask_subhandler (ObjectMask): Subhandler for managing object masks in the</span>
 <span class="sd">            image.</span>
 <span class="sd">        __object_map_subhandler (ObjectMap): Subhandler for working with object maps.</span>
-<span class="sd">        __objects_subhandler (ImageObjects): Subhandler for managing objects detected in</span>
+<span class="sd">        __objects_subhandler (ObjectsAccessor): Subhandler for managing objects detected in</span>
 <span class="sd">            the image.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
@@ -497,7 +497,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">__det_matrix_subhandler</span><span class="p">:</span> <span class="n">ImageEnhancedMatrix</span> <span class="o">=</span> <span class="n">ImageEnhancedMatrix</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">__object_mask_subhandler</span><span class="p">:</span> <span class="n">ObjectMask</span> <span class="o">=</span> <span class="n">ObjectMask</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">__object_map_subhandler</span><span class="p">:</span> <span class="n">ObjectMap</span> <span class="o">=</span> <span class="n">ObjectMap</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">__objects_subhandler</span><span class="p">:</span> <span class="n">ImageObjects</span> <span class="o">=</span> <span class="n">ImageObjects</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__objects_subhandler</span><span class="p">:</span> <span class="n">ObjectsAccessor</span> <span class="o">=</span> <span class="n">ObjectsAccessor</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">input_image</span><span class="p">,</span> <span class="p">(</span><span class="n">PathLike</span><span class="p">,</span> <span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">)):</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">imread</span><span class="p">(</span><span class="n">input_image</span><span class="p">)</span>
@@ -926,13 +926,13 @@
         <span class="k">return</span> <span class="n">ski</span><span class="o">.</span><span class="n">measure</span><span class="o">.</span><span class="n">regionprops</span><span class="p">(</span><span class="n">label_image</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">fill_value</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span> <span class="n">intensity_image</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_matrix</span><span class="p">,</span> <span class="n">cache</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 
     <span class="nd">@property</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">objects</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ImageObjects</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">objects</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ObjectsAccessor</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Returns an acessor to the objects in an image and perform operations on them, such as measurement calculations.</span>
 
-<span class="sd">        This method provides access to `ImageObjects`.</span>
+<span class="sd">        This method provides access to `ObjectsAccessor`.</span>
 
 <span class="sd">        Returns:</span>
-<span class="sd">            ImageObjects: The subhandler instance that manages image-related objects.</span>
+<span class="sd">            ObjectsAccessor: The subhandler instance that manages image-related objects.</span>
 
 <span class="sd">        Raises:</span>
 <span class="sd">            NoObjectsError: If no objects are targeted in the image. Apply an ObjectDetector first.</span>

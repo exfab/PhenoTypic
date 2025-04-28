@@ -44,7 +44,7 @@ High-Level Object Interfaces
 
 These classes provide consolidated access to manage multiple object-level and metadata components.
 
-1. :class:`ImageObjects`
+1. :class:`ObjectsAccessor`
     Facilitates high-level interaction with detected objects within an image. Features include:
 
     - Feature extraction
@@ -95,12 +95,12 @@ from ._image_accessor import ImageAccessor
 from ._image_array_accessor import ImageArray
 from ._image_matrix_accessor import ImageMatrix
 from ._image_enh_matrix_accessor import ImageEnhancedMatrix
-from ._objmap import ObjectMap
-from ._objmask import ObjectMask
+from ._objmap_accessor import ObjectMap
+from ._objmask_accessor import ObjectMask
 
-from ._image_objects_accessor import ImageObjects
+from ._image_objects_accessor import ObjectsAccessor
 # from ._measurement_container_interface import MeasurementAccessor
-# from ._metadata_container_interface import MetadataAccessor
+from ._metadata_accessor import MetadataAccessor
 
 from ._hsv_accessor import HsvAccessor
 from ._grid_accessor import GridAccessor
@@ -113,9 +113,8 @@ __all__ = [
     "ImageEnhancedMatrix",
     "ObjectMap",
     "ObjectMask",
-    "ImageObjects",
+    "ObjectsAccessor",
     "HsvAccessor",
     "GridAccessor",
-    # "MeasurementAccessor",
-    # "MetadataAccessor",
+    "MetadataAccessor",
 ]

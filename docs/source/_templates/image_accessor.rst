@@ -16,7 +16,7 @@
     "enh_matrix": "ImageEnhancedMatrix",
     "objmap": "ObjectMap",
     "objmask": "ObjectMask",
-    "objects": "ImageObjects",
+    "objects": "ObjectsAccessor",
     "hsv": "HsvAccessor",
     "grid": "GridAccessor"
 } %}

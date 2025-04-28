@@ -12,7 +12,7 @@ from typing import List
 from phenotypic.core.accessors import ImageAccessor
 
 
-class ImageObjects(ImageAccessor):
+class ObjectsAccessor(ImageAccessor):
     """An accessor for an image objects and provides various utilities for interacting with labeled objects in an image.
 
     This class provides methods to retrieve information about labeled objects, interact with object properties,

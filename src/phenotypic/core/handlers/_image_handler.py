@@ -26,7 +26,8 @@ from ..accessors import (
     ImageEnhancedMatrix,
     ObjectMask,
     ObjectMap,
-    ImageObjects
+    ObjectsAccessor,
+    MetadataAccessor
 )
 
 from phenotypic.util.constants_ import IMAGE_FORMATS, METADATA_LABELS
@@ -66,23 +67,23 @@ class ImageHandler:
         _public_metadata (Dict[str, Union[int, float, str, bool, np.integer, np.floating,
             np.complexfloating]]): Public metadata that can be fully edited or
             removed without restrictions.
-        __array_subhandler (ImageArray): Subhandler responsible for array-based operations.
+        __array_accessor (ImageArray): Subhandler responsible for array-based operations.
             Extends functionality for working with image arrays.
         __matrix_accessor (ImageMatrix): Subhandler for performing operations on the image
             matrix representation.
         __enh_matrix_accessor (ImageDetectionMatrix): Subhandler for handling detection
             matrix operations.
-        __object_mask_subhandler (ObjectMask): Subhandler for managing object masks in the
+        __object_mask_accessor (ObjectMask): Subhandler for managing object masks in the
             image.
-        __object_map_subhandler (ObjectMap): Subhandler for working with object maps.
-        __objects_subhandler (ImageObjects): Subhandler for managing objects detected in
+        __object_map_accessor (ObjectMap): Subhandler for working with object maps.
+        __objects_accessor (ObjectsAccessor): Subhandler for managing objects detected in
             the image.
     """
 
     def __init__(self,
-                 input_image: None | Union[np.ndarray, Image, PathLike] = None,
-                 imformat: None | str = None,
-                 name: Optional[str] = None):
+                 input_image: np.ndarray | Image | PathLike | None = None,
+                 imformat: str | None = None,
+                 name: str | None = None):
         """
         Args:
             input_image: An optional input image represented as either a NumPy array or an image
@@ -100,28 +101,27 @@ class ImageHandler:
         # Initialize core backend variables
         self.__image_format = None
 
-        # Private metadata cannot be edited and is not duplicated with copies of the class
+        # Private metadata should not be edited outside the class initialization
         self._private_metadata = {
             METADATA_LABELS.UUID: uuid.uuid4()
         }
 
-        # Protected Metadata can be edited, but not removed
-        self._protected_metadata: Dict[
-            str, Optional[Union[int, float, str, bool, np.integer, np.floating, np.bool_, np.complexfloating]]
-        ] = {
-            METADATA_LABELS.IMAGE_NAME: name if name is not None else self._private_metadata[METADATA_LABELS.UUID],
+        # Protected Metadata can be edited, but not fully removed from the dict
+        self._protected_metadata: Dict[str, Optional[Union[int, float, str, bool]]] = {
+            METADATA_LABELS.IMAGE_NAME: name,
         }
 
         # Public metadata can be edited or removed
-        self._public_metadata: Dict[str, Union[int, float, str, bool, np.integer, np.floating, np.bool_, np.complexfloating]] = {}
+        self._public_metadata: Dict[str, int | float | str | bool | None] = {}
 
         # Initialize image component handlers
-        self.__array_subhandler: ImageArray = ImageArray(self)
+        self.__array_accessor: ImageArray = ImageArray(self)
         self.__matrix_accessor: ImageMatrix = ImageMatrix(self)
         self.__enh_matrix_accessor: ImageEnhancedMatrix = ImageEnhancedMatrix(self)
-        self.__object_mask_subhandler: ObjectMask = ObjectMask(self)
-        self.__object_map_subhandler: ObjectMap = ObjectMap(self)
-        self.__objects_subhandler: ImageObjects = ImageObjects(self)
+        self.__object_mask_accessor: ObjectMask = ObjectMask(self)
+        self.__object_map_accessor: ObjectMap = ObjectMap(self)
+        self.__objects_accessor: ObjectsAccessor = ObjectsAccessor(self)
+        self.__metadata_accessor: MetadataAccessor = MetadataAccessor(self)
 
         if isinstance(input_image, (PathLike, str, Path)):
             self.imread(input_image)
@@ -166,10 +166,14 @@ class ImageHandler:
 
         if isinstance(value, ImageHandler) or issubclass(type(value), ImageHandler):
             if value.imformat not in IMAGE_FORMATS.MATRIX_FORMATS and self.imformat not in IMAGE_FORMATS.MATRIX_FORMATS:
-                if np.array_equal(self.array[key].shape, value.array.shape) is False: raise ValueError('The image being set must be of the same shape as the image elements being accessed.')
+                if np.array_equal(self.array[key].shape, value.array.shape) is False: raise ValueError(
+                    'The image being set must be of the same shape as the image elements being accessed.'
+                )
                 self._array[key] = value.array[:]
 
-            if np.array_equal(self.matrix[key].shape, value.matrix.shape) is False: raise ValueError('The image being set must be of the same shape as the image elements being accessed.')
+            if np.array_equal(self.matrix[key].shape, value.matrix.shape) is False: raise ValueError(
+                'The image being set must be of the same shape as the image elements being accessed.'
+            )
             self._matrix[key] = value.matrix[:]
             self._enh_matrix[key] = value.enh_matrix[:]
             self.objmask[key] = value.objmask[:]
@@ -193,9 +197,10 @@ class ImageHandler:
         return True if self._matrix is None else False
 
     @property
-    def name(self):
-        """Returns the name of the image. If no name is set, the name will be the file stem of the image."""
-        return self._protected_metadata[METADATA_LABELS.IMAGE_NAME]
+    def name(self) -> str:
+        """Returns the name of the image. If no name is set, the name will be the uuid of the image."""
+        name = self._protected_metadata.get(METADATA_LABELS.IMAGE_NAME)
+        return name if name else str(self.uuid)
 
     @name.setter
     def name(self, value):
@@ -252,7 +257,7 @@ class ImageHandler:
             else:
                 raise NoArrayError
         else:
-            return self.__array_subhandler
+            return self.__array_accessor
 
     @array.setter
     def array(self, value):
@@ -327,7 +332,7 @@ class ImageHandler:
         if self._sparse_object_map is None:
             raise EmptyImageError
         else:
-            return self.__object_mask_subhandler
+            return self.__object_mask_accessor
 
     @objmask.setter
     def objmask(self, object_mask):
@@ -354,7 +359,7 @@ class ImageHandler:
         if self._sparse_object_map is None:
             raise EmptyImageError
         else:
-            return self.__object_map_subhandler
+            return self.__object_map_accessor
 
     @objmap.setter
     def objmap(self, object_map):
@@ -541,13 +546,13 @@ class ImageHandler:
         return ski.measure.regionprops(label_image=np.full(shape=self.shape, fill_value=1), intensity_image=self._matrix, cache=False)
 
     @property
-    def objects(self) -> ImageObjects:
+    def objects(self) -> ObjectsAccessor:
         """Returns an acessor to the objects in an image and perform operations on them, such as measurement calculations.
 
         This method provides access to `ImageObjects`.
 
         Returns:
-            ImageObjects: The subhandler instance that manages image-related objects.
+            ObjectsAccessor: The subhandler instance that manages image-related objects.
 
         Raises:
             NoObjectsError: If no objects are targeted in the image. Apply an ObjectDetector first.
@@ -555,7 +560,7 @@ class ImageHandler:
         if self.num_objects == 0:
             raise NoObjectsError(self.name)
         else:
-            return self.__objects_subhandler
+            return self.__objects_accessor
 
     @objects.setter
     def objects(self, objects):
@@ -658,7 +663,7 @@ class ImageHandler:
         self.__enh_matrix_accessor.reset()
 
         if self._sparse_object_map is None or matrix.shape != self._sparse_object_map.shape:
-            self.__object_map_subhandler.reset()
+            self.__object_map_accessor.reset()
 
     def _set_from_rgb(self, rgb_array: np.ndarray):
         """Initializes all the components of an image from an RGB array

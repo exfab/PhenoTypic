@@ -9,6 +9,7 @@ import warnings
 import matplotlib.pyplot as plt
 import pandas as pd
 from skimage.color import label2rgb
+from packaging import version
 
 import phenotypic
 from phenotypic.core.accessors import ImageAccessor
@@ -72,18 +73,39 @@ class GridAccessor(ImageAccessor):
         return np.reshape(np.arange(self.nrows * self.ncols), newshape=(self.nrows, self.ncols))
 
     def __getitem__(self, idx):
+        """
+        Returns a crop of the grid section based on its flattened index.
+
+        The grid is ordered from left to right, top to bottom. If no objects
+        are present in the parent image, the original image is returned.
+
+        Args:
+            idx (int): The flattened index of the grid section to be
+                extracted.
+
+        Returns:
+            phenotypic.Image: The cropped grid section as defined by the
+            given flattened index, or the original parent image if no
+            objects are present.
+        """
         if self._parent_image.objects.num_objects != 0:
-            """Returns a crop of the grid section based on it's flattened index. Ordered left to right, top to bottom."""
-            row_edges, col_edges = self.get_row_edges(), self.get_col_edges()
-            row_pos, col_pos = np.where(self._idx_ref_matrix == idx)
-            min_cc = col_edges[col_pos]
-            max_cc = col_edges[col_pos + 1]
-            min_rr = row_edges[row_pos]
-            max_rr = row_edges[row_pos + 1]
-            return phenotypic.Image(self._parent_image[int(min_rr):int(max_rr), int(min_cc):int(max_cc)])
+            min_coords, max_coords = self._adv_get_grid_section_slices(idx)
+            min_rr, min_cc = min_coords
+            max_rr, max_cc = max_coords
+
+
+            section_image = phenotypic.Image(self._parent_image[int(min_rr):int(max_rr), int(min_cc):int(max_cc)])
+
+            # Remove objects that don't belong in that grid section from the subimage
+            objmap = section_image.objmap[:]
+            objmap[np.isin(objmap, self._get_section_labels(idx))] = 0
+            section_image.objmap = objmap
+
+            return section_image
         else:
             return phenotypic.Image(self._parent_image)
 
+    # This feels out of place. Maybe move to a measurement module in future updates
     def get_linreg_info(self, axis) -> Tuple[np.ndarray[float], np.ndarray[float]]:
         """
         Returns the slope and intercept of a line of best fit across the objects of a certain axis.
@@ -106,21 +128,32 @@ class GridAccessor(ImageAccessor):
         # Generate & temporarilty cache grid_info to reduce runtime
         grid_info = self.info()
 
-        # Create empty vectores to store m & b for all values
+        # Create empty vectors to store m & b for all values
         m_slope = np.full(shape=N, fill_value=np.nan)
         b_intercept = np.full(shape=N, fill_value=np.nan)
 
         # Collect slope & intercept for the rows or columns
         for idx in range(N):
-            if hasattr(np, 'RankWarning'):
-                warnings.simplefilter('ignore',
-                                      np.RankWarning
-                                      )  # TODO: When upgrading numpy version this will need to change
-            m_slope[idx], b_intercept[idx] = np.polyfit(
-                x=grid_info.loc[grid_info.loc[:, x_group] == idx, x_val],
-                y=grid_info.loc[grid_info.loc[:, x_group] == idx, y_val],
-                deg=1
-            )
+            # Get the current NumPy version
+            np_version = np.__version__
+
+            if version.parse(np_version) < version.parse("1.16.0"):
+                # For NumPy versions older than 1.16, use warnings.catch_warnings to suppress RankWarning.
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore", np.RankWarning)
+                    m_slope[idx], b_intercept[idx] = np.polyfit(
+                        x=grid_info.loc[grid_info.loc[:, x_group] == idx, x_val],
+                        y=grid_info.loc[grid_info.loc[:, x_group] == idx, y_val],
+                        deg=1
+                    )
+            else:
+                # For newer versions, simply call polyfit as the warning behavior may have changed or been improved.
+                m_slope[idx], b_intercept[idx] = np.polyfit(
+                    x=grid_info.loc[grid_info.loc[:, x_group] == idx, x_val],
+                    y=grid_info.loc[grid_info.loc[:, x_group] == idx, y_val],
+                    deg=1
+                )
+
         return m_slope, np.round(b_intercept)
 
     """
@@ -270,3 +303,43 @@ class GridAccessor(ImageAccessor):
             return grid_info.loc[grid_info.loc[:, GRID.GRID_ROW_NUM] == section_number[1], :]
         else:
             raise ValueError('Section index should be int or a tuple of indexes')
+
+    def _naive_get_grid_section_slices(self, idx)->((int, int), (int, int)):
+        """Returns the exact slices of a grid section based on its flattened index
+
+        Note:
+            - Can crop objects in the image
+
+        Return:
+            (int, int, int, int): ((MinRow, MinCol), (MaxRow, MaxCol)) The slices to extract the grid section from the image.
+        """
+        row_edges, col_edges = self.get_row_edges(), self.get_col_edges()
+        row_pos, col_pos = np.where(self._idx_ref_matrix == idx)
+        min_cc = col_edges[col_pos]
+        max_cc = col_edges[col_pos + 1]
+        min_rr = row_edges[row_pos]
+        max_rr = row_edges[row_pos + 1]
+        return (min_rr, min_cc), (max_rr, max_cc)
+
+    def _adv_get_grid_section_slices(self, idx)->((int, int), (int, int)):
+        """Returns the slices of a grid section based on its flattened index, and accounts for objects boundaries.
+
+            Note:
+                - Can crop objects in the image
+
+            Return:
+                (int, int, int, int): ((MinRow, MinCol), (MaxRow, MaxCol)) The slices to extract the grid section from the image.
+        """
+        grid_info = self.info()
+        section_info = grid_info.loc[grid_info.loc[:, GRID.GRID_SECTION_NUM] == idx, :]
+        min_cc = section_info.loc[:, OBJECT_INFO.MIN_CC].min()
+        max_cc = section_info.loc[:, OBJECT_INFO.MAX_CC].max()
+        min_rr = section_info.loc[:, OBJECT_INFO.MIN_RR].min()
+        max_rr = section_info.loc[:, OBJECT_INFO.MAX_RR].max()
+        return (min_rr, min_cc), (max_rr, max_cc)
+
+    def _get_section_labels(self, idx)->list[int]:
+        """Returns a list of labels for a grid section based on its flattened index"""
+        grid_info = self.info()
+        section_info = grid_info.loc[grid_info.loc[:, GRID.GRID_SECTION_NUM] == idx, :]
+        return section_info.index.to_list()

@@ -13,6 +13,7 @@ from skimage.exposure import histogram
 from phenotypic.core.accessors import ImageAccessor
 from phenotypic.util.exceptions_ import ArrayKeyValueShapeMismatchError
 from phenotypic.util.constants_ import IMAGE_FORMATS
+from warnings import warn
 
 
 class ImageMatrix(ImageAccessor):
@@ -42,8 +43,8 @@ class ImageMatrix(ImageAccessor):
 
     def __setitem__(self, key, value):
         """
-        Sets the value for a given key in the parent image's matrix. Updates the parent
-        image data and schema accordingly to ensure consistency with the provided value.
+        Sets the value for a given key in the parent image's matrix. Changes are not reflected in the color matrix,
+        and any objects detected are reset.
 
         Args:
             key: The key in the matrix to update.
@@ -60,7 +61,8 @@ class ImageMatrix(ImageAccessor):
 
         self._parent_image._matrix[key] = value
         if self._parent_image.imformat not in IMAGE_FORMATS.MATRIX_FORMATS:
-            self._parent_image.set_image(input_image=gray2rgb(self._parent_image._matrix), imformat=IMAGE_FORMATS.RGB)
+            warn("Change to an image's matrix data is not reflected in the color array representation because the color information is lost")
+            # self._parent_image.set_image(input_image=gray2rgb(self._parent_image._matrix), imformat=IMAGE_FORMATS.RGB)
         else:
             self._parent_image.set_image(input_image=self._parent_image._matrix, imformat=IMAGE_FORMATS.GRAYSCALE)
 
