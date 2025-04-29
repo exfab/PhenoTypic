@@ -377,12 +377,12 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">skimage.util</span><span class="w"> </span><span class="kn">import</span> <span class="n">img_as_ubyte</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">..</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">..abstract</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImagePreprocessor</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..abstract</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImageEnhancer</span>
 
 
 <div class="viewcode-block" id="RankMedianPreprocessor">
 <a class="viewcode-back" href="../../../api_reference/phenoscope.preprocessing.html#phenoscope.preprocessing.RankMedianPreprocessor">[docs]</a>
-<span class="k">class</span><span class="w"> </span><span class="nc">RankMedianPreprocessor</span><span class="p">(</span><span class="n">ImagePreprocessor</span><span class="p">):</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">RankMedianEnhancer</span><span class="p">(</span><span class="n">ImageEnhancer</span><span class="p">):</span>
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">footprint_shape</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;square&#39;</span><span class="p">,</span> <span class="n">footprint_radius</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">shift_x</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">shift_y</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
         <span class="k">if</span> <span class="n">footprint_shape</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;disk&#39;</span><span class="p">,</span> <span class="s1">&#39;square&#39;</span><span class="p">,</span> <span class="s1">&#39;sphere&#39;</span><span class="p">,</span> <span class="s1">&#39;cube&#39;</span><span class="p">]:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;footprint shape </span><span class="si">{</span><span class="n">footprint_shape</span><span class="si">}</span><span class="s1"> is not supported&#39;</span><span class="p">)</span>

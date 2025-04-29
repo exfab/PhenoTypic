@@ -24,7 +24,7 @@ class ObjectMask(ImageAccessor):
 
     def __getitem__(self, key):
         """Returns a copy of the binary object mask in array form"""
-        return (self._parent_image.objmap[key] > 0).astype(np.bool_)
+        return (self._parent_image.objmap[key] > 0).astype(int)
 
     def __setitem__(self, key, value: np.ndarray):
         """Sets values of the object mask to value and resets the labeling in the map"""

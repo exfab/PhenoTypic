@@ -1,10 +1,10 @@
 from skimage.filters import gaussian
 
-from ..abstract import ImagePreprocessor
+from ..abstract import ImageEnhancer
 from .. import Image
 
 
-class GaussianSmoother(ImagePreprocessor):
+class GaussianSmoother(ImageEnhancer):
     """
     Applies Gaussian smoothing (blurring) to the enhanced matrix of an image; Helps with salt & pepper noise.
 

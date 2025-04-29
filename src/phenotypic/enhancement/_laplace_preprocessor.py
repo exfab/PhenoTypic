@@ -2,13 +2,13 @@ from skimage.filters import laplace
 from typing import Optional
 import numpy as np
 
-from ..abstract import ImagePreprocessor
+from ..abstract import ImageEnhancer
 from .. import Image
 
 
-class LaplacePreprocessor(ImagePreprocessor):
+class LaplaceEnhancer(ImageEnhancer):
     """
-    The LaplacePreprocessor class applies a Laplacian filter to an image's enhanced matrix.
+    The LaplaceEnhancer class applies a Laplacian filter to an image's enhanced matrix.
 
     This class is designed to preprocess images by enhancing their features using
     a Laplacian operation. The filter applies edge detection, which emphasizes

@@ -146,7 +146,7 @@ class NoObjectsError(AttributeError):
     def __init__(self, image_name=None):
         image_str = f' "{image_name}"' if image_name else ""
         super().__init__(
-            f"No objects currently in image{image_str}. Apply a `Detector` to the Image object first or access image-wide information using Image.props"
+            f"No objects currently in image:{image_str}. Apply a `Detector` to the Image object first or access image-wide information using Image.props"
             )
 
 

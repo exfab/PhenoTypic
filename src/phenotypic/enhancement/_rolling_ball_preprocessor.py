@@ -2,10 +2,10 @@ import numpy as np
 from skimage.restoration import rolling_ball
 
 from .. import Image
-from ..abstract import ImagePreprocessor
+from ..abstract import ImageEnhancer
 
 
-class RollingBallPreprocessor(ImagePreprocessor):
+class RollingBallEnhancer(ImageEnhancer):
     def __init__(self, radius: int = 100, kernel: np.ndarray = None, nansafe: bool = False, num_threads: int = None):
         self._radius: int = radius
         self._kernel: np.ndarray = kernel

@@ -373,13 +373,13 @@
   <h1>Source code for phenoscope.preprocessing._gaussian_preprocessor</h1><div class="highlight"><pre>
 <span></span><span class="kn">from</span><span class="w"> </span><span class="nn">skimage.filters</span><span class="w"> </span><span class="kn">import</span> <span class="n">gaussian</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">..abstract</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImagePreprocessor</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..abstract</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImageEnhancer</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">..</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span>
 
 
 <div class="viewcode-block" id="GaussianPreprocessor">
 <a class="viewcode-back" href="../../../api_reference/phenoscope.preprocessing.html#phenoscope.preprocessing.GaussianPreprocessor">[docs]</a>
-<span class="k">class</span><span class="w"> </span><span class="nc">GaussianPreprocessor</span><span class="p">(</span><span class="n">ImagePreprocessor</span><span class="p">):</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">GaussianPreprocessor</span><span class="p">(</span><span class="n">ImageEnhancer</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Applies Gaussian filtering to enhance the image&#39;s enhanced matrix data.</span>
 

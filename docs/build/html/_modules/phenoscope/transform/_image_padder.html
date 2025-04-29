@@ -374,13 +374,13 @@
 <span></span><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">..</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">..abstract</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImageTransformer</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..abstract</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImageCorrector</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">..util.constants_</span><span class="w"> </span><span class="kn">import</span> <span class="n">IMAGE_FORMATS</span>
 
 
 <div class="viewcode-block" id="ImagePadder">
 <a class="viewcode-back" href="../../../api_reference/phenoscope.transform.html#phenoscope.transform.ImagePadder">[docs]</a>
-<span class="k">class</span><span class="w"> </span><span class="nc">ImagePadder</span><span class="p">(</span><span class="n">ImageTransformer</span><span class="p">):</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">ImagePadder</span><span class="p">(</span><span class="n">ImageCorrector</span><span class="p">):</span>
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pad_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">50</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;edge&#39;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">pad_size</span><span class="p">)</span> <span class="o">==</span> <span class="nb">int</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">__pad_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">pad_size</span>

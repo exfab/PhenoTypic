@@ -487,7 +487,7 @@ operates on a copy of the image.</p></li>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="phenoscope.abstract.ImagePreprocessor">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenoscope.abstract.</span></span><span class="sig-name descname"><span class="pre">ImagePreprocessor</span></span><a class="reference internal" href="../_modules/phenoscope/abstract/_image_preprocessor.html#ImagePreprocessor"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenoscope.abstract.ImagePreprocessor" title="Link to this definition">#</a></dt>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenoscope.abstract.</span></span><span class="sig-name descname"><span class="pre">ImageEnhancer</span></span><a class="reference internal" href="../_modules/phenoscope/abstract/_image_preprocessor.html#ImagePreprocessor"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenoscope.abstract.ImagePreprocessor" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference internal" href="#phenoscope.abstract.ImageOperation" title="phenoscope.abstract._image_operation.ImageOperation"><code class="xref py py-class docutils literal notranslate"><span class="pre">ImageOperation</span></code></a></p>
 <dl class="py method">
 <dt class="sig sig-object py" id="phenoscope.abstract.ImagePreprocessor.apply">
@@ -514,7 +514,7 @@ operates on a copy of the image.</p></li>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="phenoscope.abstract.ImageTransformer">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenoscope.abstract.</span></span><span class="sig-name descname"><span class="pre">ImageTransformer</span></span><a class="reference internal" href="../_modules/phenoscope/abstract/_image_transformer.html#ImageTransformer"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenoscope.abstract.ImageTransformer" title="Link to this definition">#</a></dt>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenoscope.abstract.</span></span><span class="sig-name descname"><span class="pre">ImageCorrector</span></span><a class="reference internal" href="../_modules/phenoscope/abstract/_image_transformer.html#ImageTransformer"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenoscope.abstract.ImageTransformer" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference internal" href="#phenoscope.abstract.ImageOperation" title="phenoscope.abstract._image_operation.ImageOperation"><code class="xref py py-class docutils literal notranslate"><span class="pre">ImageOperation</span></code></a></p>
 <p>ImageTransformers are for general operations that alter every image component such as rotating. These have no integrity checks.</p>
 <dl class="py method">
@@ -667,12 +667,12 @@ the output mask (<cite>omask</cite>) to True if the condition is satisfied.</p>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#phenoscope.abstract.ImageOperation.apply"><code class="docutils literal notranslate"><span class="pre">ImageOperation.apply()</span></code></a></li>
 </ul>
 </li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenoscope.abstract.ImagePreprocessor"><code class="docutils literal notranslate"><span class="pre">ImagePreprocessor</span></code></a><ul class="visible nav section-nav flex-column">
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#phenoscope.abstract.ImagePreprocessor.apply"><code class="docutils literal notranslate"><span class="pre">ImagePreprocessor.apply()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenoscope.abstract.ImagePreprocessor"><code class="docutils literal notranslate"><span class="pre">ImageEnhancer</span></code></a><ul class="visible nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#phenoscope.abstract.ImagePreprocessor.apply"><code class="docutils literal notranslate"><span class="pre">ImageEnhancer.apply()</span></code></a></li>
 </ul>
 </li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenoscope.abstract.ImageTransformer"><code class="docutils literal notranslate"><span class="pre">ImageTransformer</span></code></a><ul class="visible nav section-nav flex-column">
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#phenoscope.abstract.ImageTransformer.apply"><code class="docutils literal notranslate"><span class="pre">ImageTransformer.apply()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenoscope.abstract.ImageTransformer"><code class="docutils literal notranslate"><span class="pre">ImageCorrector</span></code></a><ul class="visible nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#phenoscope.abstract.ImageTransformer.apply"><code class="docutils literal notranslate"><span class="pre">ImageCorrector.apply()</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenoscope.abstract.MapModifier"><code class="docutils literal notranslate"><span class="pre">MapModifier</span></code></a><ul class="visible nav section-nav flex-column">

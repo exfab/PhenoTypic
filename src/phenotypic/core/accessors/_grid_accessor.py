@@ -14,6 +14,7 @@ from packaging import version
 import phenotypic
 from phenotypic.core.accessors import ImageAccessor
 from phenotypic.util.constants_ import OBJECT_INFO, GRID
+from phenotypic.util.exceptions_ import NoObjectsError
 
 
 class GridAccessor(ImageAccessor):
@@ -97,7 +98,7 @@ class GridAccessor(ImageAccessor):
             section_image = phenotypic.Image(self._parent_image[int(min_rr):int(max_rr), int(min_cc):int(max_cc)])
 
             # Remove objects that don't belong in that grid section from the subimage
-            objmap = section_image.objmap[:]
+            objmap = section_image.objmap[:].copy()
             objmap[np.isin(objmap, self._get_section_labels(idx))] = 0
             section_image.objmap = objmap
 
@@ -112,6 +113,8 @@ class GridAccessor(ImageAccessor):
         Args:
             axis: (int) 0=row-wise & 1=column-wise
         """
+        if self._parent_image.objects.num_objects == 0:
+            raise NoObjectsError(self._parent_image.name)
         if axis == 0:
             N = self.nrows
             x_group = GRID.GRID_ROW_NUM
@@ -125,7 +128,7 @@ class GridAccessor(ImageAccessor):
         else:
             raise ValueError('Axis should be 0 or 1.')
 
-        # Generate & temporarilty cache grid_info to reduce runtime
+        # Generate a temporary cache grid_info to reduce runtime
         grid_info = self.info()
 
         # Create empty vectors to store m & b for all values
@@ -332,10 +335,19 @@ class GridAccessor(ImageAccessor):
         """
         grid_info = self.info()
         section_info = grid_info.loc[grid_info.loc[:, GRID.GRID_SECTION_NUM] == idx, :]
+
         min_cc = section_info.loc[:, OBJECT_INFO.MIN_CC].min()
+        if min_cc < 0: min_cc = 0
+
         max_cc = section_info.loc[:, OBJECT_INFO.MAX_CC].max()
+        if max_cc > self._parent_image.shape[1]-1: max_cc = self._parent_image.shape[1]-1
+
         min_rr = section_info.loc[:, OBJECT_INFO.MIN_RR].min()
+        if min_rr < 0: min_rr = 0
+
         max_rr = section_info.loc[:, OBJECT_INFO.MAX_RR].max()
+        if max_rr > self._parent_image.shape[0]-1: max_rr = self._parent_image.shape[0]-1
+
         return (min_rr, min_cc), (max_rr, max_cc)
 
     def _get_section_labels(self, idx)->list[int]:

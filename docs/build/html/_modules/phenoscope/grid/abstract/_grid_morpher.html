@@ -378,14 +378,14 @@
 
 <span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span> <span class="kn">from</span><span class="w"> </span><span class="nn">phenoscope</span><span class="w"> </span><span class="kn">import</span> <span class="n">GridImage</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">phenoscope.abstract</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImageTransformer</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenoscope.abstract</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImageCorrector</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenoscope.grid.abstract</span><span class="w"> </span><span class="kn">import</span> <span class="n">GridOperation</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenoscope.util.exceptions_</span><span class="w"> </span><span class="kn">import</span> <span class="n">GridImageInputError</span><span class="p">,</span> <span class="n">OutputValueError</span>
 
 
 <div class="viewcode-block" id="GridTransformer">
 <a class="viewcode-back" href="../../../../api_reference/phenoscope.grid.abstract.html#phenoscope.grid.abstract.GridTransformer">[docs]</a>
-<span class="k">class</span><span class="w"> </span><span class="nc">GridTransformer</span><span class="p">(</span><span class="n">ImageTransformer</span><span class="p">,</span> <span class="n">GridOperation</span><span class="p">):</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">GridTransformer</span><span class="p">(</span><span class="n">ImageCorrector</span><span class="p">,</span> <span class="n">GridOperation</span><span class="p">):</span>
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">n_rows</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">n_cols</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">n_rows</span> <span class="o">=</span> <span class="n">n_rows</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">n_cols</span> <span class="o">=</span> <span class="n">n_cols</span>

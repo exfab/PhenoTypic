@@ -9,7 +9,7 @@ from phenotypic.util.exceptions_ import InterfaceError, DataIntegrityError, Oper
 from phenotypic.util.constants_ import IMAGE_FORMATS
 
 
-class ImagePreprocessor(ImageOperation):
+class ImageEnhancer(ImageOperation):
     def __init__(self):
         pass
 
@@ -17,6 +17,9 @@ class ImagePreprocessor(ImageOperation):
         try:
             # Make a copy for post checking
             imcopy = image.copy()
+
+            # Reset the object map in case the inherited class forgets to do so
+            image.objmap.reset()
 
             if inplace:
                 output = self._operate(image)

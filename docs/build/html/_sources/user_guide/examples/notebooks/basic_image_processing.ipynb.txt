@@ -216,15 +216,15 @@
     }
    ],
    "source": [
-    "from phenoscope.preprocessing import MedianPreprocessor\n",
+    "from phenoscope.preprocessing import MedianEnhancer\n",
     "import matplotlib.pyplot as plt\n",
     "\n",
     "fig, axes = plt.subplots(nrows=2,ncols=2)\n",
     "img.array.show(ax=axes[0,0], title='original array')\n",
     "img.enh_matrix.show(ax=axes[1,0], title='original matrix')\n",
     "\n",
-    "MedianPreprocessor = MedianPreprocessor()\n",
-    "img = MedianPreprocessor.apply(img)\n",
+    "MedianEnhancer = MedianEnhancer()\n",
+    "img = MedianEnhancer.apply(img)\n",
     "\n",
     "img.array.show(ax=axes[0,1],title='New Array')\n",
     "img.enh_matrix.show(ax=axes[1,1],title='New Matrix')\n",

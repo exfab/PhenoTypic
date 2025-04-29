@@ -5,12 +5,12 @@ import pandas as pd
 
 if TYPE_CHECKING: from phenotypic import GridImage
 
-from phenotypic.abstract import ImageTransformer
+from phenotypic.abstract import ImageCorrector
 from phenotypic.abstract import GridOperation
 from phenotypic.util.exceptions_ import GridImageInputError, OutputValueError
 
 
-class GridTransformer(ImageTransformer, GridOperation):
+class GridTransformer(ImageCorrector, GridOperation):
     def __init__(self, n_rows: int, n_cols: int):
         self.n_rows = n_rows
         self.n_cols = n_cols

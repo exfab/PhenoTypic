@@ -60,8 +60,8 @@ class ObjectMap(ImageAccessor):
                 raise ArrayKeyValueShapeMismatchError
 
             dense[key] = value
-        elif type(value) == int:
-            dense[key] = value
+        elif type(value) in {bool, int, float}:
+            dense[key] = int(value)
         else:
             raise InvalidMapValueError
 

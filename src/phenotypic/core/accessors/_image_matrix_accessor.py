@@ -58,13 +58,14 @@ class ImageMatrix(ImageAccessor):
         if isinstance(value, np.ndarray):
             if self._parent_image._matrix[key].shape != value.shape:
                 raise ArrayKeyValueShapeMismatchError
+        elif value in {bool, int, float}:
+            pass
+        else:
+            raise TypeError(f'Unsupported type for setting the matrix. Value should be scalar or a numpy array: {type(value)}')
 
         self._parent_image._matrix[key] = value
-        if self._parent_image.imformat not in IMAGE_FORMATS.MATRIX_FORMATS:
-            warn("Change to an image's matrix data is not reflected in the color array representation because the color information is lost")
-            # self._parent_image.set_image(input_image=gray2rgb(self._parent_image._matrix), imformat=IMAGE_FORMATS.RGB)
-        else:
-            self._parent_image.set_image(input_image=self._parent_image._matrix, imformat=IMAGE_FORMATS.GRAYSCALE)
+        self._parent_image.enh_matrix.reset()
+        self._parent_image.objmap.reset()
 
     @property
     def shape(self) -> tuple:

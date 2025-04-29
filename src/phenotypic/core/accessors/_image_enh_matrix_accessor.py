@@ -50,6 +50,9 @@ class ImageEnhancedMatrix(ImageAccessor):
         `ArrayKeyValueShapeMismatchError` is raised. When the value is successfully set,
         the object map (`objmap`) of the parent image is reset.
 
+        Notes:
+            Objects are reset after setting a value in the detection matrix
+
         Args:
             key: The key in the detection matrix where the value will be set.
             value: The value to be assigned to the detection matrix. Must be of type
@@ -162,7 +165,7 @@ class ImageEnhancedMatrix(ImageAccessor):
         objmap = self._parent_image.objmap[:]
         if object_label is not None: objmap[objmap == object_label] = 0
 
-        fig, ax = self._plot(
+        fig, ax = self._plot_overlay(
             arr=self._parent_image.enh_matrix[:],
             objmap=objmap,
             figsize=figsize,

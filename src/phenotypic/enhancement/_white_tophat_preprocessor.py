@@ -1,11 +1,11 @@
 import numpy as np
 from skimage.morphology import disk, square, white_tophat, cube, ball
 
-from ..abstract import ImagePreprocessor
+from ..abstract import ImageEnhancer
 from .. import Image
 
 
-class WhiteTophatPreprocessor(ImagePreprocessor):
+class WhiteTophatEnhancer(ImageEnhancer):
     def __init__(self, footprint_shape='disk', footprint_radius: int = None):
         self._footprint_shape = footprint_shape
         self._footprint_radius = footprint_radius

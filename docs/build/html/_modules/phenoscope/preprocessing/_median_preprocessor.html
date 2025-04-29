@@ -372,16 +372,16 @@
                   
   <h1>Source code for phenoscope.preprocessing._median_preprocessor</h1><div class="highlight"><pre>
 <span></span><span class="kn">from</span><span class="w"> </span><span class="nn">..</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">..abstract</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImagePreprocessor</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..abstract</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImageEnhancer</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">skimage.filters</span><span class="w"> </span><span class="kn">import</span> <span class="n">median</span>
 
 
 <div class="viewcode-block" id="MedianPreprocessor">
 <a class="viewcode-back" href="../../../api_reference/phenoscope.preprocessing.html#phenoscope.preprocessing.MedianPreprocessor">[docs]</a>
-<span class="k">class</span><span class="w"> </span><span class="nc">MedianPreprocessor</span><span class="p">(</span><span class="n">ImagePreprocessor</span><span class="p">):</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">MedianEnhancer</span><span class="p">(</span><span class="n">ImageEnhancer</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    The MedianPreprocessor class applies a median filter operation to an image&#39;s enhanced matrix using</span>
+<span class="sd">    The MedianEnhancer class applies a median filter operation to an image&#39;s enhanced matrix using</span>
 <span class="sd">    specified boundary conditions and a constant fill value if required.</span>
 
 <span class="sd">    This preprocessor enhances image data by replacing each pixel value with the median of</span>

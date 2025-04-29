@@ -14,6 +14,7 @@ import warnings
 
 from skimage.color import rgb2gray, rgba2rgb
 from skimage.transform import rotate as skimage_rotate
+from skimage.util import img_as_ubyte
 from scipy.ndimage import rotate as scipy_rotate
 from copy import deepcopy
 from typing import Type
@@ -311,7 +312,7 @@ class ImageHandler:
     @enh_matrix.setter
     def enh_matrix(self, value):
         if isinstance(value, np.ndarray) | type(value) in {int, float, bool}:
-            self._enh_matrix[:] = value
+            self.enh_matrix[:] = value
         else:
             raise IllegalAssignmentError('enh_matrix')
 

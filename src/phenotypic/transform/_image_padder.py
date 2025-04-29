@@ -1,11 +1,11 @@
 import numpy as np
 
 from .. import Image
-from ..abstract import ImageTransformer
+from ..abstract import ImageCorrector
 from ..util.constants_ import IMAGE_FORMATS
 
 
-class ImagePadder(ImageTransformer):
+class ImagePadder(ImageCorrector):
     def __init__(self, pad_size: int = 50, mode='edge', **kwargs):
         if type(pad_size) == int:
             self.__pad_size: int = pad_size

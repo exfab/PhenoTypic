@@ -1,12 +1,12 @@
 from .. import Image
-from ..abstract import ImagePreprocessor
+from ..abstract import ImageEnhancer
 
 from skimage.filters import median
 
 
-class MedianPreprocessor(ImagePreprocessor):
+class MedianEnhancer(ImageEnhancer):
     """
-    The MedianPreprocessor class applies a median filter operation to an image's enhanced matrix using
+    The MedianEnhancer class applies a median filter operation to an image's enhanced matrix using
     specified boundary conditions and a constant fill value if required.
 
     This preprocessor enhances image data by replacing each pixel value with the median of

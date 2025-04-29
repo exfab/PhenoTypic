@@ -1,7 +1,7 @@
 from ._feature_measure import FeatureMeasure
 from ._image_operation import ImageOperation
-from ._image_preprocessor import ImagePreprocessor
-from ._image_transformer import ImageTransformer
+from ._image_enhancer import ImageEnhancer
+from ._image_corrector import ImageCorrector
 from ._object_detector import ObjectDetector
 from ._map_modifier import MapModifier
 from ._threshold_detector import ThresholdDetector
@@ -14,8 +14,8 @@ from ._grid_measure import GridFeatureMeasure
 __all__ = [
     "FeatureMeasure",
     "ImageOperation",
-    "ImagePreprocessor",
-    "ImageTransformer",
+    "ImageEnhancer",
+    "ImageCorrector",
     "ObjectDetector",
     "MapModifier",
     "ThresholdDetector",

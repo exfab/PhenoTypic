@@ -1,10 +1,10 @@
 from skimage.exposure import equalize_adapthist
 
 from .. import Image
-from ..abstract import ImagePreprocessor
+from ..abstract import ImageEnhancer
 
 
-class CLAHE(ImagePreprocessor):
+class CLAHE(ImageEnhancer):
     """
     Applies Contrast Limited Adaptive Histogram Equalization (CLAHE) to an image.
 

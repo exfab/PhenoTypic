@@ -3,14 +3,14 @@ import skimage as ski
 import cv2
 
 from phenotypic import Image
-from phenotypic.abstract import ImageTransformer
+from phenotypic.abstract import ImageCorrector
 import numpy as np
 
 SUPPORTED_PAD_MODE_LIST = [None, 'constant', 'edge', 'linear_ramp', 'maximum', 'mean', 'median', 'minimum', 'reflect',
                            'symmetric', 'wrap', 'empty']
 
 
-class ImageResizer(ImageTransformer):
+class ImageResizer(ImageCorrector):
     def __init__(
             self,
             target_size: Tuple,

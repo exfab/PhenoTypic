@@ -1,11 +1,11 @@
 import numpy as np
 from skimage.exposure import rescale_intensity
 
-from ..abstract import ImagePreprocessor
+from ..abstract import ImageEnhancer
 from .. import Image
 
 
-class ContrastStretching(ImagePreprocessor):
+class ContrastStretching(ImageEnhancer):
     """
     Performs contrast stretching on an image to enhance its visual quality.
 
