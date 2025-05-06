@@ -14,15 +14,15 @@ class MetadataAccessor:
 
     @property
     def _private_metadata(self):
-        return self._parent_image._private_metadata
+        return self._parent_image._metadata.private
 
     @property
     def _protected_metadata(self):
-        return self._parent_image._protected_metadata
+        return self._parent_image._metadata.protected
 
     @property
     def _public_metadata(self):
-        return self._parent_image._public_metadata
+        return self._parent_image._metadata.public
 
     def keys(self):
         return self._combined_metadata.keys()
@@ -47,6 +47,8 @@ class MetadataAccessor:
             raise KeyError
 
     def __setitem__(self, key, value):
+        if not isinstance(value, (str, int, float, bool, None)):
+            raise ValueError('Metadata values must be of scalar types or none.')
         if key in self._private_metadata:
             raise PermissionError('Private metadata cannot be modified.')
         elif key in self._protected_metadata:
@@ -56,6 +58,15 @@ class MetadataAccessor:
         else:
             raise KeyError
 
+    def __delitem__(self, key):
+        if key in self._private_metadata or key in self._protected_metadata:
+            raise PermissionError('Private and protected metadata cannot be removed.')
+        elif key in self._public_metadata:
+            del self._public_metadata[key]
+        else:
+            raise KeyError
+
+
     def pop(self, key):
         if key in self._private_metadata or key in self._protected_metadata:
             raise PermissionError('Private and protected metadata cannot be removed.')
@@ -63,3 +74,9 @@ class MetadataAccessor:
             return self._public_metadata.pop(key)
         else:
             raise KeyError
+
+    def get(self, key, default=None):
+        if key in self._combined_metadata:
+            return self._combined_metadata[key]
+        else:
+            return default

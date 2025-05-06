@@ -4,7 +4,8 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING: from phenotypic import Image
 
 import uuid
-from typing import Optional, Union, Dict, Tuple
+from typing import Optional, Union, Dict, Tuple, Literal
+from types import SimpleNamespace
 import numpy as np
 import skimage as ski
 import matplotlib.pyplot as plt
@@ -14,7 +15,6 @@ import warnings
 
 from skimage.color import rgb2gray, rgba2rgb
 from skimage.transform import rotate as skimage_rotate
-from skimage.util import img_as_ubyte
 from scipy.ndimage import rotate as scipy_rotate
 from copy import deepcopy
 from typing import Type
@@ -39,47 +39,23 @@ from phenotypic.util.exceptions_ import (
 
 
 class ImageHandler:
-    """The core comprehensive class for handling image processing, including manipulation, information sync, metadata management, and format conversion.
+    """
+    Handles image data and provides an abstraction for accessing and manipulating images
+    through multiple formats like array, matrix, object maps, and metadata.
 
-    The `ImageHandler` class is designed to load, process, and manage image data using different
-    representation formats (e.g., arrays and matrices). This class allows for metadata editing,
-    schema definition, and subcomponent handling to streamline image processing tasks.
-
-    Note:
-        If the input_image is 2-D, the ImageHandler leave the array form as None
-        If the input_image is 3-D, the ImageHandler will automatically set the matrix component to the grayscale representation.
+    The class offers streamlined access to image properties and supports operations like slicing,
+    setting sub-images, and managing metadata. It is designed to handle images in various formats
+    and ensures compatibility during transformations and data manipulations.
 
     Attributes:
-        _array (Optional[np.ndarray]): The numeric array representation of the image
-            used for multichannel data processing.
-        _matrix (Optional[np.ndarray]): The matrix representation of the image, primarily
-            used for 2D image data or grayscale formats.
-        _enh_matrix (Optional[np.ndarray]): A detection matrix representation, useful for
-            object detection tasks and similar applications.
-        _sparse_object_map (Optional[csc_matrix]): A sparse object map for efficient
-            representation of object detection overlays.
-        __image_format (Optional[str]): A schema defining the format of the image input,
-            influencing how data is interpreted or manipulated.
-        _private_metadata (Dict[str, Any]): Immutable metadata associated with the image,
-            including a universally unique identifier (UUID).
-        _protected_metadata (Dict[str, Optional[Union[int, float, str, bool, np.integer,
-            np.floating, np.complexfloating]]]): Editable protected metadata,
-            such as the image name, providing key image-related information.
-        _public_metadata (Dict[str, Union[int, float, str, bool, np.integer, np.floating,
-            np.complexfloating]]): Public metadata that can be fully edited or
-            removed without restrictions.
-        __array_accessor (ImageArray): Subhandler responsible for array-based operations.
-            Extends functionality for working with image arrays.
-        __matrix_accessor (ImageMatrix): Subhandler for performing operations on the image
-            matrix representation.
-        __enh_matrix_accessor (ImageDetectionMatrix): Subhandler for handling detection
-            matrix operations.
-        __object_mask_accessor (ObjectMask): Subhandler for managing object masks in the
-            image.
-        __object_map_accessor (ObjectMap): Subhandler for working with object maps.
-        __objects_accessor (ObjectsAccessor): Subhandler for managing objects detected in
+        _array (Optional[np.ndarray]): Internal representation of image data in array form.
+        _matrix (Optional[np.ndarray]): Internal representation of image data in matrix form.
+        _enh_matrix (Optional[np.ndarray]): Enhanced matrix for extended manipulations.
+        _sparse_object_map (Optional[csc_matrix]): Sparse object representation for mapping object labels.
+        _image_format (Optional[str]): Tracks the format/schema of the input image.
+        _metadata (SimpleNamespace): Container holding private, protected, and public metadata for
             the image.
-    """
+        _accessors (SimpleNamespace): Provides property-based access"""
 
     def __init__(self,
                  input_image: np.ndarray | Image | PathLike | None = None,
@@ -100,29 +76,29 @@ class ImageHandler:
         self._sparse_object_map: Optional[csc_matrix] = None
 
         # Initialize core backend variables
-        self.__image_format = None
-
-        # Private metadata should not be edited outside the class initialization
-        self._private_metadata = {
-            METADATA_LABELS.UUID: uuid.uuid4()
-        }
-
-        # Protected Metadata can be edited, but not fully removed from the dict
-        self._protected_metadata: Dict[str, Optional[Union[int, float, str, bool]]] = {
-            METADATA_LABELS.IMAGE_NAME: name,
-        }
+        self._image_format = None
 
         # Public metadata can be edited or removed
-        self._public_metadata: Dict[str, int | float | str | bool | None] = {}
+        self._metadata = SimpleNamespace(
+            private={
+                METADATA_LABELS.UUID: uuid.uuid4()
+            },
+            protected={
+                METADATA_LABELS.IMAGE_NAME: name
+            },
+            public={}
+        )
 
-        # Initialize image component handlers
-        self.__array_accessor: ImageArray = ImageArray(self)
-        self.__matrix_accessor: ImageMatrix = ImageMatrix(self)
-        self.__enh_matrix_accessor: ImageEnhancedMatrix = ImageEnhancedMatrix(self)
-        self.__object_mask_accessor: ObjectMask = ObjectMask(self)
-        self.__object_map_accessor: ObjectMap = ObjectMap(self)
-        self.__objects_accessor: ObjectsAccessor = ObjectsAccessor(self)
-        self.__metadata_accessor: MetadataAccessor = MetadataAccessor(self)
+        # Initialize image accessors
+        self._accessors = SimpleNamespace()
+
+        self._accessors.array = ImageArray(self)
+        self._accessors.matrix = ImageMatrix(self)
+        self._accessors.enh_matrix = ImageEnhancedMatrix(self)
+        self._accessors.objmap = ObjectMap(self)
+        self._accessors.objmask = ObjectMask(self)
+        self._accessors.objects = ObjectsAccessor(self)
+        self._accessors.metadata = MetadataAccessor(self)
 
         if isinstance(input_image, (PathLike, str, Path)):
             self.imread(input_image)
@@ -186,8 +162,8 @@ class ImageHandler:
                 and np.array_equal(self.matrix[:], other.matrix[:])
                 and np.array_equal(self.enh_matrix[:], other.enh_matrix[:])
                 and np.array_equal(self.objmap[:], other.objmap[:])
-                and self._protected_metadata == other._protected_metadata
-                and self._public_metadata == other._public_metadata
+                and self._metadata.protected == other._metadata.protected
+                and self._metadata.public == other._metadata.public
         ) else False
 
     def __ne__(self, other):
@@ -200,19 +176,19 @@ class ImageHandler:
     @property
     def name(self) -> str:
         """Returns the name of the image. If no name is set, the name will be the uuid of the image."""
-        name = self._protected_metadata.get(METADATA_LABELS.IMAGE_NAME)
+        name = self._metadata.protected.get(METADATA_LABELS.IMAGE_NAME, None)
         return name if name else str(self.uuid)
 
     @name.setter
     def name(self, value):
         if type(value) != str:
             raise ValueError('Image name must be a string')
-        self._protected_metadata[METADATA_LABELS.IMAGE_NAME] = value
+        self.metadata[METADATA_LABELS.IMAGE_NAME] = value
 
     @property
     def uuid(self):
         """Returns the UUID of the image"""
-        return self._private_metadata[METADATA_LABELS.UUID]
+        return self.metadata[METADATA_LABELS.UUID]
 
     @property
     def shape(self):
@@ -231,10 +207,18 @@ class ImageHandler:
     @property
     def imformat(self) -> Optional[str]:
         """Returns the input format of the image array or matrix depending on input format"""
-        if self.__image_format:
-            return self.__image_format
+        if self._image_format:
+            return self._image_format
         else:
             raise EmptyImageError
+
+    @property
+    def metadata(self):
+        return self._accessors.metadata
+
+    @metadata.setter
+    def metadata(self, value):
+        raise IllegalAssignmentError('metadata')
 
     @property
     def array(self) -> ImageArray:
@@ -258,7 +242,7 @@ class ImageHandler:
             else:
                 raise NoArrayError
         else:
-            return self.__array_accessor
+            return self._accessors.array
 
     @array.setter
     def array(self, value):
@@ -283,7 +267,7 @@ class ImageHandler:
         if self._matrix is None:
             raise EmptyImageError
         else:
-            return self.__matrix_accessor
+            return self._accessors.matrix
 
     @matrix.setter
     def matrix(self, value):
@@ -307,7 +291,7 @@ class ImageHandler:
         if self._enh_matrix is None:
             raise EmptyImageError
         else:
-            return self.__enh_matrix_accessor
+            return self._accessors.enh_matrix
 
     @enh_matrix.setter
     def enh_matrix(self, value):
@@ -333,7 +317,7 @@ class ImageHandler:
         if self._sparse_object_map is None:
             raise EmptyImageError
         else:
-            return self.__object_mask_accessor
+            return self._accessors.objmask
 
     @objmask.setter
     def objmask(self, object_mask):
@@ -360,7 +344,7 @@ class ImageHandler:
         if self._sparse_object_map is None:
             raise EmptyImageError
         else:
-            return self.__object_map_accessor
+            return self._accessors.objmap
 
     @objmap.setter
     def objmap(self, object_map):
@@ -561,7 +545,7 @@ class ImageHandler:
         if self.num_objects == 0:
             raise NoObjectsError(self.name)
         else:
-            return self.__objects_accessor
+            return self._accessors.objects
 
     @objects.setter
     def objects(self, objects):
@@ -605,29 +589,31 @@ class ImageHandler:
         """
         # Convert to Path object
         filepath = Path(filepath)
-        if filepath.suffix in ['.png', '.jpg', '.jpeg']:
+        if filepath.suffix in ['.png', '.jpg', '.jpeg', '.tif', '.tiff']:
             self.set_image(
-                input_image=ski.io.imread(filepath), imformat=IMAGE_FORMATS.RGB
-            )
-            self.name = filepath.stem
-            return self
-        elif filepath.suffix in ['.tif', '.tiff']:
-            self.set_image(
-                input_image=ski.io.imread(filepath), imformat=IMAGE_FORMATS.GRAYSCALE
+                input_image=ski.io.imread(filepath)
             )
             self.name = filepath.stem
             return self
         else:
             raise UnsupportedFileTypeError(filepath.suffix)
 
-    def set_image(self, input_image: Image | np.ndarray, imformat: str = None) -> None:
-        """Sets the image to the inputted array or Image
+    def set_image(self, input_image: Image | np.ndarray | None = None, imformat: Literal['RGB', 'greyscale'] | None = None) -> None:
+        """
+        Sets the image data and format based on the provided input and parameters.
+
+        This method accepts an image in the form of an array, another class instance,
+        or a None value, and sets the internal image data accordingly. It determines
+        how to process the input based on its type, and separates actions for arrays,
+        instances of the class, and None input.
 
         Args:
-            input_image: (np.ndarray, PhenoTypic.Image) The image data to be set
-            imformat: (str, optional) If input image is a np.ndarray and format is None, the image format will be guessed.
-                If the image format is ambiguous between RGB/BGR it will assume RGB unless otherwise specified.
-                Accepted formats are ['RGB', 'RGBA','Grayscale','BGR','BGRA','HSV']
+            input_image (Image | np.ndarray): The image data input which can either
+                be an instance of an Image, a NumPy array, or None. If None, the internal
+                image-related attributes are reset.
+            imformat (Literal['RGB', 'greyscale'] | None): Optional format specifier
+                indicating the format of the input image. If None, it attempts to derive
+                the format automatically based on the image data.
         """
         if type(input_image) == np.ndarray:
             self._set_from_array(input_image, imformat)
@@ -636,14 +622,16 @@ class ImageHandler:
               or issubclass(type(input_image), ImageHandler)):
             self._set_from_class_instance(input_image)
         elif input_image is None:
-            self.__image_format = None
+            self._image_format = None
             self._array = None
             self._matrix = None
             self._enh_matrix = None
             self._sparse_object_map = None
+        else:
+            raise ValueError(f'input_image must be a NumPy array, a class instance, or None. Got {type(input_image)}')
 
     def _set_from_class_instance(self, class_instance):
-        self.__image_format = class_instance.imformat
+        self._image_format = class_instance.imformat
 
         if class_instance.imformat not in IMAGE_FORMATS.MATRIX_FORMATS:
             self._set_from_array(class_instance.array[:].copy(), class_instance.imformat)
@@ -651,8 +639,8 @@ class ImageHandler:
             self._set_from_array(class_instance.matrix[:].copy(), class_instance.imformat)
         self._enh_matrix = class_instance._enh_matrix.copy()
         self._sparse_object_map = class_instance._sparse_object_map.copy()
-        self._protected_metadata = deepcopy(class_instance._protected_metadata)
-        self._public_metadata = deepcopy(class_instance._public_metadata)
+        self._metadata.protected = deepcopy(class_instance._metadata.protected)
+        self._metadata.public = deepcopy(class_instance._metadata.public)
 
     def _set_from_matrix(self, matrix: np.ndarray):
         """Initializes all the 2-D components of an image
@@ -661,10 +649,10 @@ class ImageHandler:
             matrix: A 2-D array form of an image
         """
         self._matrix = matrix.copy()
-        self.__enh_matrix_accessor.reset()
+        self._accessors.enh_matrix.reset()
 
         if self._sparse_object_map is None or matrix.shape != self._sparse_object_map.shape:
-            self.__object_map_accessor.reset()
+            self._accessors.objmap.reset()
 
     def _set_from_rgb(self, rgb_array: np.ndarray):
         """Initializes all the components of an image from an RGB array
@@ -673,7 +661,7 @@ class ImageHandler:
         self._array = rgb_array.copy()
         self._set_from_matrix(rgb2gray(self._array.copy()))
 
-    def _set_from_array(self, imarr: np.ndarray, imformat: str) -> None:
+    def _set_from_array(self, imarr: np.ndarray, imformat: Literal['RGB', 'greyscale'] | None) -> None:
         """Initializes all the components of an image from an array
 
         Note:
@@ -688,30 +676,30 @@ class ImageHandler:
             imformat = self._guess_image_format(imarr)
             if imformat in IMAGE_FORMATS.AMBIGUOUS_FORMATS:
                 # PhenoTypic will assume in the event of rgb vs bgr that the input was rgb
-                self.__image_format = IMAGE_FORMATS.RGB
+                self._image_format = IMAGE_FORMATS.RGB
 
-        match imformat:
-            case 'Grayscale' | IMAGE_FORMATS.GRAYSCALE | IMAGE_FORMATS.GRAYSCALE_SINGLE_CHANNEL:
-                self.__image_format = IMAGE_FORMATS.GRAYSCALE
+        match imformat.upper():
+            case 'GRAYSCALE' | IMAGE_FORMATS.GRAYSCALE | IMAGE_FORMATS.GRAYSCALE_SINGLE_CHANNEL:
+                self._image_format = IMAGE_FORMATS.GRAYSCALE
                 self._set_from_matrix(
                     imarr if imarr.ndim == 2 else imarr[:, :, 0]
                 )
 
             case 'RGB' | IMAGE_FORMATS.RGB | IMAGE_FORMATS.RGB_OR_BGR:
-                self.__image_format = IMAGE_FORMATS.RGB
+                self._image_format = IMAGE_FORMATS.RGB
                 self._set_from_rgb(imarr)
 
             case 'RGBA' | IMAGE_FORMATS.RGBA | IMAGE_FORMATS.RGBA_OR_BGRA:
-                self.__image_format = IMAGE_FORMATS.RGB
+                self._image_format = IMAGE_FORMATS.RGB
                 self._set_from_rgb(rgba2rgb(imarr))
 
             case 'BGR' | IMAGE_FORMATS.BGR:
-                self.__image_format = IMAGE_FORMATS.RGB
+                self._image_format = IMAGE_FORMATS.RGB
                 warnings.warn('BGR Images are automatically converted to RGB')
                 self._set_from_rgb(imarr[:, :, ::-1])
 
             case 'BGRA' | IMAGE_FORMATS.BGRA:
-                self.__image_format = IMAGE_FORMATS.RGB
+                self._image_format = IMAGE_FORMATS.RGB
                 warnings.warn('BGRA Images are automatically converted to RGB')
                 self._set_from_rgb(imarr[:, :, [2, 1, 0, 3]])
 
@@ -721,31 +709,17 @@ class ImageHandler:
     @staticmethod
     def _guess_image_format(img: np.ndarray) -> IMAGE_FORMATS:
         """
-        Attempts to determine the color format of an image represented as a NumPy array.
-
-        The function examines:
-          - The number of dimensions (ndim) and channels (shape)
-          - Basic statistics (min, max) for each channel in a 3-channel image
-
-        Returns a string that describes the likely image format.
+        Determines the format of a given image based on its dimensions and number of color channels.
 
         Args:
-            img (np.ndarray): The input image as a NumPy array.
+            img (np.ndarray): Input image represented as a numpy array.
 
         Returns:
-            str: A string describing the guessed image format.
+            IMAGE_FORMATS: Enum value indicating the detected format of the image.
 
-        Notes:
-            - A 2D array is assumed to be a grayscale image.
-            - A 3D array with one channel (shape: (H, W, 1)) is also treated as grayscale.
-            - A 3-channel image (shape: (H, W, 3)) may be RGB, BGR, or even HSV.
-              The heuristic here checks if the first channel’s maximum is within the typical
-              range for Hue in an HSV image (0–179 for OpenCV) while one of the other channels
-              exceeds that range.
-            - A 4-channel image is assumed to be some variant of RGBA (or BGRA), but the ordering
-              remains ambiguous without further metadata.
-            - In many cases (especially when values are normalized or images have been post-processed),
-              these heuristics may not be conclusive.
+        Raises:
+            TypeError: If the input is not a numpy array.
+            ValueError: If the image has an unsupported number of dimensions or channels.
         """
         # Ensure input is a numpy array
         if not isinstance(img, np.ndarray):
@@ -761,29 +735,13 @@ class ImageHandler:
 
             # If there are 3 channels, we need to differentiate between several possibilities.
             if c == 3:
-                # Compute basic statistics for each channel.
-                # (These are used in heuristics; formulas: ch_i_min = min(img[..., i]),
-                # ch_i_max = max(img[..., i]) for i in {0,1,2})
-                ch0_min, ch0_max = np.min(img[..., 0]), np.max(img[..., 0])
-                ch1_min, ch1_max = np.min(img[..., 1]), np.max(img[..., 1])
-                ch2_min, ch2_max = np.min(img[..., 2]), np.max(img[..., 2])
-
-                # Heuristic for detecting an HSV image (using OpenCV’s convention):
-                # In an 8-bit image, Hue is in the range [0, 179] while Saturation and Value are in [0, 255].
-                # Here, if channel 0 (possible Hue) never exceeds 180 but at least one of the other channels does,
-                # it might be an HSV image.
-                if ch0_max <= 180 and (ch1_max > 180 or ch2_max > 180):
-                    return IMAGE_FORMATS.HSV
-
-                # Without further metadata, we cannot distinguish between RGB and BGR.
-                # Both are 3-channel images with similar ranges. This is left as ambiguous.
-                return IMAGE_FORMATS.RGB_OR_BGR
+                return IMAGE_FORMATS.RGB
 
             # Handle 4-channel images.
             if c == 4:
                 # In many cases a 4-channel image is either RGBA or BGRA.
                 # Without further context, we report it as ambiguous.
-                return IMAGE_FORMATS.RGBA_OR_BGRA
+                return IMAGE_FORMATS.RGBA
 
             # For any other number of channels, we note it as an unknown format.
             raise ValueError(f"Image with {c} channels (unknown format)")

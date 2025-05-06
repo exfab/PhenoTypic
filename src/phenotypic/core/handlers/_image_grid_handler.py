@@ -41,7 +41,7 @@ class ImageGridHandler(Image):
     Attributes:
         _grid_setter (Optional[GridFinder]): An object responsible for defining and optimizing the grid
             layout over the image, defaulting to an `OptimalCenterGridSetter` instance if none is provided.
-        __grid_subhandler (GridAccessor): An internal utility for managing grid-based operations such as
+        _accessors.grid (GridAccessor): An internal utility for managing grid-based operations such as
             accessing row and column edges and generating section maps for the image's grid system.
     """
 
@@ -76,7 +76,7 @@ class ImageGridHandler(Image):
             grid_finder = OptimalCenterGridFinder(nrows=nrows, ncols=ncols)
 
         self._grid_setter: Optional[GridFinder] = grid_finder
-        self.__grid_subhandler = GridAccessor(self)
+        self._accessors.grid = GridAccessor(self)
 
     @property
     def grid(self) -> GridAccessor:
@@ -87,7 +87,7 @@ class ImageGridHandler(Image):
 
         See Also :class:`GridAccessor`
         """
-        return self.__grid_subhandler
+        return self._accessors.grid
 
     @grid.setter
     def grid(self, grid):

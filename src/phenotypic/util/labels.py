@@ -9,7 +9,7 @@ NUMERIC_METADATA_LABELS = [
     (SAMPLING_DAY_LABEL := "SamplingDay"),
 ]
 
-PHENOSCOPE_MEASUREMENTS = [
+PHENOTYPIC_MEASUREMENTS = [
     "Intensity_IntegratedColorIntensityRed",
     "Intensity_IntegratedColorIntensityGreen",
     "Intensity_IntegratedColorIntensityBlue",
@@ -30,7 +30,7 @@ class MetadataLabels:
 class NumericMetadataLabels:
     SAMPLING_DAY_LABEL = "Metadata_SamplingDay"
 
-class PhenoscopeMeasurementLabels:
+class PhenotypicMeasurementLabels:
     INTEGRATED_INTENSITY_RED = 'Intensity_IntegratedColorIntensityRed'
     INTEGRATED_INTENSITY_BLUE = 'Intensity_IntegratedColorIntensityBlue'
     INTEGRATED_INTENSITY_GREEN = 'Intensity_IntegratedColorIntensityGreen'

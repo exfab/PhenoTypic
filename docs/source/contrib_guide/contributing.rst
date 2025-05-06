@@ -7,19 +7,19 @@ Contributing Guidelines
 Getting Started
 ---------------
 
-This section will provide information on how to get started with contributing to PhenoScope.
+This section will provide information on how to get started with contributing to Phenotypic.
 
 Code Standards
 --------------
 
-This section will describe the coding standards and style guidelines for PhenoScope.
+This section will describe the coding standards and style guidelines for Phenotypic.
 
 Pull Request Workflow
 ---------------------
 
-This section will explain the process for submitting pull requests to the PhenoScope repository.
+This section will explain the process for submitting pull requests to the Phenotypic repository.
 
 Issue Reporting
 ---------------
 
-This section will provide guidelines for reporting issues and bugs in PhenoScope.
+This section will provide guidelines for reporting issues and bugs in Phenotypic.

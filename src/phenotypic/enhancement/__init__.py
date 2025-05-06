@@ -1,6 +1,19 @@
 """
-The enhancement module is designed to enhance the image's enhancement matrix (which is a copy of the image matrix)
-in order to improve detection & segmentation results.
+The enhancement module provides a collection of image enhancement operations designed to improve
+detection and segmentation results by modifying the image's enhancement matrix.
+
+Available enhancers:
+    - CLAHE: Contrast Limited Adaptive Histogram Equalization for local contrast enhancement
+    - GaussianSmoother: Applies Gaussian blur to reduce noise while preserving edges
+    - MedianEnhancer: Uses median filtering for noise reduction
+    - RankMedianEnhancer: Applies rank-based median filtering for enhanced noise removal
+    - RollingBallEnhancer: Implements rolling ball algorithm for background subtraction
+    - WhiteTophatEnhancer: Performs white tophat transformation for feature extraction
+    - LaplaceEnhancer: Applies Laplacian operator for edge detection
+    - ContrastStretching: Enhances image contrast through intensity stretching
+
+Each enhancer operates on a copy of the original image matrix to preserve the source data
+while allowing for multiple enhancement operations to be applied sequentially.
 """
 
 from ._clahe import CLAHE

@@ -1,11 +1,11 @@
 API Reference
 =============
 
-This section provides detailed API documentation for all PhenoScope modules and functions.
+This section provides detailed API documentation for all Phenotypic modules and functions.
 
 Image
 -----
-.. currentmodule:: phenoscope
+.. currentmodule:: phenotypic
 
 .. autosummary::
     :toctree: image_class
@@ -30,7 +30,7 @@ Image
 
 GridImage
 ---------
-.. currentmodule:: phenoscope
+.. currentmodule:: phenotypic
 .. autosummary::
     :toctree: grid_image
     :caption: GridImage
@@ -39,7 +39,7 @@ GridImage
 
 GridImage Accessors
 ^^^^^^^^^^^^^^^^^^^
-.. currentmodule:: phenoscope
+.. currentmodule:: phenotypic
 .. autosummary::
     :toctree: grid_image_accessors
     :recursive:
@@ -53,16 +53,16 @@ GridImage Accessors
    :caption: Modules
    
    Image
-   phenoscope.GridImage
-   phenoscope.abstract
-   phenoscope.core
-   phenoscope.data
-   phenoscope.detection
-   phenoscope.grid
-   phenoscope.measure
-   phenoscope.morphology
-   phenoscope.objects
-   phenoscope.pipeline
-   phenoscope.preprocessing
-   phenoscope.transform
-   phenoscope.util
+   phenotypic.GridImage
+   phenotypic.abstract
+   phenotypic.core
+   phenotypic.data
+   phenotypic.detection
+   phenotypic.grid
+   phenotypic.measure
+   phenotypic.morphology
+   phenotypic.objects
+   phenotypic.pipeline
+   phenotypic.preprocessing
+   phenotypic.transform
+   phenotypic.util

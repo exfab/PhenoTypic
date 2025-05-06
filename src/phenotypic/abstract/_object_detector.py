@@ -34,7 +34,7 @@ class ObjectDetector(ImageOperation):
                                                                                                         operation=self.__class__.__name__,
                                                                                                         image_name=image.name
                                                                                                         )
-
+            output.objmap.relabel()
             return output
         except DataIntegrityError as e:
             raise e

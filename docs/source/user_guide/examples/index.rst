@@ -1,7 +1,7 @@
 Examples
 ========
 
-This section provides practical examples and tutorials for PhenoScope.
+This section provides practical examples and tutorials for Phenotypic.
 
 .. toctree::
    :maxdepth: 2
@@ -36,4 +36,4 @@ You can also view and download complete Jupyter notebooks:
    More complex examples showcasing advanced features.
 
 **Use Cases** (Coming Soon)
-   Real-world applications and case studies using PhenoScope.
+   Real-world applications and case studies using Phenotypic.

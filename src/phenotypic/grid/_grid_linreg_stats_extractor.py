@@ -8,7 +8,7 @@ from scipy.spatial.distance import euclidean
 from phenotypic.abstract import GridFeatureMeasure
 from phenotypic.util.constants_ import GRID, GRID_LINREG_STATS_EXTRACTOR, OBJECT_INFO
 
-class GridLinRegStatsExtractor(GridFeatureMeasure):
+class MeasureGridLinRegStats(GridFeatureMeasure):
     def __init__(self, section_num: Optional[int] = None):
         self.section_num = section_num
 

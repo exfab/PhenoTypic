@@ -4,7 +4,7 @@ Installation
 Prerequisites
 ------------
 
-Before installing PhenoScope, ensure you have the following prerequisites:
+Before installing Phenotypic, ensure you have the following prerequisites:
 
 * Python 3.10 or higher
 * pip (Python package installer)
@@ -15,11 +15,11 @@ Installation Methods
 From PyPI
 ~~~~~~~~~
 
-The simplest way to install PhenoScope is via pip:
+The simplest way to install Phenotypic is via pip:
 
 .. code-block:: bash
 
-   pip install phenoscope
+   pip install phenotypic
 
 From Source
 ~~~~~~~~~~~
@@ -30,8 +30,8 @@ To install from source:
 
    .. code-block:: bash
 
-      git clone https://github.com/Xander-git/PhenoScope.git
-      cd phenoscope
+      git clone https://github.com/Xander-git/Phenotypic.git
+      cd phenotypic
 
 2. Install the package:
 
@@ -55,5 +55,5 @@ To verify the installation, run:
 
 .. code-block:: python
 
-   import phenoscope
-   print(phenoscope.__version__)
+   import phenotypic
+   print(phenotypic.__version__)

@@ -8,9 +8,9 @@ from ..abstract import MapModifier
 from ..util.constants_ import OBJECT_INFO
 
 
-class CircularityRemovalModifier(MapModifier):
+class LowCircularityRemover(MapModifier):
     """
-    CircularityRemovalModifier is a map modifier that removes objects in an image
+    LowCircularityRemover is a map modifier that removes objects in an image
     based on their circularity measurement.
 
     This class evaluates objects in an image using the Polsby-Popper score to

@@ -19,7 +19,7 @@ class ImageHsvHandler(ImageHandler):
 
     def __init__(self, input_image: Optional[Union[np.ndarray, Image, PathLike]] = None, imformat:str=None):
         super().__init__(input_image=input_image, imformat=imformat)
-        self.__hsv_handler = HsvAccessor(self)
+        self._accessors.hsv = HsvAccessor
 
     @property
     def _hsv(self)->np.ndarray:
@@ -36,8 +36,6 @@ class ImageHsvHandler(ImageHandler):
             match self.imformat:
                 case IMAGE_FORMATS.RGB:
                     return rgb2hsv(self.array[:])
-                case IMAGE_FORMATS.BGR:
-                    return rgb2hsv(self._convert_bgr_to_rgb(self.array[:]))
                 case _:
                     raise ValueError(f'Unsupported imformat {self.imformat} for HSV conversion')
 
@@ -52,7 +50,7 @@ class ImageHsvHandler(ImageHandler):
         Returns:
             HsvAccessor: The instance of the HSV accessor.
         """
-        return self.__hsv_handler
+        return self._accessors.hsv
 
     @hsv.setter
     def hsv(self, value):

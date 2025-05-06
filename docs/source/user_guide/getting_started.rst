@@ -3,27 +3,27 @@
 Getting Started
 ===============
 
-Welcome to PhenoScope! This guide will help you get up and running quickly with this powerful image analysis and phenotyping library.
+Welcome to Phenotypic! This guide will help you get up and running quickly with this powerful image analysis and phenotyping library.
 
 Installation
 -----------
 
-PhenoScope can be installed using pip:
+Phenotypic can be installed using pip:
 
 .. code-block:: bash
 
-   pip install phenoscope
+   pip install phenotypic
 
 For more detailed installation instructions, see the :doc:`installation` page.
 
 Quick Start Example
 -------------------
 
-Here's a simple example to get you started with PhenoScope:
+Here's a simple example to get you started with Phenotypic:
 
 .. code-block:: python
 
-   import phenoscope as ps
+   import phenotypic as ps
    
    # Load an image
    image = ps.Image.from_file("path/to/your/image.jpg")
@@ -35,9 +35,9 @@ Here's a simple example to get you started with PhenoScope:
 Core Concepts
 -------------
 
-PhenoScope is built around a few key concepts:
+Phenotypic is built around a few key concepts:
 
-1. **Image Objects**: The fundamental unit in PhenoScope is the `Image` class, which provides methods for loading, processing, and analyzing images.
+1. **Image Objects**: The fundamental unit in Phenotypic is the `Image` class, which provides methods for loading, processing, and analyzing images.
 
 2. **GridImage Objects**: For working with multi-well plates or grid-based images, the `GridImage` class provides specialized functionality.
 

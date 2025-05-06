@@ -6,7 +6,7 @@ import numpy as np
 from typing import Optional
 
 from phenotypic.abstract import GridMapModifier
-from phenotypic.grid import GridLinRegStatsExtractor
+from phenotypic.grid import MeasureGridLinRegStats
 from phenotypic.util.constants_ import GRID, GRID_LINREG_STATS_EXTRACTOR
 
 
@@ -57,7 +57,7 @@ class LinRegResidualOutlierRemover(GridMapModifier):
                 properly specified for the operation.
         """
         # Generate cached version of grid_info
-        linreg_stat_extractor = GridLinRegStatsExtractor()
+        linreg_stat_extractor = MeasureGridLinRegStats()
         grid_info = linreg_stat_extractor.measure(image)
 
         # Create container to hold the id of objects to be removed

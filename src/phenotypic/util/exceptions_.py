@@ -7,20 +7,20 @@ Exceptions are organized by module and functionality.
 
 
 # Base exception class for all PhenoTypic exceptions
-class PhenoScopeError(Exception):
+class PhenoTypicError(Exception):
     """Base exception class for all PhenoTypic errors."""
     pass
 
 
 # General exceptions
-class UnknownError(PhenoScopeError):
+class UnknownError(PhenoTypicError):
     """Exception raised when an unknown error occurs."""
 
     def __init__(self, message="An unknown error occurred."):
         super().__init__(message)
 
 
-class InterfaceError(NotImplementedError, PhenoScopeError):
+class InterfaceError(NotImplementedError, PhenoTypicError):
     """Exception raised when an abstract method is called when it's not supposed to be."""
 
     def __init__(self):
@@ -29,14 +29,14 @@ class InterfaceError(NotImplementedError, PhenoScopeError):
             )
 
 
-class NoOutputError(PhenoScopeError):
+class NoOutputError(PhenoTypicError):
     """Exception raised when no output was returned in an operation."""
 
     def __init__(self):
         super().__init__("No output was returned in this operation")
 
 
-class OutputValueError(PhenoScopeError):
+class OutputValueError(PhenoTypicError):
     """Exception raised when output is not of the expected type."""
 
     def __init__(self, expected_type):
@@ -92,7 +92,7 @@ class NoComponentError(AttributeError):
 
 
 # Image Operation exceptions
-class ImageOperationError(PhenoScopeError):
+class ImageOperationError(PhenoTypicError):
     """Base exception for image operation errors."""
     pass
 

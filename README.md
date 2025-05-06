@@ -1,5 +1,5 @@
 <div style="background-color: white; display: inline-block; padding: 10px; border-radius: 5px;">
-  <img src="./docs/source/_static/assets/200x150/light_logo.svg" alt="PhenoScope Logo" style="width: 200px; height: auto;">
+  <img src="./docs/source/_static/assets/200x150/light_logo.svg" alt="Phenotypic Logo" style="width: 200px; height: auto;">
 </div>
 
 # PhenoTypic: A Python Framework for Bio-Image Analysis
@@ -24,6 +24,7 @@ other existing image analysis tools into a cohesive, unified ecosystem.
 ```
 pip install phenotypic
 ```
+Note: may not always be the most up-to-date version
 
 ### Manual Installation
 ```  
@@ -32,7 +33,7 @@ cd PhenoTypic
 pip install -e .
 ```  
 
-## Dev Installation
+### Dev Installation
 ```  
 git clone https://github.com/Wheeldon-Lab/PhenoTypic.git
 cd PhenoTypic

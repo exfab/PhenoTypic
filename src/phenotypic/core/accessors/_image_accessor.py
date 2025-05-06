@@ -60,7 +60,8 @@ class ImageAccessor:
         ax.imshow(arr, cmap=cmap, **mpl_params) if arr.ndim == 2 else ax.imshow(arr, **mpl_params)
 
         ax.grid(False)
-        ax.set_title(title) if title else ax.set_title(self._parent_image.name)
+        if title: ax.set_title(title)
+        # ax.set_title(title) if title else ax.set_title(self._parent_image.name)
 
         return fig, ax
 
@@ -114,7 +115,7 @@ class ImageAccessor:
         ax.imshow(imarray, cmap=cmap, **mpl_params) if imarray.ndim == 2 else ax.imshow(imarray, **mpl_params)
 
         ax.grid(False)
-        ax.set_title(title) if title else ax.set_title(self._parent_image.name)
+        if title: ax.set_title(title)
 
         return fig, ax
 

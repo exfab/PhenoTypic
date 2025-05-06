@@ -9,7 +9,7 @@
 .. autoproperty:: {{ objname }}
 
 {% set accessor_class = objname.split('.')[-1] %}
-{% set accessor_module = "phenoscope.core.accessors" %}
+{% set accessor_module = "phenotypic.core.accessors" %}
 {% set class_map = {
     "array": "ImageArray",
     "matrix": "ImageMatrix",

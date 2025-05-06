@@ -15,7 +15,7 @@ from enum import Enum
 # Image format constants
 class IMAGE_FORMATS:
     """Constants for supported image formats."""
-    GRAYSCALE = 'Grayscale'
+    GRAYSCALE = 'GRAYSCALE'
     GRAYSCALE_SINGLE_CHANNEL = 'Grayscale (single channel)'
     HSV = 'HSV'
     RGB_OR_BGR = 'RGB/BGR (ambiguous)'
@@ -103,4 +103,4 @@ class INTENSITY_LABELS(Enum):
         self.label, self.desc = label, desc
 
     def __str__(self):
-        return f'{self.CATEGORY}_{self.label}'
+        return 'Intensity' + "_" + self.label

@@ -120,7 +120,6 @@ class ObjectMap(ImageAccessor):
         """Relables all the objects based on their connectivity"""
         self._dense_to_sparse(label(self._parent_image.objmask[:]))
 
-
     @staticmethod
     def _dense_to_sparse(arg) -> csc_matrix:
         """Constructs a sparse array from the arg parameter. Used so that the underlying sparse matrix can be changed

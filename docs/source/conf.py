@@ -44,8 +44,8 @@ author = 'Alexander Nguyen'
 
 # Variables
 github_url = 'https://github.com/Wheeldon-Lab/PhenoScope#'
-LIGHT_LOGO_PATH = './_static/assets/500x225/no_background_svg/light_logo_sponsor.svg'
-DARK_LOGO_PATH = './_static/assets/500x225/no_background_svg/dark_logo_sponsor.svg'
+LIGHT_LOGO_PATH = './_static/assets/200x150/light_logo_sponsor.svg'
+DARK_LOGO_PATH = './_static/assets/200x150/dark_logo_sponsor.svg'
 
 # Try to get the version from PhenoTypic, but use a default if not available
 try:
@@ -117,7 +117,7 @@ sphinx_gallery_conf = {
     'examples_dirs': '../../examples',   # path to your example scripts
     'gallery_dirs': 'auto_examples',     # path to where to save gallery generated output
     'filename_pattern': '/example_',     # pattern to match example files
-    'ignore_pattern': '__init__\.py',   # pattern to ignore
+    'ignore_pattern': '__init__.py',   # pattern to ignore
     'plot_gallery': 'True',             # generate plots
     'thumbnail_size': (400, 300),       # thumbnail size
     'download_all_examples': True,      # download all examples as a zip file
@@ -127,7 +127,8 @@ sphinx_gallery_conf = {
 }
 exclude_patterns = ['_build', '**.ipynb_checkpoints', '*.ipynb', 'auto_examples']
 
-
+# Disable strict HTML5 assertion for broken references
+html5_writer = True
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output

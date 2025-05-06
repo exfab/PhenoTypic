@@ -31,7 +31,7 @@ class OtsuDetector(ThresholdDetector):
                 attribute, which is used as the basis for creating the binary mask.
 
         Returns:
-            Image: The input image object with its `omask` attribute updated
+            Image: The input image object with its `objmask` attribute updated
                 to the computed binary mask value.
         """
         image.objmask[:] = image.enh_matrix[:] > threshold_otsu(image.enh_matrix[:])

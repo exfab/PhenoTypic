@@ -99,7 +99,7 @@ class GridAccessor(ImageAccessor):
 
             # Remove objects that don't belong in that grid section from the subimage
             objmap = section_image.objmap[:].copy()
-            objmap[np.isin(objmap, self._get_section_labels(idx))] = 0
+            objmap[~np.isin(objmap, self._get_section_labels(idx))] = 0
             section_image.objmap = objmap
 
             return section_image
@@ -116,46 +116,42 @@ class GridAccessor(ImageAccessor):
         if self._parent_image.objects.num_objects == 0:
             raise NoObjectsError(self._parent_image.name)
         if axis == 0:
-            N = self.nrows
+            num_vectors = self.nrows
             x_group = GRID.GRID_ROW_NUM
             x_val = OBJECT_INFO.CENTER_CC
             y_val = OBJECT_INFO.CENTER_RR
         elif axis == 1:
-            N = self.ncols
+            num_vectors = self.ncols
             x_group = GRID.GRID_COL_NUM
             x_val = OBJECT_INFO.CENTER_RR
             y_val = OBJECT_INFO.CENTER_CC
         else:
             raise ValueError('Axis should be 0 or 1.')
 
-        # Generate a temporary cache grid_info to reduce runtime
+        # create persistent grid_info
         grid_info = self.info()
 
-        # Create empty vectors to store m & b for all values
-        m_slope = np.full(shape=N, fill_value=np.nan)
-        b_intercept = np.full(shape=N, fill_value=np.nan)
+        # allocate empty vectors to store m & b for all values
+        m_slope = np.full(shape=num_vectors, fill_value=np.nan)
+        b_intercept = np.full(shape=num_vectors, fill_value=np.nan)
 
         # Collect slope & intercept for the rows or columns
-        for idx in range(N):
-            # Get the current NumPy version
-            np_version = np.__version__
+        # Use 2D covariance/variance method for finding linear regression
+        for idx in range(num_vectors):
+            x = grid_info.loc[grid_info.loc[:, x_group] == idx, x_val].to_numpy()
+            x_mean = np.mean(x)
 
-            if version.parse(np_version) < version.parse("1.16.0"):
-                # For NumPy versions older than 1.16, use warnings.catch_warnings to suppress RankWarning.
-                with warnings.catch_warnings():
-                    warnings.simplefilter("ignore", np.RankWarning)
-                    m_slope[idx], b_intercept[idx] = np.polyfit(
-                        x=grid_info.loc[grid_info.loc[:, x_group] == idx, x_val],
-                        y=grid_info.loc[grid_info.loc[:, x_group] == idx, y_val],
-                        deg=1
-                    )
+            y = grid_info.loc[grid_info.loc[:, x_group] == idx, y_val].to_numpy()
+            y_mean = np.mean(y)
+
+            covariance = ((x - x_mean) * (y - y_mean)).sum()
+            variance = ((x - x_mean) ** 2).sum()
+            if variance !=0:
+                m_slope[idx] = covariance / variance
+                b_intercept[idx] = y_mean - m_slope[idx] * x_mean
             else:
-                # For newer versions, simply call polyfit as the warning behavior may have changed or been improved.
-                m_slope[idx], b_intercept[idx] = np.polyfit(
-                    x=grid_info.loc[grid_info.loc[:, x_group] == idx, x_val],
-                    y=grid_info.loc[grid_info.loc[:, x_group] == idx, y_val],
-                    deg=1
-                )
+                m_slope[idx] = 0
+                b_intercept[idx] = y_mean if axis==0 else x_mean
 
         return m_slope, np.round(b_intercept)
 
@@ -333,19 +329,27 @@ class GridAccessor(ImageAccessor):
             Return:
                 (int, int, int, int): ((MinRow, MinCol), (MaxRow, MaxCol)) The slices to extract the grid section from the image.
         """
+        grid_min, grid_max = self._naive_get_grid_section_slices(idx)
+        grid_min_rr, grid_min_cc = grid_min
+        grid_max_rr, grid_max_cc = grid_max
+
         grid_info = self.info()
         section_info = grid_info.loc[grid_info.loc[:, GRID.GRID_SECTION_NUM] == idx, :]
 
-        min_cc = section_info.loc[:, OBJECT_INFO.MIN_CC].min()
+        obj_min_cc = section_info.loc[:, OBJECT_INFO.MIN_CC].min()
+        min_cc = min(grid_min_cc, obj_min_cc)
         if min_cc < 0: min_cc = 0
 
-        max_cc = section_info.loc[:, OBJECT_INFO.MAX_CC].max()
+        obj_max_cc = section_info.loc[:, OBJECT_INFO.MAX_CC].max()
+        max_cc = max(grid_max_cc, obj_max_cc)
         if max_cc > self._parent_image.shape[1]-1: max_cc = self._parent_image.shape[1]-1
 
-        min_rr = section_info.loc[:, OBJECT_INFO.MIN_RR].min()
+        obj_min_rr = section_info.loc[:, OBJECT_INFO.MIN_RR].min()
+        min_rr = min(grid_min_rr, obj_min_rr)
         if min_rr < 0: min_rr = 0
 
-        max_rr = section_info.loc[:, OBJECT_INFO.MAX_RR].max()
+        obj_max_rr = section_info.loc[:, OBJECT_INFO.MAX_RR].max()
+        max_rr = max(grid_max_rr, obj_max_rr)
         if max_rr > self._parent_image.shape[0]-1: max_rr = self._parent_image.shape[0]-1
 
         return (min_rr, min_cc), (max_rr, max_cc)

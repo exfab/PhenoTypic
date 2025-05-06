@@ -1,7 +1,7 @@
 User Guide
 ==========
 
-This section contains comprehensive guides for using PhenoScope. It includes installation instructions, short examples, and step-by-step tutorials.
+This section contains comprehensive guides for using Phenotypic. It includes installation instructions, short examples, and step-by-step tutorials.
 
 .. note::
    The User Guide is currently under development. The following sections will be available soon.
@@ -21,10 +21,10 @@ Placeholder Pages
 ----------------
 
 **Getting Started** (Coming Soon)
-   A quick introduction to PhenoScope and its basic functionality.
+   A quick introduction to Phenotypic and its basic functionality.
 
 **Basic Concepts** (Coming Soon)
-   Learn about the core concepts and components of PhenoScope.
+   Learn about the core concepts and components of Phenotypic.
 
 **Advanced Usage** (Coming Soon)
-   Explore advanced features and techniques for getting the most out of PhenoScope.
+   Explore advanced features and techniques for getting the most out of Phenotypic.

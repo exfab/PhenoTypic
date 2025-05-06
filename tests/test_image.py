@@ -60,11 +60,11 @@ def test_set_image_from_array(sample_image_arrays):
     """
     for image, input_schema, true_schema in sample_image_arrays:
         print_inputs(image, input_schema, true_schema)
-        phenoscope_image = Image()
-        phenoscope_image.set_image(image, input_schema)
-        assert phenoscope_image is not None
-        assert phenoscope_image.isempty() is False
-        assert phenoscope_image.shape == image.shape
+        phenotypic_image = Image()
+        phenotypic_image.set_image(image, input_schema)
+        assert phenotypic_image is not None
+        assert phenotypic_image.isempty() is False
+        assert phenotypic_image.shape == image.shape
 
 @timeit
 def test_set_image_from_image(sample_image_arrays):
@@ -80,37 +80,37 @@ def test_set_image_from_image(sample_image_arrays):
     """
     for image, input_schema, true_schema in sample_image_arrays:
         print_inputs(image, input_schema, true_schema)
-        phenoscope_image = Image()
-        phenoscope_image.set_image(Image(input_image=image, imformat=input_schema))
+        phenotypic_image = Image()
+        phenotypic_image.set_image(Image(input_image=image, imformat=input_schema))
 
-        phenoscope_image_2 = Image()
-        phenoscope_image_2.set_image(phenoscope_image)
-        assert phenoscope_image_2 is not None
-        assert phenoscope_image_2.isempty() is False
-        assert phenoscope_image_2.shape == image.shape
+        phenotypic_image_2 = Image()
+        phenotypic_image_2.set_image(phenotypic_image)
+        assert phenotypic_image_2 is not None
+        assert phenotypic_image_2.isempty() is False
+        assert phenotypic_image_2.shape == image.shape
         if true_schema != 'Grayscale':
-            assert np.array_equal(phenoscope_image_2.array[:], phenoscope_image.array[:])
-        assert np.array_equal(phenoscope_image_2.matrix[:], phenoscope_image.matrix[:])
-        assert np.array_equal(phenoscope_image_2.enh_matrix[:], phenoscope_image.enh_matrix[:])
-        assert np.array_equal(phenoscope_image_2.objmask[:], phenoscope_image.objmask[:])
-        assert np.array_equal(phenoscope_image_2.objmap[:], phenoscope_image.objmap[:])
+            assert np.array_equal(phenotypic_image_2.array[:], phenotypic_image.array[:])
+        assert np.array_equal(phenotypic_image_2.matrix[:], phenotypic_image.matrix[:])
+        assert np.array_equal(phenotypic_image_2.enh_matrix[:], phenotypic_image.enh_matrix[:])
+        assert np.array_equal(phenotypic_image_2.objmask[:], phenotypic_image.objmask[:])
+        assert np.array_equal(phenotypic_image_2.objmap[:], phenotypic_image.objmap[:])
 
 @timeit
 def test_image_construct_from_array(sample_image_arrays):
     for image, input_schema, true_schema in sample_image_arrays:
         print_inputs(image, input_schema, true_schema)
-        phenoscope_image = Image(input_image=image, imformat=input_schema)
-        assert phenoscope_image is not None
-        assert phenoscope_image.isempty() is False
-        assert phenoscope_image.shape == image.shape
+        phenotypic_image = Image(input_image=image, imformat=input_schema)
+        assert phenotypic_image is not None
+        assert phenotypic_image.isempty() is False
+        assert phenotypic_image.shape == image.shape
 
 @timeit
 def test_image_array_access(sample_image_arrays):
     for image, input_schema, true_schema in sample_image_arrays:
         print_inputs(image, input_schema, true_schema)
-        phenoscope_image = Image(input_image=image, imformat=true_schema)
+        phenotypic_image = Image(input_image=image, imformat=true_schema)
         if true_schema != 'Grayscale':
-            assert np.array_equal(phenoscope_image.array[:], image)
+            assert np.array_equal(phenotypic_image.array[:], image)
 
 @timeit
 def test_image_matrix_access(sample_image_arrays):
@@ -173,9 +173,9 @@ def test_image_copy(sample_image_arrays):
         assert ps_image_copy is not ps_image
         assert ps_image_copy.isempty() is False
 
-        assert ps_image._private_metadata != ps_image_copy._private_metadata
-        assert ps_image._protected_metadata == ps_image_copy._protected_metadata
-        assert ps_image._public_metadata == ps_image_copy._public_metadata
+        assert ps_image._metadata.private != ps_image_copy._metadata.private
+        assert ps_image._metadata.protected == ps_image_copy._metadata.protected
+        assert ps_image._metadata.public == ps_image_copy._metadata.public
 
         if true_schema != 'Grayscale':
             assert np.array_equal(ps_image.array[:], ps_image.array[:])

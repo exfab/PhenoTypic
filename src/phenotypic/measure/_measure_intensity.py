@@ -17,7 +17,7 @@ class MeasureIntensity(FeatureMeasure):
         pd.DataFrame: A dataframe containing the intensity measures of the objects in the image.
 
     Notes:
-        Integrated Intensity: Sum of all pixel values in the object's grayscale footprint'
+        Integrated Intensity: Sum of all pixel values in the object's grayscale footprint
 
     """
 

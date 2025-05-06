@@ -5,7 +5,7 @@ if TYPE_CHECKING: from phenotypic import GridImage
 import numpy as np
 
 from phenotypic.abstract import GridMapModifier
-from phenotypic.grid import GridLinRegStatsExtractor
+from phenotypic.grid import MeasureGridLinRegStats
 from phenotypic.util.constants_ import GRID_LINREG_STATS_EXTRACTOR
 
 
@@ -23,7 +23,7 @@ class MinResidualErrorReducer(GridMapModifier):
         max_iter = (image.grid.nrows * image.grid.ncols) * 4
 
         # Initialize extractor here to save obj construction time
-        linreg_stat_extractor = GridLinRegStatsExtractor()
+        linreg_stat_extractor = MeasureGridLinRegStats()
 
         # Get initial section obj count
         section_obj_counts = image.grid.get_section_counts(ascending=False)
