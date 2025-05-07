@@ -7,14 +7,14 @@ import numpy as np
 from scipy.spatial.distance import euclidean
 from scipy.optimize import minimize_scalar
 
-from phenotypic.abstract import GridTransformer
+from phenotypic.abstract import GridCorrector
 from phenotypic.util.constants_ import OBJECT_INFO, GRID
 
 
-class GridAligner(GridTransformer):
+class GridAligner(GridCorrector):
     """Calculates the optimal gridding orientation based on the alignment of the objects in the image and rotates the image accordingly.
 
-    This class inherits from `GridTransformer` and is designed to calculate the optimal gridding orientation. This is used to align the image,
+    This class inherits from `GridCorrector` and is designed to calculate the optimal gridding orientation. This is used to align the image,
     and helps to improve the quality of automated gridding results. It's highly recommended to redetect objects in the image after alignment.
 
     """

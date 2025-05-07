@@ -92,6 +92,7 @@ The ``accessors`` submodule is designed for developers and researchers working o
 
 """
 from ._image_accessor import ImageAccessor
+from ._image_data_accessor import ImageDataAccessor
 from ._image_array_accessor import ImageArray
 from ._image_matrix_accessor import ImageMatrix
 from ._image_enh_matrix_accessor import ImageEnhancedMatrix
@@ -108,6 +109,7 @@ from ._grid_accessor import GridAccessor
 # Define __all__ to include all imported objects
 __all__ = [
     "ImageAccessor",
+    "ImageDataAccessor",
     "ImageArray",
     "ImageMatrix",
     "ImageEnhancedMatrix",

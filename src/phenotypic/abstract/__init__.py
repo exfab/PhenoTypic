@@ -7,7 +7,7 @@ from ._map_modifier import MapModifier
 from ._threshold_detector import ThresholdDetector
 from ._grid_operation import GridOperation
 from ._grid_finder import GridFinder
-from ._grid_morpher import GridTransformer
+from ._grid_corrector import GridCorrector
 from ._grid_map_modifier import GridMapModifier
 from ._grid_measure import GridFeatureMeasure
 
@@ -21,7 +21,7 @@ __all__ = [
     "ThresholdDetector",
     "GridOperation",
     "GridFinder",
-    "GridTransformer",
+    "GridCorrector",
     "GridMapModifier",
     "GridFeatureMeasure",
 ]

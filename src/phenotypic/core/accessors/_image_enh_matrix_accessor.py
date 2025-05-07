@@ -11,11 +11,11 @@ import matplotlib.pyplot as plt
 from skimage.color import label2rgb
 from skimage.exposure import histogram
 
-from phenotypic.core.accessors import ImageAccessor
-from phenotypic.util.exceptions_ import ArrayKeyValueShapeMismatchError
+from phenotypic.core.accessors import ImageDataAccessor
+from phenotypic.util.exceptions_ import ArrayKeyValueShapeMismatchError, EmptyImageError
 
 
-class ImageEnhancedMatrix(ImageAccessor):
+class ImageEnhancedMatrix(ImageDataAccessor):
     """An accessor class to an image's enhanced matrix which is a copy of the original image matrix that is preprocessed for enhanced detection.
 
     Provides functionalities to manipulate and visualize the image enhanced matrix. This includes
@@ -37,7 +37,10 @@ class ImageEnhancedMatrix(ImageAccessor):
             numpy.ndarray: A copy of the corresponding portion of the parent image's detection
                 matrix.
         """
-        return self._parent_image._enh_matrix[key].copy()
+        if self.isempty():
+            raise EmptyImageError
+        else:
+            return self._parent_image._data.enh_matrix[key].copy()
 
     def __setitem__(self, key, value):
         """
@@ -65,10 +68,10 @@ class ImageEnhancedMatrix(ImageAccessor):
                 for the specified key.
         """
         if isinstance(value, np.ndarray):
-            if self._parent_image._enh_matrix[key].shape != value.shape:
+            if self._parent_image._data.enh_matrix[key].shape != value.shape:
                 raise ArrayKeyValueShapeMismatchError
 
-        self._parent_image._enh_matrix[key] = value
+        self._parent_image._data.enh_matrix[key] = value
         self._parent_image.objmap.reset()
 
     @property
@@ -82,15 +85,15 @@ class ImageEnhancedMatrix(ImageAccessor):
         Returns:
             tuple: The shape of the determinant matrix.
         """
-        return self._parent_image._enh_matrix.shape
+        return self._parent_image._data.enh_matrix.shape
 
     def copy(self) -> np.ndarray:
         """Returns a copy of the Detection Matrix."""
-        return self._parent_image._enh_matrix.copy()
+        return self._parent_image._data.enh_matrix.copy()
 
     def reset(self):
         """Resets the image's enhanced matrix to the original matrix representation."""
-        self._parent_image._enh_matrix = self._parent_image.matrix[:].copy()
+        self._parent_image._data.enh_matrix = self._parent_image.matrix.copy()
 
     def histogram(self, figsize: Tuple[int, int] = (10, 5)):
         """Returns a histogram of the image matrix. Useful for troubleshooting detection results.
@@ -171,8 +174,8 @@ class ImageEnhancedMatrix(ImageAccessor):
             figsize=figsize,
             title=self._parent_image.name,
             ax=ax,
-            mpl_params = mpl_params,
-            overlay_params = overlay_params,
+            imshow_params=mpl_params,
+            overlay_params=overlay_params,
         )
 
         if annotate:

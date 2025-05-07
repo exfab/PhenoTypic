@@ -26,7 +26,7 @@ class ImageEnhancer(ImageOperation):
             else:
                 output = self._operate(image.copy())
 
-            if image.imformat not in IMAGE_FORMATS.MATRIX_FORMATS:
+            if image._image_format.is_array():
                 if not np.array_equal(output.array[:], imcopy.array[:]):
                     raise DataIntegrityError(component='array', operation=self.__class__.__name__)
 
