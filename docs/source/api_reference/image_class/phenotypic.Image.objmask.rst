@@ -1,0 +1,29 @@
+﻿
+
+phenotypic.Image.objmask
+========================
+
+.. currentmodule:: phenotypic
+
+.. autoproperty:: Image.objmask
+
+
+
+
+
+
+.. currentmodule:: phenotypic.core.accessors
+
+.. class-members:: phenotypic.core.accessors.ObjectMask
+   :attributes:
+   :properties:
+   :methods:
+
+.. rubric:: ObjectMask API Reference
+
+.. autoclass:: ObjectMask
+   :members:
+   :show-inheritance:
+   :special-members: __getitem__, __setitem__, __len__, __call__
+   :member-order: groupwise
+   :noindex:

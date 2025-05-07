@@ -1,0 +1,581 @@
+{
+ "img": [
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "phenotypic.core._image",
+   "module_short": "phenotypic.core._image",
+   "name": "Image"
+  },
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "phenotypic.core",
+   "module_short": "phenotypic.core",
+   "name": "Image"
+  },
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "phenotypic",
+   "module_short": "phenotypic",
+   "name": "Image"
+  }
+ ],
+ "img.array": [
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "phenotypic.core._image",
+   "module_short": "phenotypic.core._image",
+   "name": "Image.array"
+  },
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "phenotypic.core",
+   "module_short": "phenotypic.core",
+   "name": "Image.array"
+  },
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "phenotypic",
+   "module_short": "phenotypic",
+   "name": "Image.array"
+  },
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "phenotypic.core.handlers._image_hsv_handler",
+   "module_short": "phenotypic.core.handlers",
+   "name": "ImageHsvHandler.array"
+  },
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "phenotypic.core.handlers",
+   "module_short": "phenotypic.core.handlers",
+   "name": "ImageHsvHandler.array"
+  },
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "phenotypic.core",
+   "module_short": "phenotypic.core",
+   "name": "ImageHsvHandler.array"
+  },
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "phenotypic",
+   "module_short": "phenotypic",
+   "name": "ImageHsvHandler.array"
+  },
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "phenotypic.core.handlers._image_handler",
+   "module_short": "phenotypic.core.handlers",
+   "name": "ImageHandler.array"
+  },
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "phenotypic.core.handlers",
+   "module_short": "phenotypic.core.handlers",
+   "name": "ImageHandler.array"
+  },
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "phenotypic.core",
+   "module_short": "phenotypic.core",
+   "name": "ImageHandler.array"
+  },
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "phenotypic",
+   "module_short": "phenotypic",
+   "name": "ImageHandler.array"
+  }
+ ],
+ "img.imformat": [
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "phenotypic.core._image",
+   "module_short": "phenotypic.core._image",
+   "name": "Image.imformat"
+  },
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "phenotypic.core",
+   "module_short": "phenotypic.core",
+   "name": "Image.imformat"
+  },
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "phenotypic",
+   "module_short": "phenotypic",
+   "name": "Image.imformat"
+  },
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "phenotypic.core.handlers._image_hsv_handler",
+   "module_short": "phenotypic.core.handlers",
+   "name": "ImageHsvHandler.imformat"
+  },
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "phenotypic.core.handlers",
+   "module_short": "phenotypic.core.handlers",
+   "name": "ImageHsvHandler.imformat"
+  },
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "phenotypic.core",
+   "module_short": "phenotypic.core",
+   "name": "ImageHsvHandler.imformat"
+  },
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "phenotypic",
+   "module_short": "phenotypic",
+   "name": "ImageHsvHandler.imformat"
+  },
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "phenotypic.core.handlers._image_handler",
+   "module_short": "phenotypic.core.handlers",
+   "name": "ImageHandler.imformat"
+  },
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "phenotypic.core.handlers",
+   "module_short": "phenotypic.core.handlers",
+   "name": "ImageHandler.imformat"
+  },
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "phenotypic.core",
+   "module_short": "phenotypic.core",
+   "name": "ImageHandler.imformat"
+  },
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "phenotypic",
+   "module_short": "phenotypic",
+   "name": "ImageHandler.imformat"
+  }
+ ],
+ "img.shape": [
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "phenotypic.core._image",
+   "module_short": "phenotypic.core._image",
+   "name": "Image.shape"
+  },
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "phenotypic.core",
+   "module_short": "phenotypic.core",
+   "name": "Image.shape"
+  },
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "phenotypic",
+   "module_short": "phenotypic",
+   "name": "Image.shape"
+  },
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "phenotypic.core.handlers._image_hsv_handler",
+   "module_short": "phenotypic.core.handlers",
+   "name": "ImageHsvHandler.shape"
+  },
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "phenotypic.core.handlers",
+   "module_short": "phenotypic.core.handlers",
+   "name": "ImageHsvHandler.shape"
+  },
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "phenotypic.core",
+   "module_short": "phenotypic.core",
+   "name": "ImageHsvHandler.shape"
+  },
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "phenotypic",
+   "module_short": "phenotypic",
+   "name": "ImageHsvHandler.shape"
+  },
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "phenotypic.core.handlers._image_handler",
+   "module_short": "phenotypic.core.handlers",
+   "name": "ImageHandler.shape"
+  },
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "phenotypic.core.handlers",
+   "module_short": "phenotypic.core.handlers",
+   "name": "ImageHandler.shape"
+  },
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "phenotypic.core",
+   "module_short": "phenotypic.core",
+   "name": "ImageHandler.shape"
+  },
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "phenotypic",
+   "module_short": "phenotypic",
+   "name": "ImageHandler.shape"
+  }
+ ],
+ "img_array": [
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "numpy",
+   "module_short": "numpy",
+   "name": "ndarray"
+  }
+ ],
+ "mean_values": [
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "numpy",
+   "module_short": "numpy",
+   "name": "ndarray"
+  }
+ ],
+ "np.array": [
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "builtins",
+   "module_short": "builtins",
+   "name": "builtin_function_or_method"
+  },
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "numpy",
+   "module_short": "numpy",
+   "name": "array"
+  }
+ ],
+ "np.mean": [
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "numpy",
+   "module_short": "numpy",
+   "name": "_ArrayFunctionDispatcher"
+  },
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "numpy",
+   "module_short": "numpy",
+   "name": "mean"
+  }
+ ],
+ "np.sum": [
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "numpy",
+   "module_short": "numpy",
+   "name": "_ArrayFunctionDispatcher"
+  },
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "numpy",
+   "module_short": "numpy",
+   "name": "sum"
+  }
+ ],
+ "np.uint8": [
+  {
+   "is_class": true,
+   "is_explicit": false,
+   "module": "numpy",
+   "module_short": "numpy",
+   "name": "uint8"
+  },
+  {
+   "is_class": true,
+   "is_explicit": false,
+   "module": "numpy",
+   "module_short": "numpy",
+   "name": "unsignedinteger"
+  },
+  {
+   "is_class": true,
+   "is_explicit": false,
+   "module": "numpy",
+   "module_short": "numpy",
+   "name": "integer"
+  },
+  {
+   "is_class": true,
+   "is_explicit": false,
+   "module": "numpy",
+   "module_short": "numpy",
+   "name": "number"
+  },
+  {
+   "is_class": true,
+   "is_explicit": false,
+   "module": "numpy",
+   "module_short": "numpy",
+   "name": "generic"
+  },
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "numpy",
+   "module_short": "numpy",
+   "name": "uint8"
+  }
+ ],
+ "np.zeros": [
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "builtins",
+   "module_short": "builtins",
+   "name": "builtin_function_or_method"
+  },
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "numpy",
+   "module_short": "numpy",
+   "name": "zeros"
+  }
+ ],
+ "plt.axis": [
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "builtins",
+   "module_short": "builtins",
+   "name": "function"
+  },
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "matplotlib.pyplot",
+   "module_short": "matplotlib.pyplot",
+   "name": "axis"
+  }
+ ],
+ "plt.figure": [
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "builtins",
+   "module_short": "builtins",
+   "name": "function"
+  },
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "matplotlib.pyplot",
+   "module_short": "matplotlib.pyplot",
+   "name": "figure"
+  }
+ ],
+ "plt.imshow": [
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "builtins",
+   "module_short": "builtins",
+   "name": "function"
+  },
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "matplotlib.pyplot",
+   "module_short": "matplotlib.pyplot",
+   "name": "imshow"
+  }
+ ],
+ "plt.show": [
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "builtins",
+   "module_short": "builtins",
+   "name": "function"
+  },
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "matplotlib.pyplot",
+   "module_short": "matplotlib.pyplot",
+   "name": "show"
+  }
+ ],
+ "plt.title": [
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "builtins",
+   "module_short": "builtins",
+   "name": "function"
+  },
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "matplotlib.pyplot",
+   "module_short": "matplotlib.pyplot",
+   "name": "title"
+  }
+ ],
+ "ps.Image": [
+  {
+   "is_class": true,
+   "is_explicit": false,
+   "module": "phenotypic.core._image",
+   "module_short": "phenotypic.core._image",
+   "name": "Image"
+  },
+  {
+   "is_class": true,
+   "is_explicit": false,
+   "module": "phenotypic.core",
+   "module_short": "phenotypic.core",
+   "name": "Image"
+  },
+  {
+   "is_class": true,
+   "is_explicit": false,
+   "module": "phenotypic",
+   "module_short": "phenotypic",
+   "name": "Image"
+  },
+  {
+   "is_class": true,
+   "is_explicit": false,
+   "module": "phenotypic.core.handlers._image_hsv_handler",
+   "module_short": "phenotypic.core.handlers",
+   "name": "ImageHsvHandler"
+  },
+  {
+   "is_class": true,
+   "is_explicit": false,
+   "module": "phenotypic.core.handlers",
+   "module_short": "phenotypic.core.handlers",
+   "name": "ImageHsvHandler"
+  },
+  {
+   "is_class": true,
+   "is_explicit": false,
+   "module": "phenotypic.core",
+   "module_short": "phenotypic.core",
+   "name": "ImageHsvHandler"
+  },
+  {
+   "is_class": true,
+   "is_explicit": false,
+   "module": "phenotypic",
+   "module_short": "phenotypic",
+   "name": "ImageHsvHandler"
+  },
+  {
+   "is_class": true,
+   "is_explicit": false,
+   "module": "phenotypic.core.handlers._image_handler",
+   "module_short": "phenotypic.core.handlers",
+   "name": "ImageHandler"
+  },
+  {
+   "is_class": true,
+   "is_explicit": false,
+   "module": "phenotypic.core.handlers",
+   "module_short": "phenotypic.core.handlers",
+   "name": "ImageHandler"
+  },
+  {
+   "is_class": true,
+   "is_explicit": false,
+   "module": "phenotypic.core",
+   "module_short": "phenotypic.core",
+   "name": "ImageHandler"
+  },
+  {
+   "is_class": true,
+   "is_explicit": false,
+   "module": "phenotypic",
+   "module_short": "phenotypic",
+   "name": "ImageHandler"
+  },
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "phenotypic",
+   "module_short": "phenotypic",
+   "name": "Image"
+  }
+ ],
+ "red_mask": [
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "numpy",
+   "module_short": "numpy",
+   "name": "ndarray"
+  }
+ ],
+ "red_pixel_count": [
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "numpy",
+   "module_short": "numpy",
+   "name": "int64"
+  }
+ ],
+ "test_image": [
+  {
+   "is_class": false,
+   "is_explicit": false,
+   "module": "numpy",
+   "module_short": "numpy",
+   "name": "ndarray"
+  }
+ ]
+}
