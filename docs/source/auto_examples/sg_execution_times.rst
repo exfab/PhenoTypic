@@ -1,4 +1,3 @@
-
 :orphan:
 
 .. _sphx_glr_auto_examples_sg_execution_times:
@@ -6,7 +5,7 @@
 
 Computation times
 =================
-**00:00.047** total execution time for 1 file **from auto_examples**:
+**00:00.083** total execution time for 1 file **from auto_examples**:
 
 .. container::
 
@@ -32,6 +31,6 @@ Computation times
    * - Example
      - Time
      - Mem (MB)
-   * - :ref:`sphx_glr_auto_examples_example_basic_usage.py` (``example_basic_usage.py``)
-     - 00:00.047
+   * - :download:`example_basic_usage.py </auto_examples/example_basic_usage.py>` (``example_basic_usage.py``)
+     - 00:00.083
      - 0.0

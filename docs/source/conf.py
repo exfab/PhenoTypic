@@ -14,20 +14,20 @@ Accent 1
     #0077B6
     Deeper blue for headers/navs
 Accent 2
-#90E0EF
-Soft sky tint for backgrounds
+    #90E0EF
+    Soft sky tint for backgrounds
 Background
-#F4FAFD
-Very light blue-white background
+    #F4FAFD
+    Very light blue-white background
 Text (Dark)
-#023047
-Almost black with blue undertone
+    #023047
+    Almost black with blue undertone
 Text (Light)
-#FFFFFF
-For light-on-dark components
+    #FFFFFF
+    For light-on-dark components
 Link
-#219EBC
-Soft blue for hyperlinks
+    #219EBC
+    Soft blue for hyperlinks
 
 """
 
@@ -36,22 +36,23 @@ import os
 import sys
 import sphinx_autosummary_accessors
 sys.path.insert(0, os.path.abspath('../../src'))
+sys.path.insert(0, os.path.abspath('./_extensions'))
 
-project = 'PhenoScope'
+project = 'PhenoTypic'
 copyright = '2025, ExFAB BioFoundry'
 author = 'Alexander Nguyen'
 
 # Variables
 github_url = 'https://github.com/Wheeldon-Lab/PhenoScope#'
-LIGHT_LOGO_PATH = './_static/assets/500x225/no_background_svg/light_logo_sponsor.svg'
-DARK_LOGO_PATH = './_static/assets/500x225/no_background_svg/dark_logo_sponsor.svg'
+LIGHT_LOGO_PATH = './_static/assets/200x150/light_logo_sponsor.svg'
+DARK_LOGO_PATH = './_static/assets/200x150/dark_logo_sponsor.svg'
 
-# Try to get the version from phenoscope, but use a default if not available
+# Try to get the version from PhenoTypic, but use a default if not available
 try:
-    import phenoscope
-    version = str(phenoscope.__version__)
+    import phenotypic
+    version = str(phenotypic.__version__)
 except ImportError:
-    version = '0.1.0'  # Default version if phenoscope is not installed
+    version = '0.1.0'  # Default version if PhenoTypic is not installed
 release = version
 
 # -- General configuration ---------------------------------------------------
@@ -71,7 +72,8 @@ extensions = [
     'sphinx_gallery.gen_gallery',
     'sphinx_autosummary_accessors',
     'sphinx_design',
-    'myst_nb'
+    'myst_nb',
+    'class_members'
 ]
 
 autosummary_generate = True
@@ -85,6 +87,7 @@ autodoc_default_options = {
 }
 
 autodoc_typehints = 'both'
+autodoc_typehints_format = 'short'
 autodoc_member_order = 'groupwise'
 
 templates_path = ['_templates', sphinx_autosummary_accessors.templates_path]
@@ -114,7 +117,7 @@ sphinx_gallery_conf = {
     'examples_dirs': '../../examples',   # path to your example scripts
     'gallery_dirs': 'auto_examples',     # path to where to save gallery generated output
     'filename_pattern': '/example_',     # pattern to match example files
-    'ignore_pattern': '__init__\.py',   # pattern to ignore
+    'ignore_pattern': '__init__.py',   # pattern to ignore
     'plot_gallery': 'True',             # generate plots
     'thumbnail_size': (400, 300),       # thumbnail size
     'download_all_examples': True,      # download all examples as a zip file
@@ -124,7 +127,8 @@ sphinx_gallery_conf = {
 }
 exclude_patterns = ['_build', '**.ipynb_checkpoints', '*.ipynb', 'auto_examples']
 
-
+# Disable strict HTML5 assertion for broken references
+html5_writer = True
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
@@ -137,14 +141,14 @@ html_css_files = [
 ]
 
 if html_theme == 'pydata_sphinx_theme':
-    html_title = "PhenoScope"
+    html_title = "PhenoTypic"
     html_theme_options = {
         "subtitle": "A modular framework for bioimage analysis and visualization"
     }
     html_logo = LIGHT_LOGO_PATH
     html_theme_options = {
         "logo": {
-            "alt_text": "PhenoScope",
+            "alt_text": "PhenoTypic",
             "link": "index",
             "image_light":LIGHT_LOGO_PATH,
             "image_dark":DARK_LOGO_PATH
@@ -176,3 +180,8 @@ napoleon_use_ivar = False
 napoleon_use_param = True
 napoleon_use_rtype = True
 
+# Type aliases for cleaner documentation
+python_type_aliases = {
+    'matplotlib.axes._axes.Axes': 'matplotlib.axes.Axes',
+    'matplotlib.figure.Figure': 'matplotlib.figure.Figure'
+}

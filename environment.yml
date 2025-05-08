@@ -1,4 +1,4 @@
-name: phenoscope
+name: PhenoTypic
 channels:
   - conda-forge
   - bioconda

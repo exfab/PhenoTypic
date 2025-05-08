@@ -1,4 +1,3 @@
-
 :orphan:
 
 .. _sphx_glr_sg_execution_times:
@@ -32,6 +31,6 @@ Computation times
    * - Example
      - Time
      - Mem (MB)
-   * - :ref:`sphx_glr_auto_examples_example_basic_usage.py` (``../../examples/example_basic_usage.py``)
+   * - :download:`example_basic_usage.py </auto_examples/example_basic_usage.py>` (``../../examples/example_basic_usage.py``)
      - 00:00.000
      - 0.0

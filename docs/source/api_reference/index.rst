@@ -1,22 +1,21 @@
 API Reference
 =============
 
-This section provides detailed API documentation for all PhenoScope modules and functions.
+This section provides detailed API documentation for all Phenotypic modules and functions.
 
-.. autoclass:: phenoscope.Image
-   :members: __init__, from_file, from_array, show, save
-   :undoc-members:
-   :show-inheritance:
-   :member-order: bysource
+Image
+-----
+.. currentmodule:: phenotypic
 
-Image Accessors
---------------
-
-.. currentmodule:: phenoscope
 .. autosummary::
-    :toctree: Image
-    :recursive:
-    :caption: Image Accessors
+    :toctree: image_class
+    :caption: Image
+    :template: image_class.rst
+    
+    Image
+
+.. autosummary::
+    :toctree: image_class
     :template: image_accessor.rst
 
     Image.array
@@ -24,21 +23,25 @@ Image Accessors
     Image.enh_matrix
     Image.objmask
     Image.objmap
-    Image.obj
+    Image.objects
     Image.hsv
 
-.. autoclass:: phenoscope.GridImage
-   :members: __init__, from_file, from_array, show, save
-   :undoc-members:
-   :show-inheritance:
-   :member-order: bysource
+
+
+GridImage
+---------
+.. currentmodule:: phenotypic
+.. autosummary::
+    :toctree: grid_image
+    :caption: GridImage
+    
+    GridImage
 
 GridImage Accessors
-------------------
-
-.. currentmodule:: phenoscope
+^^^^^^^^^^^^^^^^^^^
+.. currentmodule:: phenotypic
 .. autosummary::
-    :toctree: GridImage
+    :toctree: grid_image_accessors
     :recursive:
     :template: image_accessor.rst
     :caption: GridImage Accessors
@@ -46,18 +49,20 @@ GridImage Accessors
     GridImage.grid
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
    :caption: Modules
-
-   phenoscope.abstract
-   phenoscope.core
-   phenoscope.data
-   phenoscope.detection
-   phenoscope.grid
-   phenoscope.measure
-   phenoscope.morphology
-   phenoscope.objects
-   phenoscope.pipeline
-   phenoscope.preprocessing
-   phenoscope.transform
-   phenoscope.util
+   
+   Image
+   phenotypic.GridImage
+   phenotypic.abstract
+   phenotypic.core
+   phenotypic.data
+   phenotypic.detection
+   phenotypic.grid
+   phenotypic.measure
+   phenotypic.morphology
+   phenotypic.objects
+   phenotypic.pipeline
+   phenotypic.preprocessing
+   phenotypic.transform
+   phenotypic.util

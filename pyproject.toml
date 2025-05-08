@@ -1,12 +1,12 @@
 [build-system]
-requires = ["setuptools"]
+requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 where = ["src"]
 
 [project]
-name = 'phenoscope'
+name = 'phenotypic'
 dynamic = ["version"]
 
 authors = [
@@ -17,7 +17,7 @@ description = "An image processing framework created for Ex-FAB NSF BioFoundry t
 
 readme="README.md"
 
-requires-python = ">=3.10"
+requires-python = ">=3.10, <3.13"
 
 classifiers = [
     "Development Status :: 2 - Pre-Alpha",
@@ -40,10 +40,11 @@ dependencies = [
     "h5py",
     "mahotas",
     "pillow",
+    "tqdm"
 ]
 
 [project.urls]
-Repository = "https://github.com/Xander-git/PhenoScope"
+Repository = "https://github.com/Wheeldon-Lab/PhenoTypic"
 
 [project.optional-dependencies]
 dev = [
@@ -71,4 +72,4 @@ testpaths = ["./tests/*"]
 addopts = "--verbose --capture=no"
 
 [tool.setuptools.dynamic]
-version = {attr = "phenoscope.__version__"}
+version = {attr = "phenotypic.__version__"}

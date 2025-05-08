@@ -1,4 +1,4 @@
-name: phenoscope-build
+name: PhenoTypic-build
 channels:
   - conda-forge
   - bioconda

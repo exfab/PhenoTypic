@@ -1,11 +1,9 @@
 :orphan:
 
-PhenoScope Examples Gallery
-========================
+Examples Gallery
+================
 
-This gallery contains examples demonstrating the usage of PhenoScope for various image processing and analysis tasks.
-
-Each example is designed to showcase specific features and capabilities of the library.
+This directory contains example scripts demonstrating usage of the PhenoTypic library. These examples will be converted into an online gallery by Sphinx-Gallery.
 
 
 
@@ -15,34 +13,11 @@ Each example is designed to showcase specific features and capabilities of the l
 
 .. thumbnail-parent-div-open
 
-.. raw:: html
-
-    <div class="sphx-glr-thumbcontainer" tooltip="This example demonstrates basic usage of PhenoScope for image processing.">
-
-.. only:: html
-
-  .. image:: /auto_examples/images/thumb/sphx_glr_example_basic_usage_thumb.png
-    :alt:
-
-  :ref:`sphx_glr_auto_examples_example_basic_usage.py`
-
-.. raw:: html
-
-      <div class="sphx-glr-thumbnail-title">Basic Usage Example</div>
-    </div>
-
-
 .. thumbnail-parent-div-close
 
 .. raw:: html
 
     </div>
-
-
-.. toctree::
-   :hidden:
-
-   /auto_examples/example_basic_usage
 
 
 .. only:: html

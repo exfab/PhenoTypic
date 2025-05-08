@@ -1,5 +1,5 @@
 package:
-  name: phenoscope
+  name: PhenoTypic
   version: "0.4.0a"
 
 source:
@@ -20,7 +20,7 @@ requirements:
     - seaborn
 
 about:
-  home: https://github.com/Xander-git/PhenoScope
+  home: https://github.com/Wheeldon-Lab/PhenoTypic
   license: GPL-3.0
   summary: "An image processing framework for rapid protocol development of phenotype image analysis"
 

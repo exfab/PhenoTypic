@@ -3,22 +3,22 @@
   {
    "is_class": false,
    "is_explicit": false,
-   "module": "phenoscope.core._image",
-   "module_short": "phenoscope.core._image",
+   "module": "phenotypic.core._image",
+   "module_short": "phenotypic.core._image",
    "name": "Image"
   },
   {
    "is_class": false,
    "is_explicit": false,
-   "module": "phenoscope.core",
-   "module_short": "phenoscope.core",
+   "module": "phenotypic.core",
+   "module_short": "phenotypic.core",
    "name": "Image"
   },
   {
    "is_class": false,
    "is_explicit": false,
-   "module": "phenoscope",
-   "module_short": "phenoscope",
+   "module": "phenotypic",
+   "module_short": "phenotypic",
    "name": "Image"
   }
  ],
@@ -26,236 +26,236 @@
   {
    "is_class": false,
    "is_explicit": false,
-   "module": "phenoscope.core._image",
-   "module_short": "phenoscope.core._image",
+   "module": "phenotypic.core._image",
+   "module_short": "phenotypic.core._image",
    "name": "Image.array"
   },
   {
    "is_class": false,
    "is_explicit": false,
-   "module": "phenoscope.core",
-   "module_short": "phenoscope.core",
+   "module": "phenotypic.core",
+   "module_short": "phenotypic.core",
    "name": "Image.array"
   },
   {
    "is_class": false,
    "is_explicit": false,
-   "module": "phenoscope",
-   "module_short": "phenoscope",
+   "module": "phenotypic",
+   "module_short": "phenotypic",
    "name": "Image.array"
   },
   {
    "is_class": false,
    "is_explicit": false,
-   "module": "phenoscope.core.handlers._image_hsv_handler",
-   "module_short": "phenoscope.core.handlers",
+   "module": "phenotypic.core.handlers._image_hsv_handler",
+   "module_short": "phenotypic.core.handlers",
    "name": "ImageHsvHandler.array"
   },
   {
    "is_class": false,
    "is_explicit": false,
-   "module": "phenoscope.core.handlers",
-   "module_short": "phenoscope.core.handlers",
+   "module": "phenotypic.core.handlers",
+   "module_short": "phenotypic.core.handlers",
    "name": "ImageHsvHandler.array"
   },
   {
    "is_class": false,
    "is_explicit": false,
-   "module": "phenoscope.core",
-   "module_short": "phenoscope.core",
+   "module": "phenotypic.core",
+   "module_short": "phenotypic.core",
    "name": "ImageHsvHandler.array"
   },
   {
    "is_class": false,
    "is_explicit": false,
-   "module": "phenoscope",
-   "module_short": "phenoscope",
+   "module": "phenotypic",
+   "module_short": "phenotypic",
    "name": "ImageHsvHandler.array"
   },
   {
    "is_class": false,
    "is_explicit": false,
-   "module": "phenoscope.core.handlers._image_handler",
-   "module_short": "phenoscope.core.handlers",
+   "module": "phenotypic.core.handlers._image_handler",
+   "module_short": "phenotypic.core.handlers",
    "name": "ImageHandler.array"
   },
   {
    "is_class": false,
    "is_explicit": false,
-   "module": "phenoscope.core.handlers",
-   "module_short": "phenoscope.core.handlers",
+   "module": "phenotypic.core.handlers",
+   "module_short": "phenotypic.core.handlers",
    "name": "ImageHandler.array"
   },
   {
    "is_class": false,
    "is_explicit": false,
-   "module": "phenoscope.core",
-   "module_short": "phenoscope.core",
+   "module": "phenotypic.core",
+   "module_short": "phenotypic.core",
    "name": "ImageHandler.array"
   },
   {
    "is_class": false,
    "is_explicit": false,
-   "module": "phenoscope",
-   "module_short": "phenoscope",
+   "module": "phenotypic",
+   "module_short": "phenotypic",
    "name": "ImageHandler.array"
   }
  ],
- "img.schema": [
+ "img.imformat": [
   {
    "is_class": false,
    "is_explicit": false,
-   "module": "phenoscope.core._image",
-   "module_short": "phenoscope.core._image",
-   "name": "Image.schema"
+   "module": "phenotypic.core._image",
+   "module_short": "phenotypic.core._image",
+   "name": "Image.imformat"
   },
   {
    "is_class": false,
    "is_explicit": false,
-   "module": "phenoscope.core",
-   "module_short": "phenoscope.core",
-   "name": "Image.schema"
+   "module": "phenotypic.core",
+   "module_short": "phenotypic.core",
+   "name": "Image.imformat"
   },
   {
    "is_class": false,
    "is_explicit": false,
-   "module": "phenoscope",
-   "module_short": "phenoscope",
-   "name": "Image.schema"
+   "module": "phenotypic",
+   "module_short": "phenotypic",
+   "name": "Image.imformat"
   },
   {
    "is_class": false,
    "is_explicit": false,
-   "module": "phenoscope.core.handlers._image_hsv_handler",
-   "module_short": "phenoscope.core.handlers",
-   "name": "ImageHsvHandler.schema"
+   "module": "phenotypic.core.handlers._image_hsv_handler",
+   "module_short": "phenotypic.core.handlers",
+   "name": "ImageHsvHandler.imformat"
   },
   {
    "is_class": false,
    "is_explicit": false,
-   "module": "phenoscope.core.handlers",
-   "module_short": "phenoscope.core.handlers",
-   "name": "ImageHsvHandler.schema"
+   "module": "phenotypic.core.handlers",
+   "module_short": "phenotypic.core.handlers",
+   "name": "ImageHsvHandler.imformat"
   },
   {
    "is_class": false,
    "is_explicit": false,
-   "module": "phenoscope.core",
-   "module_short": "phenoscope.core",
-   "name": "ImageHsvHandler.schema"
+   "module": "phenotypic.core",
+   "module_short": "phenotypic.core",
+   "name": "ImageHsvHandler.imformat"
   },
   {
    "is_class": false,
    "is_explicit": false,
-   "module": "phenoscope",
-   "module_short": "phenoscope",
-   "name": "ImageHsvHandler.schema"
+   "module": "phenotypic",
+   "module_short": "phenotypic",
+   "name": "ImageHsvHandler.imformat"
   },
   {
    "is_class": false,
    "is_explicit": false,
-   "module": "phenoscope.core.handlers._image_handler",
-   "module_short": "phenoscope.core.handlers",
-   "name": "ImageHandler.schema"
+   "module": "phenotypic.core.handlers._image_handler",
+   "module_short": "phenotypic.core.handlers",
+   "name": "ImageHandler.imformat"
   },
   {
    "is_class": false,
    "is_explicit": false,
-   "module": "phenoscope.core.handlers",
-   "module_short": "phenoscope.core.handlers",
-   "name": "ImageHandler.schema"
+   "module": "phenotypic.core.handlers",
+   "module_short": "phenotypic.core.handlers",
+   "name": "ImageHandler.imformat"
   },
   {
    "is_class": false,
    "is_explicit": false,
-   "module": "phenoscope.core",
-   "module_short": "phenoscope.core",
-   "name": "ImageHandler.schema"
+   "module": "phenotypic.core",
+   "module_short": "phenotypic.core",
+   "name": "ImageHandler.imformat"
   },
   {
    "is_class": false,
    "is_explicit": false,
-   "module": "phenoscope",
-   "module_short": "phenoscope",
-   "name": "ImageHandler.schema"
+   "module": "phenotypic",
+   "module_short": "phenotypic",
+   "name": "ImageHandler.imformat"
   }
  ],
  "img.shape": [
   {
    "is_class": false,
    "is_explicit": false,
-   "module": "phenoscope.core._image",
-   "module_short": "phenoscope.core._image",
+   "module": "phenotypic.core._image",
+   "module_short": "phenotypic.core._image",
    "name": "Image.shape"
   },
   {
    "is_class": false,
    "is_explicit": false,
-   "module": "phenoscope.core",
-   "module_short": "phenoscope.core",
+   "module": "phenotypic.core",
+   "module_short": "phenotypic.core",
    "name": "Image.shape"
   },
   {
    "is_class": false,
    "is_explicit": false,
-   "module": "phenoscope",
-   "module_short": "phenoscope",
+   "module": "phenotypic",
+   "module_short": "phenotypic",
    "name": "Image.shape"
   },
   {
    "is_class": false,
    "is_explicit": false,
-   "module": "phenoscope.core.handlers._image_hsv_handler",
-   "module_short": "phenoscope.core.handlers",
+   "module": "phenotypic.core.handlers._image_hsv_handler",
+   "module_short": "phenotypic.core.handlers",
    "name": "ImageHsvHandler.shape"
   },
   {
    "is_class": false,
    "is_explicit": false,
-   "module": "phenoscope.core.handlers",
-   "module_short": "phenoscope.core.handlers",
+   "module": "phenotypic.core.handlers",
+   "module_short": "phenotypic.core.handlers",
    "name": "ImageHsvHandler.shape"
   },
   {
    "is_class": false,
    "is_explicit": false,
-   "module": "phenoscope.core",
-   "module_short": "phenoscope.core",
+   "module": "phenotypic.core",
+   "module_short": "phenotypic.core",
    "name": "ImageHsvHandler.shape"
   },
   {
    "is_class": false,
    "is_explicit": false,
-   "module": "phenoscope",
-   "module_short": "phenoscope",
+   "module": "phenotypic",
+   "module_short": "phenotypic",
    "name": "ImageHsvHandler.shape"
   },
   {
    "is_class": false,
    "is_explicit": false,
-   "module": "phenoscope.core.handlers._image_handler",
-   "module_short": "phenoscope.core.handlers",
+   "module": "phenotypic.core.handlers._image_handler",
+   "module_short": "phenotypic.core.handlers",
    "name": "ImageHandler.shape"
   },
   {
    "is_class": false,
    "is_explicit": false,
-   "module": "phenoscope.core.handlers",
-   "module_short": "phenoscope.core.handlers",
+   "module": "phenotypic.core.handlers",
+   "module_short": "phenotypic.core.handlers",
    "name": "ImageHandler.shape"
   },
   {
    "is_class": false,
    "is_explicit": false,
-   "module": "phenoscope.core",
-   "module_short": "phenoscope.core",
+   "module": "phenotypic.core",
+   "module_short": "phenotypic.core",
    "name": "ImageHandler.shape"
   },
   {
    "is_class": false,
    "is_explicit": false,
-   "module": "phenoscope",
-   "module_short": "phenoscope",
+   "module": "phenotypic",
+   "module_short": "phenotypic",
    "name": "ImageHandler.shape"
   }
  ],
@@ -469,85 +469,85 @@
   {
    "is_class": true,
    "is_explicit": false,
-   "module": "phenoscope.core._image",
-   "module_short": "phenoscope.core._image",
+   "module": "phenotypic.core._image",
+   "module_short": "phenotypic.core._image",
    "name": "Image"
   },
   {
    "is_class": true,
    "is_explicit": false,
-   "module": "phenoscope.core",
-   "module_short": "phenoscope.core",
+   "module": "phenotypic.core",
+   "module_short": "phenotypic.core",
    "name": "Image"
   },
   {
    "is_class": true,
    "is_explicit": false,
-   "module": "phenoscope",
-   "module_short": "phenoscope",
+   "module": "phenotypic",
+   "module_short": "phenotypic",
    "name": "Image"
   },
   {
    "is_class": true,
    "is_explicit": false,
-   "module": "phenoscope.core.handlers._image_hsv_handler",
-   "module_short": "phenoscope.core.handlers",
+   "module": "phenotypic.core.handlers._image_hsv_handler",
+   "module_short": "phenotypic.core.handlers",
    "name": "ImageHsvHandler"
   },
   {
    "is_class": true,
    "is_explicit": false,
-   "module": "phenoscope.core.handlers",
-   "module_short": "phenoscope.core.handlers",
+   "module": "phenotypic.core.handlers",
+   "module_short": "phenotypic.core.handlers",
    "name": "ImageHsvHandler"
   },
   {
    "is_class": true,
    "is_explicit": false,
-   "module": "phenoscope.core",
-   "module_short": "phenoscope.core",
+   "module": "phenotypic.core",
+   "module_short": "phenotypic.core",
    "name": "ImageHsvHandler"
   },
   {
    "is_class": true,
    "is_explicit": false,
-   "module": "phenoscope",
-   "module_short": "phenoscope",
+   "module": "phenotypic",
+   "module_short": "phenotypic",
    "name": "ImageHsvHandler"
   },
   {
    "is_class": true,
    "is_explicit": false,
-   "module": "phenoscope.core.handlers._image_handler",
-   "module_short": "phenoscope.core.handlers",
+   "module": "phenotypic.core.handlers._image_handler",
+   "module_short": "phenotypic.core.handlers",
    "name": "ImageHandler"
   },
   {
    "is_class": true,
    "is_explicit": false,
-   "module": "phenoscope.core.handlers",
-   "module_short": "phenoscope.core.handlers",
+   "module": "phenotypic.core.handlers",
+   "module_short": "phenotypic.core.handlers",
    "name": "ImageHandler"
   },
   {
    "is_class": true,
    "is_explicit": false,
-   "module": "phenoscope.core",
-   "module_short": "phenoscope.core",
+   "module": "phenotypic.core",
+   "module_short": "phenotypic.core",
    "name": "ImageHandler"
   },
   {
    "is_class": true,
    "is_explicit": false,
-   "module": "phenoscope",
-   "module_short": "phenoscope",
+   "module": "phenotypic",
+   "module_short": "phenotypic",
    "name": "ImageHandler"
   },
   {
    "is_class": false,
    "is_explicit": false,
-   "module": "phenoscope",
-   "module_short": "phenoscope",
+   "module": "phenotypic",
+   "module_short": "phenotypic",
    "name": "Image"
   }
  ],
