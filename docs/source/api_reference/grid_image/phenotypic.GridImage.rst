@@ -37,6 +37,7 @@
       ~GridImage.hsv
       ~GridImage.imformat
       ~GridImage.matrix
+      ~GridImage.metadata
       ~GridImage.name
       ~GridImage.num_objects
       ~GridImage.objects
