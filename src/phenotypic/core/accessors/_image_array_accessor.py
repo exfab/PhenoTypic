@@ -228,6 +228,7 @@ class ImageArray(ImageDataAccessor):
         """
         objmap = self._parent_image.objmap[:]
         if object_label is not None: objmap[objmap != object_label] = 0
+        if annotation_params is None: annotation_params = {}
 
         fig, ax = self._plot_overlay(
             arr=self._parent_image.array[:],
