@@ -17,6 +17,7 @@ permissions:
 jobs:
   tests:
     runs-on: ubuntu-latest
+    environment: deploy-documentation-to-github-pages
     steps:
       - uses: actions/checkout@v4
         with:
@@ -36,6 +37,7 @@ jobs:
   docs:
     needs: tests
     runs-on: ubuntu-latest
+    environment: deploy-documentation-to-github-pages
     steps:
       - uses: actions/checkout@v4
         with:

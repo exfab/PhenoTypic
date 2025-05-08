@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 if TYPE_CHECKING: from phenotypic import Image
 
@@ -25,32 +25,32 @@ class OptimalCenterGridFinder(GridFinder):
     Attributes:
         nrows (int): Number of rows in the grid.
         ncols (int): Number of columns in the grid.
-        method (str): The optimization method to use ('bisection' or 'solver'. Defaults to 'bisection'.
         tol (float): Tolerance for the solver method. Defaults to 10e-3.
 
     """
+    __iter_limit = 100000
+    def __init__(self, nrows: int = 8, ncols: int = 12,
+                 tol: float = 0.01, max_iter: int | None = 1000):
+        """
+        Represents a configuration object for iterative computations with constraints on
+        the number of rows, columns, tolerance, and a maximum number of iterations. This
+        provides a flexible structure enabling adjustments to the computation parameters
+        such as matrix dimensions and convergence criteria.
 
-    def __init__(self, nrows: int = 8, ncols: int = 12, method: str = 'bisection', tol: float = 10e-3, max_iter: int | None = 1000):
-        """Initializes the OptimalCenterGridSetter object.
+        Attributes:
+            nrows (int): Number of rows for the computation grid or array.
+            ncols (int): Number of columns for the computation grid or array.
+            tol (float): Tolerance level for the convergence criteria.
+            max_iter (int | None): Maximum number of allowable iterations. Defaults to
+                the predefined internal convergence limit if not provided.
 
-        Args:
-            nrows (int): number of rows in the grid
-            ncols (int): number of columns in the grid
-            method (str): The optimization method to use ('bisection' or 'solver'. Defaults to 'bisection'.)
-            tol (float): Tolerance for the solver method. Defaults to 10e-3.
-            max_iter (int|None): Maximum number of iterations for the solver method. Defaults to 1000. If None, the solver will run until convergence or 50000 iterations.
         """
         self.nrows: int = nrows
         self.ncols: int = ncols
 
-        self.method: str = method
-        if self.method not in ['bisection', 'solver']:
-            raise ValueError(f"Invalid method value: {self.method}")
-
         self.tol: float = tol
 
-        self.__convergence_limit = 50000
-        self.max_iter: int = max_iter if max_iter else self.__convergence_limit
+        self.max_iter: int = max_iter if max_iter else self.__iter_limit
 
     def _operate(self, image: Image) -> pd.DataFrame:
         """
@@ -69,34 +69,23 @@ class OptimalCenterGridFinder(GridFinder):
         # Find the centroid and boundaries
         obj_info = image.objects.info()
 
-        # Find row padding search boundaries
+        # W Find row padding search boundaries
         min_rr, max_rr = obj_info.loc[:, OBJECT_INFO.MIN_RR].min(), obj_info.loc[:, OBJECT_INFO.MAX_RR].max()
         max_row_pad_size = min(min_rr - 1, abs(image.shape[0] - max_rr - 1))
         max_row_pad_size = 0 if max_row_pad_size < 0 else max_row_pad_size  # Clip in case pad size is negative
 
-        partial_row_pad_finder = partial(self._find_padding_midpoint_error, image=image, axis=0, row_pad=0, y_pad=0)
-        optimal_row_padding = round(
-            minimize_scalar(
-                partial_row_pad_finder,
-                bounds=(0, max_row_pad_size)
-            ).x
-        )
+        partial_row_pad_finder = partial(self._find_padding_midpoint_error, image=image, axis=0, row_pad=0, col_pad=0)
+        optimal_row_padding = int(self._apply_solver(partial_row_pad_finder, max_value=max_row_pad_size, min_value=0))
 
         # Column Padding
 
-        ## Find column paddingsearch boundaries
+        ## Find column padding search boundaries
         min_cc, max_cc = obj_info.loc[:, OBJECT_INFO.MIN_CC].min(), obj_info.loc[:, OBJECT_INFO.MAX_CC].max()
         max_col_pad_size = min(min_cc - 1, abs(image.shape[1] - max_cc - 1))
         max_col_pad_size = 0 if max_col_pad_size < 0 else max_col_pad_size  # Clip in case pad size is negative
 
-        partial_col_pad_finder = partial(self._find_padding_midpoint_error, image=image, axis=1, row_pad=optimal_row_padding, y_pad=0)
-
-        optimal_col_padding = round(
-            minimize_scalar(
-                partial_col_pad_finder,
-                bounds=(0, max_col_pad_size)
-            ).x
-        )
+        partial_col_pad_finder = partial(self._find_padding_midpoint_error, image=image, axis=1, row_pad=optimal_row_padding, col_pad=0)
+        optimal_col_padding = self._apply_solver(partial_col_pad_finder, max_value=max_col_pad_size, min_value=0)
 
         return self._get_grid_info(image=image, row_padding=optimal_row_padding, column_padding=optimal_col_padding)
 
@@ -186,7 +175,7 @@ class OptimalCenterGridFinder(GridFinder):
 
         return info_table
 
-    def _find_padding_midpoint_error(self, pad_sz, image, axis, row_pad=0, y_pad=0) -> float:
+    def _find_padding_midpoint_error(self, pad_sz, image, axis, row_pad=0, col_pad=0) -> float:
         """
         Finds the optimal padding value that minimizes the squared differences between
         the calculated midpoints of histogram bins and the provided grid group center means, while recalculating gridding each iteration.
@@ -205,9 +194,9 @@ class OptimalCenterGridFinder(GridFinder):
 
         """
         if axis == 0:
-            current_grid_info = self._get_grid_info(image=image, row_padding=pad_sz, column_padding=y_pad)
+            current_grid_info = self._get_grid_info(image=image, row_padding=pad_sz, column_padding=col_pad)
             current_obj_midpoints = (current_grid_info.loc[:, [OBJECT_INFO.CENTER_RR, GRID.GRID_ROW_NUM]]
-                                     .groupby(GRID.GRID_ROW_NUM, observed=False)
+                                     .groupby(GRID.GRID_ROW_NUM, observed=False)[OBJECT_INFO.CENTER_RR]
                                      .mean().values)
 
             bin_edges = np.histogram_bin_edges(
@@ -222,7 +211,7 @@ class OptimalCenterGridFinder(GridFinder):
         elif axis == 1:
             current_grid_info = self._get_grid_info(image=image, row_padding=row_pad, column_padding=pad_sz)
             current_obj_midpoints = (current_grid_info.loc[:, [OBJECT_INFO.CENTER_CC, GRID.GRID_COL_NUM]]
-                                     .groupby(GRID.GRID_COL_NUM, observed=False)
+                                     .groupby(GRID.GRID_COL_NUM, observed=False)[OBJECT_INFO.CENTER_CC]
                                      .mean().values)
 
             bin_edges = np.histogram_bin_edges(
@@ -243,88 +232,20 @@ class OptimalCenterGridFinder(GridFinder):
         smaller_edges = bin_edges[:-1]
         bin_midpoint = (larger_edges - smaller_edges) // 2 + smaller_edges
 
-        return ((current_obj_midpoints - bin_midpoint) ** 2).sum()
+        return ((current_obj_midpoints - bin_midpoint) ** 2).sum() / len(current_obj_midpoints)
 
     def _apply_solver(self, partial_cost_func, max_value, min_value=0) -> int:
-        """Returns the optimal padding value that minimizes the squared differences between the object midpoints and grid midpoints."""
+        """Returns the optimal padding value that minimizes the mean squared differences between the object midpoints and grid midpoints."""
         if max_value == 0:
             return 0
 
-        elif self.method == 'solver':
-            return round(minimize_scalar(partial_cost_func, bounds=(min_value, max_value),
-                                         tol=self.tol, options={'maxiter': self.max_iter if self.max_iter else 1000}
-                                         ).x
-                         )
-
-        elif self.method == 'bisection':
-            return self._bisection_solver(partial_cost_func, max_value, min_value)
-
         else:
-            raise AttributeError(f"Unknown error occured. Most likely from invalid method value: {self.method}")
-
-    def _bisection_solver(self, partial_cost_func, max_value, min_value=0) -> int:
-        """
-        Finds the closest point to the zero error using a bisection algorithm that iterates with only integeres.
-
-        This method attempts to minimize the error obtained from the 
-        `partial_cost_func` by iteratively narrowing the range defined 
-        by `min_value` and `max_value`. It computes midpoints within 
-        the range to evaluate where the error is minimized closer 
-        to zero.
-
-        Args:
-            partial_cost_func (Callable[[int], int]): A function that takes an integer input and 
-                returns an integer representing the error.
-            max_value (int): The upper bound of the range for the bisection algorithm.
-            min_value (int, optional): The lower bound of the range for the bisection algorithm. 
-                Defaults to 0.
-
-        Returns:
-            int: The closest point within the range where the error is minimized to zero.
-        """
-        left_bound, right_bound = min_value, max_value
-        center = max_value // 2
-
-        solver_iter = 0
-        while solver_iter < self.__convergence_limit:
-            if solver_iter > self.max_iter: raise RuntimeError("Bisection solver failed to converge.")
-            center_err = partial_cost_func(center)
-
-            left_midpoint, right_midpoint = self.__update_bisection_midpoints(center, left_bound, right_bound, min_value, max_value)
-            left_midpoint_err, right_midpoint_err = partial_cost_func(left_midpoint), partial_cost_func(right_midpoint)
-            if left_midpoint_err < right_midpoint_err:
-                right_bound = center
-                center = left_midpoint
-
-                change_err = left_midpoint_err - center_err
-                if change_err <= self.tol: return center
-                
-            elif left_midpoint_err > right_midpoint_err:
-                left_bound = center
-                center = right_midpoint
-
-                change_err = right_midpoint_err - center_err
-                if change_err <= self.tol: return center
-
-            solver_iter += 1
-
-        raise RuntimeError("Bisection solver failed to converge.")
-
-    @staticmethod
-    def __update_bisection_midpoints(center, left_bound, right_bound, min_value, max_value) -> (int, int):
-        """Updates the lower and upper midpoints of the bisection search.
-        
-        Returns:
-            (int, int): The updated lower and upper midpoints respectively.
-        
-        """
-        left_midpoint = (center - left_bound) // 2 + left_bound
-        left_midpoint = left_midpoint if left_midpoint >= min_value else min_value
-
-        right_midpoint = (right_bound - center) // 2 + center
-        right_midpoint = right_midpoint if right_midpoint <= max_value else max_value
-
-        return left_midpoint, right_midpoint
+            return round(
+                minimize_scalar(partial_cost_func, bounds=(min_value, max_value),
+                                options={'maxiter': self.max_iter if self.max_iter else 1000,
+                                         'xatol': self.tol}
+                                ).x
+            )
 
 
 OptimalCenterGridFinder.measure.__doc__ = OptimalCenterGridFinder._operate.__doc__
