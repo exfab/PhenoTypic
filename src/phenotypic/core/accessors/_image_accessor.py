@@ -27,9 +27,9 @@ class ImageAccessor:
     def _plot(self,
               arr: np.ndarray,
               figsize: (int, int) = (8, 6),
-              title: str|None = None,
+              title: str | None = None,
               cmap: str = 'gray',
-              ax: plt.Axes|None = None,
+              ax: plt.Axes | None = None,
               mpl_params: dict | None = None,
               ) -> tuple[plt.Figure, plt.Axes]:
         """
@@ -103,8 +103,10 @@ class ImageAccessor:
             tuple[plt.Figure, plt.Axes]: The Matplotlib Figure and Axes objects used for
             the display. If an existing Axes is provided, its corresponding Figure is returned.
         """
-        if ax is None: fig, ax = plt.subplots(figsize=figsize)
-        else: fig = ax.get_figure()
+        if ax is None:
+            fig, ax = plt.subplots(figsize=figsize)
+        else:
+            fig = ax.get_figure()
 
         overlay_params = overlay_params if overlay_params else {}
 
@@ -119,7 +121,7 @@ class ImageAccessor:
 
         return fig, ax
 
-    def _plot_annotations(self, ax:plt.Axes, color:str, size:int, facecolor:str, object_label:None | int, **kwargs):
+    def _plot_annotations(self, ax: plt.Axes, color: str, size: int, facecolor: str, object_label: None | int, **kwargs):
         props = self._parent_image.objects.props
         for i, label in enumerate(self._parent_image.objects.labels):
             if object_label is None:
@@ -142,3 +144,4 @@ class ImageAccessor:
                     bbox=dict(facecolor=facecolor, edgecolor='none', alpha=0.6, boxstyle='round'),
                     **kwargs,
                 )
+        return ax
