@@ -69,6 +69,3 @@ def test_kmarx_pipeline_pickleable(plate_grid_images):
         }
     )
     pickle.dumps(kmarx_pipeline)
-
-
-# TODO: Add pickleable check to assembled pipeline

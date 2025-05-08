@@ -25,7 +25,7 @@ class ImageHsvHandler(ImageHandler):
     def _hsv(self)->np.ndarray:
         """Returns the hsv array dynamically of the current image.
 
-        This can become computationally expensive so implementation may be changed in the future.
+        This can become computationally expensive, so implementation may be changed in the future.
 
         Returns:
             np.ndarray: The hsv array of the current image.

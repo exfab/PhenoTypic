@@ -140,7 +140,7 @@ class ImageGridHandler(Image):
                                        annotate=annotate, annotation_params=annotation_params,
                                        )
 
-        if show_gridlines:
+        if show_gridlines and self.num_objects > 0:
             col_edges = self.grid.get_col_edges()
             row_edges = self.grid.get_row_edges()
             ax.vlines(x=col_edges, ymin=row_edges.min(), ymax=row_edges.max(), colors='c', linestyles='--')

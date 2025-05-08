@@ -147,7 +147,9 @@ class ImageHandler:
                 elements being accessed.
         """
 
+        # Sections can only be set to another Image class
         if isinstance(value, self.__class__) or issubclass(type(value), ImageHandler):
+            # Handle in the array case
             if value.imformat.is_array() and self.imformat.is_array():
                 if np.array_equal(self.array[key].shape, value.array.shape) is False: raise ValueError(
                     'The image being set must be of the same shape as the image elements being accessed.'
@@ -155,24 +157,41 @@ class ImageHandler:
                 else:
                     self._data.array[key] = value.array[:]
 
+            # handle other cases
             if np.array_equal(self.matrix[key].shape, value.matrix.shape) is False:
                 raise ValueError(
                     'The image being set must be of the same shape as the image elements being accessed.'
                 )
             else:
                 self._data.matrix[key] = value.matrix[:]
-                self.enh_matrix[key] = value.enh_matrix[:]
+                self._data.enh_matrix[key] = value.enh_matrix[:]
                 self.objmask[key] = value.objmask[:]
 
     def __eq__(self, other) -> bool:
+        """
+        Compares the current object with another object for equality.
+
+        This method checks if the current object's attributes are equal to another object's
+        attributes. Equality is determined by comparing the `imformat` attribute and
+        verifying that the numerical arrays (`array`, `matrix`, `enh_matrix`, `objmap`)
+        are element-wise identical.
+
+        Note:
+            - Only checks core image data, and not any other attributes such as metadata.
+
+        Args:
+            other: The object to compare with the current instance.
+
+        Returns:
+            bool: True if all the attributes of the current object are identical to those
+            of the `other` object. Returns False otherwise.
+        """
         return True if (
                 self.imformat == other.imformat
                 and np.array_equal(self.array[:], other.array[:])
                 and np.array_equal(self.matrix[:], other.matrix[:])
                 and np.array_equal(self.enh_matrix[:], other.enh_matrix[:])
                 and np.array_equal(self.objmap[:], other.objmap[:])
-                and self._metadata.protected == other._metadata.protected
-                and self._metadata.public == other._metadata.public
         ) else False
 
     def __ne__(self, other):
@@ -241,7 +260,7 @@ class ImageHandler:
         Note:
             - array/matrix element data is synced
             - change image shape by changing the image being represented with Image.set_image()
-            - Raises an error if input image has no array form
+            - Raises an error if the input image has no array form
 
         Returns:
             ImageArray: A class that can be accessed like a numpy array, but has extra methods to streamline development, or None if not set
@@ -630,9 +649,7 @@ class ImageHandler:
 
     def _reset_data_to_empty(self):
         self._data.array = np.empty((0, 3))  # Create an empty 3D array
-        self._data.matrix = np.empty((0, 2))
-        self._data.enh_matrix = np.empty((0, 2))
-        self._data.sparse_object_map = self._accessors.objmap.reset()
+        self._set_from_matrix(np.empty((0, 2)))
         self._image_format = IMAGE_FORMATS.NONE
 
     def _set_from_class_instance(self, class_instance):
@@ -656,9 +673,7 @@ class ImageHandler:
         """
         self._data.matrix = matrix.copy()
         self._accessors.enh_matrix.reset()
-
-        if self._data.sparse_object_map is None or matrix.shape != self._data.sparse_object_map.shape:
-            self._accessors.objmap.reset()
+        self._accessors.objmap.reset()
 
     def _set_from_rgb(self, rgb_array: np.ndarray):
         """Initializes all the components of an image from an RGB array

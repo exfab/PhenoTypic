@@ -149,6 +149,7 @@ class OptimalCenterGridFinder(GridFinder):
             bins=self.ncols,
             range=obj_col_range
         )
+        np.round(a=col_edges, out=col_edges).astype(int)
 
         # Add column number info
         info_table.loc[:, GRID.GRID_COL_NUM] = pd.cut(

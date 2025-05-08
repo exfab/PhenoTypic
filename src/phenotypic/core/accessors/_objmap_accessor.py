@@ -8,6 +8,7 @@ import numpy as np
 from scipy.sparse import csc_matrix, coo_matrix
 import matplotlib.pyplot as plt
 from skimage.measure import regionprops_table, label
+from skimage.segmentation import clear_border
 
 from phenotypic.core.accessors import ImageDataAccessor
 from phenotypic.util.exceptions_ import UnknownError, ArrayKeyValueShapeMismatchError, InvalidMapValueError
@@ -53,7 +54,7 @@ class ObjectMap(ImageDataAccessor):
         """Uncompresses the csc array & changes the values at the specified coordinates before recompressing the object map array."""
         dense = self._parent_image._data.sparse_object_map.toarray()
 
-        if isinstance(value, np.ndarray):   # Array case
+        if isinstance(value, np.ndarray):  # Array case
             value = value.astype(self._parent_image._data.sparse_object_map.dtype)
             if dense[key].shape != value.shape:
                 raise ArrayKeyValueShapeMismatchError
@@ -61,10 +62,14 @@ class ObjectMap(ImageDataAccessor):
                 raise ArrayKeyValueShapeMismatchError
 
             dense[key] = value
-        elif isinstance(value, (int, bool, float)): # Scalar Case
+        elif isinstance(value, (int, bool, float)):  # Scalar Case
             dense[key] = int(value)
         else:
             raise InvalidMapValueError
+
+        # Protects against the case that the obj map is set on the filled mask that returns when no objects are in the image
+        if 0 not in dense:
+            dense = clear_border(dense, buffer_size=0, bgval=1)
 
         self._parent_image._data.sparse_object_map = self._dense_to_sparse(dense)
 

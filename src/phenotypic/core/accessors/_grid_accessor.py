@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from skimage.color import label2rgb
 from packaging import version
+import math
 
 import phenotypic
 from phenotypic.core.accessors import ImageAccessor
@@ -33,32 +34,32 @@ class GridAccessor(ImageAccessor):
             and perform grid-related operations.
     """
 
-    def __init__(self, parent_image:GridImage):
+    def __init__(self, parent_image: GridImage):
         self._parent_image = parent_image
 
     @property
-    def nrows(self)->int:
+    def nrows(self) -> int:
         return self._parent_image._grid_setter.nrows
 
     @nrows.setter
-    def nrows(self, nrows:int):
+    def nrows(self, nrows: int):
         if nrows < 1: raise ValueError('Number of rows must be greater than 0')
         if type(nrows) != int: raise TypeError('Number of rows must be an integer')
 
         self._parent_image._grid_setter.nrows = nrows
 
     @property
-    def ncols(self)->int:
+    def ncols(self) -> int:
         return self._parent_image._grid_setter.ncols
 
     @ncols.setter
-    def ncols(self, ncols:int):
+    def ncols(self, ncols: int):
         if ncols < 1: raise ValueError('Number of columns must be greater than 0')
         if type(ncols) != int: raise TypeError('Number of columns must be an integer')
 
         self._parent_image._grid_setter.ncols = ncols
 
-    def info(self)->pd.DataFrame:
+    def info(self) -> pd.DataFrame:
         """
         Returns a DataFrame containing basic bounding box measurement data plus any object's grid membership.
 
@@ -93,7 +94,6 @@ class GridAccessor(ImageAccessor):
             min_coords, max_coords = self._adv_get_grid_section_slices(idx)
             min_rr, min_cc = min_coords
             max_rr, max_cc = max_coords
-
 
             section_image = phenotypic.Image(self._parent_image[int(min_rr):int(max_rr), int(min_cc):int(max_cc)])
 
@@ -146,12 +146,12 @@ class GridAccessor(ImageAccessor):
 
             covariance = ((x - x_mean) * (y - y_mean)).sum()
             variance = ((x - x_mean) ** 2).sum()
-            if variance !=0:
+            if variance != 0:
                 m_slope[idx] = covariance / variance
                 b_intercept[idx] = y_mean - m_slope[idx] * x_mean
             else:
                 m_slope[idx] = 0
-                b_intercept[idx] = y_mean if axis==0 else x_mean
+                b_intercept[idx] = y_mean if axis == 0 else x_mean
 
         return m_slope, np.round(b_intercept)
 
@@ -160,12 +160,13 @@ class GridAccessor(ImageAccessor):
     """
 
     def get_col_edges(self) -> np.ndarray:
-        grid_info = self.info()
-        left_edges = grid_info.loc[:, GRID.GRID_COL_INTERVAL].apply(
-            lambda x: x[0]
+        """Returns the column edges of the grid"""
+        intervals = self.info().loc[:, GRID.GRID_COL_INTERVAL]
+        left_edges = intervals.apply(
+            lambda x: math.floor(x[0]) if math.floor(x[0]) > 0 else math.ceil(x[0])
         ).to_numpy()
-        right_edges = grid_info.loc[:, GRID.GRID_COL_INTERVAL].apply(
-            lambda x: x[1]
+        right_edges = intervals.apply(
+            lambda x: math.ceil(x[1]) if math.ceil(x[1]) > 0 else math.floor(x[1])
         ).to_numpy()
         edges = np.unique(np.concatenate([left_edges, right_edges]))
         return edges.astype(int)
@@ -214,12 +215,12 @@ class GridAccessor(ImageAccessor):
 
     def get_row_edges(self) -> np.ndarray:
         """Returns the row edges of the grid"""
-        grid_info = self.info()
-        left_edges = grid_info.loc[:, GRID.GRID_ROW_INTERVAL].apply(
-            lambda x: x[0]
+        intervals = self.info().loc[:, GRID.GRID_ROW_INTERVAL]
+        left_edges = intervals.apply(
+            lambda x: math.floor(x[0]) if math.floor(x[0]) > 0 else math.ceil(x[0])
         ).to_numpy()
-        right_edges = grid_info.loc[:, GRID.GRID_ROW_INTERVAL].apply(
-            lambda x: x[1]
+        right_edges = intervals.apply(
+            lambda x: math.ceil(x[1]) if math.ceil(x[1]) > 0 else math.floor(x[1])
         ).to_numpy()
         edges = np.unique(np.concatenate([left_edges, right_edges]))
         return edges.astype(int)
@@ -303,7 +304,7 @@ class GridAccessor(ImageAccessor):
         else:
             raise ValueError('Section index should be int or a tuple of indexes')
 
-    def _naive_get_grid_section_slices(self, idx)->((int, int), (int, int)):
+    def _naive_get_grid_section_slices(self, idx) -> ((int, int), (int, int)):
         """Returns the exact slices of a grid section based on its flattened index
 
         Note:
@@ -320,7 +321,7 @@ class GridAccessor(ImageAccessor):
         max_rr = row_edges[row_pos + 1]
         return (min_rr, min_cc), (max_rr, max_cc)
 
-    def _adv_get_grid_section_slices(self, idx)->((int, int), (int, int)):
+    def _adv_get_grid_section_slices(self, idx) -> ((int, int), (int, int)):
         """Returns the slices of a grid section based on its flattened index, and accounts for objects boundaries.
 
             Note:
@@ -342,7 +343,7 @@ class GridAccessor(ImageAccessor):
 
         obj_max_cc = section_info.loc[:, OBJECT_INFO.MAX_CC].max()
         max_cc = max(grid_max_cc, obj_max_cc)
-        if max_cc > self._parent_image.shape[1]-1: max_cc = self._parent_image.shape[1]-1
+        if max_cc > self._parent_image.shape[1] - 1: max_cc = self._parent_image.shape[1] - 1
 
         obj_min_rr = section_info.loc[:, OBJECT_INFO.MIN_RR].min()
         min_rr = min(grid_min_rr, obj_min_rr)
@@ -350,11 +351,11 @@ class GridAccessor(ImageAccessor):
 
         obj_max_rr = section_info.loc[:, OBJECT_INFO.MAX_RR].max()
         max_rr = max(grid_max_rr, obj_max_rr)
-        if max_rr > self._parent_image.shape[0]-1: max_rr = self._parent_image.shape[0]-1
+        if max_rr > self._parent_image.shape[0] - 1: max_rr = self._parent_image.shape[0] - 1
 
         return (min_rr, min_cc), (max_rr, max_cc)
 
-    def _get_section_labels(self, idx)->list[int]:
+    def _get_section_labels(self, idx) -> list[int]:
         """Returns a list of labels for a grid section based on its flattened index"""
         grid_info = self.info()
         section_info = grid_info.loc[grid_info.loc[:, GRID.GRID_SECTION_NUM] == idx, :]

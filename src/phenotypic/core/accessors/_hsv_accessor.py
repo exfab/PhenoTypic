@@ -40,7 +40,7 @@ class HsvAccessor(ImageAccessor):
     @property
     def shape(self) -> Optional[tuple[int, ...]]:
         """Returns the shape of the image"""
-        return self._parent_image._array.shape
+        return self._parent_image._data.array.shape
 
     def copy(self) -> np.ndarray:
         """Returns a copy of the image array"""
@@ -63,7 +63,7 @@ class HsvAccessor(ImageAccessor):
         """
         fig, axes = plt.subplots(nrows=2, ncols=2, figsize=figsize)
         axes_ = axes.ravel()
-        axes_[0].imshow(self._parent_image._array)
+        axes_[0].imshow(self._parent_image._data.array)
         axes_[0].set_title(self._parent_image.name)
         axes_[0].grid(False)
 
