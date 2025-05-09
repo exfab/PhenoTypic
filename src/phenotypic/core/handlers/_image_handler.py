@@ -760,7 +760,7 @@ class ImageHandler:
              figsize: Tuple[int, int] = (9, 10)
              ) -> (plt.Figure, plt.Axes):
         """Returns a matplotlib figure and axes showing the input_image image"""
-        if self.imformat not in IMAGE_FORMATS.MATRIX_FORMATS:
+        if self._image_format.is_array():
             return self.array.show(ax=ax, figsize=figsize)
         else:
             return self.matrix.show(ax=ax, figsize=figsize)
