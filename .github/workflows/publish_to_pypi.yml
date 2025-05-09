@@ -7,7 +7,11 @@
    pull_request:
      branches:
        - main
-   workflow_dispatch:
+   workflow_run:
+     workflows:
+       - run-pytest
+     types:
+       - completed
 
  jobs:
    deploy:
@@ -47,10 +51,6 @@
            else
             echo "match=false" >> $GITHUB_OUTPUT
            fi
-
-       - name: Test Module
-         run: |
-           python -m pytest
       
        - name: Build package
          run: python -m build
