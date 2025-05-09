@@ -139,10 +139,10 @@ class GridAccessor(ImageAccessor):
         # Use 2D covariance/variance method for finding linear regression
         for idx in range(num_vectors):
             x = grid_info.loc[grid_info.loc[:, x_group] == idx, x_val].to_numpy()
-            x_mean = np.mean(x)
+            x_mean = np.mean(x) if x.size > 0 else 0
 
             y = grid_info.loc[grid_info.loc[:, x_group] == idx, y_val].to_numpy()
-            y_mean = np.mean(y)
+            y_mean = np.mean(y) if y.size > 0 else 0
 
             covariance = ((x - x_mean) * (y - y_mean)).sum()
             variance = ((x - x_mean) ** 2).sum()

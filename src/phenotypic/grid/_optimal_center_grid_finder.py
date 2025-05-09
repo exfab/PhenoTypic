@@ -29,8 +29,9 @@ class OptimalCenterGridFinder(GridFinder):
 
     """
     __iter_limit = 100000
+
     def __init__(self, nrows: int = 8, ncols: int = 12,
-                 tol: float = 0.01, max_iter: int | None = 1000):
+                 tol: float = 0.01, max_iter: int | None = None):
         """
         Represents a configuration object for iterative computations with constraints on
         the number of rows, columns, tolerance, and a maximum number of iterations. This
