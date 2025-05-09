@@ -6,9 +6,9 @@ if TYPE_CHECKING: from phenotypic import Image
 import numpy as np
 import pandas as pd
 from skimage.measure import regionprops_table, regionprops
-from ...util.constants_ import OBJECT_INFO
 from typing import List
 
+from phenotypic.util.constants_ import OBJECT_INFO, METADATA_LABELS, SUBIMAGE_TYPES
 from phenotypic.core.accessors import ImageAccessor
 
 
@@ -66,14 +66,15 @@ class ObjectsAccessor(ImageAccessor):
 
     def __getitem__(self, index: int) -> Image:
         """Returns a slice of the object image based on the object's index."""
-        return self._parent_image[self.props[index].slice]
+        object_image = self._parent_image[self.props[index].slice]
+        object_image.metadata[METADATA_LABELS.SUBIMAGE_TYPE] = SUBIMAGE_TYPES.OBJECT
 
     def iloc(self, index: int) -> Image:
         """Returns a slice of the object image based on the object's index."""
         return self._parent_image[self.props[index].slice]
 
     def loc(self, label_number) -> Image:
-        """Returns a crop of object from the image based on its label number.
+        """Returns a crop of an object from the image based on its label number.
 
         Args:
             label_number: (int) The label number of the object
@@ -84,7 +85,7 @@ class ObjectsAccessor(ImageAccessor):
         return self._parent_image[self.props[idx].slice]
 
     def info(self)->pd.DataFrame:
-        """Returns a pandas.DataFrame containing basic information about each object's label, bounds, and centroid in the image.
+        """Returns a panda.DataFrame containing basic information about each object's label, bounds, and centroid in the image.
 
         This is useful for joining measurements across different tables.
         """

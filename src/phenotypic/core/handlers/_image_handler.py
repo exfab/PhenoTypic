@@ -31,7 +31,7 @@ from ..accessors import (
     MetadataAccessor
 )
 
-from phenotypic.util.constants_ import IMAGE_FORMATS, METADATA_LABELS
+from phenotypic.util.constants_ import IMAGE_FORMATS, METADATA_LABELS, SUBIMAGE_TYPES
 from phenotypic.util.exceptions_ import (
     EmptyImageError, NoArrayError, NoObjectsError, IllegalAssignmentError,
     UnsupportedFileTypeError
@@ -52,7 +52,7 @@ class ImageHandler:
         _data.matrix (Optional[np.ndarray]): Internal representation of image data in matrix form.
         _data.enh_matrix (Optional[np.ndarray]): Enhanced matrix for extended manipulations.
         _data.sparse_object_map (Optional[csc_matrix]): Sparse object representation for mapping object labels.
-        _image_format (Optional[str]): Tracks the format/schema of the input image.
+        _image_format (Optional[str]): Tracks the format/schema of the input_image image.
         _metadata (SimpleNamespace): Container holding private, protected, and public metadata for
             the image.
         _accessors (SimpleNamespace): Provides property-based access"""
@@ -63,9 +63,9 @@ class ImageHandler:
                  name: str | None = None):
         """
         Args:
-            input_image: An optional input image represented as either a NumPy array or an image
+            input_image: An optional input_image image represented as either a NumPy array or an image
                 object. Defaults to None.
-            imformat: An optional string defining the schema for the input image to specify
+            imformat: An optional string defining the schema for the input_image image to specify
                 how data should be interpreted or processed. Defaults to None.
             name: An optional string to assign a name to the image, used as metadata. If not
                 provided, a universally unique identifier (UUID) will be generated and assigned.
@@ -86,7 +86,9 @@ class ImageHandler:
                 METADATA_LABELS.UUID: uuid.uuid4()
             },
             protected={
-                METADATA_LABELS.IMAGE_NAME: name
+                METADATA_LABELS.IMAGE_NAME: name,
+                METADATA_LABELS.PARENT_IMAGE_NAME: None,
+                METADATA_LABELS.SUBIMAGE_TYPE: SUBIMAGE_TYPES.ORIGINAL
             },
             public={}
         )
@@ -112,10 +114,13 @@ class ImageHandler:
             self.set_image(input_image=input_image, imformat=imformat)
 
     def __getitem__(self, key) -> Image:
-        """Returns a subimage from the current object based on the provided key. The subimage is initialized
+        """Returns a new subimage from the current object based on the provided key. The subimage is initialized
         as a new instance of the same class, maintaining the schema and format consistency as the original
         image object. This method supports 2-dimensional slicing and indexing.
 
+        Note:
+            - The subimage arrays are copied from the original image object. This means that any changes made to the subimage will not affect the original image.
+            - We may add this functionality in future updates if there is demand for it.
         Args:
             key: A slicing key or index used to extract a subset or part of the image object.
 
@@ -132,6 +137,7 @@ class ImageHandler:
 
         subimage.enh_matrix[:] = self.enh_matrix[key]
         subimage.objmap[:] = self.objmap[key]
+        subimage.metadata[METADATA_LABELS.SUBIMAGE_TYPE] = SUBIMAGE_TYPES.CROP
         return subimage
 
     def __setitem__(self, key, value):
@@ -223,10 +229,10 @@ class ImageHandler:
 
     @property
     def shape(self):
-        """Returns the shape of the image array or matrix depending on input format or none if no image is set.
+        """Returns the shape of the image array or matrix depending on input_image format or none if no image is set.
 
         Returns:
-            Optional[Tuple(int,int,...)]: Returns the shape of the array or matrix depending on input format or none if no image is set.
+            Optional[Tuple(int,int,...)]: Returns the shape of the array or matrix depending on input_image format or none if no image is set.
         """
         if self._image_format.is_array():
             return self._data.array.shape
@@ -237,7 +243,7 @@ class ImageHandler:
 
     @property
     def imformat(self) -> IMAGE_FORMATS:
-        """Returns the input format of the image array or matrix depending on input format"""
+        """Returns the input_image format of the image array or matrix depending on input_image format"""
         if not self._image_format.is_none():
             # if self._data.matrix is None or self._data.enh_matrix is None or self._data.sparse_object_map is None:
             #     raise AttributeError('Unknown error. Image format exists, but missing image data')
@@ -260,13 +266,13 @@ class ImageHandler:
         Note:
             - array/matrix element data is synced
             - change image shape by changing the image being represented with Image.set_image()
-            - Raises an error if the input image has no array form
+            - Raises an error if the input_image image has no array form
 
         Returns:
             ImageArray: A class that can be accessed like a numpy array, but has extra methods to streamline development, or None if not set
 
         Raises:
-            NoArrayError: If no multichannel image data is set as input.
+            NoArrayError: If no multichannel image data is set as input_image.
         See Also: :class:`ImageArray`
         """
         return self._accessors.array
@@ -437,7 +443,7 @@ class ImageHandler:
                 The diameter of a circle with the same area as the region.
 
             euler_number: int
-                Euler characteristic of the set of non-zero pixels. Computed as number of connected components subtracted by number of holes (input.ndim connectivity). In 3D, number of connected components plus number of holes subtracted by number of tunnels.
+                Euler characteristic of the set of non-zero pixels. Computed as number of connected components subtracted by number of holes (input_image.ndim connectivity). In 3D, number of connected components plus number of holes subtracted by number of tunnels.
 
             extent: float
                 Ratio of pixels in the region to pixels in the total bounding box. Computed as area / (rows * cols)
@@ -476,7 +482,7 @@ class ImageHandler:
                 Standard deviation of the intensity in the region.
 
             label: int
-                The label in the labeled input image.
+                The label in the labeled input_image image.
 
             moments(3, 3): ndarray
                 Spatial moments up to 3rd order::
@@ -592,48 +598,23 @@ class ImageHandler:
         # Create a new instance of ImageHandler
         return self.__class__(self)
 
-    def imread(self, filepath: PathLike) -> Type[Image]:
-        """
-        Reads an image file from a given file path, processes it as per its format, and sets the image
-        along with its schema in the current instance. Supports RGB formats (png, jpg, jpeg) and
-        grayscale formats (tif, tiff). The name of the image processing instance is updated to match
-        the file name without the extension. If the file format is unsupported, an exception is raised.
 
-        Args:
-            filepath (PathLike): Path to the image file to be read.
-
-        Returns:
-            Type[Image]: The current instance with the newly loaded image and schema.
-
-        Raises:
-            UnsupportedFileType: If the file format is not supported.
-        """
-        # Convert to a Path object
-        filepath = Path(filepath)
-        if filepath.suffix in ['.png', '.jpg', '.jpeg', '.tif', '.tiff']:
-            self.set_image(
-                input_image=ski.io.imread(filepath)
-            )
-            self.name = filepath.stem
-            return self
-        else:
-            raise UnsupportedFileTypeError(filepath.suffix)
 
     def set_image(self, input_image: Image | np.ndarray | None = None, imformat: Literal['RGB', 'greyscale'] | None = None) -> None:
         """
-        Sets the image data and format based on the provided input and parameters.
+        Sets the image data and format based on the provided input_image and parameters.
 
         This method accepts an image in the form of an array, another class instance,
         or a None value, and sets the internal image data accordingly. It determines
-        how to process the input based on its type, and separates actions for arrays,
-        instances of the class, and None input.
+        how to process the input_image based on its type, and separates actions for arrays,
+        instances of the class, and None input_image.
 
         Args:
-            input_image (Image | np.ndarray): The image data input which can either
+            input_image (Image | np.ndarray): The image data input_image which can either
                 be an instance of an Image, a NumPy array, or None. If None, the internal
                 image-related attributes are reset.
             imformat (Literal['RGB', 'greyscale'] | None): Optional format specifier
-                indicating the format of the input image. If None, it attempts to derive
+                indicating the format of the input_image image. If None, it attempts to derive
                 the format automatically based on the image data.
         """
         if type(input_image) == np.ndarray:
@@ -686,10 +667,10 @@ class ImageHandler:
         """Initializes all the components of an image from an array
 
         Note:
-            The format of the input should already have been set or guessed
+            The format of the input_image should already have been set or guessed
         Args:
-            imarr: the input image array
-            imformat: (str, optional) The format of the input image
+            imarr: the input_image image array
+            imformat: (str, optional) The format of the input_image image
         """
 
         # In the event of None for schema, PhenoTypic guesses the format
@@ -698,7 +679,7 @@ class ImageHandler:
 
         if type(imformat) == IMAGE_FORMATS:
             if imformat.is_ambiguous():
-                # PhenoTypic will assume in the event of rgb vs bgr that the input was rgb
+                # PhenoTypic will assume in the event of rgb vs bgr that the input_image was rgb
                 imformat = IMAGE_FORMATS.RGB.value
             else:
                 imformat = imformat.value
@@ -743,10 +724,10 @@ class ImageHandler:
             IMAGE_FORMATS: Enum value indicating the detected format of the image.
 
         Raises:
-            TypeError: If the input is not a numpy array.
+            TypeError: If the input_image is not a numpy array.
             ValueError: If the image has an unsupported number of dimensions or channels.
         """
-        # Ensure input is a numpy array
+        # Ensure input_image is a numpy array
         if not isinstance(img, np.ndarray):
             raise TypeError("Input must be a numpy array.")
 
@@ -778,7 +759,7 @@ class ImageHandler:
              ax: plt.Axes = None,
              figsize: Tuple[int, int] = (9, 10)
              ) -> (plt.Figure, plt.Axes):
-        """Returns a matplotlib figure and axes showing the input image"""
+        """Returns a matplotlib figure and axes showing the input_image image"""
         if self.imformat not in IMAGE_FORMATS.MATRIX_FORMATS:
             return self.array.show(ax=ax, figsize=figsize)
         else:

@@ -34,7 +34,7 @@ class ImageArray(ImageDataAccessor):
 
         This class provides a mechanism for extracting a specific subregion from
         the multichannel image array. The extracted subregion is represented in the form of a
-        NumPy array and its indexable nature allows users to freely interact with the
+        NumPy array, and its indexable nature allows users to freely interact with the
         underlying array data.
 
         Returns:

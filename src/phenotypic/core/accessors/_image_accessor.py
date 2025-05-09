@@ -89,7 +89,7 @@ class ImageAccessor:
                 (width, height). Defaults to (8, 6).
             title (str, optional): Title of the plot to be displayed. If not provided,
                 defaults to the name of the self._parent_image.
-            cmap (str, optional): Colormap to apply to the image. Defaults to 'gray'. Only used if arr input is 2D.
+            cmap (str, optional): Colormap to apply to the image. Defaults to 'gray'. Only used if arr input_image is 2D.
             ax (plt.Axes, optional): An existing Matplotlib Axes instance for rendering
                 the image. If None, a new figure and axes are created. Defaults to None.
             overlay_params (dict | None, optional): Parameters passed to the

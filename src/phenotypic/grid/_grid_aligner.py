@@ -35,7 +35,7 @@ class GridAligner(GridCorrector):
             ValueError: If the axis is not 0 (row-wise) or 1 (column-wise).
 
         Args:
-            image (ImageGridHandler): The input grid image object to be aligned.
+            image (ImageGridHandler): The input_image grid image object to be aligned.
 
         Returns:
             ImageGridHandler: The rotated grid image object after alignment.

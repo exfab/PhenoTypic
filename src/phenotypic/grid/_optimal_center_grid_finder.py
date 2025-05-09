@@ -55,17 +55,17 @@ class OptimalCenterGridFinder(GridFinder):
 
     def _operate(self, image: Image) -> pd.DataFrame:
         """
-        Processes an input image to calculate and organize grid-based boundaries and centroids using coordinates. This
+        Processes an input_image image to calculate and organize grid-based boundaries and centroids using coordinates. This
         function implements a two-pass approach to refine row and column boundaries with exact precision, ensuring accurate
-        grid labeling and indexing. The function dynamically computes boundary intervals and optimally segments the input
+        grid labeling and indexing. The function dynamically computes boundary intervals and optimally segments the input_image
         space into grids based on specified rows and columns.
 
         Args:
-            image (Image): The input image to be analyzed and processed.
+            image (Image): The input_image image to be analyzed and processed.
 
         Returns:
             pd.DataFrame: A DataFrame containing the grid results including boundary intervals, grid indices, and section
-            numbers corresponding to the segmented input image.
+            numbers corresponding to the segmented input_image image.
         """
         # Find the centroid and boundaries
         obj_info = image.objects.info()

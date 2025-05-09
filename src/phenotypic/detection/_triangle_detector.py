@@ -26,7 +26,7 @@ class TriangleDetector(ThresholdDetector):
         the output mask (`omask`) to True if the condition is satisfied.
 
         Args:
-            image (Image): The input image object containing an enhanced matrix
+            image (Image): The input_image image object containing an enhanced matrix
                 (`enh_matrix`) which will be processed to generate an output mask.
 
         Returns:

@@ -20,7 +20,7 @@ class ImageOperation:
         Applies a certain operation to an image, either in-place or on a copy.
 
         Args:
-            image (Image): The input image to apply the operation on.
+            image (Image): The input_image image to apply the operation on.
             inplace (bool): If True, modifies the image in place; otherwise,
                 operates on a copy of the image.
 

@@ -1,7 +1,7 @@
-from .handlers._image_hsv_handler import ImageHsvHandler
+from .handlers._image_io_handler import ImageIOHandler
 
 
-class Image(ImageHsvHandler):
+class Image(ImageIOHandler):
     """A comprehensive class for handling image processing, including manipulation, information sync, metadata management, and format conversion.
 
     The `Image` class is designed to load, process, and manage image data using different

@@ -26,10 +26,10 @@ class ImageGridHandler(Image):
     to determine grid structure and assign/overlay it effectively on the image.
 
     Args:
-            input_image (Optional[Union[np.ndarray, Type[Image]]]): The input
+            input_image (Optional[Union[np.ndarray, Type[Image]]]): The input_image
                 image, which can be a NumPy array or an image-like object. If
                 this parameter is not provided, it defaults to None.
-            imformat (str): A string representing the schema of the input
+            imformat (str): A string representing the schema of the input_image
                 image. It defaults to None if not provided.
             grid_finder (Optional[GridFinder]): An optional GridFinder instance
                 for defining grids on the image. If not provided, it defaults to
@@ -56,10 +56,10 @@ class ImageGridHandler(Image):
         operations.
 
         Args:
-            input_image (Optional[Union[np.ndarray, Type[Image]]]): The input
+            input_image (Optional[Union[np.ndarray, Type[Image]]]): The input_image
                 image, which can be a NumPy array or an image-like object. If
                 this parameter is not provided, it defaults to None.
-            imformat (str): A string representing the schema of the input
+            imformat (str): A string representing the schema of the input_image
                 image. It defaults to None if not provided.
             grid_finder (Optional[GridFinder]): An optional GridFinder instance
                 for defining grids on the image. If not provided, it defaults to

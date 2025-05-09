@@ -90,7 +90,16 @@ class METADATA_LABELS:
     IMAGE_NAME = 'ImageName'
     PARENT_IMAGE_NAME = 'ParentImageName'
     PARENT_UUID = 'ParentUUID'
-    SCHEMA = 'Schema'
+    IMFORMAT = 'ImageFormat'
+    SUBIMAGE_TYPE = 'SubimageType'
+
+
+class SUBIMAGE_TYPES:
+    """The string labels for different types of subimages generated when accessing subimages of a parent image."""
+    ORIGINAL = 'Original'
+    CROP = 'Crop'
+    OBJECT = 'Object'
+    GRID = 'Grid'
 
 
 class GEOM_LABELS(Enum):

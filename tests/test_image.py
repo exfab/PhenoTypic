@@ -24,7 +24,7 @@ def test_set_image_from_array(sample_image_array_with_imformat):
     image properties such as shape, non-emptiness, and proper initialization.
 
     Args:
-        sample_images: A tuple containing the input image array, input image
+        sample_images: A tuple containing the input_image image array, input_image image
             format, and the expected true image format.
     """
     input_image, input_imformat, true_imformat = sample_image_array_with_imformat
@@ -39,13 +39,13 @@ def test_set_image_from_array(sample_image_array_with_imformat):
 def test_set_image_from_image(sample_image_array_with_imformat):
     """
     Tests the `set_image` method of the `Image` class from the `phenotypic` package. The function
-    validates that an image can be set from another `Image` instance or raw input data, with
+    validates that an image can be set from another `Image` instance or raw input_image data, with
     properties and states intact.
 
     Args:
         sample_image_inputs: A tuple containing the following:
-            input_image: The input image as a NumPy array.
-            input_imformat: The format of the input image as a string.
+            input_image: The input_image image as a NumPy array.
+            input_imformat: The format of the input_image image as a string.
             true_imformat: The expected image format as a string.
     """
     input_image, input_imformat, true_imformat = sample_image_array_with_imformat
