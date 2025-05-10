@@ -8,12 +8,13 @@ import numpy as np
 from scipy.sparse import csc_matrix, coo_matrix
 import matplotlib.pyplot as plt
 from skimage.measure import regionprops_table, label
+from skimage.segmentation import clear_border
 
-from phenotypic.core.accessors import ImageAccessor
+from phenotypic.core.accessors import ImageDataAccessor
 from phenotypic.util.exceptions_ import UnknownError, ArrayKeyValueShapeMismatchError, InvalidMapValueError
 
 
-class ObjectMap(ImageAccessor):
+class ObjectMap(ImageDataAccessor):
     """Manages an object map for labeled regions in an image.
 
     This class provides a mechanism to manipulate and access labeled object maps
@@ -21,7 +22,7 @@ class ObjectMap(ImageAccessor):
     provides methods for accessing sparse and dense representations, relabeling,
     resetting, and visualization.
 
-    Note: changes to the object map shapes, will be automatically reflected in the object mask
+    Note: changes to the object map shapes will be automatically reflected in the object mask
 
     """
 
@@ -37,53 +38,59 @@ class ObjectMap(ImageAccessor):
                with any skimage version outputs.
 
                """
-        return regionprops_table(label_image=self._parent_image._sparse_object_map.toarray(), properties=['label'], cache=False)['label']
+        return regionprops_table(label_image=self._parent_image._data.sparse_object_map.toarray(), properties=['label'], cache=False)[
+            'label']
 
     def __getitem__(self, key):
         """Returns a copy of the object_map of the image. If there are no objects, this is a matrix with all values set to 1 and the same shape as the iamge matrix."""
         if self._num_objects > 0:
-            return self._parent_image._sparse_object_map.toarray()[key]
+            return self._parent_image._data.sparse_object_map.toarray()[key]
         elif self._num_objects == 0:
-            return np.full(self._parent_image._sparse_object_map.toarray()[key].shape, fill_value=1, dtype=np.uint32)
+            return np.full(self._parent_image._data.sparse_object_map.toarray()[key].shape, fill_value=1, dtype=np.uint32)
         else:
             raise RuntimeError(UnknownError)
 
     def __setitem__(self, key, value):
         """Uncompresses the csc array & changes the values at the specified coordinates before recompressing the object map array."""
-        dense = self._parent_image._sparse_object_map.toarray()
+        dense = self._parent_image._data.sparse_object_map.toarray()
 
-        if isinstance(value, np.ndarray):
-            value = value.astype(self._parent_image._sparse_object_map.dtype)
+        if isinstance(value, np.ndarray):  # Array case
+            value = value.astype(self._parent_image._data.sparse_object_map.dtype)
             if dense[key].shape != value.shape:
                 raise ArrayKeyValueShapeMismatchError
             elif dense.dtype != value.dtype:
                 raise ArrayKeyValueShapeMismatchError
 
             dense[key] = value
-        elif type(value) in {bool, int, float}:
+        elif isinstance(value, (int, bool, float)):  # Scalar Case
             dense[key] = int(value)
         else:
             raise InvalidMapValueError
 
-        self._parent_image._sparse_object_map = self._dense_to_sparse(dense)
+        # Protects against the case that the obj map is set on the filled mask that returns when no objects are in the image
+        if 0 not in dense:
+            dense = clear_border(dense, buffer_size=0, bgval=1)
+
+        self._parent_image._data.sparse_object_map = self._dense_to_sparse(dense)
 
     @property
     def shape(self) -> tuple[int, int]:
-        return self._parent_image._sparse_object_map.shape
+        return self._parent_image._data.sparse_object_map.shape
 
     def copy(self) -> np.ndarray:
         """Returns a copy of the object_map."""
-        return self._parent_image._sparse_object_map.toarray().copy()
+        return self._parent_image._data.sparse_object_map.toarray().copy()
 
     def as_csc(self) -> csc_matrix:
         """Returns a copy of the object map as a compressed sparse column matrix"""
-        return self._parent_image._sparse_object_map.tocsc()
+        return self._parent_image._data.sparse_object_map.tocsc()
 
     def as_coo(self) -> coo_matrix:
         """Returns a copy of the object map in COOrdinate format or ijv matrix"""
-        return self._parent_image._sparse_object_map.tocoo()
+        return self._parent_image._data.sparse_object_map.tocoo()
 
-    def show(self, figsize=None,title=None, cmap:str='tab20',ax:None|plt.Axes=None, mpl_params:None|dict=None) -> (plt.Figure, plt.Axes):
+    def show(self, figsize=None, title=None, cmap: str = 'tab20', ax: None | plt.Axes = None, mpl_params: None | dict = None) -> (
+            plt.Figure, plt.Axes):
         """
         Displays the object map using matplotlib's imshow.
 
@@ -106,18 +113,16 @@ class ObjectMap(ImageAccessor):
             tuple: A tuple containing the matplotlib Figure and Axes objects, where the
                 sparse object map is rendered.
         """
-        return self._plot(arr=self._parent_image._sparse_object_map.toarray(),
-                          figsize=figsize, title=title, ax=ax, cmap=cmap, mpl_params=mpl_params)
+        return self._plot(arr=self._parent_image._data.sparse_object_map.toarray(),
+                          figsize=figsize, title=title, ax=ax, cmap=cmap, mpl_params=mpl_params
+                          )
 
     def reset(self) -> None:
         """Resets the object_map to an empty map array with no objects in it."""
-        if self._parent_image.isempty():
-            self._parent_image._sparse_object_map = None
-        else:
-            self._parent_image._sparse_object_map = self._dense_to_sparse(self._parent_image.matrix.shape)
+        self._parent_image._data.sparse_object_map = self._dense_to_sparse(self._parent_image.matrix.shape)
 
     def relabel(self):
-        """Relables all the objects based on their connectivity"""
+        """Relabels all the objects based on their connectivity"""
         self._dense_to_sparse(label(self._parent_image.objmask[:]))
 
     @staticmethod

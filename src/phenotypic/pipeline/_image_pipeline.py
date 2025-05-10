@@ -53,7 +53,7 @@ class ImagePipeline(ImageOperation):
         when applied to the given image.
 
         Args:
-            image (Image): The input image to be processed. The type `Image` refers to
+            image (Image): The input_image image to be processed. The type `Image` refers to
                 an instance of the image object to which transformations are applied.
             inplace (bool, optional): A flag indicating whether to apply the
                 transformations directly on the provided image (`True`) or create a
@@ -78,9 +78,9 @@ class ImagePipeline(ImageOperation):
         image and returns a DataFrame containing consolidated object measurement results.
 
         Args:
-            image (Image): The input image on which the measurements will be applied.
+            image (Image): The input_image image on which the measurements will be applied.
             inplace (bool): A flag indicating whether the modifications should be applied
-                directly to the input image. Default is False.
+                directly to the input_image image. Default is False.
 
         Returns:
             pd.DataFrame: A DataFrame containing measurement results from all the

@@ -10,7 +10,7 @@ from phenotypic.abstract import GridOperation
 from phenotypic.util.exceptions_ import GridImageInputError, OutputValueError
 
 
-class GridTransformer(ImageCorrector, GridOperation):
+class GridCorrector(ImageCorrector, GridOperation):
     def __init__(self, n_rows: int, n_cols: int):
         self.n_rows = n_rows
         self.n_cols = n_cols

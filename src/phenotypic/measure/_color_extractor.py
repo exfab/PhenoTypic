@@ -42,7 +42,7 @@ class ColorMeasure(FeatureMeasure):
     Represents a feature extractor for color-based texture analysis.
 
     This class is a specialized image feature extractor that calculates texture metrics
-    based on the hue, saturation, and brightness components from an input image. The
+    based on the hue, saturation, and brightness components from an input_image image. The
     extracted features are useful for texture and object-based analysis in image
     processing tasks. The 'measure' method converts the extracted texture metrics into
     a DataFrame suitable for further analysis and usage.
@@ -66,7 +66,7 @@ class ColorMeasure(FeatureMeasure):
     @staticmethod
     def _compute_matrix_texture(image: Image, foreground_array: np.ndarray):
         """
-          Computes texture metrics from input image data and a binary foreground mask.
+          Computes texture metrics from input_image image data and a binary foreground mask.
 
           This function processes gridded image objects and calculates various texture
           features using Haralick descriptors across segmented objects. The calculated

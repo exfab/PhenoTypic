@@ -1,9 +1,12 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
 
+import pandas as pd
+
 if TYPE_CHECKING: from phenotypic import Image
 
 from collections import ChainMap
+
 
 class MetadataAccessor:
     """An accessor for image metadata that manages read/write permissions related to the metadata information."""
@@ -23,6 +26,10 @@ class MetadataAccessor:
     @property
     def _public_metadata(self):
         return self._parent_image._metadata.public
+
+    @property
+    def _public_protected_metadata(self):
+        return ChainMap(self._public_metadata, self._protected_metadata)
 
     def keys(self):
         return self._combined_metadata.keys()
@@ -48,7 +55,7 @@ class MetadataAccessor:
 
     def __setitem__(self, key, value):
         if not isinstance(value, (str, int, float, bool, None)):
-            raise ValueError('Metadata values must be of scalar types or none.')
+            raise ValueError('Metadata values must be of scalar types or None.')
         if key in self._private_metadata:
             raise PermissionError('Private metadata cannot be modified.')
         elif key in self._protected_metadata:
@@ -66,7 +73,6 @@ class MetadataAccessor:
         else:
             raise KeyError
 
-
     def pop(self, key):
         if key in self._private_metadata or key in self._protected_metadata:
             raise PermissionError('Private and protected metadata cannot be removed.')
@@ -80,3 +86,9 @@ class MetadataAccessor:
             return self._combined_metadata[key]
         else:
             return default
+
+    def insert_metadata(self, df: pd.DataFrame, inplace=False, allow_duplicates=False) -> pd.DataFrame:
+        working_df = df if inplace else df.copy()
+        for key, value in self._public_protected_metadata.items():
+            working_df.insert(loc=0, column=f'Metadata_{key}', value=value, allow_duplicates=allow_duplicates)
+        return working_df

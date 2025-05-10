@@ -17,15 +17,15 @@ from phenotypic.util.exceptions_ import IllegalAssignmentError
 class ImageHsvHandler(ImageHandler):
     """Adds HSV format support for the color measurement module."""
 
-    def __init__(self, input_image: Optional[Union[np.ndarray, Image, PathLike]] = None, imformat:str=None):
-        super().__init__(input_image=input_image, imformat=imformat)
+    def __init__(self, input_image: Optional[Union[np.ndarray, Image, PathLike]] = None, imformat: str = None, name: str = None):
+        super().__init__(input_image=input_image, imformat=imformat, name=name)
         self._accessors.hsv = HsvAccessor
 
     @property
-    def _hsv(self)->np.ndarray:
+    def _hsv(self) -> np.ndarray:
         """Returns the hsv array dynamically of the current image.
 
-        This can become computationally expensive so implementation may be changed in the future.
+        This can become computationally expensive, so implementation may be changed in the future.
 
         Returns:
             np.ndarray: The hsv array of the current image.
@@ -40,7 +40,7 @@ class ImageHsvHandler(ImageHandler):
                     raise ValueError(f'Unsupported imformat {self.imformat} for HSV conversion')
 
     @property
-    def hsv(self)->HsvAccessor:
+    def hsv(self) -> HsvAccessor:
         """Returns the HSV accessor.
 
         This property returns an instance of the HsvAccessor associated with the

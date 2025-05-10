@@ -5,12 +5,12 @@ from typing import Optional
 
 import skimage
 
-from phenotypic.core.accessors import ImageAccessor
+from phenotypic.core.accessors import ImageDataAccessor
 from phenotypic.util.constants_ import IMAGE_FORMATS
-from phenotypic.util.exceptions_ import ArrayKeyValueShapeMismatchError
+from phenotypic.util.exceptions_ import ArrayKeyValueShapeMismatchError, NoArrayError, EmptyImageError
 
 
-class ImageArray(ImageAccessor):
+class ImageArray(ImageDataAccessor):
     """An accessor for handling image arrays with helper methods for accessing, modifying, visualizing, and analyzing the multichannel image data.
 
     It relies on the parent image handler object that serves as the bridge to the underlying image
@@ -34,13 +34,19 @@ class ImageArray(ImageAccessor):
 
         This class provides a mechanism for extracting a specific subregion from
         the multichannel image array. The extracted subregion is represented in the form of a
-        NumPy array and its indexable nature allows users to freely interact with the
+        NumPy array, and its indexable nature allows users to freely interact with the
         underlying array data.
 
         Returns:
             np.ndarray: A copy of the extracted subregion represented as a NumPy array.
         """
-        return self._parent_image._array[key].copy()
+        if self.isempty():
+            if self._parent_image.matrix.isempty():
+                raise EmptyImageError
+            else:
+                raise NoArrayError
+        else:
+            return self._parent_image._data.array[key].copy()
 
     def __setitem__(self, key, value):
         """
@@ -60,12 +66,16 @@ class ImageArray(ImageAccessor):
         Raises:
             ArrayKeyValueShapeMismatchError: If the value is an array and its shape does not match
         """
-        if type(value) not in [int, float, bool]:
-            if value.shape != self._parent_image._array[key].shape:
-                raise ArrayKeyValueShapeMismatchError
+        if isinstance(value, (int, float, np.ndarray)):
+            if isinstance(value, np.ndarray):
+                if value.shape != self._parent_image._data.array[key].shape:
+                    raise ArrayKeyValueShapeMismatchError
 
-        self._parent_image._array[key] = value
-        self._parent_image._set_from_array(self._parent_image._array, imformat=IMAGE_FORMATS.RGB)
+            self._parent_image._data.array[key] = value
+            self._parent_image._set_from_array(self._parent_image._data.array, imformat=self._parent_image.imformat)
+
+        else:
+            raise ValueError(f'Unsupported type for setting the array. Value should be scalar or a numpy array: {type(value)}')
 
     @property
     def shape(self) -> tuple[int, ...]:
@@ -75,7 +85,7 @@ class ImageArray(ImageAccessor):
             tuple[int, ...]: A tuple representing the shape of the parent image's
             underlying array.
         """
-        return self._parent_image._array.shape
+        return self._parent_image._data.array.shape
 
     def copy(self) -> np.ndarray:
         """Creates and returns a deep copy of the parent image array.
@@ -83,7 +93,7 @@ class ImageArray(ImageAccessor):
         Returns:
             np.ndarray: A copy of the parent image array.
         """
-        return self._parent_image._array.copy()
+        return self._parent_image._data.array.copy()
 
     def histogram(self, figsize: tuple[int, int] = (10, 5), linewidth: int = 1) -> tuple[plt.Figure, plt.Axes]:
         """
@@ -105,16 +115,16 @@ class ImageArray(ImageAccessor):
         """
         fig, axes = plt.subplots(nrows=2, ncols=2, figsize=figsize)
         axes_ = axes.ravel()
-        axes_[0].imshow(self._parent_image._array)
+        axes_[0].imshow(self._parent_image._data.array)
         axes_[0].set_title(self._parent_image.name)
         axes_[0].grid(False)
         axes_[0] = self._plot(
-            arr=self._parent_image._array,
+            arr=self._parent_image._data.array,
             ax=axes_[0],
             title=self._parent_image.name,
         )
 
-        hist_one, histc_one = skimage.exposure.histogram(self._parent_image._array[:, :, 0])
+        hist_one, histc_one = skimage.exposure.histogram(self._parent_image._data.array[:, :, 0])
         axes_[1].plot(histc_one, hist_one, lw=linewidth)
         match self._parent_image.imformat:
             case IMAGE_FORMATS.RGB:
@@ -122,7 +132,7 @@ class ImageArray(ImageAccessor):
             case _:
                 axes_[1].set_title("Channel 1 Histogram")
 
-        hist_two, histc_two = skimage.exposure.histogram(self._parent_image._array[:, :, 1])
+        hist_two, histc_two = skimage.exposure.histogram(self._parent_image._data.array[:, :, 1])
         axes_[2].plot(histc_two, hist_two, lw=linewidth)
         match self._parent_image.imformat:
             case IMAGE_FORMATS.RGB:
@@ -130,7 +140,7 @@ class ImageArray(ImageAccessor):
             case _:
                 axes_[2].set_title('Channel 2 Histogram')
 
-        hist_three, histc_three = skimage.exposure.histogram(self._parent_image._array[:, :, 2])
+        hist_three, histc_three = skimage.exposure.histogram(self._parent_image._data.array[:, :, 2])
         axes_[3].plot(histc_three, hist_three, lw=linewidth)
         match self._parent_image.imformat:
             case IMAGE_FORMATS.RGB:
@@ -181,12 +191,10 @@ class ImageArray(ImageAccessor):
                      figsize: tuple[int, int] | None = None,
                      title: str | None = None,
                      annotate: bool = False,
-                     annotation_size: int = 12,
-                     annotation_color: str = 'white',
-                     annotation_facecolor: str = 'red',
+                     annotation_params: None | dict = None,
                      ax: plt.Axes = None,
                      overlay_params: None | dict = None,
-                     mpl_params: None | dict = None,
+                     imshow_params: None | dict = None,
                      ) -> tuple[plt.Figure, plt.Axes]:
         """
         Displays an overlay of the object map on the parent image with optional annotations.
@@ -203,16 +211,15 @@ class ImageArray(ImageAccessor):
                 is used.
             annotate (bool): If True, displays annotations for object labels on the
                 object centroids.
-            annotation_size (int): Font size for annotations, applicable if `annotate`
-                is True.
-            annotation_color (str): Color of the text for annotations.
-            annotation_facecolor (str): Background color of the annotation text box.
+            annotation_params (None | dict): Additional parameters for customization of the
+                object annotations. Defaults: size=12, color='white', facecolor='red'. Other kwargs
+                are passed to the matplotlib.axes.text () method.
             ax (plt.Axes): Optional Matplotlib Axes object. If None, a new Axes is
                 created.
             overlay_params (None | dict): Additional parameters for customization of the
                 overlay.
-            mpl_params (None | dict): Additional Matplotlib parameters for customizing
-                the plot.
+            imshow_params (None|dict): Additional Matplotlib imshow configuration parameters
+                for customization. If None, default Matplotlib settings will apply.
 
         Returns:
             tuple[plt.Figure, plt.Axes]: Matplotlib Figure and Axes objects containing
@@ -221,6 +228,7 @@ class ImageArray(ImageAccessor):
         """
         objmap = self._parent_image.objmap[:]
         if object_label is not None: objmap[objmap != object_label] = 0
+        if annotation_params is None: annotation_params = {}
 
         fig, ax = self._plot_overlay(
             arr=self._parent_image.array[:],
@@ -228,16 +236,16 @@ class ImageArray(ImageAccessor):
             ax=ax,
             figsize=figsize,
             title=title,
-            mpl_params=mpl_params,
+            imshow_params=imshow_params,
             overlay_params=overlay_params,
         )
 
         if annotate:
             ax = self._plot_annotations(
                 ax=ax,
-                color=annotation_color,
-                size=annotation_size,
-                facecolor=annotation_facecolor,
+                color=annotation_params.get('color', 'white'),
+                size=annotation_params.get('size', 12),
+                facecolor=annotation_params.get('facecolor', 'red'),
                 object_label=object_label,
             )
         return fig, ax

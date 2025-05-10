@@ -12,7 +12,7 @@ class ImageAccessor:
     """
     The base for classes that provides access to details and functionalities of a parent image.
 
-    The ImageAccessor class serves as a base class  for interacting with a parent image
+    The ImageAccessor class serves as a base class for interacting with a parent image
     object. It requires an instance of the parent image for initialization to
     enable seamless operations on the image's properties and data.
 
@@ -27,9 +27,9 @@ class ImageAccessor:
     def _plot(self,
               arr: np.ndarray,
               figsize: (int, int) = (8, 6),
-              title: str|None = None,
+              title: str | None = None,
               cmap: str = 'gray',
-              ax: plt.Axes|None = None,
+              ax: plt.Axes | None = None,
               mpl_params: dict | None = None,
               ) -> tuple[plt.Figure, plt.Axes]:
         """
@@ -73,7 +73,7 @@ class ImageAccessor:
                       cmap: str = 'gray',
                       ax: plt.Axes = None,
                       overlay_params: dict | None = None,
-                      mpl_params: dict | None = None,
+                      imshow_params: dict | None = None,
                       ) -> (plt.Figure, plt.Axes):
         """
         Plots an array with optional object map overlay and customization options.
@@ -89,13 +89,13 @@ class ImageAccessor:
                 (width, height). Defaults to (8, 6).
             title (str, optional): Title of the plot to be displayed. If not provided,
                 defaults to the name of the self._parent_image.
-            cmap (str, optional): Colormap to apply to the image. Defaults to 'gray'. Only used if arr input is 2D.
+            cmap (str, optional): Colormap to apply to the image. Defaults to 'gray'. Only used if arr input_image is 2D.
             ax (plt.Axes, optional): An existing Matplotlib Axes instance for rendering
                 the image. If None, a new figure and axes are created. Defaults to None.
             overlay_params (dict | None, optional): Parameters passed to the
                 `skimage.color.label2rgb` function for overlay customization.
                 Defaults to None.
-            mpl_params (dict | None, optional): Additional parameters for the
+            imshow_params (dict | None, optional): Additional parameters for the
                 `ax.imshow` Matplotlib function to control image rendering.
                 Defaults to None.
 
@@ -103,23 +103,25 @@ class ImageAccessor:
             tuple[plt.Figure, plt.Axes]: The Matplotlib Figure and Axes objects used for
             the display. If an existing Axes is provided, its corresponding Figure is returned.
         """
-        if ax is None: fig, ax = plt.subplots(figsize=figsize)
-        else: fig = ax.get_figure()
+        if ax is None:
+            fig, ax = plt.subplots(figsize=figsize)
+        else:
+            fig = ax.get_figure()
 
         overlay_params = overlay_params if overlay_params else {}
 
-        mpl_params = mpl_params if mpl_params else {}
-        cmap = mpl_params.get('cmap', cmap)
+        imshow_params = imshow_params if imshow_params else {}
+        cmap = imshow_params.get('cmap', cmap)
 
         imarray = skimage.color.label2rgb(label=objmap, image=arr, bg_label=0, **overlay_params)
-        ax.imshow(imarray, cmap=cmap, **mpl_params) if imarray.ndim == 2 else ax.imshow(imarray, **mpl_params)
+        ax.imshow(imarray, cmap=cmap, **imshow_params) if imarray.ndim == 2 else ax.imshow(imarray, **imshow_params)
 
         ax.grid(False)
         if title: ax.set_title(title)
 
         return fig, ax
 
-    def _plot_annotations(self, ax:plt.Axes, color:str, size:int, facecolor:str, object_label:None | int):
+    def _plot_annotations(self, ax: plt.Axes, color: str, size: int, facecolor: str, object_label: None | int, **kwargs):
         props = self._parent_image.objects.props
         for i, label in enumerate(self._parent_image.objects.labels):
             if object_label is None:
@@ -129,7 +131,8 @@ class ImageAccessor:
                     s=f'{label}',
                     color=color,
                     fontsize=size,
-                    bbox=dict(facecolor=facecolor, edgecolor='none', alpha=0.6, boxstyle='round')
+                    bbox=dict(facecolor=facecolor, edgecolor='none', alpha=0.6, boxstyle='round'),
+                    **kwargs,
                 )
             elif object_label == label:
                 text_rr, text_cc = props[i].centroid
@@ -138,5 +141,7 @@ class ImageAccessor:
                     s=f'{label}',
                     color=color,
                     fontsize=size,
-                    bbox=dict(facecolor=facecolor, edgecolor='none', alpha=0.6, boxstyle='round')
+                    bbox=dict(facecolor=facecolor, edgecolor='none', alpha=0.6, boxstyle='round'),
+                    **kwargs,
                 )
+        return ax

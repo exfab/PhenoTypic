@@ -11,11 +11,11 @@ import matplotlib.pyplot as plt
 from skimage.color import label2rgb
 from skimage.exposure import histogram
 
-from phenotypic.core.accessors import ImageAccessor
-from phenotypic.util.exceptions_ import ArrayKeyValueShapeMismatchError
+from phenotypic.core.accessors import ImageDataAccessor
+from phenotypic.util.exceptions_ import ArrayKeyValueShapeMismatchError, EmptyImageError
 
 
-class ImageEnhancedMatrix(ImageAccessor):
+class ImageEnhancedMatrix(ImageDataAccessor):
     """An accessor class to an image's enhanced matrix which is a copy of the original image matrix that is preprocessed for enhanced detection.
 
     Provides functionalities to manipulate and visualize the image enhanced matrix. This includes
@@ -37,7 +37,10 @@ class ImageEnhancedMatrix(ImageAccessor):
             numpy.ndarray: A copy of the corresponding portion of the parent image's detection
                 matrix.
         """
-        return self._parent_image._enh_matrix[key].copy()
+        if self.isempty():
+            raise EmptyImageError
+        else:
+            return self._parent_image._data.enh_matrix[key].copy()
 
     def __setitem__(self, key, value):
         """
@@ -65,10 +68,10 @@ class ImageEnhancedMatrix(ImageAccessor):
                 for the specified key.
         """
         if isinstance(value, np.ndarray):
-            if self._parent_image._enh_matrix[key].shape != value.shape:
+            if self._parent_image._data.enh_matrix[key].shape != value.shape:
                 raise ArrayKeyValueShapeMismatchError
 
-        self._parent_image._enh_matrix[key] = value
+        self._parent_image._data.enh_matrix[key] = value
         self._parent_image.objmap.reset()
 
     @property
@@ -82,15 +85,15 @@ class ImageEnhancedMatrix(ImageAccessor):
         Returns:
             tuple: The shape of the determinant matrix.
         """
-        return self._parent_image._enh_matrix.shape
+        return self._parent_image._data.enh_matrix.shape
 
     def copy(self) -> np.ndarray:
         """Returns a copy of the Detection Matrix."""
-        return self._parent_image._enh_matrix.copy()
+        return self._parent_image._data.enh_matrix.copy()
 
     def reset(self):
         """Resets the image's enhanced matrix to the original matrix representation."""
-        self._parent_image._enh_matrix = self._parent_image.matrix[:].copy()
+        self._parent_image._data.enh_matrix = self._parent_image.matrix.copy()
 
     def histogram(self, figsize: Tuple[int, int] = (10, 5)):
         """Returns a histogram of the image matrix. Useful for troubleshooting detection results.
@@ -152,48 +155,66 @@ class ImageEnhancedMatrix(ImageAccessor):
 
     def show_overlay(
             self,
-            object_label: int | None = None,
-            figsize: Tuple[int, int] = (10, 5),
+            object_label: Optional[int] = None,
+            figsize: Tuple[int, int] = None,
+            title: None | str = None,
             annotate: bool = False,
-            annotation_size: int = 12,
-            annotation_color: str = 'white',
-            annotation_facecolor: str = 'red',
+            annotation_params: None | dict = None,
             ax: plt.Axes = None,
             overlay_params: None | dict = None,
-            mpl_params: None | dict = None,
+            imshow_params: None | dict = None,
     ) -> (plt.Figure, plt.Axes):
+        """
+        Displays an overlay visualization of a labeled image matrix and its annotations.
+
+        This method generates an overlay of a labeled image using the 'label2rgb'
+        function from skimage. It optionally annotates regions with their labels.
+        Additional customization options are provided through parameters such
+        as subplot size, title, annotation properties, and Matplotlib configuration.
+
+        Args:
+            object_label (Optional[int]): A specific label to exclude from the
+                overlay. If None, all objects are included.
+            figsize (Tuple[int, int]): Size of the figure in inches as a tuple
+                (width, height). If None, default size settings will be used.
+            title (None|str): Title of the figure. If None, no title is displayed.
+            annotate (bool): Whether to annotate object labels on the overlay.
+                Defaults to False.
+            annotation_params (None | dict): Additional parameters for customization of the
+                object annotations. Defaults: size=12, color='white', facecolor='red'.
+            ax (plt.Axes): Existing Matplotlib Axes object where the overlay will be
+                plotted. If None, a new Axes object is created.
+            overlay_params (None|dict): Additional parameters for the overlay
+                generation. If None, default overlay settings will apply.
+            imshow_params (None|dict): Additional Matplotlib imshow configuration parameters
+                for customization. If None, default Matplotlib settings will apply.
+
+        Returns:
+            Tuple[plt.Figure, plt.Axes]: A tuple containing the Matplotlib figure and
+                axes where the overlay is displayed.
+        """
         objmap = self._parent_image.objmap[:]
         if object_label is not None: objmap[objmap == object_label] = 0
+        if annotation_params is None: annotation_params = {}
 
         fig, ax = self._plot_overlay(
             arr=self._parent_image.enh_matrix[:],
             objmap=objmap,
             figsize=figsize,
-            title=self._parent_image.name,
+            title=title,
             ax=ax,
-            mpl_params = mpl_params,
-            overlay_params = overlay_params,
+            overlay_params=overlay_params,
+            imshow_params=imshow_params,
+
         )
 
         if annotate:
-            for i, label in enumerate(self._parent_image.objects.labels):
-                if object_label is None:
-                    text_rr, text_cc = self._parent_image.objects.props[i].centroid
-                    ax.text(
-                        x=text_cc, y=text_rr,
-                        s=f'{label}',
-                        color=annotation_color,
-                        fontsize=annotation_size,
-                        bbox=dict(facecolor=annotation_facecolor, edgecolor='none', alpha=0.6, boxstyle='round')
-                    )
-                elif object_label == label:
-                    text_rr, text_cc = self._parent_image.objects.props[i].centroid
-                    ax.text(
-                        x=text_cc, y=text_rr,
-                        s=f'{label}',
-                        color=annotation_color,
-                        fontsize=annotation_size,
-                        bbox=dict(facecolor=annotation_facecolor, edgecolor='none', alpha=0.6, boxstyle='round')
-                    )
+            ax = self._plot_annotations(
+                ax=ax,
+                color=annotation_params.get('color', 'white'),
+                size=annotation_params.get('size', 12),
+                facecolor=annotation_params.get('facecolor', 'red'),
+                object_label=object_label,
+            )
 
         return fig, ax

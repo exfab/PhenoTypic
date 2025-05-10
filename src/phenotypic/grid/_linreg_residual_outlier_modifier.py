@@ -46,7 +46,7 @@ class LinRegResidualOutlierRemover(GridMapModifier):
         deviation multiplier are identified and subsequently removed.
 
         Args:
-            image (GridImage): The GridImage object that represents the input grid
+            image (GridImage): The GridImage object that represents the input_image grid
                 containing object information for analysis and modification.
 
         Returns:

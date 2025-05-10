@@ -80,7 +80,7 @@ class DataIntegrityError(AttributeError):
     def __init__(self, component, operation, image_name=None):
         image_str = f" for image {image_name}" if image_name else ""
         super().__init__(
-            f"The {component} of the input was changed{image_str} by operation: {operation}. This operation should not change the {component} of the input."
+            f"The {component} of the input_image was changed{image_str} by operation: {operation}. This operation should not change the {component} of the input_image."
             )
 
 
@@ -136,7 +136,7 @@ class NoArrayError(AttributeError):
 
     def __init__(self):
         super().__init__(
-            "No array form found. Either input image was 2-D and had no array form. Set a multi-channel image or use a FormatConverter"
+            "No array form found. Either input_image image was 2-D and had no array form. Set a multi-channel image or use a FormatConverter"
             )
 
 
@@ -195,7 +195,7 @@ class ArrayKeyValueShapeMismatchError(ValueError):
 
 
 class InputShapeMismatchError(ValueError):
-    """Exception raised when input shape doesn't match the image matrix."""
+    """Exception raised when input_image shape doesn't match the image matrix."""
 
     def __init__(self, param_name):
         super().__init__(f"The shape of {param_name} must be the same shape as the Image.matrix")
@@ -269,9 +269,9 @@ class ObjectNotFoundError(AttributeError):
 
 # Grid exceptions
 class GridImageInputError(ValueError):
-    """Exception raised when a non-GriddedImage object is provided as input."""
+    """Exception raised when a non-GriddedImage object is provided as input_image."""
 
     def __init__(self):
         super().__init__(
-            "For GridOperation classes with the exception of GridExtractor objects, the input must be an instance of the GriddedImage object type."
+            "For GridOperation classes with the exception of GridExtractor objects, the input_image must be an instance of the GriddedImage object type."
             )

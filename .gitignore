@@ -18,3 +18,10 @@ dist/*
 phenotypic.egg-info
 deprecated
 .pytest_cache
+./docs/build/html/*
+docs/build/html/*
+./docs/build/doctrees/*
+docs/build/doctrees/*
+./docs/build/jupyter_execute/*
+docs/build/jupyter_execute/*
+**.$**.bkp

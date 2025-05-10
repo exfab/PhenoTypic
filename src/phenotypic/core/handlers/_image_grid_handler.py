@@ -15,6 +15,7 @@ from phenotypic.grid import OptimalCenterGridFinder
 
 from ..accessors import GridAccessor
 
+
 class ImageGridHandler(Image):
     """
     A specialized Image object that supports grid-based processing and overlay visualization.
@@ -25,10 +26,10 @@ class ImageGridHandler(Image):
     to determine grid structure and assign/overlay it effectively on the image.
 
     Args:
-            input_image (Optional[Union[np.ndarray, Type[Image]]]): The input
+            input_image (Optional[Union[np.ndarray, Type[Image]]]): The input_image
                 image, which can be a NumPy array or an image-like object. If
                 this parameter is not provided, it defaults to None.
-            imformat (str): A string representing the schema of the input
+            imformat (str): A string representing the schema of the input_image
                 image. It defaults to None if not provided.
             grid_finder (Optional[GridFinder]): An optional GridFinder instance
                 for defining grids on the image. If not provided, it defaults to
@@ -55,10 +56,10 @@ class ImageGridHandler(Image):
         operations.
 
         Args:
-            input_image (Optional[Union[np.ndarray, Type[Image]]]): The input
+            input_image (Optional[Union[np.ndarray, Type[Image]]]): The input_image
                 image, which can be a NumPy array or an image-like object. If
                 this parameter is not provided, it defaults to None.
-            imformat (str): A string representing the schema of the input
+            imformat (str): A string representing the schema of the input_image
                 image. It defaults to None if not provided.
             grid_finder (Optional[GridFinder]): An optional GridFinder instance
                 for defining grids on the image. If not provided, it defaults to
@@ -99,7 +100,7 @@ class ImageGridHandler(Image):
         Returns:
             Image: A copy of the image at the slices indicated
         """
-        if self.imformat not in IMAGE_FORMATS.MATRIX_FORMATS:
+        if self._image_format.is_array():
             subimage = Image(input_image=self.array[key], imformat=self.imformat)
         else:
             subimage = Image(input_image=self.matrix[key], imformat=self.imformat)
@@ -113,9 +114,7 @@ class ImageGridHandler(Image):
                      show_linreg: bool = False,
                      figsize: Tuple[int, int] = (9, 10),
                      annotate: bool = False,
-                     annotation_size: int = 12,
-                     annotation_color: str = 'white',
-                     annotation_facecolor: str = 'red',
+                     annotation_params: None | dict = None,
                      ax: plt.Axes = None,
                      ) -> (plt.Figure, plt.Axes):
         """
@@ -129,20 +128,19 @@ class ImageGridHandler(Image):
             figsize (Tuple[int, int]): Size of the figure, specified as a tuple of width and height values (in inches).
                 Defaults to (9, 10).
             annotate (bool): Determines whether points or objects should be annotated. Defaults to False.
-            annotation_size (int): Font size for the annotations. Defaults to 12.
-            annotation_color (str): Color for annotation text. Defaults to 'white'.
-            annotation_facecolor (str): Background color for annotation highlights. Defaults to 'red'.
+            annotation_params (None | dict): Additional parameters for customization of the
+                object annotations. Defaults: size=12, color='white', facecolor='red'. Other kwargs
+                are passed to the matplotlib.axes.text () method.
             ax (plt.Axes, optional): Axis on which to draw the overlay; can be provided externally. Defaults to None.
 
         Returns:
             Tuple[plt.Figure, plt.Axes]: Modified figure and axis containing the rendered overlay.
         """
         fig, ax = super().show_overlay(object_label=object_label, ax=ax, figsize=figsize,
-                                       annotate=annotate, annotation_size=annotation_size,
-                                       annotation_color=annotation_color, annotation_facecolor=annotation_facecolor
+                                       annotate=annotate, annotation_params=annotation_params,
                                        )
 
-        if show_gridlines:
+        if show_gridlines and self.num_objects > 0:
             col_edges = self.grid.get_col_edges()
             row_edges = self.grid.get_row_edges()
             ax.vlines(x=col_edges, ymin=row_edges.min(), ymax=row_edges.max(), colors='c', linestyles='--')

@@ -10,7 +10,7 @@ from ..util.funcs import is_binary_mask
 class MorphologyFiller(MapModifier):
     def __init__(self, structure: Optional[np.ndarray] = None, origin: int = 0):
         if structure is not None:
-            if not is_binary_mask(structure): raise ValueError('input object array must be a binary array')
+            if not is_binary_mask(structure): raise ValueError('input_image object array must be a binary array')
         self._structure = structure
         self._origin = origin
 

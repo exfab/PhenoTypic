@@ -1,7 +1,6 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
 
-
 from typing import Optional, Tuple
 
 import numpy as np
@@ -10,13 +9,13 @@ import matplotlib.pyplot as plt
 from skimage.color import gray2rgb
 from skimage.exposure import histogram
 
-from phenotypic.core.accessors import ImageAccessor
-from phenotypic.util.exceptions_ import ArrayKeyValueShapeMismatchError
+from phenotypic.core.accessors import ImageDataAccessor
+from phenotypic.util.exceptions_ import ArrayKeyValueShapeMismatchError, EmptyImageError
 from phenotypic.util.constants_ import IMAGE_FORMATS
 from warnings import warn
 
 
-class ImageMatrix(ImageAccessor):
+class ImageMatrix(ImageDataAccessor):
     """An accessor for managing and visualizing image matrix data. This is the greyscale representation converted using weighted luminance
 
     This class provides a set of tools to access image data, analyze it through
@@ -39,7 +38,10 @@ class ImageMatrix(ImageAccessor):
         Returns:
             np.ndarray: A copy of the accessed subset of the parent image's matrix.
         """
-        return self._parent_image._matrix[key].copy()
+        if self.isempty():
+            raise EmptyImageError
+        else:
+            return self._parent_image._data.matrix[key].copy()
 
     def __setitem__(self, key, value):
         """
@@ -55,17 +57,18 @@ class ImageMatrix(ImageAccessor):
             ArrayKeyValueShapeMismatchError: If the shape of the value does not match
                 the shape of the existing key in the parent image's matrix.
         """
-        if isinstance(value, np.ndarray):
-            if self._parent_image._matrix[key].shape != value.shape:
-                raise ArrayKeyValueShapeMismatchError
-        elif value in {bool, int, float}:
-            pass
+        if isinstance(value, (np.ndarray, int, float)):
+            if isinstance(value, np.ndarray):
+                if self._parent_image._data.matrix[key].shape != value.shape:
+                    raise ArrayKeyValueShapeMismatchError
+
+            self._parent_image._data.matrix[key] = value
+            self._parent_image.enh_matrix.reset()
+            self._parent_image.objmap.reset()
         else:
             raise TypeError(f'Unsupported type for setting the matrix. Value should be scalar or a numpy array: {type(value)}')
 
-        self._parent_image._matrix[key] = value
-        self._parent_image.enh_matrix.reset()
-        self._parent_image.objmap.reset()
+
 
     @property
     def shape(self) -> tuple:
@@ -78,7 +81,7 @@ class ImageMatrix(ImageAccessor):
         Returns:
             tuple: A tuple representing the shape of the parent image's matrix.
         """
-        return self._parent_image._matrix.shape
+        return self._parent_image._data.matrix.shape
 
     def copy(self) -> np.ndarray:
         """
@@ -91,7 +94,7 @@ class ImageMatrix(ImageAccessor):
         Returns:
             np.ndarray: A deep copy of the parent image matrix.
         """
-        return self._parent_image._matrix.copy()
+        return self._parent_image._data.matrix.copy()
 
     def histogram(self, figsize: Tuple[int, int] = (10, 5)) -> Tuple[plt.Figure, np.ndarray]:
         """
@@ -148,7 +151,7 @@ class ImageMatrix(ImageAccessor):
 
         Raises:
             TypeError: If invalid types are provided for `ax`, `figsize`, `cmap`, or
-                `mpl_params`.
+                `imshow_params`.
             ValueError: If unexpected values are passed to the function arguments.
 
         """
@@ -167,12 +170,10 @@ class ImageMatrix(ImageAccessor):
             figsize: Tuple[int, int] = None,
             title: None | str = None,
             annotate: bool = False,
-            annotation_size: int = 12,
-            annotation_color: str = 'white',
-            annotation_facecolor: str = 'red',
+            annotation_params: None | dict = None,
             ax: plt.Axes = None,
             overlay_params: None | dict = None,
-            mpl_params: None | dict = None,
+            imshow_params: None | dict = None,
     ) -> (plt.Figure, plt.Axes):
         """
         Displays an overlay visualization of a labeled image matrix and its annotations.
@@ -190,15 +191,13 @@ class ImageMatrix(ImageAccessor):
             title (None|str): Title of the figure. If None, no title is displayed.
             annotate (bool): Whether to annotate object labels on the overlay.
                 Defaults to False.
-            annotation_size (int): Font size of the annotations. Defaults to 12.
-            annotation_color (str): Font color for annotations. Defaults to 'white'.
-            annotation_facecolor (str): Background color for text annotations.
-                Defaults to 'red'.
+            annotation_params (None | dict): Additional parameters for customization of the
+                object annotations. Defaults: size=12, color='white', facecolor='red'.
             ax (plt.Axes): Existing Matplotlib Axes object where the overlay will be
                 plotted. If None, a new Axes object is created.
             overlay_params (None|dict): Additional parameters for the overlay
                 generation. If None, default overlay settings will apply.
-            mpl_params (None|dict): Additional Matplotlib configuration parameters
+            imshow_params (None|dict): Additional Matplotlib imshow configuration parameters
                 for customization. If None, default Matplotlib settings will apply.
 
         Returns:
@@ -207,6 +206,7 @@ class ImageMatrix(ImageAccessor):
         """
         objmap = self._parent_image.objmap[:]
         if object_label is not None: objmap[objmap == object_label] = 0
+        if annotation_params is None: annotation_params = {}
 
         fig, ax = self._plot_overlay(
             arr=self._parent_image.matrix[:],
@@ -215,16 +215,16 @@ class ImageMatrix(ImageAccessor):
             title=title,
             ax=ax,
             overlay_params=overlay_params,
-            mpl_params=mpl_params,
+            imshow_params=imshow_params,
 
         )
 
         if annotate:
             ax = self._plot_annotations(
                 ax=ax,
-                color=annotation_color,
-                size=annotation_size,
-                facecolor=annotation_facecolor,
+                color=annotation_params.get('color', 'white'),
+                size=annotation_params.get('size', 12),
+                facecolor=annotation_params.get('facecolor', 'red'),
                 object_label=object_label,
             )
 

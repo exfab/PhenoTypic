@@ -38,7 +38,7 @@ class ObjectMask(ImageAccessor):
             except TypeError:
                 raise InvalidMaskScalarValueError
         elif type(value) == np.ndarray:
-            # Check input and section have matching shape
+            # Check input_image and section have matching shape
             if mask[key].shape != value.shape:
                 raise ArrayKeyValueShapeMismatchError
 

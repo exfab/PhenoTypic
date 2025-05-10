@@ -85,7 +85,7 @@ Welcome to Phenotypic's documentation. Here you'll find comprehensive guides and
 
       +++
 
-      .. button-ref:: examples/index
+      .. button-ref:: user_guide/examples/index
          :ref-type: doc
          :click-parent:
          :color: secondary

@@ -27,7 +27,7 @@ class GridOversizedObjectRemover(GridMapModifier):
         large objects in the image.
 
         Args:
-            image (GridImage): The input grid image containing grid metadata and object map.
+            image (GridImage): The input_image grid image containing grid metadata and object map.
 
         Returns:
             GridImage: The processed grid image with specified objects removed.

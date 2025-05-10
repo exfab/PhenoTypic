@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING: from phenotypic import Image
 
 import uuid
-from typing import Optional, Union, Dict, Tuple, Literal
+from typing import Optional, Tuple, Literal
 from types import SimpleNamespace
 import numpy as np
 import skimage as ski
@@ -31,10 +31,10 @@ from ..accessors import (
     MetadataAccessor
 )
 
-from phenotypic.util.constants_ import IMAGE_FORMATS, METADATA_LABELS
+from phenotypic.util.constants_ import IMAGE_FORMATS, METADATA_LABELS, SUBIMAGE_TYPES
 from phenotypic.util.exceptions_ import (
     EmptyImageError, NoArrayError, NoObjectsError, IllegalAssignmentError,
-    UnsupportedSchemaError, UnsupportedFileTypeError
+    UnsupportedFileTypeError
 )
 
 
@@ -48,11 +48,11 @@ class ImageHandler:
     and ensures compatibility during transformations and data manipulations.
 
     Attributes:
-        _array (Optional[np.ndarray]): Internal representation of image data in array form.
-        _matrix (Optional[np.ndarray]): Internal representation of image data in matrix form.
-        _enh_matrix (Optional[np.ndarray]): Enhanced matrix for extended manipulations.
-        _sparse_object_map (Optional[csc_matrix]): Sparse object representation for mapping object labels.
-        _image_format (Optional[str]): Tracks the format/schema of the input image.
+        _data.array (Optional[np.ndarray]): Internal representation of image data in array form.
+        _data.matrix (Optional[np.ndarray]): Internal representation of image data in matrix form.
+        _data.enh_matrix (Optional[np.ndarray]): Enhanced matrix for extended manipulations.
+        _data.sparse_object_map (Optional[csc_matrix]): Sparse object representation for mapping object labels.
+        _image_format (Optional[str]): Tracks the format/schema of the input_image image.
         _metadata (SimpleNamespace): Container holding private, protected, and public metadata for
             the image.
         _accessors (SimpleNamespace): Provides property-based access"""
@@ -63,20 +63,22 @@ class ImageHandler:
                  name: str | None = None):
         """
         Args:
-            input_image: An optional input image represented as either a NumPy array or an image
+            input_image: An optional input_image image represented as either a NumPy array or an image
                 object. Defaults to None.
-            imformat: An optional string defining the schema for the input image to specify
+            imformat: An optional string defining the schema for the input_image image to specify
                 how data should be interpreted or processed. Defaults to None.
             name: An optional string to assign a name to the image, used as metadata. If not
                 provided, a universally unique identifier (UUID) will be generated and assigned.
         """
-        self._array: Optional[np.ndarray] = None
-        self._matrix: Optional[np.ndarray] = None
-        self._enh_matrix: Optional[np.ndarray] = None
-        self._sparse_object_map: Optional[csc_matrix] = None
+        # Initialize image data
+        self._data = SimpleNamespace()
+        self._data.array = None
+        self._data.matrix = None
+        self._data.enh_matrix = None
+        self._data.sparse_object_map = None
 
         # Initialize core backend variables
-        self._image_format = None
+        self._image_format = IMAGE_FORMATS.NONE
 
         # Public metadata can be edited or removed
         self._metadata = SimpleNamespace(
@@ -84,7 +86,9 @@ class ImageHandler:
                 METADATA_LABELS.UUID: uuid.uuid4()
             },
             protected={
-                METADATA_LABELS.IMAGE_NAME: name
+                METADATA_LABELS.IMAGE_NAME: name,
+                METADATA_LABELS.PARENT_IMAGE_NAME: None,
+                METADATA_LABELS.SUBIMAGE_TYPE: SUBIMAGE_TYPES.ORIGINAL
             },
             public={}
         )
@@ -100,16 +104,23 @@ class ImageHandler:
         self._accessors.objects = ObjectsAccessor(self)
         self._accessors.metadata = MetadataAccessor(self)
 
+        # Set data to empty arrays first
+        self._reset_data_to_empty()
+
+        # Handle non-empty inputs
         if isinstance(input_image, (PathLike, str, Path)):
             self.imread(input_image)
         else:
             self.set_image(input_image=input_image, imformat=imformat)
 
     def __getitem__(self, key) -> Image:
-        """Returns a subimage from the current object based on the provided key. The subimage is initialized
+        """Returns a new subimage from the current object based on the provided key. The subimage is initialized
         as a new instance of the same class, maintaining the schema and format consistency as the original
         image object. This method supports 2-dimensional slicing and indexing.
 
+        Note:
+            - The subimage arrays are copied from the original image object. This means that any changes made to the subimage will not affect the original image.
+            - We may add this functionality in future updates if there is demand for it.
         Args:
             key: A slicing key or index used to extract a subset or part of the image object.
 
@@ -119,13 +130,14 @@ class ImageHandler:
         Raises:
             KeyError: If the provided key does not match the expected slicing format or dimensions.
         """
-        if self.imformat not in IMAGE_FORMATS.MATRIX_FORMATS:
+        if self._image_format.is_array():
             subimage = self.__class__(input_image=self.array[key], imformat=self.imformat)
         else:
             subimage = self.__class__(input_image=self.matrix[key], imformat=self.imformat)
 
         subimage.enh_matrix[:] = self.enh_matrix[key]
         subimage.objmap[:] = self.objmap[key]
+        subimage.metadata[METADATA_LABELS.SUBIMAGE_TYPE] = SUBIMAGE_TYPES.CROP
         return subimage
 
     def __setitem__(self, key, value):
@@ -133,37 +145,59 @@ class ImageHandler:
 
         Args:
             key (Any): The array slices for accesssing the elements of the image.
-            value (ImageHandler): The value to be set, which must match the shape of the
-                existing elements and conform to the expected schema.
+            value (ImageHandler): The other image to be set, which must match the shape of the
+                existing elements accessed by the key and conform to the expected schema.
 
         Raises:
             ValueError: If the shape of the `value` does not match the shape of the existing
                 elements being accessed.
         """
 
-        if isinstance(value, ImageHandler) or issubclass(type(value), ImageHandler):
-            if value.imformat not in IMAGE_FORMATS.MATRIX_FORMATS and self.imformat not in IMAGE_FORMATS.MATRIX_FORMATS:
+        # Sections can only be set to another Image class
+        if isinstance(value, self.__class__) or issubclass(type(value), ImageHandler):
+            # Handle in the array case
+            if value.imformat.is_array() and self.imformat.is_array():
                 if np.array_equal(self.array[key].shape, value.array.shape) is False: raise ValueError(
                     'The image being set must be of the same shape as the image elements being accessed.'
                 )
-                self._array[key] = value.array[:]
+                else:
+                    self._data.array[key] = value.array[:]
 
-            if np.array_equal(self.matrix[key].shape, value.matrix.shape) is False: raise ValueError(
-                'The image being set must be of the same shape as the image elements being accessed.'
-            )
-            self._matrix[key] = value.matrix[:]
-            self._enh_matrix[key] = value.enh_matrix[:]
-            self.objmask[key] = value.objmask[:]
+            # handle other cases
+            if np.array_equal(self.matrix[key].shape, value.matrix.shape) is False:
+                raise ValueError(
+                    'The image being set must be of the same shape as the image elements being accessed.'
+                )
+            else:
+                self._data.matrix[key] = value.matrix[:]
+                self._data.enh_matrix[key] = value.enh_matrix[:]
+                self.objmask[key] = value.objmask[:]
 
     def __eq__(self, other) -> bool:
+        """
+        Compares the current object with another object for equality.
+
+        This method checks if the current object's attributes are equal to another object's
+        attributes. Equality is determined by comparing the `imformat` attribute and
+        verifying that the numerical arrays (`array`, `matrix`, `enh_matrix`, `objmap`)
+        are element-wise identical.
+
+        Note:
+            - Only checks core image data, and not any other attributes such as metadata.
+
+        Args:
+            other: The object to compare with the current instance.
+
+        Returns:
+            bool: True if all the attributes of the current object are identical to those
+            of the `other` object. Returns False otherwise.
+        """
         return True if (
                 self.imformat == other.imformat
                 and np.array_equal(self.array[:], other.array[:])
                 and np.array_equal(self.matrix[:], other.matrix[:])
                 and np.array_equal(self.enh_matrix[:], other.enh_matrix[:])
                 and np.array_equal(self.objmap[:], other.objmap[:])
-                and self._metadata.protected == other._metadata.protected
-                and self._metadata.public == other._metadata.public
         ) else False
 
     def __ne__(self, other):
@@ -171,7 +205,10 @@ class ImageHandler:
 
     def isempty(self) -> bool:
         """Returns True if there is no image data"""
-        return True if self._matrix is None else False
+        if self.matrix.isempty() and self._image_format.is_none():
+            return True
+        else:
+            return False
 
     @property
     def name(self) -> str:
@@ -192,22 +229,24 @@ class ImageHandler:
 
     @property
     def shape(self):
-        """Returns the shape of the image array or matrix depending on input format or none if no image is set.
+        """Returns the shape of the image array or matrix depending on input_image format or none if no image is set.
 
         Returns:
-            Optional[Tuple(int,int,...)]: Returns the shape of the array or matrix depending on input format or none if no image is set.
+            Optional[Tuple(int,int,...)]: Returns the shape of the array or matrix depending on input_image format or none if no image is set.
         """
-        if self._array is not None:
-            return self._array.shape
-        elif self._matrix is not None:
-            return self._matrix.shape
+        if self._image_format.is_array():
+            return self._data.array.shape
+        elif self._image_format.is_matrix():
+            return self._data.matrix.shape
         else:
             raise EmptyImageError
 
     @property
-    def imformat(self) -> Optional[str]:
-        """Returns the input format of the image array or matrix depending on input format"""
-        if self._image_format:
+    def imformat(self) -> IMAGE_FORMATS:
+        """Returns the input_image format of the image array or matrix depending on input_image format"""
+        if not self._image_format.is_none():
+            # if self._data.matrix is None or self._data.enh_matrix is None or self._data.sparse_object_map is None:
+            #     raise AttributeError('Unknown error. Image format exists, but missing image data')
             return self._image_format
         else:
             raise EmptyImageError
@@ -227,26 +266,20 @@ class ImageHandler:
         Note:
             - array/matrix element data is synced
             - change image shape by changing the image being represented with Image.set_image()
-            - Raises an error if input image has no array form
+            - Raises an error if the input_image image has no array form
 
         Returns:
             ImageArray: A class that can be accessed like a numpy array, but has extra methods to streamline development, or None if not set
 
         Raises:
-            NoArrayError: If no multichannel image data is set as input.
+            NoArrayError: If no multichannel image data is set as input_image.
         See Also: :class:`ImageArray`
         """
-        if self._array is None:
-            if self._matrix is None:
-                raise EmptyImageError
-            else:
-                raise NoArrayError
-        else:
-            return self._accessors.array
+        return self._accessors.array
 
     @array.setter
     def array(self, value):
-        if isinstance(value, np.ndarray) | value in {int, float, bool}:
+        if isinstance(value, (np.ndarray, int, float)):
             self.array[:] = value
         else:
             raise IllegalAssignmentError('array')
@@ -264,14 +297,14 @@ class ImageHandler:
 
         See Also: :class:`ImageMatrix`
         """
-        if self._matrix is None:
+        if self._data.matrix is None:
             raise EmptyImageError
         else:
             return self._accessors.matrix
 
     @matrix.setter
     def matrix(self, value):
-        if isinstance(value, np.ndarray) | value in {int, float, bool}:
+        if isinstance(value, (np.ndarray, int, float)):
             self.matrix[:] = value
         else:
             raise IllegalAssignmentError('matrix')
@@ -288,14 +321,14 @@ class ImageHandler:
 
         See Also: :class:`ImageEnhancedMatrix`
         """
-        if self._enh_matrix is None:
+        if self._data.enh_matrix is None:
             raise EmptyImageError
         else:
             return self._accessors.enh_matrix
 
     @enh_matrix.setter
     def enh_matrix(self, value):
-        if isinstance(value, np.ndarray) | type(value) in {int, float, bool}:
+        if isinstance(value, (np.ndarray, int, float)):
             self.enh_matrix[:] = value
         else:
             raise IllegalAssignmentError('enh_matrix')
@@ -314,17 +347,14 @@ class ImageHandler:
 
         See Also: :class:`ObjectMask`
         """
-        if self._sparse_object_map is None:
-            raise EmptyImageError
-        else:
-            return self._accessors.objmask
+        return self._accessors.objmask
 
     @objmask.setter
-    def objmask(self, object_mask):
-        if isinstance(object_mask, np.ndarray):
-            self.objmask[:] = object_mask
+    def objmask(self, value):
+        if isinstance(value, (np.ndarray, int, bool)):
+            self.objmask[:] = value
         else:
-            raise IllegalAssignmentError('object_mask')
+            raise IllegalAssignmentError('objmask')
 
     @property
     def objmap(self) -> ObjectMap:
@@ -341,25 +371,22 @@ class ImageHandler:
 
         See Also: :class:`ObjectMap`
         """
-        if self._sparse_object_map is None:
-            raise EmptyImageError
-        else:
-            return self._accessors.objmap
+        return self._accessors.objmap
 
     @objmap.setter
-    def objmap(self, object_map):
-        if isinstance(object_map, np.ndarray):
-            self.objmap[:] = object_map
+    def objmap(self, value):
+        if isinstance(value, (np.ndarray, int, float, bool)):
+            self.objmap[:] = value
         else:
-            raise IllegalAssignmentError('object_map')
+            raise IllegalAssignmentError('objmap')
 
     @property
     def props(self) -> list[ski.measure._regionprops.RegionProperties]:
-        """Fetches the properties of labeled regions in an image.
+        """Fetches the properties of the whole image.
 
         Calculates region properties for the entire image using the matrix representation.
         The labeled image is generated as a full array with values of 1, and the
-        intensity image corresponds to the `_matrix` attribute of the object.
+        intensity image corresponds to the `_data.matrix` attribute of the object.
         Cache is disabled in this configuration.
 
         Returns:
@@ -416,7 +443,7 @@ class ImageHandler:
                 The diameter of a circle with the same area as the region.
 
             euler_number: int
-                Euler characteristic of the set of non-zero pixels. Computed as number of connected components subtracted by number of holes (input.ndim connectivity). In 3D, number of connected components plus number of holes subtracted by number of tunnels.
+                Euler characteristic of the set of non-zero pixels. Computed as number of connected components subtracted by number of holes (input_image.ndim connectivity). In 3D, number of connected components plus number of holes subtracted by number of tunnels.
 
             extent: float
                 Ratio of pixels in the region to pixels in the total bounding box. Computed as area / (rows * cols)
@@ -455,7 +482,7 @@ class ImageHandler:
                 Standard deviation of the intensity in the region.
 
             label: int
-                The label in the labeled input image.
+                The label in the labeled input_image image.
 
             moments(3, 3): ndarray
                 Spatial moments up to 3rd order::
@@ -528,7 +555,7 @@ class ImageHandler:
 
 
         """
-        return ski.measure.regionprops(label_image=np.full(shape=self.shape, fill_value=1), intensity_image=self._matrix, cache=False)
+        return ski.measure.regionprops(label_image=np.full(shape=self.shape, fill_value=1), intensity_image=self._data.matrix, cache=False)
 
     @property
     def objects(self) -> ObjectsAccessor:
@@ -557,7 +584,7 @@ class ImageHandler:
         Note:
             If the number of objects is 0, the target for analysis is the entire image itself.
         """
-        object_labels = np.unique(self._sparse_object_map.data)
+        object_labels = np.unique(self._data.sparse_object_map.data)
         return len(object_labels[object_labels != 0])
 
     def copy(self):
@@ -571,48 +598,23 @@ class ImageHandler:
         # Create a new instance of ImageHandler
         return self.__class__(self)
 
-    def imread(self, filepath: PathLike) -> Type[Image]:
-        """
-        Reads an image file from a given file path, processes it as per its format, and sets the image
-        along with its schema in the current instance. Supports RGB formats (png, jpg, jpeg) and
-        grayscale formats (tif, tiff). The name of the image processing instance is updated to match
-        the file name without the extension. If the file format is unsupported, an exception is raised.
 
-        Args:
-            filepath (PathLike): Path to the image file to be read.
-
-        Returns:
-            Type[Image]: The current instance with the newly loaded image and schema.
-
-        Raises:
-            UnsupportedFileType: If the file format is not supported.
-        """
-        # Convert to Path object
-        filepath = Path(filepath)
-        if filepath.suffix in ['.png', '.jpg', '.jpeg', '.tif', '.tiff']:
-            self.set_image(
-                input_image=ski.io.imread(filepath)
-            )
-            self.name = filepath.stem
-            return self
-        else:
-            raise UnsupportedFileTypeError(filepath.suffix)
 
     def set_image(self, input_image: Image | np.ndarray | None = None, imformat: Literal['RGB', 'greyscale'] | None = None) -> None:
         """
-        Sets the image data and format based on the provided input and parameters.
+        Sets the image data and format based on the provided input_image and parameters.
 
         This method accepts an image in the form of an array, another class instance,
         or a None value, and sets the internal image data accordingly. It determines
-        how to process the input based on its type, and separates actions for arrays,
-        instances of the class, and None input.
+        how to process the input_image based on its type, and separates actions for arrays,
+        instances of the class, and None input_image.
 
         Args:
-            input_image (Image | np.ndarray): The image data input which can either
+            input_image (Image | np.ndarray): The image data input_image which can either
                 be an instance of an Image, a NumPy array, or None. If None, the internal
                 image-related attributes are reset.
             imformat (Literal['RGB', 'greyscale'] | None): Optional format specifier
-                indicating the format of the input image. If None, it attempts to derive
+                indicating the format of the input_image image. If None, it attempts to derive
                 the format automatically based on the image data.
         """
         if type(input_image) == np.ndarray:
@@ -622,25 +624,27 @@ class ImageHandler:
               or issubclass(type(input_image), ImageHandler)):
             self._set_from_class_instance(input_image)
         elif input_image is None:
-            self._image_format = None
-            self._array = None
-            self._matrix = None
-            self._enh_matrix = None
-            self._sparse_object_map = None
+            self._reset_data_to_empty()
         else:
             raise ValueError(f'input_image must be a NumPy array, a class instance, or None. Got {type(input_image)}')
 
-    def _set_from_class_instance(self, class_instance):
-        self._image_format = class_instance.imformat
+    def _reset_data_to_empty(self):
+        self._data.array = np.empty((0, 3))  # Create an empty 3D array
+        self._set_from_matrix(np.empty((0, 2)))
+        self._image_format = IMAGE_FORMATS.NONE
 
-        if class_instance.imformat not in IMAGE_FORMATS.MATRIX_FORMATS:
-            self._set_from_array(class_instance.array[:].copy(), class_instance.imformat)
+    def _set_from_class_instance(self, class_instance):
+        self._image_format = class_instance._image_format
+
+        if class_instance._image_format.is_array():
+            self._set_from_array(class_instance.array[:].copy(), class_instance._image_format.value)
         else:
-            self._set_from_array(class_instance.matrix[:].copy(), class_instance.imformat)
-        self._enh_matrix = class_instance._enh_matrix.copy()
-        self._sparse_object_map = class_instance._sparse_object_map.copy()
-        self._metadata.protected = deepcopy(class_instance._metadata.protected)
-        self._metadata.public = deepcopy(class_instance._metadata.public)
+            self._set_from_array(class_instance.matrix[:].copy(), class_instance._image_format.value)
+        for key, value in class_instance._data.__dict__.items():
+            self._data.__dict__[key] = value.copy() if value is not None else None
+
+            self._metadata.protected = deepcopy(class_instance._metadata.protected)
+            self._metadata.public = deepcopy(class_instance._metadata.public)
 
     def _set_from_matrix(self, matrix: np.ndarray):
         """Initializes all the 2-D components of an image
@@ -648,35 +652,37 @@ class ImageHandler:
         Args:
             matrix: A 2-D array form of an image
         """
-        self._matrix = matrix.copy()
+        self._data.matrix = matrix.copy()
         self._accessors.enh_matrix.reset()
-
-        if self._sparse_object_map is None or matrix.shape != self._sparse_object_map.shape:
-            self._accessors.objmap.reset()
+        self._accessors.objmap.reset()
 
     def _set_from_rgb(self, rgb_array: np.ndarray):
         """Initializes all the components of an image from an RGB array
 
         """
-        self._array = rgb_array.copy()
-        self._set_from_matrix(rgb2gray(self._array.copy()))
+        self._data.array = rgb_array.copy()
+        self._set_from_matrix(rgb2gray(self._data.array.copy()))
 
     def _set_from_array(self, imarr: np.ndarray, imformat: Literal['RGB', 'greyscale'] | None) -> None:
         """Initializes all the components of an image from an array
 
         Note:
-            The format of the input should already have been set or guessed
+            The format of the input_image should already have been set or guessed
         Args:
-            imarr: the input image array
-            imformat: (str, optional) The format of the input image
+            imarr: the input_image image array
+            imformat: (str, optional) The format of the input_image image
         """
 
         # In the event of None for schema, PhenoTypic guesses the format
         if imformat is None:
             imformat = self._guess_image_format(imarr)
-            if imformat in IMAGE_FORMATS.AMBIGUOUS_FORMATS:
-                # PhenoTypic will assume in the event of rgb vs bgr that the input was rgb
-                self._image_format = IMAGE_FORMATS.RGB
+
+        if type(imformat) == IMAGE_FORMATS:
+            if imformat.is_ambiguous():
+                # PhenoTypic will assume in the event of rgb vs bgr that the input_image was rgb
+                imformat = IMAGE_FORMATS.RGB.value
+            else:
+                imformat = imformat.value
 
         match imformat.upper():
             case 'GRAYSCALE' | IMAGE_FORMATS.GRAYSCALE | IMAGE_FORMATS.GRAYSCALE_SINGLE_CHANNEL:
@@ -693,15 +699,15 @@ class ImageHandler:
                 self._image_format = IMAGE_FORMATS.RGB
                 self._set_from_rgb(rgba2rgb(imarr))
 
-            case 'BGR' | IMAGE_FORMATS.BGR:
-                self._image_format = IMAGE_FORMATS.RGB
-                warnings.warn('BGR Images are automatically converted to RGB')
-                self._set_from_rgb(imarr[:, :, ::-1])
-
-            case 'BGRA' | IMAGE_FORMATS.BGRA:
-                self._image_format = IMAGE_FORMATS.RGB
-                warnings.warn('BGRA Images are automatically converted to RGB')
-                self._set_from_rgb(imarr[:, :, [2, 1, 0, 3]])
+            # case 'BGR' | IMAGE_FORMATS.BGR:
+            #     self._image_format = IMAGE_FORMATS.RGB
+            #     warnings.warn('BGR Images are automatically converted to RGB')
+            #     self._set_from_rgb(imarr[:, :, ::-1])
+            #
+            # case 'BGRA' | IMAGE_FORMATS.BGRA:
+            #     self._image_format = IMAGE_FORMATS.RGB
+            #     warnings.warn('BGRA Images are automatically converted to RGB')
+            #     self._set_from_rgb(imarr[:, :, [2, 1, 0, 3]])
 
             case _:
                 raise ValueError(f'Unsupported image format: {imformat}')
@@ -718,10 +724,10 @@ class ImageHandler:
             IMAGE_FORMATS: Enum value indicating the detected format of the image.
 
         Raises:
-            TypeError: If the input is not a numpy array.
+            TypeError: If the input_image is not a numpy array.
             ValueError: If the image has an unsupported number of dimensions or channels.
         """
-        # Ensure input is a numpy array
+        # Ensure input_image is a numpy array
         if not isinstance(img, np.ndarray):
             raise TypeError("Input must be a numpy array.")
 
@@ -753,8 +759,8 @@ class ImageHandler:
              ax: plt.Axes = None,
              figsize: Tuple[int, int] = (9, 10)
              ) -> (plt.Figure, plt.Axes):
-        """Returns a matplotlib figure and axes showing the input image"""
-        if self.imformat not in IMAGE_FORMATS.MATRIX_FORMATS:
+        """Returns a matplotlib figure and axes showing the input_image image"""
+        if self._image_format.is_array():
             return self.array.show(ax=ax, figsize=figsize)
         else:
             return self.matrix.show(ax=ax, figsize=figsize)
@@ -762,9 +768,7 @@ class ImageHandler:
     def show_overlay(self, object_label: Optional[int] = None, ax: plt.Axes = None,
                      figsize: Tuple[int, int] = (10, 5),
                      annotate: bool = False,
-                     annotation_size: int = 12,
-                     annotation_color: str = 'white',
-                     annotation_facecolor: str = 'red',
+                     annotation_params: None | dict = None,
                      ) -> (plt.Figure, plt.Axes):
         """
         Displays an overlay of the object specified by the given label on an image or
@@ -785,36 +789,30 @@ class ImageHandler:
                 figure to create if no axes are provided.
             annotate (bool): Whether to annotate the image/matrix using the given
                 annotation settings.
-            annotation_size (int): The font size of the annotations, applicable only
-                when `annotate` is True.
-            annotation_color (str): The color of the text annotations, applicable only
-                when `annotate` is True.
-            annotation_facecolor (str): The color of the annotation marker background,
-                applicable only when `annotate` is True.
+            annotation_params (None | dict): Additional parameters for customization of the
+                object annotations. Defaults: size=12, color='white', facecolor='red
 
         Returns:
             Tuple[plt.Figure, plt.Axes]: A tuple containing the matplotlib Figure and
             Axes objects used to render the overlay.
 
         """
-        if self.imformat not in IMAGE_FORMATS.MATRIX_FORMATS:
+        if self._image_format.is_array():
             return self.array.show_overlay(object_label=object_label, ax=ax, figsize=figsize,
-                                           annotate=annotate, annotation_size=annotation_size,
-                                           annotation_color=annotation_color, annotation_facecolor=annotation_facecolor
+                                           annotate=annotate, annotation_params=annotation_params
                                            )
         else:
             return self.matrix.show_overlay(object_label=object_label, ax=ax, figsize=figsize,
-                                            annotate=annotate, annotation_size=annotation_size,
-                                            annotation_color=annotation_color, annotation_facecolor=annotation_facecolor
+                                            annotate=annotate, annotation_params=annotation_params
                                             )
 
     def rotate(self, angle_of_rotation: int, mode: str = 'edge', **kwargs) -> None:
         """Rotate the image and all its components"""
-        if self.imformat not in IMAGE_FORMATS.MATRIX_FORMATS:
-            self._array = skimage_rotate(image=self._array, angle=angle_of_rotation, mode=mode, clip=True, **kwargs)
+        if self._image_format.is_array():
+            self._data.array = skimage_rotate(image=self._data.array, angle=angle_of_rotation, mode=mode, clip=True, **kwargs)
 
-        self._matrix = skimage_rotate(image=self._matrix, angle=angle_of_rotation, mode=mode, clip=True, **kwargs)
-        self._enh_matrix = skimage_rotate(image=self._enh_matrix, angle=angle_of_rotation, mode=mode, clip=True, **kwargs)
+        self._data.matrix = skimage_rotate(image=self._data.matrix, angle=angle_of_rotation, mode=mode, clip=True, **kwargs)
+        self._data.enh_matrix = skimage_rotate(image=self._data.enh_matrix, angle=angle_of_rotation, mode=mode, clip=True, **kwargs)
 
         # Rotate the object map while preserving the details and using nearest-neighbor interpolation
         self.objmap[:] = scipy_rotate(input=self.objmap[:], angle=angle_of_rotation, mode='constant', cval=0, order=0, reshape=False)

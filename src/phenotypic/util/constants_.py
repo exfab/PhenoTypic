@@ -13,8 +13,9 @@ from enum import Enum
 
 
 # Image format constants
-class IMAGE_FORMATS:
+class IMAGE_FORMATS(Enum):
     """Constants for supported image formats."""
+    NONE = None
     GRAYSCALE = 'GRAYSCALE'
     GRAYSCALE_SINGLE_CHANNEL = 'Grayscale (single channel)'
     HSV = 'HSV'
@@ -27,6 +28,18 @@ class IMAGE_FORMATS:
     SUPPORTED_FORMATS = (RGB, RGBA, GRAYSCALE, BGR, BGRA)
     MATRIX_FORMATS = (GRAYSCALE, GRAYSCALE_SINGLE_CHANNEL)
     AMBIGUOUS_FORMATS = (RGB_OR_BGR, RGBA_OR_BGRA)
+
+    def is_matrix(self):
+        return self in {IMAGE_FORMATS.GRAYSCALE, IMAGE_FORMATS.GRAYSCALE_SINGLE_CHANNEL}
+
+    def is_array(self):
+        return self in {IMAGE_FORMATS.RGB, IMAGE_FORMATS.RGBA, IMAGE_FORMATS.BGR, IMAGE_FORMATS.BGRA}
+
+    def is_ambiguous(self):
+        return self in {IMAGE_FORMATS.RGB_OR_BGR, IMAGE_FORMATS.RGBA_OR_BGRA}
+
+    def is_none(self):
+        return self is IMAGE_FORMATS.NONE
 
     CHANNELS_DEFAULT = 3
     DEFAULT_SCHEMA = RGB
@@ -77,7 +90,16 @@ class METADATA_LABELS:
     IMAGE_NAME = 'ImageName'
     PARENT_IMAGE_NAME = 'ParentImageName'
     PARENT_UUID = 'ParentUUID'
-    SCHEMA = 'Schema'
+    IMFORMAT = 'ImageFormat'
+    SUBIMAGE_TYPE = 'SubimageType'
+
+
+class SUBIMAGE_TYPES:
+    """The string labels for different types of subimages generated when accessing subimages of a parent image."""
+    ORIGINAL = 'Original'
+    CROP = 'Crop'
+    OBJECT = 'Object'
+    GRID = 'Grid'
 
 
 class GEOM_LABELS(Enum):
@@ -92,15 +114,16 @@ class GEOM_LABELS(Enum):
         self.label, self.desc = label, desc
 
     def __str__(self):
-        return f'{self.CATEGORY}_{self.label}'
+        return f'{GEOM_LABELS.CATEGORY.label}_{self.label}'
 
 
 class INTENSITY_LABELS(Enum):
     CATEGORY = ('Intensity', 'The category of the measurements')
 
     INTEGRATED_INTENSITY = ('IntegratedIntensity', 'The sum of the object\'s pixels')
+
     def __init__(self, label, desc=None):
         self.label, self.desc = label, desc
 
     def __str__(self):
-        return 'Intensity' + "_" + self.label
+        return f"{INTENSITY_LABELS.CATEGORY.label}_{self.label}"
