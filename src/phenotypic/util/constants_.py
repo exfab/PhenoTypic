@@ -56,6 +56,11 @@ class OBJECT_INFO:
     MIN_CC = 'Bbox_MinCC'
     MAX_CC = 'Bbox_MaxCC'
 
+class IMAGE_IO:
+    H5PY_MODULE_SIGNATURE = 'phenotypic'
+    H5PY_IMAGE_GROUP = 'image'
+    H5PY_IMAGE_SET_GROUP = 'image_set'
+
 
 # Grid constants
 class GRID:

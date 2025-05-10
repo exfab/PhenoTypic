@@ -3,7 +3,9 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING: from phenotypic import Image
 
-from ..util.exceptions_ import InterfaceError
+import numpy as np
+
+from ..util.exceptions_ import InterfaceError, OperationIntegrityError
 
 class ImageOperation:
     """
@@ -17,7 +19,7 @@ class ImageOperation:
     """
     def apply(self, image, inplace=False) -> Image:
         """
-        Applies a certain operation to an image, either in-place or on a copy.
+        Applies the operation to an image, either in-place or on a copy.
 
         Args:
             image (Image): The input_image image to apply the operation on.
@@ -36,7 +38,7 @@ class ImageOperation:
         """
         A placeholder for the subfunction for an image operator for processing image objects.
 
-        This method is called from apply and must be implemented in a subclass. This allows for checks for data integrity to be made.
+        This method is called from ImageOperation.apply() and must be implemented in a subclass. This allows for checks for data integrity to be made.
 
         Args:
             image (Image): The image object to be processed by internal operations.
@@ -45,3 +47,28 @@ class ImageOperation:
             InterfaceError: Raised if the method is not implemented in a subclass.
         """
         raise InterfaceError
+
+    @staticmethod
+    def _validate_integrity(pre_op_imcopy, post_op_image) -> None:
+        pass
+
+    @staticmethod
+    def _validate_array_integrity(pre_op_imcopy, post_op_image) -> None:
+        if post_op_image.imformat.isarray():
+            if not np.array_equal(pre_op_imcopy.array[:], post_op_image.array[:]):
+                raise OperationIntegrityError('array', post_op_image.name)
+
+    @staticmethod
+    def _validate_matrix_integrity(pre_op_imcopy, post_op_image) -> None:
+        if not np.array_equal(pre_op_imcopy.matrix[:], post_op_image.matrix[:]):
+            raise OperationIntegrityError('matrix', post_op_image.name)
+
+    @staticmethod
+    def _validate_enh_matrix_integrity(pre_op_imcopy, post_op_image) -> None:
+        if not np.array_equal(pre_op_imcopy.enh_matrix[:], post_op_image.enh_matrix[:]):
+            raise OperationIntegrityError('enh_matrix', post_op_image.name)
+
+    @staticmethod
+    def _validate_objmask_integrity(pre_op_imcopy, post_op_image) -> None:
+        if not np.array_equal(pre_op_imcopy.objmask[:], post_op_image.objmask[:]):
+            raise OperationIntegrityError('objmask', post_op_image.name)

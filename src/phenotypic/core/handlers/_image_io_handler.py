@@ -26,7 +26,7 @@ class ImageIOHandler(ImageHsvHandler):
         else:
             super().__init__(input_image=input_image, imformat=imformat, name=name)
 
-    def save_image_to_hdf5(self, filename, compression="gzip", compression_opts=4):
+    def save2hdf5(self, filename, compression="gzip", compression_opts=4):
         """
         Save an ImageHandler instance to an HDF5 file under /phenotypic/<self.name>/.
 
@@ -36,9 +36,9 @@ class ImageIOHandler(ImageHsvHandler):
           compression: compression filter (e.g., "gzip", "szip", or None)
           compression_opts: level for gzip (1–9)
         """
-        with h5py.File(filename, "a") as f:
+        with h5py.File(filename, "a") as filehandler:
             # 1) Create (or open) /phenotypic/<image_name> group
-            grp = f.require_group(f"phenotypic/{self.name}")
+            grp = filehandler.require_group(f"phenotypic/{self.name}")
 
             # 2) Save large arrays as datasets with chunking & compression
 
@@ -62,19 +62,21 @@ class ImageIOHandler(ImageHsvHandler):
                 compression_opts=compression_opts
             )
 
-            # TODO: enh_matrix
+            enh_matrix = self.enh_matrix[:]
             grp.create_dataset(
                 "enh_matrix",
-                data=self.enh_matrix,
-                dtype=self.enh_matrix.dtype,
+                data=enh_matrix,
+                dtype=enh_matrix.dtype,
                 chunks=True,
                 compression=compression,
                 compression_opts=compression_opts
             )
+
+            objmap = self.objmap[:]
             grp.create_dataset(
                 "objmap",
-                data=self.objmap,
-                dtype=self.objmap.dtype,
+                data=objmap,
+                dtype=objmap.dtype,
                 chunks=True,
                 compression=compression,
                 compression_opts=compression_opts
@@ -95,7 +97,7 @@ class ImageIOHandler(ImageHsvHandler):
                 pub.attrs[key] = val
 
     @classmethod
-    def load_image_from_hdf5(cls, filename, image_name):
+    def load_hdf5(cls, filename, image_name) -> Image:
         """
         Load an ImageHandler instance from an HDF5 file at /phenotypic/<image_name>/.
         """
@@ -127,7 +129,7 @@ class ImageIOHandler(ImageHsvHandler):
 
         return img
 
-    def save_to_pickle(self, filename: str) -> None:
+    def save2pickle(self, filename: str) -> None:
         """
         Saves the current ImageIOHandler instance's data and metadata to a pickle file.
 
@@ -142,7 +144,7 @@ class ImageIOHandler(ImageHsvHandler):
             )
 
     @classmethod
-    def load_from_pickle(cls, filename: str) -> "ImageIOHandler":
+    def load_pickle(cls, filename: str) -> Image:
         """
         Loads ImageIOHandler data and metadata from a pickle file and returns a new instance.
 
