@@ -136,11 +136,16 @@ class ImageIOHandler(ImageHsvHandler):
         Args:
             filename: Path to the pickle file to write.
         """
-        with open(filename, 'wb') as f:
+        with open(filename, 'wb') as filehandler:
             pickle.dump({
-                "_data": self._data,
-                "_metadata": self._metadata
-            }, f
+                '_image_formate': self._image_format,
+                "_data.array": self._data.array,
+                '_data.matrix': self._data.matrix,
+                '_data.enh_matrix': self._data.enh_matrix,
+                'objmap': self.objmap[:],
+                "protected_metadata": self._metadata.protected,
+                "public_metadata": self._metadata.public,
+            }, filehandler
             )
 
     @classmethod
@@ -157,8 +162,17 @@ class ImageIOHandler(ImageHsvHandler):
         with open(filename, 'rb') as f:
             loaded = pickle.load(f)
         instance = cls(input_image=None)
-        instance._data = loaded["_data"]
-        instance._metadata = loaded["_metadata"]
+        instance._image_format = loaded["_image_formate"]
+        instance._data.array = loaded["_data.array"]
+        instance._data.matrix = loaded["_data.matrix"]
+
+        instance.enh_matrix.reset()
+        instance.objmap.reset()
+
+        instance._data.enh_matrix = loaded["_data.enh_matrix"]
+        instance.objmap[:] = loaded["objmap"]
+        instance._metadata.protected = loaded["protected_metadata"]
+        instance._metadata.public = loaded["public_metadata"]
         return instance
 
     @classmethod
