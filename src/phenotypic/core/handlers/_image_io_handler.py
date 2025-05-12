@@ -138,7 +138,7 @@ class ImageIOHandler(ImageHsvHandler):
         """
         with open(filename, 'wb') as filehandler:
             pickle.dump({
-                '_image_formate': self._image_format,
+                '_image_format': self._image_format,
                 "_data.array": self._data.array,
                 '_data.matrix': self._data.matrix,
                 '_data.enh_matrix': self._data.enh_matrix,
@@ -162,7 +162,7 @@ class ImageIOHandler(ImageHsvHandler):
         with open(filename, 'rb') as f:
             loaded = pickle.load(f)
         instance = cls(input_image=None)
-        instance._image_format = loaded["_image_formate"]
+        instance._image_format = loaded["_image_format"]
         instance._data.array = loaded["_data.array"]
         instance._data.matrix = loaded["_data.matrix"]
 
