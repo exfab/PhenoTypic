@@ -1,4 +1,3 @@
-from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING: from phenotypic import Image
@@ -26,7 +25,9 @@ class MeasureIntensity(FeatureMeasure):
             str(C.INTEGRATED_INTENSITY): []
         }
 
-        for obj_props in image.objects.props:
-            measurements[str(C.INTEGRATED_INTENSITY)].append(obj_props.intensity_image.sum())
+        for idx, obj_props in enumerate(image.objects.props):
+            curr_obj_image = image.objects[idx]
+            integrated_intensity = curr_obj_image.matrix[curr_obj_image.objmask[:]!=0].sum()
+            measurements[str(C.INTEGRATED_INTENSITY)].append(integrated_intensity)
 
         return pd.DataFrame(measurements, index=image.objects.get_labels_series())

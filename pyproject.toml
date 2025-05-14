@@ -40,7 +40,7 @@ dependencies = [
     "h5py",
     "mahotas",
     "pillow",
-    "tqdm"
+    "tqdm",
 ]
 
 [project.urls]
@@ -64,7 +64,8 @@ dev = [
     "sphinx-gallery",
     "myst-nb",
     "sphinx-autosummary-accessors",
-    "sphinx-design"
+    "sphinx-design",
+    "labelme"
 ]
 
 [tool.pytest.ini_options]
