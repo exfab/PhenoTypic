@@ -1,7 +1,5 @@
 import pickle, pytest
 
-fro
-
 from .test_fixtures import _public
 
 

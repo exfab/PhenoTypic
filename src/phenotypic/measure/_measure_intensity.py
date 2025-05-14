@@ -1,3 +1,4 @@
+from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING: from phenotypic import Image
@@ -7,6 +8,7 @@ import pandas as pd
 from phenotypic.abstract import FeatureMeasure
 
 from phenotypic.util.constants_ import INTENSITY_LABELS as C
+
 
 # TODO: Add more measurements
 class MeasureIntensity(FeatureMeasure):
@@ -27,7 +29,7 @@ class MeasureIntensity(FeatureMeasure):
 
         for idx, obj_props in enumerate(image.objects.props):
             curr_obj_image = image.objects[idx]
-            integrated_intensity = curr_obj_image.matrix[curr_obj_image.objmask[:]!=0].sum()
+            integrated_intensity = curr_obj_image.matrix[curr_obj_image.objmask[:] != 0].sum()
             measurements[str(C.INTEGRATED_INTENSITY)].append(integrated_intensity)
 
         return pd.DataFrame(measurements, index=image.objects.get_labels_series())
