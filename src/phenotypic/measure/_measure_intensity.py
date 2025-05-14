@@ -30,9 +30,10 @@ class MeasureIntensity(FeatureMeasure):
 
         # Collect object measurements
         for idx, obj_props in enumerate(image.objects.props):
+            current_label = obj_props.label
             current_object = image.objects[idx]
             measurements[str(C.INTEGRATED_INTENSITY)].append(
-                current_object.matrix[current_object.objmask[:] != 0].sum()
+                current_object.matrix[current_object.objmap[:] == current_label].sum()
             )
 
         return pd.DataFrame(measurements, index=image.objects.get_labels_series())
