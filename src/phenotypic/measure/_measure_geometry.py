@@ -11,6 +11,7 @@ from phenotypic.abstract import FeatureMeasure
 
 from phenotypic.util.constants_ import GEOM_LABELS as C
 
+
 # TODO: Add more measurements
 class MeasureGeometry(FeatureMeasure):
     """Calculates various geometric measures of the objects in the image.
@@ -42,7 +43,7 @@ class MeasureGeometry(FeatureMeasure):
             measurements[str(C.AREA)].append(obj_props.area)
             measurements[str(C.PERIMETER)].append(obj_props.perimeter)
 
-            circularity = (4*np.pi*obj_props.area) / (obj_props.perimeter**2)
+            circularity = (4 * np.pi * obj_props.area) / (obj_props.perimeter ** 2)
             measurements[str(C.CIRCULARITY)].append(circularity)
 
             convex_hull = ConvexHull(obj_props.coords)

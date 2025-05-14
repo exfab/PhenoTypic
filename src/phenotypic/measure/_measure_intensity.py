@@ -22,7 +22,8 @@ class MeasureIntensity(FeatureMeasure):
 
     """
 
-    def _operate(self, image: Image) -> pd.DataFrame:
+    @staticmethod
+    def _operate(image: Image) -> pd.DataFrame:
         measurements = {
             str(C.INTEGRATED_INTENSITY): []
         }

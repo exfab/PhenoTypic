@@ -46,7 +46,8 @@ class ObjectMap(ImageDataAccessor):
         if self._num_objects > 0:
             return self._parent_image._data.sparse_object_map.toarray()[key]
         elif self._num_objects == 0:
-            return np.full(self._parent_image._data.sparse_object_map.toarray()[key].shape, fill_value=1, dtype=np.uint32)
+            # return np.full(self._parent_image._data.sparse_object_map.toarray()[key].shape, fill_value=1, dtype=np.uint32)
+            return self._parent_image._data.sparse_object_map.toarray()[key]
         else:
             raise RuntimeError(UnknownError)
 
