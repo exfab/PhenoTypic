@@ -68,6 +68,7 @@ class ObjectsAccessor(ImageAccessor):
         """Returns a slice of the object image based on the object's index."""
         object_image = self._parent_image[self.props[index].slice]
         object_image.metadata[METADATA_LABELS.SUBIMAGE_TYPE] = SUBIMAGE_TYPES.OBJECT
+        return object_image
 
     def iloc(self, index: int) -> Image:
         """Returns a slice of the object image based on the object's index."""
