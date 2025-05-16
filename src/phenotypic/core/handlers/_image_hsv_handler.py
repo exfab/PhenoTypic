@@ -19,7 +19,7 @@ class ImageHsvHandler(ImageHandler):
 
     def __init__(self, input_image: Optional[Union[np.ndarray, Image, PathLike]] = None, imformat: str = None, name: str = None):
         super().__init__(input_image=input_image, imformat=imformat, name=name)
-        self._accessors.hsv = HsvAccessor
+        self._accessors.hsv = HsvAccessor(self)
 
     @property
     def _hsv(self) -> np.ndarray:

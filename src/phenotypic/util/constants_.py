@@ -108,24 +108,6 @@ class SUBIMAGE_TYPES:
     GRID = 'Grid'
 
 
-class SHAPE(Enum):
-    CATEGORY = ('Geometry', 'The category of the measurements')
-
-    AREA = ('Area', "The sum of the object's pixels")
-    PERIMETER = ('Perimeter', "The perimeter of the object's pixels")
-    CIRCULARITY = ('Circularity', r'Calculated as :math:`\frac{4\pi*Area}{Perimeter^2}`. A perfect circle has a value of 1.')
-    CONVEX_AREA = ('ConvexArea', 'The area of the convex hull of the object')
-    ORIENTATION = ('Orientation', 'The orientation of the object in degrees')
-    MEDIAN_RADIUS = ('MedianRadius', 'The median radius of the object')
-    MEAN_RADIUS = ('MeanRadius', 'The mean radius of the object')
-
-    def __init__(self, label, desc=None):
-        self.label, self.desc = label, desc
-
-    def __str__(self):
-        return f'{SHAPE.CATEGORY.label}_{self.label}'
-
-
 class INTENSITY_LABELS(Enum):
     CATEGORY = ('Intensity', 'The category of the measurements')
 

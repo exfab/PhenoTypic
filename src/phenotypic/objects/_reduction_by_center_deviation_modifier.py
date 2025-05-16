@@ -35,7 +35,7 @@ class CenterDeviationReducer(MapModifier):
         obj_to_keep = bound_info.loc[:, 'Measurement_CenterDeviation'].idxmin()
 
         # Get a working copy of the object map
-        obj_map = image.objmap
+        obj_map = image.objmap[:]
 
         # Set other objects to background
         obj_map[obj_map != obj_to_keep] = 0

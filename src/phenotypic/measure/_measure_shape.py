@@ -1,4 +1,6 @@
 from __future__ import annotations
+
+from enum import Enum
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING: from phenotypic import Image
@@ -10,7 +12,28 @@ import numpy as np
 
 from phenotypic.abstract import FeatureMeasure
 
-from phenotypic.util.constants_ import SHAPE
+
+class SHAPE(Enum):
+    """The labels and descriptions of the shape measurements."""
+    CATEGORY = ('Shape', 'The category of the measurements')
+
+    AREA = ('Area', "The sum of the object's pixels")
+    PERIMETER = ('Perimeter', "The perimeter of the object's pixels")
+    CIRCULARITY = ('Circularity', r'Calculated as :math:`\frac{4\pi*Area}{Perimeter^2}`. A perfect circle has a value of 1.')
+    CONVEX_AREA = ('ConvexArea', 'The area of the convex hull of the object')
+    ORIENTATION = ('Orientation', 'The orientation of the object in degrees')
+    MEDIAN_RADIUS = ('MedianRadius', 'The median radius of the object')
+    MEAN_RADIUS = ('MeanRadius', 'The mean radius of the object')
+    ECCENTRICITY = ('Eccentricity', 'The eccentricity of the object')
+    SOLIDITY = ('Solidity', 'The object Area/ConvexArea')
+    EXTENT = ('Extent', 'The proportion of object pixels to the bounding box. ObjectArea/BboxArea')
+    BBOX_AREA = ('BboxArea', 'The area of the bounding box of the object')
+
+    def __init__(self, label, desc=None):
+        self.label, self.desc = label, desc
+
+    def __str__(self):
+        return f'{self.CATEGORY.label}_{self.label}'
 
 
 class MeasureShape(FeatureMeasure):
@@ -41,18 +64,22 @@ class MeasureShape(FeatureMeasure):
             str(SHAPE.CIRCULARITY): [],
             str(SHAPE.CONVEX_AREA): [],
             str(SHAPE.MEAN_RADIUS): [],
-            str(SHAPE.MEDIAN_RADIUS): []
+            str(SHAPE.MEDIAN_RADIUS): [],
+            str(SHAPE.ECCENTRICITY): [],
+            str(SHAPE.SOLIDITY): []
         }
         obj_props = image.objects.props
         for idx, obj_image in enumerate(image.objects):
-            measurements[str(SHAPE.AREA)].append(obj_props[idx].area)
-            measurements[str(SHAPE.PERIMETER)].append(obj_props[idx].perimeter)
+            current_props = obj_props[idx]
+            measurements[str(SHAPE.AREA)].append(current_props.area)
+            measurements[str(SHAPE.PERIMETER)].append(current_props.perimeter)
 
-            circularity = (4 * np.pi * obj_props[idx].area) / (obj_props[idx].perimeter ** 2)
+            circularity = (4 * np.pi * obj_props[idx].area) / (current_props.perimeter ** 2)
             measurements[str(SHAPE.CIRCULARITY)].append(circularity)
 
-            convex_hull = ConvexHull(obj_props[idx].coords)
+            convex_hull = ConvexHull(current_props.coords)
             measurements[str(SHAPE.CONVEX_AREA)].append(convex_hull.area)
+            measurements[str(SHAPE.SOLIDITY)].append(current_props.area / convex_hull.area)
 
             # TODO: Alter so that calculations are made simultaneously instead of iterating through each object
             dist_matrix = distance_transform_edt(obj_image.objmap[:])

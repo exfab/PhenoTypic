@@ -47,9 +47,9 @@ def test_grid_property_assignment_error():
 @timeit
 def test_image_grid_section_retrieval(plate_grid_images_with_detection):
     grid_image = plate_grid_images_with_detection
-    sub_image = grid_image[10:20, 10:20]
+    sub_image = grid_image[10:20, 10:30]
     assert isinstance(sub_image, Image)
-    assert sub_image.shape[:2] == (10, 10)
+    assert sub_image.shape[:2] == (10, 20)
 
 
 @timeit

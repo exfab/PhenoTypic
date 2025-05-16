@@ -32,6 +32,15 @@ class ObjectsAccessor(ImageAccessor):
         for i in range(self._parent_image.num_objects):
             yield self[i]
 
+    def __getitem__(self, index: int) -> Image:
+        """Returns a slice of the object image based on the object's index."""
+        current_object = self.props[index]
+        label = current_object.label
+        object_image = self._parent_image[current_object.slice]
+        object_image.metadata[METADATA_LABELS.SUBIMAGE_TYPE] = SUBIMAGE_TYPES.OBJECT
+        object_image.objmap[object_image.objmap[:] != label] = 0
+        return object_image
+
     @property
     def props(self):
         """Returns a list of skimage.regionprops object for each of image's objects. Useful for simple calculations.
@@ -70,15 +79,6 @@ class ObjectsAccessor(ImageAccessor):
     def reset(self):
         """Resets the image object map such that the analysis target is the entire image."""
         self._parent_image.objmap.reset()
-
-    def __getitem__(self, index: int) -> Image:
-        """Returns a slice of the object image based on the object's index."""
-        current_object = self.props[index]
-        label = current_object.label
-        object_image = self._parent_image[current_object.slice]
-        object_image.metadata[METADATA_LABELS.SUBIMAGE_TYPE] = SUBIMAGE_TYPES.OBJECT
-        object_image.objmap[object_image.objmap[:] != label] = 0
-        return object_image
 
     def iloc(self, index: int) -> Image:
         """Returns a slice of the object image based on the object's index."""

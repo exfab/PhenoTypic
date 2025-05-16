@@ -11,7 +11,7 @@ from phenotypic.util.exceptions_ import GridImageInputError, OutputValueError
 
 
 class GridCorrector(ImageCorrector, GridOperation):
-    def __init__(self, nrows: int, ncols: int):
+    def __init__(self, nrows: int = 8, ncols: int = 12):
         self.nrows = nrows
         self.ncols = ncols
 
@@ -22,4 +22,3 @@ class GridCorrector(ImageCorrector, GridOperation):
         output = super().apply(image, inplace=inplace)
         if not isinstance(output, GridImage): raise OutputValueError("GridImage")
         return output
-
