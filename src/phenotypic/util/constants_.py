@@ -57,6 +57,12 @@ class OBJECT_INFO:
     MAX_CC = 'Bbox_MaxCC'
 
 
+class IMAGE_IO:
+    H5PY_MODULE_SIGNATURE = 'phenotypic'
+    H5PY_IMAGE_GROUP = 'image'
+    H5PY_IMAGE_SET_GROUP = 'image_set'
+
+
 # Grid constants
 class GRID:
     """
@@ -102,19 +108,22 @@ class SUBIMAGE_TYPES:
     GRID = 'Grid'
 
 
-class GEOM_LABELS(Enum):
+class SHAPE(Enum):
     CATEGORY = ('Geometry', 'The category of the measurements')
 
     AREA = ('Area', "The sum of the object's pixels")
     PERIMETER = ('Perimeter', "The perimeter of the object's pixels")
     CIRCULARITY = ('Circularity', r'Calculated as :math:`\frac{4\pi*Area}{Perimeter^2}`. A perfect circle has a value of 1.')
     CONVEX_AREA = ('ConvexArea', 'The area of the convex hull of the object')
+    ORIENTATION = ('Orientation', 'The orientation of the object in degrees')
+    MEDIAN_RADIUS = ('MedianRadius', 'The median radius of the object')
+    MEAN_RADIUS = ('MeanRadius', 'The mean radius of the object')
 
     def __init__(self, label, desc=None):
         self.label, self.desc = label, desc
 
     def __str__(self):
-        return f'{GEOM_LABELS.CATEGORY.label}_{self.label}'
+        return f'{SHAPE.CATEGORY.label}_{self.label}'
 
 
 class INTENSITY_LABELS(Enum):

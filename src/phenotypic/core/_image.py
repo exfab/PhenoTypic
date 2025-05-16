@@ -9,7 +9,7 @@ class Image(ImageIOHandler):
     schema definition, and subcomponent handling to streamline image processing tasks.
 
     Note:
-        - If the input_image is 2-D, the ImageHandler leave the array form as None
+        - If the input_image is 2-D, the ImageHandler leaves the array form as empty
         - If the input_image is 3-D, the ImageHandler will automatically set the matrix component to the grayscale representation.
         - Added in v0.5.0, HSV handling support
     """

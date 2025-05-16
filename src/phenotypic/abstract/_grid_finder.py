@@ -6,12 +6,11 @@ if TYPE_CHECKING: from phenotypic import Image
 import pandas as pd
 import numpy as np
 
-from phenotypic.abstract import FeatureMeasure
-from phenotypic.abstract import GridOperation
+from phenotypic.abstract import GridFeatureMeasure
 from phenotypic.util.constants_ import OBJECT_INFO, GRID
 
 
-class GridFinder(FeatureMeasure, GridOperation):
+class GridFinder(GridFeatureMeasure):
     """
     GridFinder measures grid information from the objects in various ways. Using the names here allows for streamlined integration.
     Unlike other Grid series interfaces, GridExtractors can work on regular images and should not be dependent on the GridImage class.
@@ -22,12 +21,8 @@ class GridFinder(FeatureMeasure, GridOperation):
 
     """
 
-    def __init__(self, nrows: int, ncols: int):
-        self.nrows = nrows
-        self.ncols = ncols
-
     def _operate(self, image: Image) -> pd.DataFrame:
-        pass
+        return pd.DataFrame()
 
     def _naive_grid_finding(self, image: Image) -> pd.DataFrame:
         pass

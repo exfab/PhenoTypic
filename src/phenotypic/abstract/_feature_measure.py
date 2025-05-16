@@ -5,33 +5,27 @@ if TYPE_CHECKING: from phenotypic import Image
 
 import numpy as np
 import pandas as pd
+import inspect
 
-from ._docstring_metaclass import MeasureDocstringMeta
-from ._image_operation import ImageOperation
-from phenotypic.util.exceptions_ import OperationFailedError, InterfaceError
+from ._base_operation import BaseOperation
+from phenotypic.util.exceptions_ import OperationFailedError, InterfaceError, OperationIntegrityError
 
 
 # <<Interface>>
-class FeatureMeasure:
+class FeatureMeasure(BaseOperation):
     """
     A FeatureExtractor is an abstract object intended to calculate measurements on the values within detected objects of
-    the image array. The __init__ constructor & _operate method are meant to be the only parts overloaded in inherited classes. This is so
+    the image array. The __init__ constructor & _operate method is meant to be the only parts overloaded in inherited classes. This is so
     that the main measure method call can contain all the necessary type validation and output validation checks to streamline development.
     """
 
     def measure(self, image: Image) -> pd.DataFrame:
         try:
-            imcopy: Image = image.copy()
+            matched_args = self._get_matched_operation_args()
 
-            measurement = self._operate(image)
+            # Apply the operation to a copy so that the original image is not modified.
+            return self._operate(image.copy(), **matched_args)
 
-            # TODO: Fix checks
-            # if not np.array_equal(imcopy.matrix[:], image.matrix[:]): raise ValueError(ARRAY_CHANGE_ERROR_MSG)
-            # if not np.array_equal(imcopy.enh_matrix[:], image.enh_matrix[:]): raise ValueError(ENHANCED_ARRAY_CHANGE_ERROR_MSG)
-            # if not np.array_equal(imcopy.omask[:], image.omask[:]): raise ValueError(MASK_CHANGE_ERROR_MSG)
-            # if not np.array_equal(imcopy.omap[:], image.omap[:]): raise ValueError(MAP_CHANGE_ERROR_MSG)
-
-            return measurement
         except Exception as e:
             raise OperationFailedError(operation=self.__class__.__name__,
                                        image_name=image.name,
@@ -39,5 +33,6 @@ class FeatureMeasure:
                                        message=str(e)
                                        )
 
-    def _operate(self, image: Image) -> pd.DataFrame:
-        raise InterfaceError
+    @staticmethod
+    def _operate(image: Image) -> pd.DataFrame:
+        return pd.DataFrame()

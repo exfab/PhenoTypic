@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Generator
 
 if TYPE_CHECKING: from phenotypic import Image
 
@@ -25,12 +25,19 @@ class ObjectsAccessor(ImageAccessor):
 
     """
 
+    def __len__(self):
+        return self._parent_image.num_objects
+
+    def __iter__(self)-> Generator[Image, Any, None]:
+        for i in range(self._parent_image.num_objects):
+            yield self[i]
+
     @property
     def props(self):
         """Returns a list of skimage.regionprops object for each of image's objects. Useful for simple calculations.
 
         Returns:
-            list[skimage.measure._regionprops.RegionProperties]: A list of properties for all
+            list[skimage.measure.RegionProperties]: A list of properties for all
                 regions in the provided image.
         """
         return regionprops(label_image=self._parent_image.objmap[:], intensity_image=self._parent_image.matrix[:], cache=False)
@@ -66,8 +73,12 @@ class ObjectsAccessor(ImageAccessor):
 
     def __getitem__(self, index: int) -> Image:
         """Returns a slice of the object image based on the object's index."""
-        object_image = self._parent_image[self.props[index].slice]
+        current_object = self.props[index]
+        label = current_object.label
+        object_image = self._parent_image[current_object.slice]
         object_image.metadata[METADATA_LABELS.SUBIMAGE_TYPE] = SUBIMAGE_TYPES.OBJECT
+        object_image.objmap[object_image.objmap[:] != label] = 0
+        return object_image
 
     def iloc(self, index: int) -> Image:
         """Returns a slice of the object image based on the object's index."""
@@ -84,7 +95,7 @@ class ObjectsAccessor(ImageAccessor):
         idx = self.get_object_idx(label_number)
         return self._parent_image[self.props[idx].slice]
 
-    def info(self)->pd.DataFrame:
+    def info(self) -> pd.DataFrame:
         """Returns a panda.DataFrame containing basic information about each object's label, bounds, and centroid in the image.
 
         This is useful for joining measurements across different tables.
@@ -105,7 +116,7 @@ class ObjectsAccessor(ImageAccessor):
         }
         ).set_index(OBJECT_INFO.OBJECT_LABELS)
 
-    def get_labels_series(self)->pd.Series:
+    def get_labels_series(self) -> pd.Series:
         """Returns a consistently named pandas.Series containing the label number for each object in the image. Useful as an index for joining different measurements"""
         labels = self.labels
         return pd.Series(

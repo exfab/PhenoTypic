@@ -1,5 +1,11 @@
+import importlib
+import inspect
+import pkgutil
+
 import numpy as np
 import pytest
+
+import phenotypic
 
 
 def param2array(tag):
@@ -99,3 +105,102 @@ def plate_grid_images_with_detection(request):
     import phenotypic
     image = phenotypic.GridImage(param2array(request.param))
     return phenotypic.detection.OtsuDetector().apply(image)
+
+
+def walk_package(pkg):
+    """Yield (qualified_name, obj) for every public, top‑level object in *pkg*
+    and all of its sub‑modules, skipping module objects themselves."""
+    modules = [pkg]  # start with the root
+    if hasattr(pkg, "__path__"):  # add all sub‑modules
+        modules += [
+            importlib.import_module(name)
+            for _, name, _ in pkgutil.walk_packages(pkg.__path__, pkg.__name__ + ".")
+        ]
+
+    seen = set()
+    for mod in modules:
+        for attr in dir(mod):
+            if attr.startswith("_"):
+                continue
+
+            obj = getattr(mod, attr)
+            if inspect.ismodule(obj):
+                continue
+
+            qualname = f"{mod.__name__}.{attr}"
+            if qualname not in seen:
+                seen.add(qualname)
+                yield qualname, obj
+
+
+_public = list(walk_package(phenotypic))
+
+
+def walk_package_for_operations(pkg):
+    """Yield (qualified_name, obj) for every public, top‑level object in *pkg*
+    and all of its sub‑modules, skipping module objects themselves. this collects all image operations for testing."""
+    modules = [pkg]  # start with the root
+    if hasattr(pkg, "__path__"):  # add all sub‑modules
+        modules += [
+            importlib.import_module(name)
+            for _, name, _ in pkgutil.walk_packages(pkg.__path__, pkg.__name__ + ".")
+        ]
+
+    seen = set()
+    for mod in modules:
+        for attr in dir(mod):
+            if attr.startswith("_"):
+                continue
+
+            obj = getattr(mod, attr)
+            if inspect.ismodule(obj):
+                continue
+
+            if not isinstance(obj, type):   # make sure object is a class object
+                continue
+
+            if not issubclass(obj, phenotypic.abstract.ImageOperation):
+                continue
+
+            qualname = f"{mod.__name__}.{attr}"
+            if qualname not in seen:
+                seen.add(qualname)
+                yield qualname, obj
+
+
+_image_operations = list(walk_package_for_operations(phenotypic))
+
+
+def walk_package_for_measurements(pkg):
+    """Yield (qualified_name, obj) for every public, top‑level object in *pkg*
+    and all of its sub‑modules, skipping module objects themselves. this collects all image measurement modules for testing."""
+    modules = [pkg]  # start with the root
+    if hasattr(pkg, "__path__"):  # add all sub‑modules
+        modules += [
+            importlib.import_module(name)
+            for _, name, _ in pkgutil.walk_packages(pkg.__path__, pkg.__name__ + ".")
+        ]
+
+    seen = set()
+    for mod in modules:
+        for attr in dir(mod):
+            if attr.startswith("_"):
+                continue
+
+            obj = getattr(mod, attr)
+            if inspect.ismodule(obj):
+                continue
+
+            if not isinstance(obj, type): # make sure object is a class object
+                continue
+
+            if not issubclass(obj, phenotypic.abstract.FeatureMeasure):
+                continue
+
+            qualname = f"{mod.__name__}.{attr}"
+            if qualname not in seen:
+                seen.add(qualname)
+                yield qualname, obj
+
+
+_image_measurements = list(walk_package_for_measurements(phenotypic))

@@ -26,7 +26,7 @@ class ImageIOHandler(ImageHsvHandler):
         else:
             super().__init__(input_image=input_image, imformat=imformat, name=name)
 
-    def save_image_to_hdf5(self, filename, compression="gzip", compression_opts=4):
+    def save2hdf5(self, filename, compression="gzip", compression_opts=4):
         """
         Save an ImageHandler instance to an HDF5 file under /phenotypic/<self.name>/.
 
@@ -36,9 +36,9 @@ class ImageIOHandler(ImageHsvHandler):
           compression: compression filter (e.g., "gzip", "szip", or None)
           compression_opts: level for gzip (1–9)
         """
-        with h5py.File(filename, "a") as f:
+        with h5py.File(filename, "a") as filehandler:
             # 1) Create (or open) /phenotypic/<image_name> group
-            grp = f.require_group(f"phenotypic/{self.name}")
+            grp = filehandler.require_group(f"phenotypic/{self.name}")
 
             # 2) Save large arrays as datasets with chunking & compression
 
@@ -62,19 +62,21 @@ class ImageIOHandler(ImageHsvHandler):
                 compression_opts=compression_opts
             )
 
-            # TODO: enh_matrix
+            enh_matrix = self.enh_matrix[:]
             grp.create_dataset(
                 "enh_matrix",
-                data=self.enh_matrix,
-                dtype=self.enh_matrix.dtype,
+                data=enh_matrix,
+                dtype=enh_matrix.dtype,
                 chunks=True,
                 compression=compression,
                 compression_opts=compression_opts
             )
+
+            objmap = self.objmap[:]
             grp.create_dataset(
                 "objmap",
-                data=self.objmap,
-                dtype=self.objmap.dtype,
+                data=objmap,
+                dtype=objmap.dtype,
                 chunks=True,
                 compression=compression,
                 compression_opts=compression_opts
@@ -95,7 +97,7 @@ class ImageIOHandler(ImageHsvHandler):
                 pub.attrs[key] = val
 
     @classmethod
-    def load_image_from_hdf5(cls, filename, image_name):
+    def load_hdf5(cls, filename, image_name) -> Image:
         """
         Load an ImageHandler instance from an HDF5 file at /phenotypic/<image_name>/.
         """
@@ -127,22 +129,27 @@ class ImageIOHandler(ImageHsvHandler):
 
         return img
 
-    def save_to_pickle(self, filename: str) -> None:
+    def save2pickle(self, filename: str) -> None:
         """
         Saves the current ImageIOHandler instance's data and metadata to a pickle file.
 
         Args:
             filename: Path to the pickle file to write.
         """
-        with open(filename, 'wb') as f:
+        with open(filename, 'wb') as filehandler:
             pickle.dump({
-                "_data": self._data,
-                "_metadata": self._metadata
-            }, f
+                '_image_format': self._image_format,
+                "_data.array": self._data.array,
+                '_data.matrix': self._data.matrix,
+                '_data.enh_matrix': self._data.enh_matrix,
+                'objmap': self.objmap[:],
+                "protected_metadata": self._metadata.protected,
+                "public_metadata": self._metadata.public,
+            }, filehandler
             )
 
     @classmethod
-    def load_from_pickle(cls, filename: str) -> "ImageIOHandler":
+    def load_pickle(cls, filename: str) -> Image:
         """
         Loads ImageIOHandler data and metadata from a pickle file and returns a new instance.
 
@@ -155,8 +162,17 @@ class ImageIOHandler(ImageHsvHandler):
         with open(filename, 'rb') as f:
             loaded = pickle.load(f)
         instance = cls(input_image=None)
-        instance._data = loaded["_data"]
-        instance._metadata = loaded["_metadata"]
+        instance._image_format = loaded["_image_format"]
+        instance._data.array = loaded["_data.array"]
+        instance._data.matrix = loaded["_data.matrix"]
+
+        instance.enh_matrix.reset()
+        instance.objmap.reset()
+
+        instance._data.enh_matrix = loaded["_data.enh_matrix"]
+        instance.objmap[:] = loaded["objmap"]
+        instance._metadata.protected = loaded["protected_metadata"]
+        instance._metadata.public = loaded["public_metadata"]
         return instance
 
     @classmethod

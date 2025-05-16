@@ -9,6 +9,7 @@ from phenotypic.abstract import FeatureMeasure
 
 from phenotypic.util.constants_ import INTENSITY_LABELS as C
 
+
 # TODO: Add more measurements
 class MeasureIntensity(FeatureMeasure):
     """Calculates various intensity measures of the objects in the image.
@@ -21,12 +22,18 @@ class MeasureIntensity(FeatureMeasure):
 
     """
 
-    def _operate(self, image: Image) -> pd.DataFrame:
+    @staticmethod
+    def _operate(image: Image) -> pd.DataFrame:
         measurements = {
             str(C.INTEGRATED_INTENSITY): []
         }
 
-        for obj_props in image.objects.props:
-            measurements[str(C.INTEGRATED_INTENSITY)].append(obj_props.intensity_image.sum())
+        # Collect object measurements
+        for idx, obj_props in enumerate(image.objects.props):
+            current_label = obj_props.label
+            current_object = image.objects[idx]
+            measurements[str(C.INTEGRATED_INTENSITY)].append(
+                current_object.matrix[current_object.objmap[:] == current_label].sum()
+            )
 
         return pd.DataFrame(measurements, index=image.objects.get_labels_series())

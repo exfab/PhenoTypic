@@ -11,9 +11,9 @@ from phenotypic.util.exceptions_ import GridImageInputError, OutputValueError
 
 
 class GridCorrector(ImageCorrector, GridOperation):
-    def __init__(self, n_rows: int, n_cols: int):
-        self.n_rows = n_rows
-        self.n_cols = n_cols
+    def __init__(self, nrows: int, ncols: int):
+        self.nrows = nrows
+        self.ncols = ncols
 
     def apply(self, image: GridImage, inplace=False) -> GridImage:
         from phenotypic import GridImage

@@ -24,10 +24,10 @@ class LowCircularityRemover(MapModifier):
 
     .. math::
 
-        C = \\frac{4\\pi A}{P^2}
+        SHAPE = \\frac{4\\pi A}{P^2}
 
     where:
-        - C is the circularity score (ranging from 0 to 1)
+        - SHAPE is the circularity score (ranging from 0 to 1)
         - A is the area of the object
         - P is the perimeter of the object
         - π (pi) is the mathematical constant

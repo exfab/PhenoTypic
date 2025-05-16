@@ -108,10 +108,7 @@ class ImageHandler:
         self._reset_data_to_empty()
 
         # Handle non-empty inputs
-        if isinstance(input_image, (PathLike, str, Path)):
-            self.imread(input_image)
-        else:
-            self.set_image(input_image=input_image, imformat=imformat)
+        self.set_image(input_image=input_image, imformat=imformat)
 
     def __getitem__(self, key) -> Image:
         """Returns a new subimage from the current object based on the provided key. The subimage is initialized
@@ -340,7 +337,7 @@ class ImageHandler:
         Note:
             - If the image has not been processed by a detector, the target for analysis is the entire image itself. Accessing the object_mask in this case
                 will return a 2-D array entirely with value 1 that is the same shape as the matrix
-            - Changing elements of the mask will relabel of objects in the object_map (A workaround to this issue may or may not come in future versions)
+            - Changing elements of the mask will relabel of objects in the object_map
 
         Returns:
             ObjectMaskErrors: A mutable binary representation of the objects in an image to be analyzed.
@@ -598,8 +595,6 @@ class ImageHandler:
         # Create a new instance of ImageHandler
         return self.__class__(self)
 
-
-
     def set_image(self, input_image: Image | np.ndarray | None = None, imformat: Literal['RGB', 'greyscale'] | None = None) -> None:
         """
         Sets the image data and format based on the provided input_image and parameters.
@@ -617,34 +612,34 @@ class ImageHandler:
                 indicating the format of the input_image image. If None, it attempts to derive
                 the format automatically based on the image data.
         """
-        if type(input_image) == np.ndarray:
-            self._set_from_array(input_image, imformat)
-        elif (type(input_image) == self.__class__
-              or isinstance(input_image, self.__class__)
-              or issubclass(type(input_image), ImageHandler)):
-            self._set_from_class_instance(input_image)
-        elif input_image is None:
-            self._reset_data_to_empty()
-        else:
-            raise ValueError(f'input_image must be a NumPy array, a class instance, or None. Got {type(input_image)}')
+        match input_image:
+            case x if isinstance(x, np.ndarray):
+                self._set_from_array(x, imformat)
+            case x if isinstance(x, self.__class__) | issubclass(type(x), self.__class__):
+                self._set_from_class_instance(x)
+            case None:
+                self._reset_data_to_empty()
+            case _:
+                raise ValueError(f'input_image must be a NumPy array, a class instance, or None. Got {type(input_image)}')
 
     def _reset_data_to_empty(self):
         self._data.array = np.empty((0, 3))  # Create an empty 3D array
         self._set_from_matrix(np.empty((0, 2)))
         self._image_format = IMAGE_FORMATS.NONE
 
-    def _set_from_class_instance(self, class_instance):
-        self._image_format = class_instance._image_format
+    def _set_from_class_instance(self, input_cls):
+        self._image_format = input_cls._image_format
 
-        if class_instance._image_format.is_array():
-            self._set_from_array(class_instance.array[:].copy(), class_instance._image_format.value)
+        if input_cls._image_format.is_array():
+            self._set_from_array(input_cls.array[:].copy(), input_cls._image_format.value)
         else:
-            self._set_from_array(class_instance.matrix[:].copy(), class_instance._image_format.value)
-        for key, value in class_instance._data.__dict__.items():
+            self._set_from_array(input_cls.matrix[:].copy(), input_cls._image_format.value)
+
+        for key, value in input_cls._data.__dict__.items():
             self._data.__dict__[key] = value.copy() if value is not None else None
 
-            self._metadata.protected = deepcopy(class_instance._metadata.protected)
-            self._metadata.public = deepcopy(class_instance._metadata.public)
+            self._metadata.protected = deepcopy(input_cls._metadata.protected)
+            self._metadata.public = deepcopy(input_cls._metadata.public)
 
     def _set_from_matrix(self, matrix: np.ndarray):
         """Initializes all the 2-D components of an image
@@ -698,16 +693,6 @@ class ImageHandler:
             case 'RGBA' | IMAGE_FORMATS.RGBA | IMAGE_FORMATS.RGBA_OR_BGRA:
                 self._image_format = IMAGE_FORMATS.RGB
                 self._set_from_rgb(rgba2rgb(imarr))
-
-            # case 'BGR' | IMAGE_FORMATS.BGR:
-            #     self._image_format = IMAGE_FORMATS.RGB
-            #     warnings.warn('BGR Images are automatically converted to RGB')
-            #     self._set_from_rgb(imarr[:, :, ::-1])
-            #
-            # case 'BGRA' | IMAGE_FORMATS.BGRA:
-            #     self._image_format = IMAGE_FORMATS.RGB
-            #     warnings.warn('BGRA Images are automatically converted to RGB')
-            #     self._set_from_rgb(imarr[:, :, [2, 1, 0, 3]])
 
             case _:
                 raise ValueError(f'Unsupported image format: {imformat}')

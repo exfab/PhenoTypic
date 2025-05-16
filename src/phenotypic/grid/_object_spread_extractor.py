@@ -1,5 +1,6 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
+
 if TYPE_CHECKING: from phenotypic import GridImage
 from phenotypic.abstract import GridFeatureMeasure
 
@@ -13,7 +14,8 @@ class ObjectSpreadExtractor(GridFeatureMeasure):
     This module measure's an objects spread from the grid section's center points
     """
 
-    def _operate(self, image: GridImage) -> pd.DataFrame:
+    @staticmethod
+    def _operate(image: GridImage) -> pd.DataFrame:
         gs_table = image.grid.info()
         gs_counts = pd.DataFrame(gs_table.loc[:, 'grid_section_bin'].value_counts())
 
@@ -27,6 +29,6 @@ class ObjectSpreadExtractor(GridFeatureMeasure):
             gs_distance_matrix = distance_matrix(x=obj_vector, y=obj_vector, p=2)
 
             obj_spread.append(np.sum(np.unique(gs_distance_matrix) ** 2))
-        gs_counts.insert(loc=1, column='object_spread', value=obj_spread)
+        gs_counts.insert(loc=1, column='object_spread', value=pd.Series(obj_spread))
         gs_counts.sort_values(by='object_spread', ascending=False, inplace=True)
         return gs_counts

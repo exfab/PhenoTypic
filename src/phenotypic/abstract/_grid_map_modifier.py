@@ -16,4 +16,4 @@ class GridMapModifier(MapModifier, GridOperation):
         return output
 
     def _operate(self, image: GridImage) -> GridImage:
-        raise InterfaceError()
+        return image

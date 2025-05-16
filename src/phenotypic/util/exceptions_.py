@@ -43,7 +43,7 @@ class OutputValueError(PhenoTypicError):
         super().__init__(f"This method's output is not a {expected_type} object even though it should be.")
 
 
-class UnsupportedSchemaError(ValueError):
+class UnsupportedImageFormat(ValueError):
     """Represents an error when an unsupported imformat format is detected.
 
     This error is raised when a specified imformat format is not supported by the
@@ -54,7 +54,7 @@ class UnsupportedSchemaError(ValueError):
     """
 
     def __init__(self, imformat):
-        super().__init__(f"The format {schema} is not supported.")
+        super().__init__(f"The format {imformat} is not supported.")
 
 
 # Image-related exceptions
@@ -100,10 +100,10 @@ class ImageOperationError(PhenoTypicError):
 class OperationIntegrityError(AttributeError):
     """Exception raised when an operation attempts to change a component it shouldn't."""
 
-    def __init__(self, component, operation, image_name=None):
+    def __init__(self, component, image_name=None):
         image_str = f" for image {image_name}" if image_name else ""
         super().__init__(
-            f"The {operation} operation attempted to change the component {component}{image_str}. This operation should not change the component {component}."
+            f"Image operation {component}{image_str}. This operation should not change the component {component}."
             )
 
 
