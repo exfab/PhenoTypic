@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Generator
 
 if TYPE_CHECKING: from phenotypic import Image
 
@@ -25,12 +25,19 @@ class ObjectsAccessor(ImageAccessor):
 
     """
 
+    def __len__(self):
+        return self._parent_image.num_objects
+
+    def __iter__(self)-> Generator[Image, Any, None]:
+        for i in range(self._parent_image.num_objects):
+            yield self[i]
+
     @property
     def props(self):
         """Returns a list of skimage.regionprops object for each of image's objects. Useful for simple calculations.
 
         Returns:
-            list[skimage.measure._regionprops.RegionProperties]: A list of properties for all
+            list[skimage.measure.RegionProperties]: A list of properties for all
                 regions in the provided image.
         """
         return regionprops(label_image=self._parent_image.objmap[:], intensity_image=self._parent_image.matrix[:], cache=False)

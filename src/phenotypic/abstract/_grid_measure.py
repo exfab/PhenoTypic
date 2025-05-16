@@ -10,8 +10,8 @@ from phenotypic.abstract import GridOperation
 from phenotypic.util.exceptions_ import GridImageInputError, OutputValueError
 
 
-class GridFeatureMeasure(FeatureMeasure, GridOperation):
-    def __init__(self, n_rows: int, n_cols: int):
+class GridFeatureMeasure(FeatureMeasure):
+    def __init__(self, n_rows: int=8, n_cols: int=12):
         self.n_rows = n_rows
         self.n_cols = n_cols
 

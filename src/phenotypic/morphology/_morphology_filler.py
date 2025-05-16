@@ -4,7 +4,7 @@ from typing import Optional
 
 from .. import Image
 from ..abstract import MapModifier
-from ..util.funcs import is_binary_mask
+from ..util.funcs_ import is_binary_mask
 
 
 class MaskFill(MapModifier):
@@ -14,10 +14,11 @@ class MaskFill(MapModifier):
         self.structure = structure
         self.origin = origin
 
-    def _operate(self, image: Image) -> Image:
+    @staticmethod
+    def _operate(image: Image, structure, origin) -> Image:
         image.objmask[:] = binary_fill_holes(
             input=image.objmask[:],
-            structure=self.structure,
-            origin=self.origin
+            structure=structure,
+            origin=origin
         )
         return image

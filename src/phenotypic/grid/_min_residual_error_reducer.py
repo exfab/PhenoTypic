@@ -1,5 +1,6 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
+
 if TYPE_CHECKING: from phenotypic import GridImage
 
 import numpy as np
@@ -17,7 +18,8 @@ class MinResidualErrorReducer(GridMapModifier):
 
     # TODO: Add a setting to retain a certain number of objects in the event of removal
 
-    def _operate(self, image: GridImage) -> GridImage:
+    @staticmethod
+    def _operate(image: GridImage) -> GridImage:
         # Get the section objects in order of most amount. More objects in a section means
         # more potential spread that can affect linreg results.
         max_iter = (image.grid.nrows * image.grid.ncols) * 4
@@ -51,7 +53,6 @@ class MinResidualErrorReducer(GridMapModifier):
 
             # Set the objects with the labels to the background value
             image.objmap[np.isin(obj_map, objects_to_drop)] = 0
-
 
             # Reset section obj count and add counter
             section_obj_counts = image.grid.get_section_counts(ascending=False)

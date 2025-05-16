@@ -337,7 +337,7 @@ class ImageHandler:
         Note:
             - If the image has not been processed by a detector, the target for analysis is the entire image itself. Accessing the object_mask in this case
                 will return a 2-D array entirely with value 1 that is the same shape as the matrix
-            - Changing elements of the mask will relabel of objects in the object_map (A workaround to this issue may or may not come in future versions)
+            - Changing elements of the mask will relabel of objects in the object_map
 
         Returns:
             ObjectMaskErrors: A mutable binary representation of the objects in an image to be analyzed.
@@ -595,8 +595,6 @@ class ImageHandler:
         # Create a new instance of ImageHandler
         return self.__class__(self)
 
-
-
     def set_image(self, input_image: Image | np.ndarray | None = None, imformat: Literal['RGB', 'greyscale'] | None = None) -> None:
         """
         Sets the image data and format based on the provided input_image and parameters.
@@ -623,7 +621,6 @@ class ImageHandler:
                 self._reset_data_to_empty()
             case _:
                 raise ValueError(f'input_image must be a NumPy array, a class instance, or None. Got {type(input_image)}')
-
 
     def _reset_data_to_empty(self):
         self._data.array = np.empty((0, 3))  # Create an empty 3D array

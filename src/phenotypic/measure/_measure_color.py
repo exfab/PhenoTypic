@@ -10,34 +10,19 @@ import pandas as pd
 from phenotypic.abstract import FeatureMeasure
 from phenotypic.util.constants_ import OBJECT_INFO
 
-OBJ_LABEL = 'ObjLabel'
 AREA = 'Area'
 
 HUE = 'Hue'
 SATURATION = 'Saturation'
 BRIGHTNESS = 'Brightness'
 
-ANGULAR_SECOND_MOMENT = 'Angular Second Moment'
-CONTRAST = 'Contrast'
-CORRELATION = 'Correlation'
-VARIANCE = 'Haralick Variance'
-INVERSE_DIFFERENCE_MOMENT = 'Inverse Difference Moment'
-SUM_AVERAGE = 'Sum Average'
-SUM_VARIANCE = 'Sum Variance'
-SUM_ENTROPY = 'Sum Entropy'
-ENTROPY = 'Entropy'
-DIFFERENCE_VARIANCE = 'Difference Variance'
-DIFFERENCE_ENTROPY = 'Difference Entropy'
-IMC1 = 'Information Measure of Correlation 1'
-IMC2 = 'Information measure of Correlation 2'
-
 MEDIAN = 'Median'
 MEAN = 'Mean'
-STDDEV = 'Standard Deviation'
-COEFF_VARIANCE = 'Coefficient Variance'
+STDDEV = 'StdDev'
+COEFF_VARIANCE = 'CoefficientVariance'
 
 
-class ColorMeasure(FeatureMeasure):
+class MeasureColor(FeatureMeasure):
     """
     Represents a feature extractor for color-based texture analysis.
 
@@ -51,13 +36,13 @@ class ColorMeasure(FeatureMeasure):
 
     def _operate(self, image: Image):
         hue_texture = self._compute_matrix_texture(image, image.hsv.extract_obj_hue())
-        hue_texture = {f'{HUE} {key}': value for key, value in hue_texture.items()}
+        hue_texture = {f'{HUE}_{key}': value for key, value in hue_texture.items()}
 
         saturation_texture = self._compute_matrix_texture(image, image.hsv.extract_obj_saturation())
-        saturation_texture = {f'{SATURATION} {key}': value for key, value in saturation_texture.items()}
+        saturation_texture = {f'{SATURATION}_{key}': value for key, value in saturation_texture.items()}
 
         brightness_texture = self._compute_matrix_texture(image, image.hsv.extract_obj_brightness())
-        brightness_texture = {f'{BRIGHTNESS} {key}': value for key, value in brightness_texture.items()}
+        brightness_texture = {f'{BRIGHTNESS}_{key}': value for key, value in brightness_texture.items()}
 
         return pd.DataFrame({OBJECT_INFO.OBJECT_LABELS: image.objects.labels,
                              **hue_texture, **saturation_texture, **brightness_texture}
@@ -89,19 +74,6 @@ class ColorMeasure(FeatureMeasure):
             STDDEV: [],
             MEDIAN: [],
             COEFF_VARIANCE: [],
-            ANGULAR_SECOND_MOMENT: [],
-            CONTRAST: [],
-            CORRELATION: [],
-            VARIANCE: [],
-            INVERSE_DIFFERENCE_MOMENT: [],
-            SUM_AVERAGE: [],
-            SUM_VARIANCE: [],
-            SUM_ENTROPY: [],
-            ENTROPY: [],
-            DIFFERENCE_VARIANCE: [],
-            DIFFERENCE_ENTROPY: [],
-            IMC1: [],
-            IMC2: [],
         }
         for i, label in enumerate(image.objects.labels):
             slices = image.objects.props[i].slice
@@ -117,28 +89,4 @@ class ColorMeasure(FeatureMeasure):
                 np.std(obj_extracted[obj_extracted.nonzero()]) / np.mean(obj_extracted[obj_extracted.nonzero()])
             )
 
-            try:
-                haralick_features = mh.features.haralick(obj_extracted.astype(np.uint8),
-                                                         distance=5,
-                                                         ignore_zeros=True,
-                                                         )
-            except Exception as e:
-                haralick_features = np.full((4, 13), np.nan, dtype=np.float64)
-
-            measurements[ANGULAR_SECOND_MOMENT].append(np.mean(haralick_features[:, 0]))
-            measurements[CONTRAST].append(np.mean(haralick_features[:, 1]))
-            measurements[CORRELATION].append(np.mean(haralick_features[:, 2]))
-            measurements[VARIANCE].append(np.mean(haralick_features[:, 3]))
-            measurements[INVERSE_DIFFERENCE_MOMENT].append(np.mean(haralick_features[:, 4]))
-            measurements[SUM_AVERAGE].append(np.mean(haralick_features[:, 5]))
-            measurements[SUM_VARIANCE].append(np.mean(haralick_features[:, 6]))
-            measurements[SUM_ENTROPY].append(np.mean(haralick_features[:, 7]))
-            measurements[ENTROPY].append(np.mean(haralick_features[:, 8]))
-            measurements[DIFFERENCE_VARIANCE].append(np.mean(haralick_features[:, 9]))
-            measurements[DIFFERENCE_ENTROPY].append(np.mean(haralick_features[:, 10]))
-            measurements[IMC1].append(np.mean(haralick_features[:, 11]))
-            measurements[IMC2].append(np.mean(haralick_features[:, 12]))
         return measurements
-
-# Set documentation of measure to match operate
-ColorMeasure.measure.__doc__ = ColorMeasure._operate.__doc__
