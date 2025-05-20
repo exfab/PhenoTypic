@@ -78,7 +78,6 @@ class WatershedDetector(ThresholdDetector):
         max_peaks = np.zeros(shape=enhanced_matrix.shape)
         max_peaks[tuple(max_peak_indices.T)] = 1
         max_peaks, _ = ndimage.label(max_peaks)  # label peaks
-        print(max_peaks.shape)
 
         # Sobel filter enhances edges which improve watershed to nearly the point of necessity in most cases
         gradient = filters.sobel(enhanced_matrix)

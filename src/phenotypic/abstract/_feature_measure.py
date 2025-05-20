@@ -26,7 +26,7 @@ class MeasureFeature(BaseOperation):
             matched_args = self._get_matched_operation_args()
 
             # Apply the operation to a copy so that the original image is not modified.
-            return self._operate(image.copy(), **matched_args)
+            return self._operate(image, **matched_args)
 
         except Exception as e:
             raise OperationFailedError(operation=self.__class__.__name__,
