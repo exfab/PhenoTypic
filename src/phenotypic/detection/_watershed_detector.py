@@ -9,11 +9,36 @@ from phenotypic import Image, GridImage
 
 
 class WatershedDetector(ThresholdDetector):
+    """
+    Class for detecting objects in an image using the Watershed algorithm.
+
+    The WatershedDetector class processes images to detect and segment objects
+    by applying the watershed algorithm. This class extends the capabilities
+    of ThresholdDetector and includes customization for parameters such as footprint
+    size, minimum object size, compactness, and connectivity. This is useful for
+    image segmentation tasks, where proximity-based object identification is needed.
+
+    Attributes:
+        footprint (Literal['auto'] | np.ndarray | int | None): Structure element to define
+            the neighborhood for dilation and erosion operations. Can be specified directly
+            as 'auto', an ndarray, an integer for disk size, or None for implementation-based
+            determination.
+        min_size (int): Minimum size of objects to retain during segmentation.
+            Objects smaller than this value are removed.
+        compactness (float): Compactness parameter controlling segment shapes. Higher values
+            enforce more regularly shaped objects.
+        connectivity (int): The connectivity level used for determining connected components.
+            Represents the number of dimensions neighbors need to share (1 for fully
+            connected, higher values for less connectivity).
+        relabel (bool): Whether to relabel segmented objects during processing to ensure
+            consistent labeling.
+    """
 
     def __init__(self, footprint: Literal['auto'] | np.ndarray | int | None = None,
                  min_size: int = 50,
                  compactness: float = 0.001,
-                 connectivity: int = 1):
+                 connectivity: int = 1,
+                 relabel: bool = True):
         match footprint:
             case x if isinstance(x, int):
                 self.footprint = morphology.disk(footprint)
@@ -27,9 +52,13 @@ class WatershedDetector(ThresholdDetector):
         self.min_size = min_size
         self.compactness = compactness
         self.connectivity = connectivity
+        self.relabel = relabel
 
     @staticmethod
-    def _operate(image: Image | GridImage, footprint: int | str | np.ndarray | None, min_size: int, compactness: float, connectivity: float) -> Image:
+    def _operate(image: Image | GridImage,
+                 footprint: int | str | np.ndarray | None,
+                 min_size: int, compactness: float,
+                 connectivity: int, relabel: bool) -> Image:
         enhanced_matrix = image.enh_matrix[:]
 
         if footprint == 'auto':
@@ -63,4 +92,5 @@ class WatershedDetector(ThresholdDetector):
 
         objmap = morphology.remove_small_objects(objmap, min_size=min_size)
         image.objmap[:] = objmap
+        image.objmap.relabel(connectivity=connectivity)
         return image
