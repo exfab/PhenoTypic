@@ -29,10 +29,14 @@ class SHAPE(Enum):
     SOLIDITY = ('Solidity', 'The object Area/ConvexArea')
     EXTENT = ('Extent', 'The proportion of object pixels to the bounding box. ObjectArea/BboxArea')
     BBOX_AREA = ('BboxArea', 'The area of the bounding box of the object')
-    MAJOR_AXIS_LENGTH = ('MajorAxisLength',
-                         'The length of the major axis of the ellipse that has the same normalized central moments as the object')
-    MINOR_AXIS_LENGTH = ('MinorAxisLength',
-                         'The length of the minor axis of the ellipse that has the same normalized central moments as the object')
+    MAJOR_AXIS_LENGTH = (
+        'MajorAxisLength',
+        'The length of the major axis of the ellipse that has the same normalized central moments as the object'
+    )
+    MINOR_AXIS_LENGTH = (
+        'MinorAxisLength',
+        'The length of the minor axis of the ellipse that has the same normalized central moments as the object'
+    )
 
     def __init__(self, label, desc=None):
         self.label, self.desc = label, desc
@@ -41,7 +45,7 @@ class SHAPE(Enum):
         return f'{self.CATEGORY.label}_{self.label}'
 
     def get_labels(self):
-        return [key.label for key in SHAPE if key.label != self.CATEGORY.label ]
+        return [key.label for key in SHAPE if key.label != self.CATEGORY.label]
 
 
 class MeasureShape(MeasureFeature):
@@ -95,12 +99,17 @@ class MeasureShape(MeasureFeature):
             measurements[str(SHAPE.CIRCULARITY)].append(circularity)
 
             try:
-                convex_hull = ConvexHull(current_props.coords)
+                if current_props.area > 1:
+                    convex_hull = ConvexHull(current_props.coords)
+                else:
+                    convex_hull = None
+
             except KeyboardInterrupt:
                 raise KeyboardInterrupt
             except Exception as e:
                 warnings.warn(f'Error in computing convex hull for object {current_props.label}: {e}')
                 convex_hull = None
+
             measurements[str(SHAPE.CONVEX_AREA)].append(convex_hull.area if convex_hull else np.nan)
             measurements[str(SHAPE.SOLIDITY)].append((current_props.area / convex_hull.area) if convex_hull else np.nan)
 

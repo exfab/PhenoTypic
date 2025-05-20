@@ -1,6 +1,6 @@
 import numpy as np
 from skimage.filters.rank import median
-from skimage.morphology import disk, square, cube, ball
+from skimage.morphology import disk, cube, ball, footprint_rectangle
 from skimage.util import img_as_ubyte
 
 from .. import Image
@@ -35,7 +35,7 @@ class RankMedianEnhancer(ImageEnhancer):
             case 'disk':
                 return disk(radius=radius)
             case 'square':
-                return square(int(radius * 2))
+                return footprint_rectangle(int(radius * 2))
             case 'ball':
                 return ball(radius)
             case 'cube':
