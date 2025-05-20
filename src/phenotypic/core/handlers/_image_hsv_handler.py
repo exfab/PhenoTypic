@@ -30,7 +30,7 @@ class ImageHsvHandler(ImageHandler):
         Returns:
             np.ndarray: The hsv array of the current image.
         """
-        if self.imformat in IMAGE_FORMATS.MATRIX_FORMATS:
+        if self.imformat.is_matrix():
             raise AttributeError('Grayscale images cannot be directly converted to hsv. Convert to RGB first')
         else:
             match self.imformat:

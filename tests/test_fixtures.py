@@ -119,6 +119,8 @@ def walk_package(pkg):
 
     seen = set()
     for mod in modules:
+        if mod.__name__.startswith("_"):
+            continue
         for attr in dir(mod):
             if attr.startswith("_"):
                 continue
@@ -148,6 +150,8 @@ def walk_package_for_operations(pkg):
 
     seen = set()
     for mod in modules:
+        if mod.__name__.startswith("_"):
+            continue
         for attr in dir(mod):
             if attr.startswith("_"):
                 continue
@@ -183,6 +187,8 @@ def walk_package_for_measurements(pkg):
 
     seen = set()
     for mod in modules:
+        if mod.__name__.startswith("_"):
+            continue
         for attr in dir(mod):
             if attr.startswith("_"):
                 continue
@@ -194,7 +200,7 @@ def walk_package_for_measurements(pkg):
             if not isinstance(obj, type): # make sure object is a class object
                 continue
 
-            if not issubclass(obj, phenotypic.abstract.FeatureMeasure):
+            if not issubclass(obj, phenotypic.abstract.MeasureFeature):
                 continue
 
             qualname = f"{mod.__name__}.{attr}"

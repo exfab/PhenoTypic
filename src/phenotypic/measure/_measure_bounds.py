@@ -6,11 +6,11 @@ if TYPE_CHECKING: from phenotypic import Image
 import pandas as pd
 from skimage.measure import regionprops_table
 
-from phenotypic.abstract import FeatureMeasure
+from phenotypic.abstract import MeasureFeature
 
-from ..util.constants_ import OBJECT_INFO
+from ..util.constants_ import OBJECT
 
-class BoundaryMeasure(FeatureMeasure):
+class MeasureBounds(MeasureFeature):
     """
     Extracts the object boundary coordinate info within the image using the object map
     """
@@ -22,13 +22,13 @@ class BoundaryMeasure(FeatureMeasure):
                 properties=['label', 'centroid', 'bbox']
             )
         ).rename(columns={
-            'label': OBJECT_INFO.OBJECT_LABELS,
-            'centroid-0': OBJECT_INFO.CENTER_RR,
-            'centroid-1': OBJECT_INFO.CENTER_CC,
-            'bbox-0': OBJECT_INFO.MIN_RR,
-            'bbox-1': OBJECT_INFO.MIN_CC,
-            'bbox-2': OBJECT_INFO.MAX_RR,
-            'bbox-3': OBJECT_INFO.MAX_CC,
-        }).set_index(keys=OBJECT_INFO.OBJECT_LABELS)
+            'label': OBJECT.LABEL,
+            'centroid-0': OBJECT.CENTER_RR,
+            'centroid-1': OBJECT.CENTER_CC,
+            'bbox-0': OBJECT.MIN_RR,
+            'bbox-1': OBJECT.MIN_CC,
+            'bbox-2': OBJECT.MAX_RR,
+            'bbox-3': OBJECT.MAX_CC,
+        }).set_index(keys=OBJECT.LABEL)
 
         return results

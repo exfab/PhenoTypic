@@ -8,7 +8,7 @@ from scipy.spatial.distance import euclidean
 from scipy.optimize import minimize_scalar
 
 from phenotypic.abstract import GridCorrector
-from phenotypic.util.constants_ import OBJECT_INFO, GRID
+from phenotypic.util.constants_ import OBJECT, GRID
 
 
 class GridAligner(GridCorrector):
@@ -43,11 +43,11 @@ class GridAligner(GridCorrector):
         if self.axis == 0:
             # If performing row-wise alignment, the x value is the cc value
             x_group = GRID.GRID_ROW_NUM
-            x_val = OBJECT_INFO.CENTER_CC
+            x_val = OBJECT.CENTER_CC
         elif self.axis == 1:
             # If performing column-wise alignment, the x value is the rr value
             x_group = GRID.GRID_COL_NUM
-            x_val = OBJECT_INFO.CENTER_RR
+            x_val = OBJECT.CENTER_RR
         else:
             raise ValueError('Axis must be either 0 or 1')
 

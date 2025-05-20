@@ -5,13 +5,13 @@ if TYPE_CHECKING: from phenotypic import Image
 
 import pandas as pd
 
-from phenotypic.abstract import FeatureMeasure
+from phenotypic.abstract import MeasureFeature
 
 from phenotypic.util.constants_ import INTENSITY_LABELS as C
 
 
 # TODO: Add more measurements
-class MeasureIntensity(FeatureMeasure):
+class MeasureIntensity(MeasureFeature):
     """Calculates various intensity measures of the objects in the image.
 
     Returns:

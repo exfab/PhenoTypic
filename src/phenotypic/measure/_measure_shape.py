@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import warnings
 from enum import Enum
 from typing import TYPE_CHECKING
 
@@ -10,7 +11,7 @@ from scipy.spatial import ConvexHull
 from scipy.ndimage import distance_transform_edt
 import numpy as np
 
-from phenotypic.abstract import FeatureMeasure
+from phenotypic.abstract import MeasureFeature
 
 
 class SHAPE(Enum):
@@ -28,6 +29,10 @@ class SHAPE(Enum):
     SOLIDITY = ('Solidity', 'The object Area/ConvexArea')
     EXTENT = ('Extent', 'The proportion of object pixels to the bounding box. ObjectArea/BboxArea')
     BBOX_AREA = ('BboxArea', 'The area of the bounding box of the object')
+    MAJOR_AXIS_LENGTH = ('MajorAxisLength',
+                         'The length of the major axis of the ellipse that has the same normalized central moments as the object')
+    MINOR_AXIS_LENGTH = ('MinorAxisLength',
+                         'The length of the minor axis of the ellipse that has the same normalized central moments as the object')
 
     def __init__(self, label, desc=None):
         self.label, self.desc = label, desc
@@ -35,8 +40,11 @@ class SHAPE(Enum):
     def __str__(self):
         return f'{self.CATEGORY.label}_{self.label}'
 
+    def get_labels(self):
+        return [key.label for key in SHAPE if key.label != self.CATEGORY.label ]
 
-class MeasureShape(FeatureMeasure):
+
+class MeasureShape(MeasureFeature):
     r"""Calculates various geometric measures of the objects in the image.
 
     Returns:
@@ -66,20 +74,35 @@ class MeasureShape(FeatureMeasure):
             str(SHAPE.MEAN_RADIUS): [],
             str(SHAPE.MEDIAN_RADIUS): [],
             str(SHAPE.ECCENTRICITY): [],
-            str(SHAPE.SOLIDITY): []
+            str(SHAPE.SOLIDITY): [],
+            str(SHAPE.EXTENT): [],
+            str(SHAPE.BBOX_AREA): [],
+            str(SHAPE.MAJOR_AXIS_LENGTH): [],
+            str(SHAPE.MINOR_AXIS_LENGTH): []
         }
         obj_props = image.objects.props
         for idx, obj_image in enumerate(image.objects):
             current_props = obj_props[idx]
             measurements[str(SHAPE.AREA)].append(current_props.area)
             measurements[str(SHAPE.PERIMETER)].append(current_props.perimeter)
+            measurements[str(SHAPE.ECCENTRICITY)].append(current_props.eccentricity)
+            measurements[str(SHAPE.EXTENT)].append(current_props.extent)
+            measurements[str(SHAPE.BBOX_AREA)].append(current_props.area_bbox)
+            measurements[str(SHAPE.MAJOR_AXIS_LENGTH)].append(current_props.major_axis_length)
+            measurements[str(SHAPE.MINOR_AXIS_LENGTH)].append(current_props.minor_axis_length)
 
             circularity = (4 * np.pi * obj_props[idx].area) / (current_props.perimeter ** 2)
             measurements[str(SHAPE.CIRCULARITY)].append(circularity)
 
-            convex_hull = ConvexHull(current_props.coords)
-            measurements[str(SHAPE.CONVEX_AREA)].append(convex_hull.area)
-            measurements[str(SHAPE.SOLIDITY)].append(current_props.area / convex_hull.area)
+            try:
+                convex_hull = ConvexHull(current_props.coords)
+            except KeyboardInterrupt:
+                raise KeyboardInterrupt
+            except Exception as e:
+                warnings.warn(f'Error in computing convex hull for object {current_props.label}: {e}')
+                convex_hull = None
+            measurements[str(SHAPE.CONVEX_AREA)].append(convex_hull.area if convex_hull else np.nan)
+            measurements[str(SHAPE.SOLIDITY)].append((current_props.area / convex_hull.area) if convex_hull else np.nan)
 
             # TODO: Alter so that calculations are made simultaneously instead of iterating through each object
             dist_matrix = distance_transform_edt(obj_image.objmap[:])

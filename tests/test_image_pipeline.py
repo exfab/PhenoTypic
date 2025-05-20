@@ -7,13 +7,14 @@ from phenotypic.objects import BorderObjectRemover, SmallObjectRemover, LowCircu
 from phenotypic import GridImage
 from phenotypic.data import load_plate_12hr
 from .test_fixtures import plate_grid_images
+from .resources.TestHelper import timeit
 
-
+@timeit
 def test_empty_pipeline():
     empty_pipeline = ImagePipeline({})
     assert empty_pipeline.apply(GridImage(load_plate_12hr())).num_objects == 0
 
-
+@timeit
 def test_kmarx_pipeline(plate_grid_images):
     kmarx_pipeline = ImagePipeline(
         {
@@ -42,6 +43,7 @@ def test_kmarx_pipeline(plate_grid_images):
     output = kmarx_pipeline.apply(plate_grid_images)
     assert output is not None
 
+@timeit
 def test_kmarx_pipeline_pickleable(plate_grid_images):
     import pickle
     kmarx_pipeline = ImagePipeline(

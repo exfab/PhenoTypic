@@ -3,12 +3,10 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING: from phenotypic import Image
 
-import mahotas as mh
 import numpy as np
 import pandas as pd
 
-from phenotypic.abstract import FeatureMeasure
-from phenotypic.util.constants_ import OBJECT_INFO
+from phenotypic.abstract import MeasureFeature
 
 AREA = 'Area'
 
@@ -22,7 +20,7 @@ STDDEV = 'StdDev'
 COEFF_VARIANCE = 'CoefficientVariance'
 
 
-class MeasureColor(FeatureMeasure):
+class MeasureColor(MeasureFeature):
     """
     Represents a feature extractor for color-based texture analysis.
 
@@ -33,23 +31,27 @@ class MeasureColor(FeatureMeasure):
     a DataFrame suitable for further analysis and usage.
 
     """
-
-    def _operate(self, image: Image):
-        hue_texture = self._compute_matrix_texture(image, image.hsv.extract_obj_hue())
+    @staticmethod
+    def _operate(image: Image):
+        hue_texture = MeasureColor._compute_matrix_texture(image.hsv.extract_obj_hue(), labels=image.objmap[:],
+                                                   label_subset=image.objects.labels
+                                                   )
         hue_texture = {f'{HUE}_{key}': value for key, value in hue_texture.items()}
 
-        saturation_texture = self._compute_matrix_texture(image, image.hsv.extract_obj_saturation())
+        saturation_texture = MeasureColor._compute_matrix_texture(image.hsv.extract_obj_saturation(), labels=image.objmap[:],
+                                                          label_subset=image.objects.labels
+                                                          )
         saturation_texture = {f'{SATURATION}_{key}': value for key, value in saturation_texture.items()}
 
-        brightness_texture = self._compute_matrix_texture(image, image.hsv.extract_obj_brightness())
+        brightness_texture = MeasureColor._compute_matrix_texture(image.hsv.extract_obj_brightness(), labels=image.objmap[:],
+                                                          label_subset=image.objects.labels
+                                                          )
         brightness_texture = {f'{BRIGHTNESS}_{key}': value for key, value in brightness_texture.items()}
 
-        return pd.DataFrame({OBJECT_INFO.OBJECT_LABELS: image.objects.labels,
-                             **hue_texture, **saturation_texture, **brightness_texture}
-                            ).set_index(OBJECT_INFO.OBJECT_LABELS)
+        return pd.DataFrame(data={**hue_texture, **saturation_texture, **brightness_texture}, index=image.objects.get_labels_series())
 
     @staticmethod
-    def _compute_matrix_texture(image: Image, foreground_array: np.ndarray):
+    def _compute_matrix_texture(foreground: np.ndarray, labels: np.ndarray, label_subset: np.ndarray | None = None):
         """
           Computes texture metrics from input_image image data and a binary foreground mask.
 
@@ -60,7 +62,7 @@ class MeasureColor(FeatureMeasure):
 
           Args:
               image (Image): The PhenoTypic Image object containing the image data and objects information
-              foreground_array (numpy.ndarray): A matrix array with all background pixels set
+              foreground (numpy.ndarray): A matrix array with all background pixels set
                   to 0, defining the binary mask.
 
           Returns:
@@ -70,23 +72,9 @@ class MeasureColor(FeatureMeasure):
           """
 
         measurements = {
-            MEAN: [],
-            STDDEV: [],
-            MEDIAN: [],
-            COEFF_VARIANCE: [],
+            MEAN: MeasureFeature.calculate_mean(array=foreground, labels=labels, index=label_subset),
+            STDDEV: MeasureFeature.calculate_stddev(array=foreground, labels=labels, index=label_subset),
+            MEDIAN: MeasureFeature.calculate_median(array=foreground, labels=labels, index=label_subset),
+            COEFF_VARIANCE: MeasureFeature.calculate_coeff_variation(array=foreground, labels=labels, index=label_subset),
         }
-        for i, label in enumerate(image.objects.labels):
-            slices = image.objects.props[i].slice
-            obj_extracted = foreground_array[slices]
-
-            # In case there's more than one object in the crop
-            obj_extracted[image.objmap[slices] != label] = 0
-
-            measurements[MEAN].append(np.mean(obj_extracted[obj_extracted.nonzero()]))
-            measurements[MEDIAN].append(np.median(obj_extracted[obj_extracted.nonzero()]))
-            measurements[STDDEV].append(np.std(obj_extracted[obj_extracted.nonzero()]))
-            measurements[COEFF_VARIANCE].append(
-                np.std(obj_extracted[obj_extracted.nonzero()]) / np.mean(obj_extracted[obj_extracted.nonzero()])
-            )
-
         return measurements

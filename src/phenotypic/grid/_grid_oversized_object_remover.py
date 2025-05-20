@@ -5,7 +5,7 @@ if TYPE_CHECKING: from phenotypic import GridImage
 import numpy as np
 
 from phenotypic.abstract import GridMapModifier
-from phenotypic.util.constants_ import OBJECT_INFO
+from phenotypic.util.constants_ import OBJECT
 
 
 class GridOversizedObjectRemover(GridMapModifier):
@@ -41,11 +41,11 @@ class GridOversizedObjectRemover(GridMapModifier):
         max_height = max(row_edges[1:] - row_edges[:-1])
 
         # Calculate the width and height of each object
-        grid_info.loc[:, 'width'] = grid_info.loc[:, OBJECT_INFO.MAX_CC] \
-                                    - grid_info.loc[:, OBJECT_INFO.MIN_CC]
+        grid_info.loc[:, 'width'] = grid_info.loc[:, OBJECT.MAX_CC] \
+                                    - grid_info.loc[:, OBJECT.MIN_CC]
 
-        grid_info.loc[:, 'height'] = grid_info.loc[:, OBJECT_INFO.MAX_RR] \
-                                     - grid_info.loc[:, OBJECT_INFO.MIN_RR]
+        grid_info.loc[:, 'height'] = grid_info.loc[:, OBJECT.MAX_RR] \
+                                     - grid_info.loc[:, OBJECT.MIN_RR]
 
         # Find objects that are past the max height & width
         over_width_obj = grid_info.loc[grid_info.loc[:, 'width'] >= max_width, :].index.tolist()

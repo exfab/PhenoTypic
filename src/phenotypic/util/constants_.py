@@ -5,8 +5,8 @@ This module contains constant values and enumerations used throughout the PhenoT
 Constants are organized by module and functionality.
 
 Note: Class names are defined in ALL_CAPS to avoid namespace conflicts with actual classes 
-in the codebase (e.g., GRID vs an actual Grid class). When importing, use the format:
-    from PhenoTypic.util.constants import IMAGE_FORMATS, OBJECT_INFO
+    in the codebase (e.g., GRID vs an actual Grid class). When importing, use the format:
+        from PhenoTypic.util.constants import IMAGE_FORMATS, OBJECT
 """
 
 from enum import Enum
@@ -46,9 +46,9 @@ class IMAGE_FORMATS(Enum):
 
 
 # Object information constants
-class OBJECT_INFO:
+class OBJECT:
     """Constants for object information properties."""
-    OBJECT_LABELS = 'ObjectLabel'
+    LABEL = 'ObjectLabel'
     CENTER_RR = 'Bbox_CenterRR'
     MIN_RR = 'Bbox_MinRR'
     MAX_RR = 'Bbox_MaxRR'

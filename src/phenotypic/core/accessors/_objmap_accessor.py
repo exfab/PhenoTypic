@@ -72,6 +72,7 @@ class ObjectMap(ImageDataAccessor):
             dense = clear_border(dense, buffer_size=0, bgval=1)
 
         self._parent_image._data.sparse_object_map = self._dense_to_sparse(dense)
+        self._parent_image._data.sparse_object_map.eliminate_zeros()  # Remove zero values to save space
 
     @property
     def shape(self) -> tuple[int, int]:
@@ -90,7 +91,8 @@ class ObjectMap(ImageDataAccessor):
         return self._parent_image._data.sparse_object_map.tocoo()
 
     def show(self, figsize=None, title=None, cmap: str = 'tab20', ax: None | plt.Axes = None, mpl_params: None | dict = None) -> (
-            plt.Figure, plt.Axes):
+            plt.Figure, plt.Axes
+    ):
         """
         Displays the object map using matplotlib's imshow.
 
@@ -114,16 +116,16 @@ class ObjectMap(ImageDataAccessor):
                 sparse object map is rendered.
         """
         return self._plot(arr=self._parent_image._data.sparse_object_map.toarray(),
-                          figsize=figsize, title=title, ax=ax, cmap=cmap, mpl_params=mpl_params
+                          figsize=figsize, title=title, ax=ax, cmap=cmap, mpl_params=mpl_params,
                           )
 
     def reset(self) -> None:
         """Resets the object_map to an empty map array with no objects in it."""
         self._parent_image._data.sparse_object_map = self._dense_to_sparse(self._parent_image.matrix.shape)
 
-    def relabel(self):
+    def relabel(self, connectivity: int = 1):
         """Relabels all the objects based on their connectivity"""
-        self._dense_to_sparse(label(self._parent_image.objmask[:]))
+        self._parent_image._data.sparse_object_map = self._dense_to_sparse(label(self._parent_image.objmask[:], connectivity=connectivity))
 
     @staticmethod
     def _dense_to_sparse(arg) -> csc_matrix:
@@ -135,6 +137,6 @@ class ObjectMap(ImageDataAccessor):
         Returns:
 
         """
-        sparse = csc_matrix(arg, dtype=np.uint32)
+        sparse = csc_matrix(arg, dtype=np.uint16)
         sparse.eliminate_zeros()
         return sparse

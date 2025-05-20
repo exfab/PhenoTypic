@@ -18,7 +18,8 @@ class OtsuDetector(ThresholdDetector):
 
     """
 
-    def _operate(self, image: Image) -> Image:
+    @staticmethod
+    def _operate(image: Image) -> Image:
         """Binarizes the given image matrix using the Otsu threshold method.
 
         This function modifies the input_image image by applying a binary mask to

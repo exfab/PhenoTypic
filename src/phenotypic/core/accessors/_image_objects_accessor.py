@@ -8,7 +8,7 @@ import pandas as pd
 from skimage.measure import regionprops_table, regionprops
 from typing import List
 
-from phenotypic.util.constants_ import OBJECT_INFO, METADATA_LABELS, SUBIMAGE_TYPES
+from phenotypic.util.constants_ import OBJECT, METADATA_LABELS, SUBIMAGE_TYPES
 from phenotypic.core.accessors import ImageAccessor
 
 
@@ -28,7 +28,7 @@ class ObjectsAccessor(ImageAccessor):
     def __len__(self):
         return self._parent_image.num_objects
 
-    def __iter__(self)-> Generator[Image, Any, None]:
+    def __iter__(self) -> Generator[Image, Any, None]:
         for i in range(self._parent_image.num_objects):
             yield self[i]
 
@@ -103,18 +103,18 @@ class ObjectsAccessor(ImageAccessor):
         return pd.DataFrame(
             data=regionprops_table(
                 label_image=self._parent_image.objmap[:],
-                properties=['label', 'centroid', 'bbox']
-            )
+                properties=['label', 'centroid', 'bbox'],
+            ),
         ).rename(columns={
-            'label': OBJECT_INFO.OBJECT_LABELS,
-            'centroid-0': OBJECT_INFO.CENTER_RR,
-            'centroid-1': OBJECT_INFO.CENTER_CC,
-            'bbox-0': OBJECT_INFO.MIN_RR,
-            'bbox-1': OBJECT_INFO.MIN_CC,
-            'bbox-2': OBJECT_INFO.MAX_RR,
-            'bbox-3': OBJECT_INFO.MAX_CC,
-        }
-        ).set_index(OBJECT_INFO.OBJECT_LABELS)
+            'label': OBJECT.LABEL,
+            'centroid-0': OBJECT.CENTER_RR,
+            'centroid-1': OBJECT.CENTER_CC,
+            'bbox-0': OBJECT.MIN_RR,
+            'bbox-1': OBJECT.MIN_CC,
+            'bbox-2': OBJECT.MAX_RR,
+            'bbox-3': OBJECT.MAX_CC,
+        },
+        ).set_index(OBJECT.LABEL)
 
     def get_labels_series(self) -> pd.Series:
         """Returns a consistently named pandas.Series containing the label number for each object in the image. Useful as an index for joining different measurements"""
@@ -122,5 +122,9 @@ class ObjectsAccessor(ImageAccessor):
         return pd.Series(
             data=labels,
             index=range(len(labels)),
-            name=OBJECT_INFO.OBJECT_LABELS
+            name=OBJECT.LABEL,
         )
+
+    def relabel(self):
+        """Relabels all the objects based on their connectivity"""
+        self._parent_image.objmap.relabel()

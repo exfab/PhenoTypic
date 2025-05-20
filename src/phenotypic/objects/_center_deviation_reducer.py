@@ -1,9 +1,8 @@
 from scipy.spatial.distance import euclidean
 
-from ..abstract import MapModifier
-from .. import Image
-from ..measure import BoundaryMeasure
-from phenotypic.util.constants_ import OBJECT_INFO
+from phenotypic.abstract import MapModifier
+from phenotypic import Image
+from phenotypic.util.constants_ import OBJECT
 
 
 class CenterDeviationReducer(MapModifier):
@@ -17,15 +16,11 @@ class CenterDeviationReducer(MapModifier):
         img_center_cc = image.shape[1] // 2
         img_center_rr = image.shape[0] // 2
 
-        bound_extractor = BoundaryMeasure()
-        bound_info = bound_extractor.measure(image)
+        bound_info = image.objects.info()
 
-        # bound_info.loc[:, 'Measurement_CenterDeviation'] = bound_info.apply(
-        #         lambda row: print(row),
-        #         axis=0)
-
+        # Add a column to the bound info for center deviation
         bound_info.loc[:, 'Measurement_CenterDeviation'] = bound_info.apply(
-            lambda row: euclidean(u=[row[OBJECT_INFO.CENTER_CC], row[OBJECT_INFO.CENTER_RR]],
+            lambda row: euclidean(u=[row[OBJECT.CENTER_CC], row[OBJECT.CENTER_RR]],
                                   v=[img_center_cc, img_center_rr]
                                   ),
             axis=1
@@ -35,12 +30,9 @@ class CenterDeviationReducer(MapModifier):
         obj_to_keep = bound_info.loc[:, 'Measurement_CenterDeviation'].idxmin()
 
         # Get a working copy of the object map
-        obj_map = image.objmap[:]
-
-        # Set other objects to background
-        obj_map[obj_map != obj_to_keep] = 0
+        objmap = image.objmap[:]
 
         # Set Image object map to new value
-        image.objmap = obj_map
+        image.objmap[objmap != obj_to_keep] = 0
 
         return image

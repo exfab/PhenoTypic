@@ -7,9 +7,9 @@ from matplotlib.patches import Rectangle
 from itertools import cycle
 
 from .._image import Image
-from phenotypic.measure import BoundaryMeasure
+from phenotypic.measure import MeasureBounds
 from phenotypic.abstract import GridFinder
-from phenotypic.util.constants_ import IMAGE_FORMATS, OBJECT_INFO
+from phenotypic.util.constants_ import IMAGE_FORMATS, OBJECT
 from phenotypic.util.exceptions_ import IllegalAssignmentError
 from phenotypic.grid import OptimalCenterGridFinder
 
@@ -150,15 +150,15 @@ class ImageGridHandler(Image):
             cmap_cycle = cycle(cmap(i) for i in range(cmap.N))
             img = self.copy()
             img.objmap = self.grid.get_section_map()
-            gs_table = BoundaryMeasure().measure(img)
+            gs_table = MeasureBounds().measure(img)
 
             # Add squares that denote object grid belonging. Useful for cases where objects are larger than grid sections
             for obj_label in gs_table.index.unique():
                 subtable = gs_table.loc[obj_label, :]
-                min_rr = subtable.loc[OBJECT_INFO.MIN_RR]
-                max_rr = subtable.loc[OBJECT_INFO.MAX_RR]
-                min_cc = subtable.loc[OBJECT_INFO.MIN_CC]
-                max_cc = subtable.loc[OBJECT_INFO.MAX_CC]
+                min_rr = subtable.loc[OBJECT.MIN_RR]
+                max_rr = subtable.loc[OBJECT.MAX_RR]
+                min_cc = subtable.loc[OBJECT.MIN_CC]
+                max_cc = subtable.loc[OBJECT.MAX_CC]
 
                 width = max_cc - min_cc
                 height = max_rr - min_rr

@@ -14,7 +14,7 @@ import math
 
 import phenotypic
 from phenotypic.core.accessors import ImageAccessor
-from phenotypic.util.constants_ import OBJECT_INFO, GRID, METADATA_LABELS, SUBIMAGE_TYPES
+from phenotypic.util.constants_ import OBJECT, GRID, METADATA_LABELS, SUBIMAGE_TYPES
 from phenotypic.util.exceptions_ import NoObjectsError
 
 
@@ -119,13 +119,13 @@ class GridAccessor(ImageAccessor):
         if axis == 0:
             num_vectors = self.nrows
             x_group = GRID.GRID_ROW_NUM
-            x_val = OBJECT_INFO.CENTER_CC
-            y_val = OBJECT_INFO.CENTER_RR
+            x_val = OBJECT.CENTER_CC
+            y_val = OBJECT.CENTER_RR
         elif axis == 1:
             num_vectors = self.ncols
             x_group = GRID.GRID_COL_NUM
-            x_val = OBJECT_INFO.CENTER_RR
-            y_val = OBJECT_INFO.CENTER_CC
+            x_val = OBJECT.CENTER_RR
+            y_val = OBJECT.CENTER_CC
         else:
             raise ValueError('Axis should be 0 or 1.')
 
@@ -287,7 +287,7 @@ class GridAccessor(ImageAccessor):
         return self.info().loc[:, GRID.GRID_SECTION_NUM].value_counts().sort_values(ascending=ascending)
 
     def get_info_by_section(self, section_number):
-        """ Get the grid info based on the section. Can be accessed by section number or row/column indexes
+        """ Get the grid info based on the section. Can be accessed by section number or row/column label_subset
 
         Args:
             section_number:
@@ -303,7 +303,7 @@ class GridAccessor(ImageAccessor):
             grid_info = grid_info.loc[grid_info.loc[:, GRID.GRID_ROW_NUM] == section_number[0], :]
             return grid_info.loc[grid_info.loc[:, GRID.GRID_ROW_NUM] == section_number[1], :]
         else:
-            raise ValueError('Section index should be int or a tuple of indexes')
+            raise ValueError('Section index should be int or a tuple of label_subset')
 
     def _naive_get_grid_section_slices(self, idx) -> ((int, int), (int, int)):
         """Returns the exact slices of a grid section based on its flattened index
@@ -338,19 +338,19 @@ class GridAccessor(ImageAccessor):
         grid_info = self.info()
         section_info = grid_info.loc[grid_info.loc[:, GRID.GRID_SECTION_NUM] == idx, :]
 
-        obj_min_cc = section_info.loc[:, OBJECT_INFO.MIN_CC].min()
+        obj_min_cc = section_info.loc[:, OBJECT.MIN_CC].min()
         min_cc = min(grid_min_cc, obj_min_cc)
         if min_cc < 0: min_cc = 0
 
-        obj_max_cc = section_info.loc[:, OBJECT_INFO.MAX_CC].max()
+        obj_max_cc = section_info.loc[:, OBJECT.MAX_CC].max()
         max_cc = max(grid_max_cc, obj_max_cc)
         if max_cc > self._parent_image.shape[1] - 1: max_cc = self._parent_image.shape[1] - 1
 
-        obj_min_rr = section_info.loc[:, OBJECT_INFO.MIN_RR].min()
+        obj_min_rr = section_info.loc[:, OBJECT.MIN_RR].min()
         min_rr = min(grid_min_rr, obj_min_rr)
         if min_rr < 0: min_rr = 0
 
-        obj_max_rr = section_info.loc[:, OBJECT_INFO.MAX_RR].max()
+        obj_max_rr = section_info.loc[:, OBJECT.MAX_RR].max()
         max_rr = max(grid_max_rr, obj_max_rr)
         if max_rr > self._parent_image.shape[0] - 1: max_rr = self._parent_image.shape[0] - 1
 

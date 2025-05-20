@@ -5,12 +5,12 @@ if TYPE_CHECKING: from phenotypic import GridImage
 import pandas as pd
 
 
-from phenotypic.abstract import FeatureMeasure
+from phenotypic.abstract import MeasureFeature
 from phenotypic.abstract import GridOperation
 from phenotypic.util.exceptions_ import GridImageInputError, OutputValueError
 
 
-class GridFeatureMeasure(FeatureMeasure):
+class GridMeasureFeature(MeasureFeature):
     def __init__(self, n_rows: int=8, n_cols: int=12):
         self.n_rows = n_rows
         self.n_cols = n_cols

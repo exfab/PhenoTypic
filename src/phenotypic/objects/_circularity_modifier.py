@@ -5,7 +5,7 @@ import math
 
 from .. import Image
 from ..abstract import MapModifier
-from ..util.constants_ import OBJECT_INFO
+from ..util.constants_ import OBJECT
 
 
 class LowCircularityRemover(MapModifier):
@@ -49,8 +49,8 @@ class LowCircularityRemover(MapModifier):
                                                 properties=['label', 'area', 'perimeter']
                                                 )
                               )
-                 .rename(columns={'label': OBJECT_INFO.OBJECT_LABELS})
-                 .set_index(OBJECT_INFO.OBJECT_LABELS))
+                 .rename(columns={'label': OBJECT.LABEL})
+                 .set_index(OBJECT.LABEL))
 
         # Calculate circularity based on Polsby-Popper Score
         table['circularity'] = (4 * math.pi * table['area']) / (table['perimeter'] ** 2)
