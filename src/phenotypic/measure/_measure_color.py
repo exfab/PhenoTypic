@@ -6,7 +6,7 @@ if TYPE_CHECKING: from phenotypic import Image
 import numpy as np
 import pandas as pd
 
-from phenotypic.abstract import MeasureFeature
+from phenotypic.abstract import MeasureFeatures
 
 AREA = 'Area'
 
@@ -20,7 +20,7 @@ STDDEV = 'StdDev'
 COEFF_VARIANCE = 'CoefficientVariance'
 
 
-class MeasureColor(MeasureFeature):
+class MeasureColor(MeasureFeatures):
     """
     Represents a feature extractor for color-based texture analysis.
 
@@ -72,9 +72,9 @@ class MeasureColor(MeasureFeature):
           """
 
         measurements = {
-            MEAN: MeasureFeature.calculate_mean(array=foreground, labels=labels, index=label_subset),
-            STDDEV: MeasureFeature.calculate_stddev(array=foreground, labels=labels, index=label_subset),
-            MEDIAN: MeasureFeature.calculate_median(array=foreground, labels=labels, index=label_subset),
-            COEFF_VARIANCE: MeasureFeature.calculate_coeff_variation(array=foreground, labels=labels, index=label_subset),
+            MEAN: MeasureFeatures.calculate_mean(array=foreground, labels=labels, index=label_subset),
+            STDDEV: MeasureFeatures.calculate_stddev(array=foreground, labels=labels, index=label_subset),
+            MEDIAN: MeasureFeatures.calculate_median(array=foreground, labels=labels, index=label_subset),
+            COEFF_VARIANCE: MeasureFeatures.calculate_coeff_variation(array=foreground, labels=labels, index=label_subset),
         }
         return measurements

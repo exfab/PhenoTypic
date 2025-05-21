@@ -9,11 +9,7 @@ from phenotypic.abstract import ImageCorrector
 from phenotypic.abstract import GridOperation
 from phenotypic.util.exceptions_ import GridImageInputError, OutputValueError
 
-
 class GridCorrector(ImageCorrector, GridOperation):
-    def __init__(self, nrows: int = 8, ncols: int = 12):
-        self.nrows = nrows
-        self.ncols = ncols
 
     def apply(self, image: GridImage, inplace=False) -> GridImage:
         from phenotypic import GridImage

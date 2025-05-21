@@ -24,6 +24,17 @@ class ImageEnhancedMatrix(ImageDataAccessor):
     and object mapping.
     """
 
+    @property
+    def __enh_matrix(self):
+        return self._parent_image._matrix_dtype2norm(self._parent_image._data.enh_matrix.copy())
+
+    @__enh_matrix.setter
+    def __enh_matrix(self, value):
+        if not np.array_equal(self._parent_image._data.enh_matrix.shape, value.shape, ):
+            raise ValueError('shape of value does not match matrix')
+
+        self._parent_image._data.enh_matrix[:] = self._parent_image._matrix_norm2dtype(value)
+
     def __getitem__(self, key) -> np.ndarray:
         """
         Provides a method to retrieve a copy of a specific portion of a parent image's detection
@@ -40,7 +51,7 @@ class ImageEnhancedMatrix(ImageDataAccessor):
         if self.isempty():
             raise EmptyImageError
         else:
-            return self._parent_image._data.enh_matrix[key].copy()
+            return self.__enh_matrix[key]
 
     def __setitem__(self, key, value):
         """
@@ -67,12 +78,19 @@ class ImageEnhancedMatrix(ImageDataAccessor):
                 does not match the shape of the existing value in `_parent_image._det_matrix`
                 for the specified key.
         """
-        if isinstance(value, np.ndarray):
-            if self._parent_image._data.enh_matrix[key].shape != value.shape:
-                raise ArrayKeyValueShapeMismatchError
+        if isinstance(value, (np.ndarray, int, float)):
+            if isinstance(value, np.ndarray):
+                if self.__enh_matrix[key].shape != value.shape:
+                    raise ArrayKeyValueShapeMismatchError
 
-        self._parent_image._data.enh_matrix[key] = value
-        self._parent_image.objmap.reset()
+            # the input value is expected to be normalized, but data is stored in uint format to reduce memory footprint
+            normalized_enh_matrix = self.__enh_matrix
+            normalized_enh_matrix[key] = value
+            self.__enh_matrix = normalized_enh_matrix
+
+            self._parent_image.objmap.reset()
+        else:
+            raise TypeError(f'Unsupported type for setting the matrix. Value should be scalar or a numpy array: {type(value)}')
 
     @property
     def shape(self):
@@ -89,11 +107,11 @@ class ImageEnhancedMatrix(ImageDataAccessor):
 
     def copy(self) -> np.ndarray:
         """Returns a copy of the Detection Matrix."""
-        return self._parent_image._data.enh_matrix.copy()
+        return self.__enh_matrix.copy()
 
     def reset(self):
         """Resets the image's enhanced matrix to the original matrix representation."""
-        self._parent_image._data.enh_matrix = self._parent_image.matrix.copy()
+        self._parent_image._data.enh_matrix = self._parent_image._data.matrix.copy()
 
     def histogram(self, figsize: Tuple[int, int] = (10, 5)):
         """Returns a histogram of the image matrix. Useful for troubleshooting detection results.
@@ -104,10 +122,10 @@ class ImageEnhancedMatrix(ImageDataAccessor):
 
         """
         fig, axes = plt.subplots(nrows=2, ncols=2, figsize=figsize)
-        axes[0].imshow(self._parent_image.enh_matrix[:])
+        axes[0].imshow(self.__enh_matrix[:])
         axes[0].set_title(self._parent_image.name)
 
-        hist_one, histc_one = histogram(self._parent_image.enh_matrix[:])
+        hist_one, histc_one = histogram(self.__enh_matrix[:])
         axes[1].plot(hist_one, histc_one, lw=2)
         axes[1].set_title('Grayscale Histogram (Detection Matrix)')
         return fig, axes
@@ -145,7 +163,7 @@ class ImageEnhancedMatrix(ImageDataAccessor):
         """
 
         return self._plot(
-            arr=self._parent_image.enh_matrix[:],
+            arr=self.__enh_matrix[:],
             figsize=figsize,
             ax=ax,
             title=title,
@@ -198,7 +216,7 @@ class ImageEnhancedMatrix(ImageDataAccessor):
         if annotation_params is None: annotation_params = {}
 
         fig, ax = self._plot_overlay(
-            arr=self._parent_image.enh_matrix[:],
+            arr=self.__enh_matrix[:],
             objmap=objmap,
             figsize=figsize,
             title=title,

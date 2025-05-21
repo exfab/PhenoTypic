@@ -7,7 +7,7 @@ import pandas as pd
 from typing import Dict, Optional, List
 import inspect
 
-from phenotypic.abstract import MeasureFeature, ImageOperation
+from phenotypic.abstract import MeasureFeatures, ImageOperation
 
 
 class ImagePipeline(ImageOperation):
@@ -26,14 +26,14 @@ class ImagePipeline(ImageOperation):
         _operational_queue (Dict[str, ImageOperation]): A dictionary where keys are string
             identifiers and values are `ImageOperation` objects representing operations to apply
             to an image.
-        _measurement_queue (Dict[str, MeasureFeature]): A dictionary where keys are string
+        _measurement_queue (Dict[str, MeasureFeatures]): A dictionary where keys are string
             identifiers and values are `FeatureExtractor` objects for extracting features
             from images.
     """
 
     def __init__(self,
                  processing_queue: Dict[str, ImageOperation] | None = None,
-                 measurement_queue: Dict[str, MeasureFeature] | None = None):
+                 measurement_queue: Dict[str, MeasureFeatures] | None = None):
         """
         This class represents a processing and measurement abstract for image operations
         and feature extraction. It initializes operational and measurement queues based
@@ -48,7 +48,7 @@ class ImagePipeline(ImageOperation):
                 extracting specific features.
         """
         self._operational_queue: Dict[str, ImageOperation] = processing_queue if processing_queue is not None else {}
-        self._measurement_queue: Dict[str, MeasureFeature] = measurement_queue if measurement_queue is not None else {}
+        self._measurement_queue: Dict[str, MeasureFeatures] = measurement_queue if measurement_queue is not None else {}
 
     def apply(self, image: Image, inplace: bool = False) -> Image:
         """

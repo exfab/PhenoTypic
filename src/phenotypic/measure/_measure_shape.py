@@ -11,7 +11,7 @@ from scipy.spatial import ConvexHull
 from scipy.ndimage import distance_transform_edt
 import numpy as np
 
-from phenotypic.abstract import MeasureFeature
+from phenotypic.abstract import MeasureFeatures
 
 
 class SHAPE(Enum):
@@ -48,7 +48,7 @@ class SHAPE(Enum):
         return [key.label for key in SHAPE if key.label != self.CATEGORY.label]
 
 
-class MeasureShape(MeasureFeature):
+class MeasureShape(MeasureFeatures):
     r"""Calculates various geometric measures of the objects in the image.
 
     Returns:
@@ -99,7 +99,7 @@ class MeasureShape(MeasureFeature):
             measurements[str(SHAPE.CIRCULARITY)].append(circularity)
 
             try:
-                if current_props.area > 1:
+                if current_props.area >= 3:
                     convex_hull = ConvexHull(current_props.coords)
                 else:
                     convex_hull = None

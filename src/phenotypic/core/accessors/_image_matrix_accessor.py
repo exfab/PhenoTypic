@@ -26,6 +26,29 @@ class ImageMatrix(ImageDataAccessor):
     for data analysis purposes.
     """
 
+    @property
+    def __matrix(self):
+        """
+        Provides a property to access the matrix of the parent image,
+        applying normalization using the defined data type.
+
+        This property acts as a getter function to retrieve a copy of the
+        matrix data from the parent image while normalizing it based on
+        the assigned data type. It ensures that the returned matrix is a
+        processed and clean copy of the underlying data for appropriate
+        usage.
+
+        Returns:
+            numpy.ndarray: A normalized and copied matrix derived from
+            the parent image's data.
+        """
+        return self._parent_image._matrix_dtype2norm(self._parent_image._data.matrix.copy())
+
+    @__matrix.setter
+    def __matrix(self, value):
+        assert np.array_equal(self._parent_image._data.matrix.shape, value.shape), "Shape of matrix does not match parent image"
+        self._parent_image._data.matrix[:] = self._parent_image._matrix_norm2dtype(value)
+
     def __getitem__(self, key) -> np.ndarray:
         """
         Provides functionality to retrieve a copy of a specified portion of the parent image's
@@ -36,12 +59,12 @@ class ImageMatrix(ImageDataAccessor):
             key (any): A key used to index or slice the parent image's matrix.
 
         Returns:
-            np.ndarray: A copy of the accessed subset of the parent image's matrix.
+            np.ndarray: A copy of the accessed subset of the parent image's matrix with normalized values.
         """
         if self.isempty():
             raise EmptyImageError
         else:
-            return self._parent_image._data.matrix[key].copy()
+            return self.__matrix[key]
 
     def __setitem__(self, key, value):
         """
@@ -62,13 +85,15 @@ class ImageMatrix(ImageDataAccessor):
                 if self._parent_image._data.matrix[key].shape != value.shape:
                     raise ArrayKeyValueShapeMismatchError
 
-            self._parent_image._data.matrix[key] = value
+            # the input value is expected to be normalized, but data is stored in uint format to reduce memory footprint
+            normalized_matrix = self.__matrix
+            normalized_matrix[key] = value
+            self.__matrix = normalized_matrix
+
             self._parent_image.enh_matrix.reset()
             self._parent_image.objmap.reset()
         else:
             raise TypeError(f'Unsupported type for setting the matrix. Value should be scalar or a numpy array: {type(value)}')
-
-
 
     @property
     def shape(self) -> tuple:
@@ -94,7 +119,7 @@ class ImageMatrix(ImageDataAccessor):
         Returns:
             np.ndarray: A deep copy of the parent image matrix.
         """
-        return self._parent_image._data.matrix.copy()
+        return self.__matrix.copy()
 
     def histogram(self, figsize: Tuple[int, int] = (10, 5)) -> Tuple[plt.Figure, np.ndarray]:
         """
@@ -114,7 +139,7 @@ class ImageMatrix(ImageDataAccessor):
         """
         fig, axes = plt.subplots(nrows=2, ncols=2, figsize=figsize)
         fig, axes[0] = self._plot(
-            arr=self._parent_image.matrix[:],
+            arr=self.__matrix[:],
             figsize=figsize,
             ax=axes[0],
             title=self._parent_image.name,
@@ -122,7 +147,7 @@ class ImageMatrix(ImageDataAccessor):
             mpl_params=None,
         )
 
-        hist_one, histc_one = histogram(self._parent_image.matrix[:])
+        hist_one, histc_one = histogram(self.__matrix[:])
         axes[1].plot(hist_one, histc_one, lw=2)
         axes[1].set_title('Grayscale Histogram')
         return fig, axes
@@ -156,7 +181,7 @@ class ImageMatrix(ImageDataAccessor):
 
         """
         return self._plot(
-            arr=self._parent_image.matrix[:],
+            arr=self.__matrix[:],
             figsize=figsize,
             ax=ax,
             title=title,
@@ -209,7 +234,7 @@ class ImageMatrix(ImageDataAccessor):
         if annotation_params is None: annotation_params = {}
 
         fig, ax = self._plot_overlay(
-            arr=self._parent_image.matrix[:],
+            arr=self.__matrix[:],
             objmap=objmap,
             figsize=figsize,
             title=title,

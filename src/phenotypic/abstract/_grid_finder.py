@@ -6,11 +6,11 @@ if TYPE_CHECKING: from phenotypic import Image
 import pandas as pd
 import numpy as np
 
-from phenotypic.abstract import GridMeasureFeature
+from phenotypic.abstract import GridMeasureFeatures
 from phenotypic.util.constants_ import OBJECT, GRID
 
 
-class GridFinder(GridMeasureFeature):
+class GridFinder(GridMeasureFeatures):
     """
     GridFinder measures grid information from the objects in various ways. Using the names here allows for streamlined integration.
     Unlike other Grid series interfaces, GridExtractors can work on regular images and should not be dependent on the GridImage class.

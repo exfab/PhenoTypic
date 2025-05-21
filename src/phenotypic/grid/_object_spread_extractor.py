@@ -2,14 +2,14 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING: from phenotypic import GridImage
-from phenotypic.abstract import GridMeasureFeature
+from phenotypic.abstract import GridMeasureFeatures
 
 import pandas as pd
 import numpy as np
 from scipy.spatial import distance_matrix
 from phenotypic.util.constants_ import GRID, OBJECT
 
-class ObjectSpreadExtractor(GridMeasureFeature):
+class ObjectSpreadExtractor(GridMeasureFeatures):
     """
     This module measure's an objects spread from the grid section's center points
     """

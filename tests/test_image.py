@@ -87,7 +87,8 @@ def test_image_matrix_access(sample_image_array_with_imformat):
     input_image, input_imformat, true_imformat = sample_image_array_with_imformat
     ps_image = phenotypic.Image(input_image=input_image, imformat=input_imformat)
     if input_imformat == 'RGB':
-        assert np.array_equal(ps_image.matrix[:], skimage.color.rgb2gray(input_image))
+        assert np.allclose(ps_image.matrix[:], skimage.color.rgb2gray(input_image), atol=1.0/np.iinfo(ps_image._MATRIX_STORAGE_DTYPE).max), \
+            f'Image.matrix and skimage.color.rgb2gray do not match at {np.unique(ps_image.matrix[:]!=skimage.color.rgb2gray(input_image),return_counts=True)}'
     elif input_imformat == 'Grayscale':
         assert np.array_equal(ps_image.matrix[:], input_image)
 

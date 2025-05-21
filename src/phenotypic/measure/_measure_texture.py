@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 from skimage.util import img_as_ubyte
 
-from phenotypic.abstract import MeasureFeature
+from phenotypic.abstract import MeasureFeatures
 from phenotypic.util.constants_ import OBJECT
 
 MEDIAN = 'Median'
@@ -83,7 +83,7 @@ IMC2_90 = 'InformationCorrelation(2)-deg(90)'
 IMC2_135 = 'InformationCorrelation(2)-deg(135)'
 
 
-class MeasureTexture(MeasureFeature):
+class MeasureTexture(MeasureFeatures):
     """
     Represents a measurement of texture features extracted from image objects.
 

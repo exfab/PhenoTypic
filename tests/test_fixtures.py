@@ -21,9 +21,9 @@ def param2array(tag):
         case 'km-colony-72hr':
             return load_colony_72hr()
         case 'black-square':
-            return np.full(shape=(100, 100), fill_value=0)
+            return np.full(shape=(100, 100), fill_value=0.0)
         case 'white-square':
-            return np.full(shape=(100, 100), fill_value=1)
+            return np.full(shape=(100, 100), fill_value=1.0)
         case _:
             raise ValueError(f'Invalid tag: {tag}')
 
@@ -114,13 +114,16 @@ def walk_package(pkg):
     if hasattr(pkg, "__path__"):  # add all sub‑modules
         modules += [
             importlib.import_module(name)
-            for _, name, _ in pkgutil.walk_packages(pkg.__path__, pkg.__name__ + ".")
+            for _, name, _ in pkgutil.walk_packages(pkg.__path__, pkg.__name__ + ".") \
+                if not name.split(".")[-1].startswith("_")  # Skip modules with names starting with underscore
+
         ]
 
     seen = set()
     for mod in modules:
         if mod.__name__.startswith("_"):
             continue
+
         for attr in dir(mod):
             if attr.startswith("_"):
                 continue
@@ -145,7 +148,9 @@ def walk_package_for_operations(pkg):
     if hasattr(pkg, "__path__"):  # add all sub‑modules
         modules += [
             importlib.import_module(name)
-            for _, name, _ in pkgutil.walk_packages(pkg.__path__, pkg.__name__ + ".")
+            for _, name, _ in pkgutil.walk_packages(pkg.__path__, pkg.__name__ + ".") \
+                if not name.split(".")[-1].startswith("_")  # Skip modules with names starting with underscore
+
         ]
 
     seen = set()
@@ -182,7 +187,9 @@ def walk_package_for_measurements(pkg):
     if hasattr(pkg, "__path__"):  # add all sub‑modules
         modules += [
             importlib.import_module(name)
-            for _, name, _ in pkgutil.walk_packages(pkg.__path__, pkg.__name__ + ".")
+            for _, name, _ in pkgutil.walk_packages(pkg.__path__, pkg.__name__ + ".") \
+                if not name.split(".")[-1].startswith("_")  # Skip modules with names starting with underscore
+
         ]
 
     seen = set()
@@ -200,7 +207,7 @@ def walk_package_for_measurements(pkg):
             if not isinstance(obj, type): # make sure object is a class object
                 continue
 
-            if not issubclass(obj, phenotypic.abstract.MeasureFeature):
+            if not issubclass(obj, phenotypic.abstract.MeasureFeatures):
                 continue
 
             qualname = f"{mod.__name__}.{attr}"

@@ -6,11 +6,11 @@ if TYPE_CHECKING: from phenotypic import Image
 import pandas as pd
 from skimage.measure import regionprops_table
 
-from phenotypic.abstract import MeasureFeature
+from phenotypic.abstract import MeasureFeatures
 
 from ..util.constants_ import OBJECT
 
-class MeasureBounds(MeasureFeature):
+class MeasureBounds(MeasureFeatures):
     """
     Extracts the object boundary coordinate info within the image using the object map
     """

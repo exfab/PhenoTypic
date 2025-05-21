@@ -57,6 +57,10 @@ class ImageHandler:
             the image.
         _accessors (SimpleNamespace): Provides property-based access"""
 
+    _ARRAY_DTYPE = np.uint8
+    _MATRIX_STORAGE_DTYPE = np.uint32  # uint preserves more information than uint8
+    _OBJMAP_DTYPE = np.uint16
+
     def __init__(self,
                  input_image: np.ndarray | Image | PathLike | None = None,
                  imformat: str | None = None,
@@ -90,17 +94,18 @@ class ImageHandler:
                 METADATA_LABELS.PARENT_IMAGE_NAME: None,
                 METADATA_LABELS.SUBIMAGE_TYPE: SUBIMAGE_TYPES.ORIGINAL
             },
-            public={}
+            public={},
         )
 
         # Initialize image accessors
         self._accessors = SimpleNamespace()
 
-        self._accessors.array = ImageArray(self)
-        self._accessors.matrix = ImageMatrix(self)
-        self._accessors.enh_matrix = ImageEnhancedMatrix(self)
-        self._accessors.objmap = ObjectMap(self)
-        self._accessors.objmask = ObjectMask(self)
+        self._accessors.array = ImageArray(self, target_array=self._data.array, dtype=self._ARRAY_DTYPE)
+        self._accessors.matrix = ImageMatrix(self, target_array=self._data.matrix, dtype=self._MATRIX_STORAGE_DTYPE)
+        self._accessors.enh_matrix = ImageEnhancedMatrix(self, target_array=self._data.enh_matrix, dtype=self._MATRIX_STORAGE_DTYPE)
+        self._accessors.objmask = ObjectMask(self, target_array=self._data.sparse_object_map, dtype=self._OBJMAP_DTYPE)
+        self._accessors.objmap = ObjectMap(self, target_array=self._data.sparse_object_map, dtype=self._OBJMAP_DTYPE)
+
         self._accessors.objects = ObjectsAccessor(self)
         self._accessors.metadata = MetadataAccessor(self)
 
@@ -155,7 +160,7 @@ class ImageHandler:
             # Handle in the array case
             if value.imformat.is_array() and self.imformat.is_array():
                 if np.array_equal(self.array[key].shape, value.array.shape) is False: raise ValueError(
-                    'The image being set must be of the same shape as the image elements being accessed.'
+                    'The image being set must be of the same shape as the image elements being accessed.',
                 )
                 else:
                     self._data.array[key] = value.array[:]
@@ -163,7 +168,7 @@ class ImageHandler:
             # handle other cases
             if np.array_equal(self.matrix[key].shape, value.matrix.shape) is False:
                 raise ValueError(
-                    'The image being set must be of the same shape as the image elements being accessed.'
+                    'The image being set must be of the same shape as the image elements being accessed.',
                 )
             else:
                 self._data.matrix[key] = value.matrix[:]
@@ -623,17 +628,17 @@ class ImageHandler:
                 raise ValueError(f'input_image must be a NumPy array, a class instance, or None. Got {type(input_image)}')
 
     def _reset_data_to_empty(self):
-        self._data.array = np.empty((0, 3))  # Create an empty 3D array
-        self._set_from_matrix(np.empty((0, 2)))
+        self._data.array = np.empty((0, 3), dtype=self._ARRAY_DTYPE)  # Create an empty 3D array
+        self._set_from_matrix(np.empty((0, 2), dtype=self._MATRIX_STORAGE_DTYPE))
         self._image_format = IMAGE_FORMATS.NONE
 
     def _set_from_class_instance(self, input_cls):
         self._image_format = input_cls._image_format
 
         if input_cls._image_format.is_array():
-            self._set_from_array(input_cls.array[:].copy(), input_cls._image_format.value)
+            self._set_from_array(input_cls.array[:], input_cls._image_format.value)
         else:
-            self._set_from_array(input_cls.matrix[:].copy(), input_cls._image_format.value)
+            self._set_from_array(input_cls.matrix[:], input_cls._image_format.value)
 
         for key, value in input_cls._data.__dict__.items():
             self._data.__dict__[key] = value.copy() if value is not None else None
@@ -641,13 +646,24 @@ class ImageHandler:
             self._metadata.protected = deepcopy(input_cls._metadata.protected)
             self._metadata.public = deepcopy(input_cls._metadata.public)
 
+    def _matrix_norm2dtype(self, normalized_matrix):
+        max_val = np.iinfo(self._MATRIX_STORAGE_DTYPE).max
+        return np.round(np.clip(normalized_matrix, a_min=0.0, a_max=1.0) * max_val).astype(self._MATRIX_STORAGE_DTYPE)
+
+    def _matrix_dtype2norm(self, matrix):
+        if matrix.dtype != self._MATRIX_STORAGE_DTYPE:
+            warnings.warn(f'Possible Integrity Error: Image dtype {matrix.dtype} does not match the expected dtype {self._MATRIX_STORAGE_DTYPE}.')
+        max_val = np.iinfo(self._MATRIX_STORAGE_DTYPE).max
+        return np.clip(matrix.astype(np.float64) / max_val, a_min=0.0, a_max=1.0)
+
     def _set_from_matrix(self, matrix: np.ndarray):
         """Initializes all the 2-D components of an image
 
         Args:
             matrix: A 2-D array form of an image
         """
-        self._data.matrix = matrix.copy()
+
+        self._data.matrix = self._matrix_norm2dtype(matrix.copy())
         self._accessors.enh_matrix.reset()
         self._accessors.objmap.reset()
 
@@ -674,7 +690,7 @@ class ImageHandler:
 
         if type(imformat) == IMAGE_FORMATS:
             if imformat.is_ambiguous():
-                # PhenoTypic will assume in the event of rgb vs bgr that the input_image was rgb
+                # phenotypic will assume in the event of rgb vs bgr that the input_image was rgb
                 imformat = IMAGE_FORMATS.RGB.value
             else:
                 imformat = imformat.value
@@ -683,7 +699,7 @@ class ImageHandler:
             case 'GRAYSCALE' | IMAGE_FORMATS.GRAYSCALE | IMAGE_FORMATS.GRAYSCALE_SINGLE_CHANNEL:
                 self._image_format = IMAGE_FORMATS.GRAYSCALE
                 self._set_from_matrix(
-                    imarr if imarr.ndim == 2 else imarr[:, :, 0]
+                    imarr if imarr.ndim == 2 else imarr[:, :, 0],
                 )
 
             case 'RGB' | IMAGE_FORMATS.RGB | IMAGE_FORMATS.RGB_OR_BGR:
@@ -784,11 +800,11 @@ class ImageHandler:
         """
         if self._image_format.is_array():
             return self.array.show_overlay(object_label=object_label, ax=ax, figsize=figsize,
-                                           annotate=annotate, annotation_params=annotation_params
+                                           annotate=annotate, annotation_params=annotation_params,
                                            )
         else:
             return self.matrix.show_overlay(object_label=object_label, ax=ax, figsize=figsize,
-                                            annotate=annotate, annotation_params=annotation_params
+                                            annotate=annotate, annotation_params=annotation_params,
                                             )
 
     def rotate(self, angle_of_rotation: int, mode: str = 'edge', **kwargs) -> None:

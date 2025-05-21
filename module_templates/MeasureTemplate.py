@@ -5,18 +5,18 @@ if TYPE_CHECKING: from phenotypic import Image
 
 import pandas as pd
 
-from phenotypic.abstract import MeasureFeature
+from phenotypic.abstract import MeasureFeatures
 
 
-class MeasureTemplate(MeasureFeature):
+class MeasureTemplate(MeasureFeatures):
 
     def __init__(self, a, b):
         self.a, self.b = a, b
 
-    @staticmethod  # for MeasureFeature objects, _operate should be static methods with the parameter names matching the class attribute names needed for the calculation
+    @staticmethod  # for MeasureFeatures objects, _operate should be static methods with the parameter names matching the class attribute names needed for the calculation
     def _operate(self, image: Image, a, b) -> pd.DataFrame:
         """
-        for MeasureFeature objects, _operate should be static methods with the parameter names
+        for MeasureFeatures objects, _operate should be static methods with the parameter names
         matching the class attribute names needed for the calculation.
 
         In this example, self.a and self.b are the exact same as the parameters a and b.

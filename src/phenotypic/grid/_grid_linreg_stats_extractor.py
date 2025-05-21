@@ -5,10 +5,10 @@ if TYPE_CHECKING: from phenotypic import GridImage
 import pandas as pd
 from scipy.spatial.distance import euclidean
 
-from phenotypic.abstract import GridMeasureFeature
+from phenotypic.abstract import GridMeasureFeatures
 from phenotypic.util.constants_ import GRID, GRID_LINREG_STATS_EXTRACTOR, OBJECT
 
-class MeasureGridLinRegStats(GridMeasureFeature):
+class MeasureGridLinRegStats(GridMeasureFeatures):
     def __init__(self, section_num: Optional[int] = None):
         self.section_num = section_num
 
