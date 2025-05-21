@@ -41,11 +41,11 @@ class GridAligner(GridCorrector):
             ImageGridHandler: The rotated grid image object after alignment.
         """
         if self.axis == 0:
-            # If performing row-wise alignment, the x value is the cc value
+            # If performing row-wise alignment, the x other_image is the cc other_image
             x_group = GRID.GRID_ROW_NUM
             x_val = OBJECT.CENTER_CC
         elif self.axis == 1:
-            # If performing column-wise alignment, the x value is the rr value
+            # If performing column-wise alignment, the x other_image is the rr other_image
             x_group = GRID.GRID_COL_NUM
             x_val = OBJECT.CENTER_RR
         else:
@@ -58,12 +58,12 @@ class GridAligner(GridCorrector):
         # Collect the X position of the vertices
         x_min = grid_info.groupby(x_group, observed=True)[x_val].min().to_numpy()
 
-        y_0 = (x_min * m) + b  # Find the corresponding y-value at the above x values
+        y_0 = (x_min * m) + b  # Find the corresponding y-other_image at the above x values
 
-        # Find the x value of the upper ray
+        # Find the x other_image of the upper ray
         x_max = grid_info.groupby(x_group, observed=True)[x_val].max().to_numpy()
 
-        y_1 = (x_max * m) + b  # Find the corresponding y-value at the above x values
+        y_1 = (x_max * m) + b  # Find the corresponding y-other_image at the above x values
 
         # Collect opening angle ray coordinate info
         xy_vertices = np.vstack([x_min, y_0]).T  # An array containing the x & y coordinates of the vertices

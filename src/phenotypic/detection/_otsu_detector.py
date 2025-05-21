@@ -10,7 +10,7 @@ class OtsuDetector(ThresholdDetector):
     This class inherits from the `ThresholdDetector` and provides the functionality
     to apply Otsu's thresholding method on the enhancement matrix (`enh_matrix`) of an
     input_image image. The operation generates a binary mask (`omask`) depending on the
-    computed threshold value.
+    computed threshold other_image.
 
     Methods:
         apply: Applies Otsu's thresholding on the input_image image object and modifies its
@@ -33,7 +33,7 @@ class OtsuDetector(ThresholdDetector):
 
         Returns:
             Image: The input_image image object with its `objmask` attribute updated
-                to the computed binary mask value.
+                to the computed binary mask other_image.
         """
         image.objmask[:] = image.enh_matrix[:] > threshold_otsu(image.enh_matrix[:])
         return image

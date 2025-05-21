@@ -14,7 +14,7 @@ class GridOversizedObjectRemover(GridMapModifier):
 
     This class inherits from `GridMapModifier` and is designed to remove objects from the
     grid-based image representation that exceed the maximum allowable width or height of the
-    grid cells. The removal process sets the oversized object regions to the background value
+    grid cells. The removal process sets the oversized object regions to the background other_image
     of 0. This class is useful for preprocessing grid images for further analysis or visualization.
     """
     def _operate(self, image: GridImage) -> GridImage:
@@ -23,7 +23,7 @@ class GridOversizedObjectRemover(GridMapModifier):
 
         This method processes the grid metadata of a `GridImage` object to identify objects
         that exceed the maximum calculated width and height. It sets such objects to a
-        background value of 0 in the object's mapping array. This helps filter out undesired
+        background other_image of 0 in the object's mapping array. This helps filter out undesired
         large objects in the image.
 
         Args:

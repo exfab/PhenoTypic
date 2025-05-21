@@ -44,7 +44,7 @@ class ImageHsvHandler(ImageHandler):
         """Returns the HSV accessor.
 
         This property returns an instance of the HsvAccessor associated with the
-        current object, allowing access to HSV (hue, saturation, value) related
+        current object, allowing access to HSV (hue, saturation, other_image) related
         functionalities controlled by this handler.
 
         Returns:

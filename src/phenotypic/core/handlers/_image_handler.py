@@ -137,17 +137,17 @@ class ImageHandler:
         else:
             subimage = self.__class__(input_image=self.matrix[key], imformat=self.imformat)
 
-        subimage.enh_matrix[:] = self.enh_matrix[key]
-        subimage.objmap[:] = self.objmap[key]
+        subimage.enh_matrix[:] = self.enh_matrix[key].copy()
+        subimage.objmap[:] = self.objmap[key].copy()
         subimage.metadata[METADATA_LABELS.SUBIMAGE_TYPE] = SUBIMAGE_TYPES.CROP
         return subimage
 
-    def __setitem__(self, key, value):
+    def __setitem__(self, key, other_image):
         """Sets an item in the object with a given key and Image object. Ensures that the Image being set matches the expected shape and type, and updates internal properties accordingly.
 
         Args:
             key (Any): The array slices for accesssing the elements of the image.
-            value (ImageHandler): The other image to be set, which must match the shape of the
+            other_image (ImageHandler): The other image to be set, which must match the shape of the
                 existing elements accessed by the key and conform to the expected schema.
 
         Raises:
@@ -156,24 +156,24 @@ class ImageHandler:
         """
 
         # Sections can only be set to another Image class
-        if isinstance(value, self.__class__) or issubclass(type(value), ImageHandler):
+        if isinstance(other_image, self.__class__) or issubclass(type(other_image), ImageHandler):
             # Handle in the array case
-            if value.imformat.is_array() and self.imformat.is_array():
-                if np.array_equal(self.array[key].shape, value.array.shape) is False: raise ValueError(
+            if other_image.imformat.is_array() and self.imformat.is_array():
+                if np.array_equal(self.array[key].shape, other_image.array.shape) is False: raise ValueError(
                     'The image being set must be of the same shape as the image elements being accessed.',
                 )
                 else:
-                    self._data.array[key] = value.array[:]
+                    self._data.array[key] = other_image._data.array[:]
 
             # handle other cases
-            if np.array_equal(self.matrix[key].shape, value.matrix.shape) is False:
+            if np.array_equal(self.matrix[key].shape, other_image.matrix.shape) is False:
                 raise ValueError(
                     'The image being set must be of the same shape as the image elements being accessed.',
                 )
             else:
-                self._data.matrix[key] = value._data.matrix[:]
-                self._data.enh_matrix[key] = value._data.enh_matrix[:]
-                self.objmask[key] = value.objmask[:]
+                self._data.matrix[key] = other_image._data.matrix[:]
+                self._data.enh_matrix[key] = other_image._data.enh_matrix[:]
+                self.objmask[key] = other_image.objmask[:]
 
     def __eq__(self, other) -> bool:
         """
@@ -341,7 +341,7 @@ class ImageHandler:
 
         Note:
             - If the image has not been processed by a detector, the target for analysis is the entire image itself. Accessing the object_mask in this case
-                will return a 2-D array entirely with value 1 that is the same shape as the matrix
+                will return a 2-D array entirely with other_image 1 that is the same shape as the matrix
             - Changing elements of the mask will relabel of objects in the object_map
 
         Returns:
@@ -439,7 +439,7 @@ class ImageHandler:
                 Coordinate list (row, col) of the region.
 
             eccentricity: float
-                Eccentricity of the ellipse that has the same second-moments as the region. The eccentricity is the ratio of the focal distance (distance between focal points) over the major axis length. The value is in the interval [0, 1). When it is 0, the ellipse becomes a circle.
+                Eccentricity of the ellipse that has the same second-moments as the region. The eccentricity is the ratio of the focal distance (distance between focal points) over the major axis length. The other_image is in the interval [0, 1). When it is 0, the ellipse becomes a circle.
 
             equivalent_diameter_area: float
                 The diameter of a circle with the same area as the region.
@@ -605,7 +605,7 @@ class ImageHandler:
         Sets the image data and format based on the provided input_image and parameters.
 
         This method accepts an image in the form of an array, another class instance,
-        or a None value, and sets the internal image data accordingly. It determines
+        or a None other_image, and sets the internal image data accordingly. It determines
         how to process the input_image based on its type, and separates actions for arrays,
         instances of the class, and None input_image.
 
@@ -723,7 +723,7 @@ class ImageHandler:
             img (np.ndarray): Input image represented as a numpy array.
 
         Returns:
-            IMAGE_FORMATS: Enum value indicating the detected format of the image.
+            IMAGE_FORMATS: Enum other_image indicating the detected format of the image.
 
         Raises:
             TypeError: If the input_image is not a numpy array.

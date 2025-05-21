@@ -79,10 +79,22 @@ def test_watershed_kmarx_pipeline_pickleable(plate_grid_images):
     import pickle
     kmarx_pipeline = ImagePipeline(
         processing_queue={
-            'blur': GaussianSmoother(sigma=10),
+            'blur': GaussianSmoother(sigma=5),
             'clahe': CLAHE(),
             'median filter': MedianEnhancer(),
-            'detection': WatershedDetector(footprint='auto')},
+            'detection': WatershedDetector(footprint='auto', min_size=100, relabel=True),
+            'low circularity remover': LowCircularityRemover(0.5),
+            'reduce by section residual error': MinResidualErrorReducer(),
+            'outlier removal': LinRegResidualOutlierRemover(),
+            'align': GridAligner(),
+            'grid_reduction': MinResidualErrorReducer(),
+        },
+        measurement_queue={
+            'MeasureColor': MeasureColor(),
+            'MeasureShape': MeasureShape(),
+            'MeasureIntensity': MeasureIntensity(),
+            'MeasureTexture': MeasureTexture()
+        }
     )
     pickle.dumps(kmarx_pipeline)
 
@@ -91,10 +103,21 @@ def test_watershed_kmarx_pipeline_with_measurements_pickleable(plate_grid_images
     import pickle
     kmarx_pipeline = ImagePipeline(
         processing_queue={
-            'blur': GaussianSmoother(sigma=10),
+            'blur': GaussianSmoother(sigma=5),
             'clahe': CLAHE(),
             'median filter': MedianEnhancer(),
-            'detection': WatershedDetector(footprint='auto')},
-
+            'detection': WatershedDetector(footprint='auto', min_size=100, relabel=True),
+            'low circularity remover': LowCircularityRemover(0.5),
+            'reduce by section residual error': MinResidualErrorReducer(),
+            'outlier removal': LinRegResidualOutlierRemover(),
+            'align': GridAligner(),
+            'grid_reduction': MinResidualErrorReducer(),
+        },
+        measurement_queue={
+            'MeasureColor': MeasureColor(),
+            'MeasureShape': MeasureShape(),
+            'MeasureIntensity': MeasureIntensity(),
+            'MeasureTexture': MeasureTexture()
+        }
     )
     pickle.dumps(kmarx_pipeline)

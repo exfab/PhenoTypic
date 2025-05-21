@@ -24,7 +24,7 @@ class WatershedDetector(ThresholdDetector):
             as 'auto', an ndarray, an integer for disk size, or None for implementation-based
             determination.
         min_size (int): Minimum size of objects to retain during segmentation.
-            Objects smaller than this value are removed.
+            Objects smaller than this other_image are removed.
         compactness (float): Compactness parameter controlling segment shapes. Higher values
             enforce more regularly shaped objects.
         connectivity (int): The connectivity level used for determining connected components.

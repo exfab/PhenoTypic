@@ -27,10 +27,10 @@ class ObjectMask(ImageDataAccessor):
         return (self._parent_image.objmap[key] > 0).astype(int)
 
     def __setitem__(self, key, value: np.ndarray):
-        """Sets values of the object mask to value and resets the labeling in the map"""
+        """Sets values of the object mask to other_image and resets the labeling in the map"""
         mask = self._parent_image.objmap[:] > 0
 
-        # Check to make sure the section of the mask the key accesses is the same as the value
+        # Check to make sure the section of the mask the key accesses is the same as the other_image
         if type(value) in [int, bool]:
             try:
                 value = bool(value)
@@ -42,7 +42,7 @@ class ObjectMask(ImageDataAccessor):
             if mask[key].shape != value.shape:
                 raise ArrayKeyValueShapeMismatchError
 
-            # Sets the section of the binary mask to the value array
+            # Sets the section of the binary mask to the other_image array
             mask[key] = (value > 0)
         else:
             raise InvalidMaskValueError(type(value))

@@ -18,7 +18,7 @@ while allowing for multiple enhancement operations to be applied sequentially.
 
 from ._clahe import CLAHE
 from ._gaussian_preprocessor import GaussianSmoother
-from ._median_preprocessor import MedianEnhancer
+from ._median_enhancer import MedianEnhancer
 from ._rank_median_preprocessor import RankMedianEnhancer
 from ._rolling_ball_preprocessor import RollingBallEnhancer
 from ._white_tophat_preprocessor import WhiteTophatEnhancer

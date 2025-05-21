@@ -20,7 +20,7 @@ class SHAPE(Enum):
 
     AREA = ('Area', "The sum of the object's pixels")
     PERIMETER = ('Perimeter', "The perimeter of the object's pixels")
-    CIRCULARITY = ('Circularity', r'Calculated as :math:`\frac{4\pi*Area}{Perimeter^2}`. A perfect circle has a value of 1.')
+    CIRCULARITY = ('Circularity', r'Calculated as :math:`\frac{4\pi*Area}{Perimeter^2}`. A perfect circle has a other_image of 1.')
     CONVEX_AREA = ('ConvexArea', 'The area of the convex hull of the object')
     ORIENTATION = ('Orientation', 'The orientation of the object in degrees')
     MEDIAN_RADIUS = ('MedianRadius', 'The median radius of the object')

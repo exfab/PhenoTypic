@@ -22,7 +22,7 @@ class TriangleDetector(ThresholdDetector):
         the triangle method.
 
         Thresholding is performed by comparing each element in the enhanced matrix
-        to the computed triangular threshold, setting the corresponding value in
+        to the computed triangular threshold, setting the corresponding other_image in
         the output mask (`omask`) to True if the condition is satisfied.
 
         Args:

@@ -178,7 +178,7 @@ class OptimalCenterGridFinder(GridFinder):
 
     def _find_padding_midpoint_error(self, pad_sz, image, axis, row_pad=0, col_pad=0) -> float:
         """
-        Finds the optimal padding value that minimizes the squared differences between
+        Finds the optimal padding other_image that minimizes the squared differences between
         the calculated midpoints of histogram bins and the provided grid group center means, while recalculating gridding each iteration.
 
         Args:
@@ -224,7 +224,7 @@ class OptimalCenterGridFinder(GridFinder):
                 )
             )
         else:
-            raise ValueError(f"Invalid axis value: {axis}")
+            raise ValueError(f"Invalid axis other_image: {axis}")
 
         bin_edges.sort()
 
@@ -236,7 +236,7 @@ class OptimalCenterGridFinder(GridFinder):
         return ((current_obj_midpoints - bin_midpoint) ** 2).sum() / len(current_obj_midpoints)
 
     def _apply_solver(self, partial_cost_func, max_value, min_value=0) -> int:
-        """Returns the optimal padding value that minimizes the mean squared differences between the object midpoints and grid midpoints."""
+        """Returns the optimal padding other_image that minimizes the mean squared differences between the object midpoints and grid midpoints."""
         if max_value == 0:
             return 0
 

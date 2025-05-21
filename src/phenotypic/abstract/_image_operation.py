@@ -38,15 +38,20 @@ class ImageOperation(BaseOperation):
         Returns:
             Image: The modified image after applying the operation.
         """
-        matched_args = self._get_matched_operation_args()
-        image = self._apply_to_single_image(
-            cls_name=self.__class__.__name__,
-            image=image,
-            operation=self._operate,
-            inplace=inplace,
-            matched_args=matched_args,
-        )
-        return image
+        try:
+            matched_args = self._get_matched_operation_args()
+            image = self._apply_to_single_image(
+                cls_name=self.__class__.__name__,
+                image=image,
+                operation=self._operate,
+                inplace=inplace,
+                matched_args=matched_args,
+            )
+            return image
+        except KeyboardInterrupt:
+            raise KeyboardInterrupt
+        except Exception as e:
+            raise RuntimeError(f'{self.__class__.__name__} failed on image {image.name}: {e}') from e
 
     @staticmethod
     def _operate(image: Image) -> Image:

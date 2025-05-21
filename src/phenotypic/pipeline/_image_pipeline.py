@@ -65,15 +65,15 @@ class ImagePipeline(ImageOperation):
                 to `False`.
         """
         img = image if inplace else image.copy()
-        for key, func in self._operational_queue.items():
+        for key, operation in self._operational_queue.items():
             try:
-                sig = inspect.signature(self._operational_queue[key].apply)
+                sig = inspect.signature(operation.apply)
                 if 'inplace' in sig.parameters:
-                    self._operational_queue[key].apply(img, inplace=True)
+                    operation.apply(img, inplace=True)
                 else:
-                    img = self._operational_queue[key].apply(img)
+                    img = operation.apply(img)
             except Exception as e:
-                raise Exception(f'Failed to apply {func} to image {img.name}: {e}') from e
+                raise Exception(f'Failed to apply {operation} during step {key} to image {img.name}: {e}') from e
 
         return img
 

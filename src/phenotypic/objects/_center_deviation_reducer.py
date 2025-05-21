@@ -32,7 +32,7 @@ class CenterDeviationReducer(MapModifier):
         # Get a working copy of the object map
         objmap = image.objmap[:]
 
-        # Set Image object map to new value
+        # Set Image object map to new other_image
         image.objmap[objmap != obj_to_keep] = 0
 
         return image

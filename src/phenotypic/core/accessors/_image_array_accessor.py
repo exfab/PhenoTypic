@@ -50,9 +50,9 @@ class ImageArray(ImageDataAccessor):
 
     def __setitem__(self, key, value):
         """
-        Sets a value for a given key in the parent image array. The value must either be of
-        type int, float, or bool, or it must match the shape of the corresponding key's value
-        in the parent image array. If the value's shape does not align with the required shape,
+        Sets a other_image for a given key in the parent image array. The other_image must either be of
+        type int, float, or bool, or it must match the shape of the corresponding key's other_image
+        in the parent image array. If the other_image's shape does not align with the required shape,
         an exception is raised.
 
         Note:
@@ -60,11 +60,11 @@ class ImageArray(ImageDataAccessor):
 
         Args:
             key: Index key specifying the location in the parent image array to modify.
-            value: The new value to assign to the specified key in the array. Can be of types
+            value: The new other_image to assign to the specified key in the array. Can be of types
                 int, float, or bool. If not, it must match the shape of the target array segment.
 
         Raises:
-            ArrayKeyValueShapeMismatchError: If the value is an array and its shape does not match
+            ArrayKeyValueShapeMismatchError: If the other_image is an array and its shape does not match
         """
         if isinstance(value, (int, float, np.ndarray)):
             if isinstance(value, np.ndarray):
@@ -272,7 +272,7 @@ class ImageArray(ImageDataAccessor):
             channel (Optional[int]): Specifies the image channel to display. If None, the entire
                 image array is used.
             bg_color (int): Background color for non-object pixels. Non-object pixels will be
-                set to this value.
+                set to this other_image.
             cmap (str): Colormap to be used for rendering the image. Default is 'gray'.
             figsize (tuple[int, int]): Dimensions of the output figure in inches (width, height).
             title (str): Title of the plot. If None, uses the name of the parent image.

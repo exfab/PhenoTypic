@@ -31,7 +31,7 @@ class ImageEnhancedMatrix(ImageDataAccessor):
     @__enh_matrix.setter
     def __enh_matrix(self, value):
         if not np.array_equal(self._parent_image._data.enh_matrix.shape, value.shape, ):
-            raise ValueError('shape of value does not match matrix')
+            raise ValueError('shape of other_image does not match matrix')
 
         self._parent_image._data.enh_matrix[:] = self._parent_image._matrix_norm2dtype(value)
 
@@ -55,27 +55,27 @@ class ImageEnhancedMatrix(ImageDataAccessor):
 
     def __setitem__(self, key, value):
         """
-        Sets a value in the detection matrix of the parent image for the provided key.
+        Sets a other_image in the detection matrix of the parent image for the provided key.
 
-        The method updates or sets a value in the detection matrix of the parent image
-        (`_parent_image._det_matrix`) at the specified key. It ensures that if the value
+        The method updates or sets a other_image in the detection matrix of the parent image
+        (`_parent_image._det_matrix`) at the specified key. It ensures that if the other_image
         is not of type `int`, `float`, or `bool`, its shape matches the shape of the
-        existing value at the specified key. If the shape does not match,
-        `ArrayKeyValueShapeMismatchError` is raised. When the value is successfully set,
+        existing other_image at the specified key. If the shape does not match,
+        `ArrayKeyValueShapeMismatchError` is raised. When the other_image is successfully set,
         the object map (`objmap`) of the parent image is reset.
 
         Notes:
-            Objects are reset after setting a value in the detection matrix
+            Objects are reset after setting a other_image in the detection matrix
 
         Args:
-            key: The key in the detection matrix where the value will be set.
-            value: The value to be assigned to the detection matrix. Must be of type
+            key: The key in the detection matrix where the other_image will be set.
+            value: The other_image to be assigned to the detection matrix. Must be of type
                 int, float, or bool, or must have a shape matching the existing array
                 in the detection matrix for the provided key.
 
         Raises:
-            ArrayKeyValueShapeMismatchError: If the value is an array and its shape
-                does not match the shape of the existing value in `_parent_image._det_matrix`
+            ArrayKeyValueShapeMismatchError: If the other_image is an array and its shape
+                does not match the shape of the existing other_image in `_parent_image._det_matrix`
                 for the specified key.
         """
         if isinstance(value, (np.ndarray, int, float)):
@@ -83,7 +83,7 @@ class ImageEnhancedMatrix(ImageDataAccessor):
                 if self.__enh_matrix[key].shape != value.shape:
                     raise ArrayKeyValueShapeMismatchError
 
-            # the input value is expected to be normalized, but data is stored in uint format to reduce memory footprint
+            # the input other_image is expected to be normalized, but data is stored in uint format to reduce memory footprint
             normalized_enh_matrix = self.__enh_matrix
             normalized_enh_matrix[key] = value
             self.__enh_matrix = normalized_enh_matrix

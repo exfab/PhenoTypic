@@ -36,7 +36,7 @@ class ImageDataAccessor(ImageAccessor):
         """
         Converts a normalized matrix with values between 0 and 1 to a specified data type with the
         appropriate scaling. The method ensures that all values are clipped to the range [0, 1]
-        before scaling them to the data type's maximum value.
+        before scaling them to the data type's maximum other_image.
 
         Args:
             normalized_matrix: A 2D NumPy array where all values are assumed to be in the range
@@ -55,7 +55,7 @@ class ImageDataAccessor(ImageAccessor):
 
         The method checks the data type of the input matrix against the expected data
         type. If the data type does not match, a warning is issued. The matrix is
-        then normalized by dividing its values by the maximum possible value for its
+        then normalized by dividing its values by the maximum possible other_image for its
         data type, ensuring all elements remain within the range of [0.0, 1.0].
 
         Args:

@@ -41,7 +41,7 @@ def test_grid_accessor_default_property():
 def test_grid_property_assignment_error():
     grid_image = GridImage()
     with pytest.raises(IllegalAssignmentError):
-        grid_image.grid = "some value"
+        grid_image.grid = "some other_image"
 
 
 @timeit

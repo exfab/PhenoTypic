@@ -120,7 +120,7 @@ class IllegalAssignmentError(ValueError):
 
     def __init__(self, attr):
         super().__init__(
-            f"The {attr} attribute should not be directly assigned to a new object. If trying to change array elements use Image.{attr}[:]=value instead. If trying to change the image being represented use Image.set_image(new_image).",
+            f"The {attr} attribute should not be directly assigned to a new object. If trying to change array elements use Image.{attr}[:]=other_image instead. If trying to change the image being represented use Image.set_image(new_image).",
         )
 
 
@@ -188,7 +188,7 @@ class InvalidHsvSchemaError(AttributeError):
 
 # Mutable component exceptions
 class ArrayKeyValueShapeMismatchError(ValueError):
-    """Exception raised when the shape of the value doesn't match the key's section."""
+    """Exception raised when the shape of the other_image doesn't match the key's section."""
 
     def __init__(self):
         super().__init__("The shape of the array being set does not match the shape of the section indicated being accessed")
@@ -203,7 +203,7 @@ class InputShapeMismatchError(ValueError):
 
 # Mask exceptions
 class InvalidMaskValueError(ValueError):
-    """Exception raised when trying to set mask with invalid value type."""
+    """Exception raised when trying to set mask with invalid other_image type."""
 
     def __init__(self, value_type):
         super().__init__(
@@ -212,15 +212,15 @@ class InvalidMaskValueError(ValueError):
 
 
 class InvalidMaskScalarValueError(ValueError):
-    """Exception raised when trying to set mask with invalid scalar value."""
+    """Exception raised when trying to set mask with invalid scalar other_image."""
 
     def __init__(self):
-        super().__init__("The scalar value could not be converted to a boolean value. If value is an integer, it should be either 0 or 1.")
+        super().__init__("The scalar other_image could not be converted to a boolean other_image. If other_image is an integer, it should be either 0 or 1.")
 
 
 # Object map exceptions
 class InvalidMapValueError(ValueError):
-    """Exception raised when trying to set object map with invalid value type."""
+    """Exception raised when trying to set object map with invalid other_image type."""
 
     def __init__(self, value_type):
         super().__init__(
@@ -251,7 +251,7 @@ class MetadataKeySpacesError(TypeError):
 
 
 class MetadataValueNonScalarError(TypeError):
-    """Exception raised when metadata value is not scalar."""
+    """Exception raised when metadata other_image is not scalar."""
 
     def __init__(self, type_value):
         super().__init__(f"The metadata values should be scalar values. Got type {type_value}.")

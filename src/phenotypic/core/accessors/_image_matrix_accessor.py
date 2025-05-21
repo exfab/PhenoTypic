@@ -42,11 +42,13 @@ class ImageMatrix(ImageDataAccessor):
             numpy.ndarray: A normalized and copied matrix derived from
             the parent image's data.
         """
+        assert self._parent_image._data.matrix.dtype == self._parent_image._MATRIX_STORAGE_DTYPE, "Data type mismatch"
         return self._parent_image._matrix_dtype2norm(self._parent_image._data.matrix.copy())
 
     @__matrix.setter
     def __matrix(self, value):
         assert np.array_equal(self._parent_image._data.matrix.shape, value.shape), "Shape of matrix does not match parent image"
+        assert value.dtype == np.float64, "Matrix must be of type float64"
         self._parent_image._data.matrix[:] = self._parent_image._matrix_norm2dtype(value)
 
     def __getitem__(self, key) -> np.ndarray:
@@ -68,16 +70,16 @@ class ImageMatrix(ImageDataAccessor):
 
     def __setitem__(self, key, value):
         """
-        Sets the value for a given key in the parent image's matrix. Changes are not reflected in the color matrix,
+        Sets the other_image for a given key in the parent image's matrix. Changes are not reflected in the color matrix,
         and any objects detected are reset.
 
         Args:
             key: The key in the matrix to update.
-            value: The new value to assign to the key. Must be an array of a compatible
+            value: The new other_image to assign to the key. Must be an array of a compatible
                 shape or a primitive type like int, float, or bool.
 
         Raises:
-            ArrayKeyValueShapeMismatchError: If the shape of the value does not match
+            ArrayKeyValueShapeMismatchError: If the shape of the other_image does not match
                 the shape of the existing key in the parent image's matrix.
         """
         if isinstance(value, (np.ndarray, int, float)):
@@ -85,7 +87,7 @@ class ImageMatrix(ImageDataAccessor):
                 if self._parent_image._data.matrix[key].shape != value.shape:
                     raise ArrayKeyValueShapeMismatchError
 
-            # the input value is expected to be normalized, but data is stored in uint format to reduce memory footprint
+            # the input other_image is expected to be normalized, but data is stored in uint format to reduce memory footprint
             normalized_matrix = self.__matrix
             normalized_matrix[key] = value
             self.__matrix = normalized_matrix
@@ -131,7 +133,7 @@ class ImageMatrix(ImageDataAccessor):
 
         Args:
             figsize (Tuple[int, int]): A tuple specifying the width and height of the created
-                figure in inches. Default value is (10, 5).
+                figure in inches. Default other_image is (10, 5).
 
         Returns:
             Tuple[plt.Figure, np.ndarray]: Returns a matplotlib Figure object containing
