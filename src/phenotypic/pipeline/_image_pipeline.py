@@ -65,12 +65,16 @@ class ImagePipeline(ImageOperation):
                 to `False`.
         """
         img = image if inplace else image.copy()
-        for key in self._operational_queue.keys():
-            sig = inspect.signature(self._operational_queue[key].apply)
-            if 'inplace' in sig.parameters:
-                self._operational_queue[key].apply(img, inplace=True)
-            else:
-                img = self._operational_queue[key].apply(img)
+        for key, func in self._operational_queue.items():
+            try:
+                sig = inspect.signature(self._operational_queue[key].apply)
+                if 'inplace' in sig.parameters:
+                    self._operational_queue[key].apply(img, inplace=True)
+                else:
+                    img = self._operational_queue[key].apply(img)
+            except Exception as e:
+                raise Exception(f'Failed to apply {func} to image {img.name}: {e}') from e
+
         return img
 
     def measure(self, image: Image, inplace: bool = False) -> pd.DataFrame:

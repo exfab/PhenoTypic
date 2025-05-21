@@ -171,8 +171,8 @@ class ImageHandler:
                     'The image being set must be of the same shape as the image elements being accessed.',
                 )
             else:
-                self._data.matrix[key] = value.matrix[:]
-                self._data.enh_matrix[key] = value.enh_matrix[:]
+                self._data.matrix[key] = value._data.matrix[:]
+                self._data.enh_matrix[key] = value._data.enh_matrix[:]
                 self.objmask[key] = value.objmask[:]
 
     def __eq__(self, other) -> bool:
@@ -652,7 +652,8 @@ class ImageHandler:
 
     def _matrix_dtype2norm(self, matrix):
         if matrix.dtype != self._MATRIX_STORAGE_DTYPE:
-            warnings.warn(f'Possible Integrity Error: Image dtype {matrix.dtype} does not match the expected dtype {self._MATRIX_STORAGE_DTYPE}.')
+            raise RuntimeError(f'Integrity Error: Image dtype {matrix.dtype} does not match the expected dtype {self._MATRIX_STORAGE_DTYPE}.')
+            # warnings.warn(f'Possible Integrity Error: Image dtype {matrix.dtype} does not match the expected dtype {self._MATRIX_STORAGE_DTYPE}.')
         max_val = np.iinfo(self._MATRIX_STORAGE_DTYPE).max
         return np.clip(matrix.astype(np.float64) / max_val, a_min=0.0, a_max=1.0)
 
