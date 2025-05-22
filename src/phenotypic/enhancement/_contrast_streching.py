@@ -7,9 +7,9 @@ from .. import Image
 
 class ContrastStretching(ImageEnhancer):
     """
-    Performs contrast stretching on an image to enhance its visual quality.
+    Performs contrast stretching on an _parent_image to enhance its visual quality.
 
-    Contrast stretching is a technique used to improve the contrast in the image by
+    Contrast stretching is a technique used to improve the contrast in the _parent_image by
     redistributing the range of pixel intensity values. This class allows adjustment
     of the intensity range using lower and upper percentiles of pixel values, enabling
     fine-tuning of contrast enhancement for different types of images.

@@ -12,11 +12,11 @@ from phenotypic.util.exceptions_ import InvalidMaskValueError, InvalidMaskScalar
 
 
 class ObjectMask(ImageDataAccessor):
-    """Represents a binary object mask linked to a parent image.
+    """Represents a binary object mask linked to a parent _parent_image.
 
-    This class allows for manipulation and analysis of a binary object mask associated with a parent image. It provides
+    This class allows for manipulation and analysis of a binary object mask associated with a parent _parent_image. It provides
     functionality to access, modify, display, and extract object regions of the mask. The object mask is tightly linked
-    to the parent image, which is used as the source for the binary map.
+    to the parent _parent_image, which is used as the source for the binary map.
 
     Note:
         - Changes to the object mask will reset the labeling of the object map.
@@ -54,10 +54,10 @@ class ObjectMask(ImageDataAccessor):
     @property
     def shape(self):
         """
-        Represents the shape of a parent image's omap property.
+        Represents the shape of a parent _parent_image's omap property.
 
         This property is a getter for retrieving the shape of the `omap` attribute
-        of the associated parent image.
+        of the associated parent _parent_image.
 
         Returns:
             The shape of the object map
@@ -70,8 +70,8 @@ class ObjectMask(ImageDataAccessor):
 
     def reset(self):
         """
-        Resets the overlay map (omap) tied to the parent image. This function interacts with
-        the `omap` object contained within the parent image, delegating the reset operation
+        Resets the overlay map (omap) tied to the parent _parent_image. This function interacts with
+        the `omap` object contained within the parent _parent_image, delegating the reset operation
         to it.
 
         """
@@ -84,7 +84,7 @@ class ObjectMask(ImageDataAccessor):
              ) -> (plt.Figure, plt.Axes):
         """Display the boolean object mask with matplotlib.
 
-        Calls object_map linked by the image handler
+        Calls object_map linked by the _parent_image handler
 
         Args:
             ax: (plt.Axes) Axes object to use for plotting.

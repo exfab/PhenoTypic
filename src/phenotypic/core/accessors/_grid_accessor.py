@@ -19,18 +19,18 @@ from phenotypic.util.exceptions_ import NoObjectsError
 
 
 class GridAccessor(ImageAccessor):
-    """A class for accessing and manipulating grid-based data from a parent image object.
+    """A class for accessing and manipulating grid-based data from a parent _parent_image object.
 
-    This class is designed to facilitate operations on grid structures within a parent image. It provides methods
+    This class is designed to facilitate operations on grid structures within a parent _parent_image. It provides methods
     for determining grid properties such as the number of rows and columns, retrieving grid-related information,
-    and performing visualizations. The use of a parent image ensures that the grid operations are closely tied
+    and performing visualizations. The use of a parent _parent_image ensures that the grid operations are closely tied
     to a specific data context.
 
     Args:
-        parent_image (GridImage): The parent image object which provides data and attributes to the grid accessor.
+        parent_image (GridImage): The parent _parent_image object which provides data and attributes to the grid accessor.
 
     Attributes:
-        _parent_image (GridImage): Internal reference to the parent image object, used to derive grid data
+        _parent_image (GridImage): Internal reference to the parent _parent_image object, used to derive grid data
             and perform grid-related operations.
     """
 
@@ -65,7 +65,7 @@ class GridAccessor(ImageAccessor):
 
         Returns:
             pd.DataFrame: A DataFrame with measurement data derived from the
-            parent's image grid settings.
+            parent's _parent_image grid settings.
         """
         return self._parent_image._grid_setter.measure(self._parent_image)
 
@@ -79,7 +79,7 @@ class GridAccessor(ImageAccessor):
         Returns a crop of the grid section based on its flattened index.
 
         The grid is ordered from left to right, top to bottom. If no objects
-        are present in the parent image, the original image is returned.
+        are present in the parent _parent_image, the original _parent_image is returned.
 
         Args:
             idx (int): The flattened index of the grid section to be
@@ -87,7 +87,7 @@ class GridAccessor(ImageAccessor):
 
         Returns:
             phenotypic.Image: The cropped grid section as defined by the
-            given flattened index, or the original parent image if no
+            given flattened index, or the original parent _parent_image if no
             objects are present.
         """
         if self._parent_image.objects.num_objects != 0:
@@ -309,10 +309,10 @@ class GridAccessor(ImageAccessor):
         """Returns the exact slices of a grid section based on its flattened index
 
         Note:
-            - Can crop objects in the image
+            - Can crop objects in the _parent_image
 
         Return:
-            (int, int, int, int): ((MinRow, MinCol), (MaxRow, MaxCol)) The slices to extract the grid section from the image.
+            (int, int, int, int): ((MinRow, MinCol), (MaxRow, MaxCol)) The slices to extract the grid section from the _parent_image.
         """
         row_edges, col_edges = self.get_row_edges(), self.get_col_edges()
         row_pos, col_pos = np.where(self._idx_ref_matrix == idx)
@@ -326,10 +326,10 @@ class GridAccessor(ImageAccessor):
         """Returns the slices of a grid section based on its flattened index, and accounts for objects boundaries.
 
             Note:
-                - Can crop objects in the image
+                - Can crop objects in the _parent_image
 
             Return:
-                (int, int, int, int): ((MinRow, MinCol), (MaxRow, MaxCol)) The slices to extract the grid section from the image.
+                (int, int, int, int): ((MinRow, MinCol), (MaxRow, MaxCol)) The slices to extract the grid section from the _parent_image.
         """
         grid_min, grid_max = self._naive_get_grid_section_slices(idx)
         grid_min_rr, grid_min_cc = grid_min

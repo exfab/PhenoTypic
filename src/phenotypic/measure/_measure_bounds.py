@@ -12,7 +12,7 @@ from ..util.constants_ import OBJECT
 
 class MeasureBounds(MeasureFeatures):
     """
-    Extracts the object boundary coordinate info within the image using the object map
+    Extracts the object boundary coordinate info within the _parent_image using the object map
     """
 
     def _operate(self, image: Image) -> pd.DataFrame:

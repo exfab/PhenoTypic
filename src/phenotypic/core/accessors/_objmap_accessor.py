@@ -15,10 +15,10 @@ from phenotypic.util.exceptions_ import UnknownError, ArrayKeyValueShapeMismatch
 
 
 class ObjectMap(ImageDataAccessor):
-    """Manages an object map for labeled regions in an image.
+    """Manages an object map for labeled regions in an _parent_image.
 
     This class provides a mechanism to manipulate and access labeled object maps
-    within a given image. It is tightly coupled with the parent image object and
+    within a given _parent_image. It is tightly coupled with the parent _parent_image object and
     provides methods for accessing sparse and dense representations, relabeling,
     resetting, and visualization.
 
@@ -32,7 +32,7 @@ class ObjectMap(ImageDataAccessor):
 
     @property
     def _labels(self):
-        """Returns the labels in the image.
+        """Returns the labels in the _parent_image.
 
                We considered using a simple numpy.unique() call on the object map, but wanted to guarantee that the labels will always be consistent
                with any skimage version outputs.
@@ -42,7 +42,7 @@ class ObjectMap(ImageDataAccessor):
             'label']
 
     def __getitem__(self, key):
-        """Returns a copy of the object_map of the image. If there are no objects, this is a matrix with all values set to 1 and the same shape as the iamge matrix."""
+        """Returns a copy of the object_map of the _parent_image. If there are no objects, this is a matrix with all values set to 1 and the same shape as the iamge matrix."""
         if self._num_objects > 0:
             return self._parent_image._data.sparse_object_map.toarray()[key]
         elif self._num_objects == 0:
@@ -67,7 +67,7 @@ class ObjectMap(ImageDataAccessor):
         else:
             raise InvalidMapValueError
 
-        # Protects against the case that the obj map is set on the filled mask that returns when no objects are in the image
+        # Protects against the case that the obj map is set on the filled mask that returns when no objects are in the _parent_image
         if 0 not in dense:
             dense = clear_border(dense, buffer_size=0, bgval=1)
 
@@ -96,7 +96,7 @@ class ObjectMap(ImageDataAccessor):
         """
         Displays the object map using matplotlib's imshow.
 
-        This method visualizes the object map from the parent image instance.
+        This method visualizes the object map from the parent _parent_image instance.
         It offers customization options, including figure size, title, colormap, and matplotlib
         parameters, leveraging matplotlib's plotting capabilities.
 

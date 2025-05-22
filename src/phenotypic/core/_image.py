@@ -2,11 +2,11 @@ from .handlers._image_io_handler import ImageIOHandler
 
 
 class Image(ImageIOHandler):
-    """A comprehensive class for handling image processing, including manipulation, information sync, metadata management, and format conversion.
+    """A comprehensive class for handling _parent_image processing, including manipulation, information sync, metadata management, and format conversion.
 
-    The `Image` class is designed to load, process, and manage image data using different
+    The `Image` class is designed to load, process, and manage _parent_image data using different
     representation formats (e.g., arrays and matrices). This class allows for metadata editing,
-    schema definition, and subcomponent handling to streamline image processing tasks.
+    schema definition, and subcomponent handling to streamline _parent_image processing tasks.
 
     Note:
         - If the input_image is 2-D, the ImageHandler leaves the array form as empty

@@ -178,16 +178,16 @@ class ImageIOHandler(ImageHsvHandler):
     @classmethod
     def imread(cls, filepath: PathLike) -> Image:
         """
-        Reads an image file from a given file path, processes it as per its format, and sets the image
+        Reads an _parent_image file from a given file path, processes it as per its format, and sets the _parent_image
         along with its schema in the current instance. Supports RGB formats (png, jpg, jpeg) and
-        grayscale formats (tif, tiff). The name of the image processing instance is updated to match
+        grayscale formats (tif, tiff). The name of the _parent_image processing instance is updated to match
         the file name without the extension. If the file format is unsupported, an exception is raised.
 
         Args:
-            filepath (PathLike): Path to the image file to be read.
+            filepath (PathLike): Path to the _parent_image file to be read.
 
         Returns:
-            Type[Image]: The current instance with the newly loaded image and schema.
+            Type[Image]: The current instance with the newly loaded _parent_image and schema.
 
         Raises:
             UnsupportedFileType: If the file format is not supported.

@@ -10,7 +10,7 @@ from phenotypic.util.exceptions_ import InterfaceError, OperationFailedError
 
 
 class ImageCorrector(ImageOperation):
-    """ImageCorrectors are for general operations that alter every image component such as rotating.
+    """ImageCorrectors are for general operations that alter every _parent_image component such as rotating.
     These have no integrity checks due to every component being altered by the operation..
 
     """

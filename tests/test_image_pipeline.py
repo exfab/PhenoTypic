@@ -78,7 +78,7 @@ def test_kmarx_pipeline_pickleable(plate_grid_images):
 def test_watershed_kmarx_pipeline_pickleable(plate_grid_images):
     import pickle
     kmarx_pipeline = ImagePipeline(
-        processing_queue={
+        op_queue={
             'blur': GaussianSmoother(sigma=5),
             'clahe': CLAHE(),
             'median filter': MedianEnhancer(),
@@ -102,7 +102,7 @@ def test_watershed_kmarx_pipeline_pickleable(plate_grid_images):
 def test_watershed_kmarx_pipeline_with_measurements_pickleable(plate_grid_images):
     import pickle
     kmarx_pipeline = ImagePipeline(
-        processing_queue={
+        op_queue={
             'blur': GaussianSmoother(sigma=5),
             'clahe': CLAHE(),
             'median filter': MedianEnhancer(),

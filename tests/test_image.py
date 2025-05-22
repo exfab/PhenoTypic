@@ -20,12 +20,12 @@ def test_empty_image():
 @timeit
 def test_set_image_from_array(sample_image_array_with_imformat):
     """
-    Tests the functionality of setting an image from an array and verifies the
-    image properties such as shape, non-emptiness, and proper initialization.
+    Tests the functionality of setting an _parent_image from an array and verifies the
+    _parent_image properties such as shape, non-emptiness, and proper initialization.
 
     Args:
-        sample_images: A tuple containing the input_image image array, input_image image
-            format, and the expected true image format.
+        sample_images: A tuple containing the input_image _parent_image array, input_image _parent_image
+            format, and the expected true _parent_image format.
     """
     input_image, input_imformat, true_imformat = sample_image_array_with_imformat
     phenotypic_image = phenotypic.Image()
@@ -39,14 +39,14 @@ def test_set_image_from_array(sample_image_array_with_imformat):
 def test_set_image_from_image(sample_image_array_with_imformat):
     """
     Tests the `set_image` method of the `Image` class from the `phenotypic` package. The function
-    validates that an image can be set from another `Image` instance or raw input_image data, with
+    validates that an _parent_image can be set from another `Image` instance or raw input_image data, with
     properties and states intact.
 
     Args:
         sample_image_inputs: A tuple containing the following:
-            input_image: The input_image image as a NumPy array.
-            input_imformat: The format of the input_image image as a string.
-            true_imformat: The expected image format as a string.
+            input_image: The input_image _parent_image as a NumPy array.
+            input_imformat: The format of the input_image _parent_image as a string.
+            true_imformat: The expected _parent_image format as a string.
     """
     input_image, input_imformat, true_imformat = sample_image_array_with_imformat
     phenotypic_image = phenotypic.Image()
@@ -109,7 +109,7 @@ def test_image_object_mask_access(sample_image_array_with_imformat):
     input_image, input_imformat, true_imformat = sample_image_array_with_imformat
     ps_image = phenotypic.Image(input_image=input_image, imformat=input_imformat)
 
-    # When no objects in image
+    # When no objects in _parent_image
     assert np.array_equal(ps_image.objmask[:], np.full(shape=ps_image.matrix.shape, fill_value=True))
 
     ps_image.objmask[:10, :10] = 0
@@ -123,7 +123,7 @@ def test_image_object_map_access(sample_image_array_with_imformat):
     input_image, input_imformat, true_imformat = sample_image_array_with_imformat
     ps_image = phenotypic.Image(input_image=input_image, imformat=input_imformat)
 
-    # When no objects in image
+    # When no objects in _parent_image
     assert np.array_equal(ps_image.objmap[:], np.full(shape=ps_image.matrix.shape, fill_value=1, dtype=np.uint32))
     assert ps_image.num_objects == 0
 

@@ -12,9 +12,9 @@ from phenotypic.util.constants_ import GRID, GRID_LINREG_STATS_EXTRACTOR
 
 class LinRegResidualOutlierRemover(GridMapModifier):
     """
-    Identifies and removes linear regression residual outliers in a grid-based image.
+    Identifies and removes linear regression residual outliers in a grid-based _parent_image.
 
-    This class is designed to analyze the variance of each row and column in a grid-based image.
+    This class is designed to analyze the variance of each row and column in a grid-based _parent_image.
     Rows or columns with variances exceeding a specified maximum threshold are analyzed further for
     residual outliers using linear regression. Objects with residuals above the defined cutoff
     (mean + standard deviation * multiplier) are considered outliers and removed. This is useful for

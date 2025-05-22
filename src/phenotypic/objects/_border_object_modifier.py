@@ -6,7 +6,7 @@ from phenotypic.abstract import MapModifier
 
 
 class BorderObjectRemover(MapModifier):
-    """Removes objects at the border of the image within a certain distance.
+    """Removes objects at the border of the _parent_image within a certain distance.
 
     """
     def __init__(self, border_size: Optional[Union[int, float]] = None):

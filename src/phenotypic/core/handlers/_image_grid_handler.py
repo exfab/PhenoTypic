@@ -23,16 +23,16 @@ class ImageGridHandler(Image):
     This class extends the base `Image` class functionality to include grid handling,
     grid-based slicing, and advanced visualization capabilities such as displaying overlay information
     with gridlines and annotations. It interacts with the provided grid handling utilities
-    to determine grid structure and assign/overlay it effectively on the image.
+    to determine grid structure and assign/overlay it effectively on the _parent_image.
 
     Args:
             input_image (Optional[Union[np.ndarray, Type[Image]]]): The input_image
-                image, which can be a NumPy array or an image-like object. If
+                _parent_image, which can be a NumPy array or an _parent_image-like object. If
                 this parameter is not provided, it defaults to None.
             imformat (str): A string representing the schema of the input_image
-                image. It defaults to None if not provided.
+                _parent_image. It defaults to None if not provided.
             grid_finder (Optional[GridFinder]): An optional GridFinder instance
-                for defining grids on the image. If not provided, it defaults to
+                for defining grids on the _parent_image. If not provided, it defaults to
                 a center grid setter.
             nrows (int): An integer passed to the grid setter to specify the number of rows in the grid
                 (Defaults to 8).
@@ -41,28 +41,28 @@ class ImageGridHandler(Image):
 
     Attributes:
         _grid_setter (Optional[GridFinder]): An object responsible for defining and optimizing the grid
-            layout over the image, defaulting to an `OptimalCenterGridSetter` instance if none is provided.
+            layout over the _parent_image, defaulting to an `OptimalCenterGridSetter` instance if none is provided.
         _accessors.grid (GridAccessor): An internal utility for managing grid-based operations such as
-            accessing row and column edges and generating section maps for the image's grid system.
+            accessing row and column edges and generating section maps for the _parent_image's grid system.
     """
 
     def __init__(self, input_image: Optional[Union[np.ndarray, Image]] = None, imformat: str = None,
                  grid_finder: Optional[GridFinder] = None,
                  nrows: int = 8, ncols: int = 12):
         """
-        Represents an image processor with grid management capabilities. This class
-        is initialized with an image, schema, and optional grid settings. It manages
-        grids on the image and provides utility functions for grid-related
+        Represents an _parent_image processor with grid management capabilities. This class
+        is initialized with an _parent_image, schema, and optional grid settings. It manages
+        grids on the _parent_image and provides utility functions for grid-related
         operations.
 
         Args:
             input_image (Optional[Union[np.ndarray, Type[Image]]]): The input_image
-                image, which can be a NumPy array or an image-like object. If
+                _parent_image, which can be a NumPy array or an _parent_image-like object. If
                 this parameter is not provided, it defaults to None.
             imformat (str): A string representing the schema of the input_image
-                image. It defaults to None if not provided.
+                _parent_image. It defaults to None if not provided.
             grid_finder (Optional[GridFinder]): An optional GridFinder instance
-                for defining grids on the image. If not provided, it defaults to
+                for defining grids on the _parent_image. If not provided, it defaults to
                 a center grid setter.
             nrows (int): An integer specifying the number of rows in the grid.
                 Defaults to 8.
@@ -95,10 +95,10 @@ class ImageGridHandler(Image):
         raise IllegalAssignmentError('grid')
 
     def __getitem__(self, key) -> Image:
-        """Returns a copy of the image at the slices specified as a regular Image object.
+        """Returns a copy of the _parent_image at the slices specified as a regular Image object.
 
         Returns:
-            Image: A copy of the image at the slices indicated
+            Image: A copy of the _parent_image at the slices indicated
         """
         if self._image_format.is_array():
             subimage = Image(input_image=self.array[key], imformat=self.imformat)
