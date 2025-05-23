@@ -26,3 +26,5 @@ docs/build/doctrees/*
 docs/build/jupyter_execute/*
 **.$**.bkp
 ./docs/build
+docs/build
+.run/
