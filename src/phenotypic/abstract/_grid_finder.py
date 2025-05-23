@@ -6,12 +6,11 @@ if TYPE_CHECKING: from phenotypic import Image
 import pandas as pd
 import numpy as np
 
-from phenotypic.abstract import FeatureMeasure
-from phenotypic.abstract import GridOperation
-from phenotypic.util.constants_ import OBJECT_INFO, GRID
+from phenotypic.abstract import GridMeasureFeatures
+from phenotypic.util.constants_ import OBJECT, GRID
 
 
-class GridFinder(FeatureMeasure, GridOperation):
+class GridFinder(GridMeasureFeatures):
     """
     GridFinder measures grid information from the objects in various ways. Using the names here allows for streamlined integration.
     Unlike other Grid series interfaces, GridExtractors can work on regular images and should not be dependent on the GridImage class.
@@ -22,12 +21,8 @@ class GridFinder(FeatureMeasure, GridOperation):
 
     """
 
-    def __init__(self, nrows: int, ncols: int):
-        self.nrows = nrows
-        self.ncols = ncols
-
     def _operate(self, image: Image) -> pd.DataFrame:
-        pass
+        return pd.DataFrame()
 
     def _naive_grid_finding(self, image: Image) -> pd.DataFrame:
         pass
@@ -39,7 +34,7 @@ class GridFinder(FeatureMeasure, GridOperation):
     def _add_row_number_info(self, table: pd.DataFrame, row_edges: np.array, imshape: (int, int)) -> pd.DataFrame:
         row_edges = self._clip_row_edges(row_edges=row_edges, imshape=imshape)
         table.loc[:, GRID.GRID_ROW_NUM] = pd.cut(
-            table.loc[:, OBJECT_INFO.CENTER_RR],
+            table.loc[:, OBJECT.CENTER_RR],
             bins=row_edges,
             labels=range(self.nrows),
             include_lowest=True,
@@ -50,7 +45,7 @@ class GridFinder(FeatureMeasure, GridOperation):
     def _add_row_interval_info(self, table: pd.DataFrame, row_edges: np.array, imshape: (int, int)) -> pd.DataFrame:
         row_edges = self._clip_row_edges(row_edges=row_edges, imshape=imshape)
         table.loc[:, GRID.GRID_ROW_INTERVAL] = pd.cut(
-            table.loc[:, OBJECT_INFO.CENTER_RR],
+            table.loc[:, OBJECT.CENTER_RR],
             bins=row_edges,
             labels=[(int(row_edges[i]), int(row_edges[i + 1])) for i in range(len(row_edges) - 1)],
             include_lowest=True,
@@ -65,7 +60,7 @@ class GridFinder(FeatureMeasure, GridOperation):
     def _add_col_number_info(self, table: pd.DataFrame, col_edges: np.array, imshape: (int, int)) -> pd.DataFrame:
         col_edges = self._clip_col_edges(col_edges=col_edges, imshape=imshape)
         table.loc[:, GRID.GRID_COL_NUM] = pd.cut(
-            table.loc[:, OBJECT_INFO.CENTER_CC],
+            table.loc[:, OBJECT.CENTER_CC],
             bins=col_edges,
             labels=range(self.ncols),
             include_lowest=True,
@@ -76,7 +71,7 @@ class GridFinder(FeatureMeasure, GridOperation):
     def _add_col_interval_info(self, table: pd.DataFrame, col_edges: np.array, imshape: (int, int)) -> pd.DataFrame:
         col_edges = self._clip_col_edges(col_edges=col_edges, imshape=imshape)
         table.loc[:, GRID.GRID_COL_INTERVAL] = pd.cut(
-            table.loc[:, OBJECT_INFO.CENTER_CC],
+            table.loc[:, OBJECT.CENTER_CC],
             bins=col_edges,
             labels=[(int(col_edges[i]), int(col_edges[i + 1])) for i in range(len(col_edges) - 1)],
             include_lowest=True,

@@ -16,97 +16,98 @@ from warnings import warn
 
 
 class ImageMatrix(ImageDataAccessor):
-    """An accessor for managing and visualizing image matrix data. This is the greyscale representation converted using weighted luminance
+    """An accessor for managing and visualizing _parent_image matrix data. This is the greyscale representation converted using weighted luminance
 
-    This class provides a set of tools to access image data, analyze it through
+    This class provides a set of tools to access _parent_image data, analyze it through
     histograms, and visualize results. The class utilizes a parent
     Image object to interact with the underlying matrix data while
     maintaining immutability for direct external modifications.
-    Additionally, it supports overlaying annotations and labels on the image
+    Additionally, it supports overlaying annotations and labels on the _parent_image
     for data analysis purposes.
     """
 
     def __getitem__(self, key) -> np.ndarray:
         """
-        Provides functionality to retrieve a copy of a specified portion of the parent image's
-        matrix. This class method is used to access the image matrix data, or slices of the parent image
+        Provides functionality to retrieve a copy of a specified portion of the parent _parent_image's
+        matrix. This class method is used to access the _parent_image matrix data, or slices of the parent _parent_image
         matrix based on the provided key.
 
         Args:
-            key (any): A key used to index or slice the parent image's matrix.
+            key (any): A key used to index or slice the parent _parent_image's matrix.
 
         Returns:
-            np.ndarray: A copy of the accessed subset of the parent image's matrix.
+            np.ndarray: A copy of the accessed subset of the parent _parent_image's matrix with normalized values.
         """
         if self.isempty():
             raise EmptyImageError
         else:
-            return self._parent_image._data.matrix[key].copy()
+            norm_matrix = self._dtype2norm(self._parent_image._data.matrix)
+            assert norm_matrix.dtype == np.float64, 'Normalized matrix should be of type float64'
+            return norm_matrix[key]
 
     def __setitem__(self, key, value):
         """
-        Sets the value for a given key in the parent image's matrix. Changes are not reflected in the color matrix,
+        Sets the other_image for a given key in the parent _parent_image's matrix. Changes are not reflected in the color matrix,
         and any objects detected are reset.
 
         Args:
             key: The key in the matrix to update.
-            value: The new value to assign to the key. Must be an array of a compatible
+            value: The new other_image to assign to the key. Must be an array of a compatible
                 shape or a primitive type like int, float, or bool.
 
         Raises:
-            ArrayKeyValueShapeMismatchError: If the shape of the value does not match
-                the shape of the existing key in the parent image's matrix.
+            ArrayKeyValueShapeMismatchError: If the shape of the other_image does not match
+                the shape of the existing key in the parent _parent_image's matrix.
         """
-        if isinstance(value, (np.ndarray, int, float)):
-            if isinstance(value, np.ndarray):
-                if self._parent_image._data.matrix[key].shape != value.shape:
-                    raise ArrayKeyValueShapeMismatchError
-
-            self._parent_image._data.matrix[key] = value
-            self._parent_image.enh_matrix.reset()
-            self._parent_image.objmap.reset()
+        if isinstance(value, np.ndarray):
+            if self._parent_image._data.matrix[key].shape != value.shape: raise ArrayKeyValueShapeMismatchError
+            value = self._norm2dtype(value)
+        elif isinstance(value, (int, float)):
+            value = self._dtype(value)
         else:
             raise TypeError(f'Unsupported type for setting the matrix. Value should be scalar or a numpy array: {type(value)}')
 
-
+        self._parent_image._data.matrix[key] = value
+        self._parent_image.enh_matrix.reset()
+        self._parent_image.objmap.reset()
 
     @property
     def shape(self) -> tuple:
         """
-        Returns the shape of the parent image matrix.
+        Returns the shape of the parent _parent_image matrix.
 
         This property retrieves the dimensions of the associated matrix from the
-        parent image that this object references.
+        parent _parent_image that this object references.
 
         Returns:
-            tuple: A tuple representing the shape of the parent image's matrix.
+            tuple: A tuple representing the shape of the parent _parent_image's matrix.
         """
         return self._parent_image._data.matrix.shape
 
     def copy(self) -> np.ndarray:
         """
-        Returns a copy of the matrix from the parent image.
+        Returns a copy of the matrix from the parent _parent_image.
 
-        This method retrieves a copy of the parent image matrix, ensuring
+        This method retrieves a copy of the parent _parent_image matrix, ensuring
         that modifications to the returned matrix do not affect the original
-        data in the parent image's matrix.
+        data in the parent _parent_image's matrix.
 
         Returns:
-            np.ndarray: A deep copy of the parent image matrix.
+            np.ndarray: A deep copy of the parent _parent_image matrix.
         """
-        return self._parent_image._data.matrix.copy()
+        return self[:].copy()
 
     def histogram(self, figsize: Tuple[int, int] = (10, 5)) -> Tuple[plt.Figure, np.ndarray]:
         """
-        Generates a 2x2 subplot figure that includes the parent image and its grayscale histogram.
+        Generates a 2x2 subplot figure that includes the parent _parent_image and its grayscale histogram.
 
         This method creates a subplot layout with 2 rows and 2 columns. The first subplot
-        displays the parent image. The second subplot displays the grayscale histogram
-        associated with the same image.
+        displays the parent _parent_image. The second subplot displays the grayscale histogram
+        associated with the same _parent_image.
 
         Args:
             figsize (Tuple[int, int]): A tuple specifying the width and height of the created
-                figure in inches. Default value is (10, 5).
+                figure in inches. Default other_image is (10, 5).
 
         Returns:
             Tuple[plt.Figure, np.ndarray]: Returns a matplotlib Figure object containing
@@ -114,7 +115,7 @@ class ImageMatrix(ImageDataAccessor):
         """
         fig, axes = plt.subplots(nrows=2, ncols=2, figsize=figsize)
         fig, axes[0] = self._plot(
-            arr=self._parent_image.matrix[:],
+            arr=self[:],
             figsize=figsize,
             ax=axes[0],
             title=self._parent_image.name,
@@ -122,7 +123,7 @@ class ImageMatrix(ImageDataAccessor):
             mpl_params=None,
         )
 
-        hist_one, histc_one = histogram(self._parent_image.matrix[:])
+        hist_one, histc_one = histogram(self[:])
         axes[1].plot(hist_one, histc_one, lw=2)
         axes[1].set_title('Grayscale Histogram')
         return fig, axes
@@ -130,17 +131,17 @@ class ImageMatrix(ImageDataAccessor):
     def show(self, ax: plt.Axes = None, figsize: Tuple[
         int, int] = None, cmap: str = 'gray', title: str = None, mpl_params: None | dict = None) -> (plt.Figure, plt.Axes):
         """
-        Displays the image matrix using Matplotlib with optional customization for figure size,
+        Displays the _parent_image matrix using Matplotlib with optional customization for figure size,
         color map, title, and Matplotlib parameters.
 
         Args:
-            ax (plt.Axes, optional): A Matplotlib Axes object on which to plot the image.
+            ax (plt.Axes, optional): A Matplotlib Axes object on which to plot the _parent_image.
                 If None, a new figure and axes are created. Defaults to None.
             figsize (Tuple[int, int], optional): Tuple defining the size of the figure
                 in inches. Defaults to (6, 4) if not provided.
-            cmap (str, optional): The colormap used for displaying the image. Defaults
+            cmap (str, optional): The colormap used for displaying the _parent_image. Defaults
                 to 'gray'.
-            title (str, optional): Title of the image plot. If None, no title is set. Defaults
+            title (str, optional): Title of the _parent_image plot. If None, no title is set. Defaults
                 to None.
             mpl_params (None | dict, optional): Additional Matplotlib parameters for
                 customizing the plot. Defaults to None.
@@ -156,7 +157,7 @@ class ImageMatrix(ImageDataAccessor):
 
         """
         return self._plot(
-            arr=self._parent_image.matrix[:],
+            arr=self[:],
             figsize=figsize,
             ax=ax,
             title=title,
@@ -176,9 +177,9 @@ class ImageMatrix(ImageDataAccessor):
             imshow_params: None | dict = None,
     ) -> (plt.Figure, plt.Axes):
         """
-        Displays an overlay visualization of a labeled image matrix and its annotations.
+        Displays an overlay visualization of a labeled _parent_image matrix and its annotations.
 
-        This method generates an overlay of a labeled image using the 'label2rgb'
+        This method generates an overlay of a labeled _parent_image using the 'label2rgb'
         function from skimage. It optionally annotates regions with their labels.
         Additional customization options are provided through parameters such
         as subplot size, title, annotation properties, and Matplotlib configuration.
@@ -209,7 +210,7 @@ class ImageMatrix(ImageDataAccessor):
         if annotation_params is None: annotation_params = {}
 
         fig, ax = self._plot_overlay(
-            arr=self._parent_image.matrix[:],
+            arr=self[:],
             objmap=objmap,
             figsize=figsize,
             title=title,

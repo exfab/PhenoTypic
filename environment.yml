@@ -10,7 +10,7 @@ dependencies:
   - matplotlib
   - numpy
   - pandas
-  - scikit-image
+  - scikit-_parent_image
   - scikit-learn
   - dash
   - joblib

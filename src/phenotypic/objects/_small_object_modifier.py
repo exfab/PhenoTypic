@@ -5,7 +5,7 @@ from .. import Image
 
 
 class SmallObjectRemover(MapModifier):
-    """Removes small objects from an image"""
+    """Removes small objects from an _parent_image"""
     def __init__(self, min_size=64):
         self.__min_size = min_size
 

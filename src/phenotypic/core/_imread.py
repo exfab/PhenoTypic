@@ -4,10 +4,10 @@ from pathlib import Path
 
 def imread(filepath: str):
     """
-    Reads an image from the specified file path using the `Image().imread` method.
+    Reads an _parent_image from the specified file path using the `Image().imread` method.
 
     Args:
-        filepath (str): The path to the image file to be read.
+        filepath (str): The path to the _parent_image file to be read.
 
     Returns:
         Image: An `Image` object containing the data read from the specified file.

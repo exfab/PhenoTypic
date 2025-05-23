@@ -19,18 +19,18 @@ class ImageHsvHandler(ImageHandler):
 
     def __init__(self, input_image: Optional[Union[np.ndarray, Image, PathLike]] = None, imformat: str = None, name: str = None):
         super().__init__(input_image=input_image, imformat=imformat, name=name)
-        self._accessors.hsv = HsvAccessor
+        self._accessors.hsv = HsvAccessor(self)
 
     @property
     def _hsv(self) -> np.ndarray:
-        """Returns the hsv array dynamically of the current image.
+        """Returns the hsv array dynamically of the current _parent_image.
 
         This can become computationally expensive, so implementation may be changed in the future.
 
         Returns:
-            np.ndarray: The hsv array of the current image.
+            np.ndarray: The hsv array of the current _parent_image.
         """
-        if self.imformat in IMAGE_FORMATS.MATRIX_FORMATS:
+        if self.imformat.is_matrix():
             raise AttributeError('Grayscale images cannot be directly converted to hsv. Convert to RGB first')
         else:
             match self.imformat:
@@ -44,7 +44,7 @@ class ImageHsvHandler(ImageHandler):
         """Returns the HSV accessor.
 
         This property returns an instance of the HsvAccessor associated with the
-        current object, allowing access to HSV (hue, saturation, value) related
+        current object, allowing access to HSV (hue, saturation, other_image) related
         functionalities controlled by this handler.
 
         Returns:

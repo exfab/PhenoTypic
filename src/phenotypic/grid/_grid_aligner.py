@@ -8,14 +8,14 @@ from scipy.spatial.distance import euclidean
 from scipy.optimize import minimize_scalar
 
 from phenotypic.abstract import GridCorrector
-from phenotypic.util.constants_ import OBJECT_INFO, GRID
+from phenotypic.util.constants_ import OBJECT, GRID
 
 
 class GridAligner(GridCorrector):
-    """Calculates the optimal gridding orientation based on the alignment of the objects in the image and rotates the image accordingly.
+    """Calculates the optimal gridding orientation based on the alignment of the objects in the _parent_image and rotates the _parent_image accordingly.
 
-    This class inherits from `GridCorrector` and is designed to calculate the optimal gridding orientation. This is used to align the image,
-    and helps to improve the quality of automated gridding results. It's highly recommended to redetect objects in the image after alignment.
+    This class inherits from `GridCorrector` and is designed to calculate the optimal gridding orientation. This is used to align the _parent_image,
+    and helps to improve the quality of automated gridding results. It's highly recommended to redetect objects in the _parent_image after alignment.
 
     """
 
@@ -24,30 +24,30 @@ class GridAligner(GridCorrector):
         self.mode = mode
 
     def _operate(self, image: GridImage):
-        """Calculates the optimal rotation angle and applies it to a grid image for alignment along the specified axis.
+        """Calculates the optimal rotation angle and applies it to a grid _parent_image for alignment along the specified axis.
 
         The method performs alignment of a `GridImage` object along either rows or columns based on the specified
         axis. It calculates the linear regression slope and intercept for the axis, determines geometric properties of the grid
-        vertices, and computes rotation angles needed to align the image. The optimal angle is found by minimizing the error
-        across all computed angles, and the image is rotated accordingly.
+        vertices, and computes rotation angles needed to align the _parent_image. The optimal angle is found by minimizing the error
+        across all computed angles, and the _parent_image is rotated accordingly.
 
         Raises:
             ValueError: If the axis is not 0 (row-wise) or 1 (column-wise).
 
         Args:
-            image (ImageGridHandler): The input_image grid image object to be aligned.
+            image (ImageGridHandler): The input_image grid _parent_image object to be aligned.
 
         Returns:
-            ImageGridHandler: The rotated grid image object after alignment.
+            ImageGridHandler: The rotated grid _parent_image object after alignment.
         """
         if self.axis == 0:
-            # If performing row-wise alignment, the x value is the cc value
+            # If performing row-wise alignment, the x other_image is the cc other_image
             x_group = GRID.GRID_ROW_NUM
-            x_val = OBJECT_INFO.CENTER_CC
+            x_val = OBJECT.CENTER_CC
         elif self.axis == 1:
-            # If performing column-wise alignment, the x value is the rr value
+            # If performing column-wise alignment, the x other_image is the rr other_image
             x_group = GRID.GRID_COL_NUM
-            x_val = OBJECT_INFO.CENTER_RR
+            x_val = OBJECT.CENTER_RR
         else:
             raise ValueError('Axis must be either 0 or 1')
 
@@ -58,12 +58,12 @@ class GridAligner(GridCorrector):
         # Collect the X position of the vertices
         x_min = grid_info.groupby(x_group, observed=True)[x_val].min().to_numpy()
 
-        y_0 = (x_min * m) + b  # Find the corresponding y-value at the above x values
+        y_0 = (x_min * m) + b  # Find the corresponding y-other_image at the above x values
 
-        # Find the x value of the upper ray
+        # Find the x other_image of the upper ray
         x_max = grid_info.groupby(x_group, observed=True)[x_val].max().to_numpy()
 
-        y_1 = (x_max * m) + b  # Find the corresponding y-value at the above x values
+        y_1 = (x_max * m) + b  # Find the corresponding y-other_image at the above x values
 
         # Collect opening angle ray coordinate info
         xy_vertices = np.vstack([x_min, y_0]).T  # An array containing the x & y coordinates of the vertices

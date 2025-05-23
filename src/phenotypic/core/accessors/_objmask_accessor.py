@@ -7,16 +7,16 @@ from skimage.measure import label
 import matplotlib.pyplot as plt
 import numpy as np
 
-from phenotypic.core.accessors import ImageAccessor
+from phenotypic.core.accessors import ImageDataAccessor
 from phenotypic.util.exceptions_ import InvalidMaskValueError, InvalidMaskScalarValueError, ArrayKeyValueShapeMismatchError
 
 
-class ObjectMask(ImageAccessor):
-    """Represents a binary object mask linked to a parent image.
+class ObjectMask(ImageDataAccessor):
+    """Represents a binary object mask linked to a parent _parent_image.
 
-    This class allows for manipulation and analysis of a binary object mask associated with a parent image. It provides
+    This class allows for manipulation and analysis of a binary object mask associated with a parent _parent_image. It provides
     functionality to access, modify, display, and extract object regions of the mask. The object mask is tightly linked
-    to the parent image, which is used as the source for the binary map.
+    to the parent _parent_image, which is used as the source for the binary map.
 
     Note:
         - Changes to the object mask will reset the labeling of the object map.
@@ -27,10 +27,10 @@ class ObjectMask(ImageAccessor):
         return (self._parent_image.objmap[key] > 0).astype(int)
 
     def __setitem__(self, key, value: np.ndarray):
-        """Sets values of the object mask to value and resets the labeling in the map"""
+        """Sets values of the object mask to other_image and resets the labeling in the map"""
         mask = self._parent_image.objmap[:] > 0
 
-        # Check to make sure the section of the mask the key accesses is the same as the value
+        # Check to make sure the section of the mask the key accesses is the same as the other_image
         if type(value) in [int, bool]:
             try:
                 value = bool(value)
@@ -42,7 +42,7 @@ class ObjectMask(ImageAccessor):
             if mask[key].shape != value.shape:
                 raise ArrayKeyValueShapeMismatchError
 
-            # Sets the section of the binary mask to the value array
+            # Sets the section of the binary mask to the other_image array
             mask[key] = (value > 0)
         else:
             raise InvalidMaskValueError(type(value))
@@ -54,10 +54,10 @@ class ObjectMask(ImageAccessor):
     @property
     def shape(self):
         """
-        Represents the shape of a parent image's omap property.
+        Represents the shape of a parent _parent_image's omap property.
 
         This property is a getter for retrieving the shape of the `omap` attribute
-        of the associated parent image.
+        of the associated parent _parent_image.
 
         Returns:
             The shape of the object map
@@ -70,8 +70,8 @@ class ObjectMask(ImageAccessor):
 
     def reset(self):
         """
-        Resets the overlay map (omap) tied to the parent image. This function interacts with
-        the `omap` object contained within the parent image, delegating the reset operation
+        Resets the overlay map (omap) tied to the parent _parent_image. This function interacts with
+        the `omap` object contained within the parent _parent_image, delegating the reset operation
         to it.
 
         """
@@ -84,7 +84,7 @@ class ObjectMask(ImageAccessor):
              ) -> (plt.Figure, plt.Axes):
         """Display the boolean object mask with matplotlib.
 
-        Calls object_map linked by the image handler
+        Calls object_map linked by the _parent_image handler
 
         Args:
             ax: (plt.Axes) Axes object to use for plotting.

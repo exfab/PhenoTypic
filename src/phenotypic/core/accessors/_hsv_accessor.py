@@ -16,19 +16,19 @@ from phenotypic.util.exceptions_ import IllegalAssignmentError
 
 
 class HsvAccessor(ImageAccessor):
-    """An accessor class to handle and analyze HSV (Hue, Saturation, Value) image data efficiently.
+    """An accessor class to handle and analyze HSV (Hue, Saturation, Value) _parent_image data efficiently.
 
-    This class provides functionality for accessing and processing HSV image data.
-    Users can retrieve components (hue, saturation, brightness) of the image, generate
+    This class provides functionality for accessing and processing HSV _parent_image data.
+    Users can retrieve components (hue, saturation, brightness) of the _parent_image, generate
     visual histograms of color distributions, and measure specific object properties
-    masked within the HSV image.
+    masked within the HSV _parent_image.
 
     Extensive visualization methods are also included, allowing display of HSV components
-    and their masked variations. This class is ideal for image analysis tasks where color
+    and their masked variations. This class is ideal for _parent_image analysis tasks where color
     properties play a significant role.
 
     Attributes:
-        _parent_image (Image): The parent Image object that manages image data and operations.
+        _parent_image (Image): The parent Image object that manages _parent_image data and operations.
     """
 
     def __getitem__(self, key) -> np.ndarray:
@@ -39,18 +39,18 @@ class HsvAccessor(ImageAccessor):
 
     @property
     def shape(self) -> Optional[tuple[int, ...]]:
-        """Returns the shape of the image"""
+        """Returns the shape of the _parent_image"""
         return self._parent_image._data.array.shape
 
     def copy(self) -> np.ndarray:
-        """Returns a copy of the image array"""
+        """Returns a copy of the _parent_image array"""
         return self._parent_image._hsv.copy()
 
     def histogram(self, figsize: Tuple[int, int] = (10, 5), linewidth=1):
         """
-        Generates and displays histograms for hue, saturation, and brightness components of an image,
-        alongside the original image. The histograms depict the distribution of these components, and
-        this analysis can aid in understanding the image's color properties.
+        Generates and displays histograms for hue, saturation, and brightness components of an _parent_image,
+        alongside the original _parent_image. The histograms depict the distribution of these components, and
+        this analysis can aid in understanding the _parent_image's color properties.
 
         Args:
             figsize (Tuple[int, int]): The size of the figure that contains all subplots, specified as
@@ -85,7 +85,7 @@ class HsvAccessor(ImageAccessor):
              title: str = None, shrink=0.2) -> (plt.Figure, plt.Axes):
         """
         Displays the Hue, Saturation, and Brightness (HSV components) of the given
-        image data in a visualization using subplots. Each subplot corresponds to
+        _parent_image data in a visualization using subplots. Each subplot corresponds to
         one of the HSV channels, and color bars are included to help interpret the
         values.
 
@@ -132,7 +132,7 @@ class HsvAccessor(ImageAccessor):
                      title: str = None, shrink=0.6) -> (plt.Figure, plt.Axes):
         """
         Displays the Hue, Saturation, and Brightness (HSV components) of the given
-        image data in a visualization using subplots. Each subplot corresponds to
+        _parent_image data in a visualization using subplots. Each subplot corresponds to
         one of the HSV channels, and color bars are included to help interpret the
         values.
 
@@ -182,7 +182,7 @@ class HsvAccessor(ImageAccessor):
         return fig, ax
 
     def extract_obj_hue(self, bg_color: int = 0, normalized: bool = False):
-        """Extracts the object hue from the HSV image.
+        """Extracts the object hue from the HSV _parent_image.
 
         Note:
             - Unnormalized Range: 0-360 degrees.
@@ -194,7 +194,7 @@ class HsvAccessor(ImageAccessor):
         )
 
     def extract_obj_saturation(self, bg_color: int = 0, normalized: bool = False):
-        """Extracts the object saturation from the HSV image.
+        """Extracts the object saturation from the HSV _parent_image.
 
         Note:
             - Unnormalized Range: 0-255 (Same as OpenCV)
@@ -207,7 +207,7 @@ class HsvAccessor(ImageAccessor):
         )
 
     def extract_obj_brightness(self, bg_color: int = 0, normalized: bool = False):
-        """Extracts the object brightness from the HSV image.
+        """Extracts the object brightness from the HSV _parent_image.
 
         Note:
             - Unnormalized Range: 0-255 (Same as OpenCV)
@@ -220,5 +220,5 @@ class HsvAccessor(ImageAccessor):
         )
 
     def extract_obj(self, bg_color: int = 0):
-        """Extracts the object hue, saturation, and brightness from the HSV image. With the background elements set to 0"""
+        """Extracts the object hue, saturation, and brightness from the HSV _parent_image. With the background elements set to 0"""
         return self._parent_image.objmask._extract_objects(self._parent_image._hsv[:, :, :], bg_color=bg_color)

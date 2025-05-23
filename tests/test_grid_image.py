@@ -18,7 +18,7 @@ def test_blank_gridimage_initialization():
 
 @timeit
 def test_gridimage_initialization(sample_image_array):
-    # Test custom initialization with image and grid setter
+    # Test custom initialization with _parent_image and grid setter
     input_image = sample_image_array
     grid_image = GridImage(input_image=input_image)
     assert grid_image.isempty() is False
@@ -41,15 +41,15 @@ def test_grid_accessor_default_property():
 def test_grid_property_assignment_error():
     grid_image = GridImage()
     with pytest.raises(IllegalAssignmentError):
-        grid_image.grid = "some value"
+        grid_image.grid = "some other_image"
 
 
 @timeit
 def test_image_grid_section_retrieval(plate_grid_images_with_detection):
     grid_image = plate_grid_images_with_detection
-    sub_image = grid_image[10:20, 10:20]
+    sub_image = grid_image[10:20, 10:30]
     assert isinstance(sub_image, Image)
-    assert sub_image.shape[:2] == (10, 10)
+    assert sub_image.shape[:2] == (10, 20)
 
 
 @timeit

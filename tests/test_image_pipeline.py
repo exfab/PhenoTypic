@@ -1,19 +1,22 @@
 from phenotypic.pipeline import ImagePipeline
 from phenotypic.enhancement import CLAHE, GaussianSmoother, MedianEnhancer, ContrastStretching
-from phenotypic.detection import OtsuDetector
+from phenotypic.detection import OtsuDetector, WatershedDetector
 from phenotypic.grid import GridAligner, GridApply, MinResidualErrorReducer, LinRegResidualOutlierRemover
 from phenotypic.objects import BorderObjectRemover, SmallObjectRemover, LowCircularityRemover
+from phenotypic.measure import MeasureColor, MeasureShape, MeasureIntensity, MeasureTexture
+
 
 from phenotypic import GridImage
 from phenotypic.data import load_plate_12hr
 from .test_fixtures import plate_grid_images
+from .resources.TestHelper import timeit
 
-
+@timeit
 def test_empty_pipeline():
     empty_pipeline = ImagePipeline({})
     assert empty_pipeline.apply(GridImage(load_plate_12hr())).num_objects == 0
 
-
+@timeit
 def test_kmarx_pipeline(plate_grid_images):
     kmarx_pipeline = ImagePipeline(
         {
@@ -42,6 +45,7 @@ def test_kmarx_pipeline(plate_grid_images):
     output = kmarx_pipeline.apply(plate_grid_images)
     assert output is not None
 
+@timeit
 def test_kmarx_pipeline_pickleable(plate_grid_images):
     import pickle
     kmarx_pipeline = ImagePipeline(
@@ -66,6 +70,54 @@ def test_kmarx_pipeline_pickleable(plate_grid_images):
             ),
             'small object remover 2': SmallObjectRemover(100),
             'grid_reduction': MinResidualErrorReducer()
+        }
+    )
+    pickle.dumps(kmarx_pipeline)
+
+@timeit
+def test_watershed_kmarx_pipeline_pickleable(plate_grid_images):
+    import pickle
+    kmarx_pipeline = ImagePipeline(
+        op_queue={
+            'blur': GaussianSmoother(sigma=5),
+            'clahe': CLAHE(),
+            'median filter': MedianEnhancer(),
+            'detection': WatershedDetector(footprint='auto', min_size=100, relabel=True),
+            'low circularity remover': LowCircularityRemover(0.5),
+            'reduce by section residual error': MinResidualErrorReducer(),
+            'outlier removal': LinRegResidualOutlierRemover(),
+            'align': GridAligner(),
+            'grid_reduction': MinResidualErrorReducer(),
+        },
+        measurement_queue={
+            'MeasureColor': MeasureColor(),
+            'MeasureShape': MeasureShape(),
+            'MeasureIntensity': MeasureIntensity(),
+            'MeasureTexture': MeasureTexture()
+        }
+    )
+    pickle.dumps(kmarx_pipeline)
+
+@timeit
+def test_watershed_kmarx_pipeline_with_measurements_pickleable(plate_grid_images):
+    import pickle
+    kmarx_pipeline = ImagePipeline(
+        op_queue={
+            'blur': GaussianSmoother(sigma=5),
+            'clahe': CLAHE(),
+            'median filter': MedianEnhancer(),
+            'detection': WatershedDetector(footprint='auto', min_size=100, relabel=True),
+            'low circularity remover': LowCircularityRemover(0.5),
+            'reduce by section residual error': MinResidualErrorReducer(),
+            'outlier removal': LinRegResidualOutlierRemover(),
+            'align': GridAligner(),
+            'grid_reduction': MinResidualErrorReducer(),
+        },
+        measurement_queue={
+            'MeasureColor': MeasureColor(),
+            'MeasureShape': MeasureShape(),
+            'MeasureIntensity': MeasureIntensity(),
+            'MeasureTexture': MeasureTexture()
         }
     )
     pickle.dumps(kmarx_pipeline)

@@ -1,11 +1,16 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING
+
+import inspect
+from typing import TYPE_CHECKING, Callable
 
 if TYPE_CHECKING: from phenotypic import Image
 
-from ..util.exceptions_ import InterfaceError
+import numpy as np
+from ._base_operation import BaseOperation
+from ..util.exceptions_ import InterfaceError, OperationIntegrityError
 
-class ImageOperation:
+
+class ImageOperation(BaseOperation):
     """
     Represents an abstract base class for image operations.
 
@@ -15,9 +20,15 @@ class ImageOperation:
     Users can apply operations either in-place or on a copy of the image.
 
     """
-    def apply(self, image, inplace=False) -> Image:
+
+    # Which integrity validation checks to perform
+    # Can be set to validate_array_integrity, validate_matrix_integrity, validate_enh_matrix_integrity, validate_objmap_integrity, validate_objmap_integrity_consistency, validate_objmap_integrity_consistency_with_matrix
+    # or a custom function that takes two images and returns None if the integrity is valid, otherwise raises OperationIntegrityError
+    # If not set, no integrity validation checks are performed.
+
+    def apply(self, image: Image, inplace=False) -> Image:
         """
-        Applies a certain operation to an image, either in-place or on a copy.
+        Applies the operation to an image, either in-place or on a copy.
 
         Args:
             image (Image): The input_image image to apply the operation on.
@@ -27,16 +38,27 @@ class ImageOperation:
         Returns:
             Image: The modified image after applying the operation.
         """
-        if inplace:
-            return self._operate(image)
-        else:
-            return self._operate(image.copy())
+        try:
+            matched_args = self._get_matched_operation_args()
+            image = self._apply_to_single_image(
+                cls_name=self.__class__.__name__,
+                image=image,
+                operation=self._operate,
+                inplace=inplace,
+                matched_args=matched_args,
+            )
+            return image
+        except KeyboardInterrupt:
+            raise KeyboardInterrupt
+        except Exception as e:
+            raise RuntimeError(f'{self.__class__.__name__} failed on image {image.name}: {e}') from e
 
-    def _operate(self, image: Image) -> Image:
+    @staticmethod
+    def _operate(image: Image) -> Image:
         """
-        A placeholder for the subfunction for an image operator for processing image objects.
+        A placeholder for the main subfunction for an image operator for processing image objects.
 
-        This method is called from apply and must be implemented in a subclass. This allows for checks for data integrity to be made.
+        This method is called from ImageOperation.apply() and must be implemented in a subclass. This allows for checks for data integrity to be made.
 
         Args:
             image (Image): The image object to be processed by internal operations.
@@ -44,4 +66,14 @@ class ImageOperation:
         Raises:
             InterfaceError: Raised if the method is not implemented in a subclass.
         """
-        raise InterfaceError
+        return image
+
+    @staticmethod
+    def _apply_to_single_image(cls_name, image, operation, inplace, matched_args):
+        """Applies the operation to a single image. this intermediate function is needed for parallel execution."""
+        try:
+            return operation(image=image if inplace else image.copy(), **matched_args)
+        except KeyboardInterrupt:
+            raise KeyboardInterrupt
+        except Exception as e:
+            raise Exception(f'{cls_name} failed on image {image.name}: {e}') from e
