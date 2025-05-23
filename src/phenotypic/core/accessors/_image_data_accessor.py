@@ -47,9 +47,6 @@ class ImageDataAccessor(ImageAccessor):
             numpy.ndarray: A 2D NumPy array of the same shape as `normalized_matrix`, converted
             to the target data type with scaled values.
         """
-        # assert normalized_value.dtype == np.float64, 'Normalized matrix must be of type float64.'
-        # max_val = np.iinfo(self._dtype).max
-        # return np.round(np.clip(normalized_value.copy(), a_min=0, a_max=1) * max_val).astype(self._dtype)
         match self._dtype:
             case np.uint8:
                 return skimage.util.img_as_ubyte(normalized_value)
@@ -73,9 +70,4 @@ class ImageDataAccessor(ImageAccessor):
         Returns:
             np.ndarray: A normalized matrix where all values are within [0.0, 1.0].
         """
-        # if matrix.dtype != self._dtype:
-        #     raise RuntimeError(f'Integrity Error: Image dtype {matrix.dtype} does not match the expected dtype {self._dtype}.')
-        #
-        # max_val = np.iinfo(matrix.dtype).max
-        # return np.clip(matrix.copy().astype(np.float64) / max_val, a_min=0.0, a_max=1.0)
         return skimage.util.img_as_float(matrix)

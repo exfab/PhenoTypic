@@ -10,12 +10,12 @@ name = 'phenotypic'
 dynamic = ["version"]
 
 authors = [
-    {name='Alexander Nguyen', email="xander-git@protonmail.com"}
+    { name = 'Alexander Nguyen', email = "xander-git@protonmail.com" }
 ]
 
 description = "An image processing framework created for Ex-FAB NSF BioFoundry that aims to streamline the development of image processing pipelines for images analysis of phenotypes."
 
-readme="README.md"
+readme = "README.md"
 
 requires-python = ">=3.10, <3.13"
 
@@ -52,21 +52,24 @@ dev = [
     "pytest",
     "pytest-cov",
     "mypy",
-    "sphinx-autobuild",
-    "nbsphinx",
     "ipykernel",
     "jupyter",
+    "labelme",
+    "pympler",
+    "jupyter",
+    "ipykernel",
     "sphinx",
     "sphinxcontrib-napoleon",
     "sphinx-autodoc-typehints",
+    "sphinx-autobuild",
     "sphinxawesome-theme",
+    "nbsphinx",
     "furo",
     "pydata-sphinx-theme",
     "sphinx-gallery",
     "myst-nb",
     "sphinx-autosummary-accessors",
     "sphinx-design",
-    "labelme"
 ]
 
 [tool.pytest.ini_options]
@@ -74,4 +77,4 @@ testpaths = ["./tests/*"]
 addopts = "--verbose --capture=no"
 
 [tool.setuptools.dynamic]
-version = {attr = "phenotypic.__version__"}
+version = { attr = "phenotypic.__version__" }
