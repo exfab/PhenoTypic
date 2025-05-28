@@ -71,3 +71,8 @@ class ImageDataAccessor(ImageAccessor):
             np.ndarray: A normalized matrix where all values are within [0.0, 1.0].
         """
         return skimage.util.img_as_float(matrix)
+
+    def get_foreground(self):
+        foreground = self[:]
+        foreground[self._parent_image.objmask[:]==0] = 0
+        return foreground

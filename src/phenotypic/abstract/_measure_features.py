@@ -53,52 +53,104 @@ class MeasureFeatures(BaseOperation):
             return np.array([scipy_output])
 
     @staticmethod
-    def calculate_center_of_mass(array: np.ndarray, labels: ArrayLike = None, index: ArrayLike = None):
-        return MeasureFeatures._repair_scipy_results(scipy.ndimage.center_of_mass(array, labels, index))
+    def calculate_center_of_mass(array: np.ndarray, labels: ArrayLike = None):
+
+        if labels is not None:
+            indexes = np.unique(labels)
+            indexes = indexes[indexes != 0]
+        else:
+            indexes=None
+        return MeasureFeatures._repair_scipy_results(scipy.ndimage.center_of_mass(array, labels, index=indexes))
 
     @staticmethod
-    def calculate_max(array: np.ndarray, labels: ArrayLike = None, index: ArrayLike = None):
-        return MeasureFeatures._repair_scipy_results(scipy.ndimage.maximum(array, labels, index))
+    def calculate_max(array: np.ndarray, labels: ArrayLike = None):
+        if labels is not None:
+            indexes = np.unique(labels)
+            indexes = indexes[indexes != 0]
+        else:
+            indexes = None
+        return MeasureFeatures._repair_scipy_results(scipy.ndimage.maximum(array, labels, index=indexes))
 
     @staticmethod
-    def calculate_mean(array: np.ndarray, labels: ArrayLike = None, index: ArrayLike = None):
-        return MeasureFeatures._repair_scipy_results(scipy.ndimage.mean(array, labels, index))
+    def calculate_mean(array: np.ndarray, labels: ArrayLike = None):
+        if labels is not None:
+            indexes = np.unique(labels)
+            indexes = indexes[indexes != 0]
+        else:
+            indexes = None
+        return MeasureFeatures._repair_scipy_results(scipy.ndimage.mean(array, labels, index=indexes))
 
     @staticmethod
-    def calculate_median(array: np.ndarray, labels: ArrayLike = None, index: ArrayLike = None):
-        return MeasureFeatures._repair_scipy_results(scipy.ndimage.median(array, labels, index))
+    def calculate_median(array: np.ndarray, labels: ArrayLike = None):
+        if labels is not None:
+            indexes = np.unique(labels)
+            indexes = indexes[indexes != 0]
+        else:
+            indexes = None
+        return MeasureFeatures._repair_scipy_results(scipy.ndimage.median(array, labels, index=indexes))
 
     @staticmethod
-    def calculate_minimum(array: np.ndarray, labels: ArrayLike = None, index: ArrayLike = None):
-        return MeasureFeatures._repair_scipy_results(scipy.ndimage.minimum(array, labels, index))
+    def calculate_minimum(array: np.ndarray, labels: ArrayLike = None):
+        if labels is not None:
+            indexes = np.unique(labels)
+            indexes = indexes[indexes != 0]
+        else:
+            indexes = None
+        return MeasureFeatures._repair_scipy_results(scipy.ndimage.minimum(array, labels, index=indexes))
 
     @staticmethod
-    def calculate_stddev(array: np.ndarray, labels: ArrayLike = None, index: ArrayLike = None):
-        return MeasureFeatures._repair_scipy_results(scipy.ndimage.standard_deviation(array, labels, index))
+    def calculate_stddev(array: np.ndarray, labels: ArrayLike = None):
+        if labels is not None:
+            indexes = np.unique(labels)
+            indexes = indexes[indexes != 0]
+        else:
+            indexes = None
+        return MeasureFeatures._repair_scipy_results(scipy.ndimage.standard_deviation(array, labels, index=indexes))
 
     @staticmethod
-    def calculate_sum(array: np.ndarray, labels: ArrayLike = None, index: ArrayLike = None):
-        return MeasureFeatures._repair_scipy_results(scipy.ndimage.sum_labels(array, labels, index))
+    def calculate_sum(array: np.ndarray, labels: ArrayLike = None):
+        if labels is not None:
+            indexes = np.unique(labels)
+            indexes = indexes[indexes != 0]
+        else:
+            indexes = None
+        return MeasureFeatures._repair_scipy_results(scipy.ndimage.sum_labels(array, labels, index=indexes))
 
     @staticmethod
-    def calculate_variance(array: np.ndarray, labels: ArrayLike = None, index: ArrayLike = None):
-        return MeasureFeatures._repair_scipy_results(scipy.ndimage.variance(array, labels, index))
+    def calculate_variance(array: np.ndarray, labels: ArrayLike = None):
+        if labels is not None:
+            indexes = np.unique(labels)
+            indexes = indexes[indexes != 0]
+        else:
+            indexes = None
+        return MeasureFeatures._repair_scipy_results(scipy.ndimage.variance(array, labels, index=indexes))
 
     @staticmethod
-    def calculate_coeff_variation(array: np.ndarray, labels: ArrayLike = None, index: ArrayLike = None):
+    def calculate_coeff_variation(array: np.ndarray, labels: ArrayLike = None):
         """Calculates unbiased coefficient of variation (CV) for each object in the image, assuming normal distribution.
 
         References:
             - https://en.wikipedia.org/wiki/Coefficient_of_variation
         """
-        unique_labels, unique_counts = np.unique(labels, return_counts=True)
-        unique_counts = unique_counts[unique_labels != 0]
-        biased_cv = MeasureFeatures.calculate_stddev(array, labels, index) / MeasureFeatures.calculate_mean(array, labels, index)
-        return (1 + (1 / unique_counts)) * biased_cv
+        if labels is not None:
+            unique_labels, unique_counts = np.unique(labels, return_counts=True)
+            unique_counts = unique_counts[unique_labels != 0]
+            biased_cv = MeasureFeatures.calculate_stddev(array, labels) / MeasureFeatures.calculate_mean(array, labels)
+            result = (1 + (1 / unique_counts)) * biased_cv
+        else:
+            # For the case when labels is None, we can't calculate the coefficient of variation
+            # because we need the counts of each label
+            result = np.nan
+        return MeasureFeatures._repair_scipy_results(result)
 
     @staticmethod
-    def _calculate_extrema(array: np.ndarray, labels: ArrayLike = None, index: ArrayLike = None):
-        min_extrema, max_extrema, min_pos, max_pos = MeasureFeatures._repair_scipy_results(scipy.ndimage.extrema(array, labels, index))
+    def _calculate_extrema(array: np.ndarray, labels: ArrayLike = None):
+        if labels is not None:
+            indexes = np.unique(labels)
+            indexes = indexes[indexes != 0]
+        else:
+            indexes = None
+        min_extrema, max_extrema, min_pos, max_pos = MeasureFeatures._repair_scipy_results(scipy.ndimage.extrema(array, labels, index=indexes))
         return (
             MeasureFeatures._repair_scipy_results(min_extrema),
             MeasureFeatures._repair_scipy_results(max_extrema),
@@ -107,26 +159,26 @@ class MeasureFeatures(BaseOperation):
         )
 
     @staticmethod
-    def calculate_min_extrema(array: np.ndarray, labels: ArrayLike = None, index: ArrayLike = None):
-        min_extrema, _, min_pos, _ = MeasureFeatures._calculate_extrema(array, labels, index)
+    def calculate_min_extrema(array: np.ndarray, labels: ArrayLike = None):
+        min_extrema, _, min_pos, _ = MeasureFeatures._calculate_extrema(array, labels)
         return min_extrema, min_pos
 
     @staticmethod
-    def calculate_max_extrema(array: np.ndarray, labels: ArrayLike = None, index: ArrayLike = None):
-        _, max_extreme, _, max_pos = MeasureFeatures._calculate_extrema(array, labels, index)
+    def calculate_max_extrema(array: np.ndarray, labels: ArrayLike = None):
+        _, max_extreme, _, max_pos = MeasureFeatures._calculate_extrema(array, labels)
         return max_extreme, max_pos
 
     @staticmethod
     def funcmap2objects(func: Callable, out_dtype: np.dtype,
-                        array: np.ndarray, labels: ArrayLike = None, index: ArrayLike = None,
+                        array: np.ndarray, labels: ArrayLike = None,
                         default: int | float | np.nan = np.nan,
                         pass_positions: bool = False):
         """Apply a custom function to labeled regions in an array.
-        
+
         This method applies the provided function to each labeled region in the input array
         and returns the results as a numpy array. It uses scipy.ndimage.labeled_comprehension
         internally and ensures a consistent output format.
-        
+
         Args:
             func: Function to apply to each labeled region. It should accept as input the 
                 elements of the object subarray, and optionally the positions if 
@@ -139,14 +191,20 @@ class MeasureFeatures(BaseOperation):
             default: The value to use for labels that are not in the index. Defaults to np.nan.
             pass_positions: If True, the positions where the input array is non-zero are 
                 passed to func. Defaults to False.
-        
+
         Returns:
             np.ndarray: Result of applying func to each labeled region, returned as a numpy array.
-        
+
         Notes:
             This is a wrapper around scipy.ndimage.labeled_comprehension that ensures the
             output is always a proper numpy array.
         """
+        if labels is not None:
+            index = np.unique(labels)
+            index = index[index != 0]
+        else:
+            index=None
+
         return MeasureFeatures._repair_scipy_results(
             scipy.ndimage.labeled_comprehension(input=array, labels=labels, index=index,
                                                 func=func, out_dtype=out_dtype,
@@ -155,26 +213,26 @@ class MeasureFeatures(BaseOperation):
         )
 
     @staticmethod
-    def calculate_q1(array, labels=None, index=None, method: str = 'linear'):
+    def calculate_q1(array, labels=None, method: str = 'linear'):
         find_q1 = partial(np.quantile, q=0.25, method=method)
-        q1 = MeasureFeatures.funcmap2objects(func=find_q1, out_dtype=array.dtype, array=array, labels=labels, index=index, default=np.nan,
+        q1 = MeasureFeatures.funcmap2objects(func=find_q1, out_dtype=array.dtype, array=array, labels=labels, default=np.nan,
                                              pass_positions=False)
         return MeasureFeatures._repair_scipy_results(q1)
 
     @staticmethod
-    def calculate_q3(array, labels=None, index=None, method: str = 'linear'):
+    def calculate_q3(array, labels=None, method: str = 'linear'):
         find_q3 = partial(np.quantile, q=0.75, method=method)
-        q3 = MeasureFeatures.funcmap2objects(func=find_q3, out_dtype=array.dtype, array=array, labels=labels, index=index, default=np.nan,
+        q3 = MeasureFeatures.funcmap2objects(func=find_q3, out_dtype=array.dtype, array=array, labels=labels, default=np.nan,
                                              pass_positions=False)
         return MeasureFeatures._repair_scipy_results(q3)
 
     @staticmethod
-    def calculate_iqr(array, labels=None, index=None, method: str = 'linear', nan_policy: str = 'omit'):
+    def calculate_iqr(array, labels=None, method: str = 'linear', nan_policy: str = 'omit'):
         find_iqr = partial(scipy.stats.iqr, axis=None, nan_policy=nan_policy, interpolation=method)
         return MeasureFeatures._repair_scipy_results(
             MeasureFeatures.funcmap2objects(
                 func=find_iqr, out_dtype=array.dtype,
-                array=array, labels=labels, index=index,
+                array=array, labels=labels,
                 default=np.nan, pass_positions=False,
             ),
         )

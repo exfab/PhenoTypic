@@ -1,6 +1,6 @@
 ﻿
 
-phenotypic.Image.enh\__matrix
+phenotypic.Image.enh\_matrix
 ============================
 
 .. currentmodule:: phenotypic

@@ -1,6 +1,8 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING, Callable
 
+from mahotas.features.texture import haralick_features
+
 if TYPE_CHECKING: from phenotypic import Image
 
 import warnings
@@ -12,10 +14,6 @@ from skimage.util import img_as_ubyte
 from phenotypic.abstract import MeasureFeatures
 from phenotypic.util.constants_ import OBJECT
 
-MEDIAN = 'Median'
-MEAN = 'Mean'
-STDDEV = 'StdDev'
-COEFF_VARIANCE = 'CoefficientVariance'
 CATEGORY_TEXTURE = 'Texture'
 ANGULAR_SECOND_MOMENT_0 = 'AngularSecondMoment-deg(0)'
 ANGULAR_SECOND_MOMENT_45 = 'AngularSecondMoment-deg(45)'
@@ -83,6 +81,8 @@ IMC2_90 = 'InformationCorrelation(2)-deg(90)'
 IMC2_135 = 'InformationCorrelation(2)-deg(135)'
 
 
+
+
 class MeasureTexture(MeasureFeatures):
     """
     Represents a measurement of texture features extracted from _parent_image objects.
@@ -96,6 +96,9 @@ class MeasureTexture(MeasureFeatures):
     Attributes:
         scale (int): The scale parameter used in the computation of texture features. It is
             often used to define the spatial relationship between pixels.
+
+    References:
+        [1] https://mahotas.readthedocs.io/en/latest/api.html#mahotas.features.haralick
     """
 
     def __init__(self, scale: int = 5):
@@ -103,7 +106,7 @@ class MeasureTexture(MeasureFeatures):
 
     def _operate(self, image: Image):
         texture_measurements = self._compute_matrix_texture(image=image,
-                                                       foreground_array=image.matrix[:],
+                                                       foreground_array=image.matrix.get_foreground(),
                                                        foreground_name='intensity',
                                                        scale=self.scale,
                                                        )
@@ -193,23 +196,23 @@ class MeasureTexture(MeasureFeatures):
             IMC2_45 + parameter_suffix: [],
             IMC2_90 + parameter_suffix: [],
             IMC2_135 + parameter_suffix: [],
-            COEFF_VARIANCE + parameter_suffix: [],
         }
+
+        props = image.objects.props
+        objmap = image.objmap
         for idx, label in enumerate(image.objects.labels):
-            slices = image.objects.props[idx].slice
+            slices = props[idx].slice
             obj_extracted = foreground_array[slices].copy()
 
             # In case there's more than one object in the crop
-            obj_extracted[image.objmap[slices] != label] = 0
-
-            measurements[COEFF_VARIANCE + parameter_suffix].append(
-                np.std(obj_extracted[obj_extracted.nonzero()]) / np.mean(obj_extracted[obj_extracted.nonzero()]),
-            )
+            obj_extracted[objmap[slices] != label] = 0
 
             try:
                 if obj_extracted.sum() == 0:
                     return np.full((4, 13), np.nan, dtype=np.float64)
                 else:
+                    # Pad object with zero if its dimensions are smaller than the scale
+
                     haralick_features = mh.features.haralick(img_as_ubyte(obj_extracted),
                                                              distance=scale,
                                                              ignore_zeros=True,
@@ -301,3 +304,17 @@ class MeasureTexture(MeasureFeatures):
             measurements[IMC2_135 + parameter_suffix].append(haralick_features[3, 12])
 
         return measurements
+
+    @staticmethod
+    def calculate_haralick(object_matrix, scale, label=None):
+        if object_matrix.sum() == 0:
+            haralick_features = np.full((4, 13), np.nan, dtype=np.float64)
+        else:
+            # Pad object with zero if its dimensions are smaller than the scale
+
+            haralick_features = mh.features.haralick(img_as_ubyte(object_matrix),
+                                                     distance=scale,
+                                                     ignore_zeros=True,
+                                                     return_mean=False,
+                                                     )
+        return haralick_features.T.ravel()

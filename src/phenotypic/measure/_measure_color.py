@@ -33,25 +33,25 @@ class MeasureColor(MeasureFeatures):
     """
     @staticmethod
     def _operate(image: Image):
-        hue_texture = MeasureColor._compute_matrix_texture(image.hsv.extract_obj_hue(), labels=image.objmap[:],
-                                                   label_subset=image.objects.labels
-                                                   )
+        hue_texture = MeasureColor._compute_color_metrics(image.hsv.extract_obj_hue(), labels=image.objmap[:],
+                                                          label_subset=image.objects.labels
+                                                          )
         hue_texture = {f'{HUE}_{key}': value for key, value in hue_texture.items()}
 
-        saturation_texture = MeasureColor._compute_matrix_texture(image.hsv.extract_obj_saturation(), labels=image.objmap[:],
-                                                          label_subset=image.objects.labels
-                                                          )
+        saturation_texture = MeasureColor._compute_color_metrics(image.hsv.extract_obj_saturation(), labels=image.objmap[:],
+                                                                 label_subset=image.objects.labels
+                                                                 )
         saturation_texture = {f'{SATURATION}_{key}': value for key, value in saturation_texture.items()}
 
-        brightness_texture = MeasureColor._compute_matrix_texture(image.hsv.extract_obj_brightness(), labels=image.objmap[:],
-                                                          label_subset=image.objects.labels
-                                                          )
+        brightness_texture = MeasureColor._compute_color_metrics(image.hsv.extract_obj_brightness(), labels=image.objmap[:],
+                                                                 label_subset=image.objects.labels
+                                                                 )
         brightness_texture = {f'{BRIGHTNESS}_{key}': value for key, value in brightness_texture.items()}
 
         return pd.DataFrame(data={**hue_texture, **saturation_texture, **brightness_texture}, index=image.objects.get_labels_series())
 
     @staticmethod
-    def _compute_matrix_texture(foreground: np.ndarray, labels: np.ndarray, label_subset: np.ndarray | None = None):
+    def _compute_color_metrics(foreground: np.ndarray, labels: np.ndarray, label_subset: np.ndarray | None = None):
         """
           Computes texture metrics from input_image _parent_image data and a binary foreground mask.
 
