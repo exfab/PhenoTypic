@@ -20,7 +20,9 @@ class SHAPE(Enum):
 
     AREA = ('Area', "The sum of the object's pixels")
     PERIMETER = ('Perimeter', "The perimeter of the object's pixels")
-    CIRCULARITY = ('Circularity', r'Calculated as :math:`\frac{4\pi*Area}{Perimeter^2}`. A perfect circle has a other_image of 1.')
+    CIRCULARITY = (
+        'Circularity', r'Calculated as :math:`\frac{4\pi*\text{Area}}{\text{Perimeter}^2}`. A perfect circle has a other_image of 1.'
+    )
     CONVEX_AREA = ('ConvexArea', 'The area of the convex hull of the object')
     ORIENTATION = ('Orientation', 'The orientation of the object in degrees')
     MEDIAN_RADIUS = ('MedianRadius', 'The median radius of the object')
@@ -36,6 +38,10 @@ class SHAPE(Enum):
     MINOR_AXIS_LENGTH = (
         'MinorAxisLength',
         'The length of the minor axis of the ellipse that has the same normalized central moments as the object'
+    )
+    COMPACTNESS = (
+        'Compactness',
+        r'Calculated as :math:`Calculated as \frac{\text{Perimeter}^2}{4\pi*\text{Area}}`. A filled circle will have a value of 1, while irregular or objects with holes have a value greater than 1'
     )
 
     def __init__(self, label, desc=None):
@@ -68,35 +74,29 @@ class MeasureShape(MeasureFeatures):
 
     """
 
-    @staticmethod
-    def _operate(image: Image) -> pd.DataFrame:
-        measurements = {
-            str(SHAPE.AREA): [],
-            str(SHAPE.PERIMETER): [],
-            str(SHAPE.CIRCULARITY): [],
-            str(SHAPE.CONVEX_AREA): [],
-            str(SHAPE.MEAN_RADIUS): [],
-            str(SHAPE.MEDIAN_RADIUS): [],
-            str(SHAPE.ECCENTRICITY): [],
-            str(SHAPE.SOLIDITY): [],
-            str(SHAPE.EXTENT): [],
-            str(SHAPE.BBOX_AREA): [],
-            str(SHAPE.MAJOR_AXIS_LENGTH): [],
-            str(SHAPE.MINOR_AXIS_LENGTH): []
-        }
+    def _operate(self, image: Image) -> pd.DataFrame:
+        # Create empty numpy arrays to store measurements
+        measurements = {str(feature): np.zeros(shape=image.num_objects) for feature in SHAPE if feature != SHAPE.CATEGORY}
+
+        dist_matrix = distance_transform_edt(image.objmap[:])
+        measurements[str(SHAPE.MEAN_RADIUS)] = self.calculate_mean(array=dist_matrix, labels=image.objmap[:])
+        measurements[str(SHAPE.MEDIAN_RADIUS)] = self.calculate_median(array=dist_matrix, labels=image.objmap[:])
+
         obj_props = image.objects.props
         for idx, obj_image in enumerate(image.objects):
             current_props = obj_props[idx]
-            measurements[str(SHAPE.AREA)].append(current_props.area)
-            measurements[str(SHAPE.PERIMETER)].append(current_props.perimeter)
-            measurements[str(SHAPE.ECCENTRICITY)].append(current_props.eccentricity)
-            measurements[str(SHAPE.EXTENT)].append(current_props.extent)
-            measurements[str(SHAPE.BBOX_AREA)].append(current_props.area_bbox)
-            measurements[str(SHAPE.MAJOR_AXIS_LENGTH)].append(current_props.major_axis_length)
-            measurements[str(SHAPE.MINOR_AXIS_LENGTH)].append(current_props.minor_axis_length)
+            measurements[str(SHAPE.AREA)][idx] = current_props.area
+            measurements[str(SHAPE.PERIMETER)][idx] = current_props.perimeter
+            measurements[str(SHAPE.ECCENTRICITY)][idx] = current_props.eccentricity
+            measurements[str(SHAPE.EXTENT)][idx] = current_props.extent
+            measurements[str(SHAPE.BBOX_AREA)][idx] = current_props.area_bbox
+            measurements[str(SHAPE.MAJOR_AXIS_LENGTH)][idx] = current_props.major_axis_length
+            measurements[str(SHAPE.MINOR_AXIS_LENGTH)][idx] = current_props.minor_axis_length
 
             circularity = (4 * np.pi * obj_props[idx].area) / (current_props.perimeter ** 2)
-            measurements[str(SHAPE.CIRCULARITY)].append(circularity)
+            measurements[str(SHAPE.CIRCULARITY)][idx] = circularity
+            compactness = (current_props.perimeter ** 2) / (4 * np.pi * obj_props[idx].area)
+            measurements[str(SHAPE.COMPACTNESS)][idx] = compactness
 
             try:
                 if current_props.area >= 3:
@@ -110,12 +110,7 @@ class MeasureShape(MeasureFeatures):
                 warnings.warn(f'Error in computing convex hull for object {current_props.label}: {e}')
                 convex_hull = None
 
-            measurements[str(SHAPE.CONVEX_AREA)].append(convex_hull.area if convex_hull else np.nan)
-            measurements[str(SHAPE.SOLIDITY)].append((current_props.area / convex_hull.area) if convex_hull else np.nan)
-
-            # TODO: Alter so that calculations are made simultaneously instead of iterating through each object
-            dist_matrix = distance_transform_edt(obj_image.objmap[:])
-            measurements[str(SHAPE.MEAN_RADIUS)].append(np.mean(dist_matrix))
-            measurements[str(SHAPE.MEDIAN_RADIUS)].append(np.median(dist_matrix))
+            measurements[str(SHAPE.CONVEX_AREA)][idx] = (convex_hull.area if convex_hull else np.nan)
+            measurements[str(SHAPE.SOLIDITY)][idx] = ((current_props.area / convex_hull.area) if convex_hull else np.nan)
 
         return pd.DataFrame(measurements, index=image.objects.get_labels_series())

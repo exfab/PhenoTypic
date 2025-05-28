@@ -155,21 +155,21 @@ class MeasureFeatures(BaseOperation):
         )
 
     @staticmethod
-    def calculate_q1(array, labels=None, index=None, method: str = 'closest_observation'):
+    def calculate_q1(array, labels=None, index=None, method: str = 'linear'):
         find_q1 = partial(np.quantile, q=0.25, method=method)
         q1 = MeasureFeatures.funcmap2objects(func=find_q1, out_dtype=array.dtype, array=array, labels=labels, index=index, default=np.nan,
                                              pass_positions=False)
         return MeasureFeatures._repair_scipy_results(q1)
 
     @staticmethod
-    def calculate_q3(array, labels=None, index=None, method: str = 'closest_observation'):
+    def calculate_q3(array, labels=None, index=None, method: str = 'linear'):
         find_q3 = partial(np.quantile, q=0.75, method=method)
         q3 = MeasureFeatures.funcmap2objects(func=find_q3, out_dtype=array.dtype, array=array, labels=labels, index=index, default=np.nan,
                                              pass_positions=False)
         return MeasureFeatures._repair_scipy_results(q3)
 
     @staticmethod
-    def calculate_iqr(array, labels=None, index=None, method: str = 'nearest', nan_policy: str = 'omit'):
+    def calculate_iqr(array, labels=None, index=None, method: str = 'linear', nan_policy: str = 'omit'):
         find_iqr = partial(scipy.stats.iqr, axis=None, nan_policy=nan_policy, interpolation=method)
         return MeasureFeatures._repair_scipy_results(
             MeasureFeatures.funcmap2objects(
