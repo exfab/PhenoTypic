@@ -181,7 +181,7 @@ class HsvAccessor(ImageAccessor):
 
         return fig, ax
 
-    def extract_obj_hue(self, bg_color: int = 0, normalized: bool = False):
+    def get_foreground_hue(self, bg_color: int = 0, normalized: bool = False):
         """Extracts the object hue from the HSV _parent_image.
 
         Note:
@@ -193,7 +193,7 @@ class HsvAccessor(ImageAccessor):
             bg_color=bg_color
         )
 
-    def extract_obj_saturation(self, bg_color: int = 0, normalized: bool = False):
+    def get_foreground_saturation(self, bg_color: int = 0, normalized: bool = True):
         """Extracts the object saturation from the HSV _parent_image.
 
         Note:
@@ -206,7 +206,7 @@ class HsvAccessor(ImageAccessor):
             bg_color=bg_color
         )
 
-    def extract_obj_brightness(self, bg_color: int = 0, normalized: bool = False):
+    def get_foreground_brightness(self, bg_color: int = 0, normalized: bool = True):
         """Extracts the object brightness from the HSV _parent_image.
 
         Note:

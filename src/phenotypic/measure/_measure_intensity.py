@@ -49,7 +49,7 @@ class MeasureIntensity(MeasureFeatures):
 
     @staticmethod
     def _operate(image: Image) -> pd.DataFrame:
-        intensity_matrix, objmap = image.matrix[:], image.objmap[:]
+        intensity_matrix, objmap = image.matrix[:].copy(), image.objmap[:].copy()
         measurements = {
             str(INTENSITY.INTEGRATED_INTENSITY): MeasureIntensity.calculate_sum(array=intensity_matrix, labels=objmap),
             str(INTENSITY.MINIMUM_INTENSITY): MeasureIntensity.calculate_minimum(array=intensity_matrix, labels=objmap),
