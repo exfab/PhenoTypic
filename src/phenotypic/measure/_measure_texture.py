@@ -101,12 +101,11 @@ class MeasureTexture(MeasureFeatures):
     def __init__(self, scale: int = 5):
         self.scale = scale
 
-    @staticmethod
-    def _operate(image: Image, _compute_matrix_texture: Callable, scale: int):
-        texture_measurements = _compute_matrix_texture(image=image,
+    def _operate(self, image: Image):
+        texture_measurements = self._compute_matrix_texture(image=image,
                                                        foreground_array=image.matrix[:],
                                                        foreground_name='intensity',
-                                                       scale=scale,
+                                                       scale=self.scale,
                                                        )
         texture_measurements = {f'{CATEGORY_TEXTURE}_{key}': value for key, value in texture_measurements.items()}
         return pd.DataFrame(texture_measurements, index=image.objects.get_labels_series())
