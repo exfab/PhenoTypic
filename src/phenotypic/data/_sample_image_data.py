@@ -50,13 +50,9 @@ def load_colony_72hr():
 def load_smear_plate_12hr():
     """Returns a plate image array of K. Marxianus that contains noise such as smears"""
     return imread(__current_file_dir / 'difficult/1_1S_16.jpg')
-    # image_name = 'DifficultPlateDay1.jpg'
-    # with pkg_resources.path(phenotypic.data, image_name) as img_path:
-    #     return imread(img_path)
+
 
 def load_smear_plate_24hr():
     """Returns a plate image array of K. Marxianus that contains noise such as smears"""
     return imread(__current_file_dir / 'difficult/2_2Y_6.jpg')
-    # image_name = 'DifficultPlateDay2.jpg'
-    # with pkg_resources.path(phenotypic.data, image_name) as img_path:
-    #     return imread(img_path)
+
