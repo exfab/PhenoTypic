@@ -11,18 +11,18 @@ import phenotypic.data
 
 def load_plate_12hr():
     """Returns a plate image of a K. Marxianus colony 96 array plate at 12 hrs"""
-    # return imread(__current_file_dir / 'StandardDay1.jpg')
-    image_name = 'StandardDay1.jpg'
-    with pkg_resources.path(phenotypic.data, image_name) as img_path:
-        return imread(img_path)
+    return imread(__current_file_dir / 'StandardDay1.jpg')
+    # image_name = 'StandardDay1.jpg'
+    # with pkg_resources.path(phenotypic.data, image_name) as img_path:
+    #     return imread(img_path)
 
 
 def load_plate_72hr():
     """Return a image of a k. marxianus colony 96 array plate at 72 hrs"""
-    # return imread(__current_file_dir / 'StandardDay6.jpg')
-    image_name = 'StandardDay6.jpg'
-    with pkg_resources.path(phenotypic.data, image_name) as img_path:
-        return imread(img_path)
+    return imread(__current_file_dir / 'StandardDay6.jpg')
+    # image_name = 'StandardDay6.jpg'
+    # with pkg_resources.path(phenotypic.data, image_name) as img_path:
+    #     return imread(img_path)
 
 
 def load_plate_series():
@@ -49,14 +49,14 @@ def load_colony_72hr():
 
 def load_smear_plate_12hr():
     """Returns a plate image array of K. Marxianus that contains noise such as smears"""
-    # return imread(__current_file_dir / 'difficult/1_1S_16.jpg')
-    image_name = 'DifficultPlateDay1.jpg'
-    with pkg_resources.path(phenotypic.data, image_name) as img_path:
-        return imread(img_path)
+    return imread(__current_file_dir / 'difficult/1_1S_16.jpg')
+    # image_name = 'DifficultPlateDay1.jpg'
+    # with pkg_resources.path(phenotypic.data, image_name) as img_path:
+    #     return imread(img_path)
 
 def load_smear_plate_24hr():
     """Returns a plate image array of K. Marxianus that contains noise such as smears"""
-    # return imread(__current_file_dir / 'difficult/2_2Y_6.jpg')
-    image_name = 'DifficultPlateDay2.jpg'
-    with pkg_resources.path(phenotypic.data, image_name) as img_path:
-        return imread(img_path)
+    return imread(__current_file_dir / 'difficult/2_2Y_6.jpg')
+    # image_name = 'DifficultPlateDay2.jpg'
+    # with pkg_resources.path(phenotypic.data, image_name) as img_path:
+    #     return imread(img_path)
