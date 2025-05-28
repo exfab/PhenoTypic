@@ -306,7 +306,7 @@ class MeasureTexture(MeasureFeatures):
         return measurements
 
     @staticmethod
-    def calculate_haralick(object_matrix, scale, label=None):
+    def calculate_haralick(object_matrix, scale):
         if object_matrix.sum() == 0:
             haralick_features = np.full((4, 13), np.nan, dtype=np.float64)
         else:

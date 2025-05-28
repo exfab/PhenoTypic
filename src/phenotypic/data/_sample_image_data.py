@@ -7,22 +7,17 @@ __current_file_dir = Path(os.path.dirname(os.path.abspath(__file__)))
 from skimage.io import imread
 import phenotypic.data
 
+
 # TODO: Update filepaths for this file
 
 def load_plate_12hr():
     """Returns a plate image of a K. Marxianus colony 96 array plate at 12 hrs"""
     return imread(__current_file_dir / 'StandardDay1.jpg')
-    # image_name = 'StandardDay1.jpg'
-    # with pkg_resources.path(phenotypic.data, image_name) as img_path:
-    #     return imread(img_path)
 
 
 def load_plate_72hr():
     """Return a image of a k. marxianus colony 96 array plate at 72 hrs"""
     return imread(__current_file_dir / 'StandardDay6.jpg')
-    # image_name = 'StandardDay6.jpg'
-    # with pkg_resources.path(phenotypic.data, image_name) as img_path:
-    #     return imread(img_path)
 
 
 def load_plate_series():
@@ -36,16 +31,17 @@ def load_plate_series():
 
 
 def load_colony_12_hr():
-    return imread(__current_file_dir / 'StdDay1-Results/well_imgs/StdDay1_well_3.png')
+    return imread(__current_file_dir / 'early_colony.png')
 
 
 def load_faint_colony_12hr():
-    return imread(__current_file_dir / 'StdDay1-Results/well_imgs/StdDay1_well_15.png')
+    return imread(__current_file_dir / 'early_colony_faint.png')
 
 
 def load_colony_72hr():
     """Returns a colony image array of K. Marxianus"""
-    return imread(__current_file_dir / 'StdDay6-Results/well_imgs/StdDay6_well005.png')
+    return imread(__current_file_dir / 'later_colony.png')
+
 
 def load_smear_plate_12hr():
     """Returns a plate image array of K. Marxianus that contains noise such as smears"""
@@ -55,4 +51,3 @@ def load_smear_plate_12hr():
 def load_smear_plate_24hr():
     """Returns a plate image array of K. Marxianus that contains noise such as smears"""
     return imread(__current_file_dir / 'difficult/2_2Y_6.jpg')
-
