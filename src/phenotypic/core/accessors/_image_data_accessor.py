@@ -73,6 +73,6 @@ class ImageDataAccessor(ImageAccessor):
         return skimage.util.img_as_float(matrix)
 
     def get_foreground(self):
-        foreground = self[:]
+        foreground = self[:].copy()
         foreground[self._parent_image.objmask[:]==0] = 0
         return foreground

@@ -199,7 +199,7 @@ class MeasureTexture(MeasureFeatures):
         }
 
         props = image.objects.props
-        objmap = image.objmap
+        objmap = image.objmap[:]
         for idx, label in enumerate(image.objects.labels):
             slices = props[idx].slice
             obj_extracted = foreground_array[slices].copy()
