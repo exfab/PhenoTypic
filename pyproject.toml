@@ -80,4 +80,8 @@ addopts = "--verbose --capture=no"
 version = { attr = "phenotypic.__version__" }
 
 [tool.setuptools.package-data]
-"phenotypic" = ["data/*.jpg"]
+"phenotypic" = [
+    "data/*.jpg",
+    "data/*.png"
+]
+

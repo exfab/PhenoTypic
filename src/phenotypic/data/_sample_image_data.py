@@ -1,11 +1,9 @@
 import os
 from pathlib import Path
-import importlib.resources as pkg_resources
 
 __current_file_dir = Path(os.path.dirname(os.path.abspath(__file__)))
 
 from skimage.io import imread
-import phenotypic.data
 
 
 # TODO: Update filepaths for this file
