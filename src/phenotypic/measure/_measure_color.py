@@ -33,15 +33,15 @@ class MeasureColor(MeasureFeatures):
     """
     @staticmethod
     def _operate(image: Image):
-        hue_texture = MeasureColor._compute_color_metrics(image.hsv.get_foreground_hue(), labels=image.objmap[:],
+        hue_texture = MeasureColor._compute_color_metrics(image.hsv.get_foreground_hue().copy(), labels=image.objmap[:].copy(),
                                                           )
         hue_texture = {f'{HUE}_{key}': value for key, value in hue_texture.items()}
 
-        saturation_texture = MeasureColor._compute_color_metrics(image.hsv.get_foreground_saturation(), labels=image.objmap[:],
+        saturation_texture = MeasureColor._compute_color_metrics(image.hsv.get_foreground_saturation().copy(), labels=image.objmap[:].copy(),
                                                                  )
         saturation_texture = {f'{SATURATION}_{key}': value for key, value in saturation_texture.items()}
 
-        brightness_texture = MeasureColor._compute_color_metrics(image.hsv.get_foreground_brightness(), labels=image.objmap[:],
+        brightness_texture = MeasureColor._compute_color_metrics(image.hsv.get_foreground_brightness().copy(), labels=image.objmap[:].copy(),
                                                                  )
         brightness_texture = {f'{BRIGHTNESS}_{key}': value for key, value in brightness_texture.items()}
 
