@@ -30,7 +30,7 @@ classifiers = [
 ]
 
 dependencies = [
-    "pandas",
+    "pandas[excel,plot,performance,output-formatting,computation,hdf5,compression,clipboard]",
     "numpy",
     "seaborn",
     "scikit-image",
@@ -41,7 +41,7 @@ dependencies = [
     "mahotas",
     "pillow",
     "tqdm",
-    "mmh3"
+    "mmh3",
 ]
 
 [project.urls]
@@ -70,6 +70,12 @@ dev = [
     "myst-nb",
     "sphinx-autosummary-accessors",
     "sphinx-design",
+]
+
+[dependency-groups]
+dev = [
+    "ipykernel>=6.29.5",
+    "pytest>=8.4.0",
 ]
 
 [tool.pytest.ini_options]

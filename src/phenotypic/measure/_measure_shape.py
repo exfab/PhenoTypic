@@ -24,7 +24,6 @@ class SHAPE(Enum):
         'Circularity', r'Calculated as :math:`\frac{4\pi*\text{Area}}{\text{Perimeter}^2}`. A perfect circle has a other_image of 1.'
     )
     CONVEX_AREA = ('ConvexArea', 'The area of the convex hull of the object')
-    ORIENTATION = ('Orientation', 'The orientation of the object in degrees')
     MEDIAN_RADIUS = ('MedianRadius', 'The median radius of the object')
     MEAN_RADIUS = ('MeanRadius', 'The mean radius of the object')
     ECCENTRICITY = ('Eccentricity', 'The eccentricity of the object')
@@ -43,6 +42,7 @@ class SHAPE(Enum):
         'Compactness',
         r'Calculated as :math:`Calculated as \frac{\text{Perimeter}^2}{4\pi*\text{Area}}`. A filled circle will have a value of 1, while irregular or objects with holes have a value greater than 1'
     )
+    ORIENTATION = ('Orientation', 'The angle between the major axis and the horizontal axis in radians')
 
     def __init__(self, label, desc=None):
         self.label, self.desc = label, desc
@@ -92,6 +92,7 @@ class MeasureShape(MeasureFeatures):
             measurements[str(SHAPE.BBOX_AREA)][idx] = current_props.area_bbox
             measurements[str(SHAPE.MAJOR_AXIS_LENGTH)][idx] = current_props.major_axis_length
             measurements[str(SHAPE.MINOR_AXIS_LENGTH)][idx] = current_props.minor_axis_length
+            measurements[str(SHAPE.ORIENTATION)][idx] = current_props.orientation
 
             circularity = (4 * np.pi * obj_props[idx].area) / (current_props.perimeter ** 2)
             measurements[str(SHAPE.CIRCULARITY)][idx] = circularity

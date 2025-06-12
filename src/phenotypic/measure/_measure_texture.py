@@ -102,9 +102,28 @@ class MeasureTexture(MeasureFeatures):
     """
 
     def __init__(self, scale: int = 5):
+        """Initialize the MeasureTexture instance with a specified scale parameter.
+
+        Args:
+            scale (int, optional): The distance parameter used in calculating Haralick features.
+                Defaults to 5.
+        """
         self.scale = scale
 
     def _operate(self, image: Image):
+        """Performs texture measurements on the image objects.
+
+        This method extracts texture features from the foreground objects in the image using
+        Haralick texture features. It processes the image's foreground array and returns
+        the measurements as a DataFrame.
+
+        Args:
+            image (Image): The image containing objects to measure.
+
+        Returns:
+            pd.DataFrame: A DataFrame containing texture measurements for each object in the image.
+                The rows are indexed by object labels, and columns represent different texture features.
+        """
         texture_measurements = self._compute_matrix_texture(image=image,
                                                        foreground_array=image.matrix.get_foreground(),
                                                        foreground_name='intensity',
@@ -307,6 +326,25 @@ class MeasureTexture(MeasureFeatures):
 
     @staticmethod
     def calculate_haralick(object_matrix, scale):
+        """Calculates Haralick texture features for a given object matrix.
+
+        This method computes Haralick texture features using the mahotas library. It handles
+        empty matrices by returning NaN values and properly processes non-empty matrices
+        to extract texture features.
+
+        Args:
+            object_matrix: The input matrix representing an object for which to calculate
+                texture features.
+            scale: The distance parameter used in calculating Haralick features.
+
+        Returns:
+            np.ndarray: A flattened array containing all Haralick features for the object.
+                If the input matrix is empty (sum is 0), returns an array of NaN values.
+
+        Notes:
+            The returned array contains features for all four directions (0°, 45°, 90°, 135°)
+            and all 13 Haralick features, flattened into a 1D array.
+        """
         if object_matrix.sum() == 0:
             haralick_features = np.full((4, 13), np.nan, dtype=np.float64)
         else:

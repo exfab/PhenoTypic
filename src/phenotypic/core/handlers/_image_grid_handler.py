@@ -46,7 +46,7 @@ class ImageGridHandler(Image):
             accessing row and column edges and generating section maps for the _parent_image's grid system.
     """
 
-    def __init__(self, input_image: Optional[Union[np.ndarray, Image]] = None, imformat: str = None,
+    def __init__(self, input_image: Optional[Union[np.ndarray, Image]] = None, imformat: str = None, name: str = None,
                  grid_finder: Optional[GridFinder] = None,
                  nrows: int = 8, ncols: int = 12):
         """
@@ -69,7 +69,7 @@ class ImageGridHandler(Image):
             ncols (int): An integer specifying the number of columns in the grid.
                 Defaults to 12.
         """
-        super().__init__(input_image=input_image, imformat=imformat)
+        super().__init__(input_image=input_image, imformat=imformat, name=name)
 
         if hasattr(input_image, '_grid_setter'):
             grid_finder = input_image._grid_setter
@@ -89,6 +89,67 @@ class ImageGridHandler(Image):
         See Also :class:`GridAccessor`
         """
         return self._accessors.grid
+
+    @property
+    def nrows(self) -> int:
+        """
+        Retrieves the number of rows in the grid.
+
+        This property is used to access the number of rows present in the grid
+        object. It encapsulates the `nrows` attribute of the `grid` and returns
+        it as an integer.
+
+        Returns:
+            int: The number of rows in the grid.
+        """
+        return self._grid_setter.nrows
+
+    @nrows.setter
+    def nrows(self, nrows):
+        """
+        Sets the number of rows in the grid. Ensures that the provided value is of the correct type.
+
+        Args:
+            nrows (int): The number of rows to set. Must be an integer.
+
+        Raises:
+            TypeError: If the provided value for nrows is not of type int.
+        """
+        if not isinstance(nrows, int):
+            raise TypeError(f'Expected int, got {type(nrows)}')
+        self._grid_setter.nrows = nrows
+
+    @property
+    def ncols(self) -> int:
+        """
+        Gets the number of columns in the grid.
+
+        This property retrieves the total number of columns in the grid
+        by accessing the corresponding attribute of the underlying grid
+        instance. It provides a read-only interface to the `ncols` value.
+
+        Returns:
+            int: The number of columns in the grid.
+        """
+        return self._grid_setter.ncols
+
+    @ncols.setter
+    def ncols(self, ncols):
+        """
+        Setter for the 'ncols' attribute ensuring it is assigned a valid value. The 'ncols'
+        attribute defines the number of columns in the grid structure. The method validates
+        the data type of the input and guarantees that only integers are accepted. If an invalid
+        type is provided, a TypeError exception is raised.
+
+        Args:
+            ncols: The number of columns to set for the grid structure.
+
+        Raises:
+            TypeError: If the provided value for 'ncols' is not of type int.
+        """
+        if not isinstance(ncols, int):
+            raise TypeError(f'Expected int, got {type(ncols)}')
+        self._grid_setter.ncols = ncols
 
     @grid.setter
     def grid(self, grid):
@@ -142,7 +203,19 @@ class ImageGridHandler(Image):
 
         if show_gridlines and self.num_objects > 0:
             col_edges = self.grid.get_col_edges()
+            upper_col_edges = col_edges[1:]
+            lower_col_edges = col_edges[:-1]
+            col_centers = ((upper_col_edges - lower_col_edges) // 2) + lower_col_edges
+            ax.set_xticks(col_centers)
+            ax.set_xticklabels(np.arange(self.ncols))
+
             row_edges = self.grid.get_row_edges()
+            upper_row_edges = row_edges[1:]
+            lower_row_edges = row_edges[:-1]
+            row_centers = ((upper_row_edges - lower_row_edges) // 2) + lower_row_edges
+            ax.set_yticks(row_centers)
+            ax.set_yticklabels(np.arange(self.nrows))
+
             ax.vlines(x=col_edges, ymin=row_edges.min(), ymax=row_edges.max(), colors='c', linestyles='--')
             ax.hlines(y=row_edges, xmin=col_edges.min(), xmax=col_edges.max(), color='c', linestyles='--')
 
@@ -167,8 +240,8 @@ class ImageGridHandler(Image):
                     Rectangle(
                         (min_cc, min_rr), width=width, height=height,
                         edgecolor=next(cmap_cycle),
-                        facecolor='none'
-                    )
+                        facecolor='none',
+                    ),
                 )
 
         return fig, ax

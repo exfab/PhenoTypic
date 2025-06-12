@@ -46,7 +46,15 @@ class MeasureFeatures(BaseOperation):
     @staticmethod
     def _repair_scipy_results(scipy_output) -> np.array:
         """Tests and ensures scipy result is a numpy array.
-        This is helpful for bulk measurements using scipy.ndimage measurement functions"""
+
+        This is helpful for bulk measurements using scipy.ndimage measurement functions.
+
+        Args:
+            scipy_output: The output from a scipy function that needs to be converted to a numpy array.
+
+        Returns:
+            np.array: A numpy array containing the scipy output.
+        """
         if getattr(scipy_output, "__getitem__", False):
             return np.array(scipy_output)
         else:
@@ -54,7 +62,16 @@ class MeasureFeatures(BaseOperation):
 
     @staticmethod
     def calculate_center_of_mass(array: np.ndarray, labels: ArrayLike = None):
+        """Calculates the center of mass for each labeled object in the array.
 
+        Args:
+            array: Input array to process.
+            labels: Array of labels of the same shape as the input array. If None, all non-zero
+                elements of the input are treated as a single object.
+
+        Returns:
+            np.ndarray: Coordinates of the center of mass for each labeled object.
+        """
         if labels is not None:
             indexes = np.unique(labels)
             indexes = indexes[indexes != 0]
@@ -64,6 +81,16 @@ class MeasureFeatures(BaseOperation):
 
     @staticmethod
     def calculate_max(array: np.ndarray, labels: ArrayLike = None):
+        """Calculates the maximum value for each labeled object in the array.
+
+        Args:
+            array: Input array to process.
+            labels: Array of labels of the same shape as the input array. If None, all non-zero
+                elements of the input are treated as a single object.
+
+        Returns:
+            np.ndarray: Maximum value for each labeled object.
+        """
         if labels is not None:
             indexes = np.unique(labels)
             indexes = indexes[indexes != 0]
@@ -73,6 +100,16 @@ class MeasureFeatures(BaseOperation):
 
     @staticmethod
     def calculate_mean(array: np.ndarray, labels: ArrayLike = None):
+        """Calculates the mean value for each labeled object in the array.
+
+        Args:
+            array: Input array to process.
+            labels: Array of labels of the same shape as the input array. If None, all non-zero
+                elements of the input are treated as a single object.
+
+        Returns:
+            np.ndarray: Mean value for each labeled object.
+        """
         if labels is not None:
             indexes = np.unique(labels)
             indexes = indexes[indexes != 0]
@@ -82,6 +119,16 @@ class MeasureFeatures(BaseOperation):
 
     @staticmethod
     def calculate_median(array: np.ndarray, labels: ArrayLike = None):
+        """Calculates the median value for each labeled object in the array.
+
+        Args:
+            array: Input array to process.
+            labels: Array of labels of the same shape as the input array. If None, all non-zero
+                elements of the input are treated as a single object.
+
+        Returns:
+            np.ndarray: Median value for each labeled object.
+        """
         if labels is not None:
             indexes = np.unique(labels)
             indexes = indexes[indexes != 0]
@@ -91,6 +138,16 @@ class MeasureFeatures(BaseOperation):
 
     @staticmethod
     def calculate_minimum(array: np.ndarray, labels: ArrayLike = None):
+        """Calculates the minimum value for each labeled object in the array.
+
+        Args:
+            array: Input array to process.
+            labels: Array of labels of the same shape as the input array. If None, all non-zero
+                elements of the input are treated as a single object.
+
+        Returns:
+            np.ndarray: Minimum value for each labeled object.
+        """
         if labels is not None:
             indexes = np.unique(labels)
             indexes = indexes[indexes != 0]
@@ -100,6 +157,16 @@ class MeasureFeatures(BaseOperation):
 
     @staticmethod
     def calculate_stddev(array: np.ndarray, labels: ArrayLike = None):
+        """Calculates the standard deviation for each labeled object in the array.
+
+        Args:
+            array: Input array to process.
+            labels: Array of labels of the same shape as the input array. If None, all non-zero
+                elements of the input are treated as a single object.
+
+        Returns:
+            np.ndarray: Standard deviation for each labeled object.
+        """
         if labels is not None:
             indexes = np.unique(labels)
             indexes = indexes[indexes != 0]
@@ -109,6 +176,16 @@ class MeasureFeatures(BaseOperation):
 
     @staticmethod
     def calculate_sum(array: np.ndarray, labels: ArrayLike = None):
+        """Calculates the sum of values for each labeled object in the array.
+
+        Args:
+            array: Input array to process.
+            labels: Array of labels of the same shape as the input array. If None, all non-zero
+                elements of the input are treated as a single object.
+
+        Returns:
+            np.ndarray: Sum of values for each labeled object.
+        """
         if labels is not None:
             indexes = np.unique(labels)
             indexes = indexes[indexes != 0]
@@ -118,6 +195,16 @@ class MeasureFeatures(BaseOperation):
 
     @staticmethod
     def calculate_variance(array: np.ndarray, labels: ArrayLike = None):
+        """Calculates the variance for each labeled object in the array.
+
+        Args:
+            array: Input array to process.
+            labels: Array of labels of the same shape as the input array. If None, all non-zero
+                elements of the input are treated as a single object.
+
+        Returns:
+            np.ndarray: Variance for each labeled object.
+        """
         if labels is not None:
             indexes = np.unique(labels)
             indexes = indexes[indexes != 0]
@@ -160,11 +247,35 @@ class MeasureFeatures(BaseOperation):
 
     @staticmethod
     def calculate_min_extrema(array: np.ndarray, labels: ArrayLike = None):
+        """Calculates the minimum extrema and their positions for each labeled object in the array.
+
+        Args:
+            array: Input array to process.
+            labels: Array of labels of the same shape as the input array. If None, all non-zero
+                elements of the input are treated as a single object.
+
+        Returns:
+            tuple: A tuple containing:
+                - np.ndarray: Minimum extrema values for each labeled object.
+                - np.ndarray: Positions of minimum extrema for each labeled object.
+        """
         min_extrema, _, min_pos, _ = MeasureFeatures._calculate_extrema(array, labels)
         return min_extrema, min_pos
 
     @staticmethod
     def calculate_max_extrema(array: np.ndarray, labels: ArrayLike = None):
+        """Calculates the maximum extrema and their positions for each labeled object in the array.
+
+        Args:
+            array: Input array to process.
+            labels: Array of labels of the same shape as the input array. If None, all non-zero
+                elements of the input are treated as a single object.
+
+        Returns:
+            tuple: A tuple containing:
+                - np.ndarray: Maximum extrema values for each labeled object.
+                - np.ndarray: Positions of maximum extrema for each labeled object.
+        """
         _, max_extreme, _, max_pos = MeasureFeatures._calculate_extrema(array, labels)
         return max_extreme, max_pos
 

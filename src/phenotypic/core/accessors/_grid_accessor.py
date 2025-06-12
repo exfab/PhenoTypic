@@ -162,15 +162,16 @@ class GridAccessor(ImageAccessor):
 
     def get_col_edges(self) -> np.ndarray:
         """Returns the column edges of the grid"""
-        intervals = self.info().loc[:, GRID.GRID_COL_INTERVAL]
-        left_edges = intervals.apply(
-            lambda x: math.floor(x[0]) if math.floor(x[0]) > 0 else math.ceil(x[0])
-        ).to_numpy()
-        right_edges = intervals.apply(
-            lambda x: math.ceil(x[1]) if math.ceil(x[1]) > 0 else math.floor(x[1])
-        ).to_numpy()
-        edges = np.unique(np.concatenate([left_edges, right_edges]))
-        return edges.astype(int)
+        # intervals = self.info().loc[:, GRID.GRID_COL_INTERVAL]
+        # left_edges = intervals.apply(
+        #     lambda x: math.floor(x[0]) if math.floor(x[0]) > 0 else math.ceil(x[0])
+        # ).to_numpy()
+        # right_edges = intervals.apply(
+        #     lambda x: math.ceil(x[1]) if math.ceil(x[1]) > 0 else math.floor(x[1])
+        # ).to_numpy()
+        # edges = np.unique(np.concatenate([left_edges, right_edges]))
+        # return edges.astype(int)
+        return self._parent_image._grid_setter.get_col_edges(self._parent_image)
 
     def get_col_map(self) -> np.ndarray:
         """Returns a version of the object map with each object numbered according to their grid column number"""
@@ -182,7 +183,7 @@ class GridAccessor(ImageAccessor):
             # Edit the new map's objects to equal the column number
             col_map[np.isin(
                 element=self._parent_image.objmap[:],
-                test_elements=subtable.index.to_numpy()
+                test_elements=subtable.index.to_numpy(),
             )] = n + 1
         return col_map
 
@@ -214,17 +215,19 @@ class GridAccessor(ImageAccessor):
     Grid Rows
     """
 
+    # Optimize so it calls the grid finder's edges calculation
     def get_row_edges(self) -> np.ndarray:
         """Returns the row edges of the grid"""
-        intervals = self.info().loc[:, GRID.GRID_ROW_INTERVAL]
-        left_edges = intervals.apply(
-            lambda x: math.floor(x[0]) if math.floor(x[0]) > 0 else math.ceil(x[0])
-        ).to_numpy()
-        right_edges = intervals.apply(
-            lambda x: math.ceil(x[1]) if math.ceil(x[1]) > 0 else math.floor(x[1])
-        ).to_numpy()
-        edges = np.unique(np.concatenate([left_edges, right_edges]))
-        return edges.astype(int)
+        # intervals = self.info().loc[:, GRID.GRID_ROW_INTERVAL]
+        # left_edges = intervals.apply(
+        #     lambda x: math.floor(x[0]) if math.floor(x[0]) > 0 else math.ceil(x[0])
+        # ).to_numpy()
+        # right_edges = intervals.apply(
+        #     lambda x: math.ceil(x[1]) if math.ceil(x[1]) > 0 else math.floor(x[1])
+        # ).to_numpy()
+        # edges = np.unique(np.concatenate([left_edges, right_edges]))
+        # return edges.astype(int)
+        return self._parent_image._grid_setter.get_row_edges(self._parent_image)
 
     def get_row_map(self) -> np.ndarray:
         """Returns a version of the object map with each object numbered according to their grid row number"""
@@ -236,7 +239,7 @@ class GridAccessor(ImageAccessor):
             # Edit the new map's objects to equal the column number
             row_map[np.isin(
                 element=self._parent_image.objmap[:],
-                test_elements=subtable.index.to_numpy()
+                test_elements=subtable.index.to_numpy(),
             )] = n + 1
         return row_map
 
@@ -277,7 +280,7 @@ class GridAccessor(ImageAccessor):
             subtable = grid_info.loc[grid_info.loc[:, GRID.GRID_SECTION_NUM] == bidx, :]
             section_map[np.isin(
                 element=self._parent_image.objmap[:],
-                test_elements=subtable.index.to_numpy()
+                test_elements=subtable.index.to_numpy(),
             )] = n + 1
 
         return section_map

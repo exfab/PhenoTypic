@@ -33,7 +33,7 @@ class ObjectMask(ImageDataAccessor):
         # Check to make sure the section of the mask the key accesses is the same as the other_image
         if type(value) in [int, bool]:
             try:
-                value = bool(value)
+                value = 1 if value != 0 else 0
                 mask[key] = value
             except TypeError:
                 raise InvalidMaskScalarValueError

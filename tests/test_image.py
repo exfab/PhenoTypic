@@ -92,6 +92,24 @@ def test_image_matrix_access(sample_image_array_with_imformat):
     elif input_imformat == 'Grayscale':
         assert np.array_equal(ps_image.matrix[:], input_image)
 
+@timeit
+def test_image_matrix_change(sample_image_array_with_imformat):
+    input_image, input_imformat, true_imformat = sample_image_array_with_imformat
+    ps_image = phenotypic.Image(input_image=input_image, imformat=input_imformat)
+    ps_image.matrix[10:10,10:10] = 0
+    if input_imformat == 'RGB':
+        altered_image = skimage.color.rgb2gray(input_image)
+        altered_image[10:10,10:10] = 0
+
+        assert np.allclose(ps_image.matrix[:], altered_image, atol=1.0/np.iinfo(ps_image._MATRIX_STORAGE_DTYPE).max), \
+            f'Image.matrix and skimage.color.rgb2gray do not match at {np.unique(ps_image.matrix[:]!=altered_image,return_counts=True)}'
+
+        assert np.array_equal(ps_image.array[:], input_image), 'Image.array was altered and color information was changed'
+
+    elif input_imformat == 'Grayscale':
+        altered_image = input_image.copy()
+        altered_image[10:10,10:10] = 0
+        assert np.array_equal(ps_image.matrix[:], altered_image)
 
 @timeit
 def test_image_det_matrix_access(sample_image_array_with_imformat):

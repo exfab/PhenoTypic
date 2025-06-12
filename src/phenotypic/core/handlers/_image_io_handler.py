@@ -12,6 +12,7 @@ from pathlib import Path
 import skimage as ski
 
 from phenotypic.util.exceptions_ import UnsupportedFileTypeError
+from phenotypic.util.constants_ import IMAGE_FORMATS
 from ._image_hsv_handler import ImageHsvHandler
 
 
@@ -84,17 +85,17 @@ class ImageIOHandler(ImageHsvHandler):
 
             # 3) Store string/enum as a group attribute
             #    h5py supports variable-length UTF-8 strings automatically
-            grp.attrs["imformat"] = self.imformat
+            grp.attrs["imformat"] = self.imformat.value
 
             # 4) Store protected metadata in its own subgroup
             prot = grp.require_group("protected_metadata")
             for key, val in self._metadata.protected.items():
-                prot.attrs[key] = val
+                prot.attrs[key] = str(val)
 
             # 5) Store public metadata in its own subgroup
             pub = grp.require_group("public_metadata")
             for key, val in self._metadata.public.items():
-                pub.attrs[key] = val
+                pub.attrs[key] = str(val)
 
     @classmethod
     def load_hdf5(cls, filename, image_name) -> Image:
@@ -116,7 +117,10 @@ class ImageIOHandler(ImageHsvHandler):
             img._data.sparse_object_map = grp["objmap"][()]
 
             # 2) Restore format
-            img._image_format = grp.attrs["imformat"]
+            try:
+                img._image_format = IMAGE_FORMATS(grp.attrs["imformat"])
+            except ValueError:
+                raise ValueError(f"Unsupported imformat {grp.attrs['imformat']} for Image")
 
             # 3) Restore metadata
             prot = grp["protected_metadata"].attrs

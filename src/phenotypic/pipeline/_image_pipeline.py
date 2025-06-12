@@ -93,7 +93,7 @@ class ImagePipeline(ImageOperation):
             pd.DataFrame: A DataFrame containing measurement results from all the
             queued measurement strategies, merged on the same index.
         """
-        measurements = []
+        measurements = [image.grid.info() if hasattr(image, 'grid') else image.objects.info()]
         for key in self._measurement_queue.keys():
             measurements.append(self._measurement_queue[key].measure(image))
         return self._merge_on_same_index(measurements)
