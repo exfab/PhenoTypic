@@ -10,39 +10,39 @@ import numpy as np
 
 class ImageAccessor:
     """
-    The base for classes that provides access to details and functionalities of a parent _parent_image.
+    The base for classes that provides access to details and functionalities of a parent _root_image.
 
-    The ImageAccessor class serves as a base class for interacting with a parent _parent_image
-    object. It requires an instance of the parent _parent_image for initialization to
-    enable seamless operations on the _parent_image's properties and data.
+    The ImageAccessor class serves as a base class for interacting with a parent _root_image
+    object. It requires an instance of the parent _root_image for initialization to
+    enable seamless operations on the _root_image's properties and data.
 
     Attributes:
-        _parent_image (Image): The parent _parent_image object that this accessor interacts
+        _parent_image (Image): The parent _root_image object that this accessor interacts
             with.
     """
 
     def __init__(self, parent_image: Image):
-        self._parent_image = parent_image
+        self._root_image = parent_image
 
     def _plot(self,
               arr: np.ndarray,
               figsize: (int, int) = (8, 6),
-              title: str | None = None,
+              title: str | bool | None = None,
               cmap: str = 'gray',
               ax: plt.Axes | None = None,
               mpl_params: dict | None = None,
               ) -> tuple[plt.Figure, plt.Axes]:
         """
-        Plots an _parent_image array using Matplotlib.
+        Plots an _root_image array using Matplotlib.
 
-        This method is designed to render an _parent_image array using the `matplotlib.pyplot` module. It provides
+        This method is designed to render an _root_image array using the `matplotlib.pyplot` module. It provides
         flexible options for color mapping, figure size, title customization, and additional Matplotlib
         parameters, which enable detailed control over the plot appearance.
 
         Args:
-            arr (np.ndarray): The _parent_image data to plot. Can be 2D or 3D array representing the _parent_image.
+            arr (np.ndarray): The _root_image data to plot. Can be 2D or 3D array representing the _root_image.
             figsize ((int, int), optional): A tuple specifying the figure size. Defaults to (8, 6).
-            title (None | str, optional): Plot title. If None, defaults to the name of the parent _parent_image. Defaults to None.
+            title (None | str, optional): Plot title. If None, defaults to the name of the parent _root_image. Defaults to None.
             cmap (str, optional): The colormap to be applied when the array is 2D. Defaults to 'gray'.
             ax (None | plt.Axes, optional): Existing Matplotlib axes to plot into. If None, a new figure is created. Defaults to None.
             mpl_params (dict | None, optional): Additional Matplotlib keyword arguments for customization. Defaults to None.
@@ -60,71 +60,16 @@ class ImageAccessor:
         ax.imshow(arr, cmap=cmap, **mpl_params) if arr.ndim == 2 else ax.imshow(arr, **mpl_params)
 
         ax.grid(False)
-        if title: ax.set_title(title)
-        # ax.set_title(title) if title else ax.set_title(self._parent_image.name)
+        if title is True:
+            ax.set_title(self._root_image.name)
+        elif title:
+            ax.set_title(title)
 
         return fig, ax
 
-    def _plot_overlay(self,
-                      arr: np.ndarray,
-                      objmap: np.ndarray,
-                      figsize: (int, int) = (8, 6),
-                      title: str = None,
-                      cmap: str = 'gray',
-                      ax: plt.Axes = None,
-                      overlay_params: dict | None = None,
-                      imshow_params: dict | None = None,
-                      ) -> (plt.Figure, plt.Axes):
-        """
-        Plots an array with optional object map overlay and customization options.
-
-        Note:
-            - If ax is None, a new figure and axes are created.
-
-        Args:
-            arr (np.ndarray): The primary array to be displayed as an _parent_image.
-            objmap (np.ndarray, optional): An array containing labels for an object map to
-                overlay on top of the _parent_image. Defaults to None.
-            figsize (tuple[int, int], optional): The size of the figure as a tuple of
-                (width, height). Defaults to (8, 6).
-            title (str, optional): Title of the plot to be displayed. If not provided,
-                defaults to the name of the self._parent_image.
-            cmap (str, optional): Colormap to apply to the _parent_image. Defaults to 'gray'. Only used if arr input_image is 2D.
-            ax (plt.Axes, optional): An existing Matplotlib Axes instance for rendering
-                the _parent_image. If None, a new figure and axes are created. Defaults to None.
-            overlay_params (dict | None, optional): Parameters passed to the
-                `skimage.color.label2rgb` function for overlay customization.
-                Defaults to None.
-            imshow_params (dict | None, optional): Additional parameters for the
-                `ax.imshow` Matplotlib function to control _parent_image rendering.
-                Defaults to None.
-
-        Returns:
-            tuple[plt.Figure, plt.Axes]: The Matplotlib Figure and Axes objects used for
-            the display. If an existing Axes is provided, its corresponding Figure is returned.
-        """
-        if ax is None:
-            fig, ax = plt.subplots(figsize=figsize)
-        else:
-            fig = ax.get_figure()
-
-        overlay_params = overlay_params if overlay_params else {}
-
-        imshow_params = imshow_params if imshow_params else {}
-        cmap = imshow_params.get('cmap', cmap)
-
-        overlay_alpha = overlay_params.get('alpha', 0.2)
-        imarray = skimage.color.label2rgb(label=objmap, image=arr, bg_label=0, alpha=overlay_alpha, **overlay_params)
-        ax.imshow(imarray, cmap=cmap, **imshow_params) if imarray.ndim == 2 else ax.imshow(imarray, **imshow_params)
-
-        ax.grid(False)
-        if title: ax.set_title(title)
-
-        return fig, ax
-
-    def _plot_annotations(self, ax: plt.Axes, color: str, size: int, facecolor: str, object_label: None | int, **kwargs):
-        props = self._parent_image.objects.props
-        for i, label in enumerate(self._parent_image.objects.labels):
+    def _plot_obj_labels(self, ax: plt.Axes, color: str, size: int, facecolor: str, object_label: None | int, **kwargs):
+        props = self._root_image.objects.props
+        for i, label in enumerate(self._root_image.objects.labels):
             if object_label is None:
                 text_rr, text_cc = props[i].centroid
                 ax.text(

@@ -18,7 +18,7 @@ def test_blank_gridimage_initialization():
 
 @timeit
 def test_gridimage_initialization(sample_image_array):
-    # Test custom initialization with _parent_image and grid setter
+    # Test custom initialization with _root_image and grid setter
     input_image = sample_image_array
     grid_image = GridImage(input_image=input_image)
     assert grid_image.isempty() is False

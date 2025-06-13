@@ -55,10 +55,10 @@ class SHAPE(Enum):
 
 
 class MeasureShape(MeasureFeatures):
-    r"""Calculates various geometric measures of the objects in the _parent_image.
+    r"""Calculates various geometric measures of the objects in the _root_image.
 
     Returns:
-        pd.DataFrame: A dataframe containing the geometric measures of the objects in the _parent_image.
+        pd.DataFrame: A dataframe containing the geometric measures of the objects in the _root_image.
 
     Notes:
         Area: The sum of the individual pixel's in the object's footprint
@@ -69,7 +69,7 @@ class MeasureShape(MeasureFeatures):
     References:
         1. D. R. Stirling, M. J. Swain-Bowden, A. M. Lucas, A. E. Carpenter, B. A. Cimini, and A. Goodman,
             “CellProfiler 4: improvements in speed, utility and usability,” BMC Bioinformatics, vol. 22, no. 1, p. 433, Sep. 2021, doi: 10.1186/s12859-021-04344-9.
-        2. “Shape factor (_parent_image analysis and microscopy),” Wikipedia. Oct. 09, 2021. Accessed: Apr. 08, 2025. [Online].
+        2. “Shape factor (_root_image analysis and microscopy),” Wikipedia. Oct. 09, 2021. Accessed: Apr. 08, 2025. [Online].
             Available: https://en.wikipedia.org/w/index.php?title=Shape_factor_(image_analysis_and_microscopy)&oldid=1048998776
 
     """

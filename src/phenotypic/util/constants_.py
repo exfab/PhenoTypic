@@ -14,7 +14,7 @@ from enum import Enum
 
 # Image format constants
 class IMAGE_FORMATS(Enum):
-    """Constants for supported _parent_image formats."""
+    """Constants for supported _root_image formats."""
     NONE = None
     GRAYSCALE = 'GRAYSCALE'
     GRAYSCALE_SINGLE_CHANNEL = 'Grayscale (single channel)'
@@ -59,7 +59,7 @@ class OBJECT:
 
 class IMAGE_IO:
     H5PY_MODULE_SIGNATURE = 'phenotypic'
-    H5PY_IMAGE_GROUP = '_parent_image'
+    H5PY_IMAGE_GROUP = '_root_image'
     H5PY_IMAGE_SET_GROUP = 'image_set'
 
 
@@ -101,7 +101,7 @@ class METADATA_LABELS:
 
 
 class SUBIMAGE_TYPES:
-    """The string labels for different types of subimages generated when accessing subimages of a parent _parent_image."""
+    """The string labels for different types of subimages generated when accessing subimages of a parent _root_image."""
     ORIGINAL = 'Original'
     CROP = 'Crop'
     OBJECT = 'Object'

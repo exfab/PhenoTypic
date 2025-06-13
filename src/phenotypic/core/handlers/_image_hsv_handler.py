@@ -23,12 +23,12 @@ class ImageHsvHandler(ImageHandler):
 
     @property
     def _hsv(self) -> np.ndarray:
-        """Returns the hsv array dynamically of the current _parent_image.
+        """Returns the hsv array dynamically of the current _root_image.
 
         This can become computationally expensive, so implementation may be changed in the future.
 
         Returns:
-            np.ndarray: The hsv array of the current _parent_image.
+            np.ndarray: The hsv array of the current _root_image.
         """
         if self.imformat.is_matrix():
             raise AttributeError('Grayscale images cannot be directly converted to hsv. Convert to RGB first')

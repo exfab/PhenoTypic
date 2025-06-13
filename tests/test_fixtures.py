@@ -143,7 +143,7 @@ _public = list(walk_package(phenotypic))
 
 def walk_package_for_operations(pkg):
     """Yield (qualified_name, obj) for every public, top‑level object in *pkg*
-    and all of its sub‑modules, skipping module objects themselves. this collects all _parent_image operations for testing."""
+    and all of its sub‑modules, skipping module objects themselves. this collects all _root_image operations for testing."""
     modules = [pkg]  # start with the root
     if hasattr(pkg, "__path__"):  # add all sub‑modules
         modules += [
@@ -182,7 +182,7 @@ _image_operations = list(walk_package_for_operations(phenotypic))
 
 def walk_package_for_measurements(pkg):
     """Yield (qualified_name, obj) for every public, top‑level object in *pkg*
-    and all of its sub‑modules, skipping module objects themselves. this collects all _parent_image measurement modules for testing."""
+    and all of its sub‑modules, skipping module objects themselves. this collects all _root_image measurement modules for testing."""
     modules = [pkg]  # start with the root
     if hasattr(pkg, "__path__"):  # add all sub‑modules
         modules += [

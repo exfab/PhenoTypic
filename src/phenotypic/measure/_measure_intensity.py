@@ -37,10 +37,10 @@ class INTENSITY(Enum):
 
 
 class MeasureIntensity(MeasureFeatures):
-    """Calculates various intensity measures of the objects in the _parent_image.
+    """Calculates various intensity measures of the objects in the _root_image.
 
     Returns:
-        pd.DataFrame: A dataframe containing the intensity measures of the objects in the _parent_image.
+        pd.DataFrame: A dataframe containing the intensity measures of the objects in the _root_image.
 
     Notes:
         Integrated Intensity: Sum of all pixel values in the object's grayscale footprint

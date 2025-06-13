@@ -16,41 +16,41 @@ from phenotypic.util.exceptions_ import IllegalAssignmentError
 
 
 class HsvAccessor(ImageAccessor):
-    """An accessor class to handle and analyze HSV (Hue, Saturation, Value) _parent_image data efficiently.
+    """An accessor class to handle and analyze HSV (Hue, Saturation, Value) _root_image data efficiently.
 
-    This class provides functionality for accessing and processing HSV _parent_image data.
-    Users can retrieve components (hue, saturation, brightness) of the _parent_image, generate
+    This class provides functionality for accessing and processing HSV _root_image data.
+    Users can retrieve components (hue, saturation, brightness) of the _root_image, generate
     visual histograms of color distributions, and measure specific object properties
-    masked within the HSV _parent_image.
+    masked within the HSV _root_image.
 
     Extensive visualization methods are also included, allowing display of HSV components
-    and their masked variations. This class is ideal for _parent_image analysis tasks where color
+    and their masked variations. This class is ideal for _root_image analysis tasks where color
     properties play a significant role.
 
     Attributes:
-        _parent_image (Image): The parent Image object that manages _parent_image data and operations.
+        _parent_image (Image): The parent Image object that manages _root_image data and operations.
     """
 
     def __getitem__(self, key) -> np.ndarray:
-        return self._parent_image._hsv[key].copy()
+        return self._root_image._hsv[key].copy()
 
     def __setitem__(self, key, value):
         raise IllegalAssignmentError('HSV')
 
     @property
     def shape(self) -> Optional[tuple[int, ...]]:
-        """Returns the shape of the _parent_image"""
-        return self._parent_image._data.array.shape
+        """Returns the shape of the _root_image"""
+        return self._root_image._data.array.shape
 
     def copy(self) -> np.ndarray:
-        """Returns a copy of the _parent_image array"""
-        return self._parent_image._hsv.copy()
+        """Returns a copy of the _root_image array"""
+        return self._root_image._hsv.copy()
 
     def histogram(self, figsize: Tuple[int, int] = (10, 5), linewidth=1):
         """
-        Generates and displays histograms for hue, saturation, and brightness components of an _parent_image,
-        alongside the original _parent_image. The histograms depict the distribution of these components, and
-        this analysis can aid in understanding the _parent_image's color properties.
+        Generates and displays histograms for hue, saturation, and brightness components of an _root_image,
+        alongside the original _root_image. The histograms depict the distribution of these components, and
+        this analysis can aid in understanding the _root_image's color properties.
 
         Args:
             figsize (Tuple[int, int]): The size of the figure that contains all subplots, specified as
@@ -63,19 +63,19 @@ class HsvAccessor(ImageAccessor):
         """
         fig, axes = plt.subplots(nrows=2, ncols=2, figsize=figsize)
         axes_ = axes.ravel()
-        axes_[0].imshow(self._parent_image._data.array)
-        axes_[0].set_title(self._parent_image.name)
+        axes_[0].imshow(self._root_image._data.array)
+        axes_[0].set_title(self._root_image.name)
         axes_[0].grid(False)
 
-        hist_one, histc_one = histogram(self._parent_image._hsv[:, :, 0] * 360)
+        hist_one, histc_one = histogram(self._root_image._hsv[:, :, 0] * 360)
         axes_[1].plot(histc_one, hist_one, lw=linewidth)
         axes_[1].set_title('Hue')
 
-        hist_two, histc_two = histogram(self._parent_image._hsv[:, :, 1])
+        hist_two, histc_two = histogram(self._root_image._hsv[:, :, 1])
         axes_[2].plot(histc_two, hist_two, lw=linewidth)
         axes_[2].set_title("Saturation")
 
-        hist_three, histc_three = histogram(self._parent_image._hsv[:, :, 2])
+        hist_three, histc_three = histogram(self._root_image._hsv[:, :, 2])
         axes_[3].plot(histc_three, hist_three, lw=linewidth)
         axes_[3].set_title("Brightness")
 
@@ -85,7 +85,7 @@ class HsvAccessor(ImageAccessor):
              title: str = None, shrink=0.2) -> (plt.Figure, plt.Axes):
         """
         Displays the Hue, Saturation, and Brightness (HSV components) of the given
-        _parent_image data in a visualization using subplots. Each subplot corresponds to
+        _root_image data in a visualization using subplots. Each subplot corresponds to
         one of the HSV channels, and color bars are included to help interpret the
         values.
 
@@ -108,17 +108,17 @@ class HsvAccessor(ImageAccessor):
         fig, axes = plt.subplots(nrows=3, figsize=figsize)
         ax = axes.ravel()
 
-        hue = ax[0].imshow(self._parent_image._hsv[:, :, 0] * 360, cmap='hsv', vmin=0, vmax=360)
+        hue = ax[0].imshow(self._root_image._hsv[:, :, 0] * 360, cmap='hsv', vmin=0, vmax=360)
         ax[0].set_title('Hue')
         ax[0].grid(False)
         fig.colorbar(mappable=hue, ax=ax[0], shrink=shrink)
 
-        saturation = ax[1].imshow(self._parent_image._hsv[:, :, 1], cmap='viridis', vmin=0, vmax=1)
+        saturation = ax[1].imshow(self._root_image._hsv[:, :, 1], cmap='viridis', vmin=0, vmax=1)
         ax[1].set_title('Saturation')
         ax[1].grid(False)
         fig.colorbar(mappable=saturation, ax=ax[1], shrink=shrink)
 
-        brightness = ax[2].imshow(self._parent_image._hsv[:, :, 2], cmap='gray', vmin=0, vmax=1)
+        brightness = ax[2].imshow(self._root_image._hsv[:, :, 2], cmap='gray', vmin=0, vmax=1)
         ax[2].set_title('Brightness')
         ax[2].grid(False)
         fig.colorbar(mappable=brightness, ax=ax[2], shrink=shrink)
@@ -132,7 +132,7 @@ class HsvAccessor(ImageAccessor):
                      title: str = None, shrink=0.6) -> (plt.Figure, plt.Axes):
         """
         Displays the Hue, Saturation, and Brightness (HSV components) of the given
-        _parent_image data in a visualization using subplots. Each subplot corresponds to
+        _root_image data in a visualization using subplots. Each subplot corresponds to
         one of the HSV channels, and color bars are included to help interpret the
         values.
 
@@ -155,21 +155,21 @@ class HsvAccessor(ImageAccessor):
         fig, axes = plt.subplots(nrows=3, figsize=figsize)
         ax = axes.ravel()
 
-        hue = ax[0].imshow(np.ma.array(self._parent_image._hsv[:, :, 0] * 360, mask=~self._parent_image.objmask[:]),
+        hue = ax[0].imshow(np.ma.array(self._root_image._hsv[:, :, 0] * 360, mask=~self._root_image.objmask[:]),
                            cmap='hsv', vmin=0, vmax=360
                            )
         ax[0].set_title('Hue')
         ax[0].grid(False)
         fig.colorbar(mappable=hue, ax=ax[0], shrink=shrink)
 
-        saturation = ax[1].imshow(np.ma.array(self._parent_image._hsv[:, :, 1], mask=~self._parent_image.objmask[:]),
+        saturation = ax[1].imshow(np.ma.array(self._root_image._hsv[:, :, 1], mask=~self._root_image.objmask[:]),
                                   cmap='viridis', vmin=0, vmax=1
                                   )
         ax[1].set_title('Saturation')
         ax[1].grid(False)
         fig.colorbar(mappable=saturation, ax=ax[1], shrink=shrink)
 
-        brightness = ax[2].imshow(np.ma.array(self._parent_image._hsv[:, :, 2], mask=~self._parent_image.objmask[:]),
+        brightness = ax[2].imshow(np.ma.array(self._root_image._hsv[:, :, 2], mask=~self._root_image.objmask[:]),
                                   cmap='gray', vmin=0, vmax=1
                                   )
         ax[2].set_title('Brightness')
@@ -182,43 +182,43 @@ class HsvAccessor(ImageAccessor):
         return fig, ax
 
     def get_foreground_hue(self, bg_color: int = 0, normalized: bool = False):
-        """Extracts the object hue from the HSV _parent_image.
+        """Extracts the object hue from the HSV _root_image.
 
         Note:
             - Unnormalized Range: 0-360 degrees.
             - Normalized Range: 0-1
         """
-        return self._parent_image.objmask._extract_objects(
-            self._parent_image._hsv[:, :, 0] if normalized else self._parent_image._hsv[:, :, 0] * 360,
+        return self._root_image.objmask._extract_objects(
+            self._root_image._hsv[:, :, 0] if normalized else self._root_image._hsv[:, :, 0] * 360,
             bg_color=bg_color
         )
 
     def get_foreground_saturation(self, bg_color: int = 0, normalized: bool = True):
-        """Extracts the object saturation from the HSV _parent_image.
+        """Extracts the object saturation from the HSV _root_image.
 
         Note:
             - Unnormalized Range: 0-255 (Same as OpenCV)
             - Normalized Range: 0-1
 
         """
-        return self._parent_image.objmask._extract_objects(
-            self._parent_image._hsv[:, :, 1] if normalized else self._parent_image._hsv[:, :, 1] * 255,
+        return self._root_image.objmask._extract_objects(
+            self._root_image._hsv[:, :, 1] if normalized else self._root_image._hsv[:, :, 1] * 255,
             bg_color=bg_color
         )
 
     def get_foreground_brightness(self, bg_color: int = 0, normalized: bool = True):
-        """Extracts the object brightness from the HSV _parent_image.
+        """Extracts the object brightness from the HSV _root_image.
 
         Note:
             - Unnormalized Range: 0-255 (Same as OpenCV)
             - Normalized Range: 0-1
 
         """
-        return self._parent_image.objmask._extract_objects(
-            self._parent_image._hsv[:, :, 2] if normalized else self._parent_image._hsv[:, :, 2] * 255,
+        return self._root_image.objmask._extract_objects(
+            self._root_image._hsv[:, :, 2] if normalized else self._root_image._hsv[:, :, 2] * 255,
             bg_color=bg_color
         )
 
     def extract_obj(self, bg_color: int = 0):
-        """Extracts the object hue, saturation, and brightness from the HSV _parent_image. With the background elements set to 0"""
-        return self._parent_image.objmask._extract_objects(self._parent_image._hsv[:, :, :], bg_color=bg_color)
+        """Extracts the object hue, saturation, and brightness from the HSV _root_image. With the background elements set to 0"""
+        return self._root_image.objmask._extract_objects(self._root_image._hsv[:, :, :], bg_color=bg_color)

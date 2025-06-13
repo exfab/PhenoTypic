@@ -10,10 +10,10 @@ from phenotypic.util.constants_ import OBJECT
 
 class GridOversizedObjectRemover(GridMapModifier):
     """
-    Removes oversized objects from grid-based _parent_image data.
+    Removes oversized objects from grid-based _root_image data.
 
     This class inherits from `GridMapModifier` and is designed to remove objects from the
-    grid-based _parent_image representation that exceed the maximum allowable width or height of the
+    grid-based _root_image representation that exceed the maximum allowable width or height of the
     grid cells. The removal process sets the oversized object regions to the background other_image
     of 0. This class is useful for preprocessing grid images for further analysis or visualization.
     """
@@ -24,13 +24,13 @@ class GridOversizedObjectRemover(GridMapModifier):
         This method processes the grid metadata of a `GridImage` object to identify objects
         that exceed the maximum calculated width and height. It sets such objects to a
         background other_image of 0 in the object's mapping array. This helps filter out undesired
-        large objects in the _parent_image.
+        large objects in the _root_image.
 
         Args:
-            image (GridImage): The input_image grid _parent_image containing grid metadata and object map.
+            image (GridImage): The input_image grid _root_image containing grid metadata and object map.
 
         Returns:
-            GridImage: The processed grid _parent_image with specified objects removed.
+            GridImage: The processed grid _root_image with specified objects removed.
         """
         row_edges = image.grid.get_row_edges()
         col_edges = image.grid.get_col_edges()

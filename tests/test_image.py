@@ -20,12 +20,12 @@ def test_empty_image():
 @timeit
 def test_set_image_from_array(sample_image_array_with_imformat):
     """
-    Tests the functionality of setting an _parent_image from an array and verifies the
-    _parent_image properties such as shape, non-emptiness, and proper initialization.
+    Tests the functionality of setting an _root_image from an array and verifies the
+    _root_image properties such as shape, non-emptiness, and proper initialization.
 
     Args:
-        sample_images: A tuple containing the input_image _parent_image array, input_image _parent_image
-            format, and the expected true _parent_image format.
+        sample_images: A tuple containing the input_image _root_image array, input_image _root_image
+            format, and the expected true _root_image format.
     """
     input_image, input_imformat, true_imformat = sample_image_array_with_imformat
     phenotypic_image = phenotypic.Image()
@@ -39,14 +39,14 @@ def test_set_image_from_array(sample_image_array_with_imformat):
 def test_set_image_from_image(sample_image_array_with_imformat):
     """
     Tests the `set_image` method of the `Image` class from the `phenotypic` package. The function
-    validates that an _parent_image can be set from another `Image` instance or raw input_image data, with
+    validates that an _root_image can be set from another `Image` instance or raw input_image data, with
     properties and states intact.
 
     Args:
         sample_image_inputs: A tuple containing the following:
-            input_image: The input_image _parent_image as a NumPy array.
-            input_imformat: The format of the input_image _parent_image as a string.
-            true_imformat: The expected _parent_image format as a string.
+            input_image: The input_image _root_image as a NumPy array.
+            input_imformat: The format of the input_image _root_image as a string.
+            true_imformat: The expected _root_image format as a string.
     """
     input_image, input_imformat, true_imformat = sample_image_array_with_imformat
     phenotypic_image = phenotypic.Image()
@@ -87,29 +87,31 @@ def test_image_matrix_access(sample_image_array_with_imformat):
     input_image, input_imformat, true_imformat = sample_image_array_with_imformat
     ps_image = phenotypic.Image(input_image=input_image, imformat=input_imformat)
     if input_imformat == 'RGB':
-        assert np.allclose(ps_image.matrix[:], skimage.color.rgb2gray(input_image), atol=1.0/np.iinfo(ps_image._MATRIX_STORAGE_DTYPE).max), \
-            f'Image.matrix and skimage.color.rgb2gray do not match at {np.unique(ps_image.matrix[:]!=skimage.color.rgb2gray(input_image),return_counts=True)}'
+        assert np.allclose(ps_image.matrix[:], skimage.color.rgb2gray(input_image), atol=1.0 / np.iinfo(ps_image._bit_depth).max), \
+            f'Image.matrix and skimage.color.rgb2gray do not match at {np.unique(ps_image.matrix[:] != skimage.color.rgb2gray(input_image), return_counts=True)}'
     elif input_imformat == 'Grayscale':
         assert np.array_equal(ps_image.matrix[:], input_image)
+
 
 @timeit
 def test_image_matrix_change(sample_image_array_with_imformat):
     input_image, input_imformat, true_imformat = sample_image_array_with_imformat
     ps_image = phenotypic.Image(input_image=input_image, imformat=input_imformat)
-    ps_image.matrix[10:10,10:10] = 0
+    ps_image.matrix[10:10, 10:10] = 0
     if input_imformat == 'RGB':
         altered_image = skimage.color.rgb2gray(input_image)
-        altered_image[10:10,10:10] = 0
+        altered_image[10:10, 10:10] = 0
 
-        assert np.allclose(ps_image.matrix[:], altered_image, atol=1.0/np.iinfo(ps_image._MATRIX_STORAGE_DTYPE).max), \
-            f'Image.matrix and skimage.color.rgb2gray do not match at {np.unique(ps_image.matrix[:]!=altered_image,return_counts=True)}'
+        assert np.allclose(ps_image.matrix[:], altered_image, atol=1.0 / np.iinfo(ps_image._bit_depth).max), \
+            f'Image.matrix and skimage.color.rgb2gray do not match at {np.unique(ps_image.matrix[:] != altered_image, return_counts=True)}'
 
         assert np.array_equal(ps_image.array[:], input_image), 'Image.array was altered and color information was changed'
 
     elif input_imformat == 'Grayscale':
         altered_image = input_image.copy()
-        altered_image[10:10,10:10] = 0
+        altered_image[10:10, 10:10] = 0
         assert np.array_equal(ps_image.matrix[:], altered_image)
+
 
 @timeit
 def test_image_det_matrix_access(sample_image_array_with_imformat):
@@ -127,7 +129,7 @@ def test_image_object_mask_access(sample_image_array_with_imformat):
     input_image, input_imformat, true_imformat = sample_image_array_with_imformat
     ps_image = phenotypic.Image(input_image=input_image, imformat=input_imformat)
 
-    # When no objects in _parent_image
+    # When no objects in _root_image
     assert np.array_equal(ps_image.objmask[:], np.full(shape=ps_image.matrix.shape, fill_value=True))
 
     ps_image.objmask[:10, :10] = 0
@@ -141,7 +143,7 @@ def test_image_object_map_access(sample_image_array_with_imformat):
     input_image, input_imformat, true_imformat = sample_image_array_with_imformat
     ps_image = phenotypic.Image(input_image=input_image, imformat=input_imformat)
 
-    # When no objects in _parent_image
+    # When no objects in _root_image
     assert np.array_equal(ps_image.objmap[:], np.full(shape=ps_image.matrix.shape, fill_value=1, dtype=np.uint32))
     assert ps_image.num_objects == 0
 
@@ -210,5 +212,5 @@ def test_image_object_label_consistency_with_skimage(sample_image_array_with_imf
     ps_image.objmap[-10:, -10:] = 2
 
     assert ps_image.objects.get_labels_series().equals(
-        pd.Series(skimage.measure.regionprops_table(ps_image.objmap[:], properties=['label'])['label'])
+        pd.Series(skimage.measure.regionprops_table(ps_image.objmap[:], properties=['label'])['label']),
     )

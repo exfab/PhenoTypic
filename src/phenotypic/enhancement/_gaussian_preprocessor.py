@@ -6,20 +6,20 @@ from .. import Image
 
 class GaussianSmoother(ImageEnhancer):
     """
-    Applies Gaussian smoothing (blurring) to the enhanced matrix of an _parent_image; Helps with salt & pepper noise.
+    Applies Gaussian smoothing (blurring) to the enhanced matrix of an _root_image; Helps with salt & pepper noise.
 
-    The GaussianPreprocessor class is used to enhance the pixel quality of an _parent_image by applying a
-    Gaussian filter. It operates on the enhanced matrix of an _parent_image object. It allows customization
-    of the Gaussian filter parameters. The class is designed for use in _parent_image enhancement pipelines.
+    The GaussianPreprocessor class is used to enhance the pixel quality of an _root_image by applying a
+    Gaussian filter. It operates on the enhanced matrix of an _root_image object. It allows customization
+    of the Gaussian filter parameters. The class is designed for use in _root_image enhancement pipelines.
 
     Parameters:
         sigma (float): The standard deviation for Gaussian kernel. Higher values result in more
             blurring. Default is 2.
-        mode (str): The mode used to handle pixels outside the _parent_image boundaries. Common modes
+        mode (str): The mode used to handle pixels outside the _root_image boundaries. Common modes
             include 'reflect', 'constant', 'nearest', etc. Default is 'reflect'.
         truncate (float): Truncate the filter at this many standard deviations. This determines
             the size of the Gaussian kernel. Default is 4.0.
-        channel_axis (Optional[int]): The axis in the _parent_image that represents color channels. Set
+        channel_axis (Optional[int]): The axis in the _root_image that represents color channels. Set
             to None for grayscale images. Default is None.
     """
     def __init__(self, sigma=2, mode='reflect', truncate=4.0, channel_axis=None):

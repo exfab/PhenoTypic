@@ -13,11 +13,11 @@ from phenotypic.core.accessors import ImageAccessor
 
 
 class ObjectsAccessor(ImageAccessor):
-    """An accessor for an _parent_image objects and provides various utilities for interacting with labeled objects in an _parent_image.
+    """An accessor for an _root_image objects and provides various utilities for interacting with labeled objects in an _root_image.
 
     This class provides methods to retrieve information about labeled objects, interact with object properties,
-    and manipulate the _parent_image analysis target. It supports operations such as accessing object labels, obtaining
-    region properties, slicing specific objects, and calculating object details. It interacts with _parent_image
+    and manipulate the _root_image analysis target. It supports operations such as accessing object labels, obtaining
+    region properties, slicing specific objects, and calculating object details. It interacts with _root_image
     labeling and analysis tools like `skimage.regionprops`.
 
     Notes:
@@ -26,37 +26,37 @@ class ObjectsAccessor(ImageAccessor):
     """
 
     def __len__(self):
-        return self._parent_image.num_objects
+        return self._root_image.num_objects
 
     def __iter__(self) -> Generator[Image, Any, None]:
-        for i in range(self._parent_image.num_objects):
+        for i in range(self._root_image.num_objects):
             yield self[i]
 
     def __getitem__(self, index: int) -> Image:
-        """Returns a slice of the object _parent_image based on the object's index."""
+        """Returns a slice of the object _root_image based on the object's index."""
         current_object = self.props[index]
         label = current_object.label
-        object_image = self._parent_image[current_object.slice]
+        object_image = self._root_image[current_object.slice]
         object_image.metadata[METADATA_LABELS.SUBIMAGE_TYPE] = SUBIMAGE_TYPES.OBJECT
         object_image.objmap[object_image.objmap[:] != label] = 0
         return object_image
 
     @property
     def props(self):
-        """Returns a list of skimage.regionprops object for each of _parent_image's objects. Useful for simple calculations.
+        """Returns a list of skimage.regionprops object for each of _root_image's objects. Useful for simple calculations.
 
         Returns:
             list[skimage.measure.RegionProperties]: A list of properties for all
-                regions in the provided _parent_image.
+                regions in the provided _root_image.
         """
-        return regionprops(label_image=self._parent_image.objmap[:], intensity_image=self._parent_image.matrix[:], cache=False)
+        return regionprops(label_image=self._root_image.objmap[:], intensity_image=self._root_image.matrix[:], cache=False)
 
     @property
     def labels(self) -> List[str]:
-        """Returns the labels in the _parent_image. If no objects are in the _parent_image, returns a list with a single element of 1.
+        """Returns the labels in the _root_image. If no objects are in the _root_image, returns a list with a single element of 1.
 
         Note:
-            - The returned list of 1 represents that the entire _parent_image is the analysis target. This is to ensure consistency with the skimage.regionprops output and other measurements.
+            - The returned list of 1 represents that the entire _root_image is the analysis target. This is to ensure consistency with the skimage.regionprops output and other measurements.
         """
         # considered using a simple numpy.unique() call on the object map, but wanted to guarantee that the labels will always be consistent
         # with any skimage outputs.
@@ -64,7 +64,7 @@ class ObjectsAccessor(ImageAccessor):
 
     @property
     def slices(self):
-        """Returns a list of _parent_image slices for each object in the _parent_image"""
+        """Returns a list of _root_image slices for each object in the _root_image"""
         return [x.slice for x in self.props]
 
     def get_object_idx(self, object_label):
@@ -74,18 +74,18 @@ class ObjectsAccessor(ImageAccessor):
     @property
     def num_objects(self) -> int:
         """Returns the number of objects in the map."""
-        return self._parent_image.num_objects
+        return self._root_image.num_objects
 
     def reset(self):
-        """Resets the _parent_image object map such that the analysis target is the entire _parent_image."""
-        self._parent_image.objmap.reset()
+        """Resets the _root_image object map such that the analysis target is the entire _root_image."""
+        self._root_image.objmap.reset()
 
     def iloc(self, index: int) -> Image:
-        """Returns a slice of the object _parent_image based on the object's index."""
-        return self._parent_image[self.props[index].slice]
+        """Returns a slice of the object _root_image based on the object's index."""
+        return self._root_image[self.props[index].slice]
 
     def loc(self, label_number) -> Image:
-        """Returns a crop of an object from the _parent_image based on its label number.
+        """Returns a crop of an object from the _root_image based on its label number.
 
         Args:
             label_number: (int) The label number of the object
@@ -93,16 +93,16 @@ class ObjectsAccessor(ImageAccessor):
             (Image) The cropped bounding box of an object as an Image
         """
         idx = self.get_object_idx(label_number)
-        return self._parent_image[self.props[idx].slice]
+        return self._root_image[self.props[idx].slice]
 
     def info(self) -> pd.DataFrame:
-        """Returns a panda.DataFrame containing basic information about each object's label, bounds, and centroid in the _parent_image.
+        """Returns a panda.DataFrame containing basic information about each object's label, bounds, and centroid in the _root_image.
 
         This is useful for joining measurements across different tables.
         """
         return pd.DataFrame(
             data=regionprops_table(
-                label_image=self._parent_image.objmap[:],
+                label_image=self._root_image.objmap[:],
                 properties=['label', 'centroid', 'bbox'],
             ),
         ).rename(columns={
@@ -117,7 +117,7 @@ class ObjectsAccessor(ImageAccessor):
         ).set_index(OBJECT.LABEL)
 
     def get_labels_series(self) -> pd.Series:
-        """Returns a consistently named pandas.Series containing the label number for each object in the _parent_image. Useful as an index for joining different measurements"""
+        """Returns a consistently named pandas.Series containing the label number for each object in the _root_image. Useful as an index for joining different measurements"""
         labels = self.labels
         return pd.Series(
             data=labels,
@@ -127,4 +127,4 @@ class ObjectsAccessor(ImageAccessor):
 
     def relabel(self):
         """Relabels all the objects based on their connectivity"""
-        self._parent_image.objmap.relabel()
+        self._root_image.objmap.relabel()

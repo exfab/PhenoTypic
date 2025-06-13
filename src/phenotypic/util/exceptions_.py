@@ -59,11 +59,11 @@ class UnsupportedImageFormat(ValueError):
 
 # Image-related exceptions
 class NoImageDataError(AttributeError):
-    """Exception raised when no _parent_image data is loaded."""
+    """Exception raised when no _root_image data is loaded."""
 
     def __init__(self):
         super().__init__(
-            "No _parent_image has been loaded into this class. Use an io method or set the color_array or array equal to an _parent_image data array.",
+            "No _root_image has been loaded into this class. Use an io method or set the color_array or array equal to an _root_image data array.",
         )
 
 
@@ -71,14 +71,14 @@ class InvalidShapeError(ValueError):
     """Exception raised when a shape mismatch occurs."""
 
     def __init__(self, component):
-        super().__init__(f"Object {component} shape should be the same as the _parent_image shape.")
+        super().__init__(f"Object {component} shape should be the same as the _root_image shape.")
 
 
 class DataIntegrityError(AttributeError):
     """Exception raised when data integrity is compromised."""
 
     def __init__(self, component, operation, image_name=None):
-        image_str = f" for _parent_image {image_name}" if image_name else ""
+        image_str = f" for _root_image {image_name}" if image_name else ""
         super().__init__(
             f"The {component} of the input_image was changed{image_str} by operation: {operation}. This operation should not change the {component} of the input_image.",
         )
@@ -88,12 +88,12 @@ class NoComponentError(AttributeError):
     """Exception raised when a required object is missing."""
 
     def __init__(self, component):
-        super().__init__(f"This _parent_image does not have a {component}.")
+        super().__init__(f"This _root_image does not have a {component}.")
 
 
 # Image Operation exceptions
 class ImageOperationError(PhenoTypicError):
-    """Base exception for _parent_image operation errors."""
+    """Base exception for _root_image operation errors."""
     pass
 
 
@@ -101,7 +101,7 @@ class OperationIntegrityError(AttributeError):
     """Exception raised when an operation attempts to change a component it shouldn't."""
 
     def __init__(self, opname: str, component: str, image_name=None):
-        image_str = f" for _parent_image {image_name}" if image_name else ""
+        image_str = f" for _root_image {image_name}" if image_name else ""
         super().__init__(
             f"{opname}: integrity check failed-{component} was modified for {image_str}",
         )
@@ -111,7 +111,7 @@ class OperationFailedError(ImageOperationError):
     """Exception raised when an operation fails."""
 
     def __init__(self, operation, image_name, err_type, message):
-        super().__init__(f"The operation: {operation} failed on _parent_image: {image_name}. {err_type}: {message}.")
+        super().__init__(f"The operation: {operation} failed on _root_image: {image_name}. {err_type}: {message}.")
 
 
 # Image Handler exceptions
@@ -120,12 +120,12 @@ class IllegalAssignmentError(ValueError):
 
     def __init__(self, attr):
         super().__init__(
-            f"The {attr} attribute should not be directly assigned to a new object. If trying to change array elements use Image.{attr}[:]=other_image instead. If trying to change the _parent_image being represented use Image.set_image(new_image).",
+            f"The {attr} attribute should not be directly assigned to a new object. If trying to change array elements use Image.{attr}[:]=other_image instead. If trying to change the _root_image being represented use Image.set_image(new_image).",
         )
 
 
 class UuidAssignmentError(AttributeError):
-    """Exception raised when trying to change the UUID of an _parent_image."""
+    """Exception raised when trying to change the UUID of an _root_image."""
 
     def __init__(self):
         super().__init__("The Image uuid should not be changed as this can lead to errors with data integrity")
@@ -136,25 +136,25 @@ class NoArrayError(AttributeError):
 
     def __init__(self):
         super().__init__(
-            "No array form found. Either input_image _parent_image was 2-D and had no array form. Set a multi-channel _parent_image or use a FormatConverter",
+            "No array form found. Either input_image _root_image was 2-D and had no array form. Set a multi-channel _root_image or use a FormatConverter",
         )
 
 
 class NoObjectsError(AttributeError):
-    """Exception raised when no objects are found in an _parent_image."""
+    """Exception raised when no objects are found in an _root_image."""
 
     def __init__(self, image_name=None):
         image_str = f' "{image_name}"' if image_name else ""
         super().__init__(
-            f"No objects currently in _parent_image:{image_str}. Apply a `Detector` to the Image object first or access _parent_image-wide information using Image.props",
+            f"No objects currently in _root_image:{image_str}. Apply a `Detector` to the Image object first or access _root_image-wide information using Image.props",
         )
 
 
 class EmptyImageError(AttributeError):
-    """Exception raised when no _parent_image data is loaded."""
+    """Exception raised when no _root_image data is loaded."""
 
     def __init__(self):
-        super().__init__("No _parent_image data loaded. Use Image.set_image(new_image) to load data.")
+        super().__init__("No _root_image data loaded. Use Image.set_image(new_image) to load data.")
 
 
 class UnsupportedFileTypeError(ValueError):
@@ -195,7 +195,7 @@ class ArrayKeyValueShapeMismatchError(ValueError):
 
 
 class InputShapeMismatchError(ValueError):
-    """Exception raised when input_image shape doesn't match the _parent_image matrix."""
+    """Exception raised when input_image shape doesn't match the _root_image matrix."""
 
     def __init__(self, param_name):
         super().__init__(f"The shape of {param_name} must be the same shape as the Image.matrix")

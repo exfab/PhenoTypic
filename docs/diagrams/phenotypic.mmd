@@ -1,0 +1,193 @@
+classDiagram
+    class ImageAccessor {
+        note "An accessor object for image data"
+        +- __init__(parent_image)
+        #- _parent_image
+        #- _plot(arr, figsize, title, cmap, ax, mpl_params)
+        #- _plot_overlay(arr, objmap, figsize, title, cmap, ax, overlay_params: dict, imshow_params: dict)
+        #- _plot_obj_labels(ax, color, size, facecolor, object_label, **kwargs)
+    }
+
+    class ImageArrDataAccessor {
+        note "An object for accessing the matrix elements of the image"
+        +- __init__(parent_image, target_array, dtype)
+        #- _parent_image
+        #- _target_arr
+        #- _dtype
+        +- shape()
+        +- isempty()
+        #- _norm2dtype(normalized_value)
+        #- _dtype2norm(matrix)
+        +- get_foreground()
+    }
+
+    class ImageArray {
+        note "An accessor for handling image arrays"
+        +- __getitem__(key)
+        +- __setitem__(key, value)
+        +- shape
+        +- copy()
+        +- histogram(figsize, linewidth)
+        +- show(channel, figsize, title, ax, mpl_params)
+        +- show_overlay(object_label, figsize, title, annotate, annotation_params, ax, overlay_params, imshow_params)
+        +- show_objects(channel, bg_color, cmap, figsize, title, ax, mpl_params)
+        +- get_foreground(bg_color)
+    }
+
+    class ImageMatrix {
+        note "An accessor for handling image matrices"
+        +- __getitem__(key)
+        +- __setitem__(key, value)
+        +- shape()
+        +- copy()
+        +- histogram(figsize)
+        +- show(ax, figsize, cmap, title, mpl_params)
+        +- show_overlay(object_label, figsize, title, annotate, annotation_params, ax, overlay_params, imshow_params)
+    }
+
+    class ImageEnhancedMatrix {
+        note "An enhanced matrix accessor for images"
+        +- __getitem__(key)
+        +- __setitem__(key, value)
+        +- shape()
+        +- copy()
+        +- reset()
+        +- histogram(figsize)
+        +- show(figsize, cmap, title, ax, mpl_params)
+        +- show_overlay(object_label, figsize, title, annotate, annotation_params, ax, overlay_params, imshow_params)
+    }
+
+    class ObjectMap {
+        note "Manages an object map for labeled regions in an image"
+        +- _num_objects
+        +- _labels
+        +- __getitem__(key)
+        +- __setitem__(key, value)
+        +- shape
+        +- copy()
+        +- as_csc()
+        +- as_coo()
+        +- show(figsize, title, cmap, ax, mpl_params)
+        +- reset()
+        +- relabel(connectivity)
+        #- _dense_to_sparse(arg)
+    }
+
+    class ObjectMask {
+        note "Represents a binary object mask linked to a parent image"
+        +- __getitem__(key)
+        +- __setitem__(key, value)
+        +- shape
+        +- copy()
+        +- reset()
+        +- show(ax, figsize, cmap, title)
+        #- _extract_objects(array, bg_color)
+    }
+
+    class GridAccessor {
+        note "An accessor for grid operations"
+        +- __init__(parent_image)
+        +- nrows
+        +- ncols
+        +- info()
+        #- _idx_ref_matrix()
+        +- __getitem__(idx)
+        +- get_linreg_info(axis)
+        +- get_col_edges()
+        +- get_col_map()
+        +- show_column_overlay(use_enhanced, show_gridlines, ax, figsize)
+        +- get_row_edges()
+        +- get_row_map()
+        +- show_row_overlay(use_enhanced, show_gridlines, ax, figsize)
+        +- get_section_map()
+        +- get_section_counts(ascending)
+        +- get_info_by_section(section_number)
+        #- _naive_get_grid_section_slices(idx)
+        #- _adv_get_grid_section_slices(idx)
+        #- _get_section_labels(idx)
+    }
+
+    class HsvAccessor {
+        note "An accessor for HSV color operations"
+        +- __getitem__(key)
+        +- __setitem__(key, value)
+        +- shape()
+        +- copy()
+        +- histogram(figsize, linewidth)
+        +- show(figsize, title, shrink)
+        +- show_objects(figsize, title, shrink)
+        +- get_foreground_hue(bg_color, normalized)
+        +- get_foreground_saturation(bg_color, normalized)
+        +- get_foreground_brightness(bg_color, normalized)
+        +- extract_obj(bg_color)
+    }
+
+    class ObjectsAccessor {
+        note "An accessor for image objects"
+        +- __len__()
+        +- __iter__()
+        +- __getitem__(index)
+        +- props
+        +- labels
+        +- slices
+        +- get_object_idx(object_label)
+        +- num_objects
+        +- reset()
+        +- iloc(index)
+        +- loc(label_number)
+        +- info()
+        +- get_labels_series()
+        +- relabel()
+    }
+
+    class MeasurementAccessor {
+        note "A standalone accessor for measurements"
+        +- __init__()
+        +- keys()
+        +- values()
+        +- __getitem__(key)
+        +- __setitem__(key, value)
+        +- __len__()
+        +- pop(key, exc_type)
+        +- clear()
+        +- merge_on_index_names(idx_name_subset, join_type, verify_integrity)
+        +- to_dict()
+        +- to_recarrays_dict()
+        +- copy()
+    }
+
+    class MetadataAccessor {
+        note "An accessor for image metadata"
+        +- __init__(image)
+        #- _parent_image
+        #- _combined_metadata
+        #- _private_metadata
+        #- _protected_metadata
+        #- _public_metadata
+        #- _public_protected_metadata
+        +- keys()
+        +- values()
+        +- items()
+        +- __contains__(key)
+        +- __getitem__(key)
+        +- __setitem__(key, value)
+        +- __delitem__(key)
+        +- pop(key)
+        +- get(key, default)
+        +- insert_metadata(df, inplace, allow_duplicates)
+    }
+
+    class Image {
+        note "The main image class"
+    }
+
+    ImageAccessor <|-- ImageArrDataAccessor
+    ImageAccessor <|-- GridAccessor
+    ImageAccessor <|-- HsvAccessor
+    ImageAccessor <|-- ObjectsAccessor
+    
+    ImageArrDataAccessor <|-- ImageArray
+    ImageArrDataAccessor <|-- ImageMatrix
+    ImageArrDataAccessor <|-- ImageEnhancedMatrix
+    ImageArrDataAccessor <|-- ObjectMap
+    ImageArrDataAccessor <|-- ObjectMask

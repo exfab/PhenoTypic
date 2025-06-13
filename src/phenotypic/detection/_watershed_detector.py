@@ -10,13 +10,13 @@ from phenotypic import Image, GridImage
 
 class WatershedDetector(ThresholdDetector):
     """
-    Class for detecting objects in an _parent_image using the Watershed algorithm.
+    Class for detecting objects in an _root_image using the Watershed algorithm.
 
     The WatershedDetector class processes images to detect and segment objects
     by applying the watershed algorithm. This class extends the capabilities
     of ThresholdDetector and includes customization for parameters such as footprint
     size, minimum object size, compactness, and connectivity. This is useful for
-    _parent_image segmentation tasks, where proximity-based object identification is needed.
+    _root_image segmentation tasks, where proximity-based object identification is needed.
 
     Attributes:
         footprint (Literal['auto'] | np.ndarray | int | None): Structure element to define
@@ -66,7 +66,7 @@ class WatershedDetector(ThresholdDetector):
                 est_footprint_diameter = max(image.shape[0] // image.grid.nrows, image.shape[1] // image.grid.ncols)
                 footprint = morphology.disk(est_footprint_diameter // 2)
             elif isinstance(image, Image):
-                # Not enough information with a normal _parent_image to infer
+                # Not enough information with a normal _root_image to infer
                 footprint = None
 
         binary = enhanced_matrix > filters.threshold_otsu(enhanced_matrix)  # TODO: add alternative to otsu eventually?

@@ -12,12 +12,12 @@ from phenotypic.abstract import MeasureFeatures, ImageOperation
 
 class ImagePipeline(ImageOperation):
     """
-    Represents a handler for processing and measurement queues used in _parent_image operations
+    Represents a handler for processing and measurement queues used in _root_image operations
     and feature extraction tasks.
 
     This class manages two queues: a processing queue and a measurement queue. The processing
-    queue contains _parent_image operations that are applied sequentially to an _parent_image. The measurement
-    queue contains feature extractors that are used to analyze an _parent_image and produce results
+    queue contains _root_image operations that are applied sequentially to an _root_image. The measurement
+    queue contains feature extractors that are used to analyze an _root_image and produce results
     as a pandas DataFrame. Both queues are optional and can be specified as dictionaries. If not
     provided, empty queues are initialized by default to enable flexibility in pipeline
     construction and usage.
@@ -25,7 +25,7 @@ class ImagePipeline(ImageOperation):
     Attributes:
         _op_queue (Dict[str, ImageOperation]): A dictionary where keys are string
             identifiers and values are `ImageOperation` objects representing operations to apply
-            to an _parent_image.
+            to an _root_image.
         _measurement_queue (Dict[str, MeasureFeatures]): A dictionary where keys are string
             identifiers and values are `FeatureExtractor` objects for extracting features
             from images.
@@ -35,14 +35,14 @@ class ImagePipeline(ImageOperation):
                  op_queue: Dict[str, ImageOperation] | None = None,
                  measurement_queue: Dict[str, MeasureFeatures] | None = None):
         """
-        This class represents a processing and measurement abstract for _parent_image operations
+        This class represents a processing and measurement abstract for _root_image operations
         and feature extraction. It initializes operational and measurement queues based
         on the provided dictionaries.
 
         Args:
             op_queue: A dictionary where the keys are operation names (strings)
                 and the values are ImageOperation objects responsible for performing
-                specific _parent_image processing tasks.
+                specific _root_image processing tasks.
             measurement_queue: An optional dictionary where the keys are feature names
                 (strings) and the values are FeatureExtractor objects responsible for
                 extracting specific features.
@@ -53,15 +53,15 @@ class ImagePipeline(ImageOperation):
     def apply(self, image: Image, inplace: bool = False) -> Image:
         """
         The class provides an abstract to process and apply a series of operations on
-        an _parent_image. The operations are maintained in a queue and executed sequentially
-        when applied to the given _parent_image.
+        an _root_image. The operations are maintained in a queue and executed sequentially
+        when applied to the given _root_image.
 
         Args:
-            image (Image): The input_image _parent_image to be processed. The type `Image` refers to
-                an instance of the _parent_image object to which transformations are applied.
+            image (Image): The input_image _root_image to be processed. The type `Image` refers to
+                an instance of the _root_image object to which transformations are applied.
             inplace (bool, optional): A flag indicating whether to apply the
-                transformations directly on the provided _parent_image (`True`) or create a
-                copy of the _parent_image before performing transformations (`False`). Defaults
+                transformations directly on the provided _root_image (`True`) or create a
+                copy of the _root_image before performing transformations (`False`). Defaults
                 to `False`.
         """
         img = image if inplace else image.copy()
@@ -73,21 +73,21 @@ class ImagePipeline(ImageOperation):
                 else:
                     img = operation.apply(img)
             except Exception as e:
-                raise Exception(f'Failed to apply {operation} during step {key} to _parent_image {img.name}: {e}') from e
+                raise Exception(f'Failed to apply {operation} during step {key} to _root_image {img.name}: {e}') from e
 
         return img
 
     def measure(self, image: Image, inplace: bool = False) -> pd.DataFrame:
         """
-        Measures various properties of an _parent_image using queued measurement strategies.
+        Measures various properties of an _root_image using queued measurement strategies.
 
         The `measure` function applies the queued measurement strategies to the given
-        _parent_image and returns a DataFrame containing consolidated object measurement results.
+        _root_image and returns a DataFrame containing consolidated object measurement results.
 
         Args:
-            image (Image): The input_image _parent_image on which the measurements will be applied.
+            image (Image): The input_image _root_image on which the measurements will be applied.
             inplace (bool): A flag indicating whether the modifications should be applied
-                directly to the input_image _parent_image. Default is False.
+                directly to the input_image _root_image. Default is False.
 
         Returns:
             pd.DataFrame: A DataFrame containing measurement results from all the

@@ -14,10 +14,10 @@ from phenotypic.util.constants_ import OBJECT, GRID
 
 class OptimalCenterGridFinder(GridFinder):
     """
-    Defines a class for finding the grid parameters based on optimal center of objects in a provided _parent_image.
+    Defines a class for finding the grid parameters based on optimal center of objects in a provided _root_image.
 
     The OptimalCenterGridSetter class provides methods for setting up a grid on
-    an _parent_image using row and column parameters, optimizing grid boundaries based on
+    an _root_image using row and column parameters, optimizing grid boundaries based on
     object centroids, and categorizing objects based on their positions in grid
     sections. This class facilitates gridding for structured analysis, such as object
     segmentation or classification within images.
@@ -55,17 +55,17 @@ class OptimalCenterGridFinder(GridFinder):
 
     def _operate(self, image: Image) -> pd.DataFrame:
         """
-        Processes an input_image _parent_image to calculate and organize grid-based boundaries and centroids using coordinates. This
+        Processes an input_image _root_image to calculate and organize grid-based boundaries and centroids using coordinates. This
         function implements a two-pass approach to refine row and column boundaries with exact precision, ensuring accurate
         grid labeling and indexing. The function dynamically computes boundary intervals and optimally segments the input_image
         space into grids based on specified rows and columns.
 
         Args:
-            image (Image): The input_image _parent_image to be analyzed and processed.
+            image (Image): The input_image _root_image to be analyzed and processed.
 
         Returns:
             pd.DataFrame: A DataFrame containing the grid results including boundary intervals, grid indices, and section
-            numbers corresponding to the segmented input_image _parent_image.
+            numbers corresponding to the segmented input_image _root_image.
         """
         # Find the centroid and boundaries
         obj_info = image.objects.info()
