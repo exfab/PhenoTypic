@@ -63,7 +63,7 @@ class ImageHandler:
     def __init__(self,
                  input_image: np.ndarray | Image | PathLike | None = None,
                  imformat: str | None = None,
-                 name: str | None = None, bit_depth: Literal[8, 16, 32] | None = None):
+                 name: str | None = None, bit_depth: Literal[8, 16, 32] | None = 16):
         """
         Initializes an instance of the image processing object, setting up internal structures, 
         metadata, accessors, and initializing the provided input image or empty placeholders. The
