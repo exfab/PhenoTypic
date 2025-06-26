@@ -43,13 +43,8 @@ class ObjectMap(ImageArrDataAccessor):
         return labels[labels != 0]
 
     def __getitem__(self, key):
-        """Returns a copy of the object_map of the _root_image. If there are no objects, this is a matrix with all values set to 1 and the same shape as the iamge matrix."""
-        if self._num_objects > 0:
-            return self._root_image._data.sparse_object_map.toarray()[key]
-        elif self._num_objects == 0:
-            return np.full(self._root_image._data.sparse_object_map.toarray()[key].shape, fill_value=1, dtype=np.uint32)
-        else:
-            raise RuntimeError(UnknownError)
+        """Returns a copy of the object_map of the _root_image."""
+        return self._root_image._data.sparse_object_map.toarray()[key]
 
     def __setitem__(self, key, value):
         """Uncompresses the csc array & changes the values at the specified coordinates before recompressing the object map array."""

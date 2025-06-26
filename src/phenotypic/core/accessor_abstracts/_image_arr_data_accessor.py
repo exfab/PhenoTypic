@@ -35,6 +35,20 @@ class ImageArrDataAccessor(ImageAccessor):
     def isempty(self):
         return True if self.shape[0] == 0 else False
 
+    def copy(self) -> np.ndarray:
+        """
+        Returns a copy of the array/matrix from the image.
+
+        This method retrieves a copy of the image matrix, ensuring
+        that modifications to the returned matrix do not affect the original
+        data in the image's matrix.
+
+        Returns:
+            np.ndarray: A deep copy of the image matrix.
+        """
+        return self[:].copy()
+
+
     def _plot_overlay(self,
                       arr: np.ndarray,
                       objmap: np.ndarray,
@@ -85,16 +99,3 @@ class ImageArrDataAccessor(ImageAccessor):
         foreground = self[:].copy()
         foreground[self._root_image.objmask[:] == 0] = 0
         return foreground
-
-    def copy(self) -> np.ndarray:
-        """
-        Returns a copy of the matrix from the image.
-
-        This method retrieves a copy of the image matrix, ensuring
-        that modifications to the returned matrix do not affect the original
-        data in the image's matrix.
-
-        Returns:
-            np.ndarray: A deep copy of the image matrix.
-        """
-        return self[:].copy()
