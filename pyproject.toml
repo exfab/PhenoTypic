@@ -44,6 +44,7 @@ dependencies = [
     "mmh3",
     "plotly-express>=0.4.1",
     "pandas-stubs==2.2.3.250527",
+    "notebook>=7.4.3",
 ]
 
 [project.urls]
