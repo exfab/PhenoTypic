@@ -44,6 +44,6 @@ class BaseOperation:
             else:
                 raise AttributeError(
                     f"{self.__class__.__name__} lacks attribute '{name}' "
-                    f"required by {func.__qualname__}"
+                    f"required by {func.__qualname__}",
                 )
         return matched

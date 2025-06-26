@@ -11,20 +11,20 @@ from phenotypic.util.exceptions_ import ArrayKeyValueShapeMismatchError, NoArray
 
 
 class ImageArray(ImageArrDataAccessor):
-    """An accessor for handling _root_image arrays with helper methods for accessing, modifying, visualizing, and analyzing the multichannel _root_image data.
+    """An accessor for handling image arrays with helper methods for accessing, modifying, visualizing, and analyzing the multichannel image data.
 
-    It relies on the parent _root_image handler object that serves as the bridge to the underlying _root_image
+    It relies on the parent image handler object that serves as the bridge to the underlying image
     array and associated metadata or attributes.
 
-    The class allows users to interact with _root_image arrays intuitively while providing
+    The class allows users to interact with image arrays intuitively while providing
     features such as advanced visualization (both for the raw images and their derived
     representations, like histograms or overlays). Through its properties and methods,
     users can explore, manipulate, and analyze the structural or geometrical attributes
-    of the _root_image and its segmented objects.
+    of the image and its segmented objects.
 
     Key use cases for this class include displaying selected channels or the entire
-    _root_image (including overlays and highlighted objects), generating channel-specific
-    histograms, and accessing _root_image data attributes, such as shape.
+    image (including overlays and highlighted objects), generating channel-specific
+    histograms, and accessing image data attributes, such as shape.
 
     """
 
@@ -33,7 +33,7 @@ class ImageArray(ImageArrDataAccessor):
         Returns a copy of the elements at the subregion specified by the given key.
 
         This class provides a mechanism for extracting a specific subregion from
-        the multichannel _root_image array. The extracted subregion is represented in the form of a
+        the multichannel image array. The extracted subregion is represented in the form of a
         NumPy array, and its indexable nature allows users to freely interact with the
         underlying array data.
 
@@ -50,16 +50,16 @@ class ImageArray(ImageArrDataAccessor):
 
     def __setitem__(self, key, value):
         """
-        Sets a other_image for a given key in the parent _root_image array. The other_image must either be of
+        Sets a other_image for a given key in the parent image array. The other_image must either be of
         type int, float, or bool, or it must match the shape of the corresponding key's other_image
-        in the parent _root_image array. If the other_image's shape does not align with the required shape,
+        in the parent image array. If the other_image's shape does not align with the required shape,
         an exception is raised.
 
         Note:
-            If you want to change the entire _root_image array data, use Image.set_image() instead.
+            If you want to change the entire image array data, use Image.set_image() instead.
 
         Args:
-            key: Index key specifying the location in the parent _root_image array to modify.
+            key: Index key specifying the location in the parent image array to modify.
             value: The new other_image to assign to the specified key in the array. Can be of types
                 int, float, or bool. If not, it must match the shape of the target array segment.
 
@@ -79,29 +79,29 @@ class ImageArray(ImageArrDataAccessor):
 
     @property
     def shape(self) -> tuple[int, ...]:
-        """Returns the shape of the parent _root_image's underlying array.
+        """Returns the shape of the parent image's underlying array.
 
         Returns:
-            tuple[int, ...]: A tuple representing the shape of the parent _root_image's
+            tuple[int, ...]: A tuple representing the shape of the parent image's
             underlying array.
         """
         return self._root_image._data.array.shape
 
     def copy(self) -> np.ndarray:
-        """Creates and returns a deep copy of the parent _root_image array.
+        """Creates and returns a deep copy of the parent image array.
 
         Returns:
-            np.ndarray: A copy of the parent _root_image array.
+            np.ndarray: A copy of the parent image array.
         """
         return self._root_image._data.array.copy()
 
     def histogram(self, figsize: tuple[int, int] = (10, 5), linewidth: int = 1) -> tuple[plt.Figure, plt.Axes]:
         """
-        Generates histograms for each channel of the _root_image represented in the provided handler
-        and visualizes them along with the original _root_image. It supports RGB and non-RGB _root_image
+        Generates histograms for each channel of the image represented in the provided handler
+        and visualizes them along with the original image. It supports RGB and non-RGB image
         schemas by adjusting the channel histograms accordingly. The method plots the original
-        _root_image and histograms for three channels side by side, customizing titles to correspond
-        to the _root_image schema (e.g., RGB or other channels).
+        image and histograms for three channels side by side, customizing titles to correspond
+        to the image schema (e.g., RGB or other channels).
 
         Args:
             figsize (tuple[int, int]): tuple representing the figure size (width, height) for
@@ -110,7 +110,7 @@ class ImageArray(ImageArrDataAccessor):
 
         Returns:
             tuple[plt.Figure, np.ndarray]: A tuple where the first element is the figure
-                containing the visualized plots (original _root_image and histograms). The second
+                containing the visualized plots (original image and histograms). The second
                 element is the array of axes represented by subplots.
         """
         fig, axes = plt.subplots(nrows=2, ncols=2, figsize=figsize)
@@ -160,7 +160,7 @@ class ImageArray(ImageArrDataAccessor):
         Displays the _root_image array, either the full array or a specific channel, using matplotlib.
 
         Args:
-            channel (int | None): Specifies the channel to display from the _root_image array. If None,
+            channel (int | None): Specifies the channel to display from the image array. If None,
                 the entire array is displayed. If an integer is provided, only the specified
                 channel is displayed.
             figsize (None | tuple[int, int]): Optional tuple specifying the width and height of
@@ -197,9 +197,9 @@ class ImageArray(ImageArrDataAccessor):
                      imshow_params: None | dict = None,
                      ) -> tuple[plt.Figure, plt.Axes]:
         """
-        Displays an overlay of the object map on the parent _root_image with optional annotations.
+        Displays an overlay of the object map on the parent image with optional annotations.
 
-        This method enables visualization by overlaying object regions on the parent _root_image. It
+        This method enables visualization by overlaying object regions on the parent image. It
         provides options for customization, including the ability to show_labels specific objects
         and adjust visual styles like figure size, colors, and annotation properties.
 
@@ -207,7 +207,7 @@ class ImageArray(ImageArrDataAccessor):
             object_label (None | int): Specific object label to be highlighted. If None,
                 all objects are displayed.
             figsize (tuple[int, int]): Size of the figure in inches (width, height).
-            title (None | str): Title for the plot. If None, the parent _root_image's name
+            title (None | str): Title for the plot. If None, the parent image's name
                 is used.
             annotate (bool): If True, displays annotations for object labels on the
                 object centroids.
@@ -262,20 +262,20 @@ class ImageArray(ImageArrDataAccessor):
         """
         Displays the _root_image objects with customizable visualization parameters.
 
-        This method provides a flexible way to display _root_image objects from a parent _root_image
-        with optional customization of the visualization. By specifying a particular _root_image
+        This method provides a flexible way to display image objects from a parent image
+        with optional customization of the visualization. By specifying a particular image
         channel, background color, colormap, figure size, and other parameters, users can
         control how the objects are segmented. This is particularly useful for analysis or
         presentation purposes.
 
         Args:
-            channel (Optional[int]): Specifies the _root_image channel to display. If None, the entire
-                _root_image array is used.
+            channel (Optional[int]): Specifies the image channel to display. If None, the entire
+                image array is used.
             bg_color (int): Background color for non-object pixels. Non-object pixels will be
                 set to this other_image.
-            cmap (str): Colormap to be used for rendering the _root_image. Default is 'gray'.
+            cmap (str): Colormap to be used for rendering the image. Default is 'gray'.
             figsize (tuple[int, int]): Dimensions of the output figure in inches (width, height).
-            title (str): Title of the plot. If None, uses the name of the parent _root_image.
+            title (str): Title of the plot. If None, uses the name of the parent image.
             ax (plt.Axes): Pre-existing matplotlib Axes object to plot in. If None, a new Axes and
                 Figure are created.
             mpl_params (None | dict): Additional matplotlib parameters for customization. If None,
@@ -305,20 +305,20 @@ class ImageArray(ImageArrDataAccessor):
 
         return fig, ax
 
-    def get_foreground(self, bg_color: int = 0) -> np.ndarray:
+    def get_foreground(self, bg_label: int = 0) -> np.ndarray:
         """
-        Returns the _root_image foreground based on the object mask, and set's the background to the specified background color.
+        Returns the image foreground based on the object mask, and set's the background to the specified background color.
 
-        This method identifies and extracts all the connected components (objects) within the _root_image
+        This method identifies and extracts all the connected components (objects) within the image
         that are not of the specified background color. The operation relies on internal references
-        to the parent _root_image and its associated mask processing capabilities.
+        to the parent image and its associated mask processing capabilities.
 
         Args:
-            bg_color (int): The background color to exclude when extracting objects.
-                Pixels within the _root_image matching this color will be treated as background
+            bg_label (int): The background color to exclude when extracting objects.
+                Pixels within the image matching this color will be treated as the background
                 and ignored during the extraction process.
 
         Returns:
             np.ndarray: A Numpy array with non-object pixels set to the specified background color.
         """
-        return self._root_image.objmask._extract_objects(self._root_image.array[:], bg_color=bg_color)
+        return self._root_image.objmask._extract_objects(self._root_image.array[:], bg_label=bg_label)

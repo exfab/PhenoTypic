@@ -78,7 +78,7 @@ def test_kmarx_pipeline_pickleable(plate_grid_images):
 def test_watershed_kmarx_pipeline_pickleable(plate_grid_images):
     import pickle
     kmarx_pipeline = ImagePipeline(
-        op_queue={
+        ops={
             'blur': GaussianSmoother(sigma=5),
             'clahe': CLAHE(),
             'median filter': MedianEnhancer(),
@@ -89,7 +89,7 @@ def test_watershed_kmarx_pipeline_pickleable(plate_grid_images):
             'align': GridAligner(),
             'grid_reduction': MinResidualErrorReducer(),
         },
-        measurement_queue={
+        measurements={
             'MeasureColor': MeasureColor(),
             'MeasureShape': MeasureShape(),
             'MeasureIntensity': MeasureIntensity(),
@@ -102,7 +102,7 @@ def test_watershed_kmarx_pipeline_pickleable(plate_grid_images):
 def test_watershed_kmarx_pipeline_with_measurements_pickleable(plate_grid_images):
     import pickle
     kmarx_pipeline = ImagePipeline(
-        op_queue={
+        ops={
             'blur': GaussianSmoother(sigma=5),
             'clahe': CLAHE(),
             'median filter': MedianEnhancer(),
@@ -113,7 +113,7 @@ def test_watershed_kmarx_pipeline_with_measurements_pickleable(plate_grid_images
             'align': GridAligner(),
             'grid_reduction': MinResidualErrorReducer(),
         },
-        measurement_queue={
+        measurements={
             'MeasureColor': MeasureColor(),
             'MeasureShape': MeasureShape(),
             'MeasureIntensity': MeasureIntensity(),

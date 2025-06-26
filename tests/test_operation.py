@@ -12,7 +12,7 @@ from .resources.TestHelper import timeit
 @pytest.mark.parametrize("qualname,obj", _image_operations)
 @timeit
 def test_operation(qualname, obj):
-    """The goal of this test is to ensure that all operations are callable with basic functionality,
+    """The goal of this test is to ensure that all operations are callable with basic functionality
      and return a valid Image object."""
     image = phenotypic.GridImage(load_plate_12hr())
     image = WatershedDetector().apply(image)

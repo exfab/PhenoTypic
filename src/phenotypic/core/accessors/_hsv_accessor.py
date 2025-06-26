@@ -190,7 +190,7 @@ class HsvAccessor(ImageAccessor):
         """
         return self._root_image.objmask._extract_objects(
             self._root_image._hsv[:, :, 0] if normalized else self._root_image._hsv[:, :, 0] * 360,
-            bg_color=bg_color
+            bg_label=bg_color
         )
 
     def get_foreground_saturation(self, bg_color: int = 0, normalized: bool = True):
@@ -203,7 +203,7 @@ class HsvAccessor(ImageAccessor):
         """
         return self._root_image.objmask._extract_objects(
             self._root_image._hsv[:, :, 1] if normalized else self._root_image._hsv[:, :, 1] * 255,
-            bg_color=bg_color
+            bg_label=bg_color
         )
 
     def get_foreground_brightness(self, bg_color: int = 0, normalized: bool = True):
@@ -216,9 +216,9 @@ class HsvAccessor(ImageAccessor):
         """
         return self._root_image.objmask._extract_objects(
             self._root_image._hsv[:, :, 2] if normalized else self._root_image._hsv[:, :, 2] * 255,
-            bg_color=bg_color
+            bg_label=bg_color
         )
 
     def extract_obj(self, bg_color: int = 0):
         """Extracts the object hue, saturation, and brightness from the HSV _root_image. With the background elements set to 0"""
-        return self._root_image.objmask._extract_objects(self._root_image._hsv[:, :, :], bg_color=bg_color)
+        return self._root_image.objmask._extract_objects(self._root_image._hsv[:, :, :], bg_label=bg_color)

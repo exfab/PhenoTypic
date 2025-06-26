@@ -32,23 +32,23 @@ class ImagePipeline(ImageOperation):
     """
 
     def __init__(self,
-                 op_queue: Dict[str, ImageOperation] | None = None,
-                 measurement_queue: Dict[str, MeasureFeatures] | None = None):
+                 ops: Dict[str, ImageOperation] | None = None,
+                 measurements: Dict[str, MeasureFeatures] | None = None):
         """
         This class represents a processing and measurement abstract for _root_image operations
         and feature extraction. It initializes operational and measurement queues based
         on the provided dictionaries.
 
         Args:
-            op_queue: A dictionary where the keys are operation names (strings)
+            ops: A dictionary where the keys are operation names (strings)
                 and the values are ImageOperation objects responsible for performing
                 specific _root_image processing tasks.
-            measurement_queue: An optional dictionary where the keys are feature names
+            measurements: An optional dictionary where the keys are feature names
                 (strings) and the values are FeatureExtractor objects responsible for
                 extracting specific features.
         """
-        self._op_queue: Dict[str, ImageOperation] = op_queue if op_queue is not None else {}
-        self._measurement_queue: Dict[str, MeasureFeatures] = measurement_queue if measurement_queue is not None else {}
+        self._op_queue: Dict[str, ImageOperation] = ops if ops is not None else {}
+        self._measurement_queue: Dict[str, MeasureFeatures] = measurements if measurements is not None else {}
 
     def apply(self, image: Image, inplace: bool = False) -> Image:
         """
