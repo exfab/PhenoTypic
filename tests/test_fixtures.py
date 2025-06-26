@@ -41,9 +41,9 @@ def param2array_plus_imformat(tag):
         case 'km-colony-72hr':
             return load_colony_72hr(), 'RGB', 'RGB'
         case 'black-square':
-            return np.full(shape=(100, 100), fill_value=0), None, 'Grayscale'
+            return np.full(shape=(100, 100), fill_value=0.0), None, 'Grayscale'
         case 'white-square':
-            return np.full(shape=(100, 100), fill_value=1), 'Grayscale', 'Grayscale'
+            return np.full(shape=(100, 100), fill_value=1.0), 'Grayscale', 'Grayscale'
         case _:
             raise ValueError(f'Invalid tag: {tag}')
 

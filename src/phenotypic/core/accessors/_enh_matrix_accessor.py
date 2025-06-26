@@ -11,14 +11,14 @@ import matplotlib.pyplot as plt
 from skimage.color import label2rgb
 from skimage.exposure import histogram
 
-from phenotypic.core.accessors import ImageArrDataAccessor
+from phenotypic.core.accessor_abstracts import ImageMatrixDataAccessor
 from phenotypic.util.exceptions_ import ArrayKeyValueShapeMismatchError, EmptyImageError
 
 
-class ImageEnhancedMatrix(ImageArrDataAccessor):
-    """An accessor class to an _root_image's enhanced matrix which is a copy of the original _root_image matrix that is preprocessed for enhanced detection.
+class ImageEnhancedMatrix(ImageMatrixDataAccessor):
+    """An accessor class to an image's enhanced matrix which is a copy of the original image matrix that is preprocessed for enhanced detection.
 
-    Provides functionalities to manipulate and visualize the _root_image enhanced matrix. This includes
+    Provides functionalities to manipulate and visualize the image enhanced matrix. This includes
     retrieving and setting data, resetting the matrix, visualizing histograms, viewing the matrix
     with overlays, and accessing matrix properties. The class relies on a handler for matrix operations
     and object mapping.
@@ -26,34 +26,34 @@ class ImageEnhancedMatrix(ImageArrDataAccessor):
 
     def __getitem__(self, key) -> np.ndarray:
         """
-        Provides a method to retrieve a copy of a specific portion of a parent _root_image's detection
+        Provides a method to retrieve a copy of a specific portion of a parent image's detection
         matrix based on the given key.
 
         Args:
-            key: The index or slice used to access a specific part of the parent _root_image's detection
+            key: The index or slice used to access a specific part of the parent image's detection
                 matrix.
 
         Returns:
-            numpy.ndarray: A copy of the corresponding portion of the parent _root_image's detection
+            numpy.ndarray: A copy of the corresponding portion of the parent image's detection
                 matrix.
         """
         if self.isempty():
             raise EmptyImageError
         else:
-            norm_matrix = self._dtype2norm(self._root_image._data.enh_matrix)
+            norm_matrix = self._root_image._dtypeMatrix2norm(self._root_image._data.enh_matrix)
             assert norm_matrix.dtype == np.float64, 'Normalized matrix should be of type float64'
             return norm_matrix[key]
 
     def __setitem__(self, key, value):
         """
-        Sets a other_image in the detection matrix of the parent _root_image for the provided key.
+        Sets a other_image in the detection matrix of the parent image for the provided key.
 
-        The method updates or sets a other_image in the detection matrix of the parent _root_image
-        (`_root_image._det_matrix`) at the specified key. It ensures that if the other_image
+        The method updates or sets a other_image in the detection matrix of the parent image
+        (`image._det_matrix`) at the specified key. It ensures that if the other_image
         is not of type `int`, `float`, or `bool`, its shape matches the shape of the
         existing other_image at the specified key. If the shape does not match,
         `ArrayKeyValueShapeMismatchError` is raised. When the other_image is successfully set,
-        the object map (`objmap`) of the parent _root_image is reset.
+        the object map (`objmap`) of the parent image is reset.
 
         Notes:
             Objects are reset after setting a other_image in the detection matrix
@@ -66,12 +66,12 @@ class ImageEnhancedMatrix(ImageArrDataAccessor):
 
         Raises:
             ArrayKeyValueShapeMismatchError: If the other_image is an array and its shape
-                does not match the shape of the existing other_image in `_root_image._det_matrix`
+                does not match the shape of the existing other_image in `image._det_matrix`
                 for the specified key.
         """
         if isinstance(value, np.ndarray):
             if self._root_image._data.enh_matrix[key].shape != value.shape: raise ArrayKeyValueShapeMismatchError
-            value = self._norm2dtype(value)
+            value = self._root_image._normMatrix2dtype(value)
         elif isinstance(value, (int, float)):
             value = self._dtype(value)
         else:
@@ -83,10 +83,10 @@ class ImageEnhancedMatrix(ImageArrDataAccessor):
     @property
     def shape(self):
         """
-        Represents the shape property of the parent _root_image's enhanced matrix.
+        Represents the shape property of the parent image's enhanced matrix.
 
         This property fetches and returns the dimensions (shape) of the enhanced
-        matrix that belongs to the parent _root_image linked with the current class.
+        matrix that belongs to the parent image linked with the current class.
 
         Returns:
             tuple: The shape of the determinant matrix.
@@ -98,11 +98,11 @@ class ImageEnhancedMatrix(ImageArrDataAccessor):
         return self[:].copy()
 
     def reset(self):
-        """Resets the _root_image's enhanced matrix to the original matrix representation."""
+        """Resets the image's enhanced matrix to the original matrix representation."""
         self._root_image._data.enh_matrix = self._root_image._data.matrix.copy()
 
     def histogram(self, figsize: Tuple[int, int] = (10, 5)):
-        """Returns a histogram of the _root_image matrix. Useful for troubleshooting detection results.
+        """Returns a histogram of the image matrix. Useful for troubleshooting detection results.
         Args:
             figsize:
 
@@ -123,10 +123,10 @@ class ImageEnhancedMatrix(ImageArrDataAccessor):
              cmap: str = 'gray',
              title: str = None,
              ax: plt.Axes = None,
-             mpl_params: None | dict = None) -> (plt.Figure, plt.Axes):
-        """Displays the enhanced matrix of the parent _root_image.
+             mpl_kwargs: None | dict = None) -> (plt.Figure, plt.Axes):
+        """Displays the enhanced matrix of the parent image.
 
-        This method is used to visualize the enhanced matrix of the parent _root_image using
+        This method is used to visualize the enhanced matrix of the parent image using
         matplotlib. Different parameters can be configured for customization such as
         figure size, colormap, title of the plot, and specific matplotlib axes. Additional
         matplotlib parameters can also be passed for further customization.
@@ -138,7 +138,7 @@ class ImageEnhancedMatrix(ImageArrDataAccessor):
             title (str | None): Title of the plot. If None, no title is set.
             ax (plt.Axes | None): Matplotlib axes on which the plot will be rendered.
                 If None, a new figure and axes will be created.
-            mpl_params (dict | None): Additional matplotlib parameters in dictionary
+            mpl_kwargs (dict | None): Additional matplotlib parameters in dictionary
                 format for adjusting plot properties. If None, no additional parameters
                 are applied.
 
@@ -156,7 +156,7 @@ class ImageEnhancedMatrix(ImageArrDataAccessor):
             ax=ax,
             title=title,
             cmap=cmap,
-            mpl_params=mpl_params,
+            mpl_kwargs=mpl_kwargs,
         )
 
     def show_overlay(
@@ -167,13 +167,13 @@ class ImageEnhancedMatrix(ImageArrDataAccessor):
             annotate: bool = False,
             annotation_params: None | dict = None,
             ax: plt.Axes = None,
-            overlay_params: None | dict = None,
-            imshow_params: None | dict = None,
+            overlay_kwargs: None | dict = None,
+            mpl_kwargs: None | dict = None,
     ) -> (plt.Figure, plt.Axes):
         """
-        Displays an overlay visualization of a labeled _root_image matrix and its annotations.
+        Displays an overlay visualization of a labeled image matrix and its annotations.
 
-        This method generates an overlay of a labeled _root_image using the 'label2rgb'
+        This method generates an overlay of a labeled image using the 'label2rgb'
         function from skimage. It optionally annotates regions with their labels.
         Additional customization options are provided through parameters such
         as subplot size, title, annotation properties, and Matplotlib configuration.
@@ -184,15 +184,15 @@ class ImageEnhancedMatrix(ImageArrDataAccessor):
             figsize (Tuple[int, int]): Size of the figure in inches as a tuple
                 (width, height). If None, default size settings will be used.
             title (None|str): Title of the figure. If None, no title is displayed.
-            annotate (bool): Whether to annotate object labels on the overlay.
+            annotate (bool): Whether to show_labels object labels on the overlay.
                 Defaults to False.
             annotation_params (None | dict): Additional parameters for customization of the
                 object annotations. Defaults: size=12, color='white', facecolor='red'.
             ax (plt.Axes): Existing Matplotlib Axes object where the overlay will be
                 plotted. If None, a new Axes object is created.
-            overlay_params (None|dict): Additional parameters for the overlay
+            overlay_kwargs (None|dict): Additional parameters for the overlay
                 generation. If None, default overlay settings will apply.
-            imshow_params (None|dict): Additional Matplotlib imshow configuration parameters
+            mpl_kwargs (None|dict): Additional Matplotlib imshow configuration parameters
                 for customization. If None, default Matplotlib settings will apply.
 
         Returns:
@@ -209,8 +209,8 @@ class ImageEnhancedMatrix(ImageArrDataAccessor):
             figsize=figsize,
             title=title,
             ax=ax,
-            overlay_params=overlay_params,
-            imshow_params=imshow_params,
+            overlay_params=overlay_kwargs,
+            mpl_kwargs=mpl_kwargs,
 
         )
 

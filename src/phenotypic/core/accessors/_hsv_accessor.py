@@ -10,7 +10,7 @@ from matplotlib import pyplot as plt
 from skimage.color import label2rgb
 from skimage.exposure import histogram
 
-from phenotypic.core.accessors import ImageAccessor
+from phenotypic.core.accessor_abstracts import ImageAccessor
 from phenotypic.util.constants_ import IMAGE_FORMATS
 from phenotypic.util.exceptions_ import IllegalAssignmentError
 

@@ -5,7 +5,7 @@ from typing import Optional
 
 import skimage
 
-from phenotypic.core.accessors import ImageArrDataAccessor
+from phenotypic.core.accessor_abstracts import ImageArrDataAccessor
 from phenotypic.util.constants_ import IMAGE_FORMATS
 from phenotypic.util.exceptions_ import ArrayKeyValueShapeMismatchError, NoArrayError, EmptyImageError
 
@@ -181,11 +181,11 @@ class ImageArray(ImageArrDataAccessor):
         """
 
         if channel is None:
-            return self._plot(arr=self._root_image.array[:], ax=ax, figsize=figsize, title=title, mpl_params=mpl_params)
+            return self._plot(arr=self._root_image.array[:], ax=ax, figsize=figsize, title=title, mpl_kwargs=mpl_params)
 
         else:
             title = f"{self._root_image.name} - Channel {channel}" if title is None else f'{title} - Channel {channel}'
-            return self._plot(arr=self._root_image.array[:, :, channel], ax=ax, figsize=figsize, title=title, mpl_params=mpl_params)
+            return self._plot(arr=self._root_image.array[:, :, channel], ax=ax, figsize=figsize, title=title, mpl_kwargs=mpl_params)
 
     def show_overlay(self, object_label: None | int = None,
                      figsize: tuple[int, int] | None = None,
@@ -200,7 +200,7 @@ class ImageArray(ImageArrDataAccessor):
         Displays an overlay of the object map on the parent _root_image with optional annotations.
 
         This method enables visualization by overlaying object regions on the parent _root_image. It
-        provides options for customization, including the ability to annotate specific objects
+        provides options for customization, including the ability to show_labels specific objects
         and adjust visual styles like figure size, colors, and annotation properties.
 
         Args:
@@ -236,7 +236,7 @@ class ImageArray(ImageArrDataAccessor):
             ax=ax,
             figsize=figsize,
             title=title,
-            imshow_params=imshow_params,
+            mpl_kwargs=imshow_params,
             overlay_params=overlay_params,
         )
 
@@ -299,7 +299,7 @@ class ImageArray(ImageArrDataAccessor):
             figsize=figsize,
             title=title,
             cmap=cmap,
-            mpl_params=mpl_params,
+            mpl_kwargs=mpl_params,
 
         )
 

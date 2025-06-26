@@ -23,16 +23,16 @@ class ImageGridHandler(Image):
     This class extends the base `Image` class functionality to include grid handling,
     grid-based slicing, and advanced visualization capabilities such as displaying overlay information
     with gridlines and annotations. It interacts with the provided grid handling utilities
-    to determine grid structure and assign/overlay it effectively on the _root_image.
+    to determine grid structure and assign/overlay it effectively on the image.
 
     Args:
             input_image (Optional[Union[np.ndarray, Type[Image]]]): The input_image
-                _root_image, which can be a NumPy array or an _root_image-like object. If
+                image, which can be a NumPy array or an image-like object. If
                 this parameter is not provided, it defaults to None.
             imformat (str): A string representing the schema of the input_image
-                _root_image. It defaults to None if not provided.
+                image. It defaults to None if not provided.
             grid_finder (Optional[GridFinder]): An optional GridFinder instance
-                for defining grids on the _root_image. If not provided, it defaults to
+                for defining grids on the image. If not provided, it defaults to
                 a center grid setter.
             nrows (int): An integer passed to the grid setter to specify the number of rows in the grid
                 (Defaults to 8).
@@ -41,28 +41,28 @@ class ImageGridHandler(Image):
 
     Attributes:
         _grid_setter (Optional[GridFinder]): An object responsible for defining and optimizing the grid
-            layout over the _root_image, defaulting to an `OptimalCenterGridSetter` instance if none is provided.
+            layout over the image, defaulting to an `OptimalCenterGridSetter` instance if none is provided.
         _accessors.grid (GridAccessor): An internal utility for managing grid-based operations such as
-            accessing row and column edges and generating section maps for the _root_image's grid system.
+            accessing row and column edges and generating section maps for the image's grid system.
     """
 
     def __init__(self, input_image: Optional[Union[np.ndarray, Image]] = None, imformat: str = None, name: str = None,
                  grid_finder: Optional[GridFinder] = None,
                  nrows: int = 8, ncols: int = 12):
         """
-        Represents an _root_image processor with grid management capabilities. This class
-        is initialized with an _root_image, schema, and optional grid settings. It manages
-        grids on the _root_image and provides utility functions for grid-related
+        Represents an image processor with grid management capabilities. This class
+        is initialized with an image, schema, and optional grid settings. It manages
+        grids on the image and provides utility functions for grid-related
         operations.
 
         Args:
             input_image (Optional[Union[np.ndarray, Type[Image]]]): The input_image
-                _root_image, which can be a NumPy array or an _root_image-like object. If
+                image, which can be a NumPy array or an image-like object. If
                 this parameter is not provided, it defaults to None.
             imformat (str): A string representing the schema of the input_image
-                _root_image. It defaults to None if not provided.
+                image. It defaults to None if not provided.
             grid_finder (Optional[GridFinder]): An optional GridFinder instance
-                for defining grids on the _root_image. If not provided, it defaults to
+                for defining grids on the image. If not provided, it defaults to
                 a center grid setter.
             nrows (int): An integer specifying the number of rows in the grid.
                 Defaults to 8.
@@ -156,10 +156,10 @@ class ImageGridHandler(Image):
         raise IllegalAssignmentError('grid')
 
     def __getitem__(self, key) -> Image:
-        """Returns a copy of the _root_image at the slices specified as a regular Image object.
+        """Returns a copy of the image at the slices specified as a regular Image object.
 
         Returns:
-            Image: A copy of the _root_image at the slices indicated
+            Image: A copy of the image at the slices indicated
         """
         if self._image_format.is_array():
             subimage = Image(input_image=self.array[key], imformat=self.imformat)
@@ -174,8 +174,8 @@ class ImageGridHandler(Image):
                      show_gridlines: bool = True,
                      show_linreg: bool = False,
                      figsize: Tuple[int, int] = (9, 10),
-                     annotate: bool = False,
-                     annotation_params: None | dict = None,
+                     show_labels: bool = False,
+                     annotation_kwargs: None | dict = None,
                      ax: plt.Axes = None,
                      ) -> (plt.Figure, plt.Axes):
         """
@@ -188,8 +188,8 @@ class ImageGridHandler(Image):
             show_linreg (bool): Indicate whether to display linear regression lines on the overlay. Defaults to False.
             figsize (Tuple[int, int]): Size of the figure, specified as a tuple of width and height values (in inches).
                 Defaults to (9, 10).
-            annotate (bool): Determines whether points or objects should be annotated. Defaults to False.
-            annotation_params (None | dict): Additional parameters for customization of the
+            show_labels (bool): Determines whether points or objects should be annotated. Defaults to False.
+            annotation_kwargs (None | dict): Additional parameters for customization of the
                 object annotations. Defaults: size=12, color='white', facecolor='red'. Other kwargs
                 are passed to the matplotlib.axes.text () method.
             ax (plt.Axes, optional): Axis on which to draw the overlay; can be provided externally. Defaults to None.
@@ -197,14 +197,17 @@ class ImageGridHandler(Image):
         Returns:
             Tuple[plt.Figure, plt.Axes]: Modified figure and axis containing the rendered overlay.
         """
-        fig, ax = super().show_overlay(object_label=object_label, ax=ax, figsize=figsize,
-                                       annotate=annotate, annotation_params=annotation_params,
-                                       )
+        fig, ax = super().show_overlay(
+            object_label=object_label, ax=ax, figsize=figsize,
+            show_labels=show_labels, annotation_kwargs=annotation_kwargs,
+        )
 
         if show_gridlines and self.num_objects > 0:
             col_edges = self.grid.get_col_edges()
             upper_col_edges = col_edges[1:]
             lower_col_edges = col_edges[:-1]
+
+            # Set x-axes labels to grid column numbers
             col_centers = ((upper_col_edges - lower_col_edges) // 2) + lower_col_edges
             ax.set_xticks(col_centers)
             ax.set_xticklabels(np.arange(self.ncols))
@@ -212,10 +215,13 @@ class ImageGridHandler(Image):
             row_edges = self.grid.get_row_edges()
             upper_row_edges = row_edges[1:]
             lower_row_edges = row_edges[:-1]
+
+            # Set y-axis labels to grid row numbers
             row_centers = ((upper_row_edges - lower_row_edges) // 2) + lower_row_edges
             ax.set_yticks(row_centers)
             ax.set_yticklabels(np.arange(self.nrows))
 
+            # Draw grid lines
             ax.vlines(x=col_edges, ymin=row_edges.min(), ymax=row_edges.max(), colors='c', linestyles='--')
             ax.hlines(y=row_edges, xmin=col_edges.min(), xmax=col_edges.max(), color='c', linestyles='--')
 

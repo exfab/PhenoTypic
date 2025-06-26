@@ -13,7 +13,7 @@ from packaging import version
 import math
 
 import phenotypic
-from phenotypic.core.accessors import ImageAccessor
+from phenotypic.core.accessor_abstracts import ImageAccessor
 from phenotypic.util.constants_ import OBJECT, GRID, METADATA_LABELS, SUBIMAGE_TYPES
 from phenotypic.util.exceptions_ import NoObjectsError
 

@@ -13,6 +13,7 @@ from os import PathLike
 from pathlib import Path
 import warnings
 
+import skimage
 from skimage.color import rgb2gray, rgba2rgb
 from skimage.transform import rotate as skimage_rotate
 from scipy.ndimage import rotate as scipy_rotate
@@ -62,7 +63,7 @@ class ImageHandler:
     def __init__(self,
                  input_image: np.ndarray | Image | PathLike | None = None,
                  imformat: str | None = None,
-                 name: str | None = None, bit_depth: Literal[8, 16, 32] = 16):
+                 name: str | None = None, bit_depth: Literal[8, 16, 32] | None = None):
         """
         Initializes an instance of the image processing object, setting up internal structures, 
         metadata, accessors, and initializing the provided input image or empty placeholders. The
@@ -77,8 +78,9 @@ class ImageHandler:
                 automatically based on the input image if applicable.
             name: Name of the image data or identifier assigned to the image. If None, the name 
                 will be left empty or assigned a default value in protected metadata.
-            bit_depth: Bit depth of the image, can be either 8, 16, or 32. Determines the image's
-                bit depth during initialization.
+            bit_depth: Bit depth of the image can be either 8, 16, or 32. Determines the image's
+                bit depth during initialization. Higher bit depth can mean more precision when images are captured with higher bit-depth
+                but increase memory usage
         """
 
         match bit_depth:
@@ -89,7 +91,7 @@ class ImageHandler:
             case 32:
                 self._bit_depth = np.uint32
             case _:
-                self._bit_depth = np.uint32
+                self._bit_depth = np.float64
 
         # Initialize _root_image data
         self._data = SimpleNamespace()
@@ -123,11 +125,10 @@ class ImageHandler:
         self._accessors.objmask = ObjectMask(self, target_array=self._data.sparse_object_map, dtype=self._OBJMAP_DTYPE)
         self._accessors.objmap = ObjectMap(self, target_array=self._data.sparse_object_map, dtype=self._OBJMAP_DTYPE)
 
-        self._accessors.objects = ObjectsAccessor(self)
         self._accessors.metadata = MetadataAccessor(self)
 
         # Set data to empty arrays first
-        self._reset_data_to_empty()
+        self._clear_data()
 
         # Handle non-empty inputs
         self.set_image(input_image=input_image, imformat=imformat)
@@ -265,7 +266,7 @@ class ImageHandler:
         """Returns the input_image format of the _root_image array or matrix depending on input_image format"""
         if not self._image_format.is_none():
             # if self._data.matrix is None or self._data.enh_matrix is None or self._data.sparse_object_map is None:
-            #     raise AttributeError('Unknown error. Image format exists, but missing _root_image data')
+            #     raise AttributeError('Unknown error. An image format exists, but missing _root_image data')
             return self._image_format
         else:
             raise EmptyImageError
@@ -577,27 +578,6 @@ class ImageHandler:
         return ski.measure.regionprops(label_image=np.full(shape=self.shape, fill_value=1), intensity_image=self._data.matrix, cache=False)
 
     @property
-    def objects(self) -> ObjectsAccessor:
-        """Returns an acessor to the objects in an _root_image and perform operations on them, such as measurement calculations.
-
-        This method provides access to `ImageObjects`.
-
-        Returns:
-            ObjectsAccessor: The subhandler instance that manages _root_image-related objects.
-
-        Raises:
-            NoObjectsError: If no objects are targeted in the _root_image. Apply an ObjectDetector first.
-        """
-        if self.num_objects == 0:
-            raise NoObjectsError(self.name)
-        else:
-            return self._accessors.objects
-
-    @objects.setter
-    def objects(self, objects):
-        raise IllegalAssignmentError('objects')
-
-    @property
     def num_objects(self) -> int:
         """Returns the number of objects in the _root_image
         Note:
@@ -640,11 +620,11 @@ class ImageHandler:
             case x if isinstance(x, self.__class__) | issubclass(type(x), self.__class__):
                 self._set_from_class_instance(x)
             case None:
-                self._reset_data_to_empty()
+                self._clear_data()
             case _:
                 raise ValueError(f'input_image must be a NumPy array, a class instance, or None. Got {type(input_image)}')
 
-    def _reset_data_to_empty(self):
+    def _clear_data(self):
         self._data.array = np.empty((0, 3), dtype=self._bit_depth)  # Create an empty 3D array
         self._set_from_matrix(np.empty((0, 2), dtype=self._bit_depth))
         self._image_format = IMAGE_FORMATS.NONE
@@ -664,13 +644,6 @@ class ImageHandler:
             self._metadata.protected = deepcopy(input_cls._metadata.protected)
             self._metadata.public = deepcopy(input_cls._metadata.public)
 
-    def _norm_matrix2storage(self, normalized_matrix):
-        if normalized_matrix.dtype == self._bit_depth:
-            return normalized_matrix
-        else:
-            max_val = np.iinfo(self._bit_depth).max
-            return np.round(np.clip(normalized_matrix.copy(), a_min=0.0, a_max=1.0) * max_val).astype(self._bit_depth)
-
     def _set_from_matrix(self, matrix: np.ndarray):
         """Initializes all the 2-D components of an _root_image
 
@@ -678,7 +651,7 @@ class ImageHandler:
             matrix: A 2-D array form of an _root_image
         """
 
-        self._data.matrix = self._norm_matrix2storage(matrix)
+        self._data.matrix = self._normMatrix2dtype(matrix)
         self._accessors.enh_matrix.reset()
         self._accessors.objmap.reset()
 
@@ -783,8 +756,8 @@ class ImageHandler:
 
     def show_overlay(self, object_label: Optional[int] = None, ax: plt.Axes = None,
                      figsize: Tuple[int, int] = (10, 5),
-                     annotate: bool = False,
-                     annotation_params: None | dict = None,
+                     show_labels: bool = False,
+                     annotation_kwargs: None | dict = None,
                      ) -> (plt.Figure, plt.Axes):
         """
         Displays an overlay of the object specified by the given label on an _root_image or
@@ -803,9 +776,9 @@ class ImageHandler:
                 on. If None, a new figure and axes are created for rendering.
             figsize (Tuple[int, int]): Tuple specifying the size (width, height) of the
                 figure to create if no axes are provided.
-            annotate (bool): Whether to annotate the _root_image/matrix using the given
+            show_labels (bool): Whether to annotate the image.matrix using the given
                 annotation settings.
-            annotation_params (None | dict): Additional parameters for customization of the
+            annotation_kwargs (None | dict): Additional parameters for customization of the
                 object annotations. Defaults: size=12, color='white', facecolor='red
 
         Returns:
@@ -815,11 +788,11 @@ class ImageHandler:
         """
         if self._image_format.is_array():
             return self.array.show_overlay(object_label=object_label, ax=ax, figsize=figsize,
-                                           annotate=annotate, annotation_params=annotation_params,
+                                           annotate=show_labels, annotation_params=annotation_kwargs,
                                            )
         else:
             return self.matrix.show_overlay(object_label=object_label, ax=ax, figsize=figsize,
-                                            annotate=annotate, annotation_params=annotation_params,
+                                            show_labels=show_labels, annotation_params=annotation_kwargs,
                                             )
 
     def rotate(self, angle_of_rotation: int, mode: str = 'edge', **kwargs) -> None:
@@ -849,3 +822,49 @@ class ImageHandler:
         self.enh_matrix.reset()
         self.objmap.reset()
         return self
+
+
+    def _normMatrix2dtype(self, normalized_value: np.ndarray) -> np.ndarray:
+        """
+        Converts a normalized matrix with values between 0 and 1 to a specified data type with the
+        appropriate scaling. The method ensures that all values are clipped to the range [0, 1]
+        before scaling them to the data type's maximum other_image.
+
+        Args:
+            normalized_value: A 2D NumPy array where all values are assumed to be in the range
+                [0, 1]. These values will be converted using the specified data type scale.
+
+        Returns:
+            numpy.ndarray: A 2D NumPy array of the same shape as `normalized_matrix`, converted
+            to the target data type with scaled values.
+        """
+        match self._bit_depth:
+            case np.uint8:
+                return skimage.util.img_as_ubyte(normalized_value)
+            case np.uint16:
+                return skimage.util.img_as_uint(normalized_value)
+            case np.float64: # No compression
+                return skimage.util.img_as_float(normalized_value)
+            case _: # No compression
+                return normalized_value
+
+    @staticmethod
+    def _dtypeMatrix2norm(matrix: np.ndarray) -> np.ndarray:
+        """
+        Normalizes the given matrix to have values between 0.0 and 1.0 based on its data type.
+
+        The method checks the data type of the input matrix against the expected data
+        type. If the data type does not match, a warning is issued. The matrix is
+        then normalized by dividing its values by the maximum possible other_image for its
+        data type, ensuring all elements remain within the range of [0.0, 1.0].
+
+        Args:
+            matrix (np.ndarray): The input matrix to be normalized.
+
+        Returns:
+            np.ndarray: A normalized matrix where all values are within [0.0, 1.0].
+        """
+        if matrix.dtype != np.float64:
+            return skimage.util.img_as_float(matrix)
+        else:
+            return matrix

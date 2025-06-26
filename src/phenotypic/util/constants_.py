@@ -11,6 +11,7 @@ Note: Class names are defined in ALL_CAPS to avoid namespace conflicts with actu
 
 from enum import Enum
 
+DEFAULT_MPL_IMAGE_FIGSIZE = (8,6)
 
 # Image format constants
 class IMAGE_FORMATS(Enum):

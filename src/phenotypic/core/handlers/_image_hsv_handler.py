@@ -9,12 +9,12 @@ from skimage.color import rgb2hsv
 from os import PathLike
 
 from ..accessors import HsvAccessor
-from ._image_handler import ImageHandler
+from ._image_objects import ImageObjectsHandler
 from phenotypic.util.constants_ import IMAGE_FORMATS
 from phenotypic.util.exceptions_ import IllegalAssignmentError
 
 
-class ImageHsvHandler(ImageHandler):
+class ImageHsvHandler(ImageObjectsHandler):
     """Adds HSV format support for the color measurement module."""
 
     def __init__(self, input_image: Optional[Union[np.ndarray, Image, PathLike]] = None, imformat: str = None, name: str = None):

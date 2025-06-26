@@ -7,7 +7,7 @@ from skimage.measure import label
 import matplotlib.pyplot as plt
 import numpy as np
 
-from phenotypic.core.accessors import ImageArrDataAccessor
+from phenotypic.core.accessor_abstracts import ImageArrDataAccessor
 from phenotypic.util.exceptions_ import InvalidMaskValueError, InvalidMaskScalarValueError, ArrayKeyValueShapeMismatchError
 
 

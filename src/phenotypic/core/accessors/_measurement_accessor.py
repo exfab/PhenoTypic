@@ -6,6 +6,7 @@ from typing import Dict, Union, List, Optional
 # TODO: Implement
 
 class MeasurementAccessor:
+    """This class is not yet implemented. It is a placeholder for future functionality."""
     def __init__(self):
         self.__measurements: Dict[str, Union[pd.Series, pd.DataFrame]] = {}
 

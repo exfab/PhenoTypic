@@ -9,11 +9,33 @@ import numpy as np
 from numpy.typing import ArrayLike
 import pandas as pd
 import scipy
-from functools import partial
+import warnings
+import functools
+from functools import partial, wraps
 
 from ._base_operation import BaseOperation
 from phenotypic.util.exceptions_ import OperationFailedError
 from phenotypic.util.funcs_ import validate_measure_integrity
+
+
+def catch_warnings_decorator(func):
+    """
+    A decorator that catches warnings, prepends the method name to the warning message,
+    and reraises the warning.
+    """
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        with warnings.catch_warnings(record=True) as recorded_warnings:
+            # Call the original function
+            result = func(*args, **kwargs)
+
+            # If any warnings were raised, prepend the method name and reraise
+            for warning in recorded_warnings:
+                message = f"{func.__name__}: {warning.message}"
+                warnings.warn(message, warning.category, stacklevel=2)
+
+        return result
+    return wrapper
 
 
 # <<Interface>>
@@ -61,6 +83,7 @@ class MeasureFeatures(BaseOperation):
             return np.array([scipy_output])
 
     @staticmethod
+    @catch_warnings_decorator
     def calculate_center_of_mass(array: np.ndarray, labels: ArrayLike = None):
         """Calculates the center of mass for each labeled object in the array.
 
@@ -80,6 +103,7 @@ class MeasureFeatures(BaseOperation):
         return MeasureFeatures._repair_scipy_results(scipy.ndimage.center_of_mass(array, labels, index=indexes))
 
     @staticmethod
+    @catch_warnings_decorator
     def calculate_max(array: np.ndarray, labels: ArrayLike = None):
         """Calculates the maximum value for each labeled object in the array.
 
@@ -99,6 +123,7 @@ class MeasureFeatures(BaseOperation):
         return MeasureFeatures._repair_scipy_results(scipy.ndimage.maximum(array, labels, index=indexes))
 
     @staticmethod
+    @catch_warnings_decorator
     def calculate_mean(array: np.ndarray, labels: ArrayLike = None):
         """Calculates the mean value for each labeled object in the array.
 
@@ -118,6 +143,7 @@ class MeasureFeatures(BaseOperation):
         return MeasureFeatures._repair_scipy_results(scipy.ndimage.mean(array, labels, index=indexes))
 
     @staticmethod
+    @catch_warnings_decorator
     def calculate_median(array: np.ndarray, labels: ArrayLike = None):
         """Calculates the median value for each labeled object in the array.
 
@@ -137,6 +163,7 @@ class MeasureFeatures(BaseOperation):
         return MeasureFeatures._repair_scipy_results(scipy.ndimage.median(array, labels, index=indexes))
 
     @staticmethod
+    @catch_warnings_decorator
     def calculate_minimum(array: np.ndarray, labels: ArrayLike = None):
         """Calculates the minimum value for each labeled object in the array.
 
@@ -156,6 +183,7 @@ class MeasureFeatures(BaseOperation):
         return MeasureFeatures._repair_scipy_results(scipy.ndimage.minimum(array, labels, index=indexes))
 
     @staticmethod
+    @catch_warnings_decorator
     def calculate_stddev(array: np.ndarray, labels: ArrayLike = None):
         """Calculates the standard deviation for each labeled object in the array.
 
@@ -175,6 +203,7 @@ class MeasureFeatures(BaseOperation):
         return MeasureFeatures._repair_scipy_results(scipy.ndimage.standard_deviation(array, labels, index=indexes))
 
     @staticmethod
+    @catch_warnings_decorator
     def calculate_sum(array: np.ndarray, labels: ArrayLike = None):
         """Calculates the sum of values for each labeled object in the array.
 
@@ -194,6 +223,7 @@ class MeasureFeatures(BaseOperation):
         return MeasureFeatures._repair_scipy_results(scipy.ndimage.sum_labels(array, labels, index=indexes))
 
     @staticmethod
+    @catch_warnings_decorator
     def calculate_variance(array: np.ndarray, labels: ArrayLike = None):
         """Calculates the variance for each labeled object in the array.
 
@@ -213,6 +243,7 @@ class MeasureFeatures(BaseOperation):
         return MeasureFeatures._repair_scipy_results(scipy.ndimage.variance(array, labels, index=indexes))
 
     @staticmethod
+    @catch_warnings_decorator
     def calculate_coeff_variation(array: np.ndarray, labels: ArrayLike = None):
         """Calculates unbiased coefficient of variation (CV) for each object in the image, assuming normal distribution.
 
@@ -246,6 +277,7 @@ class MeasureFeatures(BaseOperation):
         )
 
     @staticmethod
+    @catch_warnings_decorator
     def calculate_min_extrema(array: np.ndarray, labels: ArrayLike = None):
         """Calculates the minimum extrema and their positions for each labeled object in the array.
 
@@ -263,6 +295,7 @@ class MeasureFeatures(BaseOperation):
         return min_extrema, min_pos
 
     @staticmethod
+    @catch_warnings_decorator
     def calculate_max_extrema(array: np.ndarray, labels: ArrayLike = None):
         """Calculates the maximum extrema and their positions for each labeled object in the array.
 
@@ -324,6 +357,7 @@ class MeasureFeatures(BaseOperation):
         )
 
     @staticmethod
+    @catch_warnings_decorator
     def calculate_q1(array, labels=None, method: str = 'linear'):
         find_q1 = partial(np.quantile, q=0.25, method=method)
         q1 = MeasureFeatures.funcmap2objects(func=find_q1, out_dtype=array.dtype, array=array, labels=labels, default=np.nan,
@@ -331,6 +365,7 @@ class MeasureFeatures(BaseOperation):
         return MeasureFeatures._repair_scipy_results(q1)
 
     @staticmethod
+    @catch_warnings_decorator
     def calculate_q3(array, labels=None, method: str = 'linear'):
         find_q3 = partial(np.quantile, q=0.75, method=method)
         q3 = MeasureFeatures.funcmap2objects(func=find_q3, out_dtype=array.dtype, array=array, labels=labels, default=np.nan,
@@ -338,6 +373,7 @@ class MeasureFeatures(BaseOperation):
         return MeasureFeatures._repair_scipy_results(q3)
 
     @staticmethod
+    @catch_warnings_decorator
     def calculate_iqr(array, labels=None, method: str = 'linear', nan_policy: str = 'omit'):
         find_iqr = partial(scipy.stats.iqr, axis=None, nan_policy=nan_policy, interpolation=method)
         return MeasureFeatures._repair_scipy_results(

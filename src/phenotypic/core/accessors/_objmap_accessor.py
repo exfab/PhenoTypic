@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 from skimage.measure import regionprops_table, label
 from skimage.segmentation import clear_border
 
-from phenotypic.core.accessors import ImageArrDataAccessor
+from phenotypic.core.accessor_abstracts import ImageArrDataAccessor
 from phenotypic.util.exceptions_ import UnknownError, ArrayKeyValueShapeMismatchError, InvalidMapValueError
 
 
@@ -117,7 +117,7 @@ class ObjectMap(ImageArrDataAccessor):
                 sparse object map is rendered.
         """
         return self._plot(arr=self._root_image._data.sparse_object_map.toarray(),
-                          figsize=figsize, title=title, ax=ax, cmap=cmap, mpl_params=mpl_params,
+                          figsize=figsize, title=title, ax=ax, cmap=cmap, mpl_kwargs=mpl_params,
                           )
 
     def reset(self) -> None:

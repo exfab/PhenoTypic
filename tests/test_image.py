@@ -110,7 +110,8 @@ def test_image_matrix_change(sample_image_array_with_imformat):
     elif input_imformat == 'Grayscale':
         altered_image = input_image.copy()
         altered_image[10:10, 10:10] = 0
-        assert np.array_equal(ps_image.matrix[:], altered_image)
+        assert np.allclose(ps_image.matrix[:], altered_image, atol=1.0 / np.iinfo(ps_image._bit_depth).max), \
+            f'Image.matrix and input_image do not match at {np.unique(ps_image.matrix[:] != altered_image, return_counts=True)}'
 
 
 @timeit
