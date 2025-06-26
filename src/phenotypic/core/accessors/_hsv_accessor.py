@@ -181,7 +181,7 @@ class HsvAccessor(ImageAccessor):
 
         return fig, ax
 
-    def get_foreground_hue(self, bg_color: int = 0, normalized: bool = False):
+    def get_foreground_hue(self, bg_label: int = 0, normalized: bool = False):
         """Extracts the object hue from the HSV image.
 
         Note:
@@ -190,10 +190,10 @@ class HsvAccessor(ImageAccessor):
         """
         return self._root_image.objmask._extract_objects(
             self._root_image._hsv[:, :, 0] if normalized else self._root_image._hsv[:, :, 0] * 360,
-            bg_label=bg_color
+            bg_label=bg_label
         )
 
-    def get_foreground_saturation(self, bg_color: int = 0, normalized: bool = True):
+    def get_foreground_saturation(self, bg_label: int = 0, normalized: bool = True):
         """Extracts the object saturation from the HSV image.
 
         Note:
@@ -203,10 +203,10 @@ class HsvAccessor(ImageAccessor):
         """
         return self._root_image.objmask._extract_objects(
             self._root_image._hsv[:, :, 1] if normalized else self._root_image._hsv[:, :, 1] * 255,
-            bg_label=bg_color
+            bg_label=bg_label
         )
 
-    def get_foreground_brightness(self, bg_color: int = 0, normalized: bool = True):
+    def get_foreground_brightness(self, bg_label: int = 0, normalized: bool = True):
         """Extracts the object brightness from the HSV image.
 
         Note:
@@ -216,9 +216,9 @@ class HsvAccessor(ImageAccessor):
         """
         return self._root_image.objmask._extract_objects(
             self._root_image._hsv[:, :, 2] if normalized else self._root_image._hsv[:, :, 2] * 255,
-            bg_label=bg_color
+            bg_label=bg_label
         )
 
-    def extract_obj(self, bg_color: int = 0):
+    def extract_obj(self, bg_label: int = 0):
         """Extracts the object hue, saturation, and brightness from the HSV image. With the background elements set to 0"""
-        return self._root_image.objmask._extract_objects(self._root_image._hsv[:, :, :], bg_label=bg_color)
+        return self._root_image.objmask._extract_objects(self._root_image._hsv[:, :, :], bg_label=bg_label)

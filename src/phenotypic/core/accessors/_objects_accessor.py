@@ -60,7 +60,7 @@ class ObjectsAccessor(ImageAccessor):
         """
         # considered using a simple numpy.unique() call on the object map, but wanted to guarantee that the labels will always be consistent
         # with any skimage outputs.
-        return [x.label for x in self.props] if self.num_objects > 0 else [1]
+        return [x.label for x in self.props] if self.num_objects > 0 else []
 
     @property
     def slices(self):

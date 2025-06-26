@@ -131,12 +131,12 @@ def test_image_object_mask_access(sample_image_array_with_imformat):
     ps_image = phenotypic.Image(input_image=input_image, imformat=input_imformat)
 
     # When no objects in _root_image
-    assert np.array_equal(ps_image.objmask[:], np.full(shape=ps_image.matrix.shape, fill_value=True))
+    assert np.array_equal(ps_image.objmask[:], np.full(shape=ps_image.matrix.shape, fill_value=False))
 
     ps_image.objmask[:10, :10] = 0
     ps_image.objmask[-10:, -10:] = 1
 
-    assert not np.array_equal(ps_image.objmask[:], np.full(shape=ps_image.matrix.shape, fill_value=True))
+    assert not np.array_equal(ps_image.objmask[:], np.full(shape=ps_image.matrix.shape, fill_value=False))
 
 
 @timeit
@@ -145,13 +145,13 @@ def test_image_object_map_access(sample_image_array_with_imformat):
     ps_image = phenotypic.Image(input_image=input_image, imformat=input_imformat)
 
     # When no objects in _root_image
-    assert np.array_equal(ps_image.objmap[:], np.full(shape=ps_image.matrix.shape, fill_value=1, dtype=np.uint32))
+    assert np.array_equal(ps_image.objmap[:], np.full(shape=ps_image.matrix.shape, fill_value=0, dtype=np.uint32))
     assert ps_image.num_objects == 0
 
     ps_image.objmap[:10, :10] = 1
     ps_image.objmap[-10:, -10:] = 2
 
-    assert not np.array_equal(ps_image.objmap[:], np.full(shape=ps_image.matrix.shape, fill_value=1, dtype=np.uint32))
+    assert not np.array_equal(ps_image.objmap[:], np.full(shape=ps_image.matrix.shape, fill_value=0, dtype=np.uint32))
     assert ps_image.num_objects > 0
     assert ps_image.objects.num_objects > 0
 

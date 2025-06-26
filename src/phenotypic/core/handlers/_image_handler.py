@@ -106,7 +106,7 @@ class ImageHandler:
         # Public metadata can be edited or removed
         self._metadata = SimpleNamespace(
             private={
-                METADATA_LABELS.UUID: uuid.uuid4()
+                # METADATA_LABELS.UUID: uuid.uuid4()
             },
             protected={
                 METADATA_LABELS.IMAGE_NAME: name,
@@ -119,11 +119,11 @@ class ImageHandler:
         # Initialize _root_image accessors
         self._accessors = SimpleNamespace()
 
-        self._accessors.array = ImageArray(self, target_array=self._data.array, dtype=self._bit_depth)
-        self._accessors.matrix = ImageMatrix(self, target_array=self._data.matrix, dtype=self._bit_depth)
-        self._accessors.enh_matrix = ImageEnhancedMatrix(self, target_array=self._data.enh_matrix, dtype=self._bit_depth)
-        self._accessors.objmask = ObjectMask(self, target_array=self._data.sparse_object_map, dtype=self._OBJMAP_DTYPE)
-        self._accessors.objmap = ObjectMap(self, target_array=self._data.sparse_object_map, dtype=self._OBJMAP_DTYPE)
+        self._accessors.array = ImageArray(self)
+        self._accessors.matrix = ImageMatrix(self)
+        self._accessors.enh_matrix = ImageEnhancedMatrix(self)
+        self._accessors.objmask = ObjectMask(self)
+        self._accessors.objmap = ObjectMap(self)
 
         self._accessors.metadata = MetadataAccessor(self)
 
@@ -581,8 +581,8 @@ class ImageHandler:
     def num_objects(self) -> int:
         """Returns the number of objects in the _root_image
         Note:
-            If the number of objects is 0, the target for analysis is the entire _root_image itself.
         """
+        self._data.sparse_object_map.eliminate_zeros()
         object_labels = np.unique(self._data.sparse_object_map.data)
         return len(object_labels[object_labels != 0])
 
@@ -660,7 +660,7 @@ class ImageHandler:
 
         """
         self._data.array = rgb_array.copy()
-        self._set_from_matrix(rgb2gray(self._data.array))
+        self._set_from_matrix(rgb2gray(rgb_array))
 
     def _set_from_array(self, imarr: np.ndarray, imformat: Literal['RGB', 'greyscale'] | None) -> None:
         """Initializes all the components of an _root_image from an array

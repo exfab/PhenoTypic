@@ -32,12 +32,7 @@ class ObjectMap(ImageArrDataAccessor):
 
     @property
     def _labels(self):
-        """Returns the labels in the _root_image.
-
-               We considered using a simple numpy.unique() call on the object map, but wanted to guarantee that the labels will always be consistent
-               with any skimage version outputs.
-
-               """
+        """Returns the labels in the _root_image."""
         objmap = self._root_image._data.sparse_object_map.toarray()
         labels = np.unique(objmap)
         return labels[labels != 0]

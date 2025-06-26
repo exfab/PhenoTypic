@@ -24,10 +24,8 @@ class ImageArrDataAccessor(ImageAccessor):
         _dtype (Any): Data type of the Image data stored in the target array.
     """
 
-    def __init__(self, parent_image, target_array, dtype):
+    def __init__(self, parent_image):
         self._root_image = parent_image
-        self._main_arr = target_array
-        self._dtype = dtype
 
     # def shape(self) -> tuple[int, ...]:
     #     return self._main_arr.shape

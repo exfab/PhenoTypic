@@ -102,6 +102,5 @@ class ObjectMask(ImageArrDataAccessor):
         mask = self._root_image.objmap[:] > 0
         if array.ndim == 3: mask = np.dstack([(mask > 0) for _ in range(array.shape[-1])])
 
-        new_arr = array.copy()
-        new_arr[~mask] = bg_label
-        return new_arr
+        array[~mask] = bg_label
+        return array
