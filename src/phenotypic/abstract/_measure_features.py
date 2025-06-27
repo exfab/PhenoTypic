@@ -27,7 +27,7 @@ def catch_warnings_decorator(func):
     def wrapper(*args, **kwargs):
         with warnings.catch_warnings(record=True) as recorded_warnings:
             # Call the original function
-            warnings.simplefilter("always")
+            warnings.simplefilter("ignore")
             result = func(*args, **kwargs)
 
             # If any warnings were raised, prepend the method name and reraise

@@ -73,7 +73,7 @@ class ImageEnhancedMatrix(ImageMatrixDataAccessor):
             if self._root_image._data.enh_matrix[key].shape != value.shape: raise ArrayKeyValueShapeMismatchError
             value = self._root_image._normMatrix2dtype(value)
         elif isinstance(value, (int, float)):
-            value = self._dtype(value)
+            value = self._root_image._bit_depth(value)
         else:
             raise TypeError(f'Unsupported type for setting the matrix. Value should be scalar or a numpy array: {type(value)}')
 

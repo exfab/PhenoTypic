@@ -106,7 +106,7 @@ class ImageHandler:
         # Public metadata can be edited or removed
         self._metadata = SimpleNamespace(
             private={
-                # METADATA_LABELS.UUID: uuid.uuid4()
+                METADATA_LABELS.UUID: uuid.uuid4()
             },
             protected={
                 METADATA_LABELS.IMAGE_NAME: name,
