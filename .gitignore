@@ -25,3 +25,9 @@ docs/build/doctrees/*
 ./docs/build/jupyter_execute/*
 docs/build/jupyter_execute/*
 **.$**.bkp
+./docs/build
+docs/build
+.venv
+.junie
+uv.lock
+debug/*.log

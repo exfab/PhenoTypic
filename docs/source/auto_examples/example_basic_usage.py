@@ -2,7 +2,7 @@
 Basic Usage Example
 ==================
 
-This example demonstrates basic usage of PhenoTypic for image processing.
+This example demonstrates basic usage of PhenoTypic for _root_image processing.
 """
 
 # %%
@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 import phenotypic as ps
 
 # %%
-# Create a simple test image
+# Create a simple test _root_image
 test_image = np.zeros((100, 100, 3), dtype=np.uint8)
 test_image[25:75, 25:75, 0] = 255  # Red square
 test_image[40:60, 40:60, 1] = 255  # Green square inside
@@ -24,7 +24,7 @@ print(f"Image shape: {img.shape}")
 print(f"Image imformat: {img.imformat}")
 
 # %%
-# Display the image
+# Display the _root_image
 plt.figure(figsize=(8, 8))
 # Convert to numpy array for display
 img_array = np.array(img.array[:])
@@ -34,7 +34,7 @@ plt.axis('off')
 plt.show()
 
 # %%
-# Extract features from the image
+# Extract features from the _root_image
 # For demonstration, we'll just get some basic statistics
 mean_values = np.mean(img_array[:], axis=(0, 1))
 print(f"Mean RGB values: R={mean_values[0]:.1f}, G={mean_values[1]:.1f}, B={mean_values[2]:.1f}")

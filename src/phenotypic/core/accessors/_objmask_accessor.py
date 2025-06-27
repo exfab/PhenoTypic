@@ -7,11 +7,11 @@ from skimage.measure import label
 import matplotlib.pyplot as plt
 import numpy as np
 
-from phenotypic.core.accessors import ImageAccessor
+from phenotypic.core.accessor_abstracts import ImageArrDataAccessor
 from phenotypic.util.exceptions_ import InvalidMaskValueError, InvalidMaskScalarValueError, ArrayKeyValueShapeMismatchError
 
 
-class ObjectMask(ImageAccessor):
+class ObjectMask(ImageArrDataAccessor):
     """Represents a binary object mask linked to a parent image.
 
     This class allows for manipulation and analysis of a binary object mask associated with a parent image. It provides
@@ -24,32 +24,32 @@ class ObjectMask(ImageAccessor):
 
     def __getitem__(self, key):
         """Returns a copy of the binary object mask in array form"""
-        return (self._parent_image.objmap[key] > 0).astype(int)
+        return (self._root_image.objmap[key] > 0).astype(int)
 
     def __setitem__(self, key, value: np.ndarray):
-        """Sets values of the object mask to value and resets the labeling in the map"""
-        mask = self._parent_image.objmap[:] > 0
+        """Sets values of the object mask to other_image and resets the labeling in the map"""
+        mask = self._root_image.objmap[:] > 0
 
-        # Check to make sure the section of the mask the key accesses is the same as the value
-        if type(value) in [int, bool]:
+        # Check to make sure the section of the mask the key accesses is the same as the other_image
+        if type(value) in (int, bool):
             try:
-                value = bool(value)
+                value = 1 if value != 0 else 0
                 mask[key] = value
             except TypeError:
                 raise InvalidMaskScalarValueError
         elif type(value) == np.ndarray:
-            # Check input and section have matching shape
+            # Check input_image and section have matching shape
             if mask[key].shape != value.shape:
                 raise ArrayKeyValueShapeMismatchError
 
-            # Sets the section of the binary mask to the value array
+            # Sets the section of the binary mask to the other_image array
             mask[key] = (value > 0)
         else:
             raise InvalidMaskValueError(type(value))
 
         # Relabel the mask and set the underlying csc matrix to the new mask
-        # Where the reset of labeling occurs. May eventually add way to sync without label reset in future
-        self._parent_image.objmap[:] = label(mask)
+        # Where the reset of labeling occurs. May eventually add a way to sync without a label reset in the future
+        self._root_image.objmap[:] = label(mask)
 
     @property
     def shape(self):
@@ -62,11 +62,11 @@ class ObjectMask(ImageAccessor):
         Returns:
             The shape of the object map
         """
-        return self._parent_image.objmap.shape
+        return self._root_image.objmap.shape
 
     def copy(self) -> np.ndarray:
         """Returns a copy of the binary object mask"""
-        return self._parent_image.objmask[:].copy()
+        return self._root_image.objmask[:].copy()
 
     def reset(self):
         """
@@ -75,7 +75,7 @@ class ObjectMask(ImageAccessor):
         to it.
 
         """
-        self._parent_image.objmap.reset()
+        self._root_image.objmap.reset()
 
     def show(self, ax: plt.Axes | None = None,
              figsize: str | None = None,
@@ -95,13 +95,12 @@ class ObjectMask(ImageAccessor):
         Returns:
             tuple(plt.Figure, plt.Axes): matplotlib figure and axes object
         """
-        return self._plot(arr=self._parent_image.objmap[:] > 0, figsize=figsize, ax=ax, title=title, cmap=cmap)
+        return self._plot(arr=self._root_image.objmap[:] > 0, figsize=figsize, ax=ax, title=title, cmap=cmap)
 
-    def _extract_objects(self, array: np.ndarray, bg_color: int = 0) -> np.ndarray:
-        """Returns a copy of the array with every non-object pixel set to 0. Equivalent to np.ma.array.filled(bg_color)"""
-        mask = self._parent_image.objmap[:] > 0
+    def _extract_objects(self, array: np.ndarray, bg_label: int = 0) -> np.ndarray:
+        """Returns a copy of the array with every non-object pixel set to 0. Equivalent to np.ma.array.filled(bg_label)"""
+        mask = self._root_image.objmap[:] > 0
         if array.ndim == 3: mask = np.dstack([(mask > 0) for _ in range(array.shape[-1])])
 
-        new_arr = array.copy()
-        new_arr[~mask] = bg_color
-        return new_arr
+        array[~mask] = bg_label
+        return array

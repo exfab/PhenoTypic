@@ -1,6 +1,6 @@
 import numpy as np
 from skimage.filters.rank import median
-from skimage.morphology import disk, square, cube, ball
+from skimage.morphology import disk, cube, ball, footprint_rectangle
 from skimage.util import img_as_ubyte
 
 from .. import Image
@@ -19,8 +19,8 @@ class RankMedianEnhancer(ImageEnhancer):
 
     def _operate(self, image: Image) -> Image:
         image.enh_matrix[:] = median(
-                image=img_as_ubyte(image.enh_matrix[:]),
-                footprint=self._get_footprint(self._get_footprint_radius(image.enh_matrix[:]))
+            image=img_as_ubyte(image.enh_matrix[:]),
+            footprint=self._get_footprint(self._get_footprint_radius(image.enh_matrix[:])),
         )
         return image
 
@@ -35,8 +35,11 @@ class RankMedianEnhancer(ImageEnhancer):
             case 'disk':
                 return disk(radius=radius)
             case 'square':
-                return square(int(radius * 2))
+                diameter = int(radius * 2)
+                return footprint_rectangle(shape=(diameter, diameter), )
             case 'ball':
                 return ball(radius)
             case 'cube':
                 return cube(int(radius * 2))
+            case _:
+                raise TypeError('Unknown footprint shape')

@@ -5,16 +5,17 @@ if TYPE_CHECKING: from phenotypic import GridImage
 import pandas as pd
 
 
-from phenotypic.abstract import FeatureMeasure
+from phenotypic.abstract import MeasureFeatures
 from phenotypic.abstract import GridOperation
 from phenotypic.util.exceptions_ import GridImageInputError, OutputValueError
+from phenotypic.util.funcs_ import validate_measure_integrity
 
+class GridMeasureFeatures(MeasureFeatures):
+    def __init__(self, nrows: int=8, ncols: int=12):
+        self.nrows = nrows
+        self.ncols = ncols
 
-class GridFeatureMeasure(FeatureMeasure, GridOperation):
-    def __init__(self, n_rows: int, n_cols: int):
-        self.n_rows = n_rows
-        self.n_cols = n_cols
-
+    @validate_measure_integrity()
     def measure(self, image: GridImage) -> pd.DataFrame:
         from phenotypic import GridImage
         if not isinstance(image, GridImage): raise GridImageInputError()

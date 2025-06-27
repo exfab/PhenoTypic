@@ -9,7 +9,7 @@ from collections import ChainMap
 
 
 class MetadataAccessor:
-    """An accessor for image metadata that manages read/write permissions related to the metadata information."""
+    """An accessor for _root_image metadata that manages read/write permissions related to the metadata information."""
 
     def __init__(self, image: Image) -> None:
         self._parent_image = image

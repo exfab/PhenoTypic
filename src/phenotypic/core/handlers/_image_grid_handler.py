@@ -7,9 +7,9 @@ from matplotlib.patches import Rectangle
 from itertools import cycle
 
 from .._image import Image
-from phenotypic.measure import BoundaryMeasure
+from phenotypic.measure import MeasureBounds
 from phenotypic.abstract import GridFinder
-from phenotypic.util.constants_ import IMAGE_FORMATS, OBJECT_INFO
+from phenotypic.util.constants_ import IMAGE_FORMATS, OBJECT
 from phenotypic.util.exceptions_ import IllegalAssignmentError
 from phenotypic.grid import OptimalCenterGridFinder
 
@@ -26,10 +26,10 @@ class ImageGridHandler(Image):
     to determine grid structure and assign/overlay it effectively on the image.
 
     Args:
-            input_image (Optional[Union[np.ndarray, Type[Image]]]): The input
+            input_image (Optional[Union[np.ndarray, Type[Image]]]): The input_image
                 image, which can be a NumPy array or an image-like object. If
                 this parameter is not provided, it defaults to None.
-            imformat (str): A string representing the schema of the input
+            imformat (str): A string representing the schema of the input_image
                 image. It defaults to None if not provided.
             grid_finder (Optional[GridFinder]): An optional GridFinder instance
                 for defining grids on the image. If not provided, it defaults to
@@ -46,7 +46,7 @@ class ImageGridHandler(Image):
             accessing row and column edges and generating section maps for the image's grid system.
     """
 
-    def __init__(self, input_image: Optional[Union[np.ndarray, Image]] = None, imformat: str = None,
+    def __init__(self, input_image: Optional[Union[np.ndarray, Image]] = None, imformat: str = None, name: str = None,
                  grid_finder: Optional[GridFinder] = None,
                  nrows: int = 8, ncols: int = 12):
         """
@@ -56,10 +56,10 @@ class ImageGridHandler(Image):
         operations.
 
         Args:
-            input_image (Optional[Union[np.ndarray, Type[Image]]]): The input
+            input_image (Optional[Union[np.ndarray, Type[Image]]]): The input_image
                 image, which can be a NumPy array or an image-like object. If
                 this parameter is not provided, it defaults to None.
-            imformat (str): A string representing the schema of the input
+            imformat (str): A string representing the schema of the input_image
                 image. It defaults to None if not provided.
             grid_finder (Optional[GridFinder]): An optional GridFinder instance
                 for defining grids on the image. If not provided, it defaults to
@@ -69,7 +69,7 @@ class ImageGridHandler(Image):
             ncols (int): An integer specifying the number of columns in the grid.
                 Defaults to 12.
         """
-        super().__init__(input_image=input_image, imformat=imformat)
+        super().__init__(input_image=input_image, imformat=imformat, name=name)
 
         if hasattr(input_image, '_grid_setter'):
             grid_finder = input_image._grid_setter
@@ -89,6 +89,67 @@ class ImageGridHandler(Image):
         See Also :class:`GridAccessor`
         """
         return self._accessors.grid
+
+    @property
+    def nrows(self) -> int:
+        """
+        Retrieves the number of rows in the grid.
+
+        This property is used to access the number of rows present in the grid
+        object. It encapsulates the `nrows` attribute of the `grid` and returns
+        it as an integer.
+
+        Returns:
+            int: The number of rows in the grid.
+        """
+        return self._grid_setter.nrows
+
+    @nrows.setter
+    def nrows(self, nrows):
+        """
+        Sets the number of rows in the grid. Ensures that the provided value is of the correct type.
+
+        Args:
+            nrows (int): The number of rows to set. Must be an integer.
+
+        Raises:
+            TypeError: If the provided value for nrows is not of type int.
+        """
+        if not isinstance(nrows, int):
+            raise TypeError(f'Expected int, got {type(nrows)}')
+        self._grid_setter.nrows = nrows
+
+    @property
+    def ncols(self) -> int:
+        """
+        Gets the number of columns in the grid.
+
+        This property retrieves the total number of columns in the grid
+        by accessing the corresponding attribute of the underlying grid
+        instance. It provides a read-only interface to the `ncols` value.
+
+        Returns:
+            int: The number of columns in the grid.
+        """
+        return self._grid_setter.ncols
+
+    @ncols.setter
+    def ncols(self, ncols):
+        """
+        Setter for the 'ncols' attribute ensuring it is assigned a valid value. The 'ncols'
+        attribute defines the number of columns in the grid structure. The method validates
+        the data type of the input and guarantees that only integers are accepted. If an invalid
+        type is provided, a TypeError exception is raised.
+
+        Args:
+            ncols: The number of columns to set for the grid structure.
+
+        Raises:
+            TypeError: If the provided value for 'ncols' is not of type int.
+        """
+        if not isinstance(ncols, int):
+            raise TypeError(f'Expected int, got {type(ncols)}')
+        self._grid_setter.ncols = ncols
 
     @grid.setter
     def grid(self, grid):
@@ -113,8 +174,8 @@ class ImageGridHandler(Image):
                      show_gridlines: bool = True,
                      show_linreg: bool = False,
                      figsize: Tuple[int, int] = (9, 10),
-                     annotate: bool = False,
-                     annotation_params: None | dict = None,
+                     show_labels: bool = False,
+                     annotation_kwargs: None | dict = None,
                      ax: plt.Axes = None,
                      ) -> (plt.Figure, plt.Axes):
         """
@@ -127,8 +188,8 @@ class ImageGridHandler(Image):
             show_linreg (bool): Indicate whether to display linear regression lines on the overlay. Defaults to False.
             figsize (Tuple[int, int]): Size of the figure, specified as a tuple of width and height values (in inches).
                 Defaults to (9, 10).
-            annotate (bool): Determines whether points or objects should be annotated. Defaults to False.
-            annotation_params (None | dict): Additional parameters for customization of the
+            show_labels (bool): Determines whether points or objects should be annotated. Defaults to False.
+            annotation_kwargs (None | dict): Additional parameters for customization of the
                 object annotations. Defaults: size=12, color='white', facecolor='red'. Other kwargs
                 are passed to the matplotlib.axes.text () method.
             ax (plt.Axes, optional): Axis on which to draw the overlay; can be provided externally. Defaults to None.
@@ -136,13 +197,31 @@ class ImageGridHandler(Image):
         Returns:
             Tuple[plt.Figure, plt.Axes]: Modified figure and axis containing the rendered overlay.
         """
-        fig, ax = super().show_overlay(object_label=object_label, ax=ax, figsize=figsize,
-                                       annotate=annotate, annotation_params=annotation_params,
-                                       )
+        fig, ax = super().show_overlay(
+            object_label=object_label, ax=ax, figsize=figsize,
+            show_labels=show_labels, annotation_kwargs=annotation_kwargs,
+        )
 
         if show_gridlines and self.num_objects > 0:
             col_edges = self.grid.get_col_edges()
+            upper_col_edges = col_edges[1:]
+            lower_col_edges = col_edges[:-1]
+
+            # Set x-axes labels to grid column numbers
+            col_centers = ((upper_col_edges - lower_col_edges) // 2) + lower_col_edges
+            ax.set_xticks(col_centers)
+            ax.set_xticklabels(np.arange(self.ncols))
+
             row_edges = self.grid.get_row_edges()
+            upper_row_edges = row_edges[1:]
+            lower_row_edges = row_edges[:-1]
+
+            # Set y-axis labels to grid row numbers
+            row_centers = ((upper_row_edges - lower_row_edges) // 2) + lower_row_edges
+            ax.set_yticks(row_centers)
+            ax.set_yticklabels(np.arange(self.nrows))
+
+            # Draw grid lines
             ax.vlines(x=col_edges, ymin=row_edges.min(), ymax=row_edges.max(), colors='c', linestyles='--')
             ax.hlines(y=row_edges, xmin=col_edges.min(), xmax=col_edges.max(), color='c', linestyles='--')
 
@@ -150,15 +229,15 @@ class ImageGridHandler(Image):
             cmap_cycle = cycle(cmap(i) for i in range(cmap.N))
             img = self.copy()
             img.objmap = self.grid.get_section_map()
-            gs_table = BoundaryMeasure().measure(img)
+            gs_table = MeasureBounds().measure(img)
 
             # Add squares that denote object grid belonging. Useful for cases where objects are larger than grid sections
             for obj_label in gs_table.index.unique():
                 subtable = gs_table.loc[obj_label, :]
-                min_rr = subtable.loc[OBJECT_INFO.MIN_RR]
-                max_rr = subtable.loc[OBJECT_INFO.MAX_RR]
-                min_cc = subtable.loc[OBJECT_INFO.MIN_CC]
-                max_cc = subtable.loc[OBJECT_INFO.MAX_CC]
+                min_rr = subtable.loc[OBJECT.MIN_RR]
+                max_rr = subtable.loc[OBJECT.MAX_RR]
+                min_cc = subtable.loc[OBJECT.MIN_CC]
+                max_cc = subtable.loc[OBJECT.MAX_CC]
 
                 width = max_cc - min_cc
                 height = max_rr - min_rr
@@ -167,8 +246,8 @@ class ImageGridHandler(Image):
                     Rectangle(
                         (min_cc, min_rr), width=width, height=height,
                         edgecolor=next(cmap_cycle),
-                        facecolor='none'
-                    )
+                        facecolor='none',
+                    ),
                 )
 
         return fig, ax

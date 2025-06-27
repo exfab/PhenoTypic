@@ -5,16 +5,17 @@ This module contains constant values and enumerations used throughout the PhenoT
 Constants are organized by module and functionality.
 
 Note: Class names are defined in ALL_CAPS to avoid namespace conflicts with actual classes 
-in the codebase (e.g., GRID vs an actual Grid class). When importing, use the format:
-    from PhenoTypic.util.constants import IMAGE_FORMATS, OBJECT_INFO
+    in the codebase (e.g., GRID vs an actual Grid class). When importing, use the format:
+        from PhenoTypic.util.constants import IMAGE_FORMATS, OBJECT
 """
 
 from enum import Enum
 
+DEFAULT_MPL_IMAGE_FIGSIZE = (8,6)
 
 # Image format constants
 class IMAGE_FORMATS(Enum):
-    """Constants for supported image formats."""
+    """Constants for supported _root_image formats."""
     NONE = None
     GRAYSCALE = 'GRAYSCALE'
     GRAYSCALE_SINGLE_CHANNEL = 'Grayscale (single channel)'
@@ -46,15 +47,21 @@ class IMAGE_FORMATS(Enum):
 
 
 # Object information constants
-class OBJECT_INFO:
+class OBJECT:
     """Constants for object information properties."""
-    OBJECT_LABELS = 'ObjectLabel'
+    LABEL = 'ObjectLabel'
     CENTER_RR = 'Bbox_CenterRR'
     MIN_RR = 'Bbox_MinRR'
     MAX_RR = 'Bbox_MaxRR'
     CENTER_CC = 'Bbox_CenterCC'
     MIN_CC = 'Bbox_MinCC'
     MAX_CC = 'Bbox_MaxCC'
+
+
+class IMAGE_IO:
+    H5PY_MODULE_SIGNATURE = 'phenotypic'
+    H5PY_IMAGE_GROUP = '_root_image'
+    H5PY_IMAGE_SET_GROUP = 'image_set'
 
 
 # Grid constants
@@ -90,31 +97,15 @@ class METADATA_LABELS:
     IMAGE_NAME = 'ImageName'
     PARENT_IMAGE_NAME = 'ParentImageName'
     PARENT_UUID = 'ParentUUID'
-    SCHEMA = 'Schema'
+    IMFORMAT = 'ImageFormat'
+    SUBIMAGE_TYPE = 'SubimageType'
 
 
-class GEOM_LABELS(Enum):
-    CATEGORY = ('Geometry', 'The category of the measurements')
-
-    AREA = ('Area', "The sum of the object's pixels")
-    PERIMETER = ('Perimeter', "The perimeter of the object's pixels")
-    CIRCULARITY = ('Circularity', r'Calculated as :math:`\frac{4\pi*Area}{Perimeter^2}`. A perfect circle has a value of 1.')
-    CONVEX_AREA = ('ConvexArea', 'The area of the convex hull of the object')
-
-    def __init__(self, label, desc=None):
-        self.label, self.desc = label, desc
-
-    def __str__(self):
-        return f'{GEOM_LABELS.CATEGORY.label}_{self.label}'
+class SUBIMAGE_TYPES:
+    """The string labels for different types of subimages generated when accessing subimages of a parent _root_image."""
+    ORIGINAL = 'Original'
+    CROP = 'Crop'
+    OBJECT = 'Object'
+    GRID = 'Grid'
 
 
-class INTENSITY_LABELS(Enum):
-    CATEGORY = ('Intensity', 'The category of the measurements')
-
-    INTEGRATED_INTENSITY = ('IntegratedIntensity', 'The sum of the object\'s pixels')
-
-    def __init__(self, label, desc=None):
-        self.label, self.desc = label, desc
-
-    def __str__(self):
-        return f"{INTENSITY_LABELS.CATEGORY.label}_{self.label}"

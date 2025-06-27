@@ -13,24 +13,24 @@ from packaging import version
 import math
 
 import phenotypic
-from phenotypic.core.accessors import ImageAccessor
-from phenotypic.util.constants_ import OBJECT_INFO, GRID
+from phenotypic.core.accessor_abstracts import ImageAccessor
+from phenotypic.util.constants_ import OBJECT, GRID, METADATA_LABELS, SUBIMAGE_TYPES
 from phenotypic.util.exceptions_ import NoObjectsError
 
 
 class GridAccessor(ImageAccessor):
-    """A class for accessing and manipulating grid-based data from a parent image object.
+    """A class for accessing and manipulating grid-based data from a parent _root_image object.
 
-    This class is designed to facilitate operations on grid structures within a parent image. It provides methods
+    This class is designed to facilitate operations on grid structures within a parent _root_image. It provides methods
     for determining grid properties such as the number of rows and columns, retrieving grid-related information,
-    and performing visualizations. The use of a parent image ensures that the grid operations are closely tied
+    and performing visualizations. The use of a parent _root_image ensures that the grid operations are closely tied
     to a specific data context.
 
     Args:
-        parent_image (GridImage): The parent image object which provides data and attributes to the grid accessor.
+        parent_image (GridImage): The parent _root_image object which provides data and attributes to the grid accessor.
 
     Attributes:
-        _parent_image (GridImage): Internal reference to the parent image object, used to derive grid data
+        _parent_image (GridImage): Internal reference to the parent _root_image object, used to derive grid data
             and perform grid-related operations.
     """
 
@@ -65,7 +65,7 @@ class GridAccessor(ImageAccessor):
 
         Returns:
             pd.DataFrame: A DataFrame with measurement data derived from the
-            parent's image grid settings.
+            parent's _root_image grid settings.
         """
         return self._parent_image._grid_setter.measure(self._parent_image)
 
@@ -79,7 +79,7 @@ class GridAccessor(ImageAccessor):
         Returns a crop of the grid section based on its flattened index.
 
         The grid is ordered from left to right, top to bottom. If no objects
-        are present in the parent image, the original image is returned.
+        are present in the parent _root_image, the original _root_image is returned.
 
         Args:
             idx (int): The flattened index of the grid section to be
@@ -87,7 +87,7 @@ class GridAccessor(ImageAccessor):
 
         Returns:
             phenotypic.Image: The cropped grid section as defined by the
-            given flattened index, or the original parent image if no
+            given flattened index, or the original parent _root_image if no
             objects are present.
         """
         if self._parent_image.objects.num_objects != 0:
@@ -98,16 +98,17 @@ class GridAccessor(ImageAccessor):
             section_image = phenotypic.Image(self._parent_image[int(min_rr):int(max_rr), int(min_cc):int(max_cc)])
 
             # Remove objects that don't belong in that grid section from the subimage
-            objmap = section_image.objmap[:].copy()
+            objmap = section_image.objmap[:]
             objmap[~np.isin(objmap, self._get_section_labels(idx))] = 0
             section_image.objmap = objmap
+            section_image.metadata[METADATA_LABELS.SUBIMAGE_TYPE] = SUBIMAGE_TYPES.GRID
 
             return section_image
         else:
             return phenotypic.Image(self._parent_image)
 
-    # This feels out of place. Maybe move to a measurement module in future updates
-    def get_linreg_info(self, axis) -> Tuple[np.ndarray[float], np.ndarray[float]]:
+    # TODO: This feels out of place. Maybe move to a measurement module in future versions?
+    def get_linreg_info(self, axis) -> Tuple[np.ndarray[float], np.ndarray[int]]:
         """
         Returns the slope and intercept of a line of best fit across the objects of a certain axis.
         Args:
@@ -118,13 +119,13 @@ class GridAccessor(ImageAccessor):
         if axis == 0:
             num_vectors = self.nrows
             x_group = GRID.GRID_ROW_NUM
-            x_val = OBJECT_INFO.CENTER_CC
-            y_val = OBJECT_INFO.CENTER_RR
+            x_val = OBJECT.CENTER_CC
+            y_val = OBJECT.CENTER_RR
         elif axis == 1:
             num_vectors = self.ncols
             x_group = GRID.GRID_COL_NUM
-            x_val = OBJECT_INFO.CENTER_RR
-            y_val = OBJECT_INFO.CENTER_CC
+            x_val = OBJECT.CENTER_RR
+            y_val = OBJECT.CENTER_CC
         else:
             raise ValueError('Axis should be 0 or 1.')
 
@@ -139,10 +140,10 @@ class GridAccessor(ImageAccessor):
         # Use 2D covariance/variance method for finding linear regression
         for idx in range(num_vectors):
             x = grid_info.loc[grid_info.loc[:, x_group] == idx, x_val].to_numpy()
-            x_mean = np.mean(x)
+            x_mean = np.mean(x) if x.size > 0 else np.nan
 
             y = grid_info.loc[grid_info.loc[:, x_group] == idx, y_val].to_numpy()
-            y_mean = np.mean(y)
+            y_mean = np.mean(y) if y.size > 0 else np.nan
 
             covariance = ((x - x_mean) * (y - y_mean)).sum()
             variance = ((x - x_mean) ** 2).sum()
@@ -161,15 +162,16 @@ class GridAccessor(ImageAccessor):
 
     def get_col_edges(self) -> np.ndarray:
         """Returns the column edges of the grid"""
-        intervals = self.info().loc[:, GRID.GRID_COL_INTERVAL]
-        left_edges = intervals.apply(
-            lambda x: math.floor(x[0]) if math.floor(x[0]) > 0 else math.ceil(x[0])
-        ).to_numpy()
-        right_edges = intervals.apply(
-            lambda x: math.ceil(x[1]) if math.ceil(x[1]) > 0 else math.floor(x[1])
-        ).to_numpy()
-        edges = np.unique(np.concatenate([left_edges, right_edges]))
-        return edges.astype(int)
+        # intervals = self.info().loc[:, GRID.GRID_COL_INTERVAL]
+        # left_edges = intervals.apply(
+        #     lambda x: math.floor(x[0]) if math.floor(x[0]) > 0 else math.ceil(x[0])
+        # ).to_numpy()
+        # right_edges = intervals.apply(
+        #     lambda x: math.ceil(x[1]) if math.ceil(x[1]) > 0 else math.floor(x[1])
+        # ).to_numpy()
+        # edges = np.unique(np.concatenate([left_edges, right_edges]))
+        # return edges.astype(int)
+        return self._parent_image._grid_setter.get_col_edges(self._parent_image)
 
     def get_col_map(self) -> np.ndarray:
         """Returns a version of the object map with each object numbered according to their grid column number"""
@@ -181,7 +183,7 @@ class GridAccessor(ImageAccessor):
             # Edit the new map's objects to equal the column number
             col_map[np.isin(
                 element=self._parent_image.objmap[:],
-                test_elements=subtable.index.to_numpy()
+                test_elements=subtable.index.to_numpy(),
             )] = n + 1
         return col_map
 
@@ -213,17 +215,19 @@ class GridAccessor(ImageAccessor):
     Grid Rows
     """
 
+    # Optimize so it calls the grid finder's edges calculation
     def get_row_edges(self) -> np.ndarray:
         """Returns the row edges of the grid"""
-        intervals = self.info().loc[:, GRID.GRID_ROW_INTERVAL]
-        left_edges = intervals.apply(
-            lambda x: math.floor(x[0]) if math.floor(x[0]) > 0 else math.ceil(x[0])
-        ).to_numpy()
-        right_edges = intervals.apply(
-            lambda x: math.ceil(x[1]) if math.ceil(x[1]) > 0 else math.floor(x[1])
-        ).to_numpy()
-        edges = np.unique(np.concatenate([left_edges, right_edges]))
-        return edges.astype(int)
+        # intervals = self.info().loc[:, GRID.GRID_ROW_INTERVAL]
+        # left_edges = intervals.apply(
+        #     lambda x: math.floor(x[0]) if math.floor(x[0]) > 0 else math.ceil(x[0])
+        # ).to_numpy()
+        # right_edges = intervals.apply(
+        #     lambda x: math.ceil(x[1]) if math.ceil(x[1]) > 0 else math.floor(x[1])
+        # ).to_numpy()
+        # edges = np.unique(np.concatenate([left_edges, right_edges]))
+        # return edges.astype(int)
+        return self._parent_image._grid_setter.get_row_edges(self._parent_image)
 
     def get_row_map(self) -> np.ndarray:
         """Returns a version of the object map with each object numbered according to their grid row number"""
@@ -235,7 +239,7 @@ class GridAccessor(ImageAccessor):
             # Edit the new map's objects to equal the column number
             row_map[np.isin(
                 element=self._parent_image.objmap[:],
-                test_elements=subtable.index.to_numpy()
+                test_elements=subtable.index.to_numpy(),
             )] = n + 1
         return row_map
 
@@ -276,7 +280,7 @@ class GridAccessor(ImageAccessor):
             subtable = grid_info.loc[grid_info.loc[:, GRID.GRID_SECTION_NUM] == bidx, :]
             section_map[np.isin(
                 element=self._parent_image.objmap[:],
-                test_elements=subtable.index.to_numpy()
+                test_elements=subtable.index.to_numpy(),
             )] = n + 1
 
         return section_map
@@ -286,7 +290,7 @@ class GridAccessor(ImageAccessor):
         return self.info().loc[:, GRID.GRID_SECTION_NUM].value_counts().sort_values(ascending=ascending)
 
     def get_info_by_section(self, section_number):
-        """ Get the grid info based on the section. Can be accessed by section number or row/column indexes
+        """ Get the grid info based on the section. Can be accessed by section number or row/column label_subset
 
         Args:
             section_number:
@@ -302,16 +306,16 @@ class GridAccessor(ImageAccessor):
             grid_info = grid_info.loc[grid_info.loc[:, GRID.GRID_ROW_NUM] == section_number[0], :]
             return grid_info.loc[grid_info.loc[:, GRID.GRID_ROW_NUM] == section_number[1], :]
         else:
-            raise ValueError('Section index should be int or a tuple of indexes')
+            raise ValueError('Section index should be int or a tuple of label_subset')
 
     def _naive_get_grid_section_slices(self, idx) -> ((int, int), (int, int)):
         """Returns the exact slices of a grid section based on its flattened index
 
         Note:
-            - Can crop objects in the image
+            - Can crop objects in the _root_image
 
         Return:
-            (int, int, int, int): ((MinRow, MinCol), (MaxRow, MaxCol)) The slices to extract the grid section from the image.
+            (int, int, int, int): ((MinRow, MinCol), (MaxRow, MaxCol)) The slices to extract the grid section from the _root_image.
         """
         row_edges, col_edges = self.get_row_edges(), self.get_col_edges()
         row_pos, col_pos = np.where(self._idx_ref_matrix == idx)
@@ -325,10 +329,10 @@ class GridAccessor(ImageAccessor):
         """Returns the slices of a grid section based on its flattened index, and accounts for objects boundaries.
 
             Note:
-                - Can crop objects in the image
+                - Can crop objects in the _root_image
 
             Return:
-                (int, int, int, int): ((MinRow, MinCol), (MaxRow, MaxCol)) The slices to extract the grid section from the image.
+                (int, int, int, int): ((MinRow, MinCol), (MaxRow, MaxCol)) The slices to extract the grid section from the _root_image.
         """
         grid_min, grid_max = self._naive_get_grid_section_slices(idx)
         grid_min_rr, grid_min_cc = grid_min
@@ -337,19 +341,19 @@ class GridAccessor(ImageAccessor):
         grid_info = self.info()
         section_info = grid_info.loc[grid_info.loc[:, GRID.GRID_SECTION_NUM] == idx, :]
 
-        obj_min_cc = section_info.loc[:, OBJECT_INFO.MIN_CC].min()
+        obj_min_cc = section_info.loc[:, OBJECT.MIN_CC].min()
         min_cc = min(grid_min_cc, obj_min_cc)
         if min_cc < 0: min_cc = 0
 
-        obj_max_cc = section_info.loc[:, OBJECT_INFO.MAX_CC].max()
+        obj_max_cc = section_info.loc[:, OBJECT.MAX_CC].max()
         max_cc = max(grid_max_cc, obj_max_cc)
         if max_cc > self._parent_image.shape[1] - 1: max_cc = self._parent_image.shape[1] - 1
 
-        obj_min_rr = section_info.loc[:, OBJECT_INFO.MIN_RR].min()
+        obj_min_rr = section_info.loc[:, OBJECT.MIN_RR].min()
         min_rr = min(grid_min_rr, obj_min_rr)
         if min_rr < 0: min_rr = 0
 
-        obj_max_rr = section_info.loc[:, OBJECT_INFO.MAX_RR].max()
+        obj_max_rr = section_info.loc[:, OBJECT.MAX_RR].max()
         max_rr = max(grid_max_rr, obj_max_rr)
         if max_rr > self._parent_image.shape[0] - 1: max_rr = self._parent_image.shape[0] - 1
 

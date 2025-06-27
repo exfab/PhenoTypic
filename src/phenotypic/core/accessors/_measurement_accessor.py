@@ -6,6 +6,7 @@ from typing import Dict, Union, List, Optional
 # TODO: Implement
 
 class MeasurementAccessor:
+    """This class is not yet implemented. It is a placeholder for future functionality."""
     def __init__(self):
         self.__measurements: Dict[str, Union[pd.Series, pd.DataFrame]] = {}
 
@@ -34,10 +35,10 @@ class MeasurementAccessor:
 
     def pop(self, key, exc_type: Optional[str] = 'raise') -> Optional[Union[pd.Series, pd.DataFrame]]:
         """
-        Removes the key and returns the corresponding value.
-        :param key: The name of the value to remove
+        Removes the key and returns the corresponding other_image.
+        :param key: The name of the other_image to remove
         :param exc_type: (optional[str]) Can be either 'raise' or 'ignore'. Default 'raise'. Dictates handling when key is not in dict.
-        :return: (optional[Union[pd.Series,pd.DataFrame]]) Returns the corresponding value or None if there is no value and exc_type is 'ignore'.
+        :return: (optional[Union[pd.Series,pd.DataFrame]]) Returns the corresponding other_image or None if there is no other_image and exc_type is 'ignore'.
         """
         if exc_type == 'raise':
             return self.__measurements.pop(key)

@@ -17,8 +17,12 @@
       ~GridImage.copy
       ~GridImage.imread
       ~GridImage.isempty
+      ~GridImage.load_hdf5
+      ~GridImage.load_pickle
       ~GridImage.reset
       ~GridImage.rotate
+      ~GridImage.save2hdf5
+      ~GridImage.save2pickle
       ~GridImage.set_image
       ~GridImage.show
       ~GridImage.show_overlay

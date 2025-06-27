@@ -7,18 +7,18 @@ from .. import Image
 
 class ContrastStretching(ImageEnhancer):
     """
-    Performs contrast stretching on an image to enhance its visual quality.
+    Performs contrast stretching on an _root_image to enhance its visual quality.
 
-    Contrast stretching is a technique used to improve the contrast in the image by
+    Contrast stretching is a technique used to improve the contrast in the _root_image by
     redistributing the range of pixel intensity values. This class allows adjustment
     of the intensity range using lower and upper percentiles of pixel values, enabling
     fine-tuning of contrast enhancement for different types of images.
 
     Parameters:
-        lower_percentile (int): The lower percentile value used for intensity rescaling.
+        lower_percentile (int): The lower percentile other_image used for intensity rescaling.
             Pixel values below this percentile will be adjusted to the lower bound of the
             intensity range.
-        upper_percentile (int): The upper percentile value used for intensity rescaling.
+        upper_percentile (int): The upper percentile other_image used for intensity rescaling.
             Pixel values above this percentile will be adjusted to the upper bound of the
             intensity range.
     """

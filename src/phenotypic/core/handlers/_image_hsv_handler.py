@@ -9,28 +9,28 @@ from skimage.color import rgb2hsv
 from os import PathLike
 
 from ..accessors import HsvAccessor
-from ._image_handler import ImageHandler
+from ._image_objects import ImageObjectsHandler
 from phenotypic.util.constants_ import IMAGE_FORMATS
 from phenotypic.util.exceptions_ import IllegalAssignmentError
 
 
-class ImageHsvHandler(ImageHandler):
+class ImageHsvHandler(ImageObjectsHandler):
     """Adds HSV format support for the color measurement module."""
 
-    def __init__(self, input_image: Optional[Union[np.ndarray, Image, PathLike]] = None, imformat:str=None):
-        super().__init__(input_image=input_image, imformat=imformat)
-        self._accessors.hsv = HsvAccessor
+    def __init__(self, input_image: Optional[Union[np.ndarray, Image, PathLike]] = None, imformat: str = None, name: str = None):
+        super().__init__(input_image=input_image, imformat=imformat, name=name)
+        self._accessors.hsv = HsvAccessor(self)
 
     @property
-    def _hsv(self)->np.ndarray:
-        """Returns the hsv array dynamically of the current image.
+    def _hsv(self) -> np.ndarray:
+        """Returns the hsv array dynamically of the current _root_image.
 
         This can become computationally expensive, so implementation may be changed in the future.
 
         Returns:
-            np.ndarray: The hsv array of the current image.
+            np.ndarray: The hsv array of the current _root_image.
         """
-        if self.imformat in IMAGE_FORMATS.MATRIX_FORMATS:
+        if self.imformat.is_matrix():
             raise AttributeError('Grayscale images cannot be directly converted to hsv. Convert to RGB first')
         else:
             match self.imformat:
@@ -40,11 +40,11 @@ class ImageHsvHandler(ImageHandler):
                     raise ValueError(f'Unsupported imformat {self.imformat} for HSV conversion')
 
     @property
-    def hsv(self)->HsvAccessor:
+    def hsv(self) -> HsvAccessor:
         """Returns the HSV accessor.
 
         This property returns an instance of the HsvAccessor associated with the
-        current object, allowing access to HSV (hue, saturation, value) related
+        current object, allowing access to HSV (hue, saturation, other_image) related
         functionalities controlled by this handler.
 
         Returns:

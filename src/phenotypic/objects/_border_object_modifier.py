@@ -6,18 +6,19 @@ from phenotypic.abstract import MapModifier
 
 
 class BorderObjectRemover(MapModifier):
-    """Removes objects at the border of the image within a certain distance.
+    """Removes objects at the border of the _root_image within a certain distance.
 
     """
-    def __init__(self, border_size: Optional[Union[int, float]] = None):
+
+    def __init__(self, border_size: Optional[Union[int, float]] = 1):
         self.__edge_size = border_size
 
     def _operate(self, image: Image) -> Image:
         if self.__edge_size is None:
-            edge_size = int(np.min(image.shape) * 0.05)
-        elif type(self.__edge_size) == float:
+            edge_size = int(np.min(image.shape[[1, 2]]) * 0.01)
+        elif type(self.__edge_size) == float and 0.0 < self.__edge_size < 1.0:
             edge_size = int(np.min(image.shape) * self.__edge_size)
-        elif type(self.__edge_size) == int:
+        elif isinstance(self.__edge_size, (int, float)):
             edge_size = self.__edge_size
         else:
             raise TypeError('Invalid edge size. Should be int, float, or None to use default edge size.')
