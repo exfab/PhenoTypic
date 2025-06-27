@@ -30,3 +30,4 @@ docs/build
 .venv
 .junie
 uv.lock
+debug/*.log
