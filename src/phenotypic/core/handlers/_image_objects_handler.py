@@ -19,7 +19,7 @@ class ImageObjectsHandler(ImageHandler):
     def __init__(self,
                  input_image: np.ndarray | Image | PathLike | None = None,
                  imformat: str | None = None,
-                 name: str | None = None, bit_depth: Literal[8, 16, 32] = 16):
+                 name: str | None = None, bit_depth: Literal[8, 16, 32] | None= 16):
         super().__init__(input_image=input_image, imformat=imformat, name=name, bit_depth=bit_depth)
         self._accessors.objects = ObjectsAccessor(self)
 

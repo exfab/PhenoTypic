@@ -1,4 +1,4 @@
-from typing import Union, Tuple, Type, Optional
+from typing import Union, Tuple, Type, Optional, Literal
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -46,7 +46,8 @@ class ImageGridHandler(Image):
             accessing row and column edges and generating section maps for the image's grid system.
     """
 
-    def __init__(self, input_image: Optional[Union[np.ndarray, Image]] = None, imformat: str = None, name: str = None,
+    def __init__(self, input_image: Optional[Union[np.ndarray, Image]] = None, imformat: str = None,
+                 name: str = None, bit_depth: Literal[8, 16, 32] | None = 16,
                  grid_finder: Optional[GridFinder] = None,
                  nrows: int = 8, ncols: int = 12):
         """
@@ -69,7 +70,7 @@ class ImageGridHandler(Image):
             ncols (int): An integer specifying the number of columns in the grid.
                 Defaults to 12.
         """
-        super().__init__(input_image=input_image, imformat=imformat, name=name)
+        super().__init__(input_image=input_image, imformat=imformat, name=name, bit_depth=bit_depth)
 
         if hasattr(input_image, '_grid_setter'):
             grid_finder = input_image._grid_setter
