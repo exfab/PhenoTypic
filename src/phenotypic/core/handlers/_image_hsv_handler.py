@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 if TYPE_CHECKING: from phenotypic import Image
 
@@ -9,7 +9,7 @@ from skimage.color import rgb2hsv
 from os import PathLike
 
 from ..accessors import HsvAccessor
-from ._image_objects import ImageObjectsHandler
+from ._image_objects_handler import ImageObjectsHandler
 from phenotypic.util.constants_ import IMAGE_FORMATS
 from phenotypic.util.exceptions_ import IllegalAssignmentError
 
@@ -17,8 +17,11 @@ from phenotypic.util.exceptions_ import IllegalAssignmentError
 class ImageHsvHandler(ImageObjectsHandler):
     """Adds HSV format support for the color measurement module."""
 
-    def __init__(self, input_image: Optional[Union[np.ndarray, Image, PathLike]] = None, imformat: str = None, name: str = None):
-        super().__init__(input_image=input_image, imformat=imformat, name=name)
+    def __init__(self,
+                 input_image: np.ndarray | Image | PathLike | None = None,
+                 imformat: str | None = None,
+                 name: str | None = None, bit_depth: Literal[8, 16, 32] | None = 16):
+        super().__init__(input_image=input_image, imformat=imformat, name=name, bit_depth=bit_depth)
         self._accessors.hsv = HsvAccessor(self)
 
     @property
@@ -30,14 +33,13 @@ class ImageHsvHandler(ImageObjectsHandler):
         Returns:
             np.ndarray: The hsv array of the current _root_image.
         """
-        if self.imformat.is_matrix():
-            raise AttributeError('Grayscale images cannot be directly converted to hsv. Convert to RGB first')
-        else:
-            match self.imformat:
-                case IMAGE_FORMATS.RGB:
-                    return rgb2hsv(self.array[:])
-                case _:
-                    raise ValueError(f'Unsupported imformat {self.imformat} for HSV conversion')
+        match self.imformat:
+            case self.imformat.is_matrix():
+                raise AttributeError('Grayscale images cannot be directly converted to hsv. Convert to RGB first')
+            case IMAGE_FORMATS.RGB:
+                return rgb2hsv(self.array[:])
+            case _:
+                raise ValueError(f'Unsupported imformat {self.imformat} for HSV conversion')
 
     @property
     def hsv(self) -> HsvAccessor:

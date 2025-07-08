@@ -1,4 +1,4 @@
-from typing import Union, Tuple, Type, Optional
+from typing import Union, Tuple, Type, Optional, Literal
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -46,30 +46,33 @@ class ImageGridHandler(Image):
             accessing row and column edges and generating section maps for the image's grid system.
     """
 
-    def __init__(self, input_image: Optional[Union[np.ndarray, Image]] = None, imformat: str = None, name: str = None,
+    def __init__(self, input_image: Optional[Union[np.ndarray, Image]] = None, imformat: str = None,
+                 name: str = None, bit_depth: Literal[8, 16, 32] | None = 16,
                  grid_finder: Optional[GridFinder] = None,
                  nrows: int = 8, ncols: int = 12):
         """
-        Represents an image processor with grid management capabilities. This class
-        is initialized with an image, schema, and optional grid settings. It manages
-        grids on the image and provides utility functions for grid-related
-        operations.
+        Initializes the instance with the given image, format, bit depth, grid finding
+        mechanism, and dimensions of the grid.
 
         Args:
-            input_image (Optional[Union[np.ndarray, Type[Image]]]): The input_image
-                image, which can be a NumPy array or an image-like object. If
-                this parameter is not provided, it defaults to None.
-            imformat (str): A string representing the schema of the input_image
-                image. It defaults to None if not provided.
-            grid_finder (Optional[GridFinder]): An optional GridFinder instance
-                for defining grids on the image. If not provided, it defaults to
-                a center grid setter.
-            nrows (int): An integer specifying the number of rows in the grid.
-                Defaults to 8.
-            ncols (int): An integer specifying the number of columns in the grid.
-                Defaults to 12.
+            input_image (Optional[Union[np.ndarray, Image]]): The input image provided
+                as a NumPy array or an image object. Can be None if the image is
+                optional for initialization.
+            imformat (str): The string representing the image format.
+            name (str): The name identifier for the image.
+            bit_depth (Literal[8, 16, 32] | None): Bit depth of the image. Defaults to 16.
+            grid_finder (Optional[GridFinder]): Mechanism responsible for finding a grid
+                within the image. If None, an optimal center grid finder is instantiated.
+            nrows (int): Number of rows in the grid. Defaults to 8.
+            ncols (int): Number of columns in the grid. Defaults to 12.
+
+        Attributes:
+            _grid_setter (Optional[GridFinder]): Private attribute storing the grid finding
+                mechanism, which is either passed as input or is generated internally.
+            _accessors.grid (GridAccessor): The grid accessor object for managing and
+                accessing grid-related functionalities.
         """
-        super().__init__(input_image=input_image, imformat=imformat, name=name)
+        super().__init__(input_image=input_image, imformat=imformat, name=name, bit_depth=bit_depth)
 
         if hasattr(input_image, '_grid_setter'):
             grid_finder = input_image._grid_setter

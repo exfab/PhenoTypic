@@ -1,12 +1,6 @@
  name: Publish to PyPI
 
  on:
-   push:
-     branches:
-       - main
-   pull_request:
-     branches:
-       - main
    workflow_run:
      workflows:
        - run-pytest
@@ -16,7 +10,7 @@
  jobs:
    deploy:
      # Only run on the original repo, not on forks
-     if: github.repository == 'Wheeldon-Lab/PhenoTypic'
+     if: github.repository == 'Wheeldon-Lab/PhenoTypic' && github.event.workflow_run.conclusion =='success'
      runs-on: ubuntu-latest
      environment: push_to_pypi
      steps:

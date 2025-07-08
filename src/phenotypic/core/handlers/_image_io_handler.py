@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 if TYPE_CHECKING: from phenotypic import Image
 
@@ -20,12 +20,12 @@ class ImageIOHandler(ImageHsvHandler):
     def __init__(self,
                  input_image: np.ndarray | Image | PathLike | Path | str | None = None,
                  imformat: str | None = None,
-                 name: str | None = None):
+                 name: str | None = None, bit_depth: Literal[8, 16, 32] | None = 16):
         if isinstance(input_image, (PathLike, Path, str)):
             input_image = Path(input_image)
-            super().__init__(input_image=self.imread(input_image), imformat=imformat, name=name)
+            super().__init__(input_image=self.imread(input_image), imformat=imformat, name=name, bit_depth=bit_depth)
         else:
-            super().__init__(input_image=input_image, imformat=imformat, name=name)
+            super().__init__(input_image=input_image, imformat=imformat, name=name, bit_depth=bit_depth)
 
     def save2hdf5(self, filename, compression="gzip", compression_opts=4):
         """
@@ -50,7 +50,7 @@ class ImageIOHandler(ImageHsvHandler):
                 dtype=array.dtype,
                 chunks=True,
                 compression=compression,
-                compression_opts=compression_opts
+                compression_opts=compression_opts,
             )
 
             matrix = self.matrix[:]
@@ -60,7 +60,7 @@ class ImageIOHandler(ImageHsvHandler):
                 dtype=matrix.dtype,
                 chunks=True,
                 compression=compression,
-                compression_opts=compression_opts
+                compression_opts=compression_opts,
             )
 
             enh_matrix = self.enh_matrix[:]
@@ -70,7 +70,7 @@ class ImageIOHandler(ImageHsvHandler):
                 dtype=enh_matrix.dtype,
                 chunks=True,
                 compression=compression,
-                compression_opts=compression_opts
+                compression_opts=compression_opts,
             )
 
             objmap = self.objmap[:]
@@ -80,7 +80,7 @@ class ImageIOHandler(ImageHsvHandler):
                 dtype=objmap.dtype,
                 chunks=True,
                 compression=compression,
-                compression_opts=compression_opts
+                compression_opts=compression_opts,
             )
 
             # 3) Store string/enum as a group attribute
@@ -149,7 +149,7 @@ class ImageIOHandler(ImageHsvHandler):
                 'objmap': self.objmap[:],
                 "protected_metadata": self._metadata.protected,
                 "public_metadata": self._metadata.public,
-            }, filehandler
+            }, filehandler,
             )
 
     @classmethod
@@ -161,7 +161,7 @@ class ImageIOHandler(ImageHsvHandler):
             filename: Path to the pickle file to read.
 
         Returns:
-            A new ImageIOHandler instance with _data and _metadata restored.
+            A new Image instance with data and metadata restored.
         """
         with open(filename, 'rb') as f:
             loaded = pickle.load(f)
@@ -201,7 +201,7 @@ class ImageIOHandler(ImageHsvHandler):
         if filepath.suffix in ['.png', '.jpg', '.jpeg', '.tif', '.tiff']:
             image = cls(input_image=None)
             image.set_image(
-                input_image=ski.io.imread(filepath)
+                input_image=ski.io.imread(filepath),
             )
             image.name = filepath.stem
             return image
