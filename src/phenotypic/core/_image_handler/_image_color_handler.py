@@ -14,8 +14,10 @@ from phenotypic.util.constants_ import IMAGE_FORMATS
 from phenotypic.util.exceptions_ import IllegalAssignmentError
 
 
-class ImageHsvHandler(ImageObjectsHandler):
-    """Adds HSV format support for the color measurement module."""
+class ImageColorSpace(ImageObjectsHandler):
+    """
+
+    """
 
     def __init__(self,
                  input_image: np.ndarray | Image | PathLike | None = None,
@@ -26,20 +28,21 @@ class ImageHsvHandler(ImageObjectsHandler):
 
     @property
     def _hsv(self) -> np.ndarray:
-        """Returns the hsv array dynamically of the current _root_image.
+        """Returns the hsv array dynamically of the current image.
 
         This can become computationally expensive, so implementation may be changed in the future.
 
         Returns:
             np.ndarray: The hsv array of the current _root_image.
         """
-        match self.imformat:
-            case self.imformat.is_matrix():
-                raise AttributeError('Grayscale images cannot be directly converted to hsv. Convert to RGB first')
-            case IMAGE_FORMATS.RGB:
-                return rgb2hsv(self.array[:])
-            case _:
-                raise ValueError(f'Unsupported imformat {self.imformat} for HSV conversion')
+        if self.imformat.is_matrix():
+            raise AttributeError('Grayscale images cannot be directly converted to hsv. Convert to RGB first')
+        else:
+            match self.imformat:
+                case IMAGE_FORMATS.RGB:
+                    return rgb2hsv(self.array[:])
+                case _:
+                    raise ValueError(f'Unsupported imformat {self.imformat} for HSV conversion')
 
     @property
     def hsv(self) -> HsvAccessor:

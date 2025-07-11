@@ -8,10 +8,19 @@ Note: Class names are defined in ALL_CAPS to avoid namespace conflicts with actu
     in the codebase (e.g., GRID vs an actual Grid class). When importing, use the format:
         from PhenoTypic.util.constants import IMAGE_FORMATS, OBJECT
 """
-
+import phenotypic
 from enum import Enum
+from packaging.version import Version
+from pathlib import Path
 
 DEFAULT_MPL_IMAGE_FIGSIZE = (8,6)
+
+if Version(phenotypic.__version__) < Version("0.7.1"):
+    SINGLE_IMAGE_HDF5_PARENT_GROUP = Path(f'phenotypic/')
+else:
+    SINGLE_IMAGE_HDF5_PARENT_GROUP = Path(f'phenotypic/Image/')
+
+IMAGE_SET_PARENT_GROUP = Path(f'phenotypic/ImageSet/')
 
 # Image format constants
 class IMAGE_FORMATS(Enum):

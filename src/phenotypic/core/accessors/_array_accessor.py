@@ -321,4 +321,4 @@ class ImageArray(ImageArrDataAccessor):
         Returns:
             np.ndarray: A Numpy array with non-object pixels set to the specified background color.
         """
-        return self._root_image.objmask._extract_objects(self._root_image.array[:], bg_label=bg_label)
+        return self._root_image.objmask._create_foreground(self._root_image.array[:], bg_label=bg_label)

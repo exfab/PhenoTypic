@@ -97,7 +97,7 @@ class ObjectMask(ImageArrDataAccessor):
         """
         return self._plot(arr=self._root_image.objmap[:] > 0, figsize=figsize, ax=ax, title=title, cmap=cmap)
 
-    def _extract_objects(self, array: np.ndarray, bg_label: int = 0) -> np.ndarray:
+    def _create_foreground(self, array: np.ndarray, bg_label: int = 0) -> np.ndarray:
         """Returns a copy of the array with every non-object pixel set to 0. Equivalent to np.ma.array.filled(bg_label)"""
         mask = self._root_image.objmap[:] > 0
         if array.ndim == 3: mask = np.dstack([(mask > 0) for _ in range(array.shape[-1])])

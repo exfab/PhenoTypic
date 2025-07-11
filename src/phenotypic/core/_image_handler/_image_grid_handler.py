@@ -2,6 +2,7 @@ from typing import Union, Tuple, Type, Optional, Literal
 
 import numpy as np
 import matplotlib.pyplot as plt
+import pandas as pd
 
 from matplotlib.patches import Rectangle
 from itertools import cycle
@@ -93,6 +94,13 @@ class ImageGridHandler(Image):
         """
         return self._accessors.grid
 
+    @grid.setter
+    def grid(self, grid):
+        raise IllegalAssignmentError('grid')
+
+    def info(self)->pd.DataFrame:
+        return self.grid.info()
+
     @property
     def nrows(self) -> int:
         """
@@ -153,10 +161,6 @@ class ImageGridHandler(Image):
         if not isinstance(ncols, int):
             raise TypeError(f'Expected int, got {type(ncols)}')
         self._grid_setter.ncols = ncols
-
-    @grid.setter
-    def grid(self, grid):
-        raise IllegalAssignmentError('grid')
 
     def __getitem__(self, key) -> Image:
         """Returns a copy of the image at the slices specified as a regular Image object.

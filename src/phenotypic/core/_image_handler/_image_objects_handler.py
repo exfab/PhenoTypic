@@ -40,6 +40,9 @@ class ImageObjectsHandler(ImageHandler):
         else:
             return self._accessors.objects
 
+    def info(self):
+        return self.objects.info()
+
     @objects.setter
     def objects(self, objects):
         raise IllegalAssignmentError('objects')

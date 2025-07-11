@@ -1,4 +1,4 @@
-<mxfile host="Electron" agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/27.0.9 Chrome/134.0.6998.205 Electron/35.4.0 Safari/537.36" version="27.0.9" pages="3">
+<mxfile host="Electron" agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/27.0.9 Chrome/134.0.6998.205 Electron/35.4.0 Safari/537.36" version="27.0.9" pages="4">
   <diagram id="Wg2c2l9i1OR8LQbeWb2W" name="UML">
     <mxGraphModel dx="1577" dy="925" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
       <root>
@@ -235,7 +235,7 @@
         <mxCell id="kQ2yV8AIbiC1aDz_2Qq--77" value="+- show(ax, figsize, cmap, title)" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" vertex="1" parent="kQ2yV8AIbiC1aDz_2Qq--69">
           <mxGeometry y="225.11111111111111" width="529" height="31" as="geometry" />
         </mxCell>
-        <mxCell id="kQ2yV8AIbiC1aDz_2Qq--78" value="#- _extract_objects(array, bg_color)" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" vertex="1" parent="kQ2yV8AIbiC1aDz_2Qq--69">
+        <mxCell id="kQ2yV8AIbiC1aDz_2Qq--78" value="#- _create_foreground(array, bg_color)" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" vertex="1" parent="kQ2yV8AIbiC1aDz_2Qq--69">
           <mxGeometry y="256.1111111111111" width="529" height="31" as="geometry" />
         </mxCell>
         <mxCell id="kQ2yV8AIbiC1aDz_2Qq--79" value="GridAccessor" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=27.047619047619047;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;" vertex="1" parent="1">
@@ -696,6 +696,38 @@
         </mxCell>
         <mxCell id="SqNxrnaF1bU3EQpd7AWe-7" value="objmap=int matrix[:,:]" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;align=center;" vertex="1" parent="J2BedMugElG9-fh8Dgu_-1">
           <mxGeometry x="380" y="220" width="150" height="40" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="CeKSFRlnFxpue85TfoFK" name="Workflow">
+    <mxGraphModel dx="1139" dy="668" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="S1X-b-spLZ3A8pe8HGms-3" value="" style="rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" target="S1X-b-spLZ3A8pe8HGms-2">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="380" y="382" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="S1X-b-spLZ3A8pe8HGms-4" value="Images" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="S1X-b-spLZ3A8pe8HGms-3">
+          <mxGeometry x="-0.6767" relative="1" as="geometry">
+            <mxPoint x="-11" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="S1X-b-spLZ3A8pe8HGms-6" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="S1X-b-spLZ3A8pe8HGms-2" target="S1X-b-spLZ3A8pe8HGms-5">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="S1X-b-spLZ3A8pe8HGms-8" value="Objects" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="S1X-b-spLZ3A8pe8HGms-6">
+          <mxGeometry x="-0.0556" y="2" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="S1X-b-spLZ3A8pe8HGms-2" value="Traditional&lt;div&gt;Computer Vision Modules&lt;/div&gt;" style="whiteSpace=wrap;html=1;verticalAlign=top;labelBackgroundColor=default;" vertex="1" parent="1">
+          <mxGeometry x="506" y="352" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="S1X-b-spLZ3A8pe8HGms-5" value="" style="whiteSpace=wrap;html=1;verticalAlign=top;labelBackgroundColor=default;" vertex="1" parent="1">
+          <mxGeometry x="706" y="352" width="120" height="60" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>

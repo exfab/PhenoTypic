@@ -50,7 +50,7 @@ class ImagePipeline(ImageOperation):
         self._op_queue: Dict[str, ImageOperation] = ops if ops is not None else {}
         self._measurement_queue: Dict[str, MeasureFeatures] = measurements if measurements is not None else {}
 
-    def apply(self, image: Image, inplace: bool = False) -> Image:
+    def apply(self, image: Image, inplace: bool = False, reset: bool = True) -> Image:
         """
         The class provides an abstract to process and apply a series of operations on
         an _root_image. The operations are maintained in a queue and executed sequentially
@@ -63,8 +63,10 @@ class ImagePipeline(ImageOperation):
                 transformations directly on the provided _root_image (`True`) or create a
                 copy of the _root_image before performing transformations (`False`). Defaults
                 to `False`.
+            reset (bool): Whether to reset the image before applying the pipeline
         """
         img = image if inplace else image.copy()
+        if reset: image.reset()
         for key, operation in self._op_queue.items():
             try:
                 sig = inspect.signature(operation.apply)
