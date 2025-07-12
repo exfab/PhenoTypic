@@ -16,7 +16,7 @@ import skimage as ski
 
 import phenotypic
 from phenotypic.util.exceptions_ import UnsupportedFileTypeError
-from phenotypic.util.constants_ import IMAGE_FORMATS, SINGLE_IMAGE_HDF5_PARENT_GROUP
+from phenotypic.util.constants_ import IMAGE_FORMATS, IO
 from ._image_color_handler import ImageColorSpace
 
 class ImageIOHandler(ImageColorSpace):
@@ -50,7 +50,7 @@ class ImageIOHandler(ImageColorSpace):
         """
         # Convert to a Path object
         filepath = Path(filepath)
-        if filepath.suffix in ['.png', '.jpg', '.jpeg', '.tif', '.tiff']:
+        if filepath.suffix in IO.ACCEPTED_FILE_EXTENSIONS:
             image = cls(input_image=None)
             image.set_image(
                 input_image=ski.io.imread(filepath),
@@ -110,45 +110,48 @@ class ImageIOHandler(ImageColorSpace):
             return handler.create_group(name)
 
     def _save_image2hdf5(self, grp, compression, compression_opts):
+        """Saves the image as a new group into the input hdf5 group."""
+        image_group = self._get_hdf5_group(grp, self.name)
+
         array = self.array[:]
         self._save_array2hdf5(
-            group=grp, array=array, name="array",
+            group=image_group, array=array, name="array",
             dtype=array.dtype,
             compression=compression, compression_opts=compression_opts,
         )
 
         matrix = self.matrix[:]
         self._save_array2hdf5(
-            group=grp, array=matrix, name="matrix",
+            group=image_group, array=matrix, name="matrix",
             dtype=matrix.dtype,
             compression=compression, compression_opts=compression_opts,
         )
 
         enh_matrix = self.enh_matrix[:]
         self._save_array2hdf5(
-            group=grp, array=enh_matrix, name="enh_matrix",
+            group=image_group, array=enh_matrix, name="enh_matrix",
             dtype=enh_matrix.dtype,
             compression=compression, compression_opts=compression_opts,
         )
 
         objmap = self.objmap[:]
         self._save_array2hdf5(
-            group=grp, array=objmap, name="objmap",
+            group=image_group, array=objmap, name="objmap",
             dtype=objmap.dtype,
             compression=compression, compression_opts=compression_opts,
         )
 
         # 3) Store string/enum as a group attribute
         #    h5py supports variable-length UTF-8 strings automatically
-        grp.attrs["imformat"] = self.imformat.value
+        image_group.attrs["imformat"] = self.imformat.value
 
         # 4) Store protected metadata in its own subgroup
-        prot = grp.require_group("protected_metadata")
+        prot = image_group.require_group("protected_metadata")
         for key, val in self._metadata.protected.items():
             prot.attrs[key] = str(val)
 
         # 5) Store public metadata in its own subgroup
-        pub = grp.require_group("public_metadata")
+        pub = image_group.require_group("public_metadata")
         for key, val in self._metadata.public.items():
             pub.attrs[key] = str(val)
 
@@ -164,14 +167,14 @@ class ImageIOHandler(ImageColorSpace):
         """
         with h5py.File(filename, mode="a") as filehandler:
             # 1) Create image group if it doesnt already exist & sets grp obj
-            parent_grp = self._get_hdf5_group(filehandler, SINGLE_IMAGE_HDF5_PARENT_GROUP)
+            parent_grp = self._get_hdf5_group(filehandler, IO.SINGLE_IMAGE_HDF5_PARENT_GROUP)
             if 'version' in parent_grp.attrs:
                 if parent_grp.attrs['version'] != phenotypic.__version__:
                     raise warnings.warn(f"Version mismatch: {parent_grp.attrs['version']} != {phenotypic.__version__}")
             else:
                 parent_grp.attrs['version'] = phenotypic.__version__
 
-            grp = self._get_hdf5_group(filehandler, SINGLE_IMAGE_HDF5_PARENT_GROUP / self.name)
+            grp = self._get_hdf5_group(filehandler, IO.SINGLE_IMAGE_HDF5_PARENT_GROUP)
 
             # 2) Save large arrays as datasets with chunking & compression
             self._save_image2hdf5(grp=grp, compression=compression, compression_opts=compression_opts)
@@ -182,7 +185,7 @@ class ImageIOHandler(ImageColorSpace):
         Load an ImageHandler instance from an HDF5 file at /phenotypic/<image_name>/.
         """
         with h5py.File(filename, "r") as filehandler:
-            grp = filehandler[str(SINGLE_IMAGE_HDF5_PARENT_GROUP / image_name)]
+            grp = filehandler[str(IO.SINGLE_IMAGE_HDF5_PARENT_GROUP / image_name)]
 
             # Instantiate a blank handler and populate internals
             img = cls(input_image=None)

@@ -67,11 +67,16 @@ class OBJECT:
     MAX_CC = 'Bbox_MaxCC'
 
 
-class IMAGE_IO:
-    H5PY_MODULE_SIGNATURE = 'phenotypic'
-    H5PY_IMAGE_GROUP = '_root_image'
-    H5PY_IMAGE_SET_GROUP = 'image_set'
 
+class IO:
+    ACCEPTED_FILE_EXTENSIONS = ('.png', '.jpg', '.jpeg', '.tif', '.tiff')
+
+    if Version(phenotypic.__version__) < Version("0.7.1"):
+        SINGLE_IMAGE_HDF5_PARENT_GROUP = Path(f'phenotypic/')
+    else:
+        SINGLE_IMAGE_HDF5_PARENT_GROUP = Path(f'phenotypic/Image/')
+
+    IMAGE_SET_HDF5_PARENT_GROUP = Path(f'phenotypic/ImageSet/')
 
 # Grid constants
 class GRID:
