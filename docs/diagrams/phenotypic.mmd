@@ -16,8 +16,8 @@ classDiagram
         #- _dtype
         +- shape()
         +- isempty()
-        #- _normMatrix2dtype(normalized_value)
-        #- _dtypeMatrix2norm(matrix)
+        #- _norm2dtypeMatrix(normalized_value)
+        #- _dtype2normMatrix(matrix)
         +- get_foreground()
     }
 
@@ -92,7 +92,7 @@ classDiagram
         +- info()
         #- _idx_ref_matrix()
         +- __getitem__(idx)
-        +- get_linreg_info(axis)
+        +- get_centroid_alignment_info(axis)
         +- get_col_edges()
         +- get_col_map()
         +- show_column_overlay(use_enhanced, show_gridlines, ax, figsize)
@@ -136,7 +136,7 @@ classDiagram
         +- iloc(index)
         +- loc(label_number)
         +- info()
-        +- get_labels_series()
+        +- labels2series()
         +- relabel()
     }
 

@@ -23,17 +23,18 @@ class ImagePipeline(ImageOperation):
     construction and usage.
 
     Attributes:
-        _op_queue (Dict[str, ImageOperation]): A dictionary where keys are string
+        _ops (Dict[str, ImageOperation]): A dictionary where keys are string
             identifiers and values are `ImageOperation` objects representing operations to apply
             to an _root_image.
-        _measurement_queue (Dict[str, MeasureFeatures]): A dictionary where keys are string
+        _measurements (Dict[str, MeasureFeatures]): A dictionary where keys are string
             identifiers and values are `FeatureExtractor` objects for extracting features
             from images.
     """
 
     def __init__(self,
-                 ops: Dict[str, ImageOperation] | None = None,
-                 measurements: Dict[str, MeasureFeatures] | None = None):
+                 ops: List[ImageOperation] | Dict[str, ImageOperation] | None = None,
+                 measurements: List[MeasureFeatures] | Dict[str, MeasureFeatures] | None = None
+                 ):
         """
         This class represents a processing and measurement abstract for _root_image operations
         and feature extraction. It initializes operational and measurement queues based
@@ -47,8 +48,99 @@ class ImagePipeline(ImageOperation):
                 (strings) and the values are FeatureExtractor objects responsible for
                 extracting specific features.
         """
-        self._op_queue: Dict[str, ImageOperation] = ops if ops is not None else {}
-        self._measurement_queue: Dict[str, MeasureFeatures] = measurements if measurements is not None else {}
+        # If ops is a list of operations convert to a dictionary
+        self._ops: Dict[str, ImageOperation] = {}
+        if ops is not None: self.set_ops(ops)
+
+        self._measurements: Dict[str, MeasureFeatures] = {}
+        if measurements is not None: self.set_measurements(measurements)
+
+    def set_ops(self, ops: List[ImageOperation] | Dict[str, ImageOperation]):
+        """
+        Sets the operations to be performed. The operations can be passed as either a list of
+        ImageOperation instances or a dictionary mapping operation names to ImageOperation instances.
+        This method ensures that each operation in the list has a unique name. Raises a TypeError
+        if the input is neither a list nor a dictionary.
+
+        Args:
+            ops (List[ImageOperation] | Dict[str, ImageOperation]): A list of ImageOperation objects
+                or a dictionary where keys are operation names and values are ImageOperation objects.
+
+        Raises:
+            TypeError: If the input is not a list or a dictionary.
+        """
+        # If ops is a list of ImageOperation
+        if isinstance(ops, list):
+            op_names = [x.__name__ for x in ops if isinstance(x, ImageOperation)]
+            op_names = self.__make_unique(op_names)
+            self._ops = {op_names[i]: ops[i] for i in range(len(ops))}
+        # If ops is a dictionary
+        elif isinstance(ops, dict):
+            self._ops = ops
+        else:
+            raise TypeError(f'ops must be a list or a dictionary, got {type(ops)}')
+
+    def set_measurements(self, measurements: List[MeasureFeatures] | Dict[str, MeasureFeatures]):
+        """
+        Sets the measurements to be used for further computation. The input can be either
+        a list of `MeasureFeatures` objects or a dictionary with string keys and `MeasureFeatures`
+        objects as values.
+
+        The method processes the given input to construct a dictionary mapping measurement names
+        to `MeasureFeatures` instances. If a list is passed, unique class names of the
+        `MeasureFeatures` instances in the list are used as keys.
+
+        Args:
+            measurements (List[MeasureFeatures] | Dict[str, MeasureFeatures]): A collection
+                of measurement features either as a list of `MeasureFeatures` objects, where
+                class names are used as keys for dictionary creation, or as a dictionary where
+                keys are predefined strings and values are `MeasureFeatures` objects.
+
+        Raises:
+            TypeError: If the `measurements` argument is neither a list nor a dictionary.
+        """
+        if isinstance(measurements, list):
+            measurement_names = [x.__name__ for x in measurements if isinstance(x, MeasureFeatures)]
+            measurement_names = self.__make_unique(measurement_names)
+            self._measurements = {measurement_names[i]: measurements[i] for i in range(len(measurements))}
+        elif isinstance(measurements, dict):
+            self._measurements = measurements
+        else:
+            raise TypeError(f'measurements must be a list or a dictionary, got {type(measurements)}')
+
+    @staticmethod
+    def __make_unique(class_names):
+        """
+        Ensures uniqueness of strings in the given list by appending numeric suffixes when duplicates are
+        found. If duplicates exist, subsequent occurrences of the duplicate string are modified by adding a
+        numeric suffix to make them unique.
+
+        Args:
+            class_names (List[str]): A list of strings where duplicates may exist.
+
+        Returns:
+            List[str]: A new list of strings where each string is guaranteed to be unique.
+
+        Raises:
+            None
+        """
+        seen = {}
+        result = []
+
+        for s in class_names:
+            if s not in seen:
+                seen[s] = 0
+                result.append(s)
+            else:
+                seen[s] += 1
+                new_s = f"{s}_{seen[s]}"
+                while new_s in seen:
+                    seen[s] += 1
+                    new_s = f"{s}_{seen[s]}"
+                seen[new_s] = 0
+                result.append(new_s)
+
+        return result
 
     def apply(self, image: Image, inplace: bool = False, reset: bool = True) -> Image:
         """
@@ -67,7 +159,7 @@ class ImagePipeline(ImageOperation):
         """
         img = image if inplace else image.copy()
         if reset: image.reset()
-        for key, operation in self._op_queue.items():
+        for key, operation in self._ops.items():
             try:
                 sig = inspect.signature(operation.apply)
                 if 'inplace' in sig.parameters:
@@ -79,7 +171,7 @@ class ImagePipeline(ImageOperation):
 
         return img
 
-    def measure(self, image: Image, inplace: bool = False) -> pd.DataFrame:
+    def measure(self, image: Image) -> pd.DataFrame:
         """
         Measures various properties of an _root_image using queued measurement strategies.
 
@@ -96,9 +188,13 @@ class ImagePipeline(ImageOperation):
             queued measurement strategies, merged on the same index.
         """
         measurements = [image.grid.info() if hasattr(image, 'grid') else image.objects.info()]
-        for key in self._measurement_queue.keys():
-            measurements.append(self._measurement_queue[key].measure(image))
+        for key in self._measurements.keys():
+            measurements.append(self._measurements[key].measure(image))
         return self._merge_on_same_index(measurements)
+
+    def apply_and_measure(self, image: Image, inplace: bool = False, reset: bool = True) -> (Image, pd.DataFrame):
+        img = self.apply(image, inplace=inplace, reset=reset)
+        return img, self.measure(img)
 
     @staticmethod
     def _merge_on_same_index(dataframes_list: List[pd.DataFrame]) -> pd.DataFrame:

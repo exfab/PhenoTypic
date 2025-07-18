@@ -22,7 +22,7 @@ class MeasureGridLinRegStats(GridMeasureFeatures):
             section_info = grid_info.loc[grid_info.loc[:, GRID.GRID_SECTION_NUM] == self.section_num, :]
 
         # Get the current row-wise linreg info
-        row_m, row_b = image.grid.get_linreg_info(axis=0)
+        row_m, row_b = image.grid.get_centroid_alignment_info(axis=0)
 
         # Convert arrays to dataframe for join operation
         row_linreg_info = pd.DataFrame(data={
@@ -42,7 +42,7 @@ class MeasureGridLinRegStats(GridMeasureFeatures):
             + section_info.loc[:, GRID_LINREG_STATS_EXTRACTOR.ROW_LINREG_B]
 
         # Get the current column linreg info
-        col_m, col_b = image.grid.get_linreg_info(axis=1)
+        col_m, col_b = image.grid.get_centroid_alignment_info(axis=1)
 
         # convert array to dataframe for join operation
         col_linreg_info = pd.DataFrame(data={

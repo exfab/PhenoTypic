@@ -9,6 +9,7 @@ Note: Class names are defined in ALL_CAPS to avoid namespace conflicts with actu
         from PhenoTypic.util.constants import IMAGE_FORMATS, OBJECT
 """
 import phenotypic
+from phenotypic.abstract import MeasurementInfo
 from enum import Enum
 from packaging.version import Version
 from pathlib import Path
@@ -74,9 +75,9 @@ class IO:
     if Version(phenotypic.__version__) < Version("0.7.1"):
         SINGLE_IMAGE_HDF5_PARENT_GROUP = Path(f'phenotypic/')
     else:
-        SINGLE_IMAGE_HDF5_PARENT_GROUP = Path(f'phenotypic/Image/')
+        SINGLE_IMAGE_HDF5_PARENT_GROUP = Path(f'phenotypic/images/')
 
-    IMAGE_SET_HDF5_PARENT_GROUP = Path(f'phenotypic/ImageSet/')
+    IMAGE_SET_HDF5_PARENT_GROUP = Path(f'phenotypic/image_sets/')
 
 # Grid constants
 class GRID:
@@ -115,11 +116,15 @@ class METADATA_LABELS:
     SUBIMAGE_TYPE = 'SubimageType'
 
 
-class SUBIMAGE_TYPES:
-    """The string labels for different types of subimages generated when accessing subimages of a parent _root_image."""
-    ORIGINAL = 'Original'
+class IMAGE_TYPES(Enum):
+    """The string labels for different types of images generated when accessing subimages of a parent image."""
+    BASE = 'Base'
     CROP = 'Crop'
     OBJECT = 'Object'
-    GRID = 'Grid'
+    GRID = 'GridImage'
+    GRID_SECTION = 'GridSection'
+
+    def __str__(self):
+        return self.value
 
 

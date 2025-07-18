@@ -11,6 +11,8 @@ from ._grid_map_modifier import GridMapModifier
 from ._grid_measure import GridMeasureFeatures
 from ._grid_finder import GridFinder
 from ._base_operation import BaseOperation
+from ._measurements import Measurements
+from ._measurement_info import MeasurementInfo
 
 __all__ = [
     "MeasureFeatures",
@@ -25,5 +27,7 @@ __all__ = [
     "GridCorrector",
     "GridMapModifier",
     "GridMeasureFeatures",
-    'BaseOperation'
+    'BaseOperation',
+    "Measurements",
+    "MeasurementInfo"
 ]

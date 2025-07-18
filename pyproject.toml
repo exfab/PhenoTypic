@@ -50,9 +50,37 @@ dependencies = [
 [project.urls]
 Repository = "https://github.com/Wheeldon-Lab/PhenoTypic"
 
-[project.optional-dependencies]
+#[project.optional-dependencies]
+#dev = [
+#    "pytest",
+#    "pytest-cov",
+#    "mypy",
+#    "ipykernel",
+#    "jupyter",
+#    "labelme",
+#    "pympler",
+#    "jupyter",
+#    "ipykernel",
+#    "sphinx",
+#    "sphinxcontrib-napoleon",
+#    "sphinx-autodoc-typehints",
+#    "sphinx-autobuild",
+#    "sphinxawesome-theme",
+#    "nbsphinx",
+#    "furo",
+#    "pydata-sphinx-theme",
+#    "sphinx-gallery",
+#    "myst-nb",
+#    "sphinx-autosummary-accessors",
+#    "sphinx-design",
+#]
+
+[dependency-groups]
 dev = [
-    "pytest",
+    "ipykernel>=6.29.5",
+    "memory-profiler>=0.61.0",
+    "pympler>=1.1",
+    "pytest>=8.4.0",
     "pytest-cov",
     "mypy",
     "ipykernel",
@@ -73,14 +101,6 @@ dev = [
     "myst-nb",
     "sphinx-autosummary-accessors",
     "sphinx-design",
-]
-
-[dependency-groups]
-dev = [
-    "ipykernel>=6.29.5",
-    "memory-profiler>=0.61.0",
-    "pympler>=1.1",
-    "pytest>=8.4.0",
 ]
 
 [tool.pytest.ini_options]

@@ -14,7 +14,7 @@ import math
 
 import phenotypic
 from phenotypic.core.accessor_abstracts import ImageAccessor
-from phenotypic.util.constants_ import OBJECT, GRID, METADATA_LABELS, SUBIMAGE_TYPES
+from phenotypic.util.constants_ import OBJECT, GRID, METADATA_LABELS, IMAGE_TYPES
 from phenotypic.util.exceptions_ import NoObjectsError
 
 
@@ -101,14 +101,14 @@ class GridAccessor(ImageAccessor):
             objmap = section_image.objmap[:]
             objmap[~np.isin(objmap, self._get_section_labels(idx))] = 0
             section_image.objmap = objmap
-            section_image.metadata[METADATA_LABELS.SUBIMAGE_TYPE] = SUBIMAGE_TYPES.GRID
+            section_image._image_type = IMAGE_TYPES.GRID_SECTION
 
             return section_image
         else:
             return phenotypic.Image(self._parent_image)
 
     # TODO: This feels out of place. Maybe move to a measurement module in future versions?
-    def get_linreg_info(self, axis) -> Tuple[np.ndarray[float], np.ndarray[int]]:
+    def get_centroid_alignment_info(self, axis) -> Tuple[np.ndarray[float], np.ndarray[int]]:
         """
         Returns the slope and intercept of a line of best fit across the objects of a certain axis.
         Args:

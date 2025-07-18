@@ -52,7 +52,7 @@ class GridAligner(GridCorrector):
             raise ValueError('Axis must be either 0 or 1')
 
         # Find the slope info along the axis
-        m, b = image.grid.get_linreg_info(axis=self.axis)
+        m, b = image.grid.get_centroid_alignment_info(axis=self.axis)
         grid_info = image.grid.info()
 
         # Collect the X position of the vertices

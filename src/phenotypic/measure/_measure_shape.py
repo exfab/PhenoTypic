@@ -114,4 +114,4 @@ class MeasureShape(MeasureFeatures):
             measurements[str(SHAPE.CONVEX_AREA)][idx] = (convex_hull.area if convex_hull else np.nan)
             measurements[str(SHAPE.SOLIDITY)][idx] = ((current_props.area / convex_hull.area) if convex_hull else np.nan)
 
-        return pd.DataFrame(measurements, index=image.objects.get_labels_series())
+        return pd.DataFrame(measurements, index=image.objects.labels2series())

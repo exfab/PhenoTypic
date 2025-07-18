@@ -40,7 +40,7 @@ class ImageEnhancedMatrix(ImageMatrixDataAccessor):
         if self.isempty():
             raise EmptyImageError
         else:
-            norm_matrix = self._root_image._dtypeMatrix2norm(self._root_image._data.enh_matrix)
+            norm_matrix = self._root_image._dtype2normMatrix(self._root_image._data.enh_matrix)
             assert norm_matrix.dtype == np.float64, 'Normalized matrix should be of type float64'
             return norm_matrix[key]
 
@@ -71,7 +71,7 @@ class ImageEnhancedMatrix(ImageMatrixDataAccessor):
         """
         if isinstance(value, np.ndarray):
             if self._root_image._data.enh_matrix[key].shape != value.shape: raise ArrayKeyValueShapeMismatchError
-            value = self._root_image._normMatrix2dtype(value)
+            value = self._root_image._norm2dtypeMatrix(value)
         elif isinstance(value, (int, float)):
             value = self._root_image._bit_depth(value)
         else:

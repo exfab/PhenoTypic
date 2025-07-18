@@ -212,6 +212,6 @@ def test_image_object_label_consistency_with_skimage(sample_image_array_with_imf
     ps_image.objmap[:10, :10] = 1
     ps_image.objmap[-10:, -10:] = 2
 
-    assert ps_image.objects.get_labels_series().equals(
+    assert ps_image.objects.labels2series().equals(
         pd.Series(skimage.measure.regionprops_table(ps_image.objmap[:], properties=['label'])['label']),
     )

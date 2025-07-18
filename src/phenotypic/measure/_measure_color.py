@@ -45,7 +45,7 @@ class MeasureColor(MeasureFeatures):
                                                                  )
         brightness_texture = {f'{BRIGHTNESS}_{key}': value for key, value in brightness_texture.items()}
 
-        return pd.DataFrame(data={**hue_texture, **saturation_texture, **brightness_texture}, index=image.objects.get_labels_series())
+        return pd.DataFrame(data={**hue_texture, **saturation_texture, **brightness_texture}, index=image.objects.labels2series())
 
     @staticmethod
     def _compute_color_metrics(foreground: np.ndarray, labels: np.ndarray):

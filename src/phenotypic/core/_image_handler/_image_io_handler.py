@@ -61,6 +61,25 @@ class ImageIOHandler(ImageColorSpace):
             raise UnsupportedFileTypeError(filepath.suffix)
 
     @staticmethod
+    def _get_hdf5_group(handler, name):
+        """
+        Retrieves an HDF5 group from the given handler by name. If the group does not
+        exist, it creates a new group with the specified name.
+
+        Args:
+            handler: HDF5 file or group handler used to manage HDF5 groups.
+            name: The name of the group to retrieve or create.
+
+        Returns:
+            h5py.Group: The requested or newly created HDF5 group.
+        """
+        name = str(name)
+        if name in handler:
+            return handler[name]
+        else:
+            return handler.create_group(name)
+
+    @staticmethod
     def _save_array2hdf5(group, array, name, **kwargs):
         """
         Saves a given numpy array to an HDF5 group. If a dataset with the specified
@@ -89,25 +108,6 @@ class ImageIOHandler(ImageColorSpace):
                 group.create_dataset(name, data=array, **kwargs)
         else:
             group.create_dataset(name, data=array, **kwargs)
-
-    @staticmethod
-    def _get_hdf5_group(handler, name):
-        """
-        Retrieves an HDF5 group from the given handler by name. If the group does not
-        exist, it creates a new group with the specified name.
-
-        Args:
-            handler: HDF5 file or group handler used to manage HDF5 groups.
-            name: The name of the group to retrieve or create.
-
-        Returns:
-            h5py.Group: The requested or newly created HDF5 group.
-        """
-        name = str(name)
-        if name in handler:
-            return handler[name]
-        else:
-            return handler.create_group(name)
 
     def _save_image2hdf5(self, grp, compression, compression_opts):
         """Saves the image as a new group into the input hdf5 group."""
@@ -144,6 +144,9 @@ class ImageIOHandler(ImageColorSpace):
         # 3) Store string/enum as a group attribute
         #    h5py supports variable-length UTF-8 strings automatically
         image_group.attrs["imformat"] = self.imformat.value
+        image_group.attrs["bit_depth"] = self._bit_depth
+        image_group.attrs["version"] = phenotypic.__version__
+        image_group.attrs["image_type"] = self._image_format.value
 
         # 4) Store protected metadata in its own subgroup
         prot = image_group.require_group("protected_metadata")
@@ -157,7 +160,7 @@ class ImageIOHandler(ImageColorSpace):
 
     def save2hdf5(self, filename, compression="gzip", compression_opts=4):
         """
-        Save an ImageHandler instance to an HDF5 file under /phenotypic/<self.name>/.
+        Save an ImageHandler instance to an HDF5 file under /phenotypic/images<self.name>/.
 
         Parameters:
           self: your ImageHandler instance
@@ -180,38 +183,45 @@ class ImageIOHandler(ImageColorSpace):
             self._save_image2hdf5(grp=grp, compression=compression, compression_opts=compression_opts)
 
     @classmethod
+    def _load_from_hdf5_group(cls, group)->Image:
+        # Instantiate a blank handler and populate internals
+        img = cls(bit_depth=group.attrs["bit_depth"])
+
+        # Load Image Format
+        try:
+            img._image_format = IMAGE_FORMATS(group.attrs["imformat"])
+        except ValueError:
+            raise ValueError(f"Unsupported imformat {group.attrs['imformat']} for Image")
+
+        # Read datasets back into numpy arrays
+        if img._image_format.is_array():
+            img._data.array = group["array"][()]
+        img._data.matrix = group["matrix"][()]
+        img = img.reset()
+
+        img.enh_matrix[:] = group["enh_matrix"][()]
+        # If your objmap backend expects a sparse matrix, convert accordingly;
+        # here we load as dense:
+        img.objmap[:] = group["objmap"][()]
+
+        # 3) Restore metadata
+        prot = group["protected_metadata"].attrs
+        img._metadata.protected.clear()
+        img._metadata.protected.update({k: prot[k] for k in prot})
+
+        pub = group["public_metadata"].attrs
+        img._metadata.public.clear()
+        img._metadata.public.update({k: pub[k] for k in pub})
+        return img
+
+    @classmethod
     def load_hdf5(cls, filename, image_name) -> Image:
         """
-        Load an ImageHandler instance from an HDF5 file at /phenotypic/<image_name>/.
+        Load an ImageHandler instance from an HDF5 file at the default hdf5 location
         """
         with h5py.File(filename, "r") as filehandler:
             grp = filehandler[str(IO.SINGLE_IMAGE_HDF5_PARENT_GROUP / image_name)]
-
-            # Instantiate a blank handler and populate internals
-            img = cls(input_image=None)
-
-            # 1) Read datasets back into numpy arrays
-            img._array = grp["array"][()]
-            img._matrix = grp["matrix"][()]
-            img._enh_matrix = grp["enh_matrix"][()]
-            # If your objmap backend expects a sparse matrix, convert accordingly;
-            # here we load as dense:
-            img._data.sparse_object_map = grp["objmap"][()]
-
-            # 2) Restore format
-            try:
-                img._image_format = IMAGE_FORMATS(grp.attrs["imformat"])
-            except ValueError:
-                raise ValueError(f"Unsupported imformat {grp.attrs['imformat']} for Image")
-
-            # 3) Restore metadata
-            prot = grp["protected_metadata"].attrs
-            img._metadata.protected.clear()
-            img._metadata.protected.update({k: prot[k] for k in prot})
-
-            pub = grp["public_metadata"].attrs
-            img._metadata.public.clear()
-            img._metadata.public.update({k: pub[k] for k in pub})
+            img = cls._load_from_hdf5_group(grp)
 
         return img
 

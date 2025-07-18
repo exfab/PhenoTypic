@@ -32,7 +32,7 @@ from ..accessors import (
     MetadataAccessor,
 )
 
-from phenotypic.util.constants_ import IMAGE_FORMATS, METADATA_LABELS, SUBIMAGE_TYPES
+from phenotypic.util.constants_ import IMAGE_FORMATS, METADATA_LABELS, IMAGE_TYPES
 from phenotypic.util.exceptions_ import (
     EmptyImageError, NoArrayError, NoObjectsError, IllegalAssignmentError,
     UnsupportedFileTypeError
@@ -63,7 +63,7 @@ class ImageHandler:
     def __init__(self,
                  input_image: np.ndarray | Image | PathLike | None = None,
                  imformat: str | None = None,
-                 name: str | None = None, bit_depth: Literal[8, 16, 32] | None = 16):
+                 name: str | None = None, bit_depth: Literal[8, 16, 32, 64] | None = 16):
         """
         Initializes an instance of the image processing object, setting up internal structures, 
         metadata, accessors, and initializing the provided input image or empty placeholders. The
@@ -78,30 +78,32 @@ class ImageHandler:
                 automatically based on the input image if applicable.
             name: Name of the image data or identifier assigned to the image. If None, the name 
                 will be left empty or assigned a default value in protected metadata.
-            bit_depth: Bit depth of the image can be either 8, 16, or 32. Determines the image's
-                bit depth during initialization. Higher bit depth can mean more precision when images are captured with higher bit-depth
-                but increase memory usage
+            bit_depth: Bit depth of the image can be either 8, 16, 32, or 64. Determines the image's
+                bit allocation for information during initialization. Higher bit depth can mean more precision when images are
+                captured with higher bit-depth, but increase memory usage.
         """
 
+        # Initialize core backend variables
+        self._image_format = IMAGE_FORMATS.NONE
         match bit_depth:
             case 8:
                 self._bit_depth = np.uint8
             case 16:
                 self._bit_depth = np.uint16
             case 32:
-                self._bit_depth = np.uint32
-            case _:
+                self._bit_depth = np.float32
+            case 64:
                 self._bit_depth = np.float64
+            case _:
+                self._bit_depth = None
+        self._image_type = IMAGE_TYPES.BASE
 
-        # Initialize _root_image data
+        # Initialize image data
         self._data = SimpleNamespace()
         self._data.array = None
         self._data.matrix = None
         self._data.enh_matrix = None
         self._data.sparse_object_map = None
-
-        # Initialize core backend variables
-        self._image_format = IMAGE_FORMATS.NONE
 
         # Public metadata can be edited or removed
         self._metadata = SimpleNamespace(
@@ -111,7 +113,6 @@ class ImageHandler:
             protected={
                 METADATA_LABELS.IMAGE_NAME: name,
                 METADATA_LABELS.PARENT_IMAGE_NAME: None,
-                METADATA_LABELS.SUBIMAGE_TYPE: SUBIMAGE_TYPES.ORIGINAL
             },
             public={},
         )
@@ -157,7 +158,7 @@ class ImageHandler:
 
         subimage.enh_matrix[:] = self.enh_matrix[key].copy()
         subimage.objmap[:] = self.objmap[key].copy()
-        subimage.metadata[METADATA_LABELS.SUBIMAGE_TYPE] = SUBIMAGE_TYPES.CROP
+        subimage._image_type = IMAGE_TYPES.CROP
         return subimage
 
     def __setitem__(self, key, other_image):
@@ -402,7 +403,7 @@ class ImageHandler:
 
     @property
     def props(self) -> list[ski.measure._regionprops.RegionProperties]:
-        """Fetches the properties of the whole _root_image.
+        """Fetches the properties of the whole image.
 
         Calculates region properties for the entire _root_image using the matrix representation.
         The labeled _root_image is generated as a full array with values of 1, and the
@@ -651,7 +652,7 @@ class ImageHandler:
             matrix: A 2-D array form of an _root_image
         """
 
-        self._data.matrix = self._normMatrix2dtype(matrix)
+        self._data.matrix = self._norm2dtypeMatrix(matrix)
         self._accessors.enh_matrix.reset()
         self._accessors.objmap.reset()
 
@@ -810,7 +811,7 @@ class ImageHandler:
         """
         Resets the internal state of the object and returns an updated instance.
 
-        This method resets the state of DetectionMatrix and ObjectMap components maintained
+        This method resets the state of enhanced matrix and object map components maintained
         by the object. It ensures that the object is reset to its original state
         while maintaining its type integrity. Upon execution, the instance of the
         calling object itself is returned.
@@ -823,8 +824,7 @@ class ImageHandler:
         self.objmap.reset()
         return self
 
-
-    def _normMatrix2dtype(self, normalized_value: np.ndarray) -> np.ndarray:
+    def _norm2dtypeMatrix(self, normalized_value: np.ndarray) -> np.ndarray:
         """
         Converts a normalized matrix with values between 0 and 1 to a specified data type with the
         appropriate scaling. The method ensures that all values are clipped to the range [0, 1]
@@ -843,13 +843,17 @@ class ImageHandler:
                 return skimage.util.img_as_ubyte(normalized_value)
             case np.uint16:
                 return skimage.util.img_as_uint(normalized_value)
-            case np.float64: # No compression
+            case np.float32:
+                return skimage.util.img_as_float32(normalized_value)
+            case np.float64:  # No compression
                 return skimage.util.img_as_float(normalized_value)
-            case _: # No compression
+            case None:
+                return normalized_value
+            case _:  # No compression
                 return normalized_value
 
     @staticmethod
-    def _dtypeMatrix2norm(matrix: np.ndarray) -> np.ndarray:
+    def _dtype2normMatrix(matrix: np.ndarray) -> np.ndarray:
         """
         Normalizes the given matrix to have values between 0.0 and 1.0 based on its data type.
 

@@ -8,7 +8,7 @@ import pandas as pd
 from skimage.measure import regionprops_table, regionprops
 from typing import List
 
-from phenotypic.util.constants_ import OBJECT, METADATA_LABELS, SUBIMAGE_TYPES
+from phenotypic.util.constants_ import OBJECT, METADATA_LABELS, IMAGE_TYPES
 from phenotypic.core.accessor_abstracts import ImageAccessor
 
 
@@ -37,7 +37,7 @@ class ObjectsAccessor(ImageAccessor):
         current_object = self.props[index]
         label = current_object.label
         object_image = self._root_image[current_object.slice]
-        object_image.metadata[METADATA_LABELS.SUBIMAGE_TYPE] = SUBIMAGE_TYPES.OBJECT
+        object_image._image_type = IMAGE_TYPES.OBJECT
         object_image.objmap[object_image.objmap[:] != label] = 0
         return object_image
 
@@ -116,7 +116,7 @@ class ObjectsAccessor(ImageAccessor):
         },
         ).set_index(OBJECT.LABEL)
 
-    def get_labels_series(self) -> pd.Series:
+    def labels2series(self) -> pd.Series:
         """Returns a consistently named pandas.Series containing the label number for each object in the image. Useful as an index for joining different measurements"""
         labels = self.labels
         return pd.Series(

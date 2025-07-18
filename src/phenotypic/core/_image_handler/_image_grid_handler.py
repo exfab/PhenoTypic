@@ -10,7 +10,7 @@ from itertools import cycle
 from .._image import Image
 from phenotypic.measure import MeasureBounds
 from phenotypic.abstract import GridFinder
-from phenotypic.util.constants_ import IMAGE_FORMATS, OBJECT
+from phenotypic.util.constants_ import IMAGE_FORMATS, OBJECT, IMAGE_TYPES
 from phenotypic.util.exceptions_ import IllegalAssignmentError
 from phenotypic.grid import OptimalCenterGridFinder
 
@@ -82,6 +82,7 @@ class ImageGridHandler(Image):
 
         self._grid_setter: Optional[GridFinder] = grid_finder
         self._accessors.grid = GridAccessor(self)
+        self._image_type = IMAGE_TYPES.GRID
 
     @property
     def grid(self) -> GridAccessor:
