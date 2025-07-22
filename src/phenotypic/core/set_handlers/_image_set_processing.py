@@ -16,7 +16,7 @@ import numpy as np
 import pandas as pd
 import h5py
 import psutil
-from phenotypic import ImagePipelineCore
+from phenotypic import ImagePipeline
 
 # Not in use in favor of deferring the processing to ImagePipeline
 class ImageSetProcessing(ImageSetCore):

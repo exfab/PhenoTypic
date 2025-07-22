@@ -165,6 +165,8 @@ class IO:
 
     IMAGE_SET_HDF5_PARENT_GROUP = Path(f'phenotypic/image_sets/')
 
+    IMAGE_MEASUREMENT_IMAGE_SUBGROUP_KEY = 'measurements'
+
 # Grid constants
 class GRID:
     """

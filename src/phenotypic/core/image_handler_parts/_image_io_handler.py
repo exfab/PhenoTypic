@@ -144,7 +144,20 @@ class ImageIOHandler(ImageColorSpace):
         # 3) Store string/enum as a group attribute
         #    h5py supports variable-length UTF-8 strings automatically
         image_group.attrs["imformat"] = self.imformat.value
-        image_group.attrs["bit_depth"] = self._bit_depth
+
+        match self._bit_depth:
+            case np.uint8:
+                bit_depth = 8
+            case np.uint16:
+                bit_depth = 16
+            case np.float32:
+                bit_depth = 32
+            case np.float64:
+                bit_depth = 64
+            case _:
+                raise RuntimeError(f'Unsupported bit depth {self._bit_depth}')
+        image_group.attrs["bit_depth"] = bit_depth
+
         image_group.attrs["version"] = phenotypic.__version__
         image_group.attrs["image_type"] = self._image_format.value
 

@@ -71,7 +71,7 @@ class ImagePipelineCore(ImageOperation):
         """
         # If ops is a list of ImageOperation
         if isinstance(ops, list):
-            op_names = [x.__name__ for x in ops if isinstance(x, ImageOperation)]
+            op_names = [x.__class__.__name__ for x in ops if isinstance(x, ImageOperation)]
             op_names = self.__make_unique(op_names)
             self._ops = {op_names[i]: ops[i] for i in range(len(ops))}
         # If ops is a dictionary
@@ -100,7 +100,7 @@ class ImagePipelineCore(ImageOperation):
             TypeError: If the `measurements` argument is neither a list nor a dictionary.
         """
         if isinstance(measurements, list):
-            measurement_names = [x.__name__ for x in measurements if isinstance(x, MeasureFeatures)]
+            measurement_names = [x.__class__.__name__ for x in measurements if isinstance(x, MeasureFeatures)]
             measurement_names = self.__make_unique(measurement_names)
             self._measurements = {measurement_names[i]: measurements[i] for i in range(len(measurements))}
         elif isinstance(measurements, dict):
@@ -194,7 +194,7 @@ class ImagePipelineCore(ImageOperation):
 
     def apply_and_measure(self, image: Image, inplace: bool = False, reset: bool = True) -> (Image, pd.DataFrame):
         img = self.apply(image, inplace=inplace, reset=reset)
-        return img, self.measure(img)
+        return self.measure(img)
 
     @staticmethod
     def _merge_on_same_index(dataframes_list: List[pd.DataFrame]) -> pd.DataFrame:

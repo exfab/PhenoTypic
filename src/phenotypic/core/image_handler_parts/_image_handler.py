@@ -41,7 +41,7 @@ from phenotypic.util.exceptions_ import (
 
 class ImageHandler:
     """
-    Handles _root_image data and provides an abstraction for accessing and manipulating images
+    Handles image data and provides an abstraction for accessing and manipulating images
     through multiple formats like array, matrix, object maps, and metadata.
 
     The class offers streamlined access to _root_image properties and supports operations like slicing,
@@ -117,7 +117,7 @@ class ImageHandler:
             public={},
         )
 
-        # Initialize _root_image accessors
+        # Initialize image accessors
         self._accessors = SimpleNamespace()
 
         self._accessors.array = ImageArray(self)

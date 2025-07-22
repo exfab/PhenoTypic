@@ -37,27 +37,23 @@ GridImage
     
     GridImage
 
-GridImage Accessors
-^^^^^^^^^^^^^^^^^^^
-.. currentmodule:: phenotypic
 .. autosummary::
-    :toctree: grid_image_accessors
-    :recursive:
+    :toctree: image_class
     :template: image_accessor.rst
-    :caption: GridImage Accessors
 
     GridImage.grid
 
+Modules
+-------
 .. toctree::
    :maxdepth: 1
    :caption: Modules
    
-   Image
-   GridImage
+   image_class.phenotypic.Image
+   grid_image.phenotypic.GridImage
    phenotypic.ImageSet
    phenotypic.ImagePipeline
    phenotypic.abstract
-   phenotypic.core
    phenotypic.data
    phenotypic.detection
    phenotypic.grid

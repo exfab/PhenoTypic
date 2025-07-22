@@ -1,6 +1,8 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING, Literal
 
+import pandas as pd
+
 if TYPE_CHECKING: from phenotypic import Image
 
 import os
@@ -10,8 +12,8 @@ from typing import List
 import h5py
 from os import PathLike
 
+from phenotypic.abstract import Measurements
 from phenotypic.util.constants_ import IO
-
 
 class ImageSetCore:
     """
@@ -37,7 +39,8 @@ class ImageSetCore:
         _hdf5_set_group_key (str): The group path in the HDF5 file where the image set is stored.
     """
 
-    def __init__(self, name: str,
+    def __init__(self,
+                 name: str,
                  image_template: Image | None = None,
                  image_list: List[Image] | None = None,
                  src_path: PathLike | None = None,
@@ -104,7 +107,7 @@ class ImageSetCore:
             elif src_path.is_file() and src_path.suffix == '.h5':
                 with h5py.File(src_path, mode='a') as src_filehandler, h5py.File(out_path, mode='a') as out_filehandler:
                     src_parent_group = self._get_hdf5_group(src_filehandler, self)
-                    out_parent_group = self._get_hdf5_group(out_filehandler, IO.IMAGE_SET_HDF5_PARENT_GROUP)
+                    out_parent_group = self._get_hdf5_group(out_filehandler, str(self._hdf5_parent_group_key))
 
                     #   if the image set name is in the ImageSet group, copy the images over
                     if self.name in src_parent_group:
@@ -136,25 +139,25 @@ class ImageSetCore:
 
                     # Overwrite handling
                     if self.name in out_group and overwrite is True: del out_group[self.name]
-                    out_set_group = self._get_hdf5_group(out_handler, self._hdf5_set_group_key)
+                    out_image_group = self._get_hdf5_group(out_handler, self._hdf5_image_group_key)
 
                     for fname in image_filenames:
                         image = self.image_template.imread(src_path / fname)
-                        image._save_image2hdf5(grp=out_set_group, compression="gzip", compression_opts=4)
+                        image._save_image2hdf5(grp=out_image_group, compression="gzip", compression_opts=4)
 
         # Image list handling
         # Only need out handler for this
         elif isinstance(image_list, list):
             assert all(isinstance(x, phenotypic.Image) for x in image_list), 'image_list must be a list of Image objects.'
             with h5py.File(out_path, mode='a') as out_handler:
-                out_group = self._get_hdf5_group(out_handler, IO.IMAGE_SET_HDF5_PARENT_GROUP)
+                out_group = self._get_hdf5_group(out_handler, self._hdf5_parent_group_key)
 
                 # Overwrite the data in the output folder
                 if self.name in out_group and overwrite is True: del out_group[self.name]
-                out_set_group = self._get_hdf5_group(out_handler, self._hdf5_set_group_key)
+                out_image_group = self._get_hdf5_group(out_handler, self._hdf5_image_group_key)
 
                 for image in image_list:
-                    image._save_image2hdf5(grp=out_set_group, compression="gzip", compression_opts=4)
+                    image._save_image2hdf5(grp=out_image_group, compression="gzip", compression_opts=4)
         else:
             raise ValueError('image_list must be a list of Image objects or src_path must be a valid hdf5 file.')
 
@@ -207,15 +210,27 @@ class ImageSetCore:
             List[str]: A list of image names present in the specified HDF5 group.
         """
         with h5py.File(self._out_path, mode='r') as out_handler:
-            set_group = self._get_hdf5_group(out_handler, self._hdf5_set_group_key)
-            names = set_group.keys()
-        return list(names)
+            set_group = self._get_hdf5_group(out_handler, self._hdf5_image_group_key)
+            names = list(set_group.keys())
+        return names
 
     def get_image(self, image_name: str) -> Image:
         with h5py.File(self._out_path, mode='r', libver='latest', swmr=True) as reader:
-            image_group = reader[self._hdf5_image_group_key]
+            image_group = reader[str(self._hdf5_image_group_key)]
             if image_name in image_group:
                 return self.image_template._load_from_hdf5_group(image_group[image_name])
+            else:
+                raise ValueError(f'Image named {image_name} not found in ImageSet {self.name}.')
+
+    def get_measurement(self, image_name: str)->pd.DataFrame:
+        with h5py.File(self._out_path, mode='r', libver='latest', swmr=True) as reader:
+            images_group = reader[str(self._hdf5_image_group_key)]
+            if image_name in images_group:
+                image_group = images_group[image_name]
+                if IO.IMAGE_MEASUREMENT_IMAGE_SUBGROUP_KEY in image_group:
+                    return Measurements._load_dataframe_from_hdf5_group(image_group)
+                else:
+                    raise ValueError(f'Image named {image_name} does not have a measurement.')
             else:
                 raise ValueError(f'Image named {image_name} not found in ImageSet {self.name}.')
 
@@ -225,5 +240,3 @@ class ImageSetCore:
                 image_group = self._get_hdf5_group(out_handler, self._hdf5_image_group_key/image_name)
                 image = self.image_template._load_from_hdf5_group(image_group)
             yield image
-
-                # TODO: Make Image hdf5 loader
