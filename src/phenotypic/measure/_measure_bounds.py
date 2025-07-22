@@ -8,11 +8,11 @@ from skimage.measure import regionprops_table
 
 from phenotypic.abstract import MeasureFeatures
 
-from ..util.constants_ import OBJECT
+from ..util.constants_ import OBJECT, BBOX
 
 class MeasureBounds(MeasureFeatures):
     """
-    Extracts the object boundary coordinate info within the _root_image using the object map
+    Extracts the object boundary coordinate info within the image using the object map
     """
 
     def _operate(self, image: Image) -> pd.DataFrame:
@@ -23,12 +23,14 @@ class MeasureBounds(MeasureFeatures):
             )
         ).rename(columns={
             'label': OBJECT.LABEL,
-            'centroid-0': OBJECT.CENTER_RR,
-            'centroid-1': OBJECT.CENTER_CC,
-            'bbox-0': OBJECT.MIN_RR,
-            'bbox-1': OBJECT.MIN_CC,
-            'bbox-2': OBJECT.MAX_RR,
-            'bbox-3': OBJECT.MAX_CC,
+            'centroid-0': str(BBOX.CENTER_RR),
+            'centroid-1': str(BBOX.CENTER_CC),
+            'bbox-0': str(BBOX.MIN_RR),
+            'bbox-1': str(BBOX.MIN_CC),
+            'bbox-2': str(BBOX.MAX_RR),
+            'bbox-3': str(BBOX.MAX_CC),
         }).set_index(keys=OBJECT.LABEL)
 
         return results
+
+MeasureBounds.__doc__ = BBOX.append_rst_to_doc(MeasureBounds)

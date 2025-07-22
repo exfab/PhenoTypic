@@ -1,12 +1,13 @@
-phenotypic package
-==================
+phenotypic
+==========
 
 Subpackages
 -----------
 
 .. toctree::
    :maxdepth: 4
-
+   Image
+   GridImage
    phenotypic.abstract
    phenotypic.core
    phenotypic.correction

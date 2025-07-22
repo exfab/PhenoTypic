@@ -1,4 +1,4 @@
-from phenotypic.pipeline import ImagePipeline
+from phenotypic import ImagePipeline
 from phenotypic.enhancement import CLAHE, GaussianSmoother, MedianEnhancer, ContrastStretching
 from phenotypic.detection import OtsuDetector, WatershedDetector
 from phenotypic.grid import GridApply, MinResidualErrorReducer, LinRegResidualOutlierRemover
@@ -73,7 +73,7 @@ def test_kmarx_pipeline_pickleable(plate_grid_images):
             'grid_reduction': MinResidualErrorReducer()
         }
     )
-    pickle.dumps(kmarx_pipeline)
+    pickle.dumps(kmarx_pipeline.apply_and_measure)
 
 @timeit
 def test_watershed_kmarx_pipeline_pickleable(plate_grid_images):

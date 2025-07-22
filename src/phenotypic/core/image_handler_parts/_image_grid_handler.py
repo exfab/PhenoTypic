@@ -10,7 +10,7 @@ from itertools import cycle
 from .._image import Image
 from phenotypic.measure import MeasureBounds
 from phenotypic.abstract import GridFinder
-from phenotypic.util.constants_ import IMAGE_FORMATS, OBJECT, IMAGE_TYPES
+from phenotypic.util.constants_ import IMAGE_FORMATS, OBJECT, IMAGE_TYPES, BBOX, METADATA_LABELS
 from phenotypic.util.exceptions_ import IllegalAssignmentError
 from phenotypic.grid import OptimalCenterGridFinder
 
@@ -82,7 +82,7 @@ class ImageGridHandler(Image):
 
         self._grid_setter: Optional[GridFinder] = grid_finder
         self._accessors.grid = GridAccessor(self)
-        self._image_type = IMAGE_TYPES.GRID
+        self.metadata[METADATA_LABELS.IMAGE_TYPE] = IMAGE_TYPES.GRID.value
 
     @property
     def grid(self) -> GridAccessor:
@@ -242,10 +242,10 @@ class ImageGridHandler(Image):
             # Add squares that denote object grid belonging. Useful for cases where objects are larger than grid sections
             for obj_label in gs_table.index.unique():
                 subtable = gs_table.loc[obj_label, :]
-                min_rr = subtable.loc[OBJECT.MIN_RR]
-                max_rr = subtable.loc[OBJECT.MAX_RR]
-                min_cc = subtable.loc[OBJECT.MIN_CC]
-                max_cc = subtable.loc[OBJECT.MAX_CC]
+                min_rr = subtable.loc[str(BBOX.MIN_RR)]
+                max_rr = subtable.loc[str(BBOX.MAX_RR)]
+                min_cc = subtable.loc[str(BBOX.MIN_CC)]
+                max_cc = subtable.loc[str(BBOX.MAX_CC)]
 
                 width = max_cc - min_cc
                 height = max_rr - min_rr

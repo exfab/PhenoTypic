@@ -96,7 +96,6 @@ class ImageHandler:
                 self._bit_depth = np.float64
             case _:
                 self._bit_depth = None
-        self._image_type = IMAGE_TYPES.BASE
 
         # Initialize image data
         self._data = SimpleNamespace()
@@ -113,6 +112,7 @@ class ImageHandler:
             protected={
                 METADATA_LABELS.IMAGE_NAME: name,
                 METADATA_LABELS.PARENT_IMAGE_NAME: None,
+                METADATA_LABELS.IMAGE_TYPE: IMAGE_TYPES.BASE.value
             },
             public={},
         )
@@ -158,7 +158,7 @@ class ImageHandler:
 
         subimage.enh_matrix[:] = self.enh_matrix[key].copy()
         subimage.objmap[:] = self.objmap[key].copy()
-        subimage._image_type = IMAGE_TYPES.CROP
+        subimage.metadata[METADATA_LABELS.IMAGE_TYPE] = IMAGE_TYPES.CROP.value
         return subimage
 
     def __setitem__(self, key, other_image):
@@ -249,6 +249,10 @@ class ImageHandler:
         return self.metadata[METADATA_LABELS.UUID]
 
     @property
+    def _image_type(self):
+        return self.metadata[METADATA_LABELS.IMAGE_TYPE]
+
+    @property
     def shape(self):
         """Returns the shape of the _root_image array or matrix depending on input_image format or none if no _root_image is set.
 
@@ -273,7 +277,7 @@ class ImageHandler:
             raise EmptyImageError
 
     @property
-    def metadata(self):
+    def metadata(self)->MetadataAccessor:
         return self._accessors.metadata
 
     @metadata.setter

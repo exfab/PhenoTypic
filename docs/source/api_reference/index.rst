@@ -53,7 +53,9 @@ GridImage Accessors
    :caption: Modules
    
    Image
-   phenotypic.GridImage
+   GridImage
+   phenotypic.ImageSet
+   phenotypic.ImagePipeline
    phenotypic.abstract
    phenotypic.core
    phenotypic.data

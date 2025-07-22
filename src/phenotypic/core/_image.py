@@ -1,4 +1,4 @@
-from ._image_handler._image_io_handler import ImageIOHandler
+from .image_handler_parts._image_io_handler import ImageIOHandler
 
 
 class Image(ImageIOHandler):

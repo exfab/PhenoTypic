@@ -9,7 +9,7 @@ A modular image processing framework developed at the NSF Ex-FAB BioFoundry.
 
 ---
 
-*Documentation* [here](https://wheeldon-lab.github.io/PhenoTypic/)
+*Documentation* @ https://wheeldon-lab.github.io/PhenoTypic/
 
 ## Overview
 PhenoTypic provides a modular toolkit designed to simplify and accelerate the development of bio-image analysis pipelines. 
@@ -24,7 +24,7 @@ other existing image analysis tools into a cohesive, unified ecosystem.
 ```
 pip install phenotypic
 ```
-Note: may not always be the most up-to-date version
+Note: may not always be the most up-to-date version. Install from repo when latest update is needed
 
 ### Manual Installation
 ```  
@@ -43,9 +43,6 @@ pip install -e ".[dev]"
 ## Acknowledgements
 
 ### CellProfiler
-PhenoTypic has drawn inspiration and foundational concepts from [CellProfiler](https://github.com/CellProfiler/CellProfiler), 
-an open-source software platform for bio-image analysis developed by the Broad Institute Imaging Platform. CellProfiler's modularity, 
-pipeline-oriented design, and extensive documentation have significantly influenced the development approach and structure of PhenoTypic.
 
 **Reference:**
 - [CellProfiler GitHub Repository](https://github.com/CellProfiler/CellProfiler)

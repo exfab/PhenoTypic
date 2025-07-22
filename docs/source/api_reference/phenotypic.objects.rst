@@ -1,5 +1,5 @@
-phenotypic.objects package
-==========================
+phenotypic.objects
+==================
 
 Module contents
 ---------------

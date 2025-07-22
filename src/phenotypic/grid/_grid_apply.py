@@ -1,10 +1,9 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
 
-if TYPE_CHECKING: from phenotypic import GridImage
+if TYPE_CHECKING: from phenotypic import GridImage, ImagePipeline
 
 from phenotypic.abstract import ImageOperation
-from phenotypic.pipeline import ImagePipeline
 
 
 class GridApply:

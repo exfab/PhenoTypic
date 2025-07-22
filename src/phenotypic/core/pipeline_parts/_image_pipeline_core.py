@@ -10,7 +10,7 @@ import inspect
 from phenotypic.abstract import MeasureFeatures, ImageOperation
 
 
-class ImagePipeline(ImageOperation):
+class ImagePipelineCore(ImageOperation):
     """
     Represents a handler for processing and measurement queues used in _root_image operations
     and feature extraction tasks.

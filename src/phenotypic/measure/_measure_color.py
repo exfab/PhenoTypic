@@ -1,4 +1,6 @@
 from __future__ import annotations
+
+from enum import Enum
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING: from phenotypic import Image
@@ -6,7 +8,7 @@ if TYPE_CHECKING: from phenotypic import Image
 import numpy as np
 import pandas as pd
 
-from phenotypic.abstract import MeasureFeatures
+from phenotypic.abstract import MeasureFeatures, MeasurementInfo
 
 AREA = 'Area'
 
@@ -19,6 +21,16 @@ MEAN = 'Mean'
 STDDEV = 'StdDev'
 COEFF_VARIANCE = 'CoefficientVariance'
 
+class COLORSPACE_LABELS(Enum):
+    HUE = 'Hue'
+    SATURATION = 'Saturation'
+    BRIGHTNESS = 'Brightness'
+
+
+class COLOR(MeasurementInfo):
+    @property
+    def CATEGORY(self):
+        return 'Color'
 
 class MeasureColor(MeasureFeatures):
     """

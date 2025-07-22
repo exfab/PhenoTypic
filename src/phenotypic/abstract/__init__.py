@@ -1,3 +1,4 @@
+from ._measurement_info import MeasurementInfo
 from ._measure_features import MeasureFeatures
 from ._image_operation import ImageOperation
 from ._image_enhancer import ImageEnhancer
@@ -12,7 +13,6 @@ from ._grid_measure import GridMeasureFeatures
 from ._grid_finder import GridFinder
 from ._base_operation import BaseOperation
 from ._measurements import Measurements
-from ._measurement_info import MeasurementInfo
 
 __all__ = [
     "MeasureFeatures",

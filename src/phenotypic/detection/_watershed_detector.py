@@ -66,10 +66,11 @@ class WatershedDetector(ThresholdDetector):
                 est_footprint_diameter = max(image.shape[0] // image.grid.nrows, image.shape[1] // image.grid.ncols)
                 footprint = morphology.disk(est_footprint_diameter // 2)
             elif isinstance(image, Image):
-                # Not enough information with a normal _root_image to infer
+                # Not enough information with a normal image to infer
                 footprint = None
 
         binary = enhanced_matrix > filters.threshold_otsu(enhanced_matrix)  # TODO: add alternative to otsu eventually?
+        binary = morphology.remove_small_objects(binary, min_size=min_size)
         dist_matrix = distance_transform_edt(binary)
         max_peak_indices = feature.peak_local_max(
             image=dist_matrix,

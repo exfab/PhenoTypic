@@ -19,7 +19,7 @@ class ImageAccessor:
     enable seamless operations on the _root_image's properties and data.
 
     Attributes:
-        _parent_image (Image): The parent _root_image object that this accessor interacts
+        _root_image (Image): The parent _root_image object that this accessor interacts
             with.
     """
 

@@ -8,7 +8,7 @@ import pandas as pd
 from skimage.measure import regionprops_table, regionprops
 from typing import List
 
-from phenotypic.util.constants_ import OBJECT, METADATA_LABELS, IMAGE_TYPES
+from phenotypic.util.constants_ import OBJECT, METADATA_LABELS, IMAGE_TYPES, BBOX
 from phenotypic.core.accessor_abstracts import ImageAccessor
 
 
@@ -37,7 +37,7 @@ class ObjectsAccessor(ImageAccessor):
         current_object = self.props[index]
         label = current_object.label
         object_image = self._root_image[current_object.slice]
-        object_image._image_type = IMAGE_TYPES.OBJECT
+        object_image.metadata[METADATA_LABELS.IMAGE_TYPE] = IMAGE_TYPES.OBJECT.value
         object_image.objmap[object_image.objmap[:] != label] = 0
         return object_image
 
@@ -95,26 +95,30 @@ class ObjectsAccessor(ImageAccessor):
         idx = self.get_object_idx(label_number)
         return self._root_image[self.props[idx].slice]
 
-    def info(self) -> pd.DataFrame:
+    def info(self, include_metadata=True) -> pd.DataFrame:
         """Returns a panda.DataFrame containing basic information about each object's label, bounds, and centroid in the image.
 
         This is useful for joining measurements across different tables.
         """
-        return pd.DataFrame(
+        info= pd.DataFrame(
             data=regionprops_table(
                 label_image=self._root_image.objmap[:],
                 properties=['label', 'centroid', 'bbox'],
             ),
         ).rename(columns={
             'label': OBJECT.LABEL,
-            'centroid-0': OBJECT.CENTER_RR,
-            'centroid-1': OBJECT.CENTER_CC,
-            'bbox-0': OBJECT.MIN_RR,
-            'bbox-1': OBJECT.MIN_CC,
-            'bbox-2': OBJECT.MAX_RR,
-            'bbox-3': OBJECT.MAX_CC,
+            'centroid-0':str(BBOX.CENTER_RR),
+            'centroid-1': str(BBOX.CENTER_CC),
+            'bbox-0': str(BBOX.MIN_RR),
+            'bbox-1': str(BBOX.MIN_CC),
+            'bbox-2': str(BBOX.MAX_RR),
+            'bbox-3': str(BBOX.MAX_CC),
         },
         ).set_index(OBJECT.LABEL)
+        if include_metadata:
+            return self._root_image.metadata.insert_metadata(info)
+        else:
+            return info
 
     def labels2series(self) -> pd.Series:
         """Returns a consistently named pandas.Series containing the label number for each object in the image. Useful as an index for joining different measurements"""

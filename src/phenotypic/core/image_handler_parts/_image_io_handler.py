@@ -167,6 +167,9 @@ class ImageIOHandler(ImageColorSpace):
           filename: path to .h5 file (will be created or appended)
           compression: compression filter (e.g., "gzip", "szip", or None)
           compression_opts: level for gzip (1–9)
+
+        Raises:
+            Warnings: If the phenotypic version does not match the version used when saving to the HDF5 file.
         """
         with h5py.File(filename, mode="a") as filehandler:
             # 1) Create image group if it doesnt already exist & sets grp obj

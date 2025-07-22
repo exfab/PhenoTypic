@@ -1,3 +1,8 @@
+from __future__ import annotations
+from typing import TYPE_CHECKING, Literal
+
+if TYPE_CHECKING: from phenotypic import Image
+
 import os
 from pathlib import Path
 
@@ -5,7 +10,6 @@ from typing import List
 import h5py
 from os import PathLike
 
-from phenotypic import Image, GridImage
 from phenotypic.util.constants_ import IO
 
 
@@ -33,7 +37,9 @@ class ImageSetCore:
         _hdf5_set_group_key (str): The group path in the HDF5 file where the image set is stored.
     """
 
-    def __init__(self, name: str, image_template: Image | None = None, image_list: List[Image] | None = None,
+    def __init__(self, name: str,
+                 image_template: Image | None = None,
+                 image_list: List[Image] | None = None,
                  src_path: PathLike | None = None,
                  out_path: PathLike | None = None,
                  overwrite: bool = False, ):
@@ -66,10 +72,11 @@ class ImageSetCore:
             ValueError: If `image_list` is not a list of `Image` objects or `src_path`
                 is not a valid HDF5 file.
         """
+        import phenotypic
         self.name = name
 
-        assert isinstance(image_template, (Image, type(None))), "image_template must be an Image object or None."
-        self.image_template = image_template if image_template else GridImage(ncols=12, nrows=8)
+        assert isinstance(image_template, (phenotypic.Image, type(None))), "image_template must be an Image object or None."
+        self.image_template = image_template if image_template else phenotypic.GridImage(ncols=12, nrows=8)
 
         # Only an image_list xor src_path should be given
         assert (image_list and src_path is None) or (image_list is None and src_path), 'Only one of image_list or src_path can be provided.'
@@ -81,8 +88,9 @@ class ImageSetCore:
         # Define hdf5 group paths
         self._hdf5_parent_group_key = IO.IMAGE_SET_HDF5_PARENT_GROUP
         self._hdf5_set_group_key = self._hdf5_parent_group_key / self.name
+
+        # Reminder: Measurements are stored with each image
         self._hdf5_image_group_key = self._hdf5_set_group_key / 'images'
-        self._hdf5_measurement_group_key = self._hdf5_set_group_key / 'measurements'
 
         # If input source path handling
         if src_path:
@@ -131,13 +139,13 @@ class ImageSetCore:
                     out_set_group = self._get_hdf5_group(out_handler, self._hdf5_set_group_key)
 
                     for fname in image_filenames:
-                        image = Image.imread(src_path / fname)
+                        image = self.image_template.imread(src_path / fname)
                         image._save_image2hdf5(grp=out_set_group, compression="gzip", compression_opts=4)
 
         # Image list handling
         # Only need out handler for this
         elif isinstance(image_list, list):
-            assert all(isinstance(x, Image) for x in image_list), 'image_list must be a list of Image objects.'
+            assert all(isinstance(x, phenotypic.Image) for x in image_list), 'image_list must be a list of Image objects.'
             with h5py.File(out_path, mode='a') as out_handler:
                 out_group = self._get_hdf5_group(out_handler, IO.IMAGE_SET_HDF5_PARENT_GROUP)
 
@@ -203,9 +211,19 @@ class ImageSetCore:
             names = set_group.keys()
         return list(names)
 
+    def get_image(self, image_name: str) -> Image:
+        with h5py.File(self._out_path, mode='r', libver='latest', swmr=True) as reader:
+            image_group = reader[self._hdf5_image_group_key]
+            if image_name in image_group:
+                return self.image_template._load_from_hdf5_group(image_group[image_name])
+            else:
+                raise ValueError(f'Image named {image_name} not found in ImageSet {self.name}.')
+
     def iter_images(self) -> iter:
         for image_name in self.get_image_names():
-            with h5py.File(self._out_path, mode='r') as out_handler:
-                pass
+            with h5py.File(self._out_path, mode='r', libver='latest', swmr=True) as out_handler:
+                image_group = self._get_hdf5_group(out_handler, self._hdf5_image_group_key/image_name)
+                image = self.image_template._load_from_hdf5_group(image_group)
+            yield image
 
                 # TODO: Make Image hdf5 loader

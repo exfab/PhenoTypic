@@ -28,7 +28,7 @@ class HsvAccessor(ImageAccessor):
     properties play a significant role.
 
     Attributes:
-        _parent_image (Image): The parent Image object that manages image data and operations.
+        _root_image (Image): The parent Image object that manages image data and operations.
     """
 
     @property

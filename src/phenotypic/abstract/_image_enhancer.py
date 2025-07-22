@@ -6,7 +6,6 @@ if TYPE_CHECKING: from phenotypic import Image
 import numpy as np
 from ._image_operation import ImageOperation
 from phenotypic.util.exceptions_ import InterfaceError, DataIntegrityError, OperationFailedError
-from phenotypic.util.constants_ import IMAGE_FORMATS
 from phenotypic.util.funcs_ import validate_operation_integrity
 
 

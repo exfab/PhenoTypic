@@ -2,7 +2,7 @@ from scipy.spatial.distance import euclidean
 
 from phenotypic.abstract import MapModifier
 from phenotypic import Image
-from phenotypic.util.constants_ import OBJECT
+from phenotypic.util.constants_ import OBJECT, BBOX
 
 
 class CenterDeviationReducer(MapModifier):
@@ -20,7 +20,7 @@ class CenterDeviationReducer(MapModifier):
 
         # Add a column to the bound info for center deviation
         bound_info.loc[:, 'Measurement_CenterDeviation'] = bound_info.apply(
-            lambda row: euclidean(u=[row[OBJECT.CENTER_CC], row[OBJECT.CENTER_RR]],
+            lambda row: euclidean(u=[row[str(BBOX.CENTER_CC)], row[str(BBOX.CENTER_RR)]],
                                   v=[img_center_cc, img_center_rr]
                                   ),
             axis=1
