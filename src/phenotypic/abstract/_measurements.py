@@ -78,7 +78,7 @@ class Measurements:
 
         Args:
             group: HDF5 group object containing the DataFrame data
-            measurement_key: name of the subgroup containing the DataFrame data
+            measurement_k2ey: name of the subgroup containing the DataFrame data
 
         Returns:
             pandas DataFrame with original data types preserved

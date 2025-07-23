@@ -10,6 +10,7 @@ import numpy as np
 import pickle
 from os import PathLike
 from pathlib import Path
+import posixpath
 from packaging.version import Version
 
 import skimage as ski
@@ -17,6 +18,7 @@ import skimage as ski
 import phenotypic
 from phenotypic.util.exceptions_ import UnsupportedFileTypeError
 from phenotypic.util.constants_ import IMAGE_FORMATS, IO
+from phenotypic.util import HDF
 from ._image_color_handler import ImageColorSpace
 
 class ImageIOHandler(ImageColorSpace):
@@ -34,16 +36,16 @@ class ImageIOHandler(ImageColorSpace):
     @classmethod
     def imread(cls, filepath: PathLike) -> Image:
         """
-        Reads an _root_image file from a given file path, processes it as per its format, and sets the _root_image
+        Reads an image file from a given file path, processes it as per its format, and sets the image
         along with its schema in the current instance. Supports RGB formats (png, jpg, jpeg) and
-        grayscale formats (tif, tiff). The name of the _root_image processing instance is updated to match
+        grayscale formats (tif, tiff). The name of the image processing instance is updated to match
         the file name without the extension. If the file format is unsupported, an exception is raised.
 
         Args:
-            filepath (PathLike): Path to the _root_image file to be read.
+            filepath (PathLike): Path to the image file to be read.
 
         Returns:
-            Type[Image]: The current instance with the newly loaded _root_image and schema.
+            Type[Image]: The current instance with the newly loaded image and schema.
 
         Raises:
             UnsupportedFileType: If the file format is not supported.
@@ -114,28 +116,28 @@ class ImageIOHandler(ImageColorSpace):
         image_group = self._get_hdf5_group(grp, self.name)
 
         array = self.array[:]
-        self._save_array2hdf5(
+        HDF.save_array2hdf5(
             group=image_group, array=array, name="array",
             dtype=array.dtype,
             compression=compression, compression_opts=compression_opts,
         )
 
         matrix = self.matrix[:]
-        self._save_array2hdf5(
+        HDF.save_array2hdf5(
             group=image_group, array=matrix, name="matrix",
             dtype=matrix.dtype,
             compression=compression, compression_opts=compression_opts,
         )
 
         enh_matrix = self.enh_matrix[:]
-        self._save_array2hdf5(
+        HDF.save_array2hdf5(
             group=image_group, array=enh_matrix, name="enh_matrix",
             dtype=enh_matrix.dtype,
             compression=compression, compression_opts=compression_opts,
         )
 
         objmap = self.objmap[:]
-        self._save_array2hdf5(
+        HDF.save_array2hdf5(
             group=image_group, array=objmap, name="objmap",
             dtype=objmap.dtype,
             compression=compression, compression_opts=compression_opts,

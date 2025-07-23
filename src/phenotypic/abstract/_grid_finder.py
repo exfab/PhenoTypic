@@ -15,6 +15,9 @@ class GridFinder(GridMeasureFeatures):
     GridFinder measures grid information from the objects in various ways. Using the names here allows for streamlined integration.
     Unlike other Grid series interfaces, GridExtractors can work on regular images and should not be dependent on the GridImage class.
 
+    Note:
+        - GridFinders should implement self.get_row_edges() and self.get_col_edges() methods to get the row and column edges for the grid.
+
     Parameters:
         nrows (int): Number of rows in the grid.
         ncols (int): Number of columns in the grid.

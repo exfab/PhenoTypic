@@ -1,3 +1,13 @@
+"""
+A module dedicated to performing various image-related and measurement operations.
+
+This module provides an extensive suite of tools for image manipulation, object detection,
+grid operations, and measurements. It includes features for image enhancement, image correction,
+threshold-based detection, and working with structured grids. This module also facilitates
+measurement operations related to features or grid data. It serves as a foundational module
+in applications requiring advanced image and measurement operations.
+"""
+
 from ._measurement_info import MeasurementInfo
 from ._measure_features import MeasureFeatures
 from ._image_operation import ImageOperation

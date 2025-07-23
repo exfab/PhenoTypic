@@ -54,7 +54,7 @@ def test_batch_apply_and_measure(tmp_path):
 
     # Verify images and measurements got written to HDF5
     with h5py.File(imageset._out_path, "r", libver="latest", swmr=True) as h5:
-        grp = h5[str(imageset._hdf5_image_group_key)]
+        grp = h5[str(imageset._hdf5_images_group_key)]
         assert len(grp) == len(imageset.get_image_names())
         for name in imageset.get_image_names():
             assert name in grp

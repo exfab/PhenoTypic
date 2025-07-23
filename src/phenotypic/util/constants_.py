@@ -15,6 +15,7 @@ from enum import Enum
 from packaging.version import Version
 from pathlib import Path
 
+
 class MeasurementInfo(Enum):
     """
     The labels and descriptions of the measurement information. This class helps with module consistency and documentation automation.
@@ -43,7 +44,7 @@ class MeasurementInfo(Enum):
     @classmethod
     def get_headers(cls):
         """Return full measurement info labels for use in pandas dataframe columns."""
-        return [f'{x}' for x in cls.iter_labels()]
+        return [f'{x}' for x in cls.iter_labels() if cls.name.endswith('_') is False]
 
     @classmethod
     def rst_table(
@@ -97,14 +98,15 @@ class MeasurementInfo(Enum):
             return module.__doc__ + "\n\n" + cls.rst_table()
 
 
-DEFAULT_MPL_IMAGE_FIGSIZE = (8,6)
+DEFAULT_MPL_IMAGE_FIGSIZE = (8, 6)
 
 if Version(phenotypic.__version__) < Version("0.7.1"):
     SINGLE_IMAGE_HDF5_PARENT_GROUP = Path(f'phenotypic/')
 else:
     SINGLE_IMAGE_HDF5_PARENT_GROUP = Path(f'phenotypic/Image/')
 
-IMAGE_SET_PARENT_GROUP = Path(f'phenotypic/ImageSet/')
+IMAGE_SET_PARENT_GROUP = f'phenotypic/ImageSet/'
+
 
 # Image format constants
 class IMAGE_FORMATS(Enum):
@@ -144,10 +146,12 @@ class OBJECT:
     """Constants for object information properties."""
     LABEL = 'ObjectLabel'
 
+
 class BBOX(MeasurementInfo):
     @property
     def CATEGORY(self) -> str:
         return 'Bbox'
+
     CENTER_RR = 'CenterRR', 'The row coordinate of the center of the bounding box.'
     MIN_RR = 'MinRR', 'The smallest row coordinate of the bounding box.'
     MAX_RR = 'MaxRR', 'The largest row coordinate of the bounding box.'
@@ -155,17 +159,40 @@ class BBOX(MeasurementInfo):
     MIN_CC = 'MinCC', ' The smallest column coordinate of the bounding box.'
     MAX_CC = 'MaxCC', ' The largest column coordinate of the bounding box.'
 
+
 class IO:
     ACCEPTED_FILE_EXTENSIONS = ('.png', '.jpg', '.jpeg', '.tif', '.tiff')
 
     if Version(phenotypic.__version__) < Version("0.7.1"):
         SINGLE_IMAGE_HDF5_PARENT_GROUP = Path(f'phenotypic/')
     else:
-        SINGLE_IMAGE_HDF5_PARENT_GROUP = Path(f'phenotypic/images/')
+        SINGLE_IMAGE_HDF5_PARENT_GROUP = f'/phenotypic/images/'
 
-    IMAGE_SET_HDF5_PARENT_GROUP = Path(f'phenotypic/image_sets/')
+    IMAGE_SET_HDF5_PARENT_GROUP = f'/phenotypic/image_sets/'
 
     IMAGE_MEASUREMENT_IMAGE_SUBGROUP_KEY = 'measurements'
+    IMAGE_STATUS_SUBGROUP_KEY = "status"
+
+
+class SET_STATUS(MeasurementInfo):
+    """Constants for image set status."""
+    # should be placed in <image_name>/{SUBGROUP_KEY}
+    SUBGROUP_KEY_ = "status"
+
+    @property
+    def CATEGORY(self) -> str:
+        return 'Status'
+
+    PROCESSED = 'Processed', "Whether the image has been processed successfully."
+    MEASURED = 'Measured', "Whether the image has been measured successfully."
+    ERROR = 'Error', "Whether the image has encountered an error during processing."
+    VALID_ANALYSIS = (
+        'AnalysisValid',
+        'Whether the image measurements are considered valid. '
+        'This can be set during measurement extraction or post-processing.'
+    )
+    VALID_SEGMENTATION = 'SegmentationValid', "Whether the image segmentation is considered valid."
+
 
 # Grid constants
 class GRID:
@@ -214,5 +241,3 @@ class IMAGE_TYPES(Enum):
 
     def __str__(self):
         return self.value
-
-

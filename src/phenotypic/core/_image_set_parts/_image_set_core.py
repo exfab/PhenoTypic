@@ -6,6 +6,7 @@ import pandas as pd
 if TYPE_CHECKING: from phenotypic import Image
 
 import os
+import posixpath
 from pathlib import Path
 
 from typing import List
@@ -14,6 +15,9 @@ from os import PathLike
 
 from phenotypic.abstract import Measurements
 from phenotypic.util.constants_ import IO
+from phenotypic.util import HDF
+
+
 
 class ImageSetCore:
     """
@@ -86,14 +90,17 @@ class ImageSetCore:
 
         src_path, out_path = Path(src_path) if src_path else None, Path(out_path) if out_path else Path.cwd() / f'{self.name}.hdf5'
         self.name, self._src_path, self._out_path = str(name), src_path, out_path
+        self._main_hdf = HDF(filepath=out_path, )
+
         self._overwrite = overwrite
 
         # Define hdf5 group paths
-        self._hdf5_parent_group_key = IO.IMAGE_SET_HDF5_PARENT_GROUP
-        self._hdf5_set_group_key = self._hdf5_parent_group_key / self.name
+        self._hdf5_parent_group_key: str = IO.IMAGE_SET_HDF5_PARENT_GROUP
+        self._hdf5_set_group_key: str = posixpath.join(self._hdf5_parent_group_key, self.name)
 
         # Reminder: Measurements are stored with each image
-        self._hdf5_image_group_key = self._hdf5_set_group_key / 'images'
+        #   self._hdf5_images_group_key/images/<image_name>/measurements <- that image's measurements
+        self._hdf5_images_group_key: str = posixpath.join(self._hdf5_set_group_key, 'images')
 
         # If input source path handling
         if src_path:
@@ -105,7 +112,7 @@ class ImageSetCore:
 
             # If src and out are different
             elif src_path.is_file() and src_path.suffix == '.h5':
-                with h5py.File(src_path, mode='a') as src_filehandler, h5py.File(out_path, mode='a') as out_filehandler:
+                with h5py.File(src_path, mode='a') as src_filehandler, h5py.File(self._out_path, mode='a') as out_filehandler:
                     src_parent_group = self._get_hdf5_group(src_filehandler, self)
                     out_parent_group = self._get_hdf5_group(out_filehandler, str(self._hdf5_parent_group_key))
 
@@ -121,7 +128,7 @@ class ImageSetCore:
 
                     #   else import all the images from Image section
                     elif IO.SINGLE_IMAGE_HDF5_PARENT_GROUP in src_filehandler:
-                        src_image_group = self._get_hdf5_group(src_filehandler, IO.SINGLE_IMAGE_HDF5_PARENT_GROUP)
+                        src_image_group = self._get_hdf5_group(src_filehandler, self._hdf5_parent_group_key)
 
                         # overwrite if overwrite is true
                         if self.name in out_parent_group and overwrite is True: del out_parent_group[self.name]
@@ -139,7 +146,7 @@ class ImageSetCore:
 
                     # Overwrite handling
                     if self.name in out_group and overwrite is True: del out_group[self.name]
-                    out_image_group = self._get_hdf5_group(out_handler, self._hdf5_image_group_key)
+                    out_image_group = self._get_hdf5_group(out_handler, self._hdf5_images_group_key)
 
                     for fname in image_filenames:
                         image = self.image_template.imread(src_path / fname)
@@ -154,12 +161,29 @@ class ImageSetCore:
 
                 # Overwrite the data in the output folder
                 if self.name in out_group and overwrite is True: del out_group[self.name]
-                out_image_group = self._get_hdf5_group(out_handler, self._hdf5_image_group_key)
+                out_image_group = self._get_hdf5_group(out_handler, self._hdf5_images_group_key)
 
                 for image in image_list:
                     image._save_image2hdf5(grp=out_image_group, compression="gzip", compression_opts=4)
         else:
             raise ValueError('image_list must be a list of Image objects or src_path must be a valid hdf5 file.')
+
+    @property
+    def _hdf5_safe_writer(self)-> h5py.File:
+        return h5py.File(self._out_path, mode='a', libver='latest')
+
+    @property
+    def _hdf5_writer(self)->h5py.File:
+        return h5py.File(self._out_path, mode='r+', libver='latest')
+
+    @property
+    def _hdf5_reader(self)->h5py.File:
+        try:
+            return h5py.File(self._out_path, mode='r', libver='latest', swmr=True)
+        except (RuntimeError, ValueError):
+            return h5py.File(self._out_path, mode='r', libver='latest')
+
+
 
     def _add_image2group(self, group, image: Image, overwrite: bool):
         """Helper function to add an image to a group that allows for reusing file handlers"""
@@ -167,6 +191,7 @@ class ImageSetCore:
             raise ValueError(f'Image named {image.name} already exists in ImageSet {self.name}.')
         else:
             image._save_image2hdf5(grp=group, compression="gzip", compression_opts=4)
+
 
     def add_image(self, image: Image, overwrite: bool | None = None):
         """
@@ -186,9 +211,10 @@ class ImageSetCore:
         Raises:
             ValueError: If the `overwrite` flag is set to False and the image name is already in the ImageSet
         """
-        with h5py.File(self._out_path, mode='r+') as out_handler:
-            set_group = self._get_hdf5_group(out_handler, self._hdf5_set_group_key)
+        with self._main_hdf.writer as writer:
+            set_group = self._main_hdf.get_group(writer, self._hdf5_images_group_key)
             self._add_image2group(group=set_group, image=image, overwrite=overwrite if overwrite else self._overwrite)
+
 
     @staticmethod
     def _get_hdf5_group(handler, name):
@@ -210,21 +236,21 @@ class ImageSetCore:
             List[str]: A list of image names present in the specified HDF5 group.
         """
         with h5py.File(self._out_path, mode='r') as out_handler:
-            set_group = self._get_hdf5_group(out_handler, self._hdf5_image_group_key)
+            set_group = self._get_hdf5_group(out_handler, self._hdf5_images_group_key)
             names = list(set_group.keys())
         return names
 
     def get_image(self, image_name: str) -> Image:
         with h5py.File(self._out_path, mode='r', libver='latest', swmr=True) as reader:
-            image_group = reader[str(self._hdf5_image_group_key)]
+            image_group = reader[str(self._hdf5_images_group_key)]
             if image_name in image_group:
                 return self.image_template._load_from_hdf5_group(image_group[image_name])
             else:
                 raise ValueError(f'Image named {image_name} not found in ImageSet {self.name}.')
 
-    def get_measurement(self, image_name: str)->pd.DataFrame:
+    def get_measurement(self, image_name: str) -> pd.DataFrame:
         with h5py.File(self._out_path, mode='r', libver='latest', swmr=True) as reader:
-            images_group = reader[str(self._hdf5_image_group_key)]
+            images_group = reader[str(self._hdf5_images_group_key)]
             if image_name in images_group:
                 image_group = images_group[image_name]
                 if IO.IMAGE_MEASUREMENT_IMAGE_SUBGROUP_KEY in image_group:
@@ -237,6 +263,6 @@ class ImageSetCore:
     def iter_images(self) -> iter:
         for image_name in self.get_image_names():
             with h5py.File(self._out_path, mode='r', libver='latest', swmr=True) as out_handler:
-                image_group = self._get_hdf5_group(out_handler, self._hdf5_image_group_key/image_name)
+                image_group = self._get_hdf5_group(out_handler, posixpath.join(self._hdf5_images_group_key, image_name))
                 image = self.image_template._load_from_hdf5_group(image_group)
             yield image

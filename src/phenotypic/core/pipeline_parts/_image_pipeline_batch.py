@@ -265,7 +265,7 @@ class ImagePipelineBatch(ImagePipelineCore):
             reader = h5py.File(imageset._out_path, "r", libver="latest")
 
         with reader:
-            img_group = imageset._get_hdf5_group(reader, imageset._hdf5_image_group_key)
+            img_group = imageset._get_hdf5_group(reader, imageset._hdf5_images_group_key)
             for name in image_names:
                 if stop_event.is_set():
                     break
@@ -342,7 +342,7 @@ class ImagePipelineBatch(ImagePipelineCore):
         # Open file in append mode to avoid conflicts with existing readers
         # Create with proper version for SWMR compatibility
         with h5py.File(imageset._out_path, "a", libver="latest") as writer:
-            set_group = imageset._get_hdf5_group(writer, str(imageset._hdf5_image_group_key))
+            set_group = imageset._get_hdf5_group(writer, str(imageset._hdf5_images_group_key))
             # Only enable SWMR if file version supports it
             try:
                 writer.swmr_mode = True  # enable SWMR once file is opened for writing
@@ -384,7 +384,7 @@ class ImagePipelineBatch(ImagePipelineCore):
 
                 if measurement is not None:
                     # Store measurement data using utility function
-                    meas_group_name = f"{imageset._hdf5_image_group_key}/{name}"
+                    meas_group_name = f"{imageset._hdf5_images_group_key}/{name}"
                     if meas_group_name in writer:
                         meas_group = writer[meas_group_name]
                     else:
@@ -408,7 +408,7 @@ class ImagePipelineBatch(ImagePipelineCore):
         measurements_list = []
         
         with h5py.File(imageset._out_path, "r", libver="latest", swmr=True) as reader:
-            image_group = reader[str(imageset._hdf5_image_group_key)]
+            image_group = reader[str(imageset._hdf5_images_group_key)]
             
             for image_name in image_group.keys():
                 image_subgroup = image_group[image_name]
