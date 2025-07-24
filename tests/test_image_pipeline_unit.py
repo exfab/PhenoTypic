@@ -45,8 +45,8 @@ def _make_imageset(tmp_path: Path):
 
 def _make_dummy_imageset(tmp_path: Path):
     images = [
-        Image(np.full(shape=(2,2), fill_value=1), name='image1'),
-        Image(np.full(shape=(3,3), fill_value=1), name='image2'),
+        Image(np.full(shape=(2,2, 3), fill_value=1), name='image1'),
+        Image(np.full(shape=(3,3, 3), fill_value=1), name='image2'),
     ]
     return ImageSet(
         name='iset',
@@ -79,11 +79,11 @@ def test_batch_apply_and_measure(tmp_path):
 
     df = pipe.apply_and_measure(imageset, num_workers=1, verbose=False)
     print(df)
-    assert all([x in df.loc[:,'Sum'] for x in [4, 9]]), "runtime aggregated sum of objects should be 4 and 9"
+    assert all([x in df.loc[:,'Sum'] for x in [12, 27]]), "runtime aggregated sum of objects should be 4 and 9"
 
     alt_df = imageset.get_measurement()
     print(alt_df)
-    assert all([x in alt_df.loc[:,'Sum'] for x in [4, 9]]), "post-runtime aggregated sum of objects should be 4 and 9"
+    assert all([x in alt_df.loc[:,'Sum'] for x in [12, 27]]), "post-runtime aggregated sum of objects should be 4 and 9"
 
 
     # Verify images and measurements got written to HDF5
