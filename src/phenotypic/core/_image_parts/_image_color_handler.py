@@ -3,12 +3,11 @@ from typing import TYPE_CHECKING, Literal
 
 if TYPE_CHECKING: from phenotypic import Image
 
-from typing import Optional, Union
 import numpy as np
 from skimage.color import rgb2hsv
 from os import PathLike
 
-from ..accessors import HsvAccessor
+from phenotypic.core._image_parts.accessors import HsvAccessor
 from ._image_objects_handler import ImageObjectsHandler
 from phenotypic.util.constants_ import IMAGE_FORMATS
 from phenotypic.util.exceptions_ import IllegalAssignmentError

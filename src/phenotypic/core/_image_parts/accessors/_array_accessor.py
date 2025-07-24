@@ -1,11 +1,10 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib as mpl
 from typing import Optional
 
 import skimage
 
-from phenotypic.core.accessor_abstracts import ImageArrDataAccessor
+from phenotypic.core._image_parts.accessor_abstracts import ImageArrDataAccessor
 from phenotypic.util.constants_ import IMAGE_FORMATS
 from phenotypic.util.exceptions_ import ArrayKeyValueShapeMismatchError, NoArrayError, EmptyImageError
 

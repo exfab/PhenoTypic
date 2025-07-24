@@ -9,7 +9,7 @@ if TYPE_CHECKING: from phenotypic import Image
 
 import numpy as np
 
-from ..accessors import ObjectsAccessor
+from phenotypic.core._image_parts.accessors import ObjectsAccessor
 from ._image_handler import ImageHandler
 
 

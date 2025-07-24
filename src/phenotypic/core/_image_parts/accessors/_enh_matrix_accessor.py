@@ -1,17 +1,11 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
 
-if TYPE_CHECKING: from phenotypic import Image
-
-from typing import Optional, Tuple
+if TYPE_CHECKING: pass
 
 import numpy as np
 
-import matplotlib.pyplot as plt
-from skimage.color import label2rgb
-from skimage.exposure import histogram
-
-from phenotypic.core.accessor_abstracts import ImageMatrixDataAccessor
+from phenotypic.core._image_parts.accessor_abstracts import ImageMatrixDataAccessor
 from phenotypic.util.exceptions_ import ArrayKeyValueShapeMismatchError, EmptyImageError
 
 

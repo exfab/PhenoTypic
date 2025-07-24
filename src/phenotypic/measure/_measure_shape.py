@@ -6,17 +6,20 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING: from phenotypic import Image
 
+import warnings
 import pandas as pd
-from scipy.spatial import ConvexHull
+from scipy.spatial import ConvexHull, qhull
 from scipy.ndimage import distance_transform_edt
 import numpy as np
 
-from phenotypic.abstract import MeasureFeatures
+from phenotypic.abstract import MeasurementInfo, MeasureFeatures
 
 
-class SHAPE(Enum):
+class SHAPE(MeasurementInfo):
     """The labels and descriptions of the shape measurements."""
-    CATEGORY = ('Shape', 'The category of the measurements')
+    @property
+    def CATEGORY(self):
+        return 'Shape'
 
     AREA = ('Area', "The sum of the object's pixels")
     PERIMETER = ('Perimeter', "The perimeter of the object's pixels")
@@ -60,16 +63,10 @@ class MeasureShape(MeasureFeatures):
     Returns:
         pd.DataFrame: A dataframe containing the geometric measures of the objects in the _root_image.
 
-    Notes:
-        Area: The sum of the individual pixel's in the object's footprint
-        Perimeter: The length of the object's boundary
-        Circularity: Calculated as :math:`\frac{4\pi \cdot \text{Area}}{\text{Perimeter}^2}`
-        ConvexArea: The area of the convex hull of the object
-
     References:
         1. D. R. Stirling, M. J. Swain-Bowden, A. M. Lucas, A. E. Carpenter, B. A. Cimini, and A. Goodman,
             “CellProfiler 4: improvements in speed, utility and usability,” BMC Bioinformatics, vol. 22, no. 1, p. 433, Sep. 2021, doi: 10.1186/s12859-021-04344-9.
-        2. “Shape factor (_root_image analysis and microscopy),” Wikipedia. Oct. 09, 2021. Accessed: Apr. 08, 2025. [Online].
+        2. “Shape factor (image analysis and microscopy),” Wikipedia. Oct. 09, 2021. Accessed: Apr. 08, 2025. [Online].
             Available: https://en.wikipedia.org/w/index.php?title=Shape_factor_(image_analysis_and_microscopy)&oldid=1048998776
 
     """
@@ -100,18 +97,17 @@ class MeasureShape(MeasureFeatures):
             measurements[str(SHAPE.COMPACTNESS)][idx] = compactness
 
             try:
-                if current_props.area >= 3:
+                with warnings.catch_warnings():
+                    warnings.filterwarnings("ignore", message='Qhull')
                     convex_hull = ConvexHull(current_props.coords)
-                else:
-                    convex_hull = None
 
-            except KeyboardInterrupt:
-                raise KeyboardInterrupt
-            except Exception as e:
-                warnings.warn(f'Error in computing convex hull for object {current_props.label}: {e}')
+
+            except qhull.QhullError:
                 convex_hull = None
 
             measurements[str(SHAPE.CONVEX_AREA)][idx] = (convex_hull.area if convex_hull else np.nan)
             measurements[str(SHAPE.SOLIDITY)][idx] = ((current_props.area / convex_hull.area) if convex_hull else np.nan)
 
         return pd.DataFrame(measurements, index=image.objects.labels2series())
+
+MeasureShape.__doc__ = SHAPE.append_rst_to_doc(MeasureShape)

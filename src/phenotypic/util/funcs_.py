@@ -109,11 +109,7 @@ def validate_operation_integrity(*targets: str):
 
             # Navigate through the attribute chain to get the final array
             for attr in parts[1:]:
-                if hasattr(obj, attr):
-
-                    obj = getattr(obj, attr)[:]  # Use [:] to get a view of the array
-                else:
-                    obj = np.empty(shape=(0,))
+                obj = getattr(obj, attr)[:]  # Use [:] to get a view of the array
             # Ensure the result is a NumPy array
             if not isinstance(obj, np.ndarray):
                 raise OperationIntegrityError(

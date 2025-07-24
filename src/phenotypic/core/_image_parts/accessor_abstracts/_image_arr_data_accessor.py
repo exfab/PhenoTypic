@@ -1,12 +1,9 @@
 import numpy as np
 
-import warnings
-
 import skimage.util
 import matplotlib.pyplot as plt
 
-from phenotypic.core.accessor_abstracts import ImageAccessor
-from phenotypic.util.exceptions_ import InterfaceError
+from phenotypic.core._image_parts.accessor_abstracts import ImageAccessor
 
 
 class ImageArrDataAccessor(ImageAccessor):

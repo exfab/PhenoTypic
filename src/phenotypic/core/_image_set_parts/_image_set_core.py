@@ -195,7 +195,7 @@ class ImageSetCore:
         Raises:
             ValueError: If the `overwrite` flag is set to False and the image name is already in the ImageSet
         """
-        with self._main_hdf.writer as writer:
+        with self._main_hdf.writer() as writer:
             set_group = self._main_hdf.get_group(writer, self._hdf5_images_group_key)
             self._add_image2group(group=set_group, image=image, overwrite=overwrite if overwrite else self._overwrite)
 

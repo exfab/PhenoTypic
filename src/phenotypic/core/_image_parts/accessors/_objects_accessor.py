@@ -9,7 +9,7 @@ from skimage.measure import regionprops_table, regionprops
 from typing import List
 
 from phenotypic.util.constants_ import OBJECT, METADATA_LABELS, IMAGE_TYPES, BBOX
-from phenotypic.core.accessor_abstracts import ImageAccessor
+from phenotypic.core._image_parts.accessor_abstracts import ImageAccessor
 
 
 class ObjectsAccessor(ImageAccessor):

@@ -1,13 +1,13 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
 
-if TYPE_CHECKING: from phenotypic import Image
+if TYPE_CHECKING: pass
 
 from skimage.measure import label
 import matplotlib.pyplot as plt
 import numpy as np
 
-from phenotypic.core.accessor_abstracts import ImageArrDataAccessor
+from phenotypic.core._image_parts.accessor_abstracts import ImageArrDataAccessor
 from phenotypic.util.exceptions_ import InvalidMaskValueError, InvalidMaskScalarValueError, ArrayKeyValueShapeMismatchError
 
 
@@ -31,13 +31,13 @@ class ObjectMask(ImageArrDataAccessor):
         mask = self._root_image.objmap[:] > 0
 
         # Check to make sure the section of the mask the key accesses is the same as the other_image
-        if type(value) in (int, bool):
+        if isinstance(value, (int, bool)):
             try:
                 value = 1 if value != 0 else 0
                 mask[key] = value
             except TypeError:
                 raise InvalidMaskScalarValueError
-        elif type(value) == np.ndarray:
+        elif isinstance(value, np.ndarray):
             # Check input_image and section have matching shape
             if mask[key].shape != value.shape:
                 raise ArrayKeyValueShapeMismatchError

@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, Literal, List
 if TYPE_CHECKING: from phenotypic import Image
 
 import pandas as pd
+from phenotypic.abstract import Measurements
 from phenotypic.util.constants_ import SET_STATUS
 from ._image_set_status import ImageSetStatus
 
@@ -21,7 +22,7 @@ class ImageSetMeasurements(ImageSetStatus):
             if isinstance(image_names, str):
                 image_names = [image_names]
 
-        with self._main_hdf.reader as handle:
+        with self._main_hdf.reader() as handle:
             measurements = []
 
             # iterate over each image
@@ -34,7 +35,7 @@ class ImageSetMeasurements(ImageSetStatus):
                         and not status_group.attrs[SET_STATUS.ERROR.label]
                 ):
                     measurements.append(
-                        image_group[self._main_hdf.IMAGE_MEASUREMENT_SUBGROUP_KEY],
+                        Measurements._load_dataframe_from_hdf5_group(image_group[self._main_hdf.IMAGE_MEASUREMENT_SUBGROUP_KEY]),
                     )
                 else:
                     measurements.append(pd.DataFrame())

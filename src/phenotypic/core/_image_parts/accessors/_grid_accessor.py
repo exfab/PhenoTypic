@@ -5,16 +5,13 @@ if TYPE_CHECKING: from phenotypic import GridImage
 
 import numpy as np
 from typing import Tuple
-import warnings
 import matplotlib.pyplot as plt
 import pandas as pd
 from skimage.color import label2rgb
-from packaging import version
-import math
 
 import phenotypic
-from phenotypic.core.accessor_abstracts import ImageAccessor
-from phenotypic.util.constants_ import OBJECT, GRID, METADATA_LABELS, IMAGE_TYPES, BBOX
+from phenotypic.core._image_parts.accessor_abstracts import ImageAccessor
+from phenotypic.util.constants_ import GRID, METADATA_LABELS, IMAGE_TYPES, BBOX
 from phenotypic.util.exceptions_ import NoObjectsError
 
 

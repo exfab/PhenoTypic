@@ -20,12 +20,14 @@ from .resources.TestHelper import timeit
 
 class SumObjects(MeasureFeatures):
     def _operate(self, image: Image) -> pd.DataFrame:
-        return pd.DataFrame({'Sum':image.matrix[:].sum()}, index=image.objects.labels2series())
+        return pd.DataFrame({'Sum': image.array[:].sum()}, index=image.objects.labels2series())
+
 
 class DetectFull(ObjectDetector):
     def _operate(self, image: Image) -> Image:
-        image.objmap[:]=1
+        image.objmask[:] = 1
         return image
+
 
 # ---------------------------------------------------------------------------
 # Helper to build ImageSetCore with dummy images
@@ -43,17 +45,19 @@ def _make_imageset(tmp_path: Path):
         out_path=tmp_path / "iset.h5",
         overwrite=True)
 
+
 def _make_dummy_imageset(tmp_path: Path):
     images = [
-        Image(np.full(shape=(2,2, 3), fill_value=1), name='image1'),
-        Image(np.full(shape=(3,3, 3), fill_value=1), name='image2'),
+        Image(np.full(shape=(2, 2, 3), fill_value=1), name='image1'),
+        Image(np.full(shape=(3, 3, 3), fill_value=1), name='image2'),
     ]
     return ImageSet(
         name='iset',
         image_list=images,
         out_path=tmp_path / 'iset.h5',
-        overwrite=True
+        overwrite=True,
     )
+
 
 # ---------------------------------------------------------------------------
 # Tests for ImagePipelineCore
@@ -62,7 +66,7 @@ def _make_dummy_imageset(tmp_path: Path):
 @timeit
 def test_core_apply_and_measure():
     img = Image(load_plate_12hr(), name='12hr')
-    pipe = ImagePipeline(ops=[OtsuDetector(), BorderObjectRemover()], measurements=[MeasureShape()])
+    pipe = ImagePipeline(ops=[OtsuDetector(), BorderObjectRemover(border_size=1)], measurements=[SumObjects()])
 
     df = pipe.apply_and_measure(img)
     assert not df.empty
@@ -79,12 +83,11 @@ def test_batch_apply_and_measure(tmp_path):
 
     df = pipe.apply_and_measure(imageset, num_workers=1, verbose=False)
     print(df)
-    assert all([x in df.loc[:,'Sum'] for x in [12, 27]]), "runtime aggregated sum of objects should be 4 and 9"
+    assert all([x in df.loc[:, 'Sum'] for x in [12, 27]]), "runtime aggregated sum of objects should be 4 and 9"
 
     alt_df = imageset.get_measurement()
     print(alt_df)
-    assert all([x in alt_df.loc[:,'Sum'] for x in [12, 27]]), "post-runtime aggregated sum of objects should be 4 and 9"
-
+    assert all([x in alt_df.loc[:, 'Sum'] for x in [12, 27]]), "post-runtime aggregated sum of objects should be 4 and 9"
 
     # Verify images and measurements got written to HDF5
     with h5py.File(imageset._out_path, "r", libver="latest", swmr=True) as h5:

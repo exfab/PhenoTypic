@@ -37,7 +37,6 @@ class HDF:
             raise ValueError(f"Invalid mode {mode}")
 
 
-    @property
     def safe_writer(self) -> h5py.File:
         """
         Returns a writer object that provides safe and controlled write access to an
@@ -50,7 +49,6 @@ class HDF:
         """
         return h5py.File(self.filepath, 'a', libver='latest')
 
-    @property
     def writer(self) -> h5py.File:
         """
         Provides access to an HDF5 file in read/write mode using the `h5py` library. This
@@ -72,7 +70,6 @@ class HDF:
         """
         return h5py.File(self.filepath, 'r+', libver='latest')
 
-    @property
     def reader(self) -> h5py.File:
         try:
             return h5py.File(self.filepath, 'r', libver='latest', swmr=True)

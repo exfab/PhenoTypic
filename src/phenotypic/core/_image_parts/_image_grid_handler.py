@@ -10,11 +10,11 @@ from itertools import cycle
 from .._image import Image
 from phenotypic.measure import MeasureBounds
 from phenotypic.abstract import GridFinder
-from phenotypic.util.constants_ import IMAGE_FORMATS, OBJECT, IMAGE_TYPES, BBOX, METADATA_LABELS
+from phenotypic.util.constants_ import IMAGE_TYPES, BBOX, METADATA_LABELS
 from phenotypic.util.exceptions_ import IllegalAssignmentError
 from phenotypic.grid import OptimalCenterGridFinder
 
-from ..accessors import GridAccessor
+from phenotypic.core._image_parts.accessors import GridAccessor
 
 
 class ImageGridHandler(Image):

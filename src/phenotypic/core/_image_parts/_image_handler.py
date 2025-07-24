@@ -10,8 +10,6 @@ import numpy as np
 import skimage as ski
 import matplotlib.pyplot as plt
 from os import PathLike
-from pathlib import Path
-import warnings
 
 import skimage
 from skimage.color import rgb2gray, rgba2rgb
@@ -20,22 +18,18 @@ from scipy.ndimage import rotate as scipy_rotate
 from copy import deepcopy
 from typing import Type
 
-from scipy.sparse import csc_matrix
-
-from ..accessors import (
+from phenotypic.core._image_parts.accessors import (
     ImageArray,
     ImageMatrix,
     ImageEnhancedMatrix,
     ObjectMask,
     ObjectMap,
-    ObjectsAccessor,
     MetadataAccessor,
 )
 
 from phenotypic.util.constants_ import IMAGE_FORMATS, METADATA_LABELS, IMAGE_TYPES
 from phenotypic.util.exceptions_ import (
-    EmptyImageError, NoArrayError, NoObjectsError, IllegalAssignmentError,
-    UnsupportedFileTypeError
+    EmptyImageError, IllegalAssignmentError
 )
 
 

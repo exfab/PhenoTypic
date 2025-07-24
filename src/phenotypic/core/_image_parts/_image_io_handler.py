@@ -111,8 +111,11 @@ class ImageIOHandler(ImageColorSpace):
         else:
             group.create_dataset(name, data=array, **kwargs)
 
-    def _save_image2hdfgroup(self, grp, compression, compression_opts):
+    def _save_image2hdfgroup(self, grp, compression, compression_opts, overwrite=False,):
         """Saves the image as a new group into the input hdf5 group."""
+        if overwrite and self.name in grp:
+            del grp[self.name]
+
         # create the group container for the images information
         image_group = self._get_hdf5_group(grp, self.name)
 
@@ -200,7 +203,7 @@ class ImageIOHandler(ImageColorSpace):
             grp = self._get_hdf5_group(filehandler, IO.SINGLE_IMAGE_HDF5_PARENT_GROUP)
 
             # 2) Save large arrays as datasets with chunking & compression
-            self._save_image2hdfgroup(grp=grp, compression=compression, compression_opts=compression_opts)
+            self._save_image2hdfgroup(grp=grp, compression=compression, compression_opts=compression_opts, overwrite=overwrite,)
 
     @classmethod
     def _load_from_hdf5_group(cls, group)->Image:

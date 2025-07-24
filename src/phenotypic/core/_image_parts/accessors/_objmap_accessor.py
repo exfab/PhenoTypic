@@ -1,17 +1,16 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
 
-if TYPE_CHECKING: from phenotypic import Image
+if TYPE_CHECKING: pass
 
 import numpy as np
 
 from scipy.sparse import csc_matrix, coo_matrix
 import matplotlib.pyplot as plt
-from skimage.measure import regionprops_table, label
-from skimage.segmentation import clear_border
+from skimage.measure import label
 
-from phenotypic.core.accessor_abstracts import ImageArrDataAccessor
-from phenotypic.util.exceptions_ import UnknownError, ArrayKeyValueShapeMismatchError, InvalidMapValueError
+from phenotypic.core._image_parts.accessor_abstracts import ImageArrDataAccessor
+from phenotypic.util.exceptions_ import ArrayKeyValueShapeMismatchError, InvalidMapValueError
 
 
 class ObjectMap(ImageArrDataAccessor):

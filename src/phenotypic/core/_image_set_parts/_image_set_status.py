@@ -55,7 +55,7 @@ class ImageSetStatus(ImageSetCore):
             if isinstance(image_names, str):
                 image_names = [image_names]
 
-        with self._main_hdf.writer as handle:
+        with self._main_hdf.writer() as handle:
             for name in image_names:
                 status_group = self._main_hdf.get_image_status_subgroup(handle=handle, image_name=name)
                 for stat in SET_STATUS:
@@ -70,7 +70,7 @@ class ImageSetStatus(ImageSetCore):
             if isinstance(image_names, str):
                 image_names = [image_names]
 
-        with self._main_hdf.reader as handle:
+        with self._main_hdf.reader() as handle:
             status = []
             for name in image_names:
                 status_group = self._main_hdf.get_images_subgroup(handle=handle, image_name=name)

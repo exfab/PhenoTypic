@@ -1,18 +1,9 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING
-
-from typing import Optional, Tuple
 
 import numpy as np
 
-import matplotlib.pyplot as plt
-from skimage.color import gray2rgb
-from skimage.exposure import histogram
-
-from phenotypic.core.accessor_abstracts import ImageMatrixDataAccessor
+from phenotypic.core._image_parts.accessor_abstracts import ImageMatrixDataAccessor
 from phenotypic.util.exceptions_ import ArrayKeyValueShapeMismatchError, EmptyImageError
-from phenotypic.util.constants_ import IMAGE_FORMATS
-from warnings import warn
 
 
 class ImageMatrix(ImageMatrixDataAccessor):

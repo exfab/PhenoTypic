@@ -2,13 +2,10 @@ from typing import Tuple, Optional
 
 import numpy as np
 
-import warnings
-
 from skimage.exposure import histogram
 import matplotlib.pyplot as plt
 
-from phenotypic.core.accessor_abstracts import ImageArrDataAccessor
-from phenotypic.util.exceptions_ import InterfaceError, EmptyImageError, ArrayKeyValueShapeMismatchError
+from phenotypic.core._image_parts.accessor_abstracts import ImageArrDataAccessor
 
 
 class ImageMatrixDataAccessor(ImageArrDataAccessor):

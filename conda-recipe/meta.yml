@@ -13,7 +13,7 @@ requirements:
     - python
     - numpy
     - opencv
-    - scikit-_root_image
+    - scikit-image
     - scipy
     - pandas
     - matplotlib
@@ -22,7 +22,7 @@ requirements:
 about:
   home: https://github.com/Wheeldon-Lab/PhenoTypic
   license: GPL-3.0
-  summary: "An _root_image processing framework for rapid protocol development of phenotype _root_image analysis"
+  summary: "An image processing framework for rapid protocol development of phenotype _root_image analysis"
 
 extra:
   development_status: "Development Status :: 4 - Beta"
