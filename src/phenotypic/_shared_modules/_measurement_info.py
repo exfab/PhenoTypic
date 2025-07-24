@@ -1,5 +1,4 @@
 from enum import Enum
-from abc import ABC, abstractproperty
 from textwrap import dedent
 
 
@@ -23,15 +22,25 @@ class MeasurementInfo(Enum):
     def __str__(self):
         return f'{self.CATEGORY}_{self.label}'
 
+    def __iter__(self):
+        return (
+            member for member in super().__iter__()
+            if not hasattr(member, 'name') or member is not member.name != 'CATEGORY'
+        )
+
     @classmethod
     def iter_labels(cls):
         """Yield all measurement info members except CATEGORY."""
-        return (member for member in cls if member is not cls.CATEGORY)
+        return (member.label for member in cls if member is not cls.CATEGORY)
+
+    @classmethod
+    def get_labels(cls):
+        return [member.label for member in cls if member is not cls.CATEGORY]
 
     @classmethod
     def get_headers(cls):
         """Return full measurement info labels for use in pandas dataframe columns."""
-        return [f'{x}' for x in cls.iter_labels()]
+        return [f'{x}' for x in cls.iter_labels() if cls.name.endswith('_') is False]
 
     @classmethod
     def rst_table(
@@ -65,7 +74,7 @@ class MeasurementInfo(Enum):
             f"     - {right}",
         ]
 
-        for member in cls.iter_labels():
+        for member in cls:
             lines.extend(
                 [
                     f"   * - ``{member.label}``",

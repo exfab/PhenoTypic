@@ -67,7 +67,7 @@ class ObjectsAccessor(ImageAccessor):
         """Returns a list of image slices for each object in the image"""
         return [x.slice for x in self.props]
 
-    def get_object_idx(self, object_label):
+    def get_label_idx(self, object_label):
         """Returns the index of the object with the given label from a sorted array of object labels."""
         return np.where(self.labels == object_label)[0]
 
@@ -92,7 +92,7 @@ class ObjectsAccessor(ImageAccessor):
         Returns:
             (Image) The cropped bounding box of an object as an Image
         """
-        idx = self.get_object_idx(label_number)
+        idx = self.get_label_idx(label_number)
         return self._root_image[self.props[idx].slice]
 
     def info(self, include_metadata=True) -> pd.DataFrame:

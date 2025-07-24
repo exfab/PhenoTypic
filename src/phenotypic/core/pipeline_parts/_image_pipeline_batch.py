@@ -55,6 +55,7 @@ import h5py
 
 from .._image_set import ImageSet
 from phenotypic.abstract import Measurements
+from phenotypic.util.constants_ import SET_STATUS
 from ._image_pipeline_core import ImagePipelineCore
 
 
@@ -363,24 +364,32 @@ class ImagePipelineBatch(ImagePipelineCore):
                     finished_workers += 1
                     continue
 
+                status_group = imageset._main_hdf.get_image_status_subgroup(handle=writer, image_name=name)
+
                 # Process exceptions first
                 if img_bytes:
+                    status_group[SET_STATUS.PROCESSED.label] =True
                     try:
                         maybe_exc = pickle.loads(img_bytes)
                         if isinstance(maybe_exc, Exception):
                             warnings.warn(f"Worker failed processing {name}: {maybe_exc}")
+                            status_group[SET_STATUS.ERROR.label] = True
                             continue
                     except Exception as unpickle_error:
                         warnings.warn(f"Worker failed processing {name}: Could not unpickle exception - {unpickle_error}")
+                        status_group[SET_STATUS.ERROR.label] = True
                         continue
 
                 processed_img = pickle.loads(img_bytes) if img_bytes else None
+
                 measurement = pickle.loads(meas_bytes) if meas_bytes else None
+                if meas_bytes: status_group[SET_STATUS.MEASURED.label] = True
 
                 if processed_img is not None:
                     if name in set_group:
                         del set_group[name]
                     processed_img._save_image2hdf5(grp=set_group, compression="gzip", compression_opts=4)
+
 
                 if measurement is not None:
                     # Store measurement data using utility function

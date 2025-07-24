@@ -8,7 +8,7 @@ measurement operations related to features or grid data. It serves as a foundati
 in applications requiring advanced image and measurement operations.
 """
 
-from ._measurement_info import MeasurementInfo
+from phenotypic._shared_modules._measurement_info import MeasurementInfo
 from ._measure_features import MeasureFeatures
 from ._image_operation import ImageOperation
 from ._image_enhancer import ImageEnhancer

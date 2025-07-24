@@ -111,16 +111,18 @@ class ImageIOHandler(ImageColorSpace):
         else:
             group.create_dataset(name, data=array, **kwargs)
 
-    def _save_image2hdf5(self, grp, compression, compression_opts):
+    def _save_image2hdfgroup(self, grp, compression, compression_opts):
         """Saves the image as a new group into the input hdf5 group."""
+        # create the group container for the images information
         image_group = self._get_hdf5_group(grp, self.name)
 
-        array = self.array[:]
-        HDF.save_array2hdf5(
-            group=image_group, array=array, name="array",
-            dtype=array.dtype,
-            compression=compression, compression_opts=compression_opts,
-        )
+        if self._image_format.is_array():
+            array = self.array[:]
+            HDF.save_array2hdf5(
+                group=image_group, array=array, name="array",
+                dtype=array.dtype,
+                compression=compression, compression_opts=compression_opts,
+            )
 
         matrix = self.matrix[:]
         HDF.save_array2hdf5(
@@ -173,7 +175,7 @@ class ImageIOHandler(ImageColorSpace):
         for key, val in self._metadata.public.items():
             pub.attrs[key] = str(val)
 
-    def save2hdf5(self, filename, compression="gzip", compression_opts=4):
+    def save2hdf5(self, filename, compression="gzip", compression_opts=4, overwrite=False,):
         """
         Save an ImageHandler instance to an HDF5 file under /phenotypic/images<self.name>/.
 
@@ -198,7 +200,7 @@ class ImageIOHandler(ImageColorSpace):
             grp = self._get_hdf5_group(filehandler, IO.SINGLE_IMAGE_HDF5_PARENT_GROUP)
 
             # 2) Save large arrays as datasets with chunking & compression
-            self._save_image2hdf5(grp=grp, compression=compression, compression_opts=compression_opts)
+            self._save_image2hdfgroup(grp=grp, compression=compression, compression_opts=compression_opts)
 
     @classmethod
     def _load_from_hdf5_group(cls, group)->Image:

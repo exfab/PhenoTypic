@@ -7,16 +7,30 @@ from pathlib import Path
 
 import h5py
 import pandas as pd
+import numpy as np
 
 from phenotypic import ImagePipeline, Image, ImageSet
+from phenotypic.abstract import MeasureFeatures, ObjectDetector
+from phenotypic.objects import BorderObjectRemover
 from phenotypic.data import load_plate_12hr, load_plate_72hr
 from phenotypic.detection import OtsuDetector
 from phenotypic.measure import MeasureShape
+from .resources.TestHelper import timeit
 
+
+class SumObjects(MeasureFeatures):
+    def _operate(self, image: Image) -> pd.DataFrame:
+        return pd.DataFrame({'Sum':image.matrix[:].sum()}, index=image.objects.labels2series())
+
+class DetectFull(ObjectDetector):
+    def _operate(self, image: Image) -> Image:
+        image.objmap[:]=1
+        return image
 
 # ---------------------------------------------------------------------------
 # Helper to build ImageSetCore with dummy images
 # ---------------------------------------------------------------------------
+
 
 def _make_imageset(tmp_path: Path):
     images = [
@@ -29,14 +43,26 @@ def _make_imageset(tmp_path: Path):
         out_path=tmp_path / "iset.h5",
         overwrite=True)
 
+def _make_dummy_imageset(tmp_path: Path):
+    images = [
+        Image(np.full(shape=(2,2), fill_value=1), name='image1'),
+        Image(np.full(shape=(3,3), fill_value=1), name='image2'),
+    ]
+    return ImageSet(
+        name='iset',
+        image_list=images,
+        out_path=tmp_path / 'iset.h5',
+        overwrite=True
+    )
 
 # ---------------------------------------------------------------------------
 # Tests for ImagePipelineCore
 # ---------------------------------------------------------------------------
 
+@timeit
 def test_core_apply_and_measure():
     img = Image(load_plate_12hr(), name='12hr')
-    pipe = ImagePipeline(ops=[OtsuDetector()], measurements=[MeasureShape()])
+    pipe = ImagePipeline(ops=[OtsuDetector(), BorderObjectRemover()], measurements=[MeasureShape()])
 
     df = pipe.apply_and_measure(img)
     assert not df.empty
@@ -46,11 +72,19 @@ def test_core_apply_and_measure():
 # Tests for ImagePipelineBatch (single worker to keep CI light)
 # ---------------------------------------------------------------------------
 
+@timeit
 def test_batch_apply_and_measure(tmp_path):
-    imageset = _make_imageset(tmp_path)
-    pipe = ImagePipeline(ops=[OtsuDetector()], measurements=[MeasureShape()], verbose=False)
+    imageset = _make_dummy_imageset(tmp_path)
+    pipe = ImagePipeline(ops=[DetectFull()], measurements=[SumObjects()], verbose=False)
 
     df = pipe.apply_and_measure(imageset, num_workers=1, verbose=False)
+    print(df)
+    assert all([x in df.loc[:,'Sum'] for x in [4, 9]]), "runtime aggregated sum of objects should be 4 and 9"
+
+    alt_df = imageset.get_measurement()
+    print(alt_df)
+    assert all([x in alt_df.loc[:,'Sum'] for x in [4, 9]]), "post-runtime aggregated sum of objects should be 4 and 9"
+
 
     # Verify images and measurements got written to HDF5
     with h5py.File(imageset._out_path, "r", libver="latest", swmr=True) as h5:

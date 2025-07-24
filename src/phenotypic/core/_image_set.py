@@ -1,4 +1,4 @@
-from ._image_set_parts import ImageSetCore
+from ._image_set_parts._image_set_measurements import ImageSetMeasurements
 
-class ImageSet(ImageSetCore):
+class ImageSet(ImageSetMeasurements):
     pass

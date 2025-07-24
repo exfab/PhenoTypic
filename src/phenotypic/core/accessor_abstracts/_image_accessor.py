@@ -7,7 +7,7 @@ import skimage
 import matplotlib.pyplot as plt
 import numpy as np
 
-from phenotypic.util.constants_ import DEFAULT_MPL_IMAGE_FIGSIZE
+from phenotypic.util.constants_ import MPL
 
 
 class ImageAccessor:
@@ -53,7 +53,7 @@ class ImageAccessor:
             tuple[plt.Figure, plt.Axes]: A tuple containing the created or passed Matplotlib `Figure` and `Axes` objects.
 
         """
-        figsize = figsize if figsize else DEFAULT_MPL_IMAGE_FIGSIZE
+        figsize = figsize if figsize else MPL.FIGSIZE.value
         fig, ax = (ax.get_figure(), ax) if ax else plt.subplots(figsize=figsize)
 
         mpl_kwargs = mpl_kwargs if mpl_kwargs else {}

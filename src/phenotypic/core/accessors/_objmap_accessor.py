@@ -59,8 +59,9 @@ class ObjectMap(ImageArrDataAccessor):
             raise InvalidMapValueError
 
         # Protects against the case that the obj map is set on the filled mask that returns when no objects are in the _root_image
-        if 0 not in dense:
-            dense = clear_border(dense, buffer_size=0, bgval=1)
+        # Note: removed due to confusing behavior
+        # if 0 not in dense:
+        #     dense = clear_border(dense, buffer_size=0, bgval=1)
 
         self._root_image._data.sparse_object_map = self._dense_to_sparse(dense)
         self._root_image._data.sparse_object_map.eliminate_zeros()  # Remove zero values to save space

@@ -376,7 +376,7 @@
         <mxCell id="kQ2yV8AIbiC1aDz_2Qq--124" value="+- __getitem__(index)" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" parent="kQ2yV8AIbiC1aDz_2Qq--115" vertex="1">
           <mxGeometry y="232" width="348" height="28" as="geometry" />
         </mxCell>
-        <mxCell id="kQ2yV8AIbiC1aDz_2Qq--125" value="+- get_object_idx(object_label)" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" parent="kQ2yV8AIbiC1aDz_2Qq--115" vertex="1">
+        <mxCell id="kQ2yV8AIbiC1aDz_2Qq--125" value="+- get_label_idx(object_label)" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" parent="kQ2yV8AIbiC1aDz_2Qq--115" vertex="1">
           <mxGeometry y="260" width="348" height="28" as="geometry" />
         </mxCell>
         <mxCell id="kQ2yV8AIbiC1aDz_2Qq--126" value="+- reset()" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" parent="kQ2yV8AIbiC1aDz_2Qq--115" vertex="1">

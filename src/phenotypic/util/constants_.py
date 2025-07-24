@@ -8,105 +8,17 @@ Note: Class names are defined in ALL_CAPS to avoid namespace conflicts with actu
     in the codebase (e.g., GRID vs an actual Grid class). When importing, use the format:
         from PhenoTypic.util.constants import IMAGE_FORMATS, OBJECT
 """
-from textwrap import dedent
 
+from phenotypic._shared_modules._measurement_info import MeasurementInfo
 import phenotypic
 from enum import Enum
 from packaging.version import Version
 from pathlib import Path
 
-
-class MeasurementInfo(Enum):
-    """
-    The labels and descriptions of the measurement information. This class helps with module consistency and documentation automation.
-
-    Note:
-        - Overwrite the CATEGORY label and add other measurement info here
-
-    """
-
-    @property
-    def CATEGORY(self) -> str:
-        """Overwrite this in inherited classes; should return a string with the category name"""
-        raise NotImplementedError
-
-    def __init__(self, label, desc=None):
-        self.label, self.desc = label, desc
-
-    def __str__(self):
-        return f'{self.CATEGORY}_{self.label}'
-
-    @classmethod
-    def iter_labels(cls):
-        """Yield all measurement info members except CATEGORY."""
-        return (member for member in cls if member is not cls.CATEGORY)
-
-    @classmethod
-    def get_headers(cls):
-        """Return full measurement info labels for use in pandas dataframe columns."""
-        return [f'{x}' for x in cls.iter_labels() if cls.name.endswith('_') is False]
-
-    @classmethod
-    def rst_table(
-            cls,
-            *,
-            title: str | None = None,
-            header: tuple[str, str] = ("Label", "Description"),
-    ) -> str:
-        """
-        Generates an RST table in the "list-table" format with the specified title and
-        header. Includes rows based on the class's iterable members that provide labels
-        and descriptions.
-
-        Args:
-            title: Optional title for the table. If none is provided, the name of the
-                class is used as the default title.
-            header: A tuple containing the header labels for the table. Defaults to
-                ("Label", "Description").
-
-        Returns:
-            str: A string containing the formatted RST table.
-        """
-        title = title or cls.__name__
-        left, right = header
-
-        lines: list[str] = [
-            f".. list-table:: {title}",
-            "   :header-rows: 1",
-            "",
-            f"   * - {left}",
-            f"     - {right}",
-        ]
-
-        for member in cls.iter_labels():
-            lines.extend(
-                [
-                    f"   * - ``{member.label}``",
-                    f"     - {member.desc}",
-                ],
-            )
-        return dedent("\n".join(lines))
-
-    @classmethod
-    def append_rst_to_doc(cls, module) -> str:
-        """
-        returns a string with the RST table appended to the module docstring.
-        """
-        if isinstance(module, str):
-            return module + "\n\n" + cls.rst_table()
-        else:
-            return module.__doc__ + "\n\n" + cls.rst_table()
-
-
 DEFAULT_MPL_IMAGE_FIGSIZE = (8, 6)
-
-if Version(phenotypic.__version__) < Version("0.7.1"):
-    SINGLE_IMAGE_HDF5_PARENT_GROUP = Path(f'phenotypic/')
-else:
-    SINGLE_IMAGE_HDF5_PARENT_GROUP = Path(f'phenotypic/Image/')
-
-IMAGE_SET_PARENT_GROUP = f'phenotypic/ImageSet/'
-
+class MPL:
+    """Holds defaults for matplotlib parameters"""
+    FIGSIZE = (8, 6)
 
 # Image format constants
 class IMAGE_FORMATS(Enum):
@@ -176,8 +88,6 @@ class IO:
 
 class SET_STATUS(MeasurementInfo):
     """Constants for image set status."""
-    # should be placed in <image_name>/{SUBGROUP_KEY}
-    SUBGROUP_KEY_ = "status"
 
     @property
     def CATEGORY(self) -> str:
@@ -186,12 +96,12 @@ class SET_STATUS(MeasurementInfo):
     PROCESSED = 'Processed', "Whether the image has been processed successfully."
     MEASURED = 'Measured', "Whether the image has been measured successfully."
     ERROR = 'Error', "Whether the image has encountered an error during processing."
-    VALID_ANALYSIS = (
-        'AnalysisValid',
-        'Whether the image measurements are considered valid. '
+    INVALID_ANALYSIS = (
+        'AnalysisInvalid',
+        'Whether the image measurements are considered invalid. '
         'This can be set during measurement extraction or post-processing.'
     )
-    VALID_SEGMENTATION = 'SegmentationValid', "Whether the image segmentation is considered valid."
+    INVALID_SEGMENTATION = 'SegmentationInvalid', "Whether the image segmentation is considered valid."
 
 
 # Grid constants

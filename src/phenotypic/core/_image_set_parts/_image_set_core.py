@@ -90,7 +90,7 @@ class ImageSetCore:
 
         src_path, out_path = Path(src_path) if src_path else None, Path(out_path) if out_path else Path.cwd() / f'{self.name}.hdf5'
         self.name, self._src_path, self._out_path = str(name), src_path, out_path
-        self._main_hdf = HDF(filepath=out_path, )
+        self._main_hdf = HDF(filepath=out_path, name=self.name, mode='set')
 
         self._overwrite = overwrite
 
@@ -150,7 +150,7 @@ class ImageSetCore:
 
                     for fname in image_filenames:
                         image = self.image_template.imread(src_path / fname)
-                        image._save_image2hdf5(grp=out_image_group, compression="gzip", compression_opts=4)
+                        image._save_image2hdfgroup(grp=out_image_group, compression="gzip", compression_opts=4)
 
         # Image list handling
         # Only need out handler for this
@@ -164,25 +164,9 @@ class ImageSetCore:
                 out_image_group = self._get_hdf5_group(out_handler, self._hdf5_images_group_key)
 
                 for image in image_list:
-                    image._save_image2hdf5(grp=out_image_group, compression="gzip", compression_opts=4)
+                    image._save_image2hdfgroup(grp=out_image_group, compression="gzip", compression_opts=4)
         else:
             raise ValueError('image_list must be a list of Image objects or src_path must be a valid hdf5 file.')
-
-    @property
-    def _hdf5_safe_writer(self)-> h5py.File:
-        return h5py.File(self._out_path, mode='a', libver='latest')
-
-    @property
-    def _hdf5_writer(self)->h5py.File:
-        return h5py.File(self._out_path, mode='r+', libver='latest')
-
-    @property
-    def _hdf5_reader(self)->h5py.File:
-        try:
-            return h5py.File(self._out_path, mode='r', libver='latest', swmr=True)
-        except (RuntimeError, ValueError):
-            return h5py.File(self._out_path, mode='r', libver='latest')
-
 
 
     def _add_image2group(self, group, image: Image, overwrite: bool):
@@ -190,7 +174,7 @@ class ImageSetCore:
         if image.name in group and overwrite is False:
             raise ValueError(f'Image named {image.name} already exists in ImageSet {self.name}.')
         else:
-            image._save_image2hdf5(grp=group, compression="gzip", compression_opts=4)
+            image._save_image2hdfgroup(grp=group, compression="gzip", compression_opts=4)
 
 
     def add_image(self, image: Image, overwrite: bool | None = None):
@@ -266,3 +250,4 @@ class ImageSetCore:
                 image_group = self._get_hdf5_group(out_handler, posixpath.join(self._hdf5_images_group_key, image_name))
                 image = self.image_template._load_from_hdf5_group(image_group)
             yield image
+

@@ -1,4 +1,5 @@
 import posixpath
+from typing import Literal
 
 from packaging.version import Version
 
@@ -12,17 +13,29 @@ class HDF:
     """
 
     if Version(phenotypic.__version__) < Version("0.7.1"):
-        SINGLE_IMAGE_GROUP_KEY = f'/phenotypic/'
+        SINGLE_IMAGE_GROUP_POSIX = f'/phenotypic/'
     else:
-        SINGLE_IMAGE_GROUP_KEY = f'/phenotypic/images/'
+        SINGLE_IMAGE_GROUP_POSIX = f'/phenotypic/images/'
 
     IMAGE_SET_HDF5_PARENT_GROUP = f'/phenotypic/image_sets/'
+    IMAGE_SET_IMAGES_SUBGROUP_KEY = 'images'
 
-    IMAGE_MEASUREMENT_IMAGE_SUBGROUP_KEY = 'measurements'
+    # measurements and status are stored within in each image's group
+    IMAGE_MEASUREMENT_SUBGROUP_KEY = 'measurements'
     IMAGE_STATUS_SUBGROUP_KEY = "status"
 
-    def __init__(self, filepath):
+    def __init__(self, filepath, name: str, mode: Literal['single', 'set']):
         self.filepath = filepath
+        self.name = name
+        self.mode = mode
+        if mode == 'single':
+            self.root_posix = posixpath.join(self.SINGLE_IMAGE_GROUP_POSIX, self.name)
+        elif mode == 'set':
+            self.root_posix = posixpath.join(self.IMAGE_SET_HDF5_PARENT_GROUP, self.name)
+            self.set_images_posix = posixpath.join(self.root_posix, self.IMAGE_SET_IMAGES_SUBGROUP_KEY)
+        else:
+            raise ValueError(f"Invalid mode {mode}")
+
 
     @property
     def safe_writer(self) -> h5py.File:
@@ -67,15 +80,14 @@ class HDF:
             return h5py.File(self.filepath, 'r', libver='latest')
 
     @staticmethod
-    def get_group(handle: h5py.File, group_name: str) -> h5py.Group:
+    def get_group(handle: h5py.File, group_name) -> h5py.Group:
         group_name = str(group_name)
         if group_name in handle:
             return handle[group_name]
         else:
             return handle.create_group(group_name)
 
-    @staticmethod
-    def get_single_image_group(handle):
+    def get_root(self, handle):
         """
         Retrieves a specific group from an HDF file corresponding to single image data.
 
@@ -88,29 +100,35 @@ class HDF:
 
         Returns:
             The group corresponding to single image data, retrieved based on the defined
-            SINGLE_IMAGE_GROUP_KEY.
+            SINGLE_IMAGE_GROUP_POSIX.
 
         Raises:
             Appropriate exceptions may be raised by the underlying HDF.get_group() method,
             based on the implementation and provided handle or key.
         """
-        return HDF.get_group(handle, HDF.SINGLE_IMAGE_GROUP_KEY)
+        return self.get_group(handle=handle, group_name=self.root_posix)
 
-    @staticmethod
-    def get_image_set_group(handle):
-        return HDF.get_group(handle, HDF.IMAGE_SET_HDF5_PARENT_GROUP)
 
-    @staticmethod
-    def get_image_group(handle, image_name):
-        return HDF.get_group(handle, posixpath.join(f'{HDF.SINGLE_IMAGE_GROUP_KEY}', image_name))
+    def get_parent_group(self, handle)->h5py.Group:
+        return self.get_root(handle).parent
 
-    @staticmethod
-    def get_image_measurement_subgroup(handle, image_name):
-        return HDF.get_group(handle, f'{HDF.SINGLE_IMAGE_GROUP_KEY}{image_name}/{HDF.IMAGE_MEASUREMENT_IMAGE_SUBGROUP_KEY}')
+    def get_images_subgroup(self, handle):
+        if self.mode != 'set': raise AttributeError('This method is only available for image sets')
+        return self.get_group(handle, self.set_images_posix)
 
-    @staticmethod
-    def get_image_status_subgroup(handle, image_name):
-        return HDF.get_group(handle, f'{HDF.SINGLE_IMAGE_GROUP_KEY}{image_name}/{HDF.IMAGE_STATUS_SUBGROUP_KEY}')
+    def get_image_group(self, handle, image_name):
+        if self.mode == 'single':
+            return self.get_root(handle)
+        elif self.mode == 'set':
+            return self.get_group(handle, posixpath.join(self.set_images_posix, image_name))
+        else:
+            raise ValueError(f"Invalid mode {self.mode}")
+
+    def get_image_measurement_subgroup(self, handle, image_name):
+        return self.get_group(handle, posixpath.join(self.set_images_posix, image_name, self.IMAGE_MEASUREMENT_SUBGROUP_KEY))
+
+    def get_image_status_subgroup(self, handle, image_name):
+        return self.get_group(handle, posixpath.join(self.set_images_posix, image_name, self.IMAGE_STATUS_SUBGROUP_KEY))
 
     @staticmethod
     def save_array2hdf5(group, array, name, **kwargs):
