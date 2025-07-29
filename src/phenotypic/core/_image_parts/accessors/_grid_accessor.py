@@ -56,7 +56,7 @@ class GridAccessor(ImageAccessor):
 
         Returns:
             pd.DataFrame: A DataFrame with measurement data derived from the
-            parent's _root_image grid settings.
+            parent's image grid settings.
         """
         info = self._root_image._grid_setter.measure(self._root_image)
         if include_metadata:
@@ -74,7 +74,7 @@ class GridAccessor(ImageAccessor):
         Returns a crop of the grid section based on its flattened index.
 
         The grid is ordered from left to right, top to bottom. If no objects
-        are present in the parent _root_image, the original _root_image is returned.
+        are present in the parent image, the original image is returned.
 
         Args:
             idx (int): The flattened index of the grid section to be
@@ -82,7 +82,7 @@ class GridAccessor(ImageAccessor):
 
         Returns:
             phenotypic.Image: The cropped grid section as defined by the
-            given flattened index, or the original parent _root_image if no
+            given flattened index, or the original parent image if no
             objects are present.
         """
         if self._root_image.objects.num_objects != 0:
@@ -184,7 +184,7 @@ class GridAccessor(ImageAccessor):
         return col_map
 
     def show_column_overlay(self, use_enhanced=False, show_gridlines=True, ax=None,
-                            figsize=(9, 10)) -> (plt.Figure, plt.Axes):
+                            figsize=(9, 10)) -> Tuple[plt.Figure, plt.Axes]:
         if ax is None:
             fig, func_ax = plt.subplots(tight_layout=True, figsize=figsize)
         else:
@@ -202,10 +202,7 @@ class GridAccessor(ImageAccessor):
             row_edges = self.get_row_edges()
             func_ax.vlines(x=col_edges, ymin=row_edges.min(), ymax=row_edges.max(), colors='c', linestyles='--')
 
-        if ax is None:
-            return fig, func_ax
-        else:
-            return func_ax
+        return fig, ax
 
     """
     Grid Rows
@@ -308,10 +305,10 @@ class GridAccessor(ImageAccessor):
         """Returns the exact slices of a grid section based on its flattened index
 
         Note:
-            - Can crop objects in the _root_image
+            - Can crop objects in the image
 
         Return:
-            (int, int, int, int): ((MinRow, MinCol), (MaxRow, MaxCol)) The slices to extract the grid section from the _root_image.
+            (int, int, int, int): ((MinRow, MinCol), (MaxRow, MaxCol)) The slices to extract the grid section from the image.
         """
         row_edges, col_edges = self.get_row_edges(), self.get_col_edges()
         row_pos, col_pos = np.where(self._idx_ref_matrix == idx)
@@ -325,10 +322,10 @@ class GridAccessor(ImageAccessor):
         """Returns the slices of a grid section based on its flattened index, and accounts for objects boundaries.
 
             Note:
-                - Can crop objects in the _root_image
+                - Can crop objects in the image
 
             Return:
-                (int, int, int, int): ((MinRow, MinCol), (MaxRow, MaxCol)) The slices to extract the grid section from the _root_image.
+                (int, int, int, int): ((MinRow, MinCol), (MaxRow, MaxCol)) The slices to extract the grid section from the image.
         """
         grid_min, grid_max = self._naive_get_grid_section_slices(idx)
         grid_min_rr, grid_min_cc = grid_min

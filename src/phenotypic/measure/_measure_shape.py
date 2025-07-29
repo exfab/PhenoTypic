@@ -47,21 +47,12 @@ class SHAPE(MeasurementInfo):
     )
     ORIENTATION = ('Orientation', 'The angle between the major axis and the horizontal axis in radians')
 
-    def __init__(self, label, desc=None):
-        self.label, self.desc = label, desc
-
-    def __str__(self):
-        return f'{self.CATEGORY.label}_{self.label}'
-
-    def get_labels(self):
-        return [key.label for key in SHAPE if key.label != self.CATEGORY.label]
-
 
 class MeasureShape(MeasureFeatures):
-    r"""Calculates various geometric measures of the objects in the _root_image.
+    r"""Calculates various geometric measures of the objects in the image.
 
     Returns:
-        pd.DataFrame: A dataframe containing the geometric measures of the objects in the _root_image.
+        pd.DataFrame: A dataframe containing the geometric measures of the objects in the image.
 
     References:
         1. D. R. Stirling, M. J. Swain-Bowden, A. M. Lucas, A. E. Carpenter, B. A. Cimini, and A. Goodman,

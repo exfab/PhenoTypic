@@ -10,18 +10,18 @@ from phenotypic import Image, GridImage
 
 class WatershedDetector(ThresholdDetector):
     """
-    Class for detecting objects in an _root_image using the Watershed algorithm.
+    Class for detecting objects in an image using the Watershed algorithm.
 
     The WatershedDetector class processes images to detect and segment objects
     by applying the watershed algorithm. This class extends the capabilities
     of ThresholdDetector and includes customization for parameters such as footprint
     size, minimum object size, compactness, and connectivity. This is useful for
-    _root_image segmentation tasks, where proximity-based object identification is needed.
+    image segmentation tasks, where proximity-based object identification is needed.
 
     Attributes:
         footprint (Literal['auto'] | np.ndarray | int | None): Structure element to define
             the neighborhood for dilation and erosion operations. Can be specified directly
-            as 'auto', an ndarray, an integer for disk size, or None for implementation-based
+            as 'auto', an ndarray, an integer for diamond size, or None for implementation-based
             determination.
         min_size (int): Minimum size of objects to retain during segmentation.
             Objects smaller than this other_image are removed.
@@ -38,10 +38,11 @@ class WatershedDetector(ThresholdDetector):
                  min_size: int = 50,
                  compactness: float = 0.001,
                  connectivity: int = 1,
-                 relabel: bool = True):
+                 relabel: bool = True,
+                 ignore_zeros:bool=True):
         match footprint:
             case x if isinstance(x, int):
-                self.footprint = morphology.disk(footprint)
+                self.footprint = morphology.diamond(footprint)
             case x if isinstance(x, np.ndarray):
                 self.footprint = footprint
             case 'auto':
@@ -53,24 +54,23 @@ class WatershedDetector(ThresholdDetector):
         self.compactness = compactness
         self.connectivity = connectivity
         self.relabel = relabel
+        self.ignore_zeros = ignore_zeros
 
-    @staticmethod
-    def _operate(image: Image | GridImage,
-                 footprint: int | str | np.ndarray | None,
-                 min_size: int, compactness: float,
-                 connectivity: int, relabel: bool) -> Image:
+    def _operate(self, image: Image | GridImage) -> Image:
         enhanced_matrix = image.enh_matrix[:]
 
-        if footprint == 'auto':
+        if self.footprint == 'auto':
             if isinstance(image, GridImage):
                 est_footprint_diameter = max(image.shape[0] // image.grid.nrows, image.shape[1] // image.grid.ncols)
-                footprint = morphology.disk(est_footprint_diameter // 2)
+                footprint = morphology.diamond(est_footprint_diameter // 2)
             elif isinstance(image, Image):
                 # Not enough information with a normal image to infer
                 footprint = None
 
-        binary = enhanced_matrix > filters.threshold_otsu(enhanced_matrix)  # TODO: add alternative to otsu eventually?
-        binary = morphology.remove_small_objects(binary, min_size=min_size)
+        enh_vals = enhanced_matrix[enhanced_matrix != 0] if self.ignore_zeros else enhanced_matrix
+
+        binary = enhanced_matrix >= filters.threshold_otsu(enh_vals)  # TODO: add alternative to otsu eventually?
+        binary = morphology.remove_small_objects(binary, min_size=self.min_size)
         dist_matrix = distance_transform_edt(binary)
         max_peak_indices = feature.peak_local_max(
             image=dist_matrix,
@@ -85,12 +85,12 @@ class WatershedDetector(ThresholdDetector):
         objmap = segmentation.watershed(
             image=gradient,
             markers=max_peaks,
-            compactness=compactness,
-            connectivity=connectivity,
+            compactness=self.compactness,
+            connectivity=self.connectivity,
             mask=binary,
         )
 
-        objmap = morphology.remove_small_objects(objmap, min_size=min_size)
+        objmap = morphology.remove_small_objects(objmap, min_size=self.min_size)
         image.objmap[:] = objmap
-        image.objmap.relabel(connectivity=connectivity)
+        image.objmap.relabel(connectivity=self.connectivity)
         return image

@@ -14,10 +14,10 @@ from phenotypic.util.exceptions_ import ArrayKeyValueShapeMismatchError, Invalid
 
 
 class ObjectMap(ImageArrDataAccessor):
-    """Manages an object map for labeled regions in an _root_image.
+    """Manages an object map for labeled regions in an image.
 
     This class provides a mechanism to manipulate and access labeled object maps
-    within a given _root_image. It is tightly coupled with the parent _root_image object and
+    within a given image. It is tightly coupled with the parent image object and
     provides methods for accessing sparse and dense representations, relabeling,
     resetting, and visualization.
 
@@ -31,13 +31,13 @@ class ObjectMap(ImageArrDataAccessor):
 
     @property
     def _labels(self):
-        """Returns the labels in the _root_image."""
+        """Returns the labels in the image."""
         objmap = self._root_image._data.sparse_object_map.toarray()
         labels = np.unique(objmap)
         return labels[labels != 0]
 
     def __getitem__(self, key):
-        """Returns a copy of the object_map of the _root_image."""
+        """Returns a copy of the object_map of the image."""
         return self._root_image._data.sparse_object_map.toarray()[key]
 
     def __setitem__(self, key, value):
@@ -87,7 +87,7 @@ class ObjectMap(ImageArrDataAccessor):
         """
         Displays the object map using matplotlib's imshow.
 
-        This method visualizes the object map from the parent _root_image instance.
+        This method visualizes the object map from the parent image instance.
         It offers customization options, including figure size, title, colormap, and matplotlib
         parameters, leveraging matplotlib's plotting capabilities.
 

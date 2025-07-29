@@ -34,9 +34,7 @@ class ImageEnhancedMatrix(ImageMatrixDataAccessor):
         if self.isempty():
             raise EmptyImageError
         else:
-            norm_matrix = self._root_image._dtype2normMatrix(self._root_image._data.enh_matrix)
-            assert norm_matrix.dtype == np.float64, 'Normalized matrix should be of type float64'
-            return norm_matrix[key]
+            return self._root_image._data.enh_matrix[key].copy()
 
     def __setitem__(self, key, value):
         """
@@ -65,9 +63,8 @@ class ImageEnhancedMatrix(ImageMatrixDataAccessor):
         """
         if isinstance(value, np.ndarray):
             if self._root_image._data.enh_matrix[key].shape != value.shape: raise ArrayKeyValueShapeMismatchError
-            value = self._root_image._norm2dtypeMatrix(value)
         elif isinstance(value, (int, float)):
-            value = self._root_image._bit_depth(value)
+            pass
         else:
             raise TypeError(f'Unsupported type for setting the matrix. Value should be scalar or a numpy array: {type(value)}')
 
@@ -86,7 +83,6 @@ class ImageEnhancedMatrix(ImageMatrixDataAccessor):
             tuple: The shape of the determinant matrix.
         """
         return self._root_image._data.enh_matrix.shape
-
 
     def reset(self):
         """Resets the image's enhanced matrix to the original matrix representation."""

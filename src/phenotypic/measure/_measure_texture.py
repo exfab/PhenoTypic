@@ -91,13 +91,13 @@ from phenotypic.util.constants_ import OBJECT
 
 class MeasureTexture(MeasureFeatures):
     """
-    Represents a measurement of texture features extracted from _root_image objects.
+    Represents a measurement of texture features extracted from image objects.
 
     This class is designed to calculate texture measurements derived from Haralick features,
-    tailored for segmented objects in an _root_image. These features include statistical properties
+    tailored for segmented objects in an image. These features include statistical properties
     that describe textural qualities, such as uniformity or variability, across different
-    directional orientations. The class leverages statistical methods and _root_image processing
-    to extract meaningful characteristics applicable in _root_image analysis tasks.
+    directional orientations. The class leverages statistical methods and image processing
+    to extract meaningful characteristics applicable in image analysis tasks.
 
     Attributes:
         scale (int): The scale parameter used in the computation of texture features. It is
@@ -139,14 +139,14 @@ class MeasureTexture(MeasureFeatures):
     @staticmethod
     def _compute_haralick(image: Image, foreground_array: np.ndarray, foreground_name: str, scale: int = 5) -> pd.DataFrame:
         """
-        Computes texture feature measurements using Haralick features for objects in a given _root_image. The method
+        Computes texture feature measurements using Haralick features for objects in a given image. The method
         calculates various statistical texture features such as Angular Second Moment, Contrast, Correlation,
         Variance, Inverse Difference Moment, among others, for different directional orientations. These
         features are computed for each segmented object within the foreground array using the specified
         scale parameter.
 
         Args:
-            image (Image): The _root_image containing objects and their associated properties, including
+            image (Image): The image containing objects and their associated properties, including
                 labels and slices used for extracting foreground objects.
             foreground_array (np.ndarray): The 2D numpy array representing the foreground objects,
                 where pixel values indicate the object intensity.

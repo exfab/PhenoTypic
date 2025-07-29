@@ -72,7 +72,6 @@ class ImageArray(ImageArrDataAccessor):
 
             self._root_image._data.array[key] = value
             self._root_image._set_from_array(self._root_image._data.array, imformat=self._root_image.imformat)
-
         else:
             raise ValueError(f'Unsupported type for setting the array. Value should be scalar or a numpy array: {type(value)}')
 
@@ -156,7 +155,7 @@ class ImageArray(ImageArrDataAccessor):
              ax: plt.Axes | None = None,
              mpl_params: dict | None = None) -> tuple[plt.Figure, plt.Axes]:
         """
-        Displays the _root_image array, either the full array or a specific channel, using matplotlib.
+        Displays the image array, either the full array or a specific channel, using matplotlib.
 
         Args:
             channel (int | None): Specifies the channel to display from the image array. If None,
@@ -259,7 +258,7 @@ class ImageArray(ImageArrDataAccessor):
                      mpl_params: dict | None = None,
                      ) -> tuple[plt.Figure, plt.Axes]:
         """
-        Displays the _root_image objects with customizable visualization parameters.
+        Displays the image objects with customizable visualization parameters.
 
         This method provides a flexible way to display image objects from a parent image
         with optional customization of the visualization. By specifying a particular image

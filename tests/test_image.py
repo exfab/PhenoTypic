@@ -20,12 +20,12 @@ def test_empty_image():
 @timeit
 def test_set_image_from_array(sample_image_array_with_imformat):
     """
-    Tests the functionality of setting an _root_image from an array and verifies the
-    _root_image properties such as shape, non-emptiness, and proper initialization.
+    Tests the functionality of setting an image from an array and verifies the
+    image properties such as shape, non-emptiness, and proper initialization.
 
     Args:
-        sample_images: A tuple containing the input_image _root_image array, input_image _root_image
-            format, and the expected true _root_image format.
+        sample_images: A tuple containing the input_image image array, input_image image
+            format, and the expected true image format.
     """
     input_image, input_imformat, true_imformat = sample_image_array_with_imformat
     phenotypic_image = phenotypic.Image()
@@ -39,14 +39,14 @@ def test_set_image_from_array(sample_image_array_with_imformat):
 def test_set_image_from_image(sample_image_array_with_imformat):
     """
     Tests the `set_image` method of the `Image` class from the `phenotypic` package. The function
-    validates that an _root_image can be set from another `Image` instance or raw input_image data, with
+    validates that an image can be set from another `Image` instance or raw input_image data, with
     properties and states intact.
 
     Args:
         sample_image_inputs: A tuple containing the following:
-            input_image: The input_image _root_image as a NumPy array.
-            input_imformat: The format of the input_image _root_image as a string.
-            true_imformat: The expected _root_image format as a string.
+            input_image: The input_image image as a NumPy array.
+            input_imformat: The format of the input_image image as a string.
+            true_imformat: The expected image format as a string.
     """
     input_image, input_imformat, true_imformat = sample_image_array_with_imformat
     phenotypic_image = phenotypic.Image()
@@ -87,7 +87,7 @@ def test_image_matrix_access(sample_image_array_with_imformat):
     input_image, input_imformat, true_imformat = sample_image_array_with_imformat
     ps_image = phenotypic.Image(input_image=input_image, imformat=input_imformat)
     if input_imformat == 'RGB':
-        assert np.allclose(ps_image.matrix[:], skimage.color.rgb2gray(input_image), atol=1.0 / np.iinfo(ps_image._bit_depth).max), \
+        assert np.allclose(ps_image.matrix[:], skimage.color.rgb2gray(input_image), atol=1.0 / np.iinfo(ps_image.matrix[:].dtype).max),\
             f'Image.matrix and skimage.color.rgb2gray do not match at {np.unique(ps_image.matrix[:] != skimage.color.rgb2gray(input_image), return_counts=True)}'
     elif input_imformat == 'Grayscale':
         assert np.array_equal(ps_image.matrix[:], input_image)
@@ -102,7 +102,7 @@ def test_image_matrix_change(sample_image_array_with_imformat):
         altered_image = skimage.color.rgb2gray(input_image)
         altered_image[10:10, 10:10] = 0
 
-        assert np.allclose(ps_image.matrix[:], altered_image, atol=1.0 / np.iinfo(ps_image._bit_depth).max), \
+        assert np.allclose(ps_image.matrix[:], altered_image, atol=1.0 / np.iinfo(ps_image.matrix[:].dtype).max),\
             f'Image.matrix and skimage.color.rgb2gray do not match at {np.unique(ps_image.matrix[:] != altered_image, return_counts=True)}'
 
         assert np.array_equal(ps_image.array[:], input_image), 'Image.array was altered and color information was changed'
@@ -110,7 +110,7 @@ def test_image_matrix_change(sample_image_array_with_imformat):
     elif input_imformat == 'Grayscale':
         altered_image = input_image.copy()
         altered_image[10:10, 10:10] = 0
-        assert np.allclose(ps_image.matrix[:], altered_image, atol=1.0 / np.iinfo(ps_image._bit_depth).max), \
+        assert np.allclose(ps_image.matrix[:], altered_image, atol=1.0 / np.iinfo(ps_image.matrix[:].dtype).max),\
             f'Image.matrix and input_image do not match at {np.unique(ps_image.matrix[:] != altered_image, return_counts=True)}'
 
 

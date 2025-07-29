@@ -18,7 +18,7 @@ class HDF:
         SINGLE_IMAGE_GROUP_POSIX = f'/phenotypic/images/'
 
     IMAGE_SET_HDF5_PARENT_GROUP = f'/phenotypic/image_sets/'
-    IMAGE_SET_IMAGES_SUBGROUP_KEY = 'images'
+    IMAGE_SET_IMAGES_SUBGROUP_KEY = 'image_data'
 
     # measurements and status are stored within in each image's group
     IMAGE_MEASUREMENT_SUBGROUP_KEY = 'measurements'
@@ -29,10 +29,10 @@ class HDF:
         self.name = name
         self.mode = mode
         if mode == 'single':
-            self.root_posix = posixpath.join(self.SINGLE_IMAGE_GROUP_POSIX, self.name)
+            self.home_posix = posixpath.join(self.SINGLE_IMAGE_GROUP_POSIX, self.name)
         elif mode == 'set':
-            self.root_posix = posixpath.join(self.IMAGE_SET_HDF5_PARENT_GROUP, self.name)
-            self.set_images_posix = posixpath.join(self.root_posix, self.IMAGE_SET_IMAGES_SUBGROUP_KEY)
+            self.home_posix = posixpath.join(self.IMAGE_SET_HDF5_PARENT_GROUP, self.name)
+            self.set_images_posix = posixpath.join(self.home_posix, self.IMAGE_SET_IMAGES_SUBGROUP_KEY)
         else:
             raise ValueError(f"Invalid mode {mode}")
 
@@ -84,7 +84,7 @@ class HDF:
         else:
             return handle.create_group(group_name)
 
-    def get_root(self, handle):
+    def get_home(self, handle):
         """
         Retrieves a specific group from an HDF file corresponding to single image data.
 
@@ -103,19 +103,19 @@ class HDF:
             Appropriate exceptions may be raised by the underlying HDF.get_group() method,
             based on the implementation and provided handle or key.
         """
-        return self.get_group(handle=handle, group_name=self.root_posix)
+        return self.get_group(handle=handle, group_name=self.home_posix)
 
 
     def get_parent_group(self, handle)->h5py.Group:
-        return self.get_root(handle).parent
+        return self.get_home(handle).parent
 
-    def get_images_subgroup(self, handle):
+    def get_image_data_group(self, handle):
         if self.mode != 'set': raise AttributeError('This method is only available for image sets')
         return self.get_group(handle, self.set_images_posix)
 
     def get_image_group(self, handle, image_name):
         if self.mode == 'single':
-            return self.get_root(handle)
+            return self.get_home(handle)
         elif self.mode == 'set':
             return self.get_group(handle, posixpath.join(self.set_images_posix, image_name))
         else:

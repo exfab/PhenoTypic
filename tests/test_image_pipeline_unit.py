@@ -20,7 +20,7 @@ from .resources.TestHelper import timeit
 
 class SumObjects(MeasureFeatures):
     def _operate(self, image: Image) -> pd.DataFrame:
-        return pd.DataFrame({'Sum': image.array[:].sum()}, index=image.objects.labels2series())
+        return pd.DataFrame({'Sum': [image.array[:].sum()]}, index=image.objects.labels2series())
 
 
 class DetectFull(ObjectDetector):

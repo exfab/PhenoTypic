@@ -59,11 +59,11 @@ class UnsupportedImageFormat(ValueError):
 
 # Image-related exceptions
 class NoImageDataError(AttributeError):
-    """Exception raised when no _root_image data is loaded."""
+    """Exception raised when no image data is loaded."""
 
     def __init__(self):
         super().__init__(
-            "No _root_image has been loaded into this class. Use an io method or set the color_array or array equal to an _root_image data array.",
+            "No image has been loaded into this class. Use an io method or set the color_array or array equal to an image data array.",
         )
 
 
@@ -93,7 +93,7 @@ class NoComponentError(AttributeError):
 
 # Image Operation exceptions
 class ImageOperationError(PhenoTypicError):
-    """Base exception for _root_image operation errors."""
+    """Base exception for image operation errors."""
     pass
 
 
@@ -125,7 +125,7 @@ class IllegalAssignmentError(ValueError):
 
 
 class UuidAssignmentError(AttributeError):
-    """Exception raised when trying to change the UUID of an _root_image."""
+    """Exception raised when trying to change the UUID of an image."""
 
     def __init__(self):
         super().__init__("The Image uuid should not be changed as this can lead to errors with data integrity")
@@ -136,12 +136,12 @@ class NoArrayError(AttributeError):
 
     def __init__(self):
         super().__init__(
-            "No array form found. Either input_image _root_image was 2-D and had no array form. Set a multi-channel _root_image or use a FormatConverter",
+            "No array form found. Either input_image image was 2-D and had no array form. Set a multi-channel image or use a FormatConverter",
         )
 
 
 class NoObjectsError(AttributeError):
-    """Exception raised when no objects are found in an _root_image."""
+    """Exception raised when no objects are found in an image."""
 
     def __init__(self, image_name=None):
         image_str = f' "{image_name}"' if image_name else ""
@@ -151,10 +151,10 @@ class NoObjectsError(AttributeError):
 
 
 class EmptyImageError(AttributeError):
-    """Exception raised when no _root_image data is loaded."""
+    """Exception raised when no image data is loaded."""
 
     def __init__(self):
-        super().__init__("No _root_image data loaded. Use Image.set_image(new_image) to load data.")
+        super().__init__("No image data loaded. Use Image.set_image(new_image) to load data.")
 
 
 class UnsupportedFileTypeError(ValueError):
@@ -195,7 +195,7 @@ class ArrayKeyValueShapeMismatchError(ValueError):
 
 
 class InputShapeMismatchError(ValueError):
-    """Exception raised when input_image shape doesn't match the _root_image matrix."""
+    """Exception raised when input_image shape doesn't match the image matrix."""
 
     def __init__(self, param_name):
         super().__init__(f"The shape of {param_name} must be the same shape as the Image.matrix")

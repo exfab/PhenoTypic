@@ -1,7 +1,7 @@
 import numpy as np
 from skimage.filters.rank import median
 from skimage.morphology import disk, cube, ball, footprint_rectangle
-from skimage.util import img_as_ubyte
+from skimage.util import img_as_ubyte, img_as_float
 
 from .. import Image
 from ..abstract import ImageEnhancer
@@ -18,10 +18,10 @@ class RankMedianEnhancer(ImageEnhancer):
         self.shift_y = shift_y
 
     def _operate(self, image: Image) -> Image:
-        image.enh_matrix[:] = median(
+        image.enh_matrix[:] = img_as_float(median(
             image=img_as_ubyte(image.enh_matrix[:]),
             footprint=self._get_footprint(self._get_footprint_radius(image.enh_matrix[:])),
-        )
+        ))
         return image
 
     def _get_footprint_radius(self, det_matrix: np.ndarray) -> int:

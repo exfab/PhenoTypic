@@ -77,12 +77,12 @@ auto_profile_package(phenotypic)
 
 def walk_package_for_measurements(pkg):
     """Yield (qualified_name, obj) for every public, top‑level object in *pkg*
-    and all of its sub‑modules, skipping module objects themselves. this collects all _root_image measurement modules for testing."""
+    and all of its sub‑modules, skipping module objects themselves. this collects all image measurement modules for testing."""
     modules = [pkg]  # start with the root
     if hasattr(pkg, "__path__"):  # add all sub‑modules
         modules += [
             importlib.import_module(name)
-            for _, name, _ in pkgutil.walk_packages(pkg.__path__, pkg.__name__ + ".") \
+            for _, name, _ in pkgutil.walk_packages(pkg.__path__, pkg.__name__ + ".")\
                 if not name.split(".")[-1].startswith("_")  # Skip modules with names starting with underscore
 
         ]
@@ -135,12 +135,12 @@ for qualname, obj in walk_package_for_measurements(phenotypic):
 
 def walk_package_for_operations(pkg):
     """Yield (qualified_name, obj) for every public, top‑level object in *pkg*
-    and all of its sub‑modules, skipping module objects themselves. this collects all _root_image operations for testing."""
+    and all of its sub‑modules, skipping module objects themselves. this collects all image operations for testing."""
     modules = [pkg]  # start with the root
     if hasattr(pkg, "__path__"):  # add all sub‑modules
         modules += [
             importlib.import_module(name)
-            for _, name, _ in pkgutil.walk_packages(pkg.__path__, pkg.__name__ + ".") \
+            for _, name, _ in pkgutil.walk_packages(pkg.__path__, pkg.__name__ + ".")\
                 if not name.split(".")[-1].startswith("_")  # Skip modules with names starting with underscore
 
         ]

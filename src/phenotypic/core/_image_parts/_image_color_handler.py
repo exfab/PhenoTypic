@@ -21,8 +21,8 @@ class ImageColorSpace(ImageObjectsHandler):
     def __init__(self,
                  input_image: np.ndarray | Image | PathLike | None = None,
                  imformat: str | None = None,
-                 name: str | None = None, bit_depth: Literal[8, 16, 32] | None = 16):
-        super().__init__(input_image=input_image, imformat=imformat, name=name, bit_depth=bit_depth)
+                 name: str | None = None):
+        super().__init__(input_image=input_image, imformat=imformat, name=name)
         self._accessors.hsv = HsvAccessor(self)
 
     @property
@@ -32,7 +32,7 @@ class ImageColorSpace(ImageObjectsHandler):
         This can become computationally expensive, so implementation may be changed in the future.
 
         Returns:
-            np.ndarray: The hsv array of the current _root_image.
+            np.ndarray: The hsv array of the current image.
         """
         if self.imformat.is_matrix():
             raise AttributeError('Grayscale images cannot be directly converted to hsv. Convert to RGB first')

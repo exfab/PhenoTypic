@@ -69,7 +69,7 @@ class ObjectsAccessor(ImageAccessor):
 
     def get_label_idx(self, object_label):
         """Returns the index of the object with the given label from a sorted array of object labels."""
-        return np.where(self.labels == object_label)[0]
+        return np.where(self.labels == object_label)[0][0]
 
     @property
     def num_objects(self) -> int:

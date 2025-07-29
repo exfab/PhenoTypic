@@ -7,11 +7,11 @@ from phenotypic.abstract import ImageOperation
 
 
 class GridApply:
-    """Accepts a PhenoTypic operation as a parameter and applies it to the individual grid sectionss of an _root_image.
+    """Accepts a PhenoTypic operation as a parameter and applies it to the individual grid sectionss of an image.
 
     Parameters:
         image_op (ImageOperation): A PhenoTypic operation to be applied to each grid section.
-        reset_enh_matrix (bool): Whether to reset the enh_matrix attribute of the _root_image before applying the operation.
+        reset_enh_matrix (bool): Whether to reset the enh_matrix attribute of the image before applying the operation.
     """
 
     def __init__(self, image_op: ImageOperation | ImagePipeline,

@@ -32,9 +32,7 @@ class ImageMatrix(ImageMatrixDataAccessor):
         if self.isempty():
             raise EmptyImageError
         else:
-            norm_matrix = self._root_image._dtype2normMatrix(self._root_image._data.matrix.copy())
-            assert norm_matrix.dtype == np.float64, 'Normalized matrix should be of type float64'
-            return norm_matrix[key]
+            return self._root_image._data.matrix[key].copy()
 
     def __setitem__(self, key, value):
         """
@@ -52,9 +50,9 @@ class ImageMatrix(ImageMatrixDataAccessor):
         """
         if isinstance(value, np.ndarray):
             if self._root_image._data.matrix[key].shape != value.shape: raise ArrayKeyValueShapeMismatchError
-            value = self._root_image._norm2dtypeMatrix(value)
+            assert (0 <= np.min(value) <= 1) and (0 <= np.max(value) <= 1), 'matrix values must be between 0 and 1'
         elif isinstance(value, (int, float)):
-            value = self._root_image._bit_depth(value)
+            assert 0 <= value <= 1, 'matrix values must be between 0 and 1'
         else:
             raise TypeError(f'Unsupported type for setting the matrix. Value should be scalar or a numpy array: {type(value)}')
 

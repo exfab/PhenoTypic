@@ -6,7 +6,7 @@ from phenotypic.util.constants_ import OBJECT, BBOX
 
 
 class CenterDeviationReducer(MapModifier):
-    """Removes objects based on how far away they are from the center of the _root_image.
+    """Removes objects based on how far away they are from the center of the image.
 
     Useful for isolated colony images
 

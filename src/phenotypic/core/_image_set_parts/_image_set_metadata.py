@@ -13,13 +13,11 @@ class ImageSetMetadata(ImageSetMeasurements):
     def __init__(self,
                  name: str,
                  image_template: Image | None = None,
-                 image_list: List[Image] | None = None,
-                 src_path: PathLike | None = None,
+                 src: List[Image] | PathLike | None = None,
                  out_path: PathLike | None = None,
                  overwrite: bool = False, ):
         super().__init__(name=name, image_template=image_template,
-                         image_list=image_list, src_path=src_path,
-                         out_path=out_path, overwrite=overwrite)
+                         src=src, out_path=out_path, overwrite=overwrite)
         self._metadata_accessor = ImageSetMetadataAccessor(self)
 
 

@@ -22,7 +22,7 @@ class MPL:
 
 # Image format constants
 class IMAGE_FORMATS(Enum):
-    """Constants for supported _root_image formats."""
+    """Constants for supported image formats."""
     NONE = None
     GRAYSCALE = 'GRAYSCALE'
     GRAYSCALE_SINGLE_CHANNEL = 'Grayscale (single channel)'

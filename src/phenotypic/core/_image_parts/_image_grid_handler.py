@@ -48,11 +48,10 @@ class ImageGridHandler(Image):
     """
 
     def __init__(self, input_image: Optional[Union[np.ndarray, Image]] = None, imformat: str = None,
-                 name: str = None, bit_depth: Literal[8, 16, 32] | None = 16,
-                 grid_finder: Optional[GridFinder] = None,
+                 name: str = None, grid_finder: Optional[GridFinder] = None,
                  nrows: int = 8, ncols: int = 12):
         """
-        Initializes the instance with the given image, format, bit depth, grid finding
+        Initializes the instance with the given image, format, grid finding
         mechanism, and dimensions of the grid.
 
         Args:
@@ -61,7 +60,6 @@ class ImageGridHandler(Image):
                 optional for initialization.
             imformat (str): The string representing the image format.
             name (str): The name identifier for the image.
-            bit_depth (Literal[8, 16, 32] | None): Bit depth of the image. Defaults to 16.
             grid_finder (Optional[GridFinder]): Mechanism responsible for finding a grid
                 within the image. If None, an optimal center grid finder is instantiated.
             nrows (int): Number of rows in the grid. Defaults to 8.
@@ -73,7 +71,7 @@ class ImageGridHandler(Image):
             _accessors.grid (GridAccessor): The grid accessor object for managing and
                 accessing grid-related functionalities.
         """
-        super().__init__(input_image=input_image, imformat=imformat, name=name, bit_depth=bit_depth)
+        super().__init__(input_image=input_image, imformat=imformat, name=name)
 
         if hasattr(input_image, '_grid_setter'):
             grid_finder = input_image._grid_setter

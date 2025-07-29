@@ -21,17 +21,18 @@ from phenotypic.util.constants_ import IMAGE_FORMATS, IO
 from phenotypic.util import HDF
 from ._image_color_handler import ImageColorSpace
 
+
 class ImageIOHandler(ImageColorSpace):
 
     def __init__(self,
                  input_image: np.ndarray | Image | PathLike | Path | str | None = None,
                  imformat: str | None = None,
-                 name: str | None = None, bit_depth: Literal[8, 16, 32] | None = 16):
+                 name: str | None = None):
         if isinstance(input_image, (PathLike, Path, str)):
             input_image = Path(input_image)
-            super().__init__(input_image=self.imread(input_image), imformat=imformat, name=name, bit_depth=bit_depth)
+            super().__init__(input_image=self.imread(input_image), imformat=imformat, name=name)
         else:
-            super().__init__(input_image=input_image, imformat=imformat, name=name, bit_depth=bit_depth)
+            super().__init__(input_image=input_image, imformat=imformat, name=name)
 
     @classmethod
     def imread(cls, filepath: PathLike) -> Image:
@@ -100,18 +101,14 @@ class ImageIOHandler(ImageColorSpace):
             **kwargs: dict
                 Additional keyword arguments to pass when creating a new dataset.
         """
+        assert isinstance(array, np.ndarray), "array must be a numpy array."
         if name in group:
-            dset = group[name]
-
-            if dset.shape == array.shape:
-                dset[...] = array
-            else:
-                del group[name]
-                group.create_dataset(name, data=array, **kwargs)
+            del group[name]
+            group.create_dataset(name, data=array, dtype=array.dtype,**kwargs)
         else:
-            group.create_dataset(name, data=array, **kwargs)
+            group.create_dataset(name, data=array, dtype=array.dtype,**kwargs)
 
-    def _save_image2hdfgroup(self, grp, compression, compression_opts, overwrite=False,):
+    def _save_image2hdfgroup(self, grp, compression, compression_opts, overwrite=False, ):
         """Saves the image as a new group into the input hdf5 group."""
         if overwrite and self.name in grp:
             del grp[self.name]
@@ -152,21 +149,7 @@ class ImageIOHandler(ImageColorSpace):
         #    h5py supports variable-length UTF-8 strings automatically
         image_group.attrs["imformat"] = self.imformat.value
 
-        match self._bit_depth:
-            case np.uint8:
-                bit_depth = 8
-            case np.uint16:
-                bit_depth = 16
-            case np.float32:
-                bit_depth = 32
-            case np.float64:
-                bit_depth = 64
-            case _:
-                raise RuntimeError(f'Unsupported bit depth {self._bit_depth}')
-        image_group.attrs["bit_depth"] = bit_depth
-
         image_group.attrs["version"] = phenotypic.__version__
-        image_group.attrs["image_type"] = self._image_format.value
 
         # 4) Store protected metadata in its own subgroup
         prot = image_group.require_group("protected_metadata")
@@ -178,7 +161,7 @@ class ImageIOHandler(ImageColorSpace):
         for key, val in self._metadata.public.items():
             pub.attrs[key] = str(val)
 
-    def save2hdf5(self, filename, compression="gzip", compression_opts=4, overwrite=False,):
+    def save2hdf5(self, filename, compression="gzip", compression_opts=4, overwrite=False, ):
         """
         Save an ImageHandler instance to an HDF5 file under /phenotypic/images<self.name>/.
 
@@ -203,28 +186,28 @@ class ImageIOHandler(ImageColorSpace):
             grp = self._get_hdf5_group(filehandler, IO.SINGLE_IMAGE_HDF5_PARENT_GROUP)
 
             # 2) Save large arrays as datasets with chunking & compression
-            self._save_image2hdfgroup(grp=grp, compression=compression, compression_opts=compression_opts, overwrite=overwrite,)
+            self._save_image2hdfgroup(grp=grp, compression=compression, compression_opts=compression_opts, overwrite=overwrite, )
 
     @classmethod
-    def _load_from_hdf5_group(cls, group)->Image:
+    def _load_from_hdf5_group(cls, group) -> Image:
         # Instantiate a blank handler and populate internals
-        img = cls(bit_depth=group.attrs["bit_depth"])
-
         # Load Image Format
-        try:
-            img._image_format = IMAGE_FORMATS(group.attrs["imformat"])
-        except ValueError:
-            raise ValueError(f"Unsupported imformat {group.attrs['imformat']} for Image")
+        imformat = IMAGE_FORMATS[group.attrs["imformat"]]
+        # Read datasets back into numpy arrays with proper dtype handling
+        matrix_data = group["matrix"][()]
+        if imformat.is_array():
+            # For arrays, preserve the original dtype from HDF5
+            array_data = group["array"][()]
+            img = cls(input_image=array_data, imformat=imformat.value)
+            img.matrix[:] = matrix_data
+        else:
+            img = cls(input_image=matrix_data, imformat=imformat.value)
 
-        # Read datasets back into numpy arrays
-        if img._image_format.is_array():
-            img._data.array = group["array"][()]
-        img._data.matrix = group["matrix"][()]
-        img = img.reset()
+        # Load enhanced matrix and object map with proper dtype casting
+        enh_matrix_data = group["enh_matrix"][()]
+        img.enh_matrix[:] = enh_matrix_data
 
-        img.enh_matrix[:] = group["enh_matrix"][()]
-        # If your objmap backend expects a sparse matrix, convert accordingly;
-        # here we load as dense:
+        # Object map should preserve its original dtype (usually integer labels)
         img.objmap[:] = group["objmap"][()]
 
         # 3) Restore metadata
@@ -258,7 +241,6 @@ class ImageIOHandler(ImageColorSpace):
         with open(filename, 'wb') as filehandler:
             pickle.dump({
                 '_image_format': self._image_format,
-                '_bit_depth': self._bit_depth,
                 "_data.array": self._data.array,
                 '_data.matrix': self._data.matrix,
                 '_data.enh_matrix': self._data.enh_matrix,
@@ -282,10 +264,7 @@ class ImageIOHandler(ImageColorSpace):
         with open(filename, 'rb') as f:
             loaded = pickle.load(f)
 
-        if Version(phenotypic.__version__) < Version("0.7.1"):
-            instance = cls(input_image=None, imformat=None, name=None)
-        else:
-            instance = cls(input_image=None, imformat=None, name=None, bit_depth=loaded["_bit_depth"])
+        instance = cls(input_image=None, imformat=None, name=None)
 
         instance._image_format = loaded["_image_format"]
         instance._data.array = loaded["_data.array"]

@@ -12,14 +12,14 @@ from phenotypic.util.constants_ import MPL
 
 class ImageAccessor:
     """
-    The base for classes that provides access to details and functionalities of a parent _root_image.
+    The base for classes that provides access to details and functionalities of a parent image.
 
-    The ImageAccessor class serves as a base class for interacting with a parent _root_image
-    object. It requires an instance of the parent _root_image for initialization to
-    enable seamless operations on the _root_image's properties and data.
+    The ImageAccessor class serves as a base class for interacting with a parent image
+    object. It requires an instance of the parent image for initialization to
+    enable seamless operations on the image's properties and data.
 
     Attributes:
-        _root_image (Image): The parent _root_image object that this accessor interacts
+        image (Image): The parent image object that this accessor interacts
             with.
     """
 
@@ -35,16 +35,16 @@ class ImageAccessor:
               mpl_kwargs: dict | None = None,
               ) -> tuple[plt.Figure, plt.Axes]:
         """
-        Plots an _root_image array using Matplotlib.
+        Plots an image array using Matplotlib.
 
         This method is designed to render an image array using the `matplotlib.pyplot` module. It provides
         flexible options for color mapping, figure size, title customization, and additional Matplotlib
         parameters, which enable detailed control over the plot appearance.
 
         Args:
-            arr (np.ndarray): The _root_image data to plot. Can be 2D or 3D array representing the _root_image.
+            arr (np.ndarray): The image data to plot. Can be 2D or 3D array representing the image.
             figsize ((int, int), optional): A tuple specifying the figure size. Defaults to (8, 6).
-            title (None | str, optional): Plot title. If None, defaults to the name of the parent _root_image. Defaults to None.
+            title (None | str, optional): Plot title. If None, defaults to the name of the parent image. Defaults to None.
             cmap (str, optional): The colormap to be applied when the array is 2D. Defaults to 'gray'.
             ax (None | plt.Axes, optional): Existing Matplotlib axes to plot into. If None, a new figure is created. Defaults to None.
             mpl_kwargs (dict | None, optional): Additional Matplotlib keyword arguments for customization. Defaults to None.
@@ -53,7 +53,7 @@ class ImageAccessor:
             tuple[plt.Figure, plt.Axes]: A tuple containing the created or passed Matplotlib `Figure` and `Axes` objects.
 
         """
-        figsize = figsize if figsize else MPL.FIGSIZE.value
+        figsize = figsize if figsize else MPL.FIGSIZE
         fig, ax = (ax.get_figure(), ax) if ax else plt.subplots(figsize=figsize)
 
         mpl_kwargs = mpl_kwargs if mpl_kwargs else {}

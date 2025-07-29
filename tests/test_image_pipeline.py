@@ -1,7 +1,7 @@
 from phenotypic import ImagePipeline
 from phenotypic.enhancement import CLAHE, GaussianSmoother, MedianEnhancer, ContrastStretching
 from phenotypic.detection import OtsuDetector, WatershedDetector
-from phenotypic.grid import GridApply, MinResidualErrorReducer, LinRegResidualOutlierRemover
+from phenotypic.grid import GridApply, MinResidualErrorReducer, GridAlignmentOutlierRemover
 from phenotypic.objects import BorderObjectRemover, SmallObjectRemover, LowCircularityRemover
 from phenotypic.measure import MeasureColor, MeasureShape, MeasureIntensity, MeasureTexture
 from phenotypic.morphology import MaskFill
@@ -12,6 +12,14 @@ from phenotypic import GridImage
 from phenotypic.data import load_plate_12hr
 from .test_fixtures import plate_grid_images
 from .resources.TestHelper import timeit
+
+import logging
+
+# Configure logging to see all debug information
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 
 @timeit
 def test_empty_pipeline():
@@ -30,7 +38,7 @@ def test_kmarx_pipeline(plate_grid_images):
             'mask_fill': MaskFill(),
             'low circularity remover': LowCircularityRemover(0.5),
             'reduce by section residual error': MinResidualErrorReducer(),
-            'outlier removal': LinRegResidualOutlierRemover(),
+            'outlier removal': GridAlignmentOutlierRemover(),
             'align': GridAligner(),
             'grid_reduction': MinResidualErrorReducer(),
         },
@@ -59,7 +67,7 @@ def test_kmarx_pipeline_pickleable(plate_grid_images):
             'low circularity remover': LowCircularityRemover(0.6),
             'small object remover': SmallObjectRemover(100),
             'Reduce by section residual error': MinResidualErrorReducer(),
-            'outlier removal': LinRegResidualOutlierRemover(),
+            'outlier removal': GridAlignmentOutlierRemover(),
             'align': GridAligner(),
             'section-level detect': GridApply(ImagePipeline({
                 'blur': GaussianSmoother(sigma=5),
@@ -86,7 +94,7 @@ def test_watershed_kmarx_pipeline_pickleable(plate_grid_images):
             'detection': WatershedDetector(footprint='auto', min_size=100, relabel=True),
             'low circularity remover': LowCircularityRemover(0.5),
             'reduce by section residual error': MinResidualErrorReducer(),
-            'outlier removal': LinRegResidualOutlierRemover(),
+            'outlier removal': GridAlignmentOutlierRemover(),
             'align': GridAligner(),
             'grid_reduction': MinResidualErrorReducer(),
         },
@@ -110,7 +118,7 @@ def test_watershed_kmarx_pipeline_with_measurements_pickleable(plate_grid_images
             'detection': WatershedDetector(footprint='auto', min_size=100, relabel=True),
             'low circularity remover': LowCircularityRemover(0.5),
             'reduce by section residual error': MinResidualErrorReducer(),
-            'outlier removal': LinRegResidualOutlierRemover(),
+            'outlier removal': GridAlignmentOutlierRemover(),
             'align': GridAligner(),
             'grid_reduction': MinResidualErrorReducer(),
         },

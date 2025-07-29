@@ -18,7 +18,7 @@ class ImageMatrixDataAccessor(ImageArrDataAccessor):
     if the data is empty. The class extends the functionality of the base `ImageAccessor`.
 
     Attributes:
-        _root_image (Any): Root Image object that this accessor is linked to.
+        image (Any): Root Image object that this accessor is linked to.
         _main_arr (Any): Main array storing the Image-related data.
         _dtype (Any): Data type of the Image data stored in the target array.
     """

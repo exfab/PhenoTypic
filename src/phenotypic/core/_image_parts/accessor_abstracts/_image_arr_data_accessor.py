@@ -16,7 +16,7 @@ class ImageArrDataAccessor(ImageAccessor):
     if the data is empty. The class extends the functionality of the base `ImageAccessor`.
 
     Attributes:
-        _root_image (Any): Root Image object that this accessor is linked to.
+        image (Any): Root Image object that this accessor is linked to.
         _main_arr (Any): Main array storing the Image-related data.
         _dtype (Any): Data type of the Image data stored in the target array.
     """
@@ -61,21 +61,21 @@ class ImageArrDataAccessor(ImageAccessor):
             - If ax is None, a new figure and axes are created.
 
         Args:
-            arr (np.ndarray): The primary array to be displayed as an _root_image.
+            arr (np.ndarray): The primary array to be displayed as an image.
             objmap (np.ndarray, optional): An array containing labels for an object map to
-                overlay on top of the _root_image. Defaults to None.
+                overlay on top of the image. Defaults to None.
             figsize (tuple[int, int], optional): The size of the figure as a tuple of
                 (width, height). Defaults to (8, 6).
             title (str, optional): Title of the plot to be displayed. If not provided,
-                defaults to the name of the self._root_image.
-            cmap (str, optional): Colormap to apply to the _root_image. Defaults to 'gray'. Only used if arr input_image is 2D.
+                defaults to the name of the self.image.
+            cmap (str, optional): Colormap to apply to the image. Defaults to 'gray'. Only used if arr input_image is 2D.
             ax (plt.Axes, optional): An existing Matplotlib Axes instance for rendering
-                the _root_image. If None, a new figure and axes are created. Defaults to None.
+                the image. If None, a new figure and axes are created. Defaults to None.
             overlay_params (dict | None, optional): Parameters passed to the
                 `skimage.color.label2rgb` function for overlay customization.
                 Defaults to None.
             mpl_kwargs (dict | None, optional): Additional parameters for the
-                `ax.imshow` Matplotlib function to control _root_image rendering.
+                `ax.imshow` Matplotlib function to control image rendering.
                 Defaults to None.
 
         Returns:

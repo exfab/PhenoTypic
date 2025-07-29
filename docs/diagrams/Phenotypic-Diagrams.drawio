@@ -729,7 +729,7 @@
         <mxCell id="GISBltPxecyDrr8vwZxA-2" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;fontFamily=Verdana;labelBackgroundColor=none;" edge="1" parent="1" source="S1X-b-spLZ3A8pe8HGms-5" target="GISBltPxecyDrr8vwZxA-1">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="GISBltPxecyDrr8vwZxA-5" value="Measurements" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontFamily=Verdana;labelBackgroundColor=none;" vertex="1" connectable="0" parent="GISBltPxecyDrr8vwZxA-2">
+        <mxCell id="GISBltPxecyDrr8vwZxA-5" value="SetMeasurementAccessor" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontFamily=Verdana;labelBackgroundColor=none;" vertex="1" connectable="0" parent="GISBltPxecyDrr8vwZxA-2">
           <mxGeometry x="-0.05" y="-1" relative="1" as="geometry">
             <mxPoint y="-11" as="offset" />
           </mxGeometry>
@@ -740,7 +740,7 @@
         <mxCell id="GISBltPxecyDrr8vwZxA-4" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;fontFamily=Verdana;labelBackgroundColor=none;" edge="1" parent="1" source="GISBltPxecyDrr8vwZxA-1" target="GISBltPxecyDrr8vwZxA-3">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="GISBltPxecyDrr8vwZxA-6" value="Aggregated&lt;div&gt;Measurements&lt;/div&gt;" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontFamily=Verdana;labelBackgroundColor=none;" vertex="1" connectable="0" parent="GISBltPxecyDrr8vwZxA-4">
+        <mxCell id="GISBltPxecyDrr8vwZxA-6" value="Aggregated&lt;div&gt;SetMeasurementAccessor&lt;/div&gt;" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontFamily=Verdana;labelBackgroundColor=none;" vertex="1" connectable="0" parent="GISBltPxecyDrr8vwZxA-4">
           <mxGeometry x="-0.03" relative="1" as="geometry">
             <mxPoint x="-2" y="-1" as="offset" />
           </mxGeometry>
@@ -916,7 +916,7 @@
             <mxRectangle width="30" height="30" as="alternateBounds" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="HdomarpCsvZS-t2Sdksm-23" value="Measurements: pd.DataFrame" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;overflow=hidden;whiteSpace=wrap;html=1;" parent="HdomarpCsvZS-t2Sdksm-21" vertex="1">
+        <mxCell id="HdomarpCsvZS-t2Sdksm-23" value="SetMeasurementAccessor: pd.DataFrame" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;overflow=hidden;whiteSpace=wrap;html=1;" parent="HdomarpCsvZS-t2Sdksm-21" vertex="1">
           <mxGeometry x="30" width="240" height="30" as="geometry">
             <mxRectangle width="240" height="30" as="alternateBounds" />
           </mxGeometry>

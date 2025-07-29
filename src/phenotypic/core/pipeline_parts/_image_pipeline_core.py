@@ -192,7 +192,7 @@ class ImagePipelineCore(ImageOperation):
             measurements.append(self._measurements[key].measure(image))
         return self._merge_on_same_index(measurements)
 
-    def apply_and_measure(self, image: Image, inplace: bool = False, reset: bool = True) -> (Image, pd.DataFrame):
+    def apply_and_measure(self, image: Image, inplace: bool = False, reset: bool = True) -> pd.DataFrame:
         img = self.apply(image, inplace=inplace, reset=reset)
         return self.measure(img)
 
