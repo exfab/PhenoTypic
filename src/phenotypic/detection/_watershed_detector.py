@@ -32,6 +32,11 @@ class WatershedDetector(ThresholdDetector):
             connected, higher values for less connectivity).
         relabel (bool): Whether to relabel segmented objects during processing to ensure
             consistent labeling.
+        ignore_zeros (bool): Whether to exclude zero-valued pixels from threshold calculation.
+            When True, Otsu threshold is calculated using only non-zero pixels, and zero pixels
+            are automatically treated as background. When False, all pixels (including zeros)
+            are used for threshold calculation. Default is True, which is useful for microscopy
+            images where zero pixels represent true background or imaging artifacts.
     """
 
     def __init__(self, footprint: Literal['auto'] | np.ndarray | int | None = None,
@@ -59,6 +64,7 @@ class WatershedDetector(ThresholdDetector):
     def _operate(self, image: Image | GridImage) -> Image:
         enhanced_matrix = image.enh_matrix[:]
 
+        # Determine footprint for peak detection
         if self.footprint == 'auto':
             if isinstance(image, GridImage):
                 est_footprint_diameter = max(image.shape[0] // image.grid.nrows, image.shape[1] // image.grid.ncols)
@@ -66,10 +72,26 @@ class WatershedDetector(ThresholdDetector):
             elif isinstance(image, Image):
                 # Not enough information with a normal image to infer
                 footprint = None
+        else:
+            # Use the footprint as defined in __init__ (None, ndarray, or processed int)
+            footprint = self.footprint
 
-        enh_vals = enhanced_matrix[enhanced_matrix != 0] if self.ignore_zeros else enhanced_matrix
-
-        binary = enhanced_matrix >= filters.threshold_otsu(enh_vals)  # TODO: add alternative to otsu eventually?
+        # Prepare values for threshold calculation
+        if self.ignore_zeros:
+            enh_vals = enhanced_matrix[enhanced_matrix != 0]
+            # Safety check: if all values are zero, fall back to using all values
+            if len(enh_vals) == 0:
+                enh_vals = enhanced_matrix
+                threshold = filters.threshold_otsu(enh_vals)
+            else:
+                threshold = filters.threshold_otsu(enh_vals)
+            
+            # Create binary mask: zeros are always background, non-zeros compared to threshold
+            binary = (enhanced_matrix != 0) & (enhanced_matrix >= threshold)
+        else:
+            enh_vals = enhanced_matrix
+            threshold = filters.threshold_otsu(enh_vals)
+            binary = enhanced_matrix >= threshold
         binary = morphology.remove_small_objects(binary, min_size=self.min_size)
         dist_matrix = distance_transform_edt(binary)
         max_peak_indices = feature.peak_local_max(
