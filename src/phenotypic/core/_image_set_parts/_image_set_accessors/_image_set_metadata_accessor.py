@@ -594,7 +594,7 @@ class ImageSetMetadataAccessor:
             return
         
         try:
-            with h5py.File(self._image_set._out_path, mode='r+') as file_handler:
+            with h5py.File(self._image_set._out_path, mode='r+', libver='latest') as file_handler:
                 images_group = file_handler[self._image_set._hdf5_images_group_key]
                 
                 for image_name, metadata_dict in updates.items():

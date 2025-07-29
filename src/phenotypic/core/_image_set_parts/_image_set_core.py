@@ -116,7 +116,7 @@ class ImageSetCore:
 
             # If src and out are different
             elif src_path.is_file() and src_path.suffix == '.h5':
-                with h5py.File(src_path, mode='a') as src_filehandler, h5py.File(self._out_path, mode='a') as writer:
+                with h5py.File(src_path, mode='a', libver='latest') as src_filehandler, h5py.File(self._out_path, mode='a', libver='latest') as writer:
                     src_parent_group = self._get_hdf5_group(src_filehandler, self)
                     out_parent_group = self._hdf.get_parent_group(writer)
 
@@ -146,7 +146,7 @@ class ImageSetCore:
             elif src_path.is_dir():
                 image_filenames = [x for x in os.listdir(src_path) if x.endswith(IO.ACCEPTED_FILE_EXTENSIONS)]
                 image_filenames.sort()
-                with h5py.File(out_path, mode='a') as writer:
+                with h5py.File(out_path, mode='a', libver='latest') as writer:
                     out_group = self._get_hdf5_group(writer, self._hdf5_set_group_key)
 
                     # Overwrite handling
@@ -161,7 +161,7 @@ class ImageSetCore:
         # Only need out handler for this
         elif isinstance(image_list, list):
             assert all(isinstance(x, phenotypic.Image) for x in image_list), 'image_list must be a list of Image objects.'
-            with h5py.File(out_path, mode='a') as writer:
+            with h5py.File(out_path, mode='a', libver='latest') as writer:
                 out_group = self._get_hdf5_group(writer, self._hdf5_parent_group_key)
 
                 # Overwrite the data in the output folder

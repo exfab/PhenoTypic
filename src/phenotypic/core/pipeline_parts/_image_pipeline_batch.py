@@ -566,7 +566,7 @@ class ImagePipelineBatch(ImagePipelineCore):
         measurements_list = []
 
         with imageset._hdf.reader() as reader:
-            image_group = reader[str(imageset._hdf5_images_group_key)]
+            image_group = reader[str(imageset._hdf.set_images_posix)]
 
             for image_name in image_group.keys():
                 image_subgroup = image_group[image_name]

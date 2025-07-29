@@ -53,7 +53,8 @@ def _make_dummy_imageset(tmp_path: Path):
     ]
     return ImageSet(
         name='iset',
-        image_list=images,
+        image_template=Image(),
+        src=images,
         out_path=tmp_path / 'iset.h5',
         overwrite=True,
     )
@@ -83,11 +84,11 @@ def test_batch_apply_and_measure(tmp_path):
 
     df = pipe.apply_and_measure(imageset, num_workers=1, verbose=False)
     print(df)
-    assert all([x in df.loc[:, 'Sum'] for x in [12, 27]]), "runtime aggregated sum of objects should be 4 and 9"
+    assert all([x in df.loc[:, 'Sum'].values for x in [12, 27]]), "runtime aggregated sum of objects should be 12 and 27"
 
     alt_df = imageset.get_measurement()
     print(alt_df)
-    assert all([x in alt_df.loc[:, 'Sum'] for x in [12, 27]]), "post-runtime aggregated sum of objects should be 4 and 9"
+    assert all([x in alt_df.loc[:, 'Sum'].values for x in [12, 27]]), "post-runtime aggregated sum of objects should be 12 and 27"
 
     # Verify images and measurements got written to HDF5
     with h5py.File(imageset._out_path, "r", libver="latest", swmr=True) as h5:

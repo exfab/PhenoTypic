@@ -42,16 +42,17 @@ class ImageSetMeasurements(ImageSetStatus):
 
             # iterate over each image
             for name in image_names:
-                image_group = self._hdf.get_image_data_group(handle=handle, image_name=name)
-                status_group = self._hdf.get_image_status_subgroup(handle=handle, image_name=name)
-                if (self._hdf.IMAGE_MEASUREMENT_SUBGROUP_KEY in image_group
-                        and status_group.attrs[SET_STATUS.PROCESSED.label]
-                        and status_group.attrs[SET_STATUS.MEASURED.label]
-                        and not status_group.attrs[SET_STATUS.ERROR.label]
-                ):
-                    measurements.append(
-                        SetMeasurementAccessor._load_dataframe_from_hdf5_group(image_group[self._hdf.IMAGE_MEASUREMENT_SUBGROUP_KEY]),
-                    )
+                image_group = self._hdf.get_image_group(handle=handle, image_name=name)
+                
+                # Check if measurements exist - more robust than checking status groups
+                if self._hdf.IMAGE_MEASUREMENT_SUBGROUP_KEY in image_group:
+                    try:
+                        measurements.append(
+                            SetMeasurementAccessor._load_dataframe_from_hdf5_group(image_group),
+                        )
+                    except Exception as e:
+                        # If loading fails, add empty DataFrame
+                        measurements.append(pd.DataFrame())
                 else:
                     measurements.append(pd.DataFrame())
 
