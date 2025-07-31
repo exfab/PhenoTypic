@@ -67,10 +67,16 @@ class ImagePipelineBatch(ImagePipelineCore):
                  measurements: List[MeasureFeatures] | Dict[str, MeasureFeatures] | None = None,
                  num_workers: int = -1,
                  verbose: bool = True,
-                 memblock_factor=1.25
+                 memblock_factor=1.25,
+                 benchmark: bool = False
                  ):
-        super().__init__(ops, measurements)
-        self.num_workers = num_workers
+        super().__init__(ops, measurements, benchmark, verbose)
+        # Fix: Set default num_workers to CPU count if -1, ensuring valid multiprocessing
+        if num_workers == -1:
+            import multiprocessing as _mp
+            self.num_workers = _mp.cpu_count() or 1
+        else:
+            self.num_workers = num_workers
         self.verbose = verbose
         self.memblock_factor = memblock_factor
 
@@ -120,7 +126,6 @@ class ImagePipelineBatch(ImagePipelineCore):
     def apply_and_measure(
             self,
             subject: Union[Image, ImageSet],
-            *,
             inplace: bool = False,
             reset: bool = True,
             num_workers: Optional[int] = None,
@@ -239,6 +244,10 @@ class ImagePipelineBatch(ImagePipelineCore):
         stop_event.set()
         writer.join()
 
+        # Small delay to ensure HDF5 file is fully closed by writer process
+        import time
+        time.sleep(0.1)
+
         # Collect aggregated measurements directly from HDF5 file
         aggregated_df = self._aggregate_measurements_from_hdf5(imageset)
         return aggregated_df
@@ -258,7 +267,7 @@ class ImagePipelineBatch(ImagePipelineCore):
         """Puts image-names onto *work_q* once sufficient free RAM is available."""
         logger = logging.getLogger(f"{__name__}.producer")
         logger.info(f"Producer started - PID: {os.getpid()}")
-        
+
         # Wait for writer to open the file first
         logger.info("Waiting for writer to be ready...")
         writer_ready.wait()
@@ -274,13 +283,13 @@ class ImagePipelineBatch(ImagePipelineCore):
             logger.info("Successfully opened HDF5 file with SWMR reader")
         except (RuntimeError, ValueError) as e:
             logger.warning(f"SWMR reader failed ({e}), falling back to regular read-only mode")
-            reader = h5py.File(imageset._out_path, "r", libver="latest")
+            reader = imageset._hdf.reader()
             logger.info("Successfully opened HDF5 file in read-only mode")
 
         with reader:
             image_data = imageset._hdf.get_image_data_group(handle=reader)
             logger.info(f"Accessed image data group with {len(image_data)} entries")
-            
+
             for i, name in enumerate(image_names):
                 if stop_event.is_set():
                     logger.info(f"Stop event set, terminating producer after {i} images")
@@ -289,7 +298,7 @@ class ImagePipelineBatch(ImagePipelineCore):
                 # Estimate size on disk – used as proxy for RAM requirement.
                 size_bytes = self._estimate_hdf5_dataset_size(image_data[name])
                 logger.debug(f"Image {name}: estimated size {size_bytes:,} bytes")
-                
+
                 # Wait until enough free RAM is available.
                 ram_required = size_bytes * self.memblock_factor
                 while psutil.virtual_memory().available < ram_required:
@@ -309,7 +318,7 @@ class ImagePipelineBatch(ImagePipelineCore):
         for i in range(sentinels):
             work_q.put(None)  # type: ignore[arg-type]
             logger.debug(f"Sent sentinel {i+1}/{sentinels}")
-        
+
         logger.info("Producer finished successfully")
 
     # .................................................................
@@ -325,9 +334,9 @@ class ImagePipelineBatch(ImagePipelineCore):
         logger = logging.getLogger(f"{__name__}.worker")
         worker_pid = os.getpid()
         logger.info(f"Worker started - PID: {worker_pid}, Mode: {mode}")
-        
+
         processed_count = 0
-        
+
         while not stop_event.is_set():
             try:
                 name = work_q.get(timeout=1)
@@ -342,16 +351,16 @@ class ImagePipelineBatch(ImagePipelineCore):
                 break
 
             logger.info(f"Worker {worker_pid}: Processing image '{name}' (#{processed_count + 1})")
-            
+
             try:
                 # Load image
                 logger.debug(f"Worker {worker_pid}: Loading image '{name}' from ImageSet")
                 image: Image = imageset.get_image(name)
                 logger.debug(f"Worker {worker_pid}: Successfully loaded image '{name}', shape: {image.shape if hasattr(image, 'shape') else 'unknown'}")
-                
+
                 processed_img = None
                 measurement = None
-                
+
                 if mode == "apply":
                     logger.debug(f"Worker {worker_pid}: Applying pipeline to '{name}'")
                     processed_img = super(ImagePipelineBatch, self).apply(image, inplace=False, reset=True)
@@ -370,12 +379,12 @@ class ImagePipelineBatch(ImagePipelineCore):
                 # Pickle results
                 img_bytes = b""
                 meas_bytes = b""
-                
+
                 if processed_img is not None:
                     logger.debug(f"Worker {worker_pid}: Pickling processed image for '{name}'")
                     img_bytes = pickle.dumps(processed_img)
                     logger.debug(f"Worker {worker_pid}: Pickled image size: {len(img_bytes):,} bytes")
-                    
+
                 if measurement is not None:
                     logger.debug(f"Worker {worker_pid}: Pickling measurements for '{name}'")
                     meas_bytes = pickle.dumps(measurement)
@@ -385,7 +394,7 @@ class ImagePipelineBatch(ImagePipelineCore):
                 result_q.put((name, img_bytes, meas_bytes))
                 processed_count += 1
                 logger.info(f"Worker {worker_pid}: Successfully processed '{name}' ({processed_count} total)")
-                
+
             except KeyboardInterrupt:
                 logger.warning(f"Worker {worker_pid}: Keyboard interrupt received")
                 raise KeyboardInterrupt
@@ -411,7 +420,7 @@ class ImagePipelineBatch(ImagePipelineCore):
         """Single writer thread – runs in main process, writes to HDF5 (SWMR)."""
         logger = logging.getLogger(f"{__name__}.writer")
         logger.info(f"Writer started - PID: {os.getpid()}, expecting {num_workers} workers")
-        
+
         finished_workers = 0
         processed_images = 0
         saved_measurements = 0
@@ -422,7 +431,7 @@ class ImagePipelineBatch(ImagePipelineCore):
         logger.info(f"Opening HDF5 file for writing: {imageset._out_path}")
         with imageset._hdf.writer() as writer:
             logger.info("HDF5 file opened successfully for writing")
-            
+
             # Only enable SWMR if file version supports it
             try:
                 writer.swmr_mode = True  # enable SWMR once file is opened for writing
@@ -508,6 +517,8 @@ class ImagePipelineBatch(ImagePipelineCore):
                         if name in image_group:
                             logger.debug(f"Writer: Deleting existing image group for '{name}'")
                             del image_group[name]
+                        # Ensure processed image has the correct name for HDF5 storage
+                        processed_img.name = name
                         processed_img._save_image2hdfgroup(grp=image_group, compression="gzip", compression_opts=4)
                         processed_images += 1
                         logger.info(f"Writer: Successfully saved processed image for '{name}' ({processed_images} total)")
@@ -520,6 +531,7 @@ class ImagePipelineBatch(ImagePipelineCore):
                 # Save measurements if available
                 if measurement is not None:
                     try:
+                        # Use the original image name (now also set on processed_img)
                         logger.debug(f"Writer: Saving measurements for '{name}' to HDF5")
                         # Get or create the image group for this specific image
                         if name in image_group:
@@ -548,7 +560,7 @@ class ImagePipelineBatch(ImagePipelineCore):
                 logger.debug(f"Writer: Flushing HDF5 file after processing '{name}'")
                 writer.flush()
                 logger.debug(f"Writer: Completed processing '{name}'")
-        
+
         logger.info(f"Writer finished - Processed: {processed_images} images, {saved_measurements} measurements, {errors} errors")
 
     # .................................................................

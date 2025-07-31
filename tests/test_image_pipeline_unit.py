@@ -42,7 +42,7 @@ def _make_imageset(tmp_path: Path):
     return ImageSet(
         name="iset",
         image_list=images,
-        out_path=tmp_path / "iset.h5",
+        outpath=tmp_path / "iset.h5",
         overwrite=True)
 
 
@@ -55,7 +55,7 @@ def _make_dummy_imageset(tmp_path: Path):
         name='iset',
         image_template=Image(),
         src=images,
-        out_path=tmp_path / 'iset.h5',
+        outpath=tmp_path / 'iset.h5',
         overwrite=True,
     )
 

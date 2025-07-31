@@ -4,8 +4,10 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING: from phenotypic import Image
 
 import pandas as pd
-from typing import Dict, Optional, List
+from typing import Dict, Optional, List, Tuple
 import inspect
+import time
+import sys
 
 from phenotypic.abstract import MeasureFeatures, ImageOperation
 
@@ -33,7 +35,9 @@ class ImagePipelineCore(ImageOperation):
 
     def __init__(self,
                  ops: List[ImageOperation] | Dict[str, ImageOperation] | None = None,
-                 measurements: List[MeasureFeatures] | Dict[str, MeasureFeatures] | None = None
+                 measurements: List[MeasureFeatures] | Dict[str, MeasureFeatures] | None = None,
+                 benchmark: bool = False,
+                 verbose: bool = False
                  ):
         """
         This class represents a processing and measurement abstract for Image operations
@@ -47,6 +51,10 @@ class ImagePipelineCore(ImageOperation):
             measurements: An optional dictionary where the keys are feature names
                 (strings) and the values are FeatureExtractor objects responsible for
                 extracting specific features.
+            benchmark: A flag indicating whether to track execution times for operations
+                and measurements. Defaults to False.
+            verbose: A flag indicating whether to print progress information when
+                benchmark mode is on. Defaults to False.
         """
         # If ops is a list of operations convert to a dictionary
         self._ops: Dict[str, ImageOperation] = {}
@@ -54,6 +62,14 @@ class ImagePipelineCore(ImageOperation):
 
         self._measurements: Dict[str, MeasureFeatures] = {}
         if measurements is not None: self.set_measurements(measurements)
+
+        # Store benchmark and verbose flags
+        self._benchmark = benchmark
+        self._verbose = verbose
+
+        # Initialize dictionaries to store execution times
+        self._operation_times: Dict[str, float] = {}
+        self._measurement_times: Dict[str, float] = {}
 
     def set_ops(self, ops: List[ImageOperation] | Dict[str, ImageOperation]):
         """
@@ -159,15 +175,64 @@ class ImagePipelineCore(ImageOperation):
         """
         img = image if inplace else image.copy()
         if reset: image.reset()
-        for key, operation in self._ops.items():
+
+        # Reset operation times for new apply run if benchmarking is enabled
+        if self._benchmark:
+            self._operation_times = {}
+
+        # Create progress bar if verbose and benchmark are enabled
+        if self._benchmark and self._verbose:
             try:
+                from tqdm import tqdm
+                # Create a tqdm instance without items to manually update it
+                total_ops = len(self._ops)
+                pbar = tqdm(total=total_ops, desc="Applying operations", file=sys.stdout)
+                has_tqdm = True
+            except ImportError:
+                # If tqdm is not available, fall back to simple printing
+                print("Applying operations...")
+                has_tqdm = False
+        else:
+            has_tqdm = False
+
+        for i, (key, operation) in enumerate(self._ops.items()):
+            try:
+                # Update progress bar description with current operation
+                if self._benchmark and self._verbose:
+                    if has_tqdm:
+                        pbar.set_description(f"Operation: {key}")
+                    else:
+                        print(f"  Applying operation: {key}")
+
+                # Measure execution time if benchmarking is enabled
+                if self._benchmark:
+                    start_time = time.time()
+
                 sig = inspect.signature(operation.apply)
                 if 'inplace' in sig.parameters:
                     operation.apply(img, inplace=True)
                 else:
                     img = operation.apply(img)
+
+                # Store execution time if benchmarking is enabled
+                if self._benchmark:
+                    self._operation_times[key] = time.time() - start_time
+
+                    # Print execution time if verbose and benchmark are enabled
+                    if self._verbose:
+                        if has_tqdm:
+                            pbar.set_postfix(time=f"{self._operation_times[key]:.4f}s")
+                            pbar.update(1)
+                        else:
+                            print(f"    Completed in {self._operation_times[key]:.4f} seconds")
             except Exception as e:
+                if self._benchmark and self._verbose and has_tqdm:
+                    pbar.close()
                 raise Exception(f'Failed to apply {operation} during step {key} to Image {img.name}: {e}') from e
+
+        # Close the progress bar if it exists
+        if self._benchmark and self._verbose and has_tqdm:
+            pbar.close()
 
         return img
 
@@ -187,14 +252,125 @@ class ImagePipelineCore(ImageOperation):
             pd.DataFrame: A DataFrame containing measurement results from all the
             queued measurement strategies, merged on the same index.
         """
-        measurements = [image.grid.info() if hasattr(image, 'grid') else image.objects.info()]
-        for key in self._measurements.keys():
-            measurements.append(self._measurements[key].measure(image))
+        # Reset measurement times for new measure run if benchmarking is enabled
+        if self._benchmark:
+            self._measurement_times = {}
+
+        # Print message if verbose and benchmark are enabled
+        if self._benchmark and self._verbose:
+            print("Measuring image properties...")
+
+        # Get image info and measure time if benchmarking is enabled
+        if self._benchmark:
+            start_time = time.time()
+            measurements = [image.grid.info() if hasattr(image, 'grid') else image.objects.info()]
+            self._measurement_times['image_info'] = time.time() - start_time
+
+            # Print execution time if verbose and benchmark are enabled
+            if self._verbose:
+                print(f"  Image info: {self._measurement_times['image_info']:.4f} seconds")
+        else:
+            measurements = [image.grid.info() if hasattr(image, 'grid') else image.objects.info()]
+
+        # Create progress bar if verbose and benchmark are enabled
+        if self._benchmark and self._verbose:
+            try:
+                from tqdm import tqdm
+                # Create a tqdm instance without items to manually update it
+                total_measurements = len(self._measurements)
+                pbar = tqdm(total=total_measurements, desc="Applying measurements", file=sys.stdout)
+                has_tqdm = True
+            except ImportError:
+                # If tqdm is not available, fall back to simple printing
+                print("Applying measurements...")
+                has_tqdm = False
+        else:
+            has_tqdm = False
+
+        for i, (key, measurement) in enumerate(self._measurements.items()):
+            try:
+                # Update progress bar description with current measurement
+                if self._benchmark and self._verbose:
+                    if has_tqdm:
+                        pbar.set_description(f"Measurement: {key}")
+                    else:
+                        print(f"  Applying measurement: {key}")
+
+                # Measure execution time for each measurement if benchmarking is enabled
+                if self._benchmark:
+                    start_time = time.time()
+                    measurements.append(measurement.measure(image))
+                    self._measurement_times[key] = time.time() - start_time
+
+                    # Print execution time if verbose and benchmark are enabled
+                    if self._verbose:
+                        if has_tqdm:
+                            pbar.set_postfix(time=f"{self._measurement_times[key]:.4f}s")
+                            pbar.update(1)
+                        else:
+                            print(f"    Completed in {self._measurement_times[key]:.4f} seconds")
+                else:
+                    measurements.append(measurement.measure(image))
+            except Exception as e:
+                if self._benchmark and self._verbose and has_tqdm:
+                    pbar.close()
+                raise Exception(f'Failed to apply measurement {key} to Image: {e}') from e
+
+        # Close the progress bar if it exists
+        if self._benchmark and self._verbose and has_tqdm:
+            pbar.close()
+
         return self._merge_on_same_index(measurements)
 
     def apply_and_measure(self, image: Image, inplace: bool = False, reset: bool = True) -> pd.DataFrame:
         img = self.apply(image, inplace=inplace, reset=reset)
         return self.measure(img)
+
+    def benchmark(self) -> pd.DataFrame:
+        """
+        Returns a table of execution times for operations and measurements.
+
+        This method should be called after applying the pipeline on an image to get
+        the execution times of the different processes.
+
+        Returns:
+            pd.DataFrame: A DataFrame containing execution times for each operation and measurement.
+        """
+        # Create a list to store the data
+        data = []
+
+        # Add operation times
+        for op_name, op_time in self._operation_times.items():
+            data.append({
+                'Process Type': 'Operation',
+                'Process Name': op_name,
+                'Execution Time (s)': op_time
+            })
+
+        # Add measurement times
+        for measure_name, measure_time in self._measurement_times.items():
+            data.append({
+                'Process Type': 'Measurement',
+                'Process Name': measure_name,
+                'Execution Time (s)': measure_time
+            })
+
+        # Create DataFrame
+        if not data:
+            return pd.DataFrame(columns=['Process Type', 'Process Name', 'Execution Time (s)'])
+
+        df = pd.DataFrame(data)
+
+        # Calculate total time
+        total_time = df['Execution Time (s)'].sum()
+        total_row = pd.DataFrame([{
+            'Process Type': 'Total',
+            'Process Name': 'All Processes',
+            'Execution Time (s)': total_time
+        }])
+        df = pd.concat([df, total_row], ignore_index=True)
+
+        return df
 
     @staticmethod
     def _merge_on_same_index(dataframes_list: List[pd.DataFrame]) -> pd.DataFrame:

@@ -115,7 +115,7 @@ class GRID:
     """
     GRID_ROW_NUM = 'Grid_RowNum'
     GRID_ROW_INTERVAL = 'Grid_RowInterval'
-    GRID_COL_NUM = 'Grid_ColNum'
+    GRID_COL_NUM = 'Grid_ColNu_m'
     GRID_COL_INTERVAL = 'Grid_ColInterval'
     GRID_SECTION_NUM = 'Grid_SectionNum'
     GRID_SECTION_IDX = 'Grid_SectionIndex'

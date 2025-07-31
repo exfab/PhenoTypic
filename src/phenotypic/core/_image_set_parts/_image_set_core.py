@@ -18,7 +18,6 @@ from phenotypic.util.constants_ import IO
 from phenotypic.util import HDF
 
 
-
 class ImageSetCore:
     """
     Handles the management and bulk processing of an image set, including importing from
@@ -46,8 +45,8 @@ class ImageSetCore:
     def __init__(self,
                  name: str,
                  image_template: Image | None = None,
-                 src: List[Image] | PathLike | None = None,
-                 out_path: PathLike | None = None,
+                 src: List[Image] | PathLike | str | None = None,
+                 outpath: PathLike | str | None = None,
                  overwrite: bool = False, ):
         """
         Initializes an image set for bulk processing of images.
@@ -65,7 +64,7 @@ class ImageSetCore:
                 - A list of Image objects for importing from in-memory images
                 - A PathLike object pointing to a source directory or HDF5 file containing images
                 - None to connect to the output HDF5 file only
-            out_path (PathLike | None, optional): The output HDF5 file where
+            outpath (PathLike | None, optional): The output HDF5 file where
                 the image set will be stored. Defaults to the current working directory.
             overwrite (bool): Determines whether to overwrite existing data in the output
                 HDF5 file. Defaults to False.
@@ -83,7 +82,7 @@ class ImageSetCore:
         # Automatically detect the type of src parameter
         image_list = None
         src_path = None
-        
+
         if src is not None:
             if isinstance(src, list):
                 # src is a list of images
@@ -92,14 +91,16 @@ class ImageSetCore:
                 # src is a path-like object
                 src_path = src
 
-        src_path, out_path = Path(src_path) if src_path else None, Path(out_path) if out_path else Path.cwd() / f'{self.name}.hdf5'
-        self.name, self._src_path, self._out_path = str(name), src_path, out_path
-        self._hdf = HDF(filepath=out_path, name=self.name, mode='set')
+        src_path, outpath = Path(src_path) if src_path else None, Path(outpath) if outpath else Path.cwd() / f'{self.name}.hdf5'
+        if outpath.is_dir(): outpath = outpath / f'{self.name}.hdf5'
+
+        self.name, self._src_path, self._out_path = str(name), src_path, outpath
+        self._hdf = HDF(filepath=outpath, name=self.name, mode='set')
 
         self._overwrite = overwrite
 
         # Define hdf5 group paths
-        self._hdf5_parent_group_key: str = IO.IMAGE_SET_HDF5_PARENT_GROUP
+        self._hdf5_parent_group_key: str = HDF.IMAGE_SET_HDF5_PARENT_GROUP
         self._hdf5_set_group_key: str = posixpath.join(self._hdf5_parent_group_key, self.name)
 
         # Reminder: SetMeasurementAccessor are stored with each image
@@ -111,12 +112,12 @@ class ImageSetCore:
             # If input path is an hdf5 file
 
             # If src and out are the same
-            if (src_path.is_file()) and (src_path == out_path):
+            if (src_path.is_file()) and (src_path == outpath):
                 pass
 
             # If src and out are different
             elif src_path.is_file() and src_path.suffix == '.h5':
-                with h5py.File(src_path, mode='a', libver='latest') as src_filehandler, h5py.File(self._out_path, mode='a', libver='latest') as writer:
+                with h5py.File(src_path, mode='a', libver='latest') as src_filehandler, self._hdf.safe_writer() as writer:
                     src_parent_group = self._get_hdf5_group(src_filehandler, self)
                     out_parent_group = self._hdf.get_parent_group(writer)
 
@@ -131,7 +132,7 @@ class ImageSetCore:
                         src_filehandler.copy(src_group, out_parent_group, name=self.name, shallow=False)
 
                     #   else import all the images from Image section
-                    elif IO.SINGLE_IMAGE_HDF5_PARENT_GROUP in src_filehandler:
+                    elif HDF.SINGLE_IMAGE_GROUP_POSIX in src_filehandler:
                         src_image_group = self._get_hdf5_group(src_filehandler, self._hdf5_parent_group_key)
 
                         # overwrite if overwrite is true
@@ -146,7 +147,7 @@ class ImageSetCore:
             elif src_path.is_dir():
                 image_filenames = [x for x in os.listdir(src_path) if x.endswith(IO.ACCEPTED_FILE_EXTENSIONS)]
                 image_filenames.sort()
-                with h5py.File(out_path, mode='a', libver='latest') as writer:
+                with h5py.File(outpath, mode='a', libver='latest') as writer:
                     out_group = self._get_hdf5_group(writer, self._hdf5_set_group_key)
 
                     # Overwrite handling
@@ -161,7 +162,7 @@ class ImageSetCore:
         # Only need out handler for this
         elif isinstance(image_list, list):
             assert all(isinstance(x, phenotypic.Image) for x in image_list), 'image_list must be a list of Image objects.'
-            with h5py.File(out_path, mode='a', libver='latest') as writer:
+            with self._hdf.safe_writer() as writer:
                 out_group = self._get_hdf5_group(writer, self._hdf5_parent_group_key)
 
                 # Overwrite the data in the output folder
@@ -170,11 +171,10 @@ class ImageSetCore:
 
                 for image in image_list:
                     image._save_image2hdfgroup(grp=images_group, compression="gzip", compression_opts=4)
-        elif not src_path and not image_list: # connect to outpath hdf5 file only
+        elif not src_path and not image_list:  # connect to outpath hdf5 file only
             pass
         else:
             raise ValueError('image_list must be a list of Image objects or src_path must be a valid hdf5 file.')
-
 
     def _add_image2group(self, group, image: Image, overwrite: bool):
         """Helper function to add an image to a group that allows for reusing file handlers"""
@@ -182,7 +182,6 @@ class ImageSetCore:
             raise ValueError(f'Image named {image.name} already exists in ImageSet {self.name}.')
         else:
             image._save_image2hdfgroup(grp=group, compression="gzip", compression_opts=4)
-
 
     def add_image(self, image: Image, overwrite: bool | None = None):
         """
@@ -205,7 +204,6 @@ class ImageSetCore:
         with self._hdf.writer() as writer:
             set_group = self._hdf.get_group(writer, self._hdf5_images_group_key)
             self._add_image2group(group=set_group, image=image, overwrite=overwrite if overwrite else self._overwrite)
-
 
     @staticmethod
     def _get_hdf5_group(handler, name):
@@ -257,4 +255,3 @@ class ImageSetCore:
                 image_group = self._get_hdf5_group(out_handler, posixpath.join(self._hdf5_images_group_key, image_name))
                 image = self.image_template._load_from_hdf5_group(image_group)
             yield image
-

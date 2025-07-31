@@ -18,6 +18,9 @@ class WatershedDetector(ThresholdDetector):
     size, minimum object size, compactness, and connectivity. This is useful for
     image segmentation tasks, where proximity-based object identification is needed.
 
+    Note:
+        Its recommended to use `GaussianSmoother` beforehand
+
     Attributes:
         footprint (Literal['auto'] | np.ndarray | int | None): Structure element to define
             the neighborhood for dilation and erosion operations. Can be specified directly
@@ -39,7 +42,8 @@ class WatershedDetector(ThresholdDetector):
             images where zero pixels represent true background or imaging artifacts.
     """
 
-    def __init__(self, footprint: Literal['auto'] | np.ndarray | int | None = None,
+    def __init__(self,
+                 footprint: Literal['auto'] | np.ndarray | int | None = None,
                  min_size: int = 50,
                  compactness: float = 0.001,
                  connectivity: int = 1,

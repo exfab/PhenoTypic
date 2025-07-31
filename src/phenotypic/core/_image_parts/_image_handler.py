@@ -91,7 +91,7 @@ class ImageHandler:
             },
             protected={
                 METADATA_LABELS.IMAGE_NAME: name,
-                METADATA_LABELS.PARENT_IMAGE_NAME: None,
+                METADATA_LABELS.PARENT_IMAGE_NAME: np.nan,
                 METADATA_LABELS.IMAGE_TYPE: IMAGE_TYPES.BASE.value
             },
             public={},
@@ -219,9 +219,7 @@ class ImageHandler:
 
     @name.setter
     def name(self, value):
-        if type(value) != str:
-            raise ValueError('Image name must be a string')
-        self.metadata[METADATA_LABELS.IMAGE_NAME] = value
+        self.metadata[METADATA_LABELS.IMAGE_NAME] = str(value)
 
     @property
     def uuid(self):

@@ -23,10 +23,10 @@ class ImageSetStatus(ImageSetCore):
                  name: str,
                  image_template: Image | None = None,
                  src: List[Image] | PathLike | None = None,
-                 out_path: PathLike | None = None,
+                 outpath: PathLike | None = None,
                  overwrite: bool = False, ):
         super().__init__(name=name, image_template=image_template,
-                         src=src, out_path=out_path, overwrite=overwrite)
+                         src=src, outpath=outpath, overwrite=overwrite)
         if overwrite:
             self.reset_status()
 

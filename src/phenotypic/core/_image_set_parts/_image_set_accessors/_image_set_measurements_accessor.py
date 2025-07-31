@@ -76,12 +76,23 @@ class SetMeasurementAccessor:
             dataset_name = f"col_{i:04d}"  # Use zero-padded index for consistent ordering
 
             # Handle different data types appropriately
-            if col_data.dtype.kind in ['U', 'S']:  # String types
+            if col_data.dtype.kind in ['U', 'S']:  # String types (Unicode/bytes)
                 meas_data.create_dataset(dataset_name, data=col_data.astype('S'), compression="gzip", compression_opts=4)
             elif col_data.dtype.kind in ['f', 'i', 'u']:  # Numeric types
                 meas_data.create_dataset(dataset_name, data=col_data, compression="gzip", compression_opts=4)
+            elif col_data.dtype.kind == 'O':  # Object dtype - check if contains strings
+                # Check if the object column contains strings
+                sample_val = col_data[0] if len(col_data) > 0 else None
+                if isinstance(sample_val, str) or sample_val is None or (hasattr(sample_val, '__class__') and sample_val.__class__.__name__ == 'str'):
+                    # Object column contains strings - convert to bytes for HDF5 storage
+                    string_data = [str(val).encode('utf-8') if val is not None else b'' for val in col_data]
+                    meas_data.create_dataset(dataset_name, data=string_data, compression="gzip", compression_opts=4)
+                else:
+                    # Object column contains other types - convert to string then bytes
+                    string_data = [str(val).encode('utf-8') for val in col_data]
+                    meas_data.create_dataset(dataset_name, data=string_data, compression="gzip", compression_opts=4)
             else:  # Other types - convert to string
-                string_data = [str(val).encode() for val in col_data]
+                string_data = [str(val).encode('utf-8') for val in col_data]
                 meas_data.create_dataset(dataset_name, data=string_data, compression="gzip", compression_opts=4)
 
         # Store original dtypes as metadata
@@ -167,27 +178,78 @@ class SetMeasurementAccessor:
                     original_dtype = original_dtype.decode()
 
                 try:
-                    # Handle string types
-                    if col_data.dtype.kind in ['S', 'U']:
-                        col_data = [val.decode() if hasattr(val, 'decode') else str(val) for val in col_data]
+                    # Handle string types or object types that contain bytes
+                    needs_decoding = False
+                    if col_data.dtype.kind in ['S', 'U']:  # String/Unicode dtypes
+                        needs_decoding = True
+                    elif col_data.dtype.kind == 'O':  # Object dtype - check if contains bytes
+                        # Check if the object column contains bytes that need decoding
+                        sample_val = col_data[0] if len(col_data) > 0 else None
+                        if isinstance(sample_val, bytes):
+                            needs_decoding = True
+                    
+                    if needs_decoding:
+                        # Properly decode bytes to strings
+                        decoded_data = []
+                        for val in col_data:
+                            if isinstance(val, bytes):
+                                decoded_data.append(val.decode('utf-8'))
+                            elif hasattr(val, 'decode'):
+                                decoded_data.append(val.decode('utf-8'))
+                            else:
+                                decoded_data.append(str(val))
+                        
                         if 'object' in original_dtype or 'str' in original_dtype:
-                            data_dict[col] = col_data
+                            data_dict[col] = decoded_data
                         else:
                             # Try to convert to original numeric type
-                            data_dict[col] = pd.Series(col_data).astype(original_dtype)
+                            data_dict[col] = pd.Series(decoded_data).astype(original_dtype)
                     else:
                         # Numeric data - restore original dtype
                         data_dict[col] = col_data.astype(original_dtype)
                 except (ValueError, TypeError):
-                    # If conversion fails, use data as-is
-                    if col_data.dtype.kind in ['S', 'U']:
-                        data_dict[col] = [val.decode() if hasattr(val, 'decode') else str(val) for val in col_data]
+                    # If conversion fails, use data as-is but ensure strings are decoded
+                    needs_decoding = False
+                    if col_data.dtype.kind in ['S', 'U']:  # String/Unicode dtypes
+                        needs_decoding = True
+                    elif col_data.dtype.kind == 'O':  # Object dtype - check if contains bytes
+                        sample_val = col_data[0] if len(col_data) > 0 else None
+                        if isinstance(sample_val, bytes):
+                            needs_decoding = True
+                    
+                    if needs_decoding:
+                        decoded_data = []
+                        for val in col_data:
+                            if isinstance(val, bytes):
+                                decoded_data.append(val.decode('utf-8'))
+                            elif hasattr(val, 'decode'):
+                                decoded_data.append(val.decode('utf-8'))
+                            else:
+                                decoded_data.append(str(val))
+                        data_dict[col] = decoded_data
                     else:
                         data_dict[col] = col_data
             else:
                 # No dtype metadata - handle based on current type
-                if col_data.dtype.kind in ['S', 'U']:
-                    data_dict[col] = [val.decode() if hasattr(val, 'decode') else str(val) for val in col_data]
+                needs_decoding = False
+                if col_data.dtype.kind in ['S', 'U']:  # String/Unicode dtypes
+                    needs_decoding = True
+                elif col_data.dtype.kind == 'O':  # Object dtype - check if contains bytes
+                    sample_val = col_data[0] if len(col_data) > 0 else None
+                    if isinstance(sample_val, bytes):
+                        needs_decoding = True
+                
+                if needs_decoding:
+                    # Ensure proper decoding when no dtype metadata is available
+                    decoded_data = []
+                    for val in col_data:
+                        if isinstance(val, bytes):
+                            decoded_data.append(val.decode('utf-8'))
+                        elif hasattr(val, 'decode'):
+                            decoded_data.append(val.decode('utf-8'))
+                        else:
+                            decoded_data.append(str(val))
+                    data_dict[col] = decoded_data
                 else:
                     data_dict[col] = col_data
 

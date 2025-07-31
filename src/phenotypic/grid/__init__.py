@@ -12,5 +12,6 @@ __all__ = [
     "MinResidualErrorReducer",
     "ObjectSpreadExtractor",
     "OptimalCenterGridFinder",
-    "GridAlignmentOutlierRemover"
+    "GridAlignmentOutlierRemover",
+    "GridOversizedObjectRemover"
 ]

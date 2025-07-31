@@ -161,6 +161,10 @@ class ImageIOHandler(ImageColorSpace):
         for key, val in self._metadata.public.items():
             pub.attrs[key] = str(val)
 
+        # 6) Create measurements group
+        if HDF.IMAGE_MEASUREMENT_SUBGROUP_KEY not in image_group:
+            image_group.create_group(HDF.IMAGE_MEASUREMENT_SUBGROUP_KEY)
+
     def save2hdf5(self, filename, compression="gzip", compression_opts=4, overwrite=False, ):
         """
         Save an ImageHandler instance to an HDF5 file under /phenotypic/images<self.name>/.

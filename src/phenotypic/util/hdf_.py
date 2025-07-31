@@ -82,7 +82,12 @@ class HDF:
         if group_name in handle:
             return handle[group_name]
         else:
-            return handle.create_group(group_name)
+            # Check if file is opened in read-only mode
+            if handle.mode == 'r':
+                raise KeyError(f"Group '{group_name}' not found in HDF5 file opened in read-only mode")
+            else:
+                # File has write permissions, safe to create group
+                return handle.create_group(group_name)
 
     def get_home(self, handle):
         """
