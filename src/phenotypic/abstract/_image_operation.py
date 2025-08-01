@@ -25,7 +25,6 @@ class ImageOperation(BaseOperation):
     # Can be set to validate_array_integrity, validate_matrix_integrity, validate_enh_matrix_integrity, validate_objmap_integrity, validate_objmap_integrity_consistency, validate_objmap_integrity_consistency_with_matrix
     # or a custom function that takes two images and returns None if the integrity is valid, otherwise raises OperationIntegrityError
     # If not set, no integrity validation checks are performed.
-    _VALIDATION_OPERATIONS: tuple[Callable[[Image, Image], None], ...] = ()
 
     def apply(self, image: Image, inplace=False) -> Image:
         """
@@ -39,17 +38,20 @@ class ImageOperation(BaseOperation):
         Returns:
             Image: The modified image after applying the operation.
         """
-        matched_args = self._get_matched_operation_args()
-        image = self._apply_to_single_image(
-            cls_name=self.__class__.__name__,
-            image=image,
-            operation=self._operate,
-            inplace=inplace,
-            matched_args=matched_args,
-            integrity_checker=self._validate_integrity,
-            integrity_checklist=self._VALIDATION_OPERATIONS,
-        )
-        return image
+        try:
+            matched_args = self._get_matched_operation_args()
+            image = self._apply_to_single_image(
+                cls_name=self.__class__.__name__,
+                image=image,
+                operation=self._operate,
+                inplace=inplace,
+                matched_args=matched_args,
+            )
+            return image
+        except KeyboardInterrupt:
+            raise KeyboardInterrupt
+        except Exception as e:
+            raise RuntimeError(f'{self.__class__.__name__} failed on image {image.name}: {e}') from e
 
     @staticmethod
     def _operate(image: Image) -> Image:
@@ -67,20 +69,11 @@ class ImageOperation(BaseOperation):
         return image
 
     @staticmethod
-    def _apply_to_single_image(cls_name, image, operation, inplace, matched_args, integrity_checker, integrity_checklist=_VALIDATION_OPERATIONS, ):
+    def _apply_to_single_image(cls_name, image, operation, inplace, matched_args):
         """Applies the operation to a single image. this intermediate function is needed for parallel execution."""
         try:
-            imcopy = image.copy()
-            image = operation(image=image if inplace else image.copy(), **matched_args)
-            integrity_checker(imcopy, image, integrity_checklist=integrity_checklist)
+            return operation(image=image if inplace else image.copy(), **matched_args)
         except KeyboardInterrupt:
             raise KeyboardInterrupt
         except Exception as e:
             raise Exception(f'{cls_name} failed on image {image.name}: {e}') from e
-        else:
-            return image
-
-    @staticmethod
-    def _validate_integrity(pre_op_imcopy, post_op_image, integrity_checklist=_VALIDATION_OPERATIONS) -> None:
-        for check in integrity_checklist:
-            check(pre_op_imcopy, post_op_image)

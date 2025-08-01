@@ -7,8 +7,8 @@ from .. import Image
 
 class WhiteTophatModifier(MapModifier):
     def __init__(self, footprint_shape='disk', footprint_radius: int = None):
-        self._footprint_shape = footprint_shape
-        self._footprint_radius = footprint_radius
+        self.footprint_shape = footprint_shape
+        self.footprint_radius = footprint_radius
 
     def _operate(self, image: Image) -> Image:
         white_tophat_results = white_tophat(
@@ -21,13 +21,13 @@ class WhiteTophatModifier(MapModifier):
         return image
 
     def _get_footprint_radius(self, array: np.ndarray) -> int:
-        if self._footprint_radius is None:
+        if self.footprint_radius is None:
             return int(np.min(array.shape) * 0.004)
         else:
-            return self._footprint_radius
+            return self.footprint_radius
 
     def _get_footprint(self, radius: int) -> np.ndarray:
-        match self._footprint_shape:
+        match self.footprint_shape:
             case 'disk':
                 return disk(radius=radius)
             case 'square':

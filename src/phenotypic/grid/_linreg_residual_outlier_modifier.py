@@ -10,7 +10,7 @@ from phenotypic.grid import MeasureGridLinRegStats
 from phenotypic.util.constants_ import GRID, GRID_LINREG_STATS_EXTRACTOR
 
 
-class LinRegResidualOutlierRemover(GridMapModifier):
+class GridAlignmentOutlierRemover(GridMapModifier):
     """
     Identifies and removes linear regression residual outliers in a grid-based image.
 
@@ -23,7 +23,7 @@ class LinRegResidualOutlierRemover(GridMapModifier):
     Attributes:
         axis (Optional[int]): Axis to analyze for outliers. If None, both rows and columns are
             analyzed; 0 analyzes rows; 1 analyzes columns.
-        stddev_multiplier (float): Multiplier to define the cutoff for residual error relative
+        cutoff_multiplier (float): Multiplier to define the cutoff for residual error relative
             to the standard deviation. Higher values make the cutoff less strict.
         max_coeff_variance (int): Maximum coefficient of variance (standard deviation divided
             by mean) allowed for rows or columns before they are analyzed for outliers.
@@ -31,7 +31,7 @@ class LinRegResidualOutlierRemover(GridMapModifier):
 
     def __init__(self, axis: Optional[int] = None, stddev_multiplier=1.5, max_coeff_variance: int = 1):
         self.axis = axis  # Either none for both axis, 0 for row, or 1 for column
-        self.stddev_multiplier = stddev_multiplier
+        self.cutoff_multiplier = stddev_multiplier
         self.max_coeff_variance = max_coeff_variance
 
     def _operate(self, image: GridImage) -> GridImage:
@@ -53,7 +53,7 @@ class LinRegResidualOutlierRemover(GridMapModifier):
             GridImage: The modified GridImage object with outlier objects removed.
 
         Raises:
-            ValueError: If max_coeff_variance or stddev_multiplier attributes are not
+            ValueError: If max_coeff_variance or cutoff_multiplier attributes are not
                 properly specified for the operation.
         """
         # Generate cached version of grid_info
@@ -70,7 +70,7 @@ class LinRegResidualOutlierRemover(GridMapModifier):
             row_variance = grid_info.groupby(GRID.GRID_ROW_NUM)[GRID_LINREG_STATS_EXTRACTOR.RESIDUAL_ERR].std()
 
             #   Divide standard deviation by mean
-            row_variance = row_variance \
+            row_variance = row_variance\
                            / grid_info.groupby(GRID.GRID_ROW_NUM)[GRID_LINREG_STATS_EXTRACTOR.RESIDUAL_ERR].mean()
 
             over_limit_row_variance = row_variance.loc[row_variance > self.max_coeff_variance]
@@ -82,9 +82,13 @@ class LinRegResidualOutlierRemover(GridMapModifier):
                     GRID_LINREG_STATS_EXTRACTOR.RESIDUAL_ERR
                 ]
                 row_err_mean = row_err.mean()
-                row_stddev = row_err.std()
+                row_q3, row_q1 = row_err.quantile([0.75, 0.25])
+                row_iqr = row_q3 - row_q1
 
-                upper_row_cutoff = row_err_mean + row_stddev * self.stddev_multiplier
+                # row_stddev = row_err.std()
+                # upper_row_cutoff = row_err_mean + row_stddev * self.cutoff_multiplier
+
+                upper_row_cutoff = row_err_mean + row_iqr * self.cutoff_multiplier
                 outlier_obj_ids += row_err.loc[row_err >= upper_row_cutoff].index.tolist()
 
         # Column-wise residual outlier discovery
@@ -105,9 +109,11 @@ class LinRegResidualOutlierRemover(GridMapModifier):
                     GRID_LINREG_STATS_EXTRACTOR.RESIDUAL_ERR
                 ]
                 col_err_mean = col_err.mean()
-                col_stddev = col_err.std()
+                col_q3, col_q1 = col_err.quantile([0.75, 0.25])
+                col_iqr = col_q3 - col_q1
+                # col_stddev = col_err.std()
 
-                upper_col_cutoff = col_err_mean + col_stddev * self.stddev_multiplier
+                upper_col_cutoff = col_err_mean + col_iqr * self.cutoff_multiplier
                 outlier_obj_ids += col_err.loc[col_err >= upper_col_cutoff].index.tolist()
 
         # Remove objects from obj map

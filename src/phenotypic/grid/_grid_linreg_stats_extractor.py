@@ -5,10 +5,10 @@ if TYPE_CHECKING: from phenotypic import GridImage
 import pandas as pd
 from scipy.spatial.distance import euclidean
 
-from phenotypic.abstract import GridFeatureMeasure
-from phenotypic.util.constants_ import GRID, GRID_LINREG_STATS_EXTRACTOR, OBJECT_INFO
+from phenotypic.abstract import GridMeasureFeatures
+from phenotypic.util.constants_ import GRID, GRID_LINREG_STATS_EXTRACTOR, OBJECT, BBOX
 
-class MeasureGridLinRegStats(GridFeatureMeasure):
+class MeasureGridLinRegStats(GridMeasureFeatures):
     def __init__(self, section_num: Optional[int] = None):
         self.section_num = section_num
 
@@ -22,7 +22,7 @@ class MeasureGridLinRegStats(GridFeatureMeasure):
             section_info = grid_info.loc[grid_info.loc[:, GRID.GRID_SECTION_NUM] == self.section_num, :]
 
         # Get the current row-wise linreg info
-        row_m, row_b = image.grid.get_linreg_info(axis=0)
+        row_m, row_b = image.grid.get_centroid_alignment_info(axis=0)
 
         # Convert arrays to dataframe for join operation
         row_linreg_info = pd.DataFrame(data={
@@ -37,12 +37,12 @@ class MeasureGridLinRegStats(GridFeatureMeasure):
 
         # NOTE: Row linear regression(CC) -> pred RR
         section_info.loc[:, GRID_LINREG_STATS_EXTRACTOR.PRED_RR] = \
-            section_info.loc[:, OBJECT_INFO.CENTER_CC] \
+            section_info.loc[:, str(BBOX.CENTER_CC)] \
             * section_info.loc[:, GRID_LINREG_STATS_EXTRACTOR.ROW_LINREG_M] \
             + section_info.loc[:, GRID_LINREG_STATS_EXTRACTOR.ROW_LINREG_B]
 
         # Get the current column linreg info
-        col_m, col_b = image.grid.get_linreg_info(axis=1)
+        col_m, col_b = image.grid.get_centroid_alignment_info(axis=1)
 
         # convert array to dataframe for join operation
         col_linreg_info = pd.DataFrame(data={
@@ -57,17 +57,17 @@ class MeasureGridLinRegStats(GridFeatureMeasure):
 
         # NOTE: Col linear regression(RR) -> pred CC
         section_info.loc[:, GRID_LINREG_STATS_EXTRACTOR.PRED_CC] = \
-            section_info.loc[:, OBJECT_INFO.CENTER_RR] \
+            section_info.loc[:, str(BBOX.CENTER_RR)] \
             * section_info.loc[:, GRID_LINREG_STATS_EXTRACTOR.COL_LINREG_M] \
             + section_info.loc[:, GRID_LINREG_STATS_EXTRACTOR.COL_LINREG_B]
 
         # Calculate the distance each object is from it's predicted center. This is the residual error
         section_info.loc[:, GRID_LINREG_STATS_EXTRACTOR.RESIDUAL_ERR] = section_info.apply(
                 lambda row: euclidean(
-                        u=[row[OBJECT_INFO.CENTER_CC], row[OBJECT_INFO.CENTER_RR]],
+                        u=[row[str(BBOX.CENTER_CC)], row[str(BBOX.CENTER_RR)]],
                         v=[row[GRID_LINREG_STATS_EXTRACTOR.PRED_CC], row[GRID_LINREG_STATS_EXTRACTOR.PRED_RR]],
                 )
                 , axis=1
         )
 
-        return section_info.set_index(OBJECT_INFO.OBJECT_LABELS)
+        return section_info.set_index(OBJECT.LABEL)

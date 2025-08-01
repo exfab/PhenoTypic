@@ -9,7 +9,7 @@ import phenotypic
 
 
 def param2array(tag):
-    from phenotypic.data import load_colony_12_hr, load_colony_72hr, load_plate_12hr, load_plate_72hr
+    from phenotypic.data import load_early_colony, load_colony, load_plate_12hr, load_plate_72hr
 
     match tag:
         case 'km-plate-12hr':
@@ -17,19 +17,19 @@ def param2array(tag):
         case 'km-plate-72hr':
             return load_plate_72hr()
         case 'km-colony-12hr':
-            return load_colony_12_hr()
+            return load_early_colony()
         case 'km-colony-72hr':
-            return load_colony_72hr()
+            return load_colony()
         case 'black-square':
-            return np.full(shape=(100, 100), fill_value=0)
+            return np.full(shape=(100, 100), fill_value=0.0)
         case 'white-square':
-            return np.full(shape=(100, 100), fill_value=1)
+            return np.full(shape=(100, 100), fill_value=1.0)
         case _:
             raise ValueError(f'Invalid tag: {tag}')
 
 
 def param2array_plus_imformat(tag):
-    from phenotypic.data import load_colony_12_hr, load_colony_72hr, load_plate_12hr, load_plate_72hr
+    from phenotypic.data import load_early_colony, load_colony, load_plate_12hr, load_plate_72hr
 
     match tag:
         case 'km-plate-12hr':
@@ -37,13 +37,13 @@ def param2array_plus_imformat(tag):
         case 'km-plate-72hr':
             return load_plate_72hr(), 'RGB', 'RGB'
         case 'km-colony-12hr':
-            return load_colony_12_hr(), 'RGB', 'RGB'
+            return load_early_colony(), 'RGB', 'RGB'
         case 'km-colony-72hr':
-            return load_colony_72hr(), 'RGB', 'RGB'
+            return load_colony(), 'RGB', 'RGB'
         case 'black-square':
-            return np.full(shape=(100, 100), fill_value=0), None, 'Grayscale'
+            return np.full(shape=(100, 100), fill_value=0.0), None, 'Grayscale'
         case 'white-square':
-            return np.full(shape=(100, 100), fill_value=1), 'Grayscale', 'Grayscale'
+            return np.full(shape=(100, 100), fill_value=1.0), 'Grayscale', 'Grayscale'
         case _:
             raise ValueError(f'Invalid tag: {tag}')
 
@@ -114,11 +114,16 @@ def walk_package(pkg):
     if hasattr(pkg, "__path__"):  # add all sub‑modules
         modules += [
             importlib.import_module(name)
-            for _, name, _ in pkgutil.walk_packages(pkg.__path__, pkg.__name__ + ".")
+            for _, name, _ in pkgutil.walk_packages(pkg.__path__, pkg.__name__ + ".")\
+                if not name.split(".")[-1].startswith("_")  # Skip modules with names starting with underscore
+
         ]
 
     seen = set()
     for mod in modules:
+        if mod.__name__.startswith("_"):
+            continue
+
         for attr in dir(mod):
             if attr.startswith("_"):
                 continue
@@ -143,11 +148,15 @@ def walk_package_for_operations(pkg):
     if hasattr(pkg, "__path__"):  # add all sub‑modules
         modules += [
             importlib.import_module(name)
-            for _, name, _ in pkgutil.walk_packages(pkg.__path__, pkg.__name__ + ".")
+            for _, name, _ in pkgutil.walk_packages(pkg.__path__, pkg.__name__ + ".")\
+                if not name.split(".")[-1].startswith("_")  # Skip modules with names starting with underscore
+
         ]
 
     seen = set()
     for mod in modules:
+        if mod.__name__.startswith("_"):
+            continue
         for attr in dir(mod):
             if attr.startswith("_"):
                 continue
@@ -178,11 +187,15 @@ def walk_package_for_measurements(pkg):
     if hasattr(pkg, "__path__"):  # add all sub‑modules
         modules += [
             importlib.import_module(name)
-            for _, name, _ in pkgutil.walk_packages(pkg.__path__, pkg.__name__ + ".")
+            for _, name, _ in pkgutil.walk_packages(pkg.__path__, pkg.__name__ + ".")\
+                if not name.split(".")[-1].startswith("_")  # Skip modules with names starting with underscore
+
         ]
 
     seen = set()
     for mod in modules:
+        if mod.__name__.startswith("_"):
+            continue
         for attr in dir(mod):
             if attr.startswith("_"):
                 continue
@@ -194,7 +207,7 @@ def walk_package_for_measurements(pkg):
             if not isinstance(obj, type): # make sure object is a class object
                 continue
 
-            if not issubclass(obj, phenotypic.abstract.FeatureMeasure):
+            if not issubclass(obj, phenotypic.abstract.MeasureFeatures):
                 continue
 
             qualname = f"{mod.__name__}.{attr}"

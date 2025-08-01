@@ -1,10 +1,9 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
 
-if TYPE_CHECKING: from phenotypic import GridImage
+if TYPE_CHECKING: from phenotypic import GridImage, ImagePipeline
 
 from phenotypic.abstract import ImageOperation
-from phenotypic.pipeline import ImagePipeline
 
 
 class GridApply:
@@ -29,7 +28,11 @@ class GridApply:
                            row_edges[row_i]:row_edges[row_i + 1],
                            col_edges[col_i]:col_edges[col_i + 1]
                            ]
-                self.operation.apply(subimage, inplace=True)
+                try:
+                    self.operation.apply(subimage, inplace=True)
+                except Exception as e:
+                    raise RuntimeError(f"Error applying operation to section {row_i, col_i}: {e}")
+
 
                 image[
                 row_edges[row_i]:row_edges[row_i + 1],

@@ -87,9 +87,31 @@ def test_image_matrix_access(sample_image_array_with_imformat):
     input_image, input_imformat, true_imformat = sample_image_array_with_imformat
     ps_image = phenotypic.Image(input_image=input_image, imformat=input_imformat)
     if input_imformat == 'RGB':
-        assert np.array_equal(ps_image.matrix[:], skimage.color.rgb2gray(input_image))
+        assert np.allclose(ps_image.matrix[:], skimage.color.rgb2gray(input_image), atol=1.0 / np.finfo(ps_image.matrix[:].dtype).max),\
+            f'Image.matrix and skimage.color.rgb2gray do not match at {np.unique(ps_image.matrix[:] != skimage.color.rgb2gray(input_image), return_counts=True)}'
     elif input_imformat == 'Grayscale':
         assert np.array_equal(ps_image.matrix[:], input_image)
+
+
+@timeit
+def test_image_matrix_change(sample_image_array_with_imformat):
+    input_image, input_imformat, true_imformat = sample_image_array_with_imformat
+    ps_image = phenotypic.Image(input_image=input_image, imformat=input_imformat)
+    ps_image.matrix[10:10, 10:10] = 0
+    if input_imformat == 'RGB':
+        altered_image = skimage.color.rgb2gray(input_image)
+        altered_image[10:10, 10:10] = 0
+
+        assert np.allclose(ps_image.matrix[:], altered_image, atol=1.0 / np.finfo(ps_image.matrix[:].dtype).max),\
+            f'Image.matrix and skimage.color.rgb2gray do not match at {np.unique(ps_image.matrix[:] != altered_image, return_counts=True)}'
+
+        assert np.array_equal(ps_image.array[:], input_image), 'Image.array was altered and color information was changed'
+
+    elif input_imformat == 'Grayscale':
+        altered_image = input_image.copy()
+        altered_image[10:10, 10:10] = 0
+        assert np.allclose(ps_image.matrix[:], altered_image, atol=1.0 / np.iinfo(ps_image.matrix[:].dtype).max),\
+            f'Image.matrix and input_image do not match at {np.unique(ps_image.matrix[:] != altered_image, return_counts=True)}'
 
 
 @timeit
@@ -108,13 +130,13 @@ def test_image_object_mask_access(sample_image_array_with_imformat):
     input_image, input_imformat, true_imformat = sample_image_array_with_imformat
     ps_image = phenotypic.Image(input_image=input_image, imformat=input_imformat)
 
-    # When no objects in image
-    assert np.array_equal(ps_image.objmask[:], np.full(shape=ps_image.matrix.shape, fill_value=True))
+    # When no objects in _root_image
+    assert np.array_equal(ps_image.objmask[:], np.full(shape=ps_image.matrix.shape, fill_value=False))
 
     ps_image.objmask[:10, :10] = 0
     ps_image.objmask[-10:, -10:] = 1
 
-    assert not np.array_equal(ps_image.objmask[:], np.full(shape=ps_image.matrix.shape, fill_value=True))
+    assert not np.array_equal(ps_image.objmask[:], np.full(shape=ps_image.matrix.shape, fill_value=False))
 
 
 @timeit
@@ -122,14 +144,14 @@ def test_image_object_map_access(sample_image_array_with_imformat):
     input_image, input_imformat, true_imformat = sample_image_array_with_imformat
     ps_image = phenotypic.Image(input_image=input_image, imformat=input_imformat)
 
-    # When no objects in image
-    assert np.array_equal(ps_image.objmap[:], np.full(shape=ps_image.matrix.shape, fill_value=1, dtype=np.uint32))
+    # When no objects in _root_image
+    assert np.array_equal(ps_image.objmap[:], np.full(shape=ps_image.matrix.shape, fill_value=0, dtype=np.uint32))
     assert ps_image.num_objects == 0
 
     ps_image.objmap[:10, :10] = 1
     ps_image.objmap[-10:, -10:] = 2
 
-    assert not np.array_equal(ps_image.objmap[:], np.full(shape=ps_image.matrix.shape, fill_value=1, dtype=np.uint32))
+    assert not np.array_equal(ps_image.objmap[:], np.full(shape=ps_image.matrix.shape, fill_value=0, dtype=np.uint32))
     assert ps_image.num_objects > 0
     assert ps_image.objects.num_objects > 0
 
@@ -190,6 +212,6 @@ def test_image_object_label_consistency_with_skimage(sample_image_array_with_imf
     ps_image.objmap[:10, :10] = 1
     ps_image.objmap[-10:, -10:] = 2
 
-    assert ps_image.objects.get_labels_series().equals(
-        pd.Series(skimage.measure.regionprops_table(ps_image.objmap[:], properties=['label'])['label'])
+    assert ps_image.objects.labels2series().equals(
+        pd.Series(skimage.measure.regionprops_table(ps_image.objmap[:], properties=['label'])['label']),
     )

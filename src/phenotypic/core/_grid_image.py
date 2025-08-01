@@ -1,4 +1,4 @@
-from .handlers import ImageGridHandler
+from ._image_parts import ImageGridHandler
 
 class GridImage(ImageGridHandler):
     pass

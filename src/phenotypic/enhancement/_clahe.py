@@ -24,7 +24,7 @@ class CLAHE(ImageEnhancer):
     def _operate(self, image: Image) -> Image:
         image.enh_matrix[:] = equalize_adapthist(
             image=image.enh_matrix[:],
-            kernel_size=self.kernel_size if self.kernel_size \
+            kernel_size=self.kernel_size if self.kernel_size\
                 else self._auto_kernel_size(image),
         )
         return image

@@ -10,7 +10,7 @@ class GaussianSmoother(ImageEnhancer):
 
     The GaussianPreprocessor class is used to enhance the pixel quality of an image by applying a
     Gaussian filter. It operates on the enhanced matrix of an image object. It allows customization
-    of the Gaussian filter parameters. The class is designed for use in image enhancement pipelines.
+    of the Gaussian filter parameters. The class is designed for use in image enhancement prefab.
 
     Parameters:
         sigma (float): The standard deviation for Gaussian kernel. Higher values result in more

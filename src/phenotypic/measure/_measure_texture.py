@@ -4,86 +4,92 @@ from typing import TYPE_CHECKING, Callable
 if TYPE_CHECKING: from phenotypic import Image
 
 import warnings
+from enum import Enum
+from mahotas.features.texture import haralick_features
+
+from phenotypic.abstract import MeasurementInfo
+
+
+class TEXTURE(MeasurementInfo):
+    @property
+    def CATEGORY(self) -> str:
+        return 'Texture'
+
+    ANGULAR_SECOND_MOMENT = (
+        'AngularSecondMoment',
+        'Sum of squared co-occurrence probabilities (uniformity); high for smooth regions where neighbors match, low for varied textures.'
+    )
+    CONTRAST = (
+        'Contrast',
+        'Weighted sum of squared intensity differences; high for edgy patterns (large jumps), low for smooth gradients.'
+    )
+    CORRELATION = (
+        'Correlation',
+        'Linear dependency of gray levels; high if one pixel predicts its neighbor well, low if random.'
+    )
+    VARIANCE = (
+        'HaralickVariance',
+        'Spread of co-occurrence values; high for busy textures, low for uniform patches.'
+    )
+    INVERSE_DIFFERENCE_MOMENT = (
+        'InverseDifferenceMoment',
+        'Inverse of contrast weighted for similarity; high for smooth regions, low at edges.'
+    )
+    SUM_AVERAGE = (
+        'SumAverage',
+        'Mean of pixel-pair intensity sums; tracks overall brightness.'
+    )
+    SUM_VARIANCE = (
+        'SumVariance',
+        'Variance of pixel-pair sums; high if sums vary widely, low if uniform.'
+    )
+    SUM_ENTROPY = (
+        'SumEntropy',
+        'Entropy of pixel-pair sum distribution; low if predictable, high if chaotic.'
+    )
+    ENTROPY = (
+        'Entropy',
+        'Entropy of co-occurrence matrix; low for uniform patches, high for random variation.'
+    )
+    DIFFERENCE_VARIANCE = (
+        'DifferenceVariance',
+        'Variance of pixel-pair differences; high if difference sizes vary, low if uniform.'
+    )
+    DIFFERENCE_ENTROPY = (
+        'DifferenceEntropy',
+        'Entropy of pixel-pair difference distribution; measures unpredictability of differences.'
+    )
+    IMC1 = (
+        'InformationCorrelation1',
+        'Mutual-information measure between pixel pairs; how much one pixel reduces uncertainty of its neighbor.'
+    )
+    IMC2 = (
+        'InformationCorrelation2',
+        'Normalized mutual-information; strength of dependency relative to maximum possible.'
+    )
+
+    @classmethod
+    def get_headers(cls, scale: int, matrix_name) -> list[str]:
+        """Return full texture labels with angles in order 0, 45, 90, 135 for each feature."""
+        angles = ['0', '45', '90', '135']
+        labels: list[str] = []
+        for member in cls.iter_labels():
+            base = f"{str(member)}"
+            for angle in angles:
+                labels.append(f"{base}{matrix_name}-deg({angle})-scale({scale}))")
+        return labels
+
+
 import mahotas as mh
 import numpy as np
 import pandas as pd
 from skimage.util import img_as_ubyte
 
-from phenotypic.abstract import FeatureMeasure
-from phenotypic.util.constants_ import OBJECT_INFO
-
-MEDIAN = 'Median'
-MEAN = 'Mean'
-STDDEV = 'StdDev'
-COEFF_VARIANCE = 'CoefficientVariance'
-CATEGORY_TEXTURE = 'Texture'
-ANGULAR_SECOND_MOMENT_0 = 'AngularSecondMoment-deg(0)'
-ANGULAR_SECOND_MOMENT_45 = 'AngularSecondMoment-deg(45)'
-ANGULAR_SECOND_MOMENT_90 = 'AngularSecondMoment-deg(90)'
-ANGULAR_SECOND_MOMENT_135 = 'AngularSecondMoment-deg(135)'
-
-CONTRAST_0 = 'Contrast-deg(0)'
-CONTRAST_45 = 'Contrast-deg(45)'
-CONTRAST_90 = 'Contrast-deg(90)'
-CONTRAST_135 = 'Contrast-deg(135)'
-
-CORRELATION_0 = 'Correlation-deg(0)'
-CORRELATION_45 = 'Correlation-deg(45)'
-CORRELATION_90 = 'Correlation-deg(90)'
-CORRELATION_135 = 'Correlation-deg(135)'
-
-VARIANCE_0 = 'HaralickVariance-deg(0)'
-VARIANCE_45 = 'HaralickVariance-deg(45)'
-VARIANCE_90 = 'HaralickVariance-deg(90)'
-VARIANCE_135 = 'HaralickVariance-deg(135)'
-
-INVERSE_DIFFERENCE_MOMENT_0 = 'InverseDifferenceMoment-deg(0)'
-INVERSE_DIFFERENCE_MOMENT_45 = 'InverseDifferenceMoment-deg(45)'
-INVERSE_DIFFERENCE_MOMENT_90 = 'InverseDifferenceMoment-deg(90)'
-INVERSE_DIFFERENCE_MOMENT_135 = 'InverseDifferenceMoment-deg(135)'
-
-SUM_AVERAGE_0 = 'SumAverage-deg(0)'
-SUM_AVERAGE_45 = 'SumAverage-deg(45)'
-SUM_AVERAGE_90 = 'SumAverage-deg(90)'
-SUM_AVERAGE_135 = 'SumAverage-deg(135)'
-
-SUM_VARIANCE_0 = 'SumVariance-deg(0)'
-SUM_VARIANCE_45 = 'SumVariance-deg(45)'
-SUM_VARIANCE_90 = 'SumVariance-deg(90)'
-SUM_VARIANCE_135 = 'SumVariance-deg(135)'
-
-SUM_ENTROPY_0 = 'SumEntropy-deg(0)'
-SUM_ENTROPY_45 = 'SumEntropy-deg(45)'
-SUM_ENTROPY_90 = 'SumEntropy-deg(90)'
-SUM_ENTROPY_135 = 'SumEntropy-deg(135)'
-
-ENTROPY_0 = 'Entropy-deg(0)'
-ENTROPY_45 = 'Entropy-deg(45)'
-ENTROPY_90 = 'Entropy-deg(90)'
-ENTROPY_135 = 'Entropy-deg(135)'
-
-DIFFERENCE_VARIANCE_0 = 'DifferenceVariance-deg(0)'
-DIFFERENCE_VARIANCE_45 = 'DifferenceVariance-deg(45)'
-DIFFERENCE_VARIANCE_90 = 'DifferenceVariance-deg(90)'
-DIFFERENCE_VARIANCE_135 = 'DifferenceVariance-deg(135)'
-
-DIFFERENCE_ENTROPY_0 = 'DifferenceEntropy-deg(0)'
-DIFFERENCE_ENTROPY_45 = 'DifferenceEntropy-deg(45)'
-DIFFERENCE_ENTROPY_90 = 'DifferenceEntropy-deg(90)'
-DIFFERENCE_ENTROPY_135 = 'DifferenceEntropy-deg(135)'
-
-IMC1_0 = 'InformationCorrelation(1)-deg(0)'
-IMC1_45 = 'InformationCorrelation(1)-deg(45)'
-IMC1_90 = 'InformationCorrelation(1)-deg(90)'
-IMC1_135 = 'InformationCorrelation(1)-deg(135)'
-
-IMC2_0 = 'InformationCorrelation(2)-deg(0)'
-IMC2_45 = 'InformationCorrelation(2)-deg(45)'
-IMC2_90 = 'InformationCorrelation(2)-deg(90)'
-IMC2_135 = 'InformationCorrelation(2)-deg(135)'
+from phenotypic.abstract import MeasureFeatures
+from phenotypic.util.constants_ import OBJECT
 
 
-class MeasureTexture(FeatureMeasure):
+class MeasureTexture(MeasureFeatures):
     """
     Represents a measurement of texture features extracted from image objects.
 
@@ -96,23 +102,42 @@ class MeasureTexture(FeatureMeasure):
     Attributes:
         scale (int): The scale parameter used in the computation of texture features. It is
             often used to define the spatial relationship between pixels.
+
+    References:
+        [1] https://mahotas.readthedocs.io/en/latest/api.html#mahotas.features.haralick
     """
 
     def __init__(self, scale: int = 5):
+        """Initialize the MeasureTexture instance with a specified scale parameter.
+
+        Args:
+            scale (int, optional): The distance parameter used in calculating Haralick features.
+                Defaults to 5.
+        """
         self.scale = scale
 
-    @staticmethod
-    def _operate(image: Image, _compute_matrix_texture: Callable, scale: int):
-        texture_measurements = _compute_matrix_texture(image=image,
-                                                       foreground_array=image.matrix[:],
-                                                       foreground_name='intensity',
-                                                       scale=scale
-                                                       )
-        texture_measurements = {f'{CATEGORY_TEXTURE}_{key}': value for key, value in texture_measurements.items()}
-        return pd.DataFrame(texture_measurements, index=image.objects.get_labels_series())
+    def _operate(self, image: Image) -> pd.DataFrame:
+        """Performs texture measurements on the image objects.
+
+        This method extracts texture features from the foreground objects in the image using
+        Haralick texture features. It processes the image's foreground array and returns
+        the measurements as a DataFrame.
+
+        Args:
+            image (Image): The image containing objects to measure.
+
+        Returns:
+            pd.DataFrame: A DataFrame containing texture measurements for each object in the image.
+                The rows are indexed by object labels, and columns represent different texture features.
+        """
+        return self._compute_haralick(image=image,
+                                      foreground_array=image.matrix.get_foreground(),
+                                      foreground_name='Intensity',
+                                      scale=self.scale,
+                                      )
 
     @staticmethod
-    def _compute_matrix_texture(image: Image, foreground_array: np.ndarray, foreground_name: str, scale: int = 5) -> dict:
+    def _compute_haralick(image: Image, foreground_array: np.ndarray, foreground_name: str, scale: int = 5) -> pd.DataFrame:
         """
         Computes texture feature measurements using Haralick features for objects in a given image. The method
         calculates various statistical texture features such as Angular Second Moment, Contrast, Correlation,
@@ -140,79 +165,28 @@ class MeasureTexture(FeatureMeasure):
                 warning is issued with details of the error, and NaN values are assigned for the corresponding
                 measurements.
         """
-        parameter_suffix = f'-{foreground_name}-scale({scale})'
-        measurements = {
-            ANGULAR_SECOND_MOMENT_0 + parameter_suffix: [],
-            ANGULAR_SECOND_MOMENT_45 + parameter_suffix: [],
-            ANGULAR_SECOND_MOMENT_90 + parameter_suffix: [],
-            ANGULAR_SECOND_MOMENT_135 + parameter_suffix: [],
-            CONTRAST_0 + parameter_suffix: [],
-            CONTRAST_45 + parameter_suffix: [],
-            CONTRAST_90 + parameter_suffix: [],
-            CONTRAST_135 + parameter_suffix: [],
-            CORRELATION_0 + parameter_suffix: [],
-            CORRELATION_45 + parameter_suffix: [],
-            CORRELATION_90 + parameter_suffix: [],
-            CORRELATION_135 + parameter_suffix: [],
-            VARIANCE_0 + parameter_suffix: [],
-            VARIANCE_45 + parameter_suffix: [],
-            VARIANCE_90 + parameter_suffix: [],
-            VARIANCE_135 + parameter_suffix: [],
-            INVERSE_DIFFERENCE_MOMENT_0 + parameter_suffix: [],
-            INVERSE_DIFFERENCE_MOMENT_45 + parameter_suffix: [],
-            INVERSE_DIFFERENCE_MOMENT_90 + parameter_suffix: [],
-            INVERSE_DIFFERENCE_MOMENT_135 + parameter_suffix: [],
-            SUM_AVERAGE_0 + parameter_suffix: [],
-            SUM_AVERAGE_45 + parameter_suffix: [],
-            SUM_AVERAGE_90 + parameter_suffix: [],
-            SUM_AVERAGE_135 + parameter_suffix: [],
-            SUM_VARIANCE_0 + parameter_suffix: [],
-            SUM_VARIANCE_45 + parameter_suffix: [],
-            SUM_VARIANCE_90 + parameter_suffix: [],
-            SUM_VARIANCE_135 + parameter_suffix: [],
-            SUM_ENTROPY_0 + parameter_suffix: [],
-            SUM_ENTROPY_45 + parameter_suffix: [],
-            SUM_ENTROPY_90 + parameter_suffix: [],
-            SUM_ENTROPY_135 + parameter_suffix: [],
-            ENTROPY_0 + parameter_suffix: [],
-            ENTROPY_45 + parameter_suffix: [],
-            ENTROPY_90 + parameter_suffix: [],
-            ENTROPY_135 + parameter_suffix: [],
-            DIFFERENCE_VARIANCE_0 + parameter_suffix: [],
-            DIFFERENCE_VARIANCE_45 + parameter_suffix: [],
-            DIFFERENCE_VARIANCE_90 + parameter_suffix: [],
-            DIFFERENCE_VARIANCE_135 + parameter_suffix: [],
-            DIFFERENCE_ENTROPY_0 + parameter_suffix: [],
-            DIFFERENCE_ENTROPY_45 + parameter_suffix: [],
-            DIFFERENCE_ENTROPY_90 + parameter_suffix: [],
-            DIFFERENCE_ENTROPY_135 + parameter_suffix: [],
-            IMC1_0 + parameter_suffix: [],
-            IMC1_45 + parameter_suffix: [],
-            IMC1_90 + parameter_suffix: [],
-            IMC1_135 + parameter_suffix: [],
-            IMC2_0 + parameter_suffix: [],
-            IMC2_45 + parameter_suffix: [],
-            IMC2_90 + parameter_suffix: [],
-            IMC2_135 + parameter_suffix: [],
-            COEFF_VARIANCE + parameter_suffix: [],
-        }
+        props = image.objects.props
+        objmap = image.objmap[:]
+        measurement_names = TEXTURE.get_headers(scale, foreground_name)
+        measurements = np.empty(shape=(image.num_objects, len(measurement_names),), dtype=np.float64)
         for idx, label in enumerate(image.objects.labels):
-            slices = image.objects.props[idx].slice
+            slices = props[idx].slice
             obj_extracted = foreground_array[slices].copy()
 
             # In case there's more than one object in the crop
-            obj_extracted[image.objmap[slices] != label] = 0
-
-            measurements[COEFF_VARIANCE + parameter_suffix].append(
-                np.std(obj_extracted[obj_extracted.nonzero()]) / np.mean(obj_extracted[obj_extracted.nonzero()])
-            )
+            obj_extracted[objmap[slices] != label] = 0
 
             try:
-                haralick_features = mh.features.haralick(img_as_ubyte(obj_extracted),
-                                                         distance=scale,
-                                                         ignore_zeros=True,
-                                                         return_mean=False
-                                                         )
+                if obj_extracted.sum() == 0:
+                    haralick_features = np.full((4, 13), np.nan, dtype=np.float64)
+                else:
+                    # Pad object with zero if its dimensions are smaller than the scale
+
+                    haralick_features = mh.features.haralick(img_as_ubyte(obj_extracted),
+                                                             distance=scale,
+                                                             ignore_zeros=True,
+                                                             return_mean=False,
+                                                             )
             except KeyboardInterrupt:
                 raise KeyboardInterrupt
             except Exception as e:
@@ -220,82 +194,8 @@ class MeasureTexture(FeatureMeasure):
                 warnings.warn(f'Error in computing Haralick features for object {label}: {e}')
                 haralick_features = np.full((4, 13), np.nan, dtype=np.float64)
 
-            # Angular Second Moment - feature index 0
-            measurements[ANGULAR_SECOND_MOMENT_0 + parameter_suffix].append(haralick_features[0, 0])
-            measurements[ANGULAR_SECOND_MOMENT_45 + parameter_suffix].append(haralick_features[1, 0])
-            measurements[ANGULAR_SECOND_MOMENT_90 + parameter_suffix].append(haralick_features[2, 0])
-            measurements[ANGULAR_SECOND_MOMENT_135 + parameter_suffix].append(haralick_features[3, 0])
+            measurements[idx, :] = haralick_features.T.ravel()
 
-            # Contrast - feature index 1
-            measurements[CONTRAST_0 + parameter_suffix].append(haralick_features[0, 1])
-            measurements[CONTRAST_45 + parameter_suffix].append(haralick_features[1, 1])
-            measurements[CONTRAST_90 + parameter_suffix].append(haralick_features[2, 1])
-            measurements[CONTRAST_135 + parameter_suffix].append(haralick_features[3, 1])
+        return pd.DataFrame(measurements, index=image.objects.labels2series(), columns=measurement_names)
 
-            # Correlation - feature index 2
-            measurements[CORRELATION_0 + parameter_suffix].append(haralick_features[0, 2])
-            measurements[CORRELATION_45 + parameter_suffix].append(haralick_features[1, 2])
-            measurements[CORRELATION_90 + parameter_suffix].append(haralick_features[2, 2])
-            measurements[CORRELATION_135 + parameter_suffix].append(haralick_features[3, 2])
-
-            # Variance - feature index 3
-            measurements[VARIANCE_0 + parameter_suffix].append(haralick_features[0, 3])
-            measurements[VARIANCE_45 + parameter_suffix].append(haralick_features[1, 3])
-            measurements[VARIANCE_90 + parameter_suffix].append(haralick_features[2, 3])
-            measurements[VARIANCE_135 + parameter_suffix].append(haralick_features[3, 3])
-
-            # Inverse Difference Moment - feature index 4
-            measurements[INVERSE_DIFFERENCE_MOMENT_0 + parameter_suffix].append(haralick_features[0, 4])
-            measurements[INVERSE_DIFFERENCE_MOMENT_45 + parameter_suffix].append(haralick_features[1, 4])
-            measurements[INVERSE_DIFFERENCE_MOMENT_90 + parameter_suffix].append(haralick_features[2, 4])
-            measurements[INVERSE_DIFFERENCE_MOMENT_135 + parameter_suffix].append(haralick_features[3, 4])
-
-            # Sum Average - feature index 5
-            measurements[SUM_AVERAGE_0 + parameter_suffix].append(haralick_features[0, 5])
-            measurements[SUM_AVERAGE_45 + parameter_suffix].append(haralick_features[1, 5])
-            measurements[SUM_AVERAGE_90 + parameter_suffix].append(haralick_features[2, 5])
-            measurements[SUM_AVERAGE_135 + parameter_suffix].append(haralick_features[3, 5])
-
-            # Sum Variance - feature index 6
-            measurements[SUM_VARIANCE_0 + parameter_suffix].append(haralick_features[0, 6])
-            measurements[SUM_VARIANCE_45 + parameter_suffix].append(haralick_features[1, 6])
-            measurements[SUM_VARIANCE_90 + parameter_suffix].append(haralick_features[2, 6])
-            measurements[SUM_VARIANCE_135 + parameter_suffix].append(haralick_features[3, 6])
-
-            # Sum Entropy - feature index 7
-            measurements[SUM_ENTROPY_0 + parameter_suffix].append(haralick_features[0, 7])
-            measurements[SUM_ENTROPY_45 + parameter_suffix].append(haralick_features[1, 7])
-            measurements[SUM_ENTROPY_90 + parameter_suffix].append(haralick_features[2, 7])
-            measurements[SUM_ENTROPY_135 + parameter_suffix].append(haralick_features[3, 7])
-
-            # Entropy - feature index 8
-            measurements[ENTROPY_0 + parameter_suffix].append(haralick_features[0, 8])
-            measurements[ENTROPY_45 + parameter_suffix].append(haralick_features[1, 8])
-            measurements[ENTROPY_90 + parameter_suffix].append(haralick_features[2, 8])
-            measurements[ENTROPY_135 + parameter_suffix].append(haralick_features[3, 8])
-
-            # Difference Variance - feature index 9
-            measurements[DIFFERENCE_VARIANCE_0 + parameter_suffix].append(haralick_features[0, 9])
-            measurements[DIFFERENCE_VARIANCE_45 + parameter_suffix].append(haralick_features[1, 9])
-            measurements[DIFFERENCE_VARIANCE_90 + parameter_suffix].append(haralick_features[2, 9])
-            measurements[DIFFERENCE_VARIANCE_135 + parameter_suffix].append(haralick_features[3, 9])
-
-            # Difference Entropy - feature index 10
-            measurements[DIFFERENCE_ENTROPY_0 + parameter_suffix].append(haralick_features[0, 10])
-            measurements[DIFFERENCE_ENTROPY_45 + parameter_suffix].append(haralick_features[1, 10])
-            measurements[DIFFERENCE_ENTROPY_90 + parameter_suffix].append(haralick_features[2, 10])
-            measurements[DIFFERENCE_ENTROPY_135 + parameter_suffix].append(haralick_features[3, 10])
-
-            # Information Measure of Correlation 1 - feature index 11
-            measurements[IMC1_0 + parameter_suffix].append(haralick_features[0, 11])
-            measurements[IMC1_45 + parameter_suffix].append(haralick_features[1, 11])
-            measurements[IMC1_90 + parameter_suffix].append(haralick_features[2, 11])
-            measurements[IMC1_135 + parameter_suffix].append(haralick_features[3, 11])
-
-            # Information Measure of Correlation 2 - feature index 12
-            measurements[IMC2_0 + parameter_suffix].append(haralick_features[0, 12])
-            measurements[IMC2_45 + parameter_suffix].append(haralick_features[1, 12])
-            measurements[IMC2_90 + parameter_suffix].append(haralick_features[2, 12])
-            measurements[IMC2_135 + parameter_suffix].append(haralick_features[3, 12])
-
-        return measurements
+MeasureTexture.__doc__ = TEXTURE.append_rst_to_doc(MeasureTexture)

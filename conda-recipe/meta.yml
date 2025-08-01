@@ -22,7 +22,7 @@ requirements:
 about:
   home: https://github.com/Wheeldon-Lab/PhenoTypic
   license: GPL-3.0
-  summary: "An image processing framework for rapid protocol development of phenotype image analysis"
+  summary: "An image processing framework for rapid protocol development of phenotype _root_image analysis"
 
 extra:
   development_status: "Development Status :: 4 - Beta"
