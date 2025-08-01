@@ -91,7 +91,7 @@ class ImageHandler:
             },
             protected={
                 METADATA_LABELS.IMAGE_NAME: name,
-                METADATA_LABELS.PARENT_IMAGE_NAME: np.nan,
+                METADATA_LABELS.PARENT_IMAGE_NAME: b'',
                 METADATA_LABELS.IMAGE_TYPE: IMAGE_TYPES.BASE.value
             },
             public={},

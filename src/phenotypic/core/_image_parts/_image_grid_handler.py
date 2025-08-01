@@ -97,8 +97,8 @@ class ImageGridHandler(Image):
     def grid(self, grid):
         raise IllegalAssignmentError('grid')
 
-    def info(self)->pd.DataFrame:
-        return self.grid.info()
+    def info(self, include_metadata:bool=True)->pd.DataFrame:
+        return self.grid.info(include_metadata=include_metadata)
 
     @property
     def nrows(self) -> int:

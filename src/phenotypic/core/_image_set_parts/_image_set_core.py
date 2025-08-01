@@ -95,12 +95,12 @@ class ImageSetCore:
         if outpath.is_dir(): outpath = outpath / f'{self.name}.hdf5'
 
         self.name, self._src_path, self._out_path = str(name), src_path, outpath
-        self._hdf = HDF(filepath=outpath, name=self.name, mode='set')
+        self.hdf_ = HDF(filepath=outpath, name=self.name, mode='set')
 
         self._overwrite = overwrite
 
         # Define hdf5 group paths
-        self._hdf5_parent_group_key: str = HDF.IMAGE_SET_HDF5_PARENT_GROUP
+        self._hdf5_parent_group_key: str = HDF.IMAGE_SET_ROOT_POSIX
         self._hdf5_set_group_key: str = posixpath.join(self._hdf5_parent_group_key, self.name)
 
         # Reminder: SetMeasurementAccessor are stored with each image
@@ -117,9 +117,9 @@ class ImageSetCore:
 
             # If src and out are different
             elif src_path.is_file() and src_path.suffix == '.h5':
-                with h5py.File(src_path, mode='a', libver='latest') as src_filehandler, self._hdf.safe_writer() as writer:
+                with h5py.File(src_path, mode='a', libver='latest') as src_filehandler, self.hdf_.safe_writer() as writer:
                     src_parent_group = self._get_hdf5_group(src_filehandler, self)
-                    out_parent_group = self._hdf.get_parent_group(writer)
+                    out_parent_group = self.hdf_.get_root_group(writer)
 
                     #   if the image set name is in the ImageSet group, copy the images over
                     if self.name in src_parent_group:
@@ -132,7 +132,7 @@ class ImageSetCore:
                         src_filehandler.copy(src_group, out_parent_group, name=self.name, shallow=False)
 
                     #   else import all the images from Image section
-                    elif HDF.SINGLE_IMAGE_GROUP_POSIX in src_filehandler:
+                    elif HDF.SINGLE_IMAGE_ROOT_POSIX in src_filehandler:
                         src_image_group = self._get_hdf5_group(src_filehandler, self._hdf5_parent_group_key)
 
                         # overwrite if overwrite is true
@@ -147,12 +147,12 @@ class ImageSetCore:
             elif src_path.is_dir():
                 image_filenames = [x for x in os.listdir(src_path) if x.endswith(IO.ACCEPTED_FILE_EXTENSIONS)]
                 image_filenames.sort()
-                with h5py.File(outpath, mode='a', libver='latest') as writer:
-                    out_group = self._get_hdf5_group(writer, self._hdf5_set_group_key)
+                with self.hdf_.safe_writer() as writer:
+                    out_parent_group = self.hdf_.get_root_group(writer)
 
                     # Overwrite handling
-                    if self.name in out_group and overwrite is True: del out_group[self.name]
-                    images_group = self._hdf.get_image_data_group(writer)
+                    if self.name in out_parent_group and overwrite is True: del out_parent_group[self.name]
+                    images_group = self.hdf_.get_data_group(writer)
 
                     for fname in image_filenames:
                         image = self.image_template.imread(src_path / fname)
@@ -162,12 +162,12 @@ class ImageSetCore:
         # Only need out handler for this
         elif isinstance(image_list, list):
             assert all(isinstance(x, phenotypic.Image) for x in image_list), 'image_list must be a list of Image objects.'
-            with self._hdf.safe_writer() as writer:
+            with self.hdf_.safe_writer() as writer:
                 out_group = self._get_hdf5_group(writer, self._hdf5_parent_group_key)
 
                 # Overwrite the data in the output folder
                 if self.name in out_group and overwrite is True: del out_group[self.name]
-                images_group = self._get_hdf5_group(writer, self._hdf5_images_group_key)
+                images_group = self.hdf_.get_data_group(writer)
 
                 for image in image_list:
                     image._save_image2hdfgroup(grp=images_group, compression="gzip", compression_opts=4)
@@ -201,8 +201,8 @@ class ImageSetCore:
         Raises:
             ValueError: If the `overwrite` flag is set to False and the image name is already in the ImageSet
         """
-        with self._hdf.writer() as writer:
-            set_group = self._hdf.get_group(writer, self._hdf5_images_group_key)
+        with self.hdf_.writer() as writer:
+            set_group = self.hdf_.get_group(writer, self._hdf5_images_group_key)
             self._add_image2group(group=set_group, image=image, overwrite=overwrite if overwrite else self._overwrite)
 
     @staticmethod
@@ -225,13 +225,13 @@ class ImageSetCore:
             List[str]: A list of image names present in the specified HDF5 group.
         """
         with h5py.File(self._out_path, mode='r') as out_handler:
-            set_group = self._get_hdf5_group(out_handler, self._hdf5_images_group_key)
+            set_group = self.hdf_.get_data_group(out_handler)
             names = list(set_group.keys())
         return names
 
     def get_image(self, image_name: str) -> Image:
-        with h5py.File(self._out_path, mode='r', libver='latest', swmr=True) as reader:
-            image_group = reader[str(self._hdf5_images_group_key)]
+        with self.hdf_.reader() as reader:
+            image_group = self.hdf_.get_data_group(reader)
             if image_name in image_group:
                 return self.image_template._load_from_hdf5_group(image_group[image_name])
             else:
@@ -255,3 +255,44 @@ class ImageSetCore:
                 image_group = self._get_hdf5_group(out_handler, posixpath.join(self._hdf5_images_group_key, image_name))
                 image = self.image_template._load_from_hdf5_group(image_group)
             yield image
+    
+    def clear_hdf5_lock(self) -> bool:
+        """
+        Utility method to clear HDF5 file consistency flags that may prevent file access.
+        
+        This method attempts to clear HDF5 consistency flags using the h5clear utility,
+        which can resolve "file is already open for write/SWMR write" errors.
+        
+        Returns:
+            bool: True if the lock was successfully cleared, False otherwise.
+            
+        Example:
+            >>> imageset = ImageSet(name='test', src='images/', outpath='output/')
+            >>> if not imageset.clear_hdf5_lock():
+            ...     print("Could not clear HDF5 lock. Try manually: h5clear -s output/test.h5")
+        """
+        import subprocess
+        import os
+        import logging
+        
+        logger = logging.getLogger(__name__)
+        
+        if not os.path.exists(self._out_path):
+            logger.info(f"HDF5 file {self._out_path} does not exist, no lock to clear")
+            return True
+            
+        try:
+            logger.info(f"Attempting to clear HDF5 consistency flags for {self._out_path}")
+            result = subprocess.run(['h5clear', '-s', str(self._out_path)], 
+                                   capture_output=True, text=True, timeout=10)
+            success = result.returncode == 0
+            if success:
+                logger.info("Successfully cleared HDF5 consistency flags")
+            else:
+                logger.warning(f"h5clear -s failed: {result.stderr}")
+            
+            return success
+        except (subprocess.TimeoutExpired, subprocess.CalledProcessError, FileNotFoundError) as e:
+            logger.warning(f"Could not run h5clear: {e}")
+            logger.info(f"To manually clear the lock, run: h5clear -s {self._out_path} && h5clear -f {self._out_path}")
+            return False

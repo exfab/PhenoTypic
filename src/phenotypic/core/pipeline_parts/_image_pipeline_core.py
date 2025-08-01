@@ -236,7 +236,7 @@ class ImagePipelineCore(ImageOperation):
 
         return img
 
-    def measure(self, image: Image) -> pd.DataFrame:
+    def measure(self, image: Image, include_metadata=True) -> pd.DataFrame:
         """
         Measures various properties of an Image using queued measurement strategies.
 
@@ -263,7 +263,7 @@ class ImagePipelineCore(ImageOperation):
         # Get image info and measure time if benchmarking is enabled
         if self._benchmark:
             start_time = time.time()
-            measurements = [image.grid.info() if hasattr(image, 'grid') else image.objects.info()]
+            measurements = [image.info(include_metadata=include_metadata)]
             self._measurement_times['image_info'] = time.time() - start_time
 
             # Print execution time if verbose and benchmark are enabled
@@ -408,7 +408,21 @@ class ImagePipelineCore(ImageOperation):
                 # Merge all DataFrames in the group
                 merged_df = df_group[0]
                 for df in df_group[1:]:
-                    merged_df = merged_df.join(df, how='outer')
+                    # Check for identical columns (same name and values)
+                    duplicate_columns = []
+                    for col in df.columns:
+                        if col in merged_df.columns:
+                            # Check if the column values are identical
+                            if df[col].equals(merged_df[col]):
+                                duplicate_columns.append(col)
+
+                    # Remove duplicate columns from the incoming dataframe before merging
+                    if duplicate_columns:
+                        df = df.drop(columns=duplicate_columns)
+
+                    # Only join if there are columns left to merge
+                    if not df.empty and len(df.columns) > 0:
+                        merged_df = merged_df.join(df, how='outer', lsuffix='', rsuffix='_duplicate')
                 merged_results.append(merged_df)
 
         if not merged_results:

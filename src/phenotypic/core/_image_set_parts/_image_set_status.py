@@ -54,9 +54,9 @@ class ImageSetStatus(ImageSetCore):
             if isinstance(image_names, str):
                 image_names = [image_names]
 
-        with self._hdf.writer() as handle:
+        with self.hdf_.writer() as handle:
             for name in image_names:
-                status_group = self._hdf.get_image_status_subgroup(handle=handle, image_name=name)
+                status_group = self.hdf_.get_image_status_subgroup(handle=handle, image_name=name)
                 for stat in SET_STATUS:
                     # Statuses are worded in a way that they should be initially false
                     status_group.attrs[stat.label] = False
@@ -69,10 +69,10 @@ class ImageSetStatus(ImageSetCore):
             if isinstance(image_names, str):
                 image_names = [image_names]
 
-        with self._hdf.reader() as handle:
+        with self.hdf_.reader() as handle:
             status = []
             for name in image_names:
-                status_group = self._hdf.get_image_data_group(handle=handle, image_name=name)
+                status_group = self.hdf_.get_data_group(handle=handle, image_name=name)
                 status.append(
                     status_group.attrs[x.label] for x in SET_STATUS
                 )
@@ -86,6 +86,6 @@ class ImageSetStatus(ImageSetCore):
         super()._add_image2group(group=group, image=image, overwrite=overwrite)
 
         # should work since it uses absolute pathing underneath
-        stat_group = self._hdf.get_image_status_subgroup(handle=group, image_name=image.name)
+        stat_group = self.hdf_.get_image_status_subgroup(handle=group, image_name=image.name)
         for stat in SET_STATUS:
             stat_group.attrs[stat.label] = False

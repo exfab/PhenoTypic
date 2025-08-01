@@ -6,7 +6,7 @@ from skimage.morphology import binary_opening
 
 
 class MorphologyOpener(MapModifier):
-    def __init__(self, footprint: np.ndarray = None):
+    def __init__(self, footprint: np.ndarray | None = None):
         self.footprint: np.ndarray = footprint
 
     def _operate(self, image: Image) -> Image:

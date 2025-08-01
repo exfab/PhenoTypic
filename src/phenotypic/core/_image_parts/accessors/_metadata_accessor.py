@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 import pandas as pd
 
 if TYPE_CHECKING: from phenotypic import Image
-
+from phenotypic.util.constants_ import METADATA_LABELS
 from collections import ChainMap
 
 
@@ -90,6 +90,8 @@ class MetadataAccessor:
     def insert_metadata(self, df: pd.DataFrame, inplace=False, allow_duplicates=False) -> pd.DataFrame:
         working_df = df if inplace else df.copy()
         for key, value in self._public_protected_metadata.items():
+            if key == METADATA_LABELS.IMAGE_NAME:
+                value = self._parent_image.name # offload handling to image handler class
             header = f'Metadata_{key}'
             if header not in working_df.columns:
                 working_df.insert(loc=0, column=header, value=value, allow_duplicates=allow_duplicates)

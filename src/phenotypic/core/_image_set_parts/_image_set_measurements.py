@@ -37,15 +37,15 @@ class ImageSetMeasurements(ImageSetStatus):
             if isinstance(image_names, str):
                 image_names = [image_names]
 
-        with self._hdf.reader() as handle:
+        with self.hdf_.reader() as handle:
             measurements = []
 
             # iterate over each image
             for name in image_names:
-                image_group = self._hdf.get_image_group(handle=handle, image_name=name)
+                image_group = self.hdf_.get_image_group(handle=handle, image_name=name)
                 
                 # Check if measurements exist - more robust than checking status groups
-                if self._hdf.IMAGE_MEASUREMENT_SUBGROUP_KEY in image_group:
+                if self.hdf_.IMAGE_MEASUREMENT_SUBGROUP_KEY in image_group:
                     try:
                         measurements.append(
                             SetMeasurementAccessor._load_dataframe_from_hdf5_group(image_group),
