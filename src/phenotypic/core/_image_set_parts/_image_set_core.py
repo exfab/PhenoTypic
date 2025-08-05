@@ -296,3 +296,198 @@ class ImageSetCore:
             logger.warning(f"Could not run h5clear: {e}")
             logger.info(f"To manually clear the lock, run: h5clear -s {self._out_path} && h5clear -f {self._out_path}")
             return False
+    
+    def apply(self, pipeline, inplace: bool = False, reset: bool = True, image_names: List[str] | str | None = None) -> 'ImageSet':
+        """
+        Apply a pipeline of operations to all images in the ImageSet.
+        
+        This method applies the given pipeline to each image in the ImageSet,
+        with optional preallocation of measurement datasets if the pipeline
+        contains measurements.
+        
+        Args:
+            pipeline: An ImagePipeline object containing operations to apply
+            inplace (bool): Whether to modify images in place. Defaults to False.
+            reset (bool): Whether to reset images before applying pipeline. Defaults to True.
+            image_names (List[str] | str | None): Specific images to process. If None, processes all images.
+            
+        Returns:
+            ImageSet: Self for method chaining
+            
+        Example:
+            >>> from phenotypic import ImagePipeline, CLAHE, OtsuDetector
+            >>> pipeline = ImagePipeline([CLAHE(), OtsuDetector()])
+            >>> imageset.apply(pipeline, inplace=True)
+        """
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        # Determine which images to process
+        if image_names is None:
+            target_images = self.get_image_names()
+        elif isinstance(image_names, str):
+            target_images = [image_names]
+        else:
+            target_images = image_names
+            
+        logger.info(f"Applying pipeline to {len(target_images)} images in ImageSet '{self.name}'")
+        
+        # Preallocate measurement datasets if pipeline has measurements
+        if hasattr(pipeline, '_measurements') and pipeline._measurements:
+            logger.info("Pipeline contains measurements - preallocating datasets")
+            self._preallocate_measurement_datasets_for_imageset(pipeline, target_images)
+        
+        # Apply pipeline to each image
+        for image_name in target_images:
+            try:
+                image = self.get_image(image_name)
+                processed_image = pipeline.apply(image, inplace=inplace, reset=reset)
+                
+                if not inplace:
+                    # Save the processed image back to HDF5
+                    with self.hdf_.writer() as handle:
+                        image_group = self.hdf_.get_image_group(handle=handle, image_name=image_name)
+                        processed_image._save_image2hdfgroup(image_group)
+                        
+                logger.debug(f"Successfully applied pipeline to image '{image_name}'")
+                
+            except Exception as e:
+                logger.error(f"Failed to apply pipeline to image '{image_name}': {e}")
+                # Mark image as ERROR in status
+                self._mark_image_status(image_name, 'ERROR')
+                continue
+                
+        return self
+    
+    def measure(self, pipeline, image_names: List[str] | str | None = None, include_metadata: bool = True) -> pd.DataFrame:
+        """
+        Apply measurements from a pipeline to all images in the ImageSet.
+        
+        This method applies the measurement components of the given pipeline to each
+        image in the ImageSet, with preallocation of measurement datasets.
+        
+        Args:
+            pipeline: An ImagePipeline object containing measurements to apply
+            image_names (List[str] | str | None): Specific images to measure. If None, measures all images.
+            include_metadata (bool): Whether to include image metadata in measurements. Defaults to True.
+            
+        Returns:
+            pd.DataFrame: Consolidated measurements from all processed images
+            
+        Example:
+            >>> from phenotypic import ImagePipeline, MeasureShape
+            >>> pipeline = ImagePipeline(measurements=[MeasureShape()])
+            >>> measurements = imageset.measure(pipeline)
+        """
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        # Determine which images to process
+        if image_names is None:
+            target_images = self.get_image_names()
+        elif isinstance(image_names, str):
+            target_images = [image_names]
+        else:
+            target_images = image_names
+            
+        logger.info(f"Measuring {len(target_images)} images in ImageSet '{self.name}'")
+        
+        # Preallocate measurement datasets if pipeline has measurements
+        if hasattr(pipeline, '_measurements') and pipeline._measurements:
+            logger.info("Preallocating measurement datasets")
+            self._preallocate_measurement_datasets_for_imageset(pipeline, target_images)
+        
+        all_measurements = []
+        
+        # Apply measurements to each image
+        for image_name in target_images:
+            try:
+                image = self.get_image(image_name)
+                measurements = pipeline.measure(image, include_metadata=include_metadata)
+                
+                # Add image name to measurements for identification
+                measurements['image_name'] = image_name
+                all_measurements.append(measurements)
+                
+                # Save measurements to HDF5
+                with self.hdf_.writer() as handle:
+                    image_group = self.hdf_.get_image_group(handle=handle, image_name=image_name)
+                    measurement_group = self.hdf_.get_measurement_group(handle=handle, image_name=image_name)
+                    self.measurements._save_dataframe_to_hdf5_group(measurements, measurement_group)
+                    
+                logger.debug(f"Successfully measured image '{image_name}'")
+                
+            except Exception as e:
+                logger.error(f"Failed to measure image '{image_name}': {e}")
+                # Mark image as ERROR in status
+                self._mark_image_status(image_name, 'ERROR')
+                continue
+        
+        # Consolidate all measurements into a single DataFrame
+        if all_measurements:
+            return pd.concat(all_measurements, ignore_index=True)
+        else:
+            logger.warning("No measurements were successfully collected")
+            return pd.DataFrame()
+    
+    def _preallocate_measurement_datasets_for_imageset(self, pipeline, image_names: List[str]):
+        """
+        Preallocate measurement datasets for the given images and pipeline.
+        
+        This method creates empty HDF5 datasets for measurements that will be
+        generated by the pipeline, enabling efficient parallel writing.
+        
+        Args:
+            pipeline: Pipeline object containing measurements
+            image_names: List of image names to preallocate datasets for
+        """
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        try:
+            # Get a sample image to determine measurement structure
+            if not image_names:
+                logger.warning("No images provided for preallocation")
+                return
+                
+            sample_image = self.get_image(image_names[0])
+            
+            # Generate sample measurements to determine DataFrame structure
+            sample_measurements = pipeline.measure(sample_image, include_metadata=True)
+            
+            logger.info(f"Preallocating datasets for {len(image_names)} images based on sample measurements")
+            
+            # Preallocate datasets for each image
+            with self.hdf_.writer() as handle:
+                for image_name in image_names:
+                    try:
+                        measurement_group = self.hdf_.get_measurement_group(handle=handle, image_name=image_name)
+                        self.measurements._preallocate_swmr_measurement_datasets(
+                            measurement_group, sample_measurements, group_name="measurements"
+                        )
+                        logger.debug(f"Preallocated measurement datasets for image '{image_name}'")
+                    except Exception as e:
+                        logger.error(f"Failed to preallocate datasets for image '{image_name}': {e}")
+                        continue
+                        
+        except Exception as e:
+            logger.error(f"Failed to preallocate measurement datasets: {e}")
+            # Don't raise - allow processing to continue without preallocation
+    
+    def _mark_image_status(self, image_name: str, status: str):
+        """
+        Mark an image with the given status.
+        
+        Args:
+            image_name: Name of the image
+            status: Status to set (e.g., 'ERROR', 'PROCESSED', 'MEASURED')
+        """
+        try:
+            with self.hdf_.writer() as handle:
+                image_group = self.hdf_.get_image_group(handle=handle, image_name=image_name)
+                image_group.attrs[status] = True
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Failed to mark image '{image_name}' with status '{status}': {e}")
+            return False

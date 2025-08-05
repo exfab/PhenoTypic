@@ -323,6 +323,8 @@ class ImagePipelineCore(ImageOperation):
         return self._merge_on_same_index(measurements)
 
     def apply_and_measure(self, image: Image, inplace: bool = False, reset: bool = True) -> pd.DataFrame:
+        print("🚨🚨🚨 PARENT METHOD CALLED: ImagePipelineCore.apply_and_measure 🚨🚨🚨")
+        print(f"🚨 Parent method called with image type: {type(image)}")
         img = self.apply(image, inplace=inplace, reset=reset)
         return self.measure(img)
 

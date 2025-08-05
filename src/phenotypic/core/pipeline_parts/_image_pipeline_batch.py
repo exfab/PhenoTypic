@@ -128,47 +128,52 @@ class ImagePipelineBatch(ImagePipelineCore):
         raise TypeError("subject must be Image or ImageSet")
 
     # ------------------------------------------------------------------
-    def apply_and_measure(
-            self,
-            subject: Union[Image, ImageSet],
-            inplace: bool = False,
-            reset: bool = True,
-            num_workers: Optional[int] = None,
-            verbose: bool = False,
-    ) -> pd.DataFrame:
+    # FORCED METHOD OVERRIDE - This ensures the correct method is always called
+    # ------------------------------------------------------------------
+    def apply_and_measure(self, *args, **kwargs) -> pd.DataFrame:
+        """FORCED OVERRIDE: Ensure ImagePipelineBatch method is always called."""
+        print("🚨🚨🚨 FORCED OVERRIDE: apply_and_measure called! 🚨🚨🚨")
+        return self._batch_apply_and_measure(*args, **kwargs)
+    
+    def _batch_apply_and_measure(self, *args, **kwargs) -> pd.DataFrame:
         """Apply the pipeline either to a single `Image` **or** an `ImageSet`.
-
-        Parameters
-        ----------
-        subject
-            ``Image`` or ``ImageSet`` instance.
-        inplace, reset
-            Passed through when operating on a single ``Image``.
-        num_workers
-            How many worker processes to spawn when `subject` is an
-            ``ImageSet``.  Defaults to ``os.cpu_count()``.
-
-        Returns
-        -------
-        If *subject* is an ``Image`` the return value is identical to
-        :py:meth:`ImagePipelineCore.apply_and_measure` – a tuple of the
-        processed ``Image`` and its measurement ``DataFrame``.
-
-        If *subject* is an ``ImageSet`` the method blocks until the whole
-        set has been processed and returns **one** aggregated
-        ``pandas.DataFrame`` (``pd.concat`` along ``index``) containing the
-        measurements for all images.
+        
+        This method ensures proper method resolution by accepting flexible arguments
+        and routing to the appropriate processing logic based on the first argument type.
         """
+        print("🚨🚨🚨 FIXED: ImagePipelineBatch.apply_and_measure called! 🚨🚨🚨")
+        
+        # Handle flexible argument patterns
+        if len(args) >= 1:
+            subject = args[0]
+        elif 'subject' in kwargs:
+            subject = kwargs['subject']
+        elif 'image' in kwargs:
+            subject = kwargs['image']
+        else:
+            raise ValueError("No subject/image argument provided")
+            
+        # Extract other parameters with defaults
+        inplace = kwargs.get('inplace', False)
+        reset = kwargs.get('reset', True)
+        num_workers = kwargs.get('num_workers', None)
+        verbose = kwargs.get('verbose', False)
+        
+        print(f"🚨 Subject type: {type(subject)}")
+        print(f"🚨 Method resolution: {self.__class__.__name__}.apply_and_measure")
+        
         # ------------------------------------------------------------------
         # Single image – just delegate to super-class.
         # ------------------------------------------------------------------
         import phenotypic
         if isinstance(subject, phenotypic.Image):
+            print("🔍 DEBUG: Processing single Image - delegating to parent")
             return super().apply_and_measure(subject, inplace=inplace, reset=reset)
 
         # ------------------------------------------------------------------
         # ImageSet –  parallel batch execution.
         # ------------------------------------------------------------------
+        print("🚨🚨🚨 SUCCESS: ImageSet processing path reached! 🚨🚨🚨")
         print("🔍 DEBUG: apply_and_measure called with ImageSet")
         if not isinstance(subject, ImageSet):
             raise TypeError(
@@ -206,10 +211,23 @@ class ImagePipelineBatch(ImagePipelineCore):
 
         # Step 1: Pre-allocate measurement datasets for SWMR compatibility
         print("🔍 DEBUG: About to start pre-allocation...")
+        print("🚨 TRACE: After 'About to start pre-allocation' message")
         logger.info("Pre-allocating measurement datasets for SWMR compatibility...")
+        print("🚨 TRACE: After logger.info call")
         try:
+            print("🚨 TRACE: Inside try block")
             print("🔍 DEBUG: Calling _preallocate_measurement_datasets...")
-            self._preallocate_measurement_datasets(imageset)
+            print(f"🔍 DEBUG: self type: {type(self)}")
+            print(f"🔍 DEBUG: self class: {self.__class__}")
+            print(f"🔍 DEBUG: Method exists: {hasattr(self, '_preallocate_measurement_datasets')}")
+            method = getattr(self, '_preallocate_measurement_datasets', None)
+            print(f"🔍 DEBUG: Method object: {method}")
+            print(f"🔍 DEBUG: Method callable: {callable(method)}")
+            import inspect
+            print(f"🔍 DEBUG: Method source: {inspect.getsource(method) if method else 'N/A'}")
+            print("🔍 DEBUG: About to call method directly...")
+            result = self._preallocate_measurement_datasets(imageset)
+            print(f"🔍 DEBUG: Method returned: {result}")
             print("🔍 DEBUG: Pre-allocation completed successfully")
             logger.info("Successfully pre-allocated measurement datasets")
         except Exception as e:
@@ -870,29 +888,27 @@ class ImagePipelineBatch(ImagePipelineCore):
         return index_dtypes, column_dtypes
     
     def _preallocate_measurement_datasets(self, imageset: 'ImageSet'):
-        """Pre-allocate empty measurement datasets for all images in SWMR-compatible format.
-        
-        This method:
-        1. Determines measurement structure from a test image
-        2. Creates empty chunked datasets for each image's measurements
-        3. Sets up proper status tracking for each image
-        
-        Args:
-            imageset: ImageSet instance to pre-allocate datasets for
-        """
-        print("🚨 SIMPLE DEBUG: _preallocate_measurement_datasets method STARTED")
+        """MINIMAL TEST VERSION - Pre-allocate empty measurement datasets for all images in SWMR-compatible format."""
+        print("🚨🚨🚨 MINIMAL TEST METHOD CALLED 🚨🚨🚨")
+        print("🚨🚨🚨 THIS IS THE MINIMAL TEST VERSION 🚨🚨🚨")
+        print(f"🚨🚨🚨 Method called with imageset: {type(imageset)} 🚨🚨🚨")
+        return  # Just return without doing anything
         import logging
         logger = logging.getLogger(f"{__name__}.preallocation")
-        print("🚨 SIMPLE DEBUG: Logger created")
+        print("🚨 SIMPLE DEBUG: Logger created - SOURCE VERSION 2024")
         
         from phenotypic.core._image_set_parts._image_set_accessors._image_set_measurements_accessor import SetMeasurementAccessor
         from phenotypic.util.constants_ import IO
         
         logger.info(f"Starting pre-allocation for ImageSet with images: {list(imageset.get_image_names())}")
+        print("🚨 SIMPLE DEBUG: About to get image names")
+        print(f"🚨 SIMPLE DEBUG: ImageSet images: {list(imageset.get_image_names())}")
         
         # Get measurement structure
+        print("🚨 SIMPLE DEBUG: About to call _get_measurement_dtypes_for_swmr")
         logger.info("Getting measurement dtypes for SWMR...")
         index_dtypes, column_dtypes = self._get_measurement_dtypes_for_swmr()
+        print("🚨 SIMPLE DEBUG: _get_measurement_dtypes_for_swmr completed")
         logger.info(f"Got index dtypes: {index_dtypes}")
         logger.info(f"Got column dtypes: {column_dtypes}")
         

@@ -1,4 +1,4 @@
-from .pipeline_parts._image_pipeline_core import ImagePipelineCore
+from .pipeline_parts._image_pipeline_batch import ImagePipelineBatch
 
-class ImagePipeline(ImagePipelineCore):
+class ImagePipeline(ImagePipelineBatch):
     pass

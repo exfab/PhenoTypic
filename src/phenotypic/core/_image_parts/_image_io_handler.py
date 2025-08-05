@@ -102,9 +102,13 @@ class ImageIOHandler(ImageColorSpace):
                 Additional keyword arguments to pass when creating a new dataset.
         """
         assert isinstance(array, np.ndarray), "array must be a numpy array."
+
         if name in group:
-            del group[name]
-            group.create_dataset(name, data=array, dtype=array.dtype,**kwargs)
+            if  group[name].shape == array.shape:
+                group[name][:] = array
+            else:
+                del group[name]
+                group.create_dataset(name, data=array, dtype=array.dtype,**kwargs)
         else:
             group.create_dataset(name, data=array, dtype=array.dtype,**kwargs)
 
