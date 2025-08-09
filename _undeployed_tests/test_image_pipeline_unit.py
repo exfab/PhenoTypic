@@ -15,7 +15,7 @@ from phenotypic.objects import BorderObjectRemover
 from phenotypic.data import load_plate_12hr, load_plate_72hr
 from phenotypic.detection import OtsuDetector
 from phenotypic.measure import MeasureShape
-from .resources.TestHelper import timeit
+from resources.TestHelper import timeit
 
 
 class SumObjects(MeasureFeatures):

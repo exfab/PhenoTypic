@@ -18,7 +18,7 @@ import skimage as ski
 import phenotypic
 from phenotypic.util.exceptions_ import UnsupportedFileTypeError
 from phenotypic.util.constants_ import IMAGE_FORMATS, IO
-from phenotypic.util import HDF
+from phenotypic.util.hdf_ import HDF
 from ._image_color_handler import ImageColorSpace
 
 

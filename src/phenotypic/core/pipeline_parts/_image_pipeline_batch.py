@@ -60,6 +60,9 @@ from ._image_pipeline_core import ImagePipelineCore
 
 import threading
 
+# Create module-level logger
+logger = logging.getLogger(__name__)
+
 
 class ImagePipelineBatch(ImagePipelineCore):
     """Run an `ImagePipeline` on many images concurrently."""
@@ -132,7 +135,7 @@ class ImagePipelineBatch(ImagePipelineCore):
     # ------------------------------------------------------------------
     def apply_and_measure(self, *args, **kwargs) -> pd.DataFrame:
         """FORCED OVERRIDE: Ensure ImagePipelineBatch method is always called."""
-        print("🚨🚨🚨 FORCED OVERRIDE: apply_and_measure called! 🚨🚨🚨")
+        logger.debug("ImagePipelineBatch.apply_and_measure called (forced override)")
         return self._batch_apply_and_measure(*args, **kwargs)
     
     def _batch_apply_and_measure(self, *args, **kwargs) -> pd.DataFrame:
@@ -141,7 +144,7 @@ class ImagePipelineBatch(ImagePipelineCore):
         This method ensures proper method resolution by accepting flexible arguments
         and routing to the appropriate processing logic based on the first argument type.
         """
-        print("🚨🚨🚨 FIXED: ImagePipelineBatch.apply_and_measure called! 🚨🚨🚨")
+        logger.debug("ImagePipelineBatch._batch_apply_and_measure called")
         
         # Handle flexible argument patterns
         if len(args) >= 1:
@@ -159,28 +162,28 @@ class ImagePipelineBatch(ImagePipelineCore):
         num_workers = kwargs.get('num_workers', None)
         verbose = kwargs.get('verbose', False)
         
-        print(f"🚨 Subject type: {type(subject)}")
-        print(f"🚨 Method resolution: {self.__class__.__name__}.apply_and_measure")
+        logger.debug(f"Subject type: {type(subject)}")
+        logger.debug(f"Method resolution: {self.__class__.__name__}.apply_and_measure")
         
         # ------------------------------------------------------------------
         # Single image – just delegate to super-class.
         # ------------------------------------------------------------------
         import phenotypic
         if isinstance(subject, phenotypic.Image):
-            print("🔍 DEBUG: Processing single Image - delegating to parent")
+            logger.debug("Processing single Image - delegating to parent")
             return super().apply_and_measure(subject, inplace=inplace, reset=reset)
 
         # ------------------------------------------------------------------
         # ImageSet –  parallel batch execution.
         # ------------------------------------------------------------------
-        print("🚨🚨🚨 SUCCESS: ImageSet processing path reached! 🚨🚨🚨")
-        print("🔍 DEBUG: apply_and_measure called with ImageSet")
+        logger.debug("ImageSet processing path reached")
+        logger.debug("apply_and_measure called with ImageSet")
         if not isinstance(subject, ImageSet):
             raise TypeError(
                 "subject must be an Image or ImageSet, got " f"{type(subject)}",
             )
 
-        print("🔍 DEBUG: About to call _run_imageset")
+        logger.debug("About to call _run_imageset")
         return self._run_imageset(subject, mode="apply_and_measure",
                                   num_workers=num_workers if num_workers else self.num_workers,
                                   verbose=verbose if verbose else self.verbose)
@@ -205,46 +208,39 @@ class ImagePipelineBatch(ImagePipelineCore):
         3. Spawn SWMR processes: producer (reads images), workers (process), writer (saves results)
         4. Aggregate measurements from HDF5 after processing
         """
-        print(f"🔍 DEBUG: _run_imageset called with mode={mode}, num_workers={num_workers}")
-        logger = logging.getLogger(f"{__name__}.parallel_processing")
+        # Create process-safe logger for this method
+        parallel_logger = logging.getLogger(f"{__name__}.parallel_processing")
+        parallel_logger.debug(f"_run_imageset called with mode={mode}, num_workers={num_workers}")
         num_workers = num_workers or _mp.cpu_count() or 1
-
-        # Step 1: Pre-allocate measurement datasets for SWMR compatibility
-        print("🔍 DEBUG: About to start pre-allocation...")
-        print("🚨 TRACE: After 'About to start pre-allocation' message")
-        logger.info("Pre-allocating measurement datasets for SWMR compatibility...")
-        print("🚨 TRACE: After logger.info call")
-        try:
-            print("🚨 TRACE: Inside try block")
-            print("🔍 DEBUG: Calling _preallocate_measurement_datasets...")
-            print(f"🔍 DEBUG: self type: {type(self)}")
-            print(f"🔍 DEBUG: self class: {self.__class__}")
-            print(f"🔍 DEBUG: Method exists: {hasattr(self, '_preallocate_measurement_datasets')}")
-            method = getattr(self, '_preallocate_measurement_datasets', None)
-            print(f"🔍 DEBUG: Method object: {method}")
-            print(f"🔍 DEBUG: Method callable: {callable(method)}")
-            import inspect
-            print(f"🔍 DEBUG: Method source: {inspect.getsource(method) if method else 'N/A'}")
-            print("🔍 DEBUG: About to call method directly...")
-            result = self._preallocate_measurement_datasets(imageset)
-            print(f"🔍 DEBUG: Method returned: {result}")
-            print("🔍 DEBUG: Pre-allocation completed successfully")
-            logger.info("Successfully pre-allocated measurement datasets")
-        except Exception as e:
-            print(f"🔍 DEBUG: Pre-allocation failed with exception: {e}")
-            logger.error(f"Failed to pre-allocate measurement datasets: {e}")
-            raise
 
         # Cross-platform fix for AuthenticationString/HMAC pickling errors
         # Use spawn context explicitly to avoid HMAC pickling issues on macOS/Python 3.12+
         # This works on both Windows (spawn) and Unix (fork) contexts
         try:
             mp_context = _mp.get_context('spawn')
-            logger.info("Using spawn multiprocessing context for cross-platform compatibility")
+            parallel_logger.info("Using spawn multiprocessing context for cross-platform compatibility")
         except RuntimeError:
             # Fallback to default context if spawn is not available
             mp_context = _mp
-            logger.info("Using default multiprocessing context (spawn not available)")
+            parallel_logger.info("Using default multiprocessing context (spawn not available)")
+
+        # Create multiprocessing events before pre-allocation
+        pre_allocation_complete: Event = mp_context.Event()  # Signals when pre-allocation is finished
+
+        # Step 1: Pre-allocate measurement datasets for SWMR compatibility
+        parallel_logger.info("Pre-allocating measurement datasets for SWMR compatibility...")
+        try:
+            result = self._preallocate_measurement_datasets(imageset)
+            parallel_logger.info("Successfully pre-allocated measurement datasets")
+            
+            # Signal that pre-allocation is complete
+            parallel_logger.info("Signaling pre-allocation complete event")
+            pre_allocation_complete.set()
+            parallel_logger.info("Pre-allocation complete event has been set")
+            
+        except Exception as e:
+            parallel_logger.error(f"Failed to pre-allocate measurement datasets: {e}")
+            raise
 
         # Robust progress reporting with error handling
         pbar = None
@@ -253,12 +249,12 @@ class ImagePipelineBatch(ImagePipelineCore):
                 from tqdm import tqdm
                 total_images = len(imageset.get_image_names())
                 pbar = tqdm(total=total_images, desc="Images", unit="img")
-                logger.info(f"Progress tracking enabled for {total_images} images")
+                parallel_logger.info(f"Progress tracking enabled for {total_images} images")
             except ImportError:
-                logger.warning("tqdm not available, using simple progress logging")
+                parallel_logger.warning("tqdm not available, using simple progress logging")
                 pbar = None
             except Exception as e:
-                logger.warning(f"Failed to initialize progress bar: {e}, using simple progress logging")
+                parallel_logger.warning(f"Failed to initialize progress bar: {e}, using simple progress logging")
                 pbar = None
 
         # Note: Don't store progress bar as instance variable to avoid pickling issues
@@ -289,7 +285,7 @@ class ImagePipelineBatch(ImagePipelineCore):
         # ------------------------------------------------------------------
         writer = Thread(
             target=self._writer,
-            args=(imageset, result_q, num_workers, stop_event, writer_ready, producer_hdf5_complete),
+            args=(imageset, result_q, num_workers, stop_event, writer_ready, producer_hdf5_complete, pre_allocation_complete),
             daemon=True,
         )
         writer.start()
@@ -338,6 +334,7 @@ class ImagePipelineBatch(ImagePipelineCore):
             producer_hdf5_complete: Event,
     ) -> None:
         """Puts image-names onto *work_q* once sufficient free RAM is available."""
+        # Create process-safe logger for producer thread
         logger = logging.getLogger(f"{__name__}.producer")
         logger.info(f"Producer started - PID: {os.getpid()}")
 
@@ -348,43 +345,28 @@ class ImagePipelineBatch(ImagePipelineCore):
         image_names: List[str] = imageset.get_image_names()
         logger.info(f"Found {len(image_names)} images to process: {image_names[:5]}{'...' if len(image_names) > 5 else ''}")
 
-        # Optimized metadata loading approach (no SWMR to avoid cache conflicts)
-        logger.info("Producer: Starting optimized metadata loading (no SWMR to prevent cache conflicts)")
+        # FIXED: Single HDF5 access session to prevent deadlock with writer
+        logger.info("Producer: Starting consolidated HDF5 access (metadata + image loading)")
         image_sizes = {}
+        loaded_images = {}
 
-        # Quick HDF5 access to get image metadata only
+        # Single HDF5 access session to load both metadata and images
         try:
-            logger.info("Producer: Opening HDF5 file for fast metadata loading")
+            logger.info("Producer: Opening HDF5 file for consolidated access")
             with imageset.hdf_.reader() as reader:
-                image_data = imageset.hdf_.get_data_group(handle=reader)
-                logger.info(f"Producer: Accessed image data group with {len(image_data)} entries")
+                image_data_group = imageset.hdf_.get_data_group(handle=reader)
+                logger.info(f"Producer: Accessed image data group with {len(image_data_group)} entries")
 
-                # Quickly pre-load all image size estimates
+                # First pass: Pre-load all image size estimates
                 for name in image_names:
                     if stop_event.is_set():
                         logger.info("Stop event set during metadata loading")
                         break
-                    image_sizes[name] = self._estimate_hdf5_dataset_size(image_data[name])
+                    image_sizes[name] = self._estimate_hdf5_dataset_size(image_data_group[name])
                     logger.debug(f"Pre-loaded size for {name}: {image_sizes[name]:,} bytes")
 
-            logger.info("Producer: Completed optimized metadata loading, file closed")
-        except Exception as e:
-            logger.error(f"Producer: Error during metadata loading: {e}")
-            producer_hdf5_complete.set()  # Signal completion even on error
-            return
-        
-        # Signal that producer has completed ALL HDF5 access - writer can now safely open file
-        logger.info("Producer: Signaling HDF5 access completion to writer")
-        producer_hdf5_complete.set()
-
-        # Now load and queue actual image data to avoid HDF5 access in worker processes
-        logger.info("Producer: Starting work queuing with image loading (eliminates worker HDF5 access)")
-        
-        # Reopen HDF5 file to load actual image data
-        try:
-            with imageset.hdf_.reader() as reader:
-                image_data_group = imageset.hdf_.get_data_group(handle=reader)
-                
+                # Second pass: Load actual image data in the same session
+                logger.info("Producer: Loading actual image data in same HDF5 session")
                 for i, name in enumerate(image_names):
                     if stop_event.is_set():
                         logger.info(f"Stop event set, terminating producer after {i} images")
@@ -404,21 +386,36 @@ class ImagePipelineBatch(ImagePipelineCore):
                         logger.debug(f"Waiting for RAM: need {ram_required:,} bytes, have {available_ram:,} bytes")
                         time.sleep(0.5)
 
-                    # Load actual image data to avoid worker HDF5 access
+                    # Load actual image data
                     logger.debug(f"Loading image data for {name} ({i + 1}/{len(image_names)})")
                     try:
                         image = imageset.image_template._load_from_hdf5_group(image_data_group[name])
-                        # Queue tuple of (name, image) instead of just name
-                        work_q.put((name, image))
-                        logger.debug(f"Queued image data for {name}")
+                        loaded_images[name] = image
+                        logger.debug(f"Loaded image data for {name}")
                     except Exception as load_error:
                         logger.error(f"Failed to load image {name}: {load_error}")
-                        # Queue error marker
-                        work_q.put((name, None))
-                        
+                        loaded_images[name] = None
+
+            logger.info(f"Producer: Completed consolidated HDF5 access, loaded {len(loaded_images)} images")
         except Exception as e:
-            logger.error(f"Producer: Error during image loading: {e}")
+            logger.error(f"Producer: Error during consolidated HDF5 access: {e}")
+            producer_hdf5_complete.set()  # Signal completion even on error
             return
+        
+        # Signal that producer has completed ALL HDF5 access - writer can now safely open file
+        logger.info("Producer: Signaling HDF5 access completion to writer")
+        producer_hdf5_complete.set()
+
+        # Now queue the pre-loaded images (no more HDF5 access needed)
+        logger.info("Producer: Queuing pre-loaded images (no additional HDF5 access)")
+        for i, name in enumerate(image_names):
+            if stop_event.is_set():
+                logger.info(f"Stop event set, terminating producer after queuing {i} images")
+                break
+                
+            image = loaded_images.get(name)
+            work_q.put((name, image))
+            logger.debug(f"Queued pre-loaded image for {name} ({i + 1}/{len(image_names)})")
 
         # Signal the end of work – one *None* sentinel per worker.
         sentinels = num_workers
@@ -534,11 +531,22 @@ class ImagePipelineBatch(ImagePipelineCore):
             stop_event: Event,
             writer_ready: Event,
             producer_hdf5_complete: Event,
+            pre_allocation_complete: Event,
     ) -> None:
         """Single writer thread – runs in main process, writes to HDF5 (SWMR)."""
         logger = logging.getLogger(f"{__name__}.writer")
         logger.info(f"Writer started - PID: {os.getpid()}, expecting {num_workers} workers")
         logger.info(f"Writer: producer_hdf5_complete event state: {producer_hdf5_complete.is_set()}")
+        logger.info(f"Writer: pre_allocation_complete event state: {pre_allocation_complete.is_set()}")
+
+        # Wait for pre-allocation to complete before opening file
+        # This ensures writer can see the pre-allocated datasets
+        logger.info("Writer: Waiting for pre-allocation to complete...")
+        if pre_allocation_complete.wait(timeout=30):
+            logger.info("Writer: Pre-allocation completed, datasets should be visible")
+        else:
+            logger.error("Writer: TIMEOUT waiting for pre-allocation completion!")
+            return
 
         # Wait for producer to complete ALL HDF5 access before opening file
         # This prevents HDF5 cache conflicts and "ring type mismatch" errors
@@ -568,6 +576,10 @@ class ImagePipelineBatch(ImagePipelineCore):
                 writer_ready.set()
                 logger.info("Writer: writer_ready event has been set")
 
+                # Refresh the file handle to see pre-allocated datasets
+                logger.info("Writer: Refreshing HDF5 file handle to see pre-allocated datasets")
+                writer.flush()  # Ensure any pending writes are committed
+                
                 logger.info("Writer: Accessing image data group")
                 image_group = imageset.hdf_.get_data_group(handle=writer)
                 logger.info(
@@ -650,11 +662,9 @@ class ImagePipelineBatch(ImagePipelineCore):
                     if processed_img is not None:
                         try:
                             logger.debug(f"Writer: Saving processed image for '{name}' to HDF5")
-                            if name in image_group:
-                                logger.debug(f"Writer: Deleting existing image group for '{name}'")
-                                del image_group[name]
                             # Ensure processed image has the correct name for HDF5 storage
                             processed_img.name = name
+                            # Save image - this will overwrite existing image data while preserving measurements
                             processed_img._save_image2hdfgroup(grp=image_group, compression="gzip", compression_opts=4)
                             processed_images += 1
                             logger.info(f"Writer: Successfully saved processed image for '{name}' ({processed_images} total)")
@@ -682,15 +692,16 @@ class ImagePipelineBatch(ImagePipelineCore):
                     # Save measurements if available using SWMR-compatible pre-allocated datasets
                     if measurement is not None:
                         try:
-                            # Use the original image name (now also set on processed_img)
+                            # Use the original image name for measurement saving (must match pre-allocation)
                             logger.debug(f"Writer: Saving measurements for '{name}' to pre-allocated SWMR datasets")
-                            # Get the image group for this specific image
+                            # Get the image group for this specific image (using original name from pre-allocation)
                             if name in image_group:
                                 img_group = image_group[name]
-                                logger.debug(f"Writer: Found existing image group for '{name}'")
+                                logger.debug(f"Writer: Found pre-allocated image group for '{name}'")
                             else:
                                 # This shouldn't happen if pre-allocation worked correctly
                                 logger.error(f"Writer: Image group for {name} not found - pre-allocation may have failed")
+                                logger.error(f"Writer: Available image groups: {list(image_group.keys())}")
                                 warnings.warn(f"Image group for {name} not found when saving measurements. Pre-allocation may have failed.")
                                 status_group.attrs[SET_STATUS.ERROR.label] = True
                                 errors += 1
@@ -702,25 +713,25 @@ class ImagePipelineBatch(ImagePipelineCore):
                             logger.debug(f"Writer: Writing measurements for '{name}' to pre-allocated datasets")
                             
                             # Debug: Check what's actually in the image group
-                            print(f"🔍 DEBUG Writer: Image group '{name}' contents: {list(img_group.keys())}")
+                            logger.debug(f"Writer: Image group '{name}' contents: {list(img_group.keys())}")
                             measurement_key = IO.IMAGE_MEASUREMENT_IMAGE_SUBGROUP_KEY
-                            print(f"🔍 DEBUG Writer: Looking for measurement key: '{measurement_key}'")
+                            logger.debug(f"Writer: Looking for measurement key: '{measurement_key}'")
                             
                             if measurement_key in img_group:
                                 meas_group = img_group[measurement_key]
-                                print(f"🔍 DEBUG Writer: Found measurement group, contents: {list(meas_group.keys())}")
+                                logger.debug(f"Writer: Found measurement group, contents: {list(meas_group.keys())}")
                                 if 'index' in meas_group:
                                     index_group = meas_group['index']
-                                    print(f"🔍 DEBUG Writer: Found index group, contents: {list(index_group.keys())}")
+                                    logger.debug(f"Writer: Found index group, contents: {list(index_group.keys())}")
                                 else:
-                                    print(f"🔍 DEBUG Writer: ❌ 'index' group not found in measurement group")
+                                    logger.debug(f"Writer: 'index' group not found in measurement group")
                                 if 'values' in meas_group:
                                     values_group = meas_group['values']
-                                    print(f"🔍 DEBUG Writer: Found values group, contents: {list(values_group.keys())}")
+                                    logger.debug(f"Writer: Found values group, contents: {list(values_group.keys())}")
                                 else:
-                                    print(f"🔍 DEBUG Writer: ❌ 'values' group not found in measurement group")
+                                    logger.debug(f"Writer: 'values' group not found in measurement group")
                             else:
-                                print(f"🔍 DEBUG Writer: ❌ Measurement key '{measurement_key}' not found in image group")
+                                logger.debug(f"Writer: Measurement key '{measurement_key}' not found in image group")
                             
                             # Write measurements to pre-allocated datasets (row_offset=0 since each image gets its own datasets)
                             SetMeasurementAccessor._write_dataframe_to_preallocated_datasets(
@@ -836,12 +847,12 @@ class ImagePipelineBatch(ImagePipelineCore):
                 - index_dtypes: list of (name, dtype) tuples for DataFrame index
                 - column_dtypes: list of (name, dtype, position) tuples for DataFrame columns
         """
-        print(f"🔍 DEBUG Dtype: Starting _get_measurement_dtypes_for_swmr")
+        logger.debug("Starting _get_measurement_dtypes_for_swmr")
         # Create a test image to determine measurement structure
         # Use a real plate image from phenotypic.data for accurate dtype detection
         from phenotypic.data import load_plate_12hr
         from phenotypic import GridImage
-        print(f"🔍 DEBUG Dtype: Imported required modules")
+        logger.debug("Imported required modules for dtype detection")
         
         # Load a real plate image that will work with the pipeline
         plate_data = load_plate_12hr()
@@ -888,94 +899,99 @@ class ImagePipelineBatch(ImagePipelineCore):
         return index_dtypes, column_dtypes
     
     def _preallocate_measurement_datasets(self, imageset: 'ImageSet'):
-        """MINIMAL TEST VERSION - Pre-allocate empty measurement datasets for all images in SWMR-compatible format."""
-        print("🚨🚨🚨 MINIMAL TEST METHOD CALLED 🚨🚨🚨")
-        print("🚨🚨🚨 THIS IS THE MINIMAL TEST VERSION 🚨🚨🚨")
-        print(f"🚨🚨🚨 Method called with imageset: {type(imageset)} 🚨🚨🚨")
-        return  # Just return without doing anything
+        """Pre-allocate empty measurement datasets for all images in SWMR-compatible format.
+        
+        This method creates the HDF5 dataset structure required for SWMR-safe measurement saving:
+        - Creates measurement groups and subgroups for each image
+        - Pre-allocates chunked datasets for DataFrame index and columns
+        - Sets up proper SWMR structure with unlimited dimensions
+        
+        Args:
+            imageset: ImageSet instance containing images to process
+        """
         import logging
+        import os
+        import threading
+        
+        # Create parallel-safe logger with process/thread identification
+        log_prefix = f"[PID:{os.getpid()}|{threading.current_thread().name}]"
         logger = logging.getLogger(f"{__name__}.preallocation")
-        print("🚨 SIMPLE DEBUG: Logger created - SOURCE VERSION 2024")
+        
+        logger.info(f"{log_prefix} Starting SWMR measurement dataset pre-allocation")
         
         from phenotypic.core._image_set_parts._image_set_accessors._image_set_measurements_accessor import SetMeasurementAccessor
         from phenotypic.util.constants_ import IO
         
-        logger.info(f"Starting pre-allocation for ImageSet with images: {list(imageset.get_image_names())}")
-        print("🚨 SIMPLE DEBUG: About to get image names")
-        print(f"🚨 SIMPLE DEBUG: ImageSet images: {list(imageset.get_image_names())}")
-        
-        # Get measurement structure
-        print("🚨 SIMPLE DEBUG: About to call _get_measurement_dtypes_for_swmr")
-        logger.info("Getting measurement dtypes for SWMR...")
+        # Get measurement structure from pipeline
+        logger.debug(f"{log_prefix} Getting measurement dtypes for SWMR pre-allocation")
         index_dtypes, column_dtypes = self._get_measurement_dtypes_for_swmr()
-        print("🚨 SIMPLE DEBUG: _get_measurement_dtypes_for_swmr completed")
-        logger.info(f"Got index dtypes: {index_dtypes}")
-        logger.info(f"Got column dtypes: {column_dtypes}")
+        logger.info(f"{log_prefix} Pre-allocation structure - Index dtypes: {len(index_dtypes)}, Column dtypes: {len(column_dtypes)}")
         
-        # Open file in normal write mode for pre-allocation
-        logger.info(f"Opening HDF5 file for pre-allocation: {imageset._out_path}")
-        with imageset.hdf_.safe_writer() as writer:
-            # Get the data group containing all images
-            data_group = imageset.hdf_.get_data_group(writer)
-            logger.info(f"Found data group with {len(data_group.keys())} images: {list(data_group.keys())}")
-            
-            # Pre-allocate datasets for each image
-            for image_name in data_group.keys():
-                logger.info(f"Pre-allocating datasets for image: {image_name}")
-                image_group = data_group[image_name]
+        # Get image names for processing (same as producer will use)
+        try:
+            image_names = list(imageset.get_image_names())
+            logger.debug(f"{log_prefix} Found {len(image_names)} images to pre-allocate: {image_names}")
+        except Exception as e:
+            logger.error(f"{log_prefix} Failed to get image names: {e}")
+            raise
+        
+        if not image_names:
+            logger.warning(f"{log_prefix} No images found in ImageSet - skipping pre-allocation")
+            return
+        
+        # Open file in normal write mode for pre-allocation (before SWMR)
+        logger.debug(f"{log_prefix} Opening HDF5 file for pre-allocation: {imageset._out_path}")
+        try:
+            with imageset.hdf_.safe_writer() as writer:
+                # Get the data group containing all images
+                data_group = imageset.hdf_.get_data_group(writer)
+                logger.debug(f"{log_prefix} Found data group with {len(data_group.keys())} images")
                 
-                # Create status subgroup if it doesn't exist
-                if imageset.hdf_.IMAGE_STATUS_SUBGROUP_KEY not in image_group:
-                    status_group = image_group.create_group(imageset.hdf_.IMAGE_STATUS_SUBGROUP_KEY)
-                else:
-                    status_group = image_group[imageset.hdf_.IMAGE_STATUS_SUBGROUP_KEY]
-                
-                # Initialize status attributes
-                status_group.attrs['PROCESSED'] = False
-                status_group.attrs['MEASURED'] = False
-                status_group.attrs['ERROR'] = False
-                
-                # Pre-allocate measurement datasets
-                logger.info(f"Calling SetMeasurementAccessor._preallocate_swmr_measurement_datasets for {image_name}")
-                print(f"🔍 DEBUG Pre-allocation: About to call _preallocate_swmr_measurement_datasets for {image_name}")
-                print(f"🔍 DEBUG Pre-allocation: measurement_key = {imageset.hdf_.IMAGE_MEASUREMENT_SUBGROUP_KEY}")
-                print(f"🔍 DEBUG Pre-allocation: index_dtypes = {index_dtypes}")
-                print(f"🔍 DEBUG Pre-allocation: column_dtypes = {column_dtypes}")
-                
-                try:
-                    SetMeasurementAccessor._preallocate_swmr_measurement_datasets(
-                        image_group,
-                        imageset.hdf_.IMAGE_MEASUREMENT_SUBGROUP_KEY,
-                        index_dtypes,
-                        column_dtypes,
-                        initial_size=1000  # Pre-allocate space for up to 1000 measurements per image
-                    )
-                    print(f"🔍 DEBUG Pre-allocation: _preallocate_swmr_measurement_datasets completed for {image_name}")
+                # Pre-allocate datasets for each image (using same names as producer/writer)
+                for image_name in image_names:
+                    logger.debug(f"{log_prefix} Pre-allocating datasets for image: {image_name}")
+                    image_group = data_group[image_name]
                     
-                    # Debug: Check what was actually created
-                    if imageset.hdf_.IMAGE_MEASUREMENT_SUBGROUP_KEY in image_group:
-                        meas_group = image_group[imageset.hdf_.IMAGE_MEASUREMENT_SUBGROUP_KEY]
-                        print(f"🔍 DEBUG Pre-allocation: Measurement group created with contents: {list(meas_group.keys())}")
-                        if 'index' in meas_group:
-                            index_group = meas_group['index']
-                            print(f"🔍 DEBUG Pre-allocation: Index group created with contents: {list(index_group.keys())}")
-                        if 'values' in meas_group:
-                            values_group = meas_group['values']
-                            print(f"🔍 DEBUG Pre-allocation: Values group created with contents: {list(values_group.keys())}")
+                    # Create status subgroup if it doesn't exist
+                    if imageset.hdf_.IMAGE_STATUS_SUBGROUP_KEY not in image_group:
+                        status_group = image_group.create_group(imageset.hdf_.IMAGE_STATUS_SUBGROUP_KEY)
+                        logger.debug(f"{log_prefix} Created status group for {image_name}")
                     else:
-                        print(f"🔍 DEBUG Pre-allocation: ❌ No measurement group created for {image_name}")
-                        
-                except Exception as e:
-                    print(f"🔍 DEBUG Pre-allocation: ❌ Exception in _preallocate_swmr_measurement_datasets: {e}")
-                    logger.error(f"Failed to pre-allocate datasets for {image_name}: {e}")
-                    raise
+                        status_group = image_group[imageset.hdf_.IMAGE_STATUS_SUBGROUP_KEY]
                     
-                logger.info(f"Successfully pre-allocated datasets for {image_name}")
+                    # Initialize status attributes
+                    status_group.attrs[SET_STATUS.PROCESSED.label] = False
+                    status_group.attrs[SET_STATUS.MEASURED.label] = False
+                    status_group.attrs[SET_STATUS.ERROR.label] = False
+                    
+                    # Pre-allocate measurement datasets using SWMR-safe method
+                    logger.debug(f"{log_prefix} Calling SetMeasurementAccessor._preallocate_swmr_measurement_datasets for {image_name}")
+                    
+                    try:
+                        SetMeasurementAccessor._preallocate_swmr_measurement_datasets(
+                            image_group,
+                            imageset.hdf_.IMAGE_MEASUREMENT_SUBGROUP_KEY,
+                            index_dtypes,
+                            column_dtypes,
+                            initial_size=1000  # Pre-allocate space for up to 1000 measurements per image
+                        )
+                        logger.debug(f"{log_prefix} Successfully pre-allocated datasets for {image_name}")
+                        
+                    except Exception as e:
+                        logger.error(f"{log_prefix} Failed to pre-allocate datasets for {image_name}: {e}")
+                        # Mark image as having an error
+                        status_group.attrs[SET_STATUS.ERROR.label] = True
+                        raise
                 
-            # Flush changes
-            logger.info("Flushing HDF5 writer")
-            writer.flush()
-            logger.info("Pre-allocation completed successfully for all images")
+                # Flush changes to ensure datasets are written
+                logger.debug(f"{log_prefix} Flushing HDF5 writer after pre-allocation")
+                writer.flush()
+                
+        except Exception as e:
+            logger.error(f"{log_prefix} Pre-allocation failed: {e}")
+            raise
+        
+        logger.info(f"{log_prefix} SWMR measurement dataset pre-allocation completed successfully")
 
     def _get_meas_dtypes(self):
         """Legacy method - kept for backward compatibility.

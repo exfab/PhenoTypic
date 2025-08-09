@@ -81,9 +81,9 @@ class MeasureColor(MeasureFeatures):
           """
 
         measurements = {
-            MEAN: MeasureFeatures.calculate_mean(array=foreground, labels=labels),
-            STDDEV: MeasureFeatures.calculate_stddev(array=foreground, labels=labels),
+            MEAN: MeasureFeatures._calculate_mean(array=foreground, labels=labels),
+            STDDEV: MeasureFeatures._calculate_stddev(array=foreground, labels=labels),
             MEDIAN: MeasureFeatures.calculate_median(array=foreground, labels=labels),
-            COEFF_VARIANCE: MeasureFeatures.calculate_coeff_variation(array=foreground, labels=labels),
+            COEFF_VARIANCE: MeasureFeatures._calculate_coeff_variation(array=foreground, labels=labels),
         }
         return measurements

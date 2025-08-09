@@ -85,7 +85,7 @@ class MeasureFeatures(BaseOperation):
 
     @staticmethod
     @catch_warnings_decorator
-    def calculate_center_of_mass(array: np.ndarray, labels: ArrayLike = None):
+    def _calculate_center_of_mass(array: np.ndarray, labels: ArrayLike = None):
         """Calculates the center of mass for each labeled object in the array.
 
         Args:
@@ -105,7 +105,7 @@ class MeasureFeatures(BaseOperation):
 
     @staticmethod
     @catch_warnings_decorator
-    def calculate_max(array: np.ndarray, labels: ArrayLike = None):
+    def _calculate_max(array: np.ndarray, labels: ArrayLike = None):
         """Calculates the maximum value for each labeled object in the array.
 
         Args:
@@ -125,7 +125,7 @@ class MeasureFeatures(BaseOperation):
 
     @staticmethod
     @catch_warnings_decorator
-    def calculate_mean(array: np.ndarray, labels: ArrayLike = None):
+    def _calculate_mean(array: np.ndarray, labels: ArrayLike = None):
         """Calculates the mean value for each labeled object in the array.
 
         Args:
@@ -165,7 +165,7 @@ class MeasureFeatures(BaseOperation):
 
     @staticmethod
     @catch_warnings_decorator
-    def calculate_minimum(array: np.ndarray, labels: ArrayLike = None):
+    def _calculate_minimum(array: np.ndarray, labels: ArrayLike = None):
         """Calculates the minimum value for each labeled object in the array.
 
         Args:
@@ -185,7 +185,7 @@ class MeasureFeatures(BaseOperation):
 
     @staticmethod
     @catch_warnings_decorator
-    def calculate_stddev(array: np.ndarray, labels: ArrayLike = None):
+    def _calculate_stddev(array: np.ndarray, labels: ArrayLike = None):
         """Calculates the standard deviation for each labeled object in the array.
 
         Args:
@@ -205,7 +205,7 @@ class MeasureFeatures(BaseOperation):
 
     @staticmethod
     @catch_warnings_decorator
-    def calculate_sum(array: np.ndarray, labels: ArrayLike = None):
+    def _calculate_sum(array: np.ndarray, labels: ArrayLike = None):
         """Calculates the sum of values for each labeled object in the array.
 
         Args:
@@ -225,7 +225,7 @@ class MeasureFeatures(BaseOperation):
 
     @staticmethod
     @catch_warnings_decorator
-    def calculate_variance(array: np.ndarray, labels: ArrayLike = None):
+    def _calculate_variance(array: np.ndarray, labels: ArrayLike = None):
         """Calculates the variance for each labeled object in the array.
 
         Args:
@@ -245,7 +245,7 @@ class MeasureFeatures(BaseOperation):
 
     @staticmethod
     @catch_warnings_decorator
-    def calculate_coeff_variation(array: np.ndarray, labels: ArrayLike = None):
+    def _calculate_coeff_variation(array: np.ndarray, labels: ArrayLike = None):
         """Calculates unbiased coefficient of variation (CV) for each object in the image, assuming normal distribution.
 
         References:
@@ -254,7 +254,7 @@ class MeasureFeatures(BaseOperation):
         if labels is not None:
             unique_labels, unique_counts = np.unique(labels, return_counts=True)
             unique_counts = unique_counts[unique_labels != 0]
-            biased_cv = MeasureFeatures.calculate_stddev(array, labels) / MeasureFeatures.calculate_mean(array, labels)
+            biased_cv = MeasureFeatures._calculate_stddev(array, labels) / MeasureFeatures._calculate_mean(array, labels)
             result = (1 + (1 / unique_counts)) * biased_cv
         else:
             # For the case when labels is None, we can't calculate the coefficient of variation
@@ -279,7 +279,7 @@ class MeasureFeatures(BaseOperation):
 
     @staticmethod
     @catch_warnings_decorator
-    def calculate_min_extrema(array: np.ndarray, labels: ArrayLike = None):
+    def _calculate_min_extrema(array: np.ndarray, labels: ArrayLike = None):
         """Calculates the minimum extrema and their positions for each labeled object in the array.
 
         Args:
@@ -297,7 +297,7 @@ class MeasureFeatures(BaseOperation):
 
     @staticmethod
     @catch_warnings_decorator
-    def calculate_max_extrema(array: np.ndarray, labels: ArrayLike = None):
+    def _calculate_max_extrema(array: np.ndarray, labels: ArrayLike = None):
         """Calculates the maximum extrema and their positions for each labeled object in the array.
 
         Args:
@@ -314,10 +314,10 @@ class MeasureFeatures(BaseOperation):
         return max_extreme, max_pos
 
     @staticmethod
-    def funcmap2objects(func: Callable, out_dtype: np.dtype,
-                        array: np.ndarray, labels: ArrayLike = None,
-                        default: int | float | np.nan = np.nan,
-                        pass_positions: bool = False):
+    def _funcmap2objects(func: Callable, out_dtype: np.dtype,
+                         array: np.ndarray, labels: ArrayLike = None,
+                         default: int | float | np.nan = np.nan,
+                         pass_positions: bool = False):
         """Apply a custom function to labeled regions in an array.
 
         This method applies the provided function to each labeled region in the input array
@@ -359,26 +359,26 @@ class MeasureFeatures(BaseOperation):
 
     @staticmethod
     @catch_warnings_decorator
-    def calculate_q1(array, labels=None, method: str = 'linear'):
+    def _calculate_q1(array, labels=None, method: str = 'linear'):
         find_q1 = partial(np.quantile, q=0.25, method=method)
-        q1 = MeasureFeatures.funcmap2objects(func=find_q1, out_dtype=array.dtype, array=array, labels=labels, default=np.nan,
-                                             pass_positions=False)
+        q1 = MeasureFeatures._funcmap2objects(func=find_q1, out_dtype=array.dtype, array=array, labels=labels, default=np.nan,
+                                              pass_positions=False)
         return MeasureFeatures._repair_scipy_results(q1)
 
     @staticmethod
     @catch_warnings_decorator
-    def calculate_q3(array, labels=None, method: str = 'linear'):
+    def _calculate_q3(array, labels=None, method: str = 'linear'):
         find_q3 = partial(np.quantile, q=0.75, method=method)
-        q3 = MeasureFeatures.funcmap2objects(func=find_q3, out_dtype=array.dtype, array=array, labels=labels, default=np.nan,
-                                             pass_positions=False)
+        q3 = MeasureFeatures._funcmap2objects(func=find_q3, out_dtype=array.dtype, array=array, labels=labels, default=np.nan,
+                                              pass_positions=False)
         return MeasureFeatures._repair_scipy_results(q3)
 
     @staticmethod
     @catch_warnings_decorator
-    def calculate_iqr(array, labels=None, method: str = 'linear', nan_policy: str = 'omit'):
+    def _calculate_iqr(array, labels=None, method: str = 'linear', nan_policy: str = 'omit'):
         find_iqr = partial(scipy.stats.iqr, axis=None, nan_policy=nan_policy, interpolation=method)
         return MeasureFeatures._repair_scipy_results(
-            MeasureFeatures.funcmap2objects(
+            MeasureFeatures._funcmap2objects(
                 func=find_iqr, out_dtype=array.dtype,
                 array=array, labels=labels,
                 default=np.nan, pass_positions=False,
