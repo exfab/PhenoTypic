@@ -68,7 +68,7 @@ class MeasureShape(MeasureFeatures):
 
         dist_matrix = distance_transform_edt(image.objmap[:])
         measurements[str(SHAPE.MEAN_RADIUS)] = self._calculate_mean(array=dist_matrix, labels=image.objmap[:])
-        measurements[str(SHAPE.MEDIAN_RADIUS)] = self.calculate_median(array=dist_matrix, labels=image.objmap[:])
+        measurements[str(SHAPE.MEDIAN_RADIUS)] = self._calculate_median(array=dist_matrix, labels=image.objmap[:])
 
         obj_props = image.objects.props
         for idx, obj_image in enumerate(image.objects):

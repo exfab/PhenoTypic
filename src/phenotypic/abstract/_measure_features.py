@@ -145,7 +145,7 @@ class MeasureFeatures(BaseOperation):
 
     @staticmethod
     @catch_warnings_decorator
-    def calculate_median(array: np.ndarray, labels: ArrayLike = None):
+    def _calculate_median(array: np.ndarray, labels: ArrayLike = None):
         """Calculates the median value for each labeled object in the array.
 
         Args:
