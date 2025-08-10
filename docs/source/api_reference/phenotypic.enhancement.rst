@@ -1,5 +1,5 @@
-phenotypic.enhancement package
-==============================
+phenotypic.enhancement
+======================
 
 Module contents
 ---------------

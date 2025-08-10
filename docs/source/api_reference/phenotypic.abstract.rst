@@ -1,5 +1,5 @@
-phenotypic.abstract package
-===========================
+phenotypic.abstract
+===================
 
 Module contents
 ---------------

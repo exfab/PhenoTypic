@@ -49,7 +49,7 @@ class MeasureIntensity(MeasureFeatures):
             str(INTENSITY.MINIMUM_INTENSITY): self._calculate_minimum(array=intensity_matrix, labels=objmap),
             str(INTENSITY.MAXIMUM_INTENSITY): self._calculate_max(array=intensity_matrix, labels=objmap),
             str(INTENSITY.MEAN_INTENSITY): self._calculate_mean(array=intensity_matrix, labels=objmap),
-            str(INTENSITY.MEDIAN_INTENSITY): self.calculate_median(array=intensity_matrix, labels=objmap),
+            str(INTENSITY.MEDIAN_INTENSITY): self._calculate_median(array=intensity_matrix, labels=objmap),
             str(INTENSITY.STANDARD_DEVIATION_INTENSITY): self._calculate_stddev(array=intensity_matrix, labels=objmap),
             str(INTENSITY.COEFFICIENT_VARIANCE_INTENSITY): self._calculate_coeff_variation(
                 array=intensity_matrix, labels=objmap,

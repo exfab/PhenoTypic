@@ -1,5 +1,5 @@
-phenotypic.measure package
-==========================
+phenotypic.measure
+==================
 
 Module contents
 ---------------
