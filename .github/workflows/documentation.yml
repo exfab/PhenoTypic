@@ -34,7 +34,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip setuptools wheel snowballstemmer
-          pip install --config-settings="group=dev"
+          pip install --config-settings="group=dev" .
 
       - name: Sphinx build
         run: |

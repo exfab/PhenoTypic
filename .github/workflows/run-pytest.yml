@@ -29,7 +29,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip setuptools wheel pytest
+          python -m pip install --upgrade pip setuptools wheel pytest pytest-xdist
           pip install --config-settings="group=dev" .
 
       - name: Run tests
