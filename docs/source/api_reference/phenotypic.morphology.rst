@@ -1,5 +1,5 @@
-phenotypic.morphology package
-=============================
+phenotypic.morphology
+=====================
 
 Module contents
 ---------------

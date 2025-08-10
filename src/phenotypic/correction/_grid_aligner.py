@@ -8,14 +8,14 @@ from scipy.spatial.distance import euclidean
 from scipy.optimize import minimize_scalar
 
 from phenotypic.abstract import GridCorrector
-from phenotypic.util.constants_ import OBJECT, GRID
+from phenotypic.util.constants_ import OBJECT, GRID, BBOX
 
 
 class GridAligner(GridCorrector):
-    """Calculates the optimal gridding orientation based on the alignment of the objects in the _root_image and rotates the _root_image accordingly.
+    """Calculates the optimal gridding orientation based on the alignment of the objects in the image and rotates the image accordingly.
 
-    This class inherits from `GridCorrector` and is designed to calculate the optimal gridding orientation. This is used to align the _root_image,
-    and helps to improve the quality of automated gridding results. It's highly recommended to redetect objects in the _root_image after alignment.
+    This class inherits from `GridCorrector` and is designed to calculate the optimal gridding orientation. This is used to align the image,
+    and helps to improve the quality of automated gridding results. It's highly recommended to redetect objects in the image after alignment.
 
     """
 
@@ -24,35 +24,35 @@ class GridAligner(GridCorrector):
         self.mode = mode
 
     def _operate(self, image: GridImage):
-        """Calculates the optimal rotation angle and applies it to a grid _root_image for alignment along the specified axis.
+        """Calculates the optimal rotation angle and applies it to a grid image for alignment along the specified axis.
 
         The method performs alignment of a `GridImage` object along either rows or columns based on the specified
         axis. It calculates the linear regression slope and intercept for the axis, determines geometric properties of the grid
-        vertices, and computes rotation angles needed to align the _root_image. The optimal angle is found by minimizing the error
-        across all computed angles, and the _root_image is rotated accordingly.
+        vertices, and computes rotation angles needed to align the image. The optimal angle is found by minimizing the error
+        across all computed angles, and the image is rotated accordingly.
 
         Raises:
             ValueError: If the axis is not 0 (row-wise) or 1 (column-wise).
 
         Args:
-            image (ImageGridHandler): The input_image grid _root_image object to be aligned.
+            image (ImageGridHandler): The input_image grid image object to be aligned.
 
         Returns:
-            ImageGridHandler: The rotated grid _root_image object after alignment.
+            ImageGridHandler: The rotated grid image object after alignment.
         """
         if self.axis == 0:
             # If performing row-wise alignment, the x other_image is the cc other_image
             x_group = GRID.GRID_ROW_NUM
-            x_val = OBJECT.CENTER_CC
+            x_val = str(BBOX.CENTER_CC)
         elif self.axis == 1:
             # If performing column-wise alignment, the x other_image is the rr other_image
             x_group = GRID.GRID_COL_NUM
-            x_val = OBJECT.CENTER_RR
+            x_val = str(BBOX.CENTER_RR)
         else:
             raise ValueError('Axis must be either 0 or 1')
 
         # Find the slope info along the axis
-        m, b = image.grid.get_linreg_info(axis=self.axis)
+        m, b = image.grid.get_centroid_alignment_info(axis=self.axis)
         grid_info = image.grid.info()
 
         # Collect the X position of the vertices

@@ -2,7 +2,7 @@
 Basic Usage Example
 ==================
 
-This example demonstrates basic usage of PhenoTypic for _root_image processing.
+This example demonstrates basic usage of PhenoTypic for image processing.
 """
 
 # %%

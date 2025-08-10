@@ -16,6 +16,7 @@
       ~GridImage.__init__
       ~GridImage.copy
       ~GridImage.imread
+      ~GridImage.info
       ~GridImage.isempty
       ~GridImage.load_hdf5
       ~GridImage.load_pickle
@@ -43,6 +44,8 @@
       ~GridImage.matrix
       ~GridImage.metadata
       ~GridImage.name
+      ~GridImage.ncols
+      ~GridImage.nrows
       ~GridImage.num_objects
       ~GridImage.objects
       ~GridImage.objmap

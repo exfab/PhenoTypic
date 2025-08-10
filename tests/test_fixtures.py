@@ -9,7 +9,7 @@ import phenotypic
 
 
 def param2array(tag):
-    from phenotypic.data import load_colony_12_hr, load_colony_72hr, load_plate_12hr, load_plate_72hr
+    from phenotypic.data import load_early_colony, load_colony, load_plate_12hr, load_plate_72hr
 
     match tag:
         case 'km-plate-12hr':
@@ -17,9 +17,9 @@ def param2array(tag):
         case 'km-plate-72hr':
             return load_plate_72hr()
         case 'km-colony-12hr':
-            return load_colony_12_hr()
+            return load_early_colony()
         case 'km-colony-72hr':
-            return load_colony_72hr()
+            return load_colony()
         case 'black-square':
             return np.full(shape=(100, 100), fill_value=0.0)
         case 'white-square':
@@ -29,7 +29,7 @@ def param2array(tag):
 
 
 def param2array_plus_imformat(tag):
-    from phenotypic.data import load_colony_12_hr, load_colony_72hr, load_plate_12hr, load_plate_72hr
+    from phenotypic.data import load_early_colony, load_colony, load_plate_12hr, load_plate_72hr
 
     match tag:
         case 'km-plate-12hr':
@@ -37,9 +37,9 @@ def param2array_plus_imformat(tag):
         case 'km-plate-72hr':
             return load_plate_72hr(), 'RGB', 'RGB'
         case 'km-colony-12hr':
-            return load_colony_12_hr(), 'RGB', 'RGB'
+            return load_early_colony(), 'RGB', 'RGB'
         case 'km-colony-72hr':
-            return load_colony_72hr(), 'RGB', 'RGB'
+            return load_colony(), 'RGB', 'RGB'
         case 'black-square':
             return np.full(shape=(100, 100), fill_value=0.0), None, 'Grayscale'
         case 'white-square':
@@ -114,7 +114,7 @@ def walk_package(pkg):
     if hasattr(pkg, "__path__"):  # add all sub‑modules
         modules += [
             importlib.import_module(name)
-            for _, name, _ in pkgutil.walk_packages(pkg.__path__, pkg.__name__ + ".") \
+            for _, name, _ in pkgutil.walk_packages(pkg.__path__, pkg.__name__ + ".")\
                 if not name.split(".")[-1].startswith("_")  # Skip modules with names starting with underscore
 
         ]
@@ -143,12 +143,12 @@ _public = list(walk_package(phenotypic))
 
 def walk_package_for_operations(pkg):
     """Yield (qualified_name, obj) for every public, top‑level object in *pkg*
-    and all of its sub‑modules, skipping module objects themselves. this collects all _root_image operations for testing."""
+    and all of its sub‑modules, skipping module objects themselves. this collects all image operations for testing."""
     modules = [pkg]  # start with the root
     if hasattr(pkg, "__path__"):  # add all sub‑modules
         modules += [
             importlib.import_module(name)
-            for _, name, _ in pkgutil.walk_packages(pkg.__path__, pkg.__name__ + ".") \
+            for _, name, _ in pkgutil.walk_packages(pkg.__path__, pkg.__name__ + ".")\
                 if not name.split(".")[-1].startswith("_")  # Skip modules with names starting with underscore
 
         ]
@@ -182,12 +182,12 @@ _image_operations = list(walk_package_for_operations(phenotypic))
 
 def walk_package_for_measurements(pkg):
     """Yield (qualified_name, obj) for every public, top‑level object in *pkg*
-    and all of its sub‑modules, skipping module objects themselves. this collects all _root_image measurement modules for testing."""
+    and all of its sub‑modules, skipping module objects themselves. this collects all image measurement modules for testing."""
     modules = [pkg]  # start with the root
     if hasattr(pkg, "__path__"):  # add all sub‑modules
         modules += [
             importlib.import_module(name)
-            for _, name, _ in pkgutil.walk_packages(pkg.__path__, pkg.__name__ + ".") \
+            for _, name, _ in pkgutil.walk_packages(pkg.__path__, pkg.__name__ + ".")\
                 if not name.split(".")[-1].startswith("_")  # Skip modules with names starting with underscore
 
         ]

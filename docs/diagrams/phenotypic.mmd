@@ -16,8 +16,8 @@ classDiagram
         #- _dtype
         +- shape()
         +- isempty()
-        #- _normMatrix2dtype(normalized_value)
-        #- _dtypeMatrix2norm(matrix)
+        #- _norm2dtypeMatrix(normalized_value)
+        #- _dtype2normMatrix(matrix)
         +- get_foreground()
     }
 
@@ -81,7 +81,7 @@ classDiagram
         +- copy()
         +- reset()
         +- show(ax, figsize, cmap, title)
-        #- _extract_objects(array, bg_color)
+        #- _create_foreground(array, bg_color)
     }
 
     class GridAccessor {
@@ -92,7 +92,7 @@ classDiagram
         +- info()
         #- _idx_ref_matrix()
         +- __getitem__(idx)
-        +- get_linreg_info(axis)
+        +- get_centroid_alignment_info(axis)
         +- get_col_edges()
         +- get_col_map()
         +- show_column_overlay(use_enhanced, show_gridlines, ax, figsize)
@@ -130,13 +130,13 @@ classDiagram
         +- props
         +- labels
         +- slices
-        +- get_object_idx(object_label)
+        +- get_label_idx(object_label)
         +- num_objects
         +- reset()
         +- iloc(index)
         +- loc(label_number)
         +- info()
-        +- get_labels_series()
+        +- labels2series()
         +- relabel()
     }
 

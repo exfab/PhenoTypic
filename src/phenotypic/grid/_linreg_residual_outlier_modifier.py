@@ -10,11 +10,11 @@ from phenotypic.grid import MeasureGridLinRegStats
 from phenotypic.util.constants_ import GRID, GRID_LINREG_STATS_EXTRACTOR
 
 
-class LinRegResidualOutlierRemover(GridMapModifier):
+class GridAlignmentOutlierRemover(GridMapModifier):
     """
-    Identifies and removes linear regression residual outliers in a grid-based _root_image.
+    Identifies and removes linear regression residual outliers in a grid-based image.
 
-    This class is designed to analyze the variance of each row and column in a grid-based _root_image.
+    This class is designed to analyze the variance of each row and column in a grid-based image.
     Rows or columns with variances exceeding a specified maximum threshold are analyzed further for
     residual outliers using linear regression. Objects with residuals above the defined cutoff
     (mean + standard deviation * multiplier) are considered outliers and removed. This is useful for
@@ -70,7 +70,7 @@ class LinRegResidualOutlierRemover(GridMapModifier):
             row_variance = grid_info.groupby(GRID.GRID_ROW_NUM)[GRID_LINREG_STATS_EXTRACTOR.RESIDUAL_ERR].std()
 
             #   Divide standard deviation by mean
-            row_variance = row_variance \
+            row_variance = row_variance\
                            / grid_info.groupby(GRID.GRID_ROW_NUM)[GRID_LINREG_STATS_EXTRACTOR.RESIDUAL_ERR].mean()
 
             over_limit_row_variance = row_variance.loc[row_variance > self.max_coeff_variance]

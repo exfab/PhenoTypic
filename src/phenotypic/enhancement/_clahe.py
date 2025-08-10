@@ -6,16 +6,16 @@ from ..abstract import ImageEnhancer
 
 class CLAHE(ImageEnhancer):
     """
-    Applies Contrast Limited Adaptive Histogram Equalization (CLAHE) to an _root_image.
+    Applies Contrast Limited Adaptive Histogram Equalization (CLAHE) to an image.
 
     This class is used to preprocess images by applying the CLAHE algorithm, which
-    enhances the contrast of an _root_image by adjusting the local contrast within specified
+    enhances the contrast of an image by adjusting the local contrast within specified
     regions (or kernels). This algorithm is particularly useful for improving the
     visibility of features in low-contrast images or images with varying illumination.
 
     Parameters:
         kernel_size (int): The size of the kernel used for the local histogram. If not
-            provided, an adaptive size based on the _root_image dimensions is used.
+            provided, an adaptive size based on the image dimensions is used.
     """
 
     def __init__(self, kernel_size: int = None):
@@ -24,7 +24,7 @@ class CLAHE(ImageEnhancer):
     def _operate(self, image: Image) -> Image:
         image.enh_matrix[:] = equalize_adapthist(
             image=image.enh_matrix[:],
-            kernel_size=self.kernel_size if self.kernel_size \
+            kernel_size=self.kernel_size if self.kernel_size\
                 else self._auto_kernel_size(image),
         )
         return image

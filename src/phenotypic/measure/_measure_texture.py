@@ -1,16 +1,19 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING, Callable
 
-from mahotas.features.texture import haralick_features
-
 if TYPE_CHECKING: from phenotypic import Image
 
 import warnings
 from enum import Enum
+from mahotas.features.texture import haralick_features
+
+from phenotypic.abstract import MeasurementInfo
 
 
-class TEXTURE(Enum):
-    CATEGORY = ('Texture', 'The category of the measurements')
+class TEXTURE(MeasurementInfo):
+    @property
+    def CATEGORY(self) -> str:
+        return 'Texture'
 
     ANGULAR_SECOND_MOMENT = (
         'AngularSecondMoment',
@@ -65,24 +68,12 @@ class TEXTURE(Enum):
         'Normalized mutual-information; strength of dependency relative to maximum possible.'
     )
 
-    def __init__(self, label, desc):
-        self.label = label
-        self.desc = desc
-
-    def __str__(self):
-        return f"{TEXTURE.CATEGORY.label}_{self.label}"
-
     @classmethod
-    def iterate(cls):
-        """Yield all texture members except CATEGORY."""
-        return (member for member in cls if member is not cls.CATEGORY)
-
-    @classmethod
-    def get_full_labels(cls, scale: int, matrix_name) -> list[str]:
+    def get_headers(cls, scale: int, matrix_name) -> list[str]:
         """Return full texture labels with angles in order 0, 45, 90, 135 for each feature."""
         angles = ['0', '45', '90', '135']
         labels: list[str] = []
-        for member in cls.iterate():
+        for member in cls.iter_labels():
             base = f"{str(member)}"
             for angle in angles:
                 labels.append(f"{base}{matrix_name}-deg({angle})-scale({scale}))")
@@ -100,13 +91,13 @@ from phenotypic.util.constants_ import OBJECT
 
 class MeasureTexture(MeasureFeatures):
     """
-    Represents a measurement of texture features extracted from _root_image objects.
+    Represents a measurement of texture features extracted from image objects.
 
     This class is designed to calculate texture measurements derived from Haralick features,
-    tailored for segmented objects in an _root_image. These features include statistical properties
+    tailored for segmented objects in an image. These features include statistical properties
     that describe textural qualities, such as uniformity or variability, across different
-    directional orientations. The class leverages statistical methods and _root_image processing
-    to extract meaningful characteristics applicable in _root_image analysis tasks.
+    directional orientations. The class leverages statistical methods and image processing
+    to extract meaningful characteristics applicable in image analysis tasks.
 
     Attributes:
         scale (int): The scale parameter used in the computation of texture features. It is
@@ -148,14 +139,14 @@ class MeasureTexture(MeasureFeatures):
     @staticmethod
     def _compute_haralick(image: Image, foreground_array: np.ndarray, foreground_name: str, scale: int = 5) -> pd.DataFrame:
         """
-        Computes texture feature measurements using Haralick features for objects in a given _root_image. The method
+        Computes texture feature measurements using Haralick features for objects in a given image. The method
         calculates various statistical texture features such as Angular Second Moment, Contrast, Correlation,
         Variance, Inverse Difference Moment, among others, for different directional orientations. These
         features are computed for each segmented object within the foreground array using the specified
         scale parameter.
 
         Args:
-            image (Image): The _root_image containing objects and their associated properties, including
+            image (Image): The image containing objects and their associated properties, including
                 labels and slices used for extracting foreground objects.
             foreground_array (np.ndarray): The 2D numpy array representing the foreground objects,
                 where pixel values indicate the object intensity.
@@ -176,7 +167,7 @@ class MeasureTexture(MeasureFeatures):
         """
         props = image.objects.props
         objmap = image.objmap[:]
-        measurement_names = TEXTURE.get_full_labels(scale, foreground_name)
+        measurement_names = TEXTURE.get_headers(scale, foreground_name)
         measurements = np.empty(shape=(image.num_objects, len(measurement_names),), dtype=np.float64)
         for idx, label in enumerate(image.objects.labels):
             slices = props[idx].slice
@@ -205,4 +196,6 @@ class MeasureTexture(MeasureFeatures):
 
             measurements[idx, :] = haralick_features.T.ravel()
 
-        return pd.DataFrame(measurements, index=image.objects.get_labels_series(), columns=measurement_names)
+        return pd.DataFrame(measurements, index=image.objects.labels2series(), columns=measurement_names)
+
+MeasureTexture.__doc__ = TEXTURE.append_rst_to_doc(MeasureTexture)

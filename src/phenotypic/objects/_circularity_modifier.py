@@ -10,14 +10,14 @@ from ..util.constants_ import OBJECT
 
 class LowCircularityRemover(MapModifier):
     """
-    LowCircularityRemover is a map modifier that removes objects in an _root_image
+    LowCircularityRemover is a map modifier that removes objects in an image
     based on their circularity measurement.
 
-    This class evaluates objects in an _root_image using the Polsby-Popper score to
+    This class evaluates objects in an image using the Polsby-Popper score to
     calculate circularity. Objects with a circularity score below the specified
-    cutoff other_image are removed from the _root_image. The user can specify a `cutoff` other_image
+    cutoff other_image are removed from the image. The user can specify a `cutoff` other_image
     to determine the minimum acceptable circularity for objects to remain in the
-    _root_image. Objects meeting the cutoff criteria are preserved, while others are
+    image. Objects meeting the cutoff criteria are preserved, while others are
     filtered out.
 
     The Polsby-Popper circularity score is calculated using the following formula:
