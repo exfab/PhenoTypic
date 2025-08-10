@@ -39,6 +39,7 @@ jobs:
       - name: Sphinx build
         run: |
           cd docs
+          pwd
           make html
           # Ensure .nojekyll file exists
           touch build/html/.nojekyll
