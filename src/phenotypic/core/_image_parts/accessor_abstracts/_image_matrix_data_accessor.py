@@ -39,7 +39,7 @@ class ImageMatrixDataAccessor(ImageArrDataAccessor):
             Tuple[plt.Figure, np.ndarray]: Returns a matplotlib Figure object containing
                 the subplots and a NumPy array of axes for further customization.
         """
-        fig, (imgAx, histAx) = plt.subplots(nrows=2, ncols=2, figsize=figsize)
+        fig, (imgAx, histAx) = plt.subplots(nrows=1, ncols=2, figsize=figsize)
         fig, imgAx = self._plot(
             arr=self[:],
             figsize=figsize,
