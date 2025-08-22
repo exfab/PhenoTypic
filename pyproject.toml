@@ -44,6 +44,7 @@ dependencies = [
     "mmh3",
     "plotly-express>=0.4.1",
     "psutil>=7.0.0",
+    "colour>=0.1.5",
 ]
 
 [project.urls]

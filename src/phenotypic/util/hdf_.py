@@ -8,7 +8,7 @@ import phenotypic
 
 
 class HDF:
-    """
+    """.
     A utility class to help with managing hdf5 files
     """
 
