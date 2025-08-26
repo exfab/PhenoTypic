@@ -31,3 +31,7 @@ docs/build
 .junie
 uv.lock
 debug/*.log
+jupyter_prototypes/
+.cursor
+.windsurf
+.zed

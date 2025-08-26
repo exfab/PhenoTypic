@@ -15,8 +15,8 @@ from phenotypic.util.constants_ import IMAGE_FORMATS
 from phenotypic.util.exceptions_ import IllegalAssignmentError
 
 
-class HsvAccessor(ImageAccessor):
-    """An accessor class to handle and analyze HSV (Hue, Saturation, Value) image data efficiently.
+class HsbAccessor(ImageAccessor):
+    """An accessor class to handle and analyze HSB (Hue, Saturation, Brightness) image data efficiently.
 
     This class provides functionality for accessing and processing HSV image data.
     Users can retrieve components (hue, saturation, brightness) of the image, generate
@@ -100,7 +100,7 @@ class HsvAccessor(ImageAccessor):
         one of the HSV channels, and color bars are included to help interpret the
         values.
 
-        A color map is used for better visual distinction, with 'hsv' for Hue,
+        A color map is used for better visual distinction, with 'hsb' for Hue,
         'viridis' for Saturation, and grayscale for Brightness. Provides an optional
         title for the entire figure and flexibility in the sizing and shrink factor
         of color bars.
@@ -119,7 +119,7 @@ class HsvAccessor(ImageAccessor):
         fig, axes = plt.subplots(nrows=3, figsize=figsize)
         ax = axes.ravel()
 
-        hue = ax[0].imshow(self._hsv[:, :, 0] * 360, cmap='hsv', vmin=0, vmax=360)
+        hue = ax[0].imshow(self._hsv[:, :, 0] * 360, cmap='hsb', vmin=0, vmax=360)
         ax[0].set_title('Hue')
         ax[0].grid(False)
         fig.colorbar(mappable=hue, ax=ax[0], shrink=shrink)
@@ -147,7 +147,7 @@ class HsvAccessor(ImageAccessor):
         one of the HSV channels, and color bars are included to help interpret the
         values.
 
-        A color map is used for better visual distinction, with 'hsv' for Hue,
+        A color map is used for better visual distinction, with 'hsb' for Hue,
         'viridis' for Saturation, and grayscale for Brightness. Provides an optional
         title for the entire figure and flexibility in the sizing and shrink factor
         of color bars.
@@ -167,7 +167,7 @@ class HsvAccessor(ImageAccessor):
         ax = axes.ravel()
 
         hue = ax[0].imshow(np.ma.array(self._hsv[:, :, 0] * 360, mask=~self._root_image.objmask[:]),
-                           cmap='hsv', vmin=0, vmax=360
+                           cmap='hsb', vmin=0, vmax=360
                            )
         ax[0].set_title('Hue')
         ax[0].grid(False)
@@ -192,7 +192,7 @@ class HsvAccessor(ImageAccessor):
 
         return fig, ax
 
-    def get_foreground(self, bg_label:int = 0):
+    def foreground(self, bg_label:int = 0):
         """Extracts the foreground hue, saturation, and brightness from the HSV image. With the background elements set to 0"""
         return self._root_image.objmask._create_foreground(self._hsv[:, :, :], bg_label=bg_label)
 

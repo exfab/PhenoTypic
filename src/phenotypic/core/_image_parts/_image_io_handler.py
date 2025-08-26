@@ -27,10 +27,12 @@ class ImageIOHandler(ImageColorSpace):
     def __init__(self,
                  input_image: np.ndarray | Image | PathLike | Path | str | None = None,
                  imformat: str | None = None,
-                 name: str | None = None):
+                 name: str | None = None, **kwargs):
+
+
         if isinstance(input_image, (PathLike, Path, str)):
             input_image = Path(input_image)
-            super().__init__(input_image=self.imread(input_image), imformat=imformat, name=name)
+            super().__init__(input_image=self.imread(input_image), imformat=imformat, name=name, **kwargs)
         else:
             super().__init__(input_image=input_image, imformat=imformat, name=name)
 

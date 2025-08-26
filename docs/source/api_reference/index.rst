@@ -24,7 +24,7 @@ Image
     Image.objmask
     Image.objmap
     Image.objects
-    Image.hsv
+    Image.hsb
 
 
 
