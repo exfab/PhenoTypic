@@ -74,7 +74,7 @@ class ImageColorSpace(ImageObjectsHandler):
 
         """
         self.color_profile: str = kwargs.get('color_profile', 'sRGB')
-
+        self.observer: str = kwargs.get('observer', "CIE 1931 2 Degree Standard Observer")
         self.illuminant: Literal["D50", "D65"] = kwargs.get('illuminant', "D65")
         super().__init__(input_image=input_image, imformat=imformat, name=name, **kwargs)
 
@@ -84,7 +84,7 @@ class ImageColorSpace(ImageObjectsHandler):
         self._known_gamma_decoding: bool = False
         self._accessors.hsb = HsbAccessor(self)
 
-    def rgb2xyz(self) -> np.ndarray:
+    def xyz(self) -> np.ndarray:
         """
         Converts RGB color values to XYZ color space based on the specified color
         profile and illuminant. This method is dependent on the specified color
@@ -107,6 +107,7 @@ class ImageColorSpace(ImageObjectsHandler):
             warnings.warn('The RGB values have not been decoded using phenotypic\'s gamma decoder, this may lead to inaccurate results.')
         match (self.color_profile, self.illuminant):
             case ("sRGB", "D50"):
+                sRGB_D50.whitepoint = colour.CCS_ILLUMINANTS[self.observer]["D50"]
                 return colour.RGB_to_XYZ(
                     RGB=self.array[:],
                     colourspace=sRGB_D50,
@@ -116,12 +117,12 @@ class ImageColorSpace(ImageObjectsHandler):
                 return colour.RGB_to_XYZ(
                     RGB=self.array[:],
                     colourspace=colour.RGB_COLOURSPACES["sRGB"],
-                    illuminant=colour.CCS_ILLUMINANTS["CIE 1931 2 Degree Standard Observer"]["D65"],
+                    illuminant=colour.CCS_ILLUMINANTS[self.observer]["D65"],
                 )
             case _:
                 raise ValueError(f'Unknown color_profile: {self.color_profile} or illuminant: {self.illuminant}')
 
-    def rgb2xyz_d65(self) -> np.ndarray:
+    def xyzD65(self) -> np.ndarray:
         """
         Converts RGB values to XYZ under the D65 illuminant.
 
@@ -141,11 +142,11 @@ class ImageColorSpace(ImageObjectsHandler):
         wp = colour.CCS_ILLUMINANTS['CIE 1931 2 Degree Standard Observer']
 
         # Creates a partial function so only the test XYZ whitepoint needs to be supplied
-        bradford_cat65 = partial(colour.chromatic_adaptation, XYZ=self.rgb2xyz(), XYZ_wr=colour.xy_to_XYZ(wp['D65']), method='Bradford')
+        bradford_cat65 = partial(colour.chromatic_adaptation, XYZ=self.xyz(), XYZ_wr=colour.xy_to_XYZ(wp['D65']), method='Bradford')
 
         match (self.color_profile, self.illuminant):
             case ("sRGB", "D65"):
-                return self.rgb2xyz()
+                return self.xyz()
             case ("sRGB", "D50"):
                 return bradford_cat65(XYZ_w=colour.xy_to_XYZ(wp['D50']))
             case _:
@@ -164,7 +165,7 @@ class ImageColorSpace(ImageObjectsHandler):
             np.ndarray: A NumPy array containing the xy chromaticity coordinates of
                 the input RGB color.
         """
-        return colour.XYZ_to_xy(self.rgb2xyz_d65())
+        return colour.XYZ_to_xy(self.xyzD65())
 
 
     @property

@@ -48,7 +48,8 @@ class ImageGridHandler(Image):
     """
 
     def __init__(self, input_image: Optional[Union[np.ndarray, Image]] = None, imformat: str = None,
-                 name: str = None, grid_finder: Optional[GridFinder] = None,
+                 name: str = None,
+                 grid_finder: Optional[GridFinder] = None,
                  nrows: int = 8, ncols: int = 12, **kwargs):
         """
         Initializes the instance with the given image, format, grid finding

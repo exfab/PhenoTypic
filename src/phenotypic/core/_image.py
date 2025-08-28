@@ -30,11 +30,13 @@ class Image(ImageIOHandler):
                  imformat: str | None = None,
                  name: str | None = None,
                  illuminant: str | None = 'D65',
-                 color_profile='sRGB'):
+                 color_profile='sRGB',
+                 observer='CIE 1931 2 Degree Standard Observer'):
         super().__init__(
             input_image=input_image,
             imformat=imformat,
             name=name,
             illuminant=illuminant,
-            color_profile=color_profile
+            color_profile=color_profile,
+            observer=observer
         )
