@@ -1,16 +1,13 @@
 name: documentation
 
 on:
-  push:
-    branches:
-      - main
-      - dev
   workflow_run:
     workflows:
       - run-pytest
     types:
       - completed
-  workflow_dispatch:
+    branches:
+      - main
 
 
 permissions:

@@ -6,6 +6,8 @@
        - run-pytest
      types:
        - completed
+     branches:
+       - main
 
  jobs:
    deploy:
