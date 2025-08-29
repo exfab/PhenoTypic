@@ -15,7 +15,7 @@ class ImageMatrixDataAccessor(ImageArrDataAccessor):
     This class serves as a bridge for interacting with Image-related data structures.
     It is responsible for accessing and manipulating data associated with a parent
     Image. It includes methods to retrieve the shape of the data and to determine
-    if the data is empty. The class extends the functionality of the base `ImageAccessor`.
+    if the data is empty. The class extends the functionality of the base `ImageAccessorBase`.
 
     Attributes:
         image (Any): Root Image object that this accessor is linked to.

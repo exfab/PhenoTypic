@@ -10,12 +10,12 @@ from matplotlib import pyplot as plt
 from skimage.color import rgb2hsv
 from skimage.exposure import histogram
 
-from phenotypic.core._image_parts.accessor_abstracts import ImageAccessor
+from phenotypic.core._image_parts.accessor_abstracts import ImageAccessorBase
 from phenotypic.util.constants_ import IMAGE_FORMATS
 from phenotypic.util.exceptions_ import IllegalAssignmentError
 
 
-class HsbAccessor(ImageAccessor):
+class HsbAccessor(ImageAccessorBase):
     """An accessor class to handle and analyze HSB (Hue, Saturation, Brightness) image data efficiently.
 
     This class provides functionality for accessing and processing HSV image data.

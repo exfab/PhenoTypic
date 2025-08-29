@@ -6,7 +6,7 @@ import pandas as pd
 from scipy.spatial.distance import euclidean
 
 from phenotypic.abstract import GridMeasureFeatures
-from phenotypic.util.constants_ import GRID, GRID_LINREG_STATS_EXTRACTOR, OBJECT, BBOX
+from phenotypic.util.constants_ import GRID_DEP, GRID_LINREG_STATS_EXTRACTOR, OBJECT, BBOX
 
 class MeasureGridLinRegStats(GridMeasureFeatures):
     def __init__(self, section_num: Optional[int] = None):
@@ -19,7 +19,7 @@ class MeasureGridLinRegStats(GridMeasureFeatures):
             section_info = image.grid.info().reset_index(drop=False)
         else:
             grid_info = image.grid.info().reset_index(drop=False)
-            section_info = grid_info.loc[grid_info.loc[:, GRID.GRID_SECTION_NUM] == self.section_num, :]
+            section_info = grid_info.loc[grid_info.loc[:, GRID_DEP.GRID_SECTION_NUM] == self.section_num, :]
 
         # Get the current row-wise linreg info
         row_m, row_b = image.grid.get_centroid_alignment_info(axis=0)
@@ -28,12 +28,12 @@ class MeasureGridLinRegStats(GridMeasureFeatures):
         row_linreg_info = pd.DataFrame(data={
             GRID_LINREG_STATS_EXTRACTOR.ROW_LINREG_M: row_m,
             GRID_LINREG_STATS_EXTRACTOR.ROW_LINREG_B: row_b,
-        }, index=pd.Index(data=range(image.grid.nrows), name=GRID.GRID_ROW_NUM))
+        }, index=pd.Index(data=range(image.grid.nrows), name=GRID_DEP.GRID_ROW_NUM))
 
         section_info = pd.merge(left=section_info,
                                 right=row_linreg_info,
-                                left_on=GRID.GRID_ROW_NUM,
-                                right_on=GRID.GRID_ROW_NUM)
+                                left_on=GRID_DEP.GRID_ROW_NUM,
+                                right_on=GRID_DEP.GRID_ROW_NUM)
 
         # NOTE: Row linear regression(CC) -> pred RR
         section_info.loc[:, GRID_LINREG_STATS_EXTRACTOR.PRED_RR] = \
@@ -48,12 +48,12 @@ class MeasureGridLinRegStats(GridMeasureFeatures):
         col_linreg_info = pd.DataFrame(data={
             GRID_LINREG_STATS_EXTRACTOR.COL_LINREG_M: col_m,
             GRID_LINREG_STATS_EXTRACTOR.COL_LINREG_B: col_b,
-        }, index=pd.Index(data=range(image.grid.ncols), name=GRID.GRID_COL_NUM))
+        }, index=pd.Index(data=range(image.grid.ncols), name=GRID_DEP.GRID_COL_NUM))
 
         section_info = pd.merge(left=section_info,
                                 right=col_linreg_info,
-                                left_on=GRID.GRID_COL_NUM,
-                                right_on=GRID.GRID_COL_NUM)
+                                left_on=GRID_DEP.GRID_COL_NUM,
+                                right_on=GRID_DEP.GRID_COL_NUM)
 
         # NOTE: Col linear regression(RR) -> pred CC
         section_info.loc[:, GRID_LINREG_STATS_EXTRACTOR.PRED_CC] = \

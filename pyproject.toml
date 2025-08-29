@@ -46,6 +46,7 @@ dependencies = [
     "psutil>=7.0.0",
     "colour-science>=0.4.6",
     "jaxtyping>=0.3.2",
+    "rawpy>=0.25.1",
 ]
 
 [project.urls]
