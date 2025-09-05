@@ -7,7 +7,7 @@ from phenotypic.abstract import GridMeasureFeatures
 import pandas as pd
 import numpy as np
 from scipy.spatial import distance_matrix
-from phenotypic.util.constants_ import GRID, OBJECT, BBOX
+from phenotypic.util.constants_ import OBJECT, BBOX, GRID
 
 class ObjectSpreadExtractor(GridMeasureFeatures):
     """
@@ -17,11 +17,11 @@ class ObjectSpreadExtractor(GridMeasureFeatures):
     @staticmethod
     def _operate(image: GridImage) -> pd.DataFrame:
         gs_table = image.grid.info()
-        gs_counts = pd.DataFrame(gs_table.loc[:, GRID.GRID_SECTION_NUM].value_counts())
+        gs_counts = pd.DataFrame(gs_table.loc[:, str(GRID.SECTION_NUM)].value_counts())
 
         obj_spread = []
         for gs_bindex in gs_counts.index:
-            curr_gs_subtable = gs_table.loc[gs_table.loc[:, GRID.GRID_SECTION_NUM] == gs_bindex, :]
+            curr_gs_subtable = gs_table.loc[gs_table.loc[:, str(GRID.SECTION_NUM)] == gs_bindex, :]
 
             x_vector = curr_gs_subtable.loc[:, str(BBOX.CENTER_CC)]
             y_vector = curr_gs_subtable.loc[:, str(BBOX.CENTER_RR)]

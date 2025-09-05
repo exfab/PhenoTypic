@@ -376,7 +376,7 @@ class ImageSetCore:
             
         Example:
             >>> from phenotypic import ImagePipeline, MeasureShape
-            >>> pipeline = ImagePipeline(measurements=[MeasureShape()])
+            >>> pipeline = ImagePipeline(meas=[MeasureShape()])
             >>> measurements = imageset.measure(pipeline)
         """
         import logging

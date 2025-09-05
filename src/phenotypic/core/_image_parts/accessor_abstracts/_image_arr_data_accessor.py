@@ -3,17 +3,17 @@ import numpy as np
 import skimage.util
 import matplotlib.pyplot as plt
 
-from phenotypic.core._image_parts.accessor_abstracts import ImageAccessor
+from phenotypic.core._image_parts.accessor_abstracts import ImageAccessorBase
 
 
-class ImageArrDataAccessor(ImageAccessor):
+class ImageArrDataAccessor(ImageAccessorBase):
     """
     Handles interaction with Image data by providing access to Image attributes and data.
 
     This class serves as a bridge for interacting with Image-related data structures.
     It is responsible for accessing and manipulating data associated with a parent
     Image. It includes methods to retrieve the shape of the data and to determine
-    if the data is empty. The class extends the functionality of the base `ImageAccessor`.
+    if the data is empty. The class extends the functionality of the base `ImageAccessorBase`.
 
     Attributes:
         image (Any): Root Image object that this accessor is linked to.

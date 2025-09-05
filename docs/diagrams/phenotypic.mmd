@@ -1,5 +1,5 @@
 classDiagram
-    class ImageAccessor {
+    class ImageAccessorBase {
         note "An accessor object for image data"
         +- __init__(parent_image)
         #- _parent_image
@@ -18,7 +18,7 @@ classDiagram
         +- isempty()
         #- _norm2dtypeMatrix(normalized_value)
         #- _dtype2normMatrix(matrix)
-        +- get_foreground()
+        +- foreground()
     }
 
     class ImageArray {
@@ -31,7 +31,7 @@ classDiagram
         +- show(channel, figsize, title, ax, mpl_params)
         +- show_overlay(object_label, figsize, title, annotate, annotation_params, ax, overlay_params, imshow_params)
         +- show_objects(channel, bg_color, cmap, figsize, title, ax, mpl_params)
-        +- get_foreground(bg_color)
+        +- foreground(bg_color)
     }
 
     class ImageMatrix {
@@ -107,7 +107,7 @@ classDiagram
         #- _get_section_labels(idx)
     }
 
-    class HsvAccessor {
+    class HsbAccessor {
         note "An accessor for HSV color operations"
         +- __getitem__(key)
         +- __setitem__(key, value)
@@ -181,10 +181,10 @@ classDiagram
         note "The main image class"
     }
 
-    ImageAccessor <|-- ImageArrDataAccessor
-    ImageAccessor <|-- GridAccessor
-    ImageAccessor <|-- HsvAccessor
-    ImageAccessor <|-- ObjectsAccessor
+    ImageAccessorBase <|-- ImageArrDataAccessor
+    ImageAccessorBase <|-- GridAccessor
+    ImageAccessorBase <|-- HsbAccessor
+    ImageAccessorBase <|-- ObjectsAccessor
     
     ImageArrDataAccessor <|-- ImageArray
     ImageArrDataAccessor <|-- ImageMatrix

@@ -9,7 +9,7 @@ from scipy.optimize import minimize_scalar
 from functools import partial
 
 from phenotypic.abstract import GridFinder
-from phenotypic.util.constants_ import OBJECT, GRID, BBOX
+from phenotypic.util.constants_ import OBJECT, GRID_DEP, BBOX, GRID
 
 
 class OptimalCenterGridFinder(GridFinder):
@@ -96,8 +96,8 @@ class OptimalCenterGridFinder(GridFinder):
         """
         if axis == 0:
             current_grid_info = self._get_grid_info(image=image, row_padding=pad_sz, column_padding=col_pad)
-            current_obj_midpoints = (current_grid_info.loc[:, [str(BBOX.CENTER_RR), GRID.GRID_ROW_NUM]]
-                                     .groupby(GRID.GRID_ROW_NUM, observed=False)[str(BBOX.CENTER_RR)]
+            current_obj_midpoints = (current_grid_info.loc[:, [str( BBOX.CENTER_RR), str(GRID.ROW_NUM)]]
+                                     .groupby(str(GRID.ROW_NUM), observed=False)[str(BBOX.CENTER_RR)]
                                      .mean().values)
 
             bin_edges = np.histogram_bin_edges(
@@ -111,8 +111,8 @@ class OptimalCenterGridFinder(GridFinder):
 
         elif axis == 1:
             current_grid_info = self._get_grid_info(image=image, row_padding=row_pad, column_padding=pad_sz)
-            current_obj_midpoints = (current_grid_info.loc[:, [str(BBOX.CENTER_CC), GRID.GRID_COL_NUM]]
-                                     .groupby(GRID.GRID_COL_NUM, observed=False)[str(BBOX.CENTER_CC)]
+            current_obj_midpoints = (current_grid_info.loc[:, [str(BBOX.CENTER_CC), str(GRID.COL_NUM)]]
+                                     .groupby(str(GRID.COL_NUM), observed=False)[str(BBOX.CENTER_CC)]
                                      .mean().values)
 
             bin_edges = np.histogram_bin_edges(
@@ -259,7 +259,7 @@ class OptimalCenterGridFinder(GridFinder):
         row_edges = self._get_row_edges(image=image, row_padding=row_padding, info_table=info_table)
 
         # Add row number info
-        info_table.loc[:, GRID.GRID_ROW_NUM] = pd.cut(
+        info_table.loc[:, str(GRID.ROW_NUM)] = pd.cut(
             info_table.loc[:, str(BBOX.CENTER_RR)],
             bins=row_edges,
             labels=range(self.nrows),
@@ -268,7 +268,7 @@ class OptimalCenterGridFinder(GridFinder):
         )
 
         # Add row interval info
-        info_table.loc[:, GRID.GRID_ROW_INTERVAL] = pd.cut(
+        info_table.loc[:, str(GRID.ROW_INTERVAL)] = pd.cut(
             info_table.loc[:, str(BBOX.CENTER_RR)],
             bins=row_edges,
             labels=[(row_edges[i], row_edges[i + 1]) for i in range(len(row_edges) - 1)],
@@ -280,7 +280,7 @@ class OptimalCenterGridFinder(GridFinder):
         col_edges = self._get_col_edges(image=image, column_padding=column_padding, info_table=info_table)
 
         # Add column number info
-        info_table.loc[:, GRID.GRID_COL_NUM] = pd.cut(
+        info_table.loc[:, str(GRID.COL_NUM)] = pd.cut(
             info_table.loc[:, str(BBOX.CENTER_CC)],
             bins=col_edges,
             labels=range(self.ncols),
@@ -289,7 +289,7 @@ class OptimalCenterGridFinder(GridFinder):
         )
 
         # Add column interval info
-        info_table.loc[:, GRID.GRID_COL_INTERVAL] = pd.cut(
+        info_table.loc[:, str(GRID.COL_INTERVAL)] = pd.cut(
             info_table.loc[:, str(BBOX.CENTER_CC)],
             bins=col_edges,
             labels=[(col_edges[i], col_edges[i + 1]) for i in range(len(col_edges) - 1)],
@@ -298,19 +298,19 @@ class OptimalCenterGridFinder(GridFinder):
         )
 
         # Grid Section Info
-        info_table.loc[:, GRID.GRID_SECTION_IDX] = list(zip(
-            info_table.loc[:, GRID.GRID_ROW_NUM],
-            info_table.loc[:, GRID.GRID_COL_NUM],
+        info_table.loc[:, str(GRID.SECTION_IDX)] = list(zip(
+            info_table.loc[:, str(GRID.ROW_NUM)],
+            info_table.loc[:, str(GRID.COL_NUM)],
         ),
         )
 
         idx_map = np.reshape(np.arange(self.nrows * self.ncols), newshape=(self.nrows, self.ncols))
-        for idx in np.sort(np.unique(info_table.loc[:, GRID.GRID_SECTION_IDX].values)):
-            info_table.loc[info_table.loc[:, GRID.GRID_SECTION_IDX] == idx, GRID.GRID_SECTION_NUM] = idx_map[idx[0], idx[1]]
+        for idx in np.sort(np.unique(info_table.loc[:, str(GRID.SECTION_IDX)].values)):
+            info_table.loc[info_table.loc[:, str(GRID.SECTION_IDX)] == idx, str(GRID.SECTION_NUM)] = idx_map[idx[0], idx[1]]
 
         # Reduce memory consumption with categorical labels
-        info_table.loc[:, GRID.GRID_SECTION_IDX] = info_table.loc[:, GRID.GRID_SECTION_IDX].astype('category')
-        info_table[GRID.GRID_SECTION_NUM] = info_table[GRID.GRID_SECTION_NUM].astype(int).astype('category')
+        info_table.loc[:, str(GRID.SECTION_IDX)] = info_table.loc[:, str(GRID.SECTION_IDX)].astype('category')
+        info_table[str(GRID.SECTION_NUM)] = info_table[str(GRID.SECTION_NUM)].astype(int).astype('category')
 
         return info_table
 

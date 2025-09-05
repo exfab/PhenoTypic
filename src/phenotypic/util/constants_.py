@@ -5,7 +5,7 @@ This module contains constant values and enumerations used throughout the PhenoT
 Constants are organized by module and functionality.
 
 Note: Class names are defined in ALL_CAPS to avoid namespace conflicts with actual classes 
-    in the codebase (e.g., GRID vs an actual Grid class). When importing, use the format:
+    in the codebase (e.g., GRID_DEP vs an actual Grid class). When importing, use the format:
         from PhenoTypic.util.constants import IMAGE_FORMATS, OBJECT
 """
 
@@ -74,6 +74,7 @@ class BBOX(MeasurementInfo):
 
 class IO:
     ACCEPTED_FILE_EXTENSIONS = ('.png', '.jpg', '.jpeg', '.tif', '.tiff')
+    RAW_FILE_EXTENSIONS = ('.cr3', '.CR3')
 
     if Version(phenotypic.__version__) < Version("0.7.1"):
         SINGLE_IMAGE_HDF5_PARENT_GROUP = Path(f'phenotypic/')
@@ -105,7 +106,7 @@ class SET_STATUS(MeasurementInfo):
 
 
 # Grid constants
-class GRID:
+class GRID_DEP:
     """
     Constants for grid structure in the PhenoTypic module.
 
@@ -115,10 +116,29 @@ class GRID:
     """
     GRID_ROW_NUM = 'Grid_RowNum'
     GRID_ROW_INTERVAL = 'Grid_RowInterval'
-    GRID_COL_NUM = 'Grid_ColNu_m'
+    GRID_COL_NUM = 'Grid_ColNum'
     GRID_COL_INTERVAL = 'Grid_ColInterval'
     GRID_SECTION_NUM = 'Grid_SectionNum'
     GRID_SECTION_IDX = 'Grid_SectionIndex'
+
+class GRID(MeasurementInfo):
+    """Constants for grid structure in the PhenoTypic module."""
+    @property
+    def CATEGORY(self) -> str:
+        return 'Grid'
+
+    ROW_NUM = 'RowNum','The row idx of the object'
+    ROW_INTERVAL_START = 'RowIntervalStart','The start of the row interval of the object'
+    ROW_INTERVAL_END = 'RowIntervalEnd','The end of the row interval of the object'
+    ROW_INTERVAL = 'RowInterval','The row interval of the object'
+
+    COL_NUM = 'ColNum','The column idx of the object'
+    COL_INTERVAL_START = 'ColIntervalStart','The start of the column interval of the object'
+    COL_INTERVAL_END = 'ColIntervalEnd','The end of the column interval of the object'
+    COL_INTERVAL = 'ColInterval','The column interval of the object'
+
+    SECTION_NUM = 'SectionNum','The section number of the object. Ordered left to right, top to bottom'
+    SECTION_IDX = 'SectionIndex','The section index of the object'
 
 
 # Feature extraction constants

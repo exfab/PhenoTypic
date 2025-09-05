@@ -42,7 +42,7 @@ def test_kmarx_pipeline(plate_grid_images):
             'align': GridAligner(),
             'grid_reduction': MinResidualErrorReducer(),
         },
-        measurements={
+        meas={
             'MeasureColor': MeasureColor(),
             'MeasureShape': MeasureShape(),
             'MeasureIntensity': MeasureIntensity(),
@@ -98,7 +98,7 @@ def test_watershed_kmarx_pipeline_pickleable(plate_grid_images):
             'align': GridAligner(),
             'grid_reduction': MinResidualErrorReducer(),
         },
-        measurements={
+        meas={
             'MeasureColor': MeasureColor(),
             'MeasureShape': MeasureShape(),
             'MeasureIntensity': MeasureIntensity(),
@@ -122,7 +122,7 @@ def test_watershed_kmarx_pipeline_with_measurements_pickleable(plate_grid_images
             'align': GridAligner(),
             'grid_reduction': MinResidualErrorReducer(),
         },
-        measurements={
+        meas={
             'MeasureColor': MeasureColor(),
             'MeasureShape': MeasureShape(),
             'MeasureIntensity': MeasureIntensity(),
