@@ -9,7 +9,7 @@ A modular image processing framework developed at the NSF Ex-FAB BioFoundry.
 
 ---
 
-*Documentation* @ https://wheeldon-lab.github.io/PhenoTypic/
+*Documentation* @ https://exfab.github.io/PhenoTypic/
 
 ## Overview
 PhenoTypic provides a modular toolkit designed to simplify and accelerate the development of bio-image analysis pipelines. 
