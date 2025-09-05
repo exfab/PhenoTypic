@@ -11,7 +11,7 @@ from skimage.color import label2rgb
 
 import phenotypic
 from phenotypic.core._image_parts.accessor_abstracts import ImageAccessorBase
-from phenotypic.util.constants_ import GRID_DEP, METADATA_LABELS, IMAGE_TYPES, BBOX
+from phenotypic.util.constants_ import METADATA_LABELS, IMAGE_TYPES, BBOX, GRID
 from phenotypic.util.exceptions_ import NoObjectsError
 
 
@@ -114,12 +114,12 @@ class GridAccessor(ImageAccessorBase):
             raise NoObjectsError(self._root_image.name)
         if axis == 0:
             num_vectors = self.nrows
-            x_group = GRID_DEP.GRID_ROW_NUM
+            x_group = str(GRID.ROW_NUM)
             x_val = str(BBOX.CENTER_CC)
             y_val =str(BBOX.CENTER_RR)
         elif axis == 1:
             num_vectors = self.ncols
-            x_group = GRID_DEP.GRID_COL_NUM
+            x_group = str(GRID.COL_NUM)
             x_val =str(BBOX.CENTER_RR)
             y_val = str(BBOX.CENTER_CC)
         else:
@@ -173,8 +173,8 @@ class GridAccessor(ImageAccessorBase):
         """Returns a version of the object map with each object numbered according to their grid column number"""
         grid_info = self.info()
         col_map = self._root_image.objmap[:]
-        for n, col_bidx in enumerate(np.sort(grid_info.loc[:, GRID_DEP.GRID_COL_NUM].unique())):
-            subtable = grid_info.loc[grid_info.loc[:, GRID_DEP.GRID_COL_NUM] == col_bidx, :]
+        for n, col_bidx in enumerate(np.sort(grid_info.loc[:, str(GRID.COL_NUM)].unique())):
+            subtable = grid_info.loc[grid_info.loc[:, str(GRID.COL_NUM)] == col_bidx, :]
 
             # Edit the new map's objects to equal the column number
             col_map[np.isin(
@@ -211,7 +211,7 @@ class GridAccessor(ImageAccessorBase):
     # Optimize so it calls the grid finder's edges calculation
     def get_row_edges(self) -> np.ndarray:
         """Returns the row edges of the grid"""
-        # intervals = self.info().loc[:, GRID_DEP.GRID_ROW_INTERVAL]
+        # intervals = self.info().loc[:, str(GRID.ROW_INTERVAL)]
         # left_edges = intervals.apply(
         #     lambda x: math.floor(x[0]) if math.floor(x[0]) > 0 else math.ceil(x[0])
         # ).to_numpy()
@@ -226,8 +226,8 @@ class GridAccessor(ImageAccessorBase):
         """Returns a version of the object map with each object numbered according to their grid row number"""
         grid_info = self.info()
         row_map = self._root_image.objmap[:]
-        for n, col_bidx in enumerate(np.sort(grid_info.loc[:, GRID_DEP.GRID_ROW_NUM].unique())):
-            subtable = grid_info.loc[grid_info.loc[:, GRID_DEP.GRID_ROW_NUM] == col_bidx, :]
+        for n, col_bidx in enumerate(np.sort(grid_info.loc[:, str(GRID.ROW_NUM)].unique())):
+            subtable = grid_info.loc[grid_info.loc[:, str(GRID.ROW_NUM)] == col_bidx, :]
 
             # Edit the new map's objects to equal the column number
             row_map[np.isin(
@@ -269,8 +269,8 @@ class GridAccessor(ImageAccessorBase):
         grid_info = self.info()
 
         section_map = self._root_image.objmap[:]
-        for n, bidx in enumerate(np.sort(grid_info.loc[:, GRID_DEP.GRID_SECTION_NUM].unique())):
-            subtable = grid_info.loc[grid_info.loc[:, GRID_DEP.GRID_SECTION_NUM] == bidx, :]
+        for n, bidx in enumerate(np.sort(grid_info.loc[:, str(GRID.SECTION_NUM)].unique())):
+            subtable = grid_info.loc[grid_info.loc[:, str(GRID.SECTION_NUM)] == bidx, :]
             section_map[np.isin(
                 element=self._root_image.objmap[:],
                 test_elements=subtable.index.to_numpy(),
@@ -280,7 +280,7 @@ class GridAccessor(ImageAccessorBase):
 
     def get_section_counts(self, ascending=False) -> pd.DataFrame:
         """Returns a sorted dataframe with the number of objects within each section"""
-        return self.info().loc[:, GRID_DEP.GRID_SECTION_NUM].value_counts().sort_values(ascending=ascending)
+        return self.info().loc[:, str(GRID.SECTION_NUM)].value_counts().sort_values(ascending=ascending)
 
     def get_info_by_section(self, section_number):
         """ Get the grid info based on the section. Can be accessed by section number or row/column label_subset
@@ -293,11 +293,11 @@ class GridAccessor(ImageAccessorBase):
         """
         if isinstance(section_number, int):  # Access by section number
             grid_info = self.info()
-            return grid_info.loc[grid_info.loc[:, GRID_DEP.GRID_SECTION_NUM] == section_number, :]
+            return grid_info.loc[grid_info.loc[:, str(GRID.SECTION_NUM)] == section_number, :]
         elif isinstance(section_number, tuple) and len(section_number) == 2:  # Access by row and col number
             grid_info = self.info()
-            grid_info = grid_info.loc[grid_info.loc[:, GRID_DEP.GRID_ROW_NUM] == section_number[0], :]
-            return grid_info.loc[grid_info.loc[:, GRID_DEP.GRID_ROW_NUM] == section_number[1], :]
+            grid_info = grid_info.loc[grid_info.loc[:, str(GRID.ROW_NUM)] == section_number[0], :]
+            return grid_info.loc[grid_info.loc[:, str(GRID.ROW_NUM)] == section_number[1], :]
         else:
             raise ValueError('Section index should be int or a tuple of label_subset')
 
@@ -332,7 +332,7 @@ class GridAccessor(ImageAccessorBase):
         grid_max_rr, grid_max_cc = grid_max
 
         grid_info = self.info()
-        section_info = grid_info.loc[grid_info.loc[:, GRID_DEP.GRID_SECTION_NUM] == idx, :]
+        section_info = grid_info.loc[grid_info.loc[:, str(GRID.SECTION_NUM)] == idx, :]
 
         obj_min_cc = section_info.loc[:, str(BBOX.MIN_CC)].min()
         min_cc = min(grid_min_cc, obj_min_cc)
@@ -355,5 +355,5 @@ class GridAccessor(ImageAccessorBase):
     def _get_section_labels(self, idx) -> list[int]:
         """Returns a list of labels for a grid section based on its flattened index"""
         grid_info = self.info()
-        section_info = grid_info.loc[grid_info.loc[:, GRID_DEP.GRID_SECTION_NUM] == idx, :]
+        section_info = grid_info.loc[grid_info.loc[:, str(GRID.SECTION_NUM)] == idx, :]
         return section_info.index.to_list()

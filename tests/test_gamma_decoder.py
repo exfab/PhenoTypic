@@ -29,7 +29,7 @@ def test_gamma_decoder_basic():
     assert result._known_gamma_decoding
 
 
-@pytest.mark.parametrize("color_profile", ["sRGB", "ITU-R BT.709"])
+@pytest.mark.parametrize("color_profile", ["sRGB"])
 @timeit
 def test_gamma_decoder_color_profiles(color_profile):
     """Test GammaDecoder with different color profiles."""

@@ -35,7 +35,7 @@ class ImagePipelineCore(ImageOperation):
 
     def __init__(self,
                  ops: List[ImageOperation] | Dict[str, ImageOperation] | None = None,
-                 measurements: List[MeasureFeatures] | Dict[str, MeasureFeatures] | None = None,
+                 meas: List[MeasureFeatures] | Dict[str, MeasureFeatures] | None = None,
                  benchmark: bool = False,
                  verbose: bool = False
                  ):
@@ -48,7 +48,7 @@ class ImagePipelineCore(ImageOperation):
             ops: A dictionary where the keys are operation names (strings)
                 and the values are ImageOperation objects responsible for performing
                 specific Image processing tasks.
-            measurements: An optional dictionary where the keys are feature names
+            meas: An optional dictionary where the keys are feature names
                 (strings) and the values are FeatureExtractor objects responsible for
                 extracting specific features.
             benchmark: A flag indicating whether to track execution times for operations
@@ -61,7 +61,7 @@ class ImagePipelineCore(ImageOperation):
         if ops is not None: self.set_ops(ops)
 
         self._measurements: Dict[str, MeasureFeatures] = {}
-        if measurements is not None: self.set_measurements(measurements)
+        if meas is not None: self.set_measurements(meas)
 
         # Store benchmark and verbose flags
         self._benchmark = benchmark
@@ -323,8 +323,6 @@ class ImagePipelineCore(ImageOperation):
         return self._merge_on_same_index(measurements)
 
     def apply_and_measure(self, image: Image, inplace: bool = False, reset: bool = True) -> pd.DataFrame:
-        print("🚨🚨🚨 PARENT METHOD CALLED: ImagePipelineCore.apply_and_measure 🚨🚨🚨")
-        print(f"🚨 Parent method called with image type: {type(image)}")
         img = self.apply(image, inplace=inplace, reset=reset)
         return self.measure(img)
 
