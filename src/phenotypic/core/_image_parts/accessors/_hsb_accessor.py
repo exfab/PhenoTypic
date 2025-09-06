@@ -15,7 +15,7 @@ from phenotypic.util.constants_ import IMAGE_FORMATS
 from phenotypic.util.exceptions_ import IllegalAssignmentError
 
 
-class HsbAccessor(ImageAccessorBase):
+class HsvAccessor(ImageAccessorBase):
     """An accessor class to handle and analyze HSB (Hue, Saturation, Brightness) image data efficiently.
 
     This class provides functionality for accessing and processing HSV image data.

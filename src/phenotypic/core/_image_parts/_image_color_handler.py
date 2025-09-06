@@ -13,11 +13,12 @@ import colour
 
 from functools import partial
 
-from phenotypic.core._image_parts.accessors import HsbAccessor
+from phenotypic.core._image_parts.accessors import HsvAccessor
 from ._image_objects_handler import ImageObjectsHandler
 from phenotypic.util.constants_ import IMAGE_FORMATS
 from phenotypic.util.exceptions_ import IllegalAssignmentError
 from phenotypic.util.colourspaces_ import sRGB_D50
+from phenotypic.util.funcs_ import normalize_rgb_bitdepth
 
 
 class ImageColorSpace(ImageObjectsHandler):
@@ -69,7 +70,7 @@ class ImageColorSpace(ImageObjectsHandler):
                 Tracks whether the gamma decoding for the color profile has been applied.
                 A warning is issued if not applied. Defaults to False.
 
-            _accessors.hsb: HsbAccessor
+            _accessors.hsb: HsvAccessor
                 Provides access to HSV-related processing methods tailored for the image.
 
         """
@@ -79,12 +80,9 @@ class ImageColorSpace(ImageObjectsHandler):
         super().__init__(input_image=input_image, imformat=imformat, name=name, **kwargs)
 
         # Device color profiles
+        self._accessors.hsv = HsvAccessor(self)
 
-        # This tracks if phenotypic's gamma decoder has been applied. This will trigger a warning if not applied
-        self._known_gamma_decoding: bool = False
-        self._accessors.hsb = HsbAccessor(self)
-
-    def xyz(self) -> np.ndarray:
+    def to_XYZ(self, decode_gamma=True) -> np.ndarray:
         """
         Converts RGB color values to XYZ color space based on the specified color
         profile and illuminant. This method is dependent on the specified color
@@ -103,26 +101,28 @@ class ImageColorSpace(ImageObjectsHandler):
         Returns:
             np.ndarray: A numpy array representing the colors in XYZ color space.
         """
-        if not self._known_gamma_decoding:
-            warnings.warn('The RGB values have not been decoded using phenotypic\'s gamma decoder, this may lead to inaccurate results.')
+        rgb = self.array[:]
+        norm_rgb = normalize_rgb_bitdepth(rgb)
         match (self.color_profile, self.illuminant):
             case ("sRGB", "D50"):
                 sRGB_D50.whitepoint = colour.CCS_ILLUMINANTS[self.observer]["D50"]
                 return colour.RGB_to_XYZ(
-                    RGB=self.array[:],
+                    RGB=norm_rgb,
                     colourspace=sRGB_D50,
                     illuminant=sRGB_D50.whitepoint,
+                    cctf_decoding=decode_gamma,
                 )
             case ("sRGB", "D65"):
                 return colour.RGB_to_XYZ(
-                    RGB=self.array[:],
+                    RGB=norm_rgb,
                     colourspace=colour.RGB_COLOURSPACES["sRGB"],
                     illuminant=colour.CCS_ILLUMINANTS[self.observer]["D65"],
+                    cctf_decoding=decode_gamma,
                 )
             case _:
                 raise ValueError(f'Unknown color_profile: {self.color_profile} or illuminant: {self.illuminant}')
 
-    def xyzD65(self) -> np.ndarray:
+    def to_XYZ_D65(self) -> np.ndarray:
         """
         Converts RGB values to XYZ under the D65 illuminant.
 
@@ -138,21 +138,20 @@ class ImageColorSpace(ImageObjectsHandler):
         Raises:
             ValueError: If an unrecognized color profile or illuminant is provided.
         """
-        # We assume 2 degree standard observer for now
-        wp = colour.CCS_ILLUMINANTS['CIE 1931 2 Degree Standard Observer']
+        wp = colour.CCS_ILLUMINANTS[self.observer]
 
         # Creates a partial function so only the test XYZ whitepoint needs to be supplied
-        bradford_cat65 = partial(colour.chromatic_adaptation, XYZ=self.xyz(), XYZ_wr=colour.xy_to_XYZ(wp['D65']), method='Bradford')
+        bradford_cat65 = partial(colour.chromatic_adaptation, XYZ=self.to_XYZ(), XYZ_wr=colour.xy_to_XYZ(wp['D65']), method='Bradford')
 
         match (self.color_profile, self.illuminant):
             case ("sRGB", "D65"):
-                return self.xyz()
+                return self.to_XYZ()
             case ("sRGB", "D50"):
                 return bradford_cat65(XYZ_w=colour.xy_to_XYZ(wp['D50']))
             case _:
                 raise ValueError(f'Unknown color_profile: {self.color_profile} or illuminant: {self.illuminant}')
 
-    def xy(self)-> np.ndarray:
+    def to_xy(self) -> np.ndarray:
         """
         Converts an RGB color to its corresponding xy chromaticity coordinates.
 
@@ -165,11 +164,16 @@ class ImageColorSpace(ImageObjectsHandler):
             np.ndarray: A NumPy array containing the xy chromaticity coordinates of
                 the input RGB color.
         """
-        return colour.XYZ_to_xy(self.xyzD65())
+        return colour.XYZ_to_xy(self.to_XYZ_D65)
 
+    def to_Lab(self):
+        return colour.XYZ_to_Lab(
+            XYZ=self.to_XYZ(),
+            illuminant=colour.CCS_ILLUMINANTS[self.observer][self.illuminant],
+        )
 
     @property
-    def _hsb(self) -> np.ndarray:
+    def _hsv(self) -> np.ndarray:
         """Returns the hsb array dynamically of the current image.
 
         This can become computationally expensive, so implementation may be changed in the future.
@@ -187,7 +191,7 @@ class ImageColorSpace(ImageObjectsHandler):
                     raise ValueError(f'Unsupported imformat {self.imformat} for HSV conversion')
 
     @property
-    def hsb(self) -> HsbAccessor:
+    def hsv(self) -> HsvAccessor:
         """Returns the HSV accessor.
 
         This property returns an instance of the HsvAccessor associated with the
@@ -195,10 +199,10 @@ class ImageColorSpace(ImageObjectsHandler):
         functionalities controlled by this handler.
 
         Returns:
-            HsbAccessor: The instance of the HSV accessor.
+            HsvAccessor: The instance of the HSV accessor.
         """
-        return self._accessors.hsb
+        return self._accessors.hsv
 
-    @hsb.setter
-    def hsb(self, value):
+    @hsv.setter
+    def hsv(self, value):
         raise IllegalAssignmentError('hsb')

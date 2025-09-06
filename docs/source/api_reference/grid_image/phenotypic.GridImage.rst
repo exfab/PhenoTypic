@@ -39,7 +39,7 @@
       ~GridImage.array
       ~GridImage.enh_matrix
       ~GridImage.grid
-      ~GridImage.hsb
+      ~GridImage.hsv
       ~GridImage.imformat
       ~GridImage.matrix
       ~GridImage.metadata

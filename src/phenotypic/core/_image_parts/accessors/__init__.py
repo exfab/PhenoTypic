@@ -64,7 +64,7 @@ These classes provide consolidated access to manage multiple object-level and me
 HSV (Hue, Saturation, Brightness) Interface
 ===========================================
 
-1. :class:`HsbAccessor`
+1. :class:`HsvAccessor`
 Provides detailed access to the HSV (Hue, Saturation, Brightness) color space components of an image. This abstract includes support for:
 
 - Direct pixel access via ``__getitem__`` and ``__setitem__``.
@@ -101,7 +101,7 @@ from ._objects_accessor import ObjectsAccessor
 # from ._measurement_container_interface import MeasurementAccessor
 from ._metadata_accessor import MetadataAccessor
 
-from ._hsb_accessor import HsbAccessor
+from ._hsb_accessor import HsvAccessor
 from ._grid_accessor import GridAccessor
 
 # Define __all__ to include all imported objects
@@ -112,7 +112,7 @@ __all__ = [
     "ObjectMap",
     "ObjectMask",
     "ObjectsAccessor",
-    "HsbAccessor",
+    "HsvAccessor",
     "GridAccessor",
     "MetadataAccessor",
 ]

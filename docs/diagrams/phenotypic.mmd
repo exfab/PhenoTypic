@@ -107,7 +107,7 @@ classDiagram
         #- _get_section_labels(idx)
     }
 
-    class HsbAccessor {
+    class HsvAccessor {
         note "An accessor for HSV color operations"
         +- __getitem__(key)
         +- __setitem__(key, value)
@@ -183,7 +183,7 @@ classDiagram
 
     ImageAccessorBase <|-- ImageArrDataAccessor
     ImageAccessorBase <|-- GridAccessor
-    ImageAccessorBase <|-- HsbAccessor
+    ImageAccessorBase <|-- HsvAccessor
     ImageAccessorBase <|-- ObjectsAccessor
     
     ImageArrDataAccessor <|-- ImageArray

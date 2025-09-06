@@ -1,11 +1,11 @@
 ﻿
 
-phenotypic.Image.hsb
+phenotypic.Image.hsv
 ====================
 
 .. currentmodule:: phenotypic
 
-.. autoproperty:: Image.hsb
+.. autoproperty:: Image.hsv
 
 
 
@@ -14,14 +14,14 @@ phenotypic.Image.hsb
 
 .. currentmodule:: phenotypic.core.accessors
 
-.. class-members:: phenotypic.core.accessors.HsbAccessor
+.. class-members:: phenotypic.core.accessors.HsvAccessor
    :attributes:
    :properties:
    :methods:
 
-.. rubric:: HsbAccessor API Reference
+.. rubric:: HsvAccessor API Reference
 
-.. autoclass:: HsbAccessor
+.. autoclass:: HsvAccessor
    :members:
    :show-inheritance:
    :special-members: __getitem__, __setitem__, __len__, __call__

@@ -304,7 +304,7 @@
         <mxCell id="kQ2yV8AIbiC1aDz_2Qq--100" value="#- _get_section_labels(idx)" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" parent="kQ2yV8AIbiC1aDz_2Qq--79" vertex="1">
           <mxGeometry y="548.047619047619" width="561" height="27" as="geometry" />
         </mxCell>
-        <mxCell id="kQ2yV8AIbiC1aDz_2Qq--101" value="HsbAccessor" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=28.923076923076923;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;" parent="1" vertex="1">
+        <mxCell id="kQ2yV8AIbiC1aDz_2Qq--101" value="HsvAccessor" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=28.923076923076923;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;" parent="1" vertex="1">
           <mxGeometry x="2340" y="694" width="442" height="384.9230769230769" as="geometry" />
         </mxCell>
         <mxCell id="kQ2yV8AIbiC1aDz_2Qq--102" value="note &quot;An accessor for HSV color operations&quot;" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" parent="kQ2yV8AIbiC1aDz_2Qq--101" vertex="1">

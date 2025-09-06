@@ -17,7 +17,7 @@
     "objmap": "ObjectMap",
     "objmask": "ObjectMask",
     "objects": "ObjectsAccessor",
-    "hsb": "HsbAccessor",
+    "hsv": "HsvAccessor",
     "grid": "GridAccessor"
 } %}
 
