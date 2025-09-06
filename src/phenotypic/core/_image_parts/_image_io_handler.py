@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import warnings
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Literal, Tuple
 
 if TYPE_CHECKING: from phenotypic import Image
 
@@ -12,13 +12,13 @@ from os import PathLike
 from pathlib import Path
 import posixpath
 from packaging.version import Version
-
+import rawpy
 import skimage as ski
 
 import phenotypic
 from phenotypic.util.exceptions_ import UnsupportedFileTypeError
 from phenotypic.util.constants_ import IMAGE_FORMATS, IO
-from phenotypic.util import HDF
+from phenotypic.util.hdf_ import HDF
 from ._image_color_handler import ImageColorSpace
 
 
@@ -27,29 +27,45 @@ class ImageIOHandler(ImageColorSpace):
     def __init__(self,
                  input_image: np.ndarray | Image | PathLike | Path | str | None = None,
                  imformat: str | None = None,
-                 name: str | None = None):
+                 name: str | None = None, **kwargs):
         if isinstance(input_image, (PathLike, Path, str)):
             input_image = Path(input_image)
-            super().__init__(input_image=self.imread(input_image), imformat=imformat, name=name)
+            super().__init__(input_image=self.imread(input_image), imformat=imformat, name=name, **kwargs)
         else:
             super().__init__(input_image=input_image, imformat=imformat, name=name)
 
     @classmethod
-    def imread(cls, filepath: PathLike) -> Image:
+    def imread(cls, filepath: PathLike,
+               gamma: Tuple[int, int] = None,
+               demosaic_algorithm: rawpy.DemosaicAlgorithm = None,
+               use_camera_wb:bool=False,
+               median_filter_passes:int = 0,
+               **kwargs) -> Image:
         """
-        Reads an image file from a given file path, processes it as per its format, and sets the image
-        along with its schema in the current instance. Supports RGB formats (png, jpg, jpeg) and
-        grayscale formats (tif, tiff). The name of the image processing instance is updated to match
-        the file name without the extension. If the file format is unsupported, an exception is raised.
+        Reads an image file and returns an instance of the Image class. This method supports
+        various file formats and processes raw image files using parameters such as gamma,
+        demosaic algorithms, and camera white balance settings. It ensures compatibility with
+        different file extensions defined in the `ACCEPTED_FILE_EXTENSIONS` and
+        `RAW_FILE_EXTENSIONS`. The method raises an UnsupportedFileTypeError if the file type
+        is not supported.
 
         Args:
-            filepath (PathLike): Path to the image file to be read.
+            filepath (PathLike): Path to the image file that needs to be read.
+            gamma (Tuple[int, int], optional): Gamma correction values for postprocessing raw
+                image files. Defaults to None.
+            demosaic_algorithm (rawpy.DemosaicAlgorithm, optional): Demosaic algorithm to be
+                used for processing raw images. Defaults to None, which uses the `AHD` algorithm.
+            use_camera_wb (bool, optional): Whether to use the camera's white balance settings
+                for processing raw image files. Defaults to False.
+            median_filter_passes (int, optional): Number of passes for applying a median filter
+                during raw image postprocessing. Defaults to 0.
+            **kwargs: Additional parameters passed to the rawpy postprocessing method.
 
         Returns:
-            Type[Image]: The current instance with the newly loaded image and schema.
+            Image: Instance of the Image class with the processed or loaded image.
 
         Raises:
-            UnsupportedFileType: If the file format is not supported.
+            UnsupportedFileTypeError: If the file extension of `filepath` is not supported.
         """
         # Convert to a Path object
         filepath = Path(filepath)
@@ -58,6 +74,19 @@ class ImageIOHandler(ImageColorSpace):
             image.set_image(
                 input_image=ski.io.imread(filepath),
             )
+            image.name = filepath.stem
+            return image
+        elif filepath.suffix in IO.RAW_FILE_EXTENSIONS:
+            with rawpy.imread(filepath) as raw:
+                arr = raw.postprocess(
+                    demosaic_algorithm=demosaic_algorithm if demosaic_algorithm else rawpy.DemosaicAlgorithm.AHD,
+                    use_camera_wb=use_camera_wb,
+                    use_auto_wb=False,
+                    gamma=gamma if gamma else (1, 1),
+                    median_filter_passes=median_filter_passes,
+                    **kwargs,
+                )
+            image = cls(input_image=arr)
             image.name = filepath.stem
             return image
         else:
@@ -102,11 +131,15 @@ class ImageIOHandler(ImageColorSpace):
                 Additional keyword arguments to pass when creating a new dataset.
         """
         assert isinstance(array, np.ndarray), "array must be a numpy array."
+
         if name in group:
-            del group[name]
-            group.create_dataset(name, data=array, dtype=array.dtype,**kwargs)
+            if group[name].shape == array.shape:
+                group[name][:] = array
+            else:
+                del group[name]
+                group.create_dataset(name, data=array, dtype=array.dtype, **kwargs)
         else:
-            group.create_dataset(name, data=array, dtype=array.dtype,**kwargs)
+            group.create_dataset(name, data=array, dtype=array.dtype, **kwargs)
 
     def _save_image2hdfgroup(self, grp, compression, compression_opts, overwrite=False, ):
         """Saves the image as a new group into the input hdf5 group."""

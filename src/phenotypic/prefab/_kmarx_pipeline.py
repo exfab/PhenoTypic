@@ -28,7 +28,7 @@ class KmarxPipeline(ImagePipeline):
                 WatershedDetector(footprint=footprint, min_size=min_size, compactness=compactness),
                 MaskFill()
             ],
-            measurements=[
+            meas=[
                 MeasureShape(),
                 MeasureColor(),
                 MeasureTexture(),

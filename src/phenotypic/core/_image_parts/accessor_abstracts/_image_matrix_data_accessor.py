@@ -15,7 +15,7 @@ class ImageMatrixDataAccessor(ImageArrDataAccessor):
     This class serves as a bridge for interacting with Image-related data structures.
     It is responsible for accessing and manipulating data associated with a parent
     Image. It includes methods to retrieve the shape of the data and to determine
-    if the data is empty. The class extends the functionality of the base `ImageAccessor`.
+    if the data is empty. The class extends the functionality of the base `ImageAccessorBase`.
 
     Attributes:
         image (Any): Root Image object that this accessor is linked to.
@@ -39,7 +39,7 @@ class ImageMatrixDataAccessor(ImageArrDataAccessor):
             Tuple[plt.Figure, np.ndarray]: Returns a matplotlib Figure object containing
                 the subplots and a NumPy array of axes for further customization.
         """
-        fig, (imgAx, histAx) = plt.subplots(nrows=2, ncols=2, figsize=figsize)
+        fig, (imgAx, histAx) = plt.subplots(nrows=1, ncols=2, figsize=figsize)
         fig, imgAx = self._plot(
             arr=self[:],
             figsize=figsize,

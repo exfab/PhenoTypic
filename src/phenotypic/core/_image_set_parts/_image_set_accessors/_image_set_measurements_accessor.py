@@ -30,21 +30,27 @@ class SetMeasurementAccessor:
 
     @staticmethod
     def _save_dataframe_to_hdf5_group_swmr(df: pd.DataFrame, group, measurement_key: str | None = None):
-        """Save a DataFrame to HDF5 group using SWMR-compatible index/values structure.
+        """Save a DataFrame to pre-allocated HDF5 datasets using SWMR-compatible protocol.
         
-        This method creates the new structure:
+        This method writes to pre-allocated datasets in the structure:
         measurements/
         ├── index/          # DataFrame index datasets
         └── values/         # DataFrame column datasets
         
+        SWMR Protocol Rules:
+        - Datasets must be pre-allocated before SWMR mode is enabled
+        - Only data writing/resizing is allowed, no creation/deletion
+        - Must flush datasets after writing for reader visibility
+        
         Args:
             df: pandas DataFrame to save
-            group: HDF5 group object where to save the DataFrame
-            measurement_key: name of the subgroup to create for the DataFrame data
+            group: HDF5 group object containing pre-allocated datasets
+            measurement_key: name of the measurement subgroup containing datasets
         """
         import logging
         import os
         import time
+        import numpy as np
         
         # Create parallel-safe logger with process/thread identification
         logger = logging.getLogger(f"{__name__}.swmr_save")
@@ -59,95 +65,146 @@ class SetMeasurementAccessor:
             
         logger.info(f"{log_prefix} Starting SWMR DataFrame save - Shape: {df.shape}, Key: '{measurement_key}'")
         logger.debug(f"{log_prefix} DataFrame info - Index: {df.index.name or 'unnamed'} ({df.index.dtype}), Columns: {list(df.columns)}")
+        
+        # Verify pre-allocated measurement group exists
+        if measurement_key not in group:
+            error_msg = f"Measurement group '{measurement_key}' not found. Pre-allocation required before SWMR save."
+            logger.error(f"{log_prefix} {error_msg}")
+            raise ValueError(error_msg)
             
-        # Remove existing measurements if any
-        if measurement_key in group:
-            logger.debug(f"{log_prefix} Removing existing measurement group '{measurement_key}'")
-            del group[measurement_key]
+        meas_group = group[measurement_key]
+        
+        # Verify index and values subgroups exist
+        if 'index' not in meas_group or 'values' not in meas_group:
+            error_msg = f"Required 'index' and 'values' subgroups not found in '{measurement_key}'"
+            logger.error(f"{log_prefix} {error_msg}")
+            raise ValueError(error_msg)
             
-        # Create measurements subgroup
-        logger.debug(f"{log_prefix} Creating measurement group '{measurement_key}'")
-        meas_group = group.create_group(measurement_key)
+        index_group = meas_group['index']
+        values_group = meas_group['values']
         
-        # Create index and values subgroups
-        logger.debug(f"{log_prefix} Creating index and values subgroups")
-        index_group = meas_group.create_group('index')
-        values_group = meas_group.create_group('values')
+        logger.debug(f"{log_prefix} Verified pre-allocated structure - Index: {list(index_group.keys())}, Values: {list(values_group.keys())}")
         
-        # Store metadata about the DataFrame structure
-        logger.debug(f"{log_prefix} Storing DataFrame metadata - Rows: {len(df)}, Cols: {len(df.columns)}")
-        meas_group.attrs['num_rows'] = len(df)
-        meas_group.attrs['num_cols'] = len(df.columns)
+        num_rows = len(df)
         
-        # Store index data
-        index_name = df.index.name if df.index.name is not None else 'level_0'
-        if hasattr(df.index, 'values'):
-            index_values = df.index.values
-            if index_values.dtype.kind in ['U', 'S']:  # String types
-                index_group.create_dataset(index_name, data=index_values.astype('S'), compression="gzip", compression_opts=4)
-            else:
-                index_group.create_dataset(index_name, data=index_values, compression="gzip", compression_opts=4)
-        else:
-            # Handle non-numpy index types
-            try:
-                import numpy as np
-                index_array = np.array(df.index)
-                index_group.create_dataset(index_name, data=index_array, compression="gzip", compression_opts=4)
-            except (ValueError, TypeError):
-                # Fallback to string conversion
-                index_data = [str(i).encode() for i in df.index]
-                index_group.create_dataset(index_name, data=index_data, compression="gzip", compression_opts=4)
-        
-        # Store index metadata
-        index_group.attrs['native_dtype'] = str(df.index.dtype) if hasattr(df.index, 'dtype') else 'object'
-        index_group.attrs['pandas_dtype'] = str(df.index.dtype) if hasattr(df.index, 'dtype') else 'object'
-        index_group.attrs['numpy_dtype'] = str(df.index.values.dtype) if hasattr(df.index, 'values') else 'object'
-        index_group.attrs['position'] = 0
-        
-        # Store each column in values group
-        for i, col in enumerate(df.columns):
-            col_data = df[col].values
-            dataset_name = col  # Use actual column name as dataset name
+        # Helper function to convert DataFrame data to match target dataset type
+        def _convert_to_dataset_compatible(data, original_dtype, target_dataset):
+            """Convert DataFrame data to match the target HDF5 dataset type."""
+            # Check the target dataset type
+            target_dtype = target_dataset.dtype
             
-            # Handle different data types appropriately
-            if col_data.dtype.kind in ['U', 'S']:  # String types
-                values_group.create_dataset(dataset_name, data=col_data.astype('S'), compression="gzip", compression_opts=4)
-            elif col_data.dtype.kind in ['f', 'i', 'u']:  # Numeric types
-                values_group.create_dataset(dataset_name, data=col_data, compression="gzip", compression_opts=4)
-            elif col_data.dtype.kind == 'b':  # Boolean types
-                values_group.create_dataset(dataset_name, data=col_data, compression="gzip", compression_opts=4)
-            elif col_data.dtype.kind == 'O':  # Object dtype - check if contains strings
-                sample_val = col_data[0] if len(col_data) > 0 else None
-                if isinstance(sample_val, str) or sample_val is None:
-                    # Object column contains strings - convert to UTF-8 strings for HDF5 storage
-                    string_data = [str(val) if val is not None else '' for val in col_data]
-                    values_group.create_dataset(dataset_name, data=string_data, dtype=h5py.string_dtype(encoding='utf-8'), compression="gzip", compression_opts=4)
+            # If target is string type, convert everything to strings
+            if target_dtype.kind in ['S', 'U'] or str(target_dtype).startswith('|S') or 'string' in str(target_dtype):
+                # Convert all data to strings
+                converted = []
+                for val in data:
+                    if val is None or pd.isna(val):
+                        converted.append('')
+                    else:
+                        converted.append(str(val))
+                return converted, 'string'
+            
+            # If target is numeric type, handle accordingly
+            elif target_dtype.kind in ['f', 'i', 'u']:
+                if data.dtype.kind == 'O':  # Object dtype
+                    # Try to convert to numeric, using NaN for missing values
+                    converted = []
+                    for val in data:
+                        if val is None or pd.isna(val):
+                            converted.append(np.nan if target_dtype.kind == 'f' else 0)
+                        else:
+                            try:
+                                if target_dtype.kind == 'f':
+                                    converted.append(float(val))
+                                else:
+                                    converted.append(int(val))
+                            except (ValueError, TypeError):
+                                converted.append(np.nan if target_dtype.kind == 'f' else 0)
+                    return np.array(converted, dtype=target_dtype), 'numeric'
                 else:
-                    # Object column contains other types - convert to string
-                    string_data = [str(val) for val in col_data]
-                    values_group.create_dataset(dataset_name, data=string_data, dtype=h5py.string_dtype(encoding='utf-8'), compression="gzip", compression_opts=4)
-            else:  # Other types - try to preserve original type, fallback to string
-                try:
-                    values_group.create_dataset(dataset_name, data=col_data, compression="gzip", compression_opts=4)
-                except (TypeError, ValueError):
-                    # Fallback to string conversion
-                    string_data = [str(val) for val in col_data]
-                    values_group.create_dataset(dataset_name, data=string_data, dtype=h5py.string_dtype(encoding='utf-8'), compression="gzip", compression_opts=4)
+                    # Data is already numeric, just ensure correct type
+                    return data.astype(target_dtype), 'numeric'
             
-            # Store column metadata as dataset attributes
-            dataset = values_group[dataset_name]
-            dataset.attrs['native_dtype'] = str(df[col].dtype)
-            dataset.attrs['pandas_dtype'] = str(df[col].dtype)
-            dataset.attrs['numpy_dtype'] = str(col_data.dtype)
-            dataset.attrs['position'] = i
-            dataset.attrs['column_name'] = str(col).encode('utf-8')
+            # If target is boolean type
+            elif target_dtype.kind == 'b':
+                converted = []
+                for val in data:
+                    if val is None or pd.isna(val):
+                        converted.append(False)
+                    else:
+                        converted.append(bool(val))
+                return np.array(converted, dtype=target_dtype), 'boolean'
             
-            logger.debug(f"{log_prefix} Saved column '{col}' as '{dataset_name}' - Shape: {col_data.shape}, Dtype: {col_data.dtype}")
+            # Fallback: convert to string
+            else:
+                converted = [str(val) if val is not None and not pd.isna(val) else '' for val in data]
+                return converted, 'string'
+        
+        # Resize and write index datasets
+        index_name = df.index.name if df.index.name is not None else 'level_0'
+        if index_name in index_group:
+            index_dataset = index_group[index_name]
+            
+            # Resize dataset if needed
+            if index_dataset.shape[0] < num_rows:
+                logger.debug(f"{log_prefix} Resizing index dataset '{index_name}' from {index_dataset.shape[0]} to {num_rows}")
+                index_dataset.resize((num_rows,))
+            
+            # Convert and write index data
+            index_values = df.index.values
+            converted_data, conversion_type = _convert_to_dataset_compatible(index_values, df.index.dtype, index_dataset)
+            
+            # Write data regardless of type (conversion function handles compatibility)
+            index_dataset[0:num_rows] = converted_data
+                
+            # Flush dataset for SWMR visibility
+            index_dataset.flush()
+            logger.debug(f"{log_prefix} Written and flushed index '{index_name}' - {num_rows} rows")
+        else:
+            logger.warning(f"{log_prefix} Index dataset '{index_name}' not found in pre-allocated structure")
+        
+        # Resize and write column datasets
+        for i, col in enumerate(df.columns):
+            if col in values_group:
+                dataset = values_group[col]
+                
+                # Resize dataset if needed
+                if dataset.shape[0] < num_rows:
+                    logger.debug(f"{log_prefix} Resizing column dataset '{col}' from {dataset.shape[0]} to {num_rows}")
+                    dataset.resize((num_rows,))
+                
+                # Convert and write column data
+                col_data = df[col].values
+                converted_data, conversion_type = _convert_to_dataset_compatible(col_data, df[col].dtype, dataset)
+                
+                # Store original dtype as attribute if conversion occurred
+                if conversion_type == 'numeric' and df[col].dtype != dataset.dtype:
+                    dataset.attrs['original_dtype'] = str(df[col].dtype)
+                    dataset.attrs['conversion_type'] = 'numeric_conversion'
+                    logger.debug(f"{log_prefix} Column '{col}' converted from {df[col].dtype} to {dataset.dtype}")
+                elif conversion_type == 'string' and df[col].dtype.kind not in ['U', 'S', 'O']:
+                    dataset.attrs['original_dtype'] = str(df[col].dtype)
+                    dataset.attrs['conversion_type'] = 'string_conversion'
+                    logger.debug(f"{log_prefix} Column '{col}' converted from {df[col].dtype} to string")
+                
+                # Write data (conversion function handles compatibility)
+                dataset[0:num_rows] = converted_data
+                    
+                # Flush dataset for SWMR visibility
+                dataset.flush()
+                logger.debug(f"{log_prefix} Written and flushed column '{col}' - {num_rows} rows, Type: {conversion_type}")
+            else:
+                logger.warning(f"{log_prefix} Column dataset '{col}' not found in pre-allocated structure")
+        
+        # Update valid row count in group attributes
+        old_num_rows = meas_group.attrs.get('num_rows', 0)
+        meas_group.attrs['num_rows'] = num_rows
+        logger.debug(f"{log_prefix} Updated valid row count: {old_num_rows} → {num_rows}")
         
         # Log completion with timing
         elapsed_time = time.time() - start_time
-        logger.info(f"{log_prefix} SWMR DataFrame save completed - {len(df)} rows, {len(df.columns)} columns in {elapsed_time:.3f}s")
-        logger.debug(f"{log_prefix} Final structure: {measurement_key}/{{index: {list(index_group.keys())}, values: {list(values_group.keys())}}}")
+        logger.info(f"{log_prefix} SWMR DataFrame save completed - {num_rows} rows written in {elapsed_time:.3f}s")
+        logger.debug(f"{log_prefix} All datasets flushed for SWMR reader visibility")
 
     @staticmethod
     def _save_dataframe_to_hdf5_group(df: pd.DataFrame, group, measurement_key: str | None = None):
@@ -226,12 +283,17 @@ class SetMeasurementAccessor:
 
     @staticmethod
     def _load_dataframe_from_hdf5_group_swmr(group, measurement_key: str | None = None):
-        """Load a DataFrame from HDF5 group using SWMR-compatible index/values structure.
+        """Load a DataFrame from pre-allocated HDF5 datasets using SWMR-compatible protocol.
         
-        This method loads from the new structure:
+        This method loads from the SWMR structure:
         measurements/
         ├── index/          # DataFrame index datasets
         └── values/         # DataFrame column datasets
+        
+        SWMR Protocol Rules:
+        - Must refresh datasets before reading to see latest data
+        - Only reads the number of valid rows specified in group attributes
+        - Restores original dtypes from stored attributes
         
         Args:
             group: HDF5 group object containing the DataFrame data
@@ -243,6 +305,7 @@ class SetMeasurementAccessor:
         import logging
         import os
         import time
+        import numpy as np
         
         # Create parallel-safe logger with process/thread identification
         logger = logging.getLogger(f"{__name__}.swmr_load")
@@ -257,7 +320,7 @@ class SetMeasurementAccessor:
             
         logger.info(f"{log_prefix} Starting SWMR DataFrame load - Key: '{measurement_key}'")
         
-        # Check if measurement exists
+        # Check if measurement group exists
         if measurement_key not in group:
             logger.error(f"{log_prefix} Measurement key '{measurement_key}' not found in group")
             raise KeyError(f"Measurement key '{measurement_key}' not found in group")
@@ -265,33 +328,139 @@ class SetMeasurementAccessor:
         meas_group = group[measurement_key]
         logger.debug(f"{log_prefix} Found measurement group '{measurement_key}'")
         
-        # Check if this uses the new structure
+        # Check if this uses the SWMR structure
         if 'index' not in meas_group or 'values' not in meas_group:
-            logger.info(f"{log_prefix} Old structure detected - falling back to legacy loader")
+            logger.info(f"{log_prefix} SWMR structure not found - falling back to legacy loader")
             return SetMeasurementAccessor._load_dataframe_from_hdf5_group(group, measurement_key)
             
         logger.debug(f"{log_prefix} SWMR structure confirmed - accessing index and values groups")
         index_group = meas_group['index']
         values_group = meas_group['values']
         
-        # Get DataFrame metadata
+        # Refresh groups for SWMR (if in SWMR mode)
+        try:
+            if hasattr(index_group, 'id') and hasattr(index_group.id, 'refresh'):
+                index_group.id.refresh()
+            if hasattr(values_group, 'id') and hasattr(values_group.id, 'refresh'):
+                values_group.id.refresh()
+            logger.debug(f"{log_prefix} Refreshed groups for SWMR reading")
+        except Exception as e:
+            logger.debug(f"{log_prefix} Group refresh not available (not in SWMR mode): {e}")
+        
+        # Get valid row count from group attributes (critical for SWMR)
         num_rows = meas_group.attrs.get('num_rows', 0)
         num_cols = meas_group.attrs.get('num_cols', 0)
-        logger.debug(f"{log_prefix} DataFrame metadata - Rows: {num_rows}, Cols: {num_cols}")
+        logger.debug(f"{log_prefix} Valid data rows: {num_rows}, Expected columns: {num_cols}")
         
         if num_rows == 0:
-            logger.warning(f"{log_prefix} No data rows found - returning empty DataFrame")
+            logger.warning(f"{log_prefix} No valid data rows found - returning empty DataFrame")
             return pd.DataFrame()
             
+        # Helper function to restore original dtype from converted data
+        def _restore_original_dtype(data, dataset):
+            """Restore original DataFrame dtype from HDF5 dataset attributes."""
+            conversion_type = dataset.attrs.get('conversion_type', None)
+            original_dtype = dataset.attrs.get('original_dtype', None)
+            
+            if conversion_type and original_dtype:
+                logger.debug(f"{log_prefix} Restoring dtype from {conversion_type} to {original_dtype}")
+                try:
+                    if conversion_type == 'numeric_conversion':
+                        # Numeric conversion - restore original numeric type
+                        if 'int' in original_dtype.lower():
+                            # Integer types - handle NaN/missing values
+                            restored = []
+                            for val in data:
+                                if pd.isna(val) or val == 0:  # 0 was used as fill for missing ints
+                                    restored.append(pd.NA)
+                                else:
+                                    try:
+                                        restored.append(int(val))
+                                    except (ValueError, TypeError):
+                                        restored.append(pd.NA)
+                            return pd.array(restored, dtype=original_dtype)
+                        elif 'bool' in original_dtype.lower():
+                            # Boolean types - convert back to boolean
+                            restored = []
+                            for val in data:
+                                if pd.isna(val):
+                                    restored.append(pd.NA)
+                                else:
+                                    restored.append(bool(val))
+                            return pd.array(restored, dtype=original_dtype)
+                        else:
+                            # Other numeric types - try direct conversion
+                            return pd.array(data, dtype=original_dtype)
+                    
+                    elif conversion_type == 'string_conversion':
+                        # String conversion - try to restore original type
+                        if 'int' in original_dtype.lower():
+                            # Convert strings back to integers
+                            restored = []
+                            for val in data:
+                                if val == '' or pd.isna(val):
+                                    restored.append(pd.NA)
+                                else:
+                                    try:
+                                        restored.append(int(val))
+                                    except (ValueError, TypeError):
+                                        restored.append(pd.NA)
+                            return pd.array(restored, dtype=original_dtype)
+                        elif 'float' in original_dtype.lower():
+                            # Convert strings back to floats
+                            restored = []
+                            for val in data:
+                                if val == '' or pd.isna(val):
+                                    restored.append(np.nan)
+                                else:
+                                    try:
+                                        restored.append(float(val))
+                                    except (ValueError, TypeError):
+                                        restored.append(np.nan)
+                            return np.array(restored, dtype=original_dtype)
+                        elif 'bool' in original_dtype.lower():
+                            # Convert strings back to booleans
+                            restored = []
+                            for val in data:
+                                if val == '' or pd.isna(val):
+                                    restored.append(pd.NA)
+                                else:
+                                    restored.append(val.lower() in ['true', '1', 'yes'])
+                            return pd.array(restored, dtype=original_dtype)
+                        else:
+                            # Keep as strings for object types
+                            return data
+                    
+                    else:
+                        # Unknown conversion type - try direct conversion
+                        return pd.array(data, dtype=original_dtype)
+                        
+                except Exception as e:
+                    logger.warning(f"{log_prefix} Failed to restore original dtype {original_dtype}: {e}")
+                    return data
+            
+            # No conversion needed or no conversion info available
+            return data
+        
         # Load index data - use the first available index dataset
         index_data = None
         index_name = None
         for dataset_name in index_group.keys():
             index_dataset = index_group[dataset_name]
-            index_values = index_dataset[:num_rows]  # Only read valid rows
+            
+            # Refresh dataset for SWMR (if in SWMR mode)
+            try:
+                if hasattr(index_dataset, 'id') and hasattr(index_dataset.id, 'refresh'):
+                    index_dataset.id.refresh()
+                    logger.debug(f"{log_prefix} Refreshed index dataset '{dataset_name}' for SWMR")
+            except Exception as e:
+                logger.debug(f"{log_prefix} Dataset refresh not available: {e}")
+            
+            # Only read valid rows based on group attribute
+            index_values = index_dataset[:num_rows]
             index_name = dataset_name
             
-            # Handle string decoding if needed
+            # Handle string decoding and dtype restoration
             if index_values.dtype.kind == 'S':
                 try:
                     index_data = [val.decode('utf-8') if isinstance(val, bytes) else str(val) for val in index_values]
@@ -307,10 +476,13 @@ class SetMeasurementAccessor:
                         except UnicodeDecodeError:
                             decoded_values.append(str(val))
                     else:
-                        decoded_values.append(str(val))
+                        decoded_values.append(val)
                 index_data = decoded_values
             else:
-                index_data = index_values
+                # Restore original dtype if conversion occurred
+                index_data = _restore_original_dtype(index_values, index_dataset)
+            
+            logger.debug(f"{log_prefix} Loaded index '{dataset_name}' - {len(index_data)} rows")
             break  # Use first index dataset found
                 
         # Load column data
@@ -322,6 +494,14 @@ class SetMeasurementAccessor:
         col_datasets.sort(key=lambda x: x[1].attrs.get('position', 0))
         
         for dataset_name, dataset in col_datasets:
+            # Refresh dataset for SWMR (if in SWMR mode)
+            try:
+                if hasattr(dataset, 'id') and hasattr(dataset.id, 'refresh'):
+                    dataset.id.refresh()
+                    logger.debug(f"{log_prefix} Refreshed column dataset '{dataset_name}' for SWMR")
+            except Exception as e:
+                logger.debug(f"{log_prefix} Dataset refresh not available: {e}")
+            
             # Use dataset name directly as column name (it should be the actual column name)
             col_name = dataset.attrs.get('column_name', dataset_name)
             if isinstance(col_name, bytes):
@@ -330,13 +510,10 @@ class SetMeasurementAccessor:
                 col_name = dataset_name  # Use dataset name directly
             columns.append(col_name)
             
-            # Load column values
-            col_values = dataset[:num_rows]  # Only read valid rows
+            # Only read valid rows based on group attribute
+            col_values = dataset[:num_rows]
             
-            # Handle data type restoration
-            original_dtype = dataset.attrs.get('pandas_dtype', 'object')
-            
-            # Handle string decoding for object/string columns
+            # Handle string decoding and dtype restoration
             if col_values.dtype.kind == 'S':
                 # Handle byte strings from HDF5
                 try:
@@ -357,14 +534,21 @@ class SetMeasurementAccessor:
                         # Keep original value for non-bytes objects
                         decoded_values.append(val)
                 col_values = np.array(decoded_values, dtype=object)
+            else:
+                # Restore original dtype if conversion occurred
+                col_values = _restore_original_dtype(col_values, dataset)
             
             column_data.append(col_values)
+            logger.debug(f"{log_prefix} Loaded column '{col_name}' - {len(col_values)} rows, Type: {type(col_values)}")
         
         # Create DataFrame
         logger.debug(f"{log_prefix} Creating DataFrame from loaded data - {len(columns)} columns, {len(index_data) if index_data is not None else 0} rows")
         
         if column_data:
             df = pd.DataFrame(dict(zip(columns, column_data)), index=index_data)
+            # Set the index name if we have one
+            if index_name:
+                df.index.name = index_name
             logger.debug(f"{log_prefix} DataFrame created with columns: {list(df.columns)}")
         else:
             df = pd.DataFrame(index=index_data)
@@ -718,34 +902,44 @@ class SetMeasurementAccessor:
         meas_group.attrs['num_rows'] = 0  # Will be updated as data is written
         meas_group.attrs['num_cols'] = len(column_dtypes)
         
+        # Helper function to convert dtype to HDF5-compatible type
+        def _convert_to_hdf5_dtype(dtype_input):
+            """Convert various dtype inputs to HDF5-compatible numpy dtype."""
+            if dtype_input == str or dtype_input is str:
+                # Python str type -> HDF5 string
+                return h5py.string_dtype(encoding='utf-8'), ''
+            elif isinstance(dtype_input, str):
+                if dtype_input == 'object' or 'str' in dtype_input.lower():
+                    return h5py.string_dtype(encoding='utf-8'), ''
+                else:
+                    try:
+                        np_dtype = np.dtype(dtype_input)
+                        return np_dtype, SetMeasurementAccessor.get_dtype_null(np_dtype)
+                    except (TypeError, ValueError):
+                        return h5py.string_dtype(encoding='utf-8'), ''
+            elif hasattr(dtype_input, 'kind'):
+                # Numpy dtype object
+                if dtype_input.kind == 'O':  # Object dtype
+                    return h5py.string_dtype(encoding='utf-8'), ''
+                elif dtype_input.kind in ['U', 'S']:  # String dtypes
+                    return h5py.string_dtype(encoding='utf-8'), ''
+                else:
+                    return dtype_input, SetMeasurementAccessor.get_dtype_null(dtype_input)
+            else:
+                # Try to convert to numpy dtype
+                try:
+                    np_dtype = np.dtype(dtype_input)
+                    return np_dtype, SetMeasurementAccessor.get_dtype_null(np_dtype)
+                except (TypeError, ValueError):
+                    # Fallback to string
+                    return h5py.string_dtype(encoding='utf-8'), ''
+        
         # Pre-allocate index datasets
         for i, (name, dtype) in enumerate(index_dtypes):
             # Use the actual index name as dataset name
             dataset_name = name
             
-            # Convert dtype to HDF5-compatible type
-            if isinstance(dtype, str):
-                if dtype == 'object' or 'str' in dtype.lower():
-                    np_dtype = h5py.string_dtype(encoding='utf-8')
-                    fillvalue = ''
-                else:
-                    try:
-                        np_dtype = np.dtype(dtype)
-                        fillvalue = SetMeasurementAccessor.get_dtype_null(np_dtype)
-                    except TypeError:
-                        np_dtype = h5py.string_dtype(encoding='utf-8')
-                        fillvalue = ''
-            else:
-                # Handle numpy dtype objects
-                if hasattr(dtype, 'kind') and dtype.kind == 'O':  # Object dtype
-                    np_dtype = h5py.string_dtype(encoding='utf-8')
-                    fillvalue = ''
-                elif hasattr(dtype, 'kind') and dtype.kind in ['U', 'S']:  # String dtypes
-                    np_dtype = h5py.string_dtype(encoding='utf-8')
-                    fillvalue = ''
-                else:
-                    np_dtype = dtype
-                    fillvalue = SetMeasurementAccessor.get_dtype_null(np_dtype)
+            np_dtype, fillvalue = _convert_to_hdf5_dtype(dtype)
             
             # Create chunked dataset with unlimited dimension
             index_group.create_dataset(
@@ -759,36 +953,23 @@ class SetMeasurementAccessor:
                 compression_opts=4
             )
             
-            # Store metadata
+            # Store metadata for index dataset
+            index_dataset = index_group[dataset_name]
+            index_dataset.attrs['native_dtype'] = str(dtype)
+            index_dataset.attrs['pandas_dtype'] = str(dtype)
+            index_dataset.attrs['numpy_dtype'] = str(np_dtype)
+            index_dataset.attrs['position'] = i
+            index_dataset.attrs['index_name'] = str(name).encode('utf-8')
+            
+            logger.debug(f"{log_prefix} Pre-allocated index dataset '{dataset_name}' - Shape: {index_dataset.shape}, Dtype: {np_dtype}, Chunks: {index_dataset.chunks}")
         
         # Pre-allocate column datasets
         for name, dtype, position in column_dtypes:
             # Use the actual column name as dataset name
             dataset_name = name
             
-            # Convert dtype to HDF5-compatible type
-            if isinstance(dtype, str):
-                if dtype == 'object' or 'str' in dtype.lower():
-                    np_dtype = h5py.string_dtype(encoding='utf-8')
-                    fillvalue = ''
-                else:
-                    try:
-                        np_dtype = np.dtype(dtype)
-                        fillvalue = SetMeasurementAccessor.get_dtype_null(np_dtype)
-                    except TypeError:
-                        np_dtype = h5py.string_dtype(encoding='utf-8')
-                        fillvalue = ''
-            else:
-                # Handle numpy dtype objects
-                if hasattr(dtype, 'kind') and dtype.kind == 'O':  # Object dtype
-                    np_dtype = h5py.string_dtype(encoding='utf-8')
-                    fillvalue = ''
-                elif hasattr(dtype, 'kind') and dtype.kind in ['U', 'S']:  # String dtypes
-                    np_dtype = h5py.string_dtype(encoding='utf-8')
-                    fillvalue = ''
-                else:
-                    np_dtype = dtype
-                    fillvalue = SetMeasurementAccessor.get_dtype_null(np_dtype)
+            # Reuse the same dtype conversion function for consistency
+            np_dtype, fillvalue = _convert_to_hdf5_dtype(dtype)
             
             # Create chunked dataset with unlimited dimension
             dataset = values_group.create_dataset(

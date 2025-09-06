@@ -4,5 +4,6 @@ such for illumination, color, or orientation.
 
 """
 from ._grid_aligner import GridAligner
+from ._gamma_decoder import GammaDecoder
 
-__all__ = ["GridAligner"]
+__all__ = ["GridAligner", "GammaDecoder"]

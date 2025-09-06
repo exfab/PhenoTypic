@@ -19,8 +19,8 @@ class ImageObjectsHandler(ImageHandler):
     def __init__(self,
                  input_image: np.ndarray | Image | PathLike | None = None,
                  imformat: str | None = None,
-                 name: str | None = None):
-        super().__init__(input_image=input_image, imformat=imformat, name=name)
+                 name: str | None = None, **kwargs):
+        super().__init__(input_image=input_image, imformat=imformat, name=name, **kwargs)
         self._accessors.objects = ObjectsAccessor(self)
 
     @property

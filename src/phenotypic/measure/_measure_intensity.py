@@ -45,18 +45,18 @@ class MeasureIntensity(MeasureFeatures):
     def _operate(self, image: Image) -> pd.DataFrame:
         intensity_matrix, objmap = image.matrix[:].copy(), image.objmap[:].copy()
         measurements = {
-            str(INTENSITY.INTEGRATED_INTENSITY): self.calculate_sum(array=intensity_matrix, labels=objmap),
-            str(INTENSITY.MINIMUM_INTENSITY): self.calculate_minimum(array=intensity_matrix, labels=objmap),
-            str(INTENSITY.MAXIMUM_INTENSITY): self.calculate_max(array=intensity_matrix, labels=objmap),
-            str(INTENSITY.MEAN_INTENSITY): self.calculate_mean(array=intensity_matrix, labels=objmap),
-            str(INTENSITY.MEDIAN_INTENSITY): self.calculate_median(array=intensity_matrix, labels=objmap),
-            str(INTENSITY.STANDARD_DEVIATION_INTENSITY): self.calculate_stddev(array=intensity_matrix, labels=objmap),
-            str(INTENSITY.COEFFICIENT_VARIANCE_INTENSITY): self.calculate_coeff_variation(
+            str(INTENSITY.INTEGRATED_INTENSITY): self._calculate_sum(array=intensity_matrix, labels=objmap),
+            str(INTENSITY.MINIMUM_INTENSITY): self._calculate_minimum(array=intensity_matrix, labels=objmap),
+            str(INTENSITY.MAXIMUM_INTENSITY): self._calculate_max(array=intensity_matrix, labels=objmap),
+            str(INTENSITY.MEAN_INTENSITY): self._calculate_mean(array=intensity_matrix, labels=objmap),
+            str(INTENSITY.MEDIAN_INTENSITY): self._calculate_median(array=intensity_matrix, labels=objmap),
+            str(INTENSITY.STANDARD_DEVIATION_INTENSITY): self._calculate_stddev(array=intensity_matrix, labels=objmap),
+            str(INTENSITY.COEFFICIENT_VARIANCE_INTENSITY): self._calculate_coeff_variation(
                 array=intensity_matrix, labels=objmap,
             ),
-            str(INTENSITY.Q1_INTENSITY): self.calculate_q1(array=intensity_matrix, labels=objmap),
-            str(INTENSITY.Q3_INTENSITY): self.calculate_q3(array=intensity_matrix, labels=objmap),
-            str(INTENSITY.IQR_INTENSITY): self.calculate_iqr(array=intensity_matrix, labels=objmap),
+            str(INTENSITY.Q1_INTENSITY): self._calculate_q1(array=intensity_matrix, labels=objmap),
+            str(INTENSITY.Q3_INTENSITY): self._calculate_q3(array=intensity_matrix, labels=objmap),
+            str(INTENSITY.IQR_INTENSITY): self._calculate_iqr(array=intensity_matrix, labels=objmap),
         }
 
         return pd.DataFrame(measurements, index=image.objects.labels2series())

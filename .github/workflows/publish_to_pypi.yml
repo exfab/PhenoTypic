@@ -6,11 +6,13 @@
        - run-pytest
      types:
        - completed
+     branches:
+       - main
 
  jobs:
    deploy:
      # Only run on the original repo, not on forks
-     if: github.repository == 'Wheeldon-Lab/PhenoTypic' && github.event.workflow_run.conclusion =='success'
+     if: github.repository == 'exfab/PhenoTypic' && github.event.workflow_run.conclusion =='success'
      runs-on: ubuntu-latest
      environment: push_to_pypi
      steps:
@@ -33,7 +35,7 @@
          run: |
            python -m pip install --upgrade pip
            pip install build twine pytest pytest-cov
-           pip install --config-settings="group=dev"
+           pip install --config-settings="group=dev" .
 
        - name: Check release version
          id: check_version

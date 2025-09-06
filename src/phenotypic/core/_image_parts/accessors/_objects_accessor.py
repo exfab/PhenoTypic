@@ -9,10 +9,10 @@ from skimage.measure import regionprops_table, regionprops
 from typing import List
 
 from phenotypic.util.constants_ import OBJECT, METADATA_LABELS, IMAGE_TYPES, BBOX
-from phenotypic.core._image_parts.accessor_abstracts import ImageAccessor
+from phenotypic.core._image_parts.accessor_abstracts import ImageAccessorBase
 
 
-class ObjectsAccessor(ImageAccessor):
+class ObjectsAccessor(ImageAccessorBase):
     """An accessor for an image objects and provides various utilities for interacting with labeled objects in an image.
 
     This class provides methods to retrieve information about labeled objects, interact with object properties,

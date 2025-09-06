@@ -1,5 +1,5 @@
-phenotypic.detection package
-============================
+phenotypic.detection
+====================
 
 Module contents
 ---------------

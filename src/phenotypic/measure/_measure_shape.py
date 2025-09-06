@@ -67,8 +67,8 @@ class MeasureShape(MeasureFeatures):
         measurements = {str(feature): np.zeros(shape=image.num_objects) for feature in SHAPE if feature != SHAPE.CATEGORY}
 
         dist_matrix = distance_transform_edt(image.objmap[:])
-        measurements[str(SHAPE.MEAN_RADIUS)] = self.calculate_mean(array=dist_matrix, labels=image.objmap[:])
-        measurements[str(SHAPE.MEDIAN_RADIUS)] = self.calculate_median(array=dist_matrix, labels=image.objmap[:])
+        measurements[str(SHAPE.MEAN_RADIUS)] = self._calculate_mean(array=dist_matrix, labels=image.objmap[:])
+        measurements[str(SHAPE.MEDIAN_RADIUS)] = self._calculate_median(array=dist_matrix, labels=image.objmap[:])
 
         obj_props = image.objects.props
         for idx, obj_image in enumerate(image.objects):
@@ -82,10 +82,11 @@ class MeasureShape(MeasureFeatures):
             measurements[str(SHAPE.MINOR_AXIS_LENGTH)][idx] = current_props.minor_axis_length
             measurements[str(SHAPE.ORIENTATION)][idx] = current_props.orientation
 
-            circularity = (4 * np.pi * obj_props[idx].area) / (current_props.perimeter ** 2)
-            measurements[str(SHAPE.CIRCULARITY)][idx] = circularity
-            compactness = (current_props.perimeter ** 2) / (4 * np.pi * obj_props[idx].area)
-            measurements[str(SHAPE.COMPACTNESS)][idx] = compactness
+            numer = 4 * np.pi * current_props.area
+            denom = current_props.perimeter ** 2
+
+            measurements[str(SHAPE.CIRCULARITY)][idx] = numer / denom if denom != 0 else np.nan
+            measurements[str(SHAPE.COMPACTNESS)][idx] = denom / numer if numer != 0 else np.nan
 
             try:
                 with warnings.catch_warnings():

@@ -10,11 +10,11 @@ import numpy as np
 from phenotypic.util.constants_ import MPL
 
 
-class ImageAccessor:
+class ImageAccessorBase:
     """
     The base for classes that provides access to details and functionalities of a parent image.
 
-    The ImageAccessor class serves as a base class for interacting with a parent image
+    The ImageAccessorBase class serves as a base class for interacting with a parent image
     object. It requires an instance of the parent image for initialization to
     enable seamless operations on the image's properties and data.
 
@@ -58,6 +58,18 @@ class ImageAccessor:
 
         mpl_kwargs = mpl_kwargs if mpl_kwargs else {}
         cmap = mpl_kwargs.get('cmap', cmap)
+
+        # matplotlib.imshow can only handle ranges 0-1 or 0-255
+        # this adds handling for higher bit-depth images
+        max_val = arr.max()
+        match max_val:
+            case _ if max_val <= 255:
+                pass
+            case _ if max_val <= 65535:
+                arr = arr.copy().astype(np.float32)/65535.0
+            case _:
+                raise ValueError("Values exceed 16-bit range")
+
 
         ax.imshow(arr, cmap=cmap, **mpl_kwargs) if arr.ndim == 2 else ax.imshow(arr, **mpl_kwargs)
 

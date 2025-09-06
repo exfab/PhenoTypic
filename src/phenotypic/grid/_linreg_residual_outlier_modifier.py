@@ -7,7 +7,7 @@ from typing import Optional
 
 from phenotypic.abstract import GridMapModifier
 from phenotypic.grid import MeasureGridLinRegStats
-from phenotypic.util.constants_ import GRID, GRID_LINREG_STATS_EXTRACTOR
+from phenotypic.util.constants_ import GRID_LINREG_STATS_EXTRACTOR, GRID
 
 
 class GridAlignmentOutlierRemover(GridMapModifier):
@@ -67,18 +67,18 @@ class GridAlignmentOutlierRemover(GridMapModifier):
         if self.axis is None or self.axis == 0:
             # Calculate the coefficient of variance (std/mean)
             #   Collect the standard deviation
-            row_variance = grid_info.groupby(GRID.GRID_ROW_NUM)[GRID_LINREG_STATS_EXTRACTOR.RESIDUAL_ERR].std()
+            row_variance = grid_info.groupby(str(GRID.ROW_NUM))[GRID_LINREG_STATS_EXTRACTOR.RESIDUAL_ERR].std()
 
             #   Divide standard deviation by mean
             row_variance = row_variance\
-                           / grid_info.groupby(GRID.GRID_ROW_NUM)[GRID_LINREG_STATS_EXTRACTOR.RESIDUAL_ERR].mean()
+                           / grid_info.groupby(str(GRID.ROW_NUM))[GRID_LINREG_STATS_EXTRACTOR.RESIDUAL_ERR].mean()
 
             over_limit_row_variance = row_variance.loc[row_variance > self.max_coeff_variance]
 
             # Collect outlier objects in the rows with a variance over the maximum
             for row_idx in over_limit_row_variance.index:
                 row_err = grid_info.loc[
-                    grid_info.loc[:, GRID.GRID_ROW_NUM] == row_idx,
+                    grid_info.loc[:, str(GRID.ROW_NUM)] == row_idx,
                     GRID_LINREG_STATS_EXTRACTOR.RESIDUAL_ERR
                 ]
                 row_err_mean = row_err.mean()
@@ -95,17 +95,17 @@ class GridAlignmentOutlierRemover(GridMapModifier):
         if self.axis is None or self.axis == 1:
             # Calculate the coefficient of variance (std/mean)
             #   Collect the standard deviation
-            col_variance = grid_info.groupby(GRID.GRID_COL_NUM)[GRID_LINREG_STATS_EXTRACTOR.RESIDUAL_ERR].std()
+            col_variance = grid_info.groupby(str(GRID.COL_NUM))[GRID_LINREG_STATS_EXTRACTOR.RESIDUAL_ERR].std()
 
             #   Divide standard deviation by mean
-            col_variance = col_variance / grid_info.groupby(GRID.GRID_COL_NUM)[GRID_LINREG_STATS_EXTRACTOR.RESIDUAL_ERR].mean()
+            col_variance = col_variance / grid_info.groupby(str(GRID.COL_NUM))[GRID_LINREG_STATS_EXTRACTOR.RESIDUAL_ERR].mean()
 
             over_limit_col_variance = col_variance.loc[col_variance > self.max_coeff_variance]
 
             # Collect outlier objects in the columns with a variance over the maximum
             for col_idx in over_limit_col_variance.index:
                 col_err = grid_info.loc[
-                    grid_info.loc[:, GRID.GRID_COL_NUM] == col_idx,
+                    grid_info.loc[:, str(GRID.COL_NUM)] == col_idx,
                     GRID_LINREG_STATS_EXTRACTOR.RESIDUAL_ERR
                 ]
                 col_err_mean = col_err.mean()

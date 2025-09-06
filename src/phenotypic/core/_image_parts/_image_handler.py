@@ -57,7 +57,7 @@ class ImageHandler:
     def __init__(self,
                  input_image: np.ndarray | Image | PathLike | None = None,
                  imformat: str | None = None,
-                 name: str | None = None):
+                 name: str | None = None, **kwargs):
         """
         Initializes an instance of the image processing object, setting up internal structures, 
         metadata, accessors, and initializing the provided input image or empty placeholders. The
@@ -276,6 +276,25 @@ class ImageHandler:
 
         Raises:
             NoArrayError: If no multichannel image data is set as input_image.
+
+        .. code-block:: python
+            from phenotypic import Image
+            from phenotypic.data import load_colony
+
+            image = Image(load_colony())
+
+            # get the array data
+            arr = image.array[:]
+            print(type(arr))
+
+            # set the array data
+            # the shape of the new array must be the same shape as the original array
+            image.array[:] = arr
+
+            # without the bracket indexing the accessor is returned instead
+            print(image.array[:])
+
+
         See Also: :class:`ImageArray`
         """
         return self._accessors.array
@@ -297,6 +316,23 @@ class ImageHandler:
 
         Returns:
             ImageMatrix: An immutable container for the image matrix that can be accessed like a numpy array, but has extra methods to streamline development.
+
+        .. code-block:: python
+            from phenotypic import Image
+            from phenotypic.data import load_colony
+
+            image = Image(load_colony())
+
+            # get the matrix data
+            arr = image.matrix[:]
+            print(type(arr))
+
+            # set the matrix data
+            # the shape of the new matrix must be the same shape as the original matrix
+            image.matrix[:] = arr
+
+            # without the bracket indexing the accessor is returned instead
+            print(image.matrix[:])
 
         See Also: :class:`ImageMatrix`
         """
@@ -321,6 +357,23 @@ class ImageHandler:
 
         Returns:
             ImageEnhancedMatrix: A mutable container that stores a copy of the image's matrix form
+
+        .. code-block:: python
+            from phenotypic import Image
+            from phenotypic.data import load_colony
+
+            image = Image(load_colony())
+
+            # get the enh_matrix data
+            arr = image.enh_matrix[:]
+            print(type(arr))
+
+            # set the enh_matrix data
+            # the shape of the new enh_matrix must be the same shape as the original enh_matrix
+            image.enh_matrix[:] = arr
+
+            # without the bracket indexing the accessor is returned instead
+            print(image.enh_matrix[:])
 
         See Also: :class:`ImageEnhancedMatrix`
         """
@@ -348,6 +401,23 @@ class ImageHandler:
         Returns:
             ObjectMaskErrors: A mutable binary representation of the objects in an image to be analyzed.
 
+        .. code-block:: python
+            from phenotypic import Image
+            from phenotypic.data import load_colony
+
+            image = Image(load_colony())
+
+            # get the objmask data
+            arr = image.objmask[:]
+            print(type(arr))
+
+            # set the objmask data
+            # the shape of the new objmask must be the same shape as the original objmask
+            image.objmask[:] = arr
+
+            # without the bracket indexing the accessor is returned instead
+            print(image.objmask[:])
+
         See Also: :class:`ObjectMask`
         """
         return self._accessors.objmask
@@ -371,6 +441,23 @@ class ImageHandler:
 
         Returns:
             ObjectMap: A mutable integer matrix that identifies the different objects in an image to be analyzed.
+
+        .. code-block:: python
+            from phenotypic import Image
+            from phenotypic.data import load_colony
+
+            image = Image(load_colony())
+
+            # get the objmap data
+            arr = image.objmap[:]
+            print(type(arr))
+
+            # set the objmap data
+            # the shape of the new objmap must be the same shape as the original objmap
+            image.objmap[:] = arr
+
+            # without the bracket indexing the accessor is returned instead
+            print(image.objmap[:])
 
         See Also: :class:`ObjectMap`
         """
