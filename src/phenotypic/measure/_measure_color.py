@@ -197,6 +197,8 @@ class MeasureColor(MeasureFeatures):
         bstar_meas = MeasureColor._compute_color_metrics(foreground=Lab_foreground[..., 2], labels=image.objmap[:])
         bstar_meas = {key: value for key, value in zip(COLOR.b_star_headers(), bstar_meas)}
 
+        del Lab_foreground
+
         # HSB Measurements
         hsb_foreground = image.hsv.foreground()
         logger.info("Computing color metrics for hue array")
@@ -214,13 +216,15 @@ class MeasureColor(MeasureFeatures):
                                                               )
         brightness_meas = {key: value for key, value in zip(COLOR.brightness_headers(), brightness_meas)}
 
+        del hsb_foreground
+
         meas = pd.DataFrame(data={
             # **dom_wl_meas, **purity_meas, **luminance_meas,
             **lstar_meas, **astar_meas, **bstar_meas,
             **hue_meas, **saturation_meas, **brightness_meas},
             index=image.objects.labels2series())
-        meas.loc[:, str(COLOR.CHROMA_EST_MEAN)] = np.sqrt((meas.loc[:, COLOR.A_STAR_MEAN] ** 2) + meas.loc[:, COLOR.B_STAR_MEAN] ** 2)
-        meas.loc[:, str(COLOR.CHROMA_EST_MEDIAN)] = np.sqrt((meas.loc[:, COLOR.A_STAR_MEDIAN] ** 2) + meas.loc[:, COLOR.B_STAR_MEDIAN] ** 2)
+        meas.loc[:, str(COLOR.CHROMA_EST_MEAN)] = np.sqrt((meas.loc[:, str(COLOR.A_STAR_MEAN)] ** 2) + meas.loc[:, str(COLOR.B_STAR_MEAN)] ** 2)
+        meas.loc[:, str(COLOR.CHROMA_EST_MEDIAN)] = np.sqrt((meas.loc[:, str(COLOR.A_STAR_MEDIAN)] ** 2) + meas.loc[:, str(COLOR.B_STAR_MEDIAN)] ** 2)
 
         return meas
 

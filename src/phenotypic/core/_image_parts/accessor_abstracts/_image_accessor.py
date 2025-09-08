@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from phenotypic.util.constants_ import MPL
+from phenotypic.util.funcs_ import normalize_rgb_bitdepth
 
 
 class ImageAccessorBase:
@@ -25,6 +26,10 @@ class ImageAccessorBase:
 
     def __init__(self, parent_image: Image):
         self._root_image = parent_image
+
+    @property
+    def _main_arr(self) -> np.ndarray:
+        return np.empty(shape=(0, 0, 3))
 
     def _plot(self,
               arr: np.ndarray,
@@ -64,12 +69,11 @@ class ImageAccessorBase:
         max_val = arr.max()
         match max_val:
             case _ if max_val <= 255:
-                pass
+                arr = (arr.copy().astype(np.float32) / 255).clip(0,1)
             case _ if max_val <= 65535:
-                arr = arr.copy().astype(np.float32)/65535.0
+                arr = (arr.copy().astype(np.float32) / 65535.0).clip(0,1)
             case _:
                 raise ValueError("Values exceed 16-bit range")
-
 
         ax.imshow(arr, cmap=cmap, **mpl_kwargs) if arr.ndim == 2 else ax.imshow(arr, **mpl_kwargs)
 
