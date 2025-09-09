@@ -9,7 +9,7 @@ from scipy.optimize import minimize_scalar
 from functools import partial
 
 from phenotypic.abstract import GridFinder
-from phenotypic.util.constants_ import OBJECT, GRID_DEP, BBOX, GRID
+from phenotypic.util.constants_ import OBJECT, BBOX, GRID
 
 
 class OptimalCenterGridFinder(GridFinder):

@@ -104,3 +104,7 @@ class ObjectMask(ImageArrDataAccessor):
 
         array[~mask] = bg_label
         return array
+
+    @property
+    def _subject_arr(self) -> np.ndarray:
+        return self._root_image.objmask[:] > 0

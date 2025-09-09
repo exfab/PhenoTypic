@@ -78,7 +78,7 @@ class ImageMatrixDataAccessor(ImageArrDataAccessor):
 
         Raises:
             TypeError: If invalid types are provided for `ax`, `figsize`, `cmap`, or
-                `mpl_kwargs`.
+                `mpl_settins`.
             ValueError: If unexpected values are passed to the function arguments.
 
         """
@@ -141,8 +141,8 @@ class ImageMatrixDataAccessor(ImageArrDataAccessor):
             figsize=figsize,
             title=title,
             ax=ax,
-            overlay_params=overlay_kwargs,
-            mpl_kwargs=mpl_kwargs,
+            overlay_settings=overlay_kwargs,
+            mpl_settins=mpl_kwargs,
 
         )
 

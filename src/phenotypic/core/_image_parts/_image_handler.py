@@ -92,7 +92,8 @@ class ImageHandler:
             protected={
                 METADATA_LABELS.IMAGE_NAME: name,
                 METADATA_LABELS.PARENT_IMAGE_NAME: b'',
-                METADATA_LABELS.IMAGE_TYPE: IMAGE_TYPES.BASE.value
+                METADATA_LABELS.IMAGE_TYPE: IMAGE_TYPES.BASE.value,
+                METADATA_LABELS.BIT_DEPTH: kwargs.get('bit_depth', 8)
             },
             public={},
         )
@@ -846,7 +847,7 @@ class ImageHandler:
                 on. If None, a new figure and axes are created for rendering.
             figsize (Tuple[int, int]): Tuple specifying the size (width, height) of the
                 figure to create if no axes are provided.
-            show_labels (bool): Whether to annotate the image.matrix using the given
+            show_labels (bool): Whether to show_labels the image.matrix using the given
                 annotation settings.
             annotation_kwargs (None | dict): Additional parameters for customization of the
                 object annotations. Defaults: size=12, color='white', facecolor='red
@@ -858,7 +859,7 @@ class ImageHandler:
         """
         if self._image_format.is_array():
             return self.array.show_overlay(object_label=object_label, ax=ax, figsize=figsize,
-                                           annotate=show_labels, annotation_params=annotation_kwargs,
+                                           show_labels=show_labels, label_settings=annotation_kwargs,
                                            )
         else:
             return self.matrix.show_overlay(object_label=object_label, ax=ax, figsize=figsize,

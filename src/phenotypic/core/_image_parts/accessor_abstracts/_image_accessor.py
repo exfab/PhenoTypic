@@ -1,17 +1,17 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, Tuple
+from typing import TYPE_CHECKING, Tuple, Dict
 
 if TYPE_CHECKING: from phenotypic import Image
 
-import skimage
+import skimage as ski
 import matplotlib.pyplot as plt
 import numpy as np
 
-from phenotypic.util.constants_ import MPL
-from phenotypic.util.funcs_ import normalize_rgb_bitdepth
+from phenotypic.util.constants_ import MPL, METADATA_LABELS, IMAGE_FORMATS
+from abc import ABC, abstractmethod
 
 
-class ImageAccessorBase:
+class ImageAccessorBase(ABC):
     """
     The base for classes that provides access to details and functionalities of a parent image.
 
@@ -28,8 +28,81 @@ class ImageAccessorBase:
         self._root_image = parent_image
 
     @property
-    def _main_arr(self) -> np.ndarray:
+    @abstractmethod
+    def _subject_arr(self) -> np.ndarray:
+        """
+        Abstract property representing a subject array. The subject array is expected to be a NumPy ndarray
+        with a specific shape of (0, 0, 3), which can be used for various operations that require a structured
+        multi-dimensional array.
+
+        This property is abstract and must be implemented in any derived concrete class. The implementation
+        should conform to the type signature and shape expectations as defined.
+
+        Note: Read-only property. Changes should reference the specific array
+
+        Returns:
+            np.ndarray: A NumPy ndarray object with shape (0, 0, 3).
+        """
         return np.empty(shape=(0, 0, 3))
+
+    def histogram(self, figsize: Tuple[int, int] = (10, 5), *, linewidth=1, channel_names: list | None = None) -> Tuple[
+        plt.Figure, plt.Axes]:
+        """
+        Plots the histogram of an image with an option to display across color channels. Supports both grayscale
+        and multi-channel images. Creates subplots containing the image and its histogram(s). For grayscale images,
+        a single histogram is generated. For multi-channel images, histograms are generated for each channel.
+
+        Args:
+            figsize (Tuple[int, int], optional): The size of the figure to be created. Default is (10, 5).
+            linewidth (int, optional): The line width to be used for plotting the histogram. Default is 1.
+            channel_names (list | None, optional): The names of the channels for multi-channel images. Defaults to None.
+
+        Returns:
+            Tuple[plt.Figure, plt.Axes]: A tuple containing the created matplotlib figure and axes.
+        """
+        match self._subject_arr.ndim:
+            case 2:
+                fig, axes = plt.subplots(nrows=1, ncols=2, figsize=figsize)
+                axes = axes.ravel()
+                axes[0] = self._plot(arr=self._subject_arr, figsize=figsize, title=self._root_image.name, cmap='gray', ax=axes[0])
+                hist, histc = ski.exposure.histogram(image=self._subject_arr[:],
+                                                     nbins=2 ** self._root_image.metadata[METADATA_LABELS.BIT_DEPTH])
+                axes[1].plot(histc, hist, lw=linewidth)
+            case 3:
+                fig, axes = plt.subplots(nrows=2, ncols=2, figsize=figsize)
+                axes[0] = self._plot(arr=self._subject_arr, figsize=figsize, title=self._root_image.name, ax=axes[0])
+                for idx, ax in enumerate(axes.ravel()):
+                    if idx == 0: continue
+                    hist, histc = ski.exposure.histogram(image=self._subject_arr[:, :, idx],
+                                                         nbins=2 ** self._root_image.metadata[METADATA_LABELS.BIT_DEPTH])
+                    ax.plot(histc, hist, lw=linewidth)
+                    ax.set_title(f'Channel-{channel_names[idx-1] if channel_names else idx}')
+
+            case _:
+                raise ValueError(f"Unsupported array dimension: {self._subject_arr.ndim}")
+        return fig, axes
+
+    @property
+    def shape(self) -> Tuple[int, ...]:
+        """
+        Returns the shape of the current image data.
+
+        This method retrieves the dimensions of the array stored in the `_main_arr`
+        attribute as a tuple, which indicates its size along each axis.
+
+        Returns:
+            Tuple[int, ...]: A tuple representing the dimensions of the `_main_arr`
+            attribute.
+        """
+        return self._subject_arr.shape
+
+    def copy(self) -> np.ndarray:
+        return self._subject_arr.copy()
+
+    def foreground(self):
+        foreground = self._subject_arr.copy()
+        foreground[self._root_image.objmask[:] == 0] = 0
+        return foreground
 
     def _plot(self,
               arr: np.ndarray,
@@ -69,9 +142,9 @@ class ImageAccessorBase:
         max_val = arr.max()
         match max_val:
             case _ if max_val <= 255:
-                arr = (arr.copy().astype(np.float32) / 255).clip(0,1)
+                arr = (arr.copy().astype(np.float32) / 255).clip(0, 1)
             case _ if max_val <= 65535:
-                arr = (arr.copy().astype(np.float32) / 65535.0).clip(0,1)
+                arr = (arr.copy().astype(np.float32) / 65535.0).clip(0, 1)
             case _:
                 raise ValueError("Values exceed 16-bit range")
 
@@ -84,6 +157,8 @@ class ImageAccessorBase:
             ax.set_title(title)
 
         return fig, ax
+
+
 
     def _plot_obj_labels(self, ax: plt.Axes, color: str, size: int, facecolor: str, object_label: None | int, **kwargs):
         props = self._root_image.objects.props
@@ -109,3 +184,5 @@ class ImageAccessorBase:
                     **kwargs,
                 )
         return ax
+
+

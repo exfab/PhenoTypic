@@ -72,17 +72,8 @@ class ImageEnhancedMatrix(ImageMatrixDataAccessor):
         self._root_image.objmap.reset()
 
     @property
-    def shape(self):
-        """
-        Represents the shape property of the parent image's enhanced matrix.
-
-        This property fetches and returns the dimensions (shape) of the enhanced
-        matrix that belongs to the parent image linked with the current class.
-
-        Returns:
-            tuple: The shape of the determinant matrix.
-        """
-        return self._root_image._data.enh_matrix.shape
+    def _subject_arr(self) -> np.ndarray:
+        return self._root_image._data.enh_matrix
 
     def reset(self):
         """Resets the image's enhanced matrix to the original matrix representation."""

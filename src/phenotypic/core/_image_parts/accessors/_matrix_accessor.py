@@ -2,11 +2,11 @@ from __future__ import annotations
 
 import numpy as np
 
-from phenotypic.core._image_parts.accessor_abstracts import ImageMatrixDataAccessor
+from phenotypic.core._image_parts.accessor_abstracts import ImageArrDataAccessor
 from phenotypic.util.exceptions_ import ArrayKeyValueShapeMismatchError, EmptyImageError
 
 
-class ImageMatrix(ImageMatrixDataAccessor):
+class ImageMatrix(ImageArrDataAccessor):
     """An accessor for managing and visualizing image matrix data. This is the greyscale representation converted using weighted luminance
 
     This class provides a set of tools to access image data, analyze it through
@@ -60,15 +60,5 @@ class ImageMatrix(ImageMatrixDataAccessor):
         self._root_image.enh_matrix.reset()
         self._root_image.objmap.reset()
 
-    @property
-    def shape(self) -> tuple:
-        """
-        Returns the shape of the parent image matrix.
-
-        This property retrieves the dimensions of the associated matrix from the
-        parent image that this object references.
-
-        Returns:
-            tuple: A tuple representing the shape of the parent image's matrix.
-        """
-        return self._root_image._data.matrix.shape
+    def _subject_arr(self) -> np.ndarray:
+        return self._root_image._data.matrix

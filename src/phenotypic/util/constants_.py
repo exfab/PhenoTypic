@@ -105,21 +105,6 @@ class SET_STATUS(MeasurementInfo):
     INVALID_SEGMENTATION = 'SegmentationInvalid', "Whether the image segmentation is considered valid."
 
 
-# Grid constants
-class GRID_DEP:
-    """
-    Constants for grid structure in the PhenoTypic module.
-
-    This class defines grid-related configurations, such as the number of rows and columns 
-    in the grid, intervals between these rows and columns, and grid section information 
-    like section number and index.
-    """
-    GRID_ROW_NUM = 'Grid_RowNum'
-    GRID_ROW_INTERVAL = 'Grid_RowInterval'
-    GRID_COL_NUM = 'Grid_ColNum'
-    GRID_COL_INTERVAL = 'Grid_ColInterval'
-    GRID_SECTION_NUM = 'Grid_SectionNum'
-    GRID_SECTION_IDX = 'Grid_SectionIndex'
 
 class GRID(MeasurementInfo):
     """Constants for grid structure in the PhenoTypic module."""
@@ -159,6 +144,7 @@ class METADATA_LABELS:
     PARENT_UUID = 'ParentUUID'
     IMFORMAT = 'ImageFormat'
     IMAGE_TYPE = 'ImageType'
+    BIT_DEPTH = 'BitDepth'
 
 
 class IMAGE_TYPES(Enum):

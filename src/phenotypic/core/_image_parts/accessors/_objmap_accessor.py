@@ -66,6 +66,10 @@ class ObjectMap(ImageArrDataAccessor):
         self._root_image._data.sparse_object_map.eliminate_zeros()  # Remove zero values to save space
 
     @property
+    def _subject_arr(self) -> np.ndarray:
+        return self._root_image._data.sparse_object_map.toarray()
+
+    @property
     def shape(self) -> tuple[int, int]:
         return self._root_image._data.sparse_object_map.shape
 
