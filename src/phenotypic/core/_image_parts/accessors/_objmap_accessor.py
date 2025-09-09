@@ -9,11 +9,11 @@ from scipy.sparse import csc_matrix, coo_matrix
 import matplotlib.pyplot as plt
 from skimage.measure import label
 
-from phenotypic.core._image_parts.accessor_abstracts import ImageArrDataAccessor
+from phenotypic.core._image_parts.accessor_abstracts import MultiChannelAccessor
 from phenotypic.util.exceptions_ import ArrayKeyValueShapeMismatchError, InvalidMapValueError
 
 
-class ObjectMap(ImageArrDataAccessor):
+class ObjectMap(MultiChannelAccessor):
     """Manages an object map for labeled regions in an image.
 
     This class provides a mechanism to manipulate and access labeled object maps
@@ -111,7 +111,7 @@ class ObjectMap(ImageArrDataAccessor):
                 sparse object map is rendered.
         """
         return self._plot(arr=self._root_image._data.sparse_object_map.toarray(),
-                          figsize=figsize, title=title, ax=ax, cmap=cmap, mpl_kwargs=mpl_params,
+                          figsize=figsize, title=title, ax=ax, cmap=cmap, mpl_settings=mpl_params,
                           )
 
     def reset(self) -> None:

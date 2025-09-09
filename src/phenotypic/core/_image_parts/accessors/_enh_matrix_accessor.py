@@ -5,11 +5,11 @@ if TYPE_CHECKING: pass
 
 import numpy as np
 
-from phenotypic.core._image_parts.accessor_abstracts import ImageMatrixDataAccessor
+from phenotypic.core._image_parts.accessor_abstracts import SingleChannelAccessor
 from phenotypic.util.exceptions_ import ArrayKeyValueShapeMismatchError, EmptyImageError
 
 
-class ImageEnhancedMatrix(ImageMatrixDataAccessor):
+class ImageEnhancedMatrix(SingleChannelAccessor):
     """An accessor class to an image's enhanced matrix which is a copy of the original image matrix that is preprocessed for enhanced detection.
 
     Provides functionalities to manipulate and visualize the image enhanced matrix. This includes

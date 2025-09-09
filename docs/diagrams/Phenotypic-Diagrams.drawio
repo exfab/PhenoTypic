@@ -28,7 +28,7 @@
         <mxCell id="kQ2yV8AIbiC1aDz_2Qq--8" value="#- _plot_obj_labels(ax, color, size, facecolor, object_label, **kwargs)" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" parent="kQ2yV8AIbiC1aDz_2Qq--1" vertex="1">
           <mxGeometry y="206.14285714285714" width="789" height="33" as="geometry" />
         </mxCell>
-        <mxCell id="kQ2yV8AIbiC1aDz_2Qq--9" value="ImageArrDataAccessor" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=29.818181818181817;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;" parent="1" vertex="1">
+        <mxCell id="kQ2yV8AIbiC1aDz_2Qq--9" value="MultiChannelAccessor" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=29.818181818181817;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;" parent="1" vertex="1">
           <mxGeometry x="1123" y="718" width="557" height="337.8181818181818" as="geometry" />
         </mxCell>
         <mxCell id="kQ2yV8AIbiC1aDz_2Qq--10" value="note &quot;An object for accessing the matrix elements of the image&quot;" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" parent="kQ2yV8AIbiC1aDz_2Qq--9" vertex="1">

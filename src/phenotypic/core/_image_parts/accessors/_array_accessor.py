@@ -4,12 +4,12 @@ from typing import Optional
 
 import skimage
 
-from phenotypic.core._image_parts.accessor_abstracts import ImageArrDataAccessor
+from phenotypic.core._image_parts.accessor_abstracts import MultiChannelAccessor
 from phenotypic.util.constants_ import IMAGE_FORMATS
 from phenotypic.util.exceptions_ import ArrayKeyValueShapeMismatchError, NoArrayError, EmptyImageError
 
 
-class ImageArray(ImageArrDataAccessor):
+class ImageArray(MultiChannelAccessor):
     """An accessor for handling image arrays with helper methods for accessing, modifying, visualizing, and analyzing the multichannel image data.
 
     It relies on the parent image handler object that serves as the bridge to the underlying image
@@ -79,39 +79,3 @@ class ImageArray(ImageArrDataAccessor):
     def _subject_arr(self):
         return self._root_image._data.array
 
-    def show(self,
-             channel: int | None = None,
-             figsize: tuple[int, int] | None = None,
-             title: str | None = None,
-             ax: plt.Axes | None = None,
-             mpl_params: dict | None = None) -> tuple[plt.Figure, plt.Axes]:
-        """
-        Displays the image array, either the full array or a specific channel, using matplotlib.
-
-        Args:
-            channel (int | None): Specifies the channel to display from the image array. If None,
-                the entire array is displayed. If an integer is provided, only the specified
-                channel is displayed.
-            figsize (None | tuple[int, int]): Optional tuple specifying the width and height of
-                the figure in inches. If None, defaults to matplotlib's standard figure size.
-            title (str | None): Title text for the plot. If None, no title will be displayed.
-            ax (plt.Axes): Optional matplotlib Axes instance. If provided, the plot will be
-                drawn on this axes object. If None, a new figure and axes will be created.
-            mpl_params (dict | None): Optional dictionary of keyword arguments for customizing
-                matplotlib parameters (e.g., color maps, fonts). If None, default settings will
-                be used.
-
-        Returns:
-            tuple[plt.Figure, plt.Axes]: A tuple containing the matplotlib Figure and Axes objects
-                associated with the plot. If `ax` is provided in the arguments, the returned
-                tuple will include that Axes instance; otherwise, a new Figure and Axes pair
-                will be returned.
-
-        """
-
-        if channel is None:
-            return self._plot(arr=self._root_image.array[:], ax=ax, figsize=figsize, title=title, mpl_kwargs=mpl_params)
-
-        else:
-            title = f"{self._root_image.name} - Channel {channel}" if title is None else f'{title} - Channel {channel}'
-            return self._plot(arr=self._root_image.array[:, :, channel], ax=ax, figsize=figsize, title=title, mpl_kwargs=mpl_params)

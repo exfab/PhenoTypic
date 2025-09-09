@@ -1,9 +1,9 @@
 from ._image_accessor import ImageAccessorBase
-from ._image_arr_data_accessor import ImageArrDataAccessor
-from ._image_matrix_data_accessor import ImageMatrixDataAccessor
+from ._multichannel_accessor import MultiChannelAccessor
+from ._single_channel_accessor import SingleChannelAccessor
 
 __all__ = [
     "ImageAccessorBase",
-    "ImageArrDataAccessor",
-    "ImageMatrixDataAccessor",
+    "MultiChannelAccessor",
+    "SingleChannelAccessor",
 ]

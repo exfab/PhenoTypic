@@ -101,7 +101,7 @@ from ._objects_accessor import ObjectsAccessor
 # from ._measurement_container_interface import MeasurementAccessor
 from ._metadata_accessor import MetadataAccessor
 
-from ._hsb_accessor import HsvAccessor
+from ._hsv_accessor import HsvAccessor
 from ._grid_accessor import GridAccessor
 
 # Define __all__ to include all imported objects

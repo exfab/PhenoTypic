@@ -25,8 +25,8 @@ class GridAccessor(ImageAccessorBase):
 
     """
 
-    def __init__(self, parent_image: GridImage):
-        super().__init__(parent_image)
+    def __init__(self, root_image: GridImage):
+        super().__init__(root_image)
 
     @property
     def nrows(self) -> int:

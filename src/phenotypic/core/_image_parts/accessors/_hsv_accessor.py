@@ -32,18 +32,19 @@ class HsvAccessor(ImageAccessorBase):
     """
 
     @property
-    def _hsv(self)->np.ndarray:
+    def _subject_arr(self) -> np.ndarray:
         if self._root_image.imformat.is_matrix():
             raise AttributeError('HSV is not available for grayscale images')
         else:
             match self._root_image.imformat:
                 case IMAGE_FORMATS.RGB:
+                    if self._root_image.array.isempty(): raise AttributeError('HSV is not available for empty images')
                     return rgb2hsv(self._root_image.array[:])
                 case _:
                     raise AttributeError(f'Unsupported image format: {self._root_image.imformat} for HSV conversion.')
 
     def __getitem__(self, key) -> np.ndarray:
-        return self._hsv[key].copy()
+        return self._subject_arr[key].copy()
 
     def __setitem__(self, key, value):
         raise IllegalAssignmentError('HSV')
@@ -55,38 +56,90 @@ class HsvAccessor(ImageAccessorBase):
 
     def copy(self) -> np.ndarray:
         """Returns a copy of the image array"""
-        return self._hsv.copy()
+        return self._subject_arr.copy()
 
-    def histogram(self, figsize: Tuple[int, int] = (10, 5), linewidth=1):
+    def histogram(self, figsize: Tuple[int, int] = (10, 5), linewidth=1,
+                  hue_bins: int = 1, hue_offset: float = 0.0):
         """
         Generates and displays histograms for hue, saturation, and brightness components of an image,
-        alongside the original image. The histograms depict the distribution of these components, and
-        this analysis can aid in understanding the image's color properties.
+        alongside the original image. The hue histogram is displayed as a radial plot with colored bins,
+        while saturation and brightness histograms remain as traditional line plots.
 
         Args:
             figsize (Tuple[int, int]): The size of the figure that contains all subplots, specified as
                 a tuple of width and height in inches.
             linewidth (int): The width of the lines used in the histograms.
+            hue_bins (int): The bin size for the hue histogram in degrees. Default is 1 degree.
+            hue_offset (float): Offset to apply to hue values in degrees. Default is 0.0.
 
         Returns:
             Tuple[Figure, ndarray]: A tuple containing the Matplotlib figure object and an ndarray
                 of axes, where the axes correspond to the subplots.
         """
-        fig, axes = plt.subplots(nrows=2, ncols=2, figsize=figsize)
+        import matplotlib.colors as mcolors
+
+        fig, axes = plt.subplots(nrows=2, ncols=2, figsize=figsize,
+                                 subplot_kw={'projection': None})
         axes_ = axes.ravel()
-        axes_[0].imshow(self._root_image._data.array)
+
+        # Original image
+        axes_[0].imshow(self._root_image.array[:])
         axes_[0].set_title(self._root_image.name)
         axes_[0].grid(False)
 
-        hist_one, histc_one = histogram(self._hsv[:, :, 0] * 360)
-        axes_[1].plot(histc_one, hist_one, lw=linewidth)
-        axes_[1].set_title('Hue')
+        # Hue radial histogram
+        axes_[1].remove()  # Remove the regular axes
+        axes_[1] = fig.add_subplot(2, 2, 2, projection='polar')
 
-        hist_two, histc_two = histogram(self._hsv[:, :, 1])
+        # Get hue data and apply offset
+        hue_data = (self._subject_arr[:, :, 0] * 360 + hue_offset) % 360
+
+        # Create bins
+        bin_edges = np.arange(0, 360 + hue_bins, hue_bins)
+        hist_counts, _ = np.histogram(hue_data.flatten(), bins=bin_edges)
+
+        # Convert bin edges to radians and get bin centers
+        bin_centers_deg = (bin_edges[:-1] + bin_edges[1:]) / 2
+        bin_centers_rad = np.deg2rad(bin_centers_deg)
+        bin_width_rad = np.deg2rad(hue_bins)
+
+        # Create colors for each bin based on hue value
+        # Convert hue to HSV then to RGB for coloring
+        colors = []
+        for hue_deg in bin_centers_deg:
+            # Create HSV color (hue/360, saturation=1, value=1)
+            hsv_color = np.array([hue_deg / 360, 1.0, 1.0])
+            # Convert to RGB
+            rgb_color = mcolors.hsv_to_rgb(hsv_color)
+            colors.append(rgb_color)
+
+        # Create the radial histogram
+        bars = axes_[1].bar(bin_centers_rad, hist_counts,
+                            width=bin_width_rad, color=colors, alpha=0.8)
+
+        # Set radial gridlines for count values
+        max_count = np.max(hist_counts) if len(hist_counts) > 0 else 1
+        # Create 5 evenly spaced grid lines
+        grid_values = np.linspace(0, max_count, 6)[1:]  # Exclude 0
+        axes_[1].set_ylim(0, max_count)
+        axes_[1].set_rticks(grid_values)
+        axes_[1].set_rlabel_position(45)  # Position radial labels at 45 degrees
+
+        # Set angular ticks for hue degrees
+        axes_[1].set_theta_zero_location('N')  # 0 degrees at top
+        axes_[1].set_theta_direction(-1)  # Clockwise
+        axes_[1].set_thetagrids(np.arange(0, 360, 30))  # Every 30 degrees
+
+        axes_[1].set_title('Hue (Radial)', pad=20)
+        axes_[1].grid(True, alpha=0.3)
+
+        # Saturation histogram (unchanged)
+        hist_two, histc_two = histogram(self._subject_arr[:, :, 1])
         axes_[2].plot(histc_two, hist_two, lw=linewidth)
         axes_[2].set_title("Saturation")
 
-        hist_three, histc_three = histogram(self._hsv[:, :, 2])
+        # Brightness histogram (unchanged)
+        hist_three, histc_three = histogram(self._subject_arr[:, :, 2])
         axes_[3].plot(histc_three, hist_three, lw=linewidth)
         axes_[3].set_title("Brightness")
 
@@ -119,17 +172,17 @@ class HsvAccessor(ImageAccessorBase):
         fig, axes = plt.subplots(nrows=3, figsize=figsize)
         ax = axes.ravel()
 
-        hue = ax[0].imshow(self._hsv[:, :, 0] * 360, cmap='hsb', vmin=0, vmax=360)
+        hue = ax[0].imshow(self._subject_arr[:, :, 0] * 360, cmap='hsb', vmin=0, vmax=360)
         ax[0].set_title('Hue')
         ax[0].grid(False)
         fig.colorbar(mappable=hue, ax=ax[0], shrink=shrink)
 
-        saturation = ax[1].imshow(self._hsv[:, :, 1], cmap='viridis', vmin=0, vmax=1)
+        saturation = ax[1].imshow(self._subject_arr[:, :, 1], cmap='viridis', vmin=0, vmax=1)
         ax[1].set_title('Saturation')
         ax[1].grid(False)
         fig.colorbar(mappable=saturation, ax=ax[1], shrink=shrink)
 
-        brightness = ax[2].imshow(self._hsv[:, :, 2], cmap='gray', vmin=0, vmax=1)
+        brightness = ax[2].imshow(self._subject_arr[:, :, 2], cmap='gray', vmin=0, vmax=1)
         ax[2].set_title('Brightness')
         ax[2].grid(False)
         fig.colorbar(mappable=brightness, ax=ax[2], shrink=shrink)
@@ -166,22 +219,22 @@ class HsvAccessor(ImageAccessorBase):
         fig, axes = plt.subplots(nrows=3, figsize=figsize)
         ax = axes.ravel()
 
-        hue = ax[0].imshow(np.ma.array(self._hsv[:, :, 0] * 360, mask=~self._root_image.objmask[:]),
-                           cmap='hsb', vmin=0, vmax=360
+        hue = ax[0].imshow(np.ma.array(self._subject_arr[:, :, 0] * 360, mask=~self._root_image.objmask[:]),
+                           cmap='hsb', vmin=0, vmax=360,
                            )
         ax[0].set_title('Hue')
         ax[0].grid(False)
         fig.colorbar(mappable=hue, ax=ax[0], shrink=shrink)
 
-        saturation = ax[1].imshow(np.ma.array(self._hsv[:, :, 1], mask=~self._root_image.objmask[:]),
-                                  cmap='viridis', vmin=0, vmax=1
+        saturation = ax[1].imshow(np.ma.array(self._subject_arr[:, :, 1], mask=~self._root_image.objmask[:]),
+                                  cmap='viridis', vmin=0, vmax=1,
                                   )
         ax[1].set_title('Saturation')
         ax[1].grid(False)
         fig.colorbar(mappable=saturation, ax=ax[1], shrink=shrink)
 
-        brightness = ax[2].imshow(np.ma.array(self._hsv[:, :, 2], mask=~self._root_image.objmask[:]),
-                                  cmap='gray', vmin=0, vmax=1
+        brightness = ax[2].imshow(np.ma.array(self._subject_arr[:, :, 2], mask=~self._root_image.objmask[:]),
+                                  cmap='gray', vmin=0, vmax=1,
                                   )
         ax[2].set_title('Brightness')
         ax[2].grid(False)
@@ -191,49 +244,3 @@ class HsvAccessor(ImageAccessorBase):
         if title is not None: ax.set_title(title)
 
         return fig, ax
-
-    def foreground(self, bg_label:int = 0):
-        """Extracts the foreground hue, saturation, and brightness from the HSV image. With the background elements set to 0"""
-        return self._root_image.objmask._create_foreground(self._hsv[:, :, :], bg_label=bg_label)
-
-    def get_foreground_hue(self, bg_label: int = 0, normalized: bool = False):
-        """Extracts the object hue from the HSV image.
-
-        Note:
-            - Unnormalized Range: 0-360 degrees.
-            - Normalized Range: 0-1
-        """
-        return self._root_image.objmask._create_foreground(
-            self._hsv[:, :, 0] if normalized else self._hsv[:, :, 0] * 360,
-            bg_label=bg_label
-        )
-
-    def get_foreground_saturation(self, bg_label: int = 0, normalized: bool = True):
-        """Extracts the object saturation from the HSV image.
-
-        Note:
-            - Unnormalized Range: 0-255 (Same as OpenCV)
-            - Normalized Range: 0-1
-
-        """
-        return self._root_image.objmask._create_foreground(
-            self._hsv[:, :, 1] if normalized else self._hsv[:, :, 1] * 255,
-            bg_label=bg_label
-        )
-
-    def get_foreground_brightness(self, bg_label: int = 0, normalized: bool = True):
-        """Extracts the object brightness from the HSV image.
-
-        Note:
-            - Unnormalized Range: 0-255 (Same as OpenCV)
-            - Normalized Range: 0-1
-
-        """
-        return self._root_image.objmask._create_foreground(
-            self._hsv[:, :, 2] if normalized else self._hsv[:, :, 2] * 255,
-            bg_label=bg_label
-        )
-
-    def extract_obj(self, bg_label: int = 0):
-        """Extracts the object hue, saturation, and brightness from the HSV image. With the background elements set to 0"""
-        return self._root_image.objmask._create_foreground(self._hsv[:, :, :], bg_label=bg_label)

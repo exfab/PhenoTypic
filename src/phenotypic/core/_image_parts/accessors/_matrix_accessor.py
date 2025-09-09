@@ -2,11 +2,11 @@ from __future__ import annotations
 
 import numpy as np
 
-from phenotypic.core._image_parts.accessor_abstracts import ImageArrDataAccessor
+from phenotypic.core._image_parts.accessor_abstracts import SingleChannelAccessor
 from phenotypic.util.exceptions_ import ArrayKeyValueShapeMismatchError, EmptyImageError
 
 
-class ImageMatrix(ImageArrDataAccessor):
+class ImageMatrix(SingleChannelAccessor):
     """An accessor for managing and visualizing image matrix data. This is the greyscale representation converted using weighted luminance
 
     This class provides a set of tools to access image data, analyze it through
@@ -60,5 +60,6 @@ class ImageMatrix(ImageArrDataAccessor):
         self._root_image.enh_matrix.reset()
         self._root_image.objmap.reset()
 
+    @property
     def _subject_arr(self) -> np.ndarray:
         return self._root_image._data.matrix
