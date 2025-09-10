@@ -846,10 +846,15 @@ class ImageHandler:
         else:
             return self.matrix.show(ax=ax, figsize=figsize, **kwargs)
 
-    def show_overlay(self, object_label: Optional[int] = None, ax: plt.Axes = None,
+    def show_overlay(self, object_label: Optional[int] = None,
                      figsize: Tuple[int, int] = (10, 5),
+                     title: str | None = None,
                      show_labels: bool = False,
-                     annotation_kwargs: None | dict = None,
+                     ax: plt.Axes = None,
+                     *,
+                     label_settings: None | dict = None,
+                     overlay_settings: None | dict = None,
+                     imshow_settings: None | dict = None,
                      ) -> (plt.Figure, plt.Axes):
         """
         Displays an overlay of the object specified by the given label on an image or
@@ -870,7 +875,7 @@ class ImageHandler:
                 figure to create if no axes are provided.
             show_labels (bool): Whether to show_labels the image.matrix using the given
                 annotation settings.
-            annotation_kwargs (None | dict): Additional parameters for customization of the
+            label_settings (None | dict): Additional parameters for customization of the
                 object annotations. Defaults: size=12, color='white', facecolor='red
 
         Returns:
@@ -878,14 +883,15 @@ class ImageHandler:
             Axes objects used to render the overlay.
 
         """
+
         if self._image_format.is_array():
-            return self.array.show_overlay(object_label=object_label, ax=ax, figsize=figsize,
-                                           show_labels=show_labels, label_settings=annotation_kwargs,
-                                           )
+            return self.array.show_overlay(object_label=object_label, figsize=figsize, title=title, show_labels=show_labels, ax=ax,
+                                           label_settings=label_settings, overlay_settings=overlay_settings,
+                                           imshow_settings=imshow_settings)
         else:
-            return self.matrix.show_overlay(object_label=object_label, ax=ax, figsize=figsize,
-                                            show_labels=show_labels, label_settings=annotation_kwargs,
-                                            )
+            return self.matrix.show_overlay(object_label=object_label, figsize=figsize, title=title, show_labels=show_labels, ax=ax,
+                                            label_settings=label_settings, overlay_settings=overlay_settings,
+                                            imshow_settings=imshow_settings)
 
     def rotate(self, angle_of_rotation: int, mode: str = 'edge', cval=0, **kwargs) -> None:
         """Rotate the image and all its components"""

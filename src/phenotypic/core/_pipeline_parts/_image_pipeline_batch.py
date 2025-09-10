@@ -78,7 +78,6 @@ class ImagePipelineBatch(ImagePipelineCore):
         super().__init__(ops, meas, benchmark, verbose)
         # Fix: Set default num_workers to CPU count if -1, ensuring valid multiprocessing
         if num_workers == -1:
-            import multiprocessing as _mp
             self.num_workers = _mp.cpu_count() or 1
         else:
             self.num_workers = num_workers

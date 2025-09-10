@@ -23,6 +23,8 @@ class ObjectsAccessor:
         - Can only be called if an :class:`PhenoTypic.abstract.ObjectDetector` has been applied to the :class:`PhenoTypic.Image` object.
 
     """
+    def __init__(self, root_image: Image):
+        self._root_image = root_image
 
     def __len__(self):
         return self._root_image.num_objects

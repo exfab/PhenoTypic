@@ -151,15 +151,16 @@ class ImageAccessorBase(ABC):
         # matplotlib.imshow can only handle ranges 0-1 or 0-255
         # this adds handling for higher bit-depth images
         max_val = arr.max()
-        match max_val:
-            case _ if max_val <= 255:
-                arr = (arr.copy().astype(np.float32) / 255).clip(0, 1)
-            case _ if max_val <= 65535:
-                arr = (arr.copy().astype(np.float32) / 65535.0).clip(0, 1)
-            case _:
-                raise ValueError("Values exceed 16-bit range")
+        if 0 <= max_val <= 1:
+            plot_arr = arr.copy().astype(np.float32)
+        elif 1 < max_val <= 255:
+            plot_arr = (arr.copy().astype(np.float32) / 255).clip(0, 1)
+        elif 255 < max_val <= 65535:
+            plot_arr = (arr.copy().astype(np.float32) / 65535.0).clip(0, 1)
+        else:
+            raise ValueError("Values exceed 16-bit range")
 
-        ax.imshow(arr, cmap=cmap, **mpl_settings) if arr.ndim == 2 else ax.imshow(arr, **mpl_settings)
+        ax.imshow(plot_arr, cmap=cmap, **mpl_settings) if plot_arr.ndim == 2 else ax.imshow(plot_arr, **mpl_settings)
 
         ax.grid(False)
         if title is True:
