@@ -69,16 +69,15 @@ class ImagePipelineBatch(ImagePipelineCore):
 
     def __init__(self,
                  ops: List[ImageOperation] | Dict[str, ImageOperation] | None = None,
-                 measurements: List[MeasureFeatures] | Dict[str, MeasureFeatures] | None = None,
+                 meas: List[MeasureFeatures] | Dict[str, MeasureFeatures] | None = None,
                  num_workers: int = -1,
                  verbose: bool = True,
                  memblock_factor=1.25,
                  benchmark: bool = False
                  ):
-        super().__init__(ops, measurements, benchmark, verbose)
+        super().__init__(ops, meas, benchmark, verbose)
         # Fix: Set default num_workers to CPU count if -1, ensuring valid multiprocessing
         if num_workers == -1:
-            import multiprocessing as _mp
             self.num_workers = _mp.cpu_count() or 1
         else:
             self.num_workers = num_workers

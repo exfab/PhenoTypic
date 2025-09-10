@@ -2,8 +2,8 @@
 This module contains premade, tested prefab that we use in ExFAB workflows
 """
 
-from ._kmarx_pipeline import KmarxPipeline
+from ._adv_watershed_pipeline import AdvWatershedPipeline
 
 __all__ = [
-    "KmarxPipeline"
+    "AdvWatershedPipeline"
 ]

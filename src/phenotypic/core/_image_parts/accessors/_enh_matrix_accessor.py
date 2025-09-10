@@ -5,11 +5,11 @@ if TYPE_CHECKING: pass
 
 import numpy as np
 
-from phenotypic.core._image_parts.accessor_abstracts import ImageMatrixDataAccessor
+from phenotypic.core._image_parts.accessor_abstracts import SingleChannelAccessor
 from phenotypic.util.exceptions_ import ArrayKeyValueShapeMismatchError, EmptyImageError
 
 
-class ImageEnhancedMatrix(ImageMatrixDataAccessor):
+class ImageEnhancedMatrix(SingleChannelAccessor):
     """An accessor class to an image's enhanced matrix which is a copy of the original image matrix that is preprocessed for enhanced detection.
 
     Provides functionalities to manipulate and visualize the image enhanced matrix. This includes
@@ -72,17 +72,8 @@ class ImageEnhancedMatrix(ImageMatrixDataAccessor):
         self._root_image.objmap.reset()
 
     @property
-    def shape(self):
-        """
-        Represents the shape property of the parent image's enhanced matrix.
-
-        This property fetches and returns the dimensions (shape) of the enhanced
-        matrix that belongs to the parent image linked with the current class.
-
-        Returns:
-            tuple: The shape of the determinant matrix.
-        """
-        return self._root_image._data.enh_matrix.shape
+    def _subject_arr(self) -> np.ndarray:
+        return self._root_image._data.enh_matrix
 
     def reset(self):
         """Resets the image's enhanced matrix to the original matrix representation."""

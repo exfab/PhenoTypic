@@ -44,7 +44,9 @@ dependencies = [
     "mmh3",
     "plotly-express>=0.4.1",
     "psutil>=7.0.0",
-    "colour>=0.1.5",
+    "colour-science>=0.4.6",
+    "jaxtyping>=0.3.2",
+    "rawpy>=0.25.1",
 ]
 
 [project.urls]
@@ -85,7 +87,6 @@ dev = [
     "mypy",
     "ipykernel",
     "jupyter",
-    "labelme",
     "pympler",
     "jupyter",
     "ipykernel",
@@ -118,3 +119,9 @@ version = { attr = "phenotypic.__version__" }
     "data/*.png"
 ]
 
+[tool.uv]
+required-environments = [
+  "sys_platform == 'darwin' and platform_machine == 'arm64'",
+  "sys_platform == 'linux' and platform_machine == 'x86_64'",
+  "sys_platform == 'win32' and platform_machine == 'x86_64'",
+]

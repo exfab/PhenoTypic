@@ -240,3 +240,40 @@ def validate_measure_integrity(*targets: str):
         return wrapper
 
     return decorator
+
+def normalize_rgb_bitdepth(image: np.ndarray) -> np.ndarray:
+    """
+    Normalize an RGB array to [0,1] using bit-depth inference.
+
+    Rules:
+    - If dtype is integer: use dtype max (e.g. 255 for uint8, 65535 for uint16).
+    - If dtype is float:
+        * If max <= 1 → assume already normalized, return as-is.
+        * If 255 < max <= 65535 → assume 16-bit, divide by 65535.
+        * Else → assume 8-bit, divide by 255.
+
+    Args:
+        image: RGB array.
+
+    Returns:
+        np.ndarray: float64 normalized image in [0,1].
+    """
+    img = np.asarray(image)
+
+    if np.issubdtype(img.dtype, np.integer):
+        max_val = np.iinfo(img.dtype).max
+        return img.astype(np.float64) / max_val
+
+    elif np.issubdtype(img.dtype, np.floating):
+        tol = 1e-7
+        m = img.max()
+        if m <= 1.0 + tol:
+            return img.astype(np.float32, copy=False)
+        elif 1 < m <= (255 + tol):
+            return (img.astype(np.float32) / 255.0).clip(0, 1)
+        elif 255 < m <= (65535.0 + tol):
+            return (img.astype(np.float32) / 65535.0).clip(0, 1)
+        else:
+            raise ValueError(f'Invalid range: min={img.min():.02f} max={img.max():.02f}')
+    else:
+        raise TypeError(f"Unsupported dtype: {img.dtype}")

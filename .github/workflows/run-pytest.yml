@@ -3,10 +3,11 @@ name: run-pytest
 on:
   push:
     branches:
-      - main
+      - dev
   pull_request:
     branches:
       - main
+      - dev
   workflow_dispatch:
 
 permissions:

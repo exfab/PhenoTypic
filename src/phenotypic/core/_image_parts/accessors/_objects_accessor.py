@@ -9,10 +9,9 @@ from skimage.measure import regionprops_table, regionprops
 from typing import List
 
 from phenotypic.util.constants_ import OBJECT, METADATA_LABELS, IMAGE_TYPES, BBOX
-from phenotypic.core._image_parts.accessor_abstracts import ImageAccessor
 
 
-class ObjectsAccessor(ImageAccessor):
+class ObjectsAccessor:
     """An accessor for an image objects and provides various utilities for interacting with labeled objects in an image.
 
     This class provides methods to retrieve information about labeled objects, interact with object properties,
@@ -24,6 +23,8 @@ class ObjectsAccessor(ImageAccessor):
         - Can only be called if an :class:`PhenoTypic.abstract.ObjectDetector` has been applied to the :class:`PhenoTypic.Image` object.
 
     """
+    def __init__(self, root_image: Image):
+        self._root_image = root_image
 
     def __len__(self):
         return self._root_image.num_objects
@@ -132,3 +133,5 @@ class ObjectsAccessor(ImageAccessor):
     def relabel(self):
         """Relabels all the objects based on their connectivity"""
         self._root_image.objmap.relabel()
+
+

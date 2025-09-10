@@ -4,7 +4,7 @@
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
-        <mxCell id="kQ2yV8AIbiC1aDz_2Qq--1" value="ImageAccessor" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=33.142857142857146;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;" parent="1" vertex="1">
+        <mxCell id="kQ2yV8AIbiC1aDz_2Qq--1" value="ImageAccessorBase" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=33.142857142857146;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;" parent="1" vertex="1">
           <mxGeometry x="2319" y="164" width="789" height="239.14285714285714" as="geometry" />
         </mxCell>
         <mxCell id="kQ2yV8AIbiC1aDz_2Qq--2" value="note &quot;An accessor object for image data&quot;" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" parent="kQ2yV8AIbiC1aDz_2Qq--1" vertex="1">
@@ -28,7 +28,7 @@
         <mxCell id="kQ2yV8AIbiC1aDz_2Qq--8" value="#- _plot_obj_labels(ax, color, size, facecolor, object_label, **kwargs)" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" parent="kQ2yV8AIbiC1aDz_2Qq--1" vertex="1">
           <mxGeometry y="206.14285714285714" width="789" height="33" as="geometry" />
         </mxCell>
-        <mxCell id="kQ2yV8AIbiC1aDz_2Qq--9" value="ImageArrDataAccessor" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=29.818181818181817;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;" parent="1" vertex="1">
+        <mxCell id="kQ2yV8AIbiC1aDz_2Qq--9" value="MultiChannelAccessor" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=29.818181818181817;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;" parent="1" vertex="1">
           <mxGeometry x="1123" y="718" width="557" height="337.8181818181818" as="geometry" />
         </mxCell>
         <mxCell id="kQ2yV8AIbiC1aDz_2Qq--10" value="note &quot;An object for accessing the matrix elements of the image&quot;" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" parent="kQ2yV8AIbiC1aDz_2Qq--9" vertex="1">
@@ -61,7 +61,7 @@
         <mxCell id="kQ2yV8AIbiC1aDz_2Qq--19" value="#- _dtype2normMatrix(matrix)" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" parent="kQ2yV8AIbiC1aDz_2Qq--9" vertex="1">
           <mxGeometry y="277.8181818181818" width="557" height="30" as="geometry" />
         </mxCell>
-        <mxCell id="kQ2yV8AIbiC1aDz_2Qq--20" value="+- get_foreground()" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" parent="kQ2yV8AIbiC1aDz_2Qq--9" vertex="1">
+        <mxCell id="kQ2yV8AIbiC1aDz_2Qq--20" value="+- foreground()" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" parent="kQ2yV8AIbiC1aDz_2Qq--9" vertex="1">
           <mxGeometry y="307.8181818181818" width="557" height="30" as="geometry" />
         </mxCell>
         <mxCell id="kQ2yV8AIbiC1aDz_2Qq--21" value="ImageArray" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=29.818181818181817;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;" parent="1" vertex="1">
@@ -97,7 +97,7 @@
         <mxCell id="kQ2yV8AIbiC1aDz_2Qq--31" value="+- show_objects(channel, bg_color, cmap, figsize, title, ax, mpl_params)" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" parent="kQ2yV8AIbiC1aDz_2Qq--21" vertex="1">
           <mxGeometry y="277.8181818181818" width="880" height="30" as="geometry" />
         </mxCell>
-        <mxCell id="kQ2yV8AIbiC1aDz_2Qq--32" value="+- get_foreground(bg_color)" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" parent="kQ2yV8AIbiC1aDz_2Qq--21" vertex="1">
+        <mxCell id="kQ2yV8AIbiC1aDz_2Qq--32" value="+- foreground(bg_color)" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" parent="kQ2yV8AIbiC1aDz_2Qq--21" vertex="1">
           <mxGeometry y="307.8181818181818" width="880" height="30" as="geometry" />
         </mxCell>
         <mxCell id="kQ2yV8AIbiC1aDz_2Qq--33" value="ImageMatrix" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=31.11111111111111;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;" parent="1" vertex="1">

@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-from phenotypic.core.pipeline_parts._image_pipeline_core import ImagePipelineCore
+from phenotypic.core._pipeline_parts._image_pipeline_core import ImagePipelineCore
 
 # Create test dataframes with some identical columns
 df1 = pd.DataFrame({

@@ -57,7 +57,7 @@ class ImageHandler:
     def __init__(self,
                  input_image: np.ndarray | Image | PathLike | None = None,
                  imformat: str | None = None,
-                 name: str | None = None):
+                 name: str | None = None, **kwargs):
         """
         Initializes an instance of the image processing object, setting up internal structures, 
         metadata, accessors, and initializing the provided input image or empty placeholders. The
@@ -92,7 +92,8 @@ class ImageHandler:
             protected={
                 METADATA_LABELS.IMAGE_NAME: name,
                 METADATA_LABELS.PARENT_IMAGE_NAME: b'',
-                METADATA_LABELS.IMAGE_TYPE: IMAGE_TYPES.BASE.value
+                METADATA_LABELS.IMAGE_TYPE: IMAGE_TYPES.BASE.value,
+                METADATA_LABELS.BIT_DEPTH: kwargs.get('bit_depth', 8)
             },
             public={},
         )
@@ -255,7 +256,7 @@ class ImageHandler:
             raise EmptyImageError
 
     @property
-    def metadata(self)->MetadataAccessor:
+    def metadata(self) -> MetadataAccessor:
         return self._accessors.metadata
 
     @metadata.setter
@@ -816,13 +817,34 @@ class ImageHandler:
 
     def show(self,
              ax: plt.Axes = None,
-             figsize: Tuple[int, int] = (9, 10)
+             figsize: Tuple[int, int] | None = None,
+             **kwargs
              ) -> (plt.Figure, plt.Axes):
-        """Returns a matplotlib figure and axes showing the input_image image"""
+        """
+        Displays the image data using matplotlib.
+
+        This method renders either the array or matrix property of the instance
+        depending on the image format. It either shows the content on the
+        provided matplotlib axes (`ax`) or creates a
+        new figure and axes for the visualization. Additional display-related
+        customization can be passed using keyword arguments.
+
+        Args:
+            ax (plt.Axes, optional): The matplotlib Axes object where the image
+                will be displayed. If None, a new Axes object is created.
+            figsize (Tuple[int, int] | None, optional): The size of the resulting
+                figure if no `ax` is provided. Defaults to None.
+            **kwargs: Additional keyword arguments to customize the rendering
+                behavior when showing the image.
+
+        Returns:
+            Tuple[plt.Figure, plt.Axes]: A tuple consisting of the matplotlib
+                Figure and Axes that contain the rendered content.
+        """
         if self._image_format.is_array():
-            return self.array.show(ax=ax, figsize=figsize)
+            return self.array.show(ax=ax, figsize=figsize, **kwargs)
         else:
-            return self.matrix.show(ax=ax, figsize=figsize)
+            return self.matrix.show(ax=ax, figsize=figsize, **kwargs)
 
     def show_overlay(self, object_label: Optional[int] = None, ax: plt.Axes = None,
                      figsize: Tuple[int, int] = (10, 5),
@@ -846,7 +868,7 @@ class ImageHandler:
                 on. If None, a new figure and axes are created for rendering.
             figsize (Tuple[int, int]): Tuple specifying the size (width, height) of the
                 figure to create if no axes are provided.
-            show_labels (bool): Whether to annotate the image.matrix using the given
+            show_labels (bool): Whether to show_labels the image.matrix using the given
                 annotation settings.
             annotation_kwargs (None | dict): Additional parameters for customization of the
                 object annotations. Defaults: size=12, color='white', facecolor='red
@@ -858,20 +880,21 @@ class ImageHandler:
         """
         if self._image_format.is_array():
             return self.array.show_overlay(object_label=object_label, ax=ax, figsize=figsize,
-                                           annotate=show_labels, annotation_params=annotation_kwargs,
+                                           show_labels=show_labels, label_settings=annotation_kwargs,
                                            )
         else:
             return self.matrix.show_overlay(object_label=object_label, ax=ax, figsize=figsize,
-                                            show_labels=show_labels, annotation_params=annotation_kwargs,
+                                            show_labels=show_labels, label_settings=annotation_kwargs,
                                             )
 
-    def rotate(self, angle_of_rotation: int, mode: str = 'edge', **kwargs) -> None:
+    def rotate(self, angle_of_rotation: int, mode: str = 'edge', cval=0, **kwargs) -> None:
         """Rotate the image and all its components"""
         if self._image_format.is_array():
-            self._data.array = skimage_rotate(image=self._data.array, angle=angle_of_rotation, mode=mode, clip=True, **kwargs)
+            self._data.array = skimage_rotate(image=self._data.array, angle=angle_of_rotation, mode=mode, clip=True, cval=cval, **kwargs)
 
-        self._data.matrix = skimage_rotate(image=self._data.matrix, angle=angle_of_rotation, mode=mode, clip=True, **kwargs)
-        self._data.enh_matrix = skimage_rotate(image=self._data.enh_matrix, angle=angle_of_rotation, mode=mode, clip=True, **kwargs)
+        self._data.matrix = skimage_rotate(image=self._data.matrix, angle=angle_of_rotation, mode=mode, clip=True, cval=cval, **kwargs)
+        self._data.enh_matrix = skimage_rotate(image=self._data.enh_matrix, angle=angle_of_rotation, mode=mode, clip=True, cval=cval,
+                                               **kwargs)
 
         # Rotate the object map while preserving the details and using nearest-neighbor interpolation
         self.objmap[:] = scipy_rotate(input=self.objmap[:], angle=angle_of_rotation, mode='constant', cval=0, order=0, reshape=False)

@@ -131,7 +131,7 @@ class MeasureTexture(MeasureFeatures):
                 The rows are indexed by object labels, and columns represent different texture features.
         """
         return self._compute_haralick(image=image,
-                                      foreground_array=image.matrix.get_foreground(),
+                                      foreground_array=image.matrix.foreground(),
                                       foreground_name='Intensity',
                                       scale=self.scale,
                                       )
