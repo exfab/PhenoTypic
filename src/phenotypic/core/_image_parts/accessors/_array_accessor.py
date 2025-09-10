@@ -77,5 +77,5 @@ class ImageArray(MultiChannelAccessor):
 
     @property
     def _subject_arr(self):
-        return self._root_image._data.array
+        return self._root_image._data.array.copy()
 

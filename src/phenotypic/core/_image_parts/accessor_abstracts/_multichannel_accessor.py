@@ -50,27 +50,26 @@ class MultiChannelAccessor(ImageAccessorBase):
              *,
              mpl_settings: dict | None = None) -> tuple[plt.Figure, plt.Axes]:
         """
-        Displays the image array, either the full array or a specific channel, using matplotlib.
+        Displays the image data, with the option to customize its visualization
+        and plot settings.
 
         Args:
-            channel (int | None): Specifies the channel to display from the image array. If None,
-                the entire array is displayed. If an integer is provided, only the specified
-                channel is displayed.
-            figsize (None | tuple[int, int]): Optional tuple specifying the width and height of
-                the figure in inches. If None, defaults to matplotlib's standard figure size.
-            title (str | None): Title text for the plot. If None, no title will be displayed.
-            ax (plt.Axes): Optional matplotlib Axes instance. If provided, the plot will be
-                drawn on this axes object. If None, a new figure and axes will be created.
-            mpl_settings (dict | None): Optional dictionary of keyword arguments for customizing
-                matplotlib parameters (e.g., color maps, fonts). If None, default settings will
-                be used.
+            figsize (tuple[int, int] | None): Size of the figure in inches (width, height).
+                If None, a default size is used.
+            title (str | None): Title of the plot. If None, a default title is
+                generated based on the image and channel.
+            ax (plt.Axes | None): Matplotlib Axes object. If provided, the image
+                is plotted on this axis. If None, a new axis is created.
+            channel (int | None): Specific channel index to plot. If None, all
+                channels in the image are displayed.
+            foreground_only (bool): If True, only the foreground portion of the
+                image is displayed. If False, the entire image is shown.
+            mpl_settings (dict | None): Optional Matplotlib settings. Allows
+                customization of plot parameters.
 
         Returns:
-            tuple[plt.Figure, plt.Axes]: A tuple containing the matplotlib Figure and Axes objects
-                associated with the plot. If `ax` is provided in the arguments, the returned
-                tuple will include that Axes instance; otherwise, a new Figure and Axes pair
-                will be returned.
-
+            tuple[plt.Figure, plt.Axes]: A tuple containing the Matplotlib Figure
+            and Axes objects used for plotting the image.
         """
         arr = self[:] if not foreground_only else self.foreground()
         if channel is None:
