@@ -238,19 +238,25 @@ class ImagePipelineCore(ImageOperation):
 
     def measure(self, image: Image, include_metadata=True) -> pd.DataFrame:
         """
-        Measures various properties of an Image using queued measurement strategies.
-
-        The `measure` function applies the queued measurement strategies to the given
-        Image and returns a DataFrame containing consolidated object measurement results.
+        Measures properties of a given image and optionally includes metadata. The method performs
+        measurements using a set of predefined measurement operations. If benchmarking is enabled,
+        the execution time of each measurement is recorded. When verbose mode is active, detailed
+        logging of the measurement process is displayed. A progress bar is used to track progress
+        if the tqdm library is available.
 
         Args:
-            image (Image): The input_image Image on which the measurements will be applied.
-            inplace (bool): A flag indicating whether the modifications should be applied
-                directly to the input_image Image. Default is False.
+            image (Image): The image object for which measurements are performed. It must support
+                the `info` method and optionally a `grid` or `objects` attribute.
+            include_metadata (bool, optional): Indicates whether metadata should be included in
+                the measurements. Defaults to True.
 
         Returns:
-            pd.DataFrame: A DataFrame containing measurement results from all the
-            queued measurement strategies, merged on the same index.
+            pd.DataFrame: A DataFrame containing the results of all performed measurements combined
+                on the same index.
+
+        Raises:
+            Exception: An exception is raised if a measurement operation fails while being
+                applied to the image.
         """
         # Reset measurement times for new measure run if benchmarking is enabled
         if self._benchmark:
@@ -322,11 +328,32 @@ class ImagePipelineCore(ImageOperation):
 
         return self._merge_on_same_index(measurements)
 
-    def apply_and_measure(self, image: Image, inplace: bool = False, reset: bool = True) -> pd.DataFrame:
-        img = self.apply(image, inplace=inplace, reset=reset)
-        return self.measure(img)
+    def apply_and_measure(self, image: Image, inplace: bool = False, reset: bool = True, include_metadata: bool = True) -> pd.DataFrame:
+        """
+        Applies processing to the given image and measures the results.
 
-    def benchmark(self) -> pd.DataFrame:
+        This function first applies a processing method to the supplied image,
+        adjusting it based on the given parameters. After processing, the
+        resulting image is measured, and a DataFrame containing the measurement
+        data is returned.
+
+        Args:
+            image (Image): The image to process and measure.
+            inplace (bool): Whether to modify the original image directly or
+                work on a copy. Default is False.
+            reset (bool): Whether to reset any previous processing on the image
+                before applying the current method. Default is True.
+            include_metadata (bool): Whether to include metadata in the
+                measurement results. Default is True.
+
+        Returns:
+            pd.DataFrame: A DataFrame containing measurement data for the
+            processed image.
+        """
+        img = self.apply(image=image, inplace=inplace, reset=reset)
+        return self.measure(image=img, include_metadata=include_metadata)
+
+    def benchmark_results(self) -> pd.DataFrame:
         """
         Returns a table of execution times for operations and measurements.
 

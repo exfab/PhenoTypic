@@ -37,7 +37,7 @@ from typing import TYPE_CHECKING, Dict
 
 from ...abstract import ImageOperation, MeasureFeatures
 
-if TYPE_CHECKING: from phenotypic import Image
+if TYPE_CHECKING: from phenotypic import Image, ImageSet
 
 import multiprocessing as _mp
 from multiprocessing import Queue, Event
@@ -84,39 +84,81 @@ class ImagePipelineBatch(ImagePipelineCore):
         self.verbose = verbose
         self.memblock_factor = memblock_factor
 
-        # Sequential HDF5 access pattern - no concurrent access needed
-        # Producer completes all file access before writer starts
+    # ---------------------------------------------------------------------
+    # Public interface
+    # ---------------------------------------------------------------------
+    def apply(  # type: ignore[override]
+            self,
+            subject: Union[Image, ImageSet],
+            *,
+            inplace: bool = False,
+            reset: bool = True,
+            num_workers: Optional[int] = None,
+            verbose: bool = False,
+    ) -> Union[Image, None]:
+        import phenotypic
+        if isinstance(subject, phenotypic.Image):
+            return super().apply(subject, inplace=inplace, reset=reset)
+        if isinstance(subject, ImageSet):
+            self._run_imageset(subject, mode="apply", num_workers=num_workers, verbose=verbose)
+            return None
+        raise TypeError("subject must be Image or ImageSet")
 
-        def _preallocate_measurement_datasets(self, imageset: ImageSet) -> None:
-            """Pre-allocate measurement datasets for SWMR compatibility.
+    def measure(
+            self,
+            subject: Union[Image, ImageSet],
+            *,
+            num_workers: Optional[int] = None,
+            verbose: bool = False,
+    ) -> pd.DataFrame:
+        import phenotypic
+        if isinstance(subject, phenotypic.Image):
+            return super().measure(subject)
+        if isinstance(subject, ImageSet):
+            return self._run_imageset(subject, mode="measure",
+                                      num_workers=num_workers if num_workers else self.num_workers,
+                                      verbose=verbose if verbose else self.verbose)
+        raise TypeError("subject must be Image or ImageSet")
 
-            This method is called by the `ImagePipeline` class before the
-            `ImagePipeline` is run.  It creates HDF5 datasets for each measurement in image
-            in the `ImageSet` and stores them in the same HDF5 file.  This
-            ensures that the HDF5 file is not closed during the processing of
-            individual images, which would cause the file to be locked and
-            prevent any further processing.
+    def _run_imageset(self, image_set: ImageSet,
+                      *,
+                      mode: str,
+                      num_workers: Optional[int] = None,
+                      verbose: bool = False) -> pd.DataFrame | None:
+        assert self.num_workers >= 3, 'Not enough cores to run image set in parallel'
 
-            Note:
-                - The image data is assumed to already be present
-            """
-            pass
+    # Sequential HDF5 access pattern - no concurrent access needed
+    # Producer completes all file access before writer starts
+    def _preallocate_measurement_datasets(self, imageset: ImageSet) -> None:
+        """Pre-allocate measurement datasets for SWMR compatibility.
 
+                    This method is called by the `ImagePipeline` class before the
+                    `ImagePipeline` is run.  It creates HDF5 datasets for each measurement in image
+                    in the `ImageSet` and stores them in the same HDF5 file.  This
+                    ensures that the HDF5 file is not closed during the processing of
+                    individual images, which would cause the file to be locked and
+                    prevent any further processing.
 
-        def _get_measurements_dtypes_for_swmr(self):
-            # needed for dtype detection
-            from phenotypic import GridImage
-            from phenotypic.data import load_plate_72hr
-            test_image = GridImage(load_plate_72hr(), name='dtype_test_plat', nrows=8, ncols=12)
-            try:
-                processed_test_image = super().apply(test_image, inplace=False, reset=True)
-            except KeyboardInterrupt:
-                raise KeyboardInterrupt
-            except Exception as e:
-                raise RuntimeError(f"Failed to run test image through pipeline: {e}") from e
+                    Note:
+                        - The image data is assumed to already be present
+                    """
+        pass
 
-            if processed_test_image is None:
-                raise RuntimeError("Failed to run test image through pipeline")
+    def _get_measurements_dtypes_for_swmr(self):
+        # needed for dtype detection
+        from phenotypic import GridImage
+        from phenotypic.data import make_synthetic_colony
+        from phenotypic.detection import OtsuDetector
+        test_image = GridImage(make_synthetic_colony(h=50, w=50), name='dtype_test_plat', nrows=8, ncols=12)
+        OtsuDetector().apply(image=test_image, inplace=True)
+        try:
+            meas = super().apply(test_image, inplace=False, reset=True)
+        except KeyboardInterrupt:
+            raise KeyboardInterrupt
+        except Exception as e:
+            raise RuntimeError(f"Failed to run test image through pipeline: {e}") from e
 
+        if meas is None:
+            raise RuntimeError("Failed to run test image through pipeline")
 
-            return processed_test_image.measurements.dtypes.to_dict()
+        return meas

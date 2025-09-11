@@ -688,7 +688,7 @@ class ImageHandler:
         match input_image:
             case x if isinstance(x, np.ndarray):
                 self._set_from_array(x, imformat)
-            case x if isinstance(x, self.__class__) | issubclass(type(x), self.__class__):
+            case x if isinstance(x, ImageHandler) | issubclass(type(x), ImageHandler):
                 self._set_from_class_instance(x)
             case None:
                 self._clear_data()
@@ -857,31 +857,34 @@ class ImageHandler:
                      imshow_settings: None | dict = None,
                      ) -> (plt.Figure, plt.Axes):
         """
-        Displays an overlay of the object specified by the given label on an image or
-        matrix with optional annotations.
+        Displays an overlay of the provided object label and image using the specified settings.
 
-        This method checks the schema of the object to determine whether it belongs to
-        matrix formats or image formats, and delegates the overlay rendering to the
-        appropriate method accordingly. It optionally allows annotations to be added
-        for the specified object label with customizable style settings.
+        This method combines an image and its segmentation or annotation mask overlay
+        for visualization. The specific behavior is adjusted based on the instance's
+        underlying image format (e.g., whether it operates on arrays or matrices).
 
         Args:
             object_label (Optional[int]): The label of the object to overlay. If None,
-                the entire image or matrix is displayed without a specific object
-                highlighted.
-            ax (Optional[plt.Axes]): The matplotlib Axes instance to render the overlay
-                on. If None, a new figure and axes are created for rendering.
-            figsize (Tuple[int, int]): Tuple specifying the size (width, height) of the
-                figure to create if no axes are provided.
-            show_labels (bool): Whether to show_labels the image.matrix using the given
-                annotation settings.
-            label_settings (None | dict): Additional parameters for customization of the
-                object annotations. Defaults: size=12, color='white', facecolor='red
+                overlays all available objects.
+            figsize (Tuple[int, int]): A tuple specifying the figure size in inches.
+            title (str | None): The title of the overlay figure. If None, no title will
+                be displayed.
+            show_labels (bool): Whether to display object labels on the overlay. Defaults
+                to False.
+            ax (plt.Axes): An optional Matplotlib axes object. If provided, the overlay
+                will be plotted on this axes. If None, a new axes object will be created.
+            label_settings (None | dict): A dictionary specifying configurations for
+                displaying object labels. If None, default settings will be used.
+            overlay_settings (None | dict): A dictionary specifying configurations for
+                the overlay appearance. If None, default settings will be used.
+            imshow_settings (None | dict): A dictionary specifying configurations for
+                the image display (e.g., color map or interpolation). If None, default
+                settings will be used.
 
         Returns:
-            Tuple[plt.Figure, plt.Axes]: A tuple containing the matplotlib Figure and
-            Axes objects used to render the overlay.
-
+            Tuple[plt.Figure, plt.Axes]: A tuple containing the Matplotlib figure and
+                axes used for the overlay. This allows further customization or saving
+                of the visualization outside this method.
         """
 
         if self._image_format.is_array():
