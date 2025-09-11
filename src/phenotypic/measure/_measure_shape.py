@@ -17,8 +17,8 @@ from phenotypic.abstract import MeasurementInfo, MeasureFeatures
 
 class SHAPE(MeasurementInfo):
     """The labels and descriptions of the shape measurements."""
-    @property
-    def CATEGORY(self):
+    @classmethod
+    def category(cls):
         return 'Shape'
 
     AREA = ('Area', "The sum of the object's pixels")

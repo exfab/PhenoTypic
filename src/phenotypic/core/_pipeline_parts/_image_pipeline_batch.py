@@ -120,6 +120,7 @@ class ImagePipelineBatch(ImagePipelineCore):
                                       verbose=verbose if verbose else self.verbose)
         raise TypeError("subject must be Image or ImageSet")
 
+    # TODO: Implement Pipeline apply on ImageSet metric
     def _run_imageset(self, image_set: ImageSet,
                       *,
                       mode: str,

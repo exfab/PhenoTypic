@@ -60,8 +60,8 @@ class OBJECT:
 
 
 class BBOX(MeasurementInfo):
-    @property
-    def CATEGORY(self) -> str:
+    @classmethod
+    def category(cls) -> str:
         return 'Bbox'
 
     CENTER_RR = 'CenterRR', 'The row coordinate of the center of the bounding box.'
@@ -90,8 +90,8 @@ class IO:
 class SET_STATUS(MeasurementInfo):
     """Constants for image set status."""
 
-    @property
-    def CATEGORY(self) -> str:
+    @classmethod
+    def category(cls) -> str:
         return 'Status'
 
     PROCESSED = 'Processed', "Whether the image has been processed successfully."
@@ -108,8 +108,8 @@ class SET_STATUS(MeasurementInfo):
 
 class GRID(MeasurementInfo):
     """Constants for grid structure in the PhenoTypic module."""
-    @property
-    def CATEGORY(self) -> str:
+    @classmethod
+    def category(cls) -> str:
         return 'Grid'
 
     ROW_NUM = 'RowNum','The row idx of the object'

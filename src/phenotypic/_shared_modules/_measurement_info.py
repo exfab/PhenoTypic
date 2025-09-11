@@ -1,86 +1,53 @@
 from enum import Enum
 from textwrap import dedent
 
-
-class MeasurementInfo(Enum):
-    """
-    The labels and descriptions of the measurement information. This class helps with module consistency and documentation automation.
-
-    Note:
-        - Overwrite the CATEGORY label and add other measurement info here
-
-    """
-
-    @property
-    def CATEGORY(self) -> str:
-        """Overwrite this in inherited classes; should return a string with the category name"""
+class MeasurementInfo(str, Enum):
+    # Subclasses must implement this
+    @classmethod
+    def category(cls) -> str:
         raise NotImplementedError
 
-    def __init__(self, label, desc=None):
-        self.label, self.desc = label, desc
+    # Public, instance-level property (what you wanted to keep)
+    @property
+    def CATEGORY(self) -> str:
+        return type(self).category()
 
-    def __str__(self):
-        return f'{self.CATEGORY}_{self.label}'
-
-    def __iter__(self):
-        return (
-            member for member in super().__iter__()
-            if not hasattr(member, 'name') or member is not member.name != 'CATEGORY'
-        )
-
-    @classmethod
-    def iter_labels(cls):
-        """Yield all measurement info members except CATEGORY."""
-        return (member.label for member in cls if member is not cls.CATEGORY)
+    def __new__(cls, label: str, desc: str | None = None):
+        cat = cls.category()                 # use classmethod here
+        full = f"{cat}_{label}"
+        obj = str.__new__(cls, full)
+        obj._value_ = full
+        obj.label = label
+        obj.desc = desc or label
+        obj.pair = (label, obj.desc)
+        return obj
 
     @classmethod
     def get_labels(cls):
-        return [member.label for member in cls if member is not cls.CATEGORY]
+        return [m.label for m in cls]
 
     @classmethod
     def get_headers(cls):
-        """Return full measurement info labels for use in pandas dataframe columns."""
-        return [f'{x}' for x in cls.iter_labels() if cls.name.endswith('_') is False]
+        return [m.value for m in cls]
 
     @classmethod
     def rst_table(
-            cls,
-            *,
-            title: str | None = None,
-            header: tuple[str, str] = ("Label", "Description"),
+        cls,
+        *,
+        title: str | None = None,
+        header: tuple[str, str] = ("Name", "Description"),
     ) -> str:
-        """
-        Generates an RST table in the "list-table" format with the specified title and
-        header. Includes rows based on the class's iterable members that provide labels
-        and descriptions.
-
-        Args:
-            title: Optional title for the table. If none is provided, the name of the
-                class is used as the default title.
-            header: A tuple containing the header labels for the table. Defaults to
-                ("Label", "Description").
-
-        Returns:
-            str: A string containing the formatted RST table.
-        """
         title = title or cls.__name__
         left, right = header
-
-        lines: list[str] = [
+        lines = [
             f".. list-table:: {title}",
             "   :header-rows: 1",
             "",
             f"   * - {left}",
             f"     - {right}",
         ]
-
-        for member in cls:
-            lines.extend(
-                [
-                    f"   * - ``{member.label}``",
-                    f"     - {member.desc}",
-                ],
-            )
+        for m in cls:
+            lines += [f"   * - ``{m.label}``", f"     - {m.desc}"]
         return dedent("\n".join(lines))
 
     @classmethod

@@ -11,8 +11,8 @@ from phenotypic.abstract import MeasurementInfo
 
 
 class TEXTURE(MeasurementInfo):
-    @property
-    def CATEGORY(self) -> str:
+    @classmethod
+    def category(cls) -> str:
         return 'Texture'
 
     ANGULAR_SECOND_MOMENT = (

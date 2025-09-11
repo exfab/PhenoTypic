@@ -16,8 +16,8 @@ logger = logging.getLogger(__name__)
 
 # TODO: Dominant wavelength, purity, and luminance calculation commented out until algorithm optimization
 class COLOR(MeasurementInfo):
-    @property
-    def CATEGORY(self):
+    @classmethod
+    def category(cls):
         return 'Color'
 
     # DOMWL_MINIMUM = ('DomWLMinimum', 'The minimum dominant wavelength of the object')
