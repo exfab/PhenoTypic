@@ -125,8 +125,9 @@ class ImagePipelineBatch(ImagePipelineCore):
                       *,
                       mode: str,
                       num_workers: Optional[int] = None,
-                      verbose: bool = False) -> pd.DataFrame | None:
+                      verbose: bool = False) -> Union[pd.DataFrame, None]:
         assert self.num_workers >= 3, 'Not enough cores to run image set in parallel'
+
 
     # Sequential HDF5 access pattern - no concurrent access needed
     # Producer completes all file access before writer starts
@@ -150,7 +151,7 @@ class ImagePipelineBatch(ImagePipelineCore):
         from phenotypic import GridImage
         from phenotypic.data import make_synthetic_colony
         from phenotypic.detection import OtsuDetector
-        test_image = GridImage(make_synthetic_colony(h=50, w=50), name='dtype_test_plat', nrows=8, ncols=12)
+        test_image = GridImage(make_synthetic_colony(h=50, w=50, seed=0), name='dtype_test_plat', nrows=8, ncols=12)
         OtsuDetector().apply(image=test_image, inplace=True)
         try:
             meas = super().apply(test_image, inplace=False, reset=True)
