@@ -35,7 +35,8 @@ class ImageIOHandler(ImageColorSpace):
             super().__init__(input_image=input_image, imformat=imformat, name=name)
 
     @classmethod
-    def imread(cls, filepath: PathLike,
+    def imread(cls,
+               filepath: PathLike,
                gamma: Tuple[int, int] = None,
                demosaic_algorithm: rawpy.DemosaicAlgorithm = None,
                use_camera_wb:bool=False,
@@ -69,14 +70,14 @@ class ImageIOHandler(ImageColorSpace):
         """
         # Convert to a Path object
         filepath = Path(filepath)
-        if filepath.suffix in IO.ACCEPTED_FILE_EXTENSIONS:
+        if filepath.suffix.lower() in IO.ACCEPTED_FILE_EXTENSIONS:
             image = cls(input_image=None)
             image.set_image(
                 input_image=ski.io.imread(filepath),
             )
             image.name = filepath.stem
             return image
-        elif filepath.suffix in IO.RAW_FILE_EXTENSIONS:
+        elif filepath.suffix.lower() in IO.RAW_FILE_EXTENSIONS:
             with rawpy.imread(filepath) as raw:
                 arr = raw.postprocess(
                     demosaic_algorithm=demosaic_algorithm if demosaic_algorithm else rawpy.DemosaicAlgorithm.AHD,

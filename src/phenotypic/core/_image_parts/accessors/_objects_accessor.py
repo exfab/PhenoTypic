@@ -8,7 +8,7 @@ import pandas as pd
 from skimage.measure import regionprops_table, regionprops
 from typing import List
 
-from phenotypic.util.constants_ import OBJECT, METADATA_LABELS, IMAGE_TYPES, BBOX
+from phenotypic.util.constants_ import OBJECT, METADATA, IMAGE_TYPES, BBOX
 
 
 class ObjectsAccessor:
@@ -38,7 +38,7 @@ class ObjectsAccessor:
         current_object = self.props[index]
         label = current_object.label
         object_image = self._root_image[current_object.slice]
-        object_image.metadata[METADATA_LABELS.IMAGE_TYPE] = IMAGE_TYPES.OBJECT.value
+        object_image.metadata[METADATA.IMAGE_TYPE] = IMAGE_TYPES.OBJECT.value
         object_image.objmap[object_image.objmap[:] != label] = 0
         return object_image
 

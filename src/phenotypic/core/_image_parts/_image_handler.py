@@ -27,7 +27,7 @@ from phenotypic.core._image_parts.accessors import (
     MetadataAccessor,
 )
 
-from phenotypic.util.constants_ import IMAGE_FORMATS, METADATA_LABELS, IMAGE_TYPES
+from phenotypic.util.constants_ import IMAGE_FORMATS, METADATA, IMAGE_TYPES
 from phenotypic.util.exceptions_ import (
     EmptyImageError, IllegalAssignmentError
 )
@@ -87,13 +87,13 @@ class ImageHandler:
         # Public metadata can be edited or removed
         self._metadata = SimpleNamespace(
             private={
-                METADATA_LABELS.UUID: uuid.uuid4()
+                METADATA.UUID: uuid.uuid4()
             },
             protected={
-                METADATA_LABELS.IMAGE_NAME: name,
-                METADATA_LABELS.PARENT_IMAGE_NAME: b'',
-                METADATA_LABELS.IMAGE_TYPE: IMAGE_TYPES.BASE.value,
-                METADATA_LABELS.BIT_DEPTH: kwargs.get('bit_depth', 8)
+                METADATA.IMAGE_NAME: name,
+                METADATA.PARENT_IMAGE_NAME: b'',
+                METADATA.IMAGE_TYPE: IMAGE_TYPES.BASE.value,
+                METADATA.BIT_DEPTH: kwargs.get('bit_depth', 8)
             },
             public={},
         )
@@ -139,7 +139,7 @@ class ImageHandler:
 
         subimage.enh_matrix[:] = self.enh_matrix[key].copy()
         subimage.objmap[:] = self.objmap[key].copy()
-        subimage.metadata[METADATA_LABELS.IMAGE_TYPE] = IMAGE_TYPES.CROP.value
+        subimage.metadata[METADATA.IMAGE_TYPE] = IMAGE_TYPES.CROP.value
         return subimage
 
     def __setitem__(self, key, other_image):
@@ -215,21 +215,21 @@ class ImageHandler:
     @property
     def name(self) -> str:
         """Returns the name of the image. If no name is set, the name will be the uuid of the image."""
-        name = self._metadata.protected.get(METADATA_LABELS.IMAGE_NAME, None)
+        name = self._metadata.protected.get(METADATA.IMAGE_NAME, None)
         return name if name else str(self.uuid)
 
     @name.setter
     def name(self, value):
-        self.metadata[METADATA_LABELS.IMAGE_NAME] = str(value)
+        self.metadata[METADATA.IMAGE_NAME] = str(value)
 
     @property
     def uuid(self):
         """Returns the UUID of the image"""
-        return self.metadata[METADATA_LABELS.UUID]
+        return self.metadata[METADATA.UUID]
 
     @property
     def _image_type(self):
-        return self.metadata[METADATA_LABELS.IMAGE_TYPE]
+        return self.metadata[METADATA.IMAGE_TYPE]
 
     @property
     def shape(self):

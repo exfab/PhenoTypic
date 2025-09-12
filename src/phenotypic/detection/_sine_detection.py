@@ -122,7 +122,7 @@ class SineDetector(ObjectDetector):
     def _has_long_run(vec: np.ndarray, thresh: float) -> bool:
         """
         Args:
-            vec: The subject vector
+            vec: The image vector
             thresh: The run length threshold
 
         Returns:

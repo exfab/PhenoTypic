@@ -7,7 +7,7 @@ import skimage as ski
 import matplotlib.pyplot as plt
 import numpy as np
 
-from phenotypic.util.constants_ import MPL, METADATA_LABELS, IMAGE_FORMATS
+from phenotypic.util.constants_ import MPL, METADATA, IMAGE_FORMATS
 from abc import ABC, abstractmethod
 
 
@@ -30,7 +30,7 @@ class ImageAccessorBase(ABC):
     @property
     def _subject_arr(self) -> np.ndarray:
         """
-        Abstract property representing a subject array. The subject array is expected to be a NumPy ndarray
+        Abstract property representing a image array. The image array is expected to be a NumPy ndarray
         with a specific shape of (0, 0, 3), which can be used for various operations that require a structured
         multi-dimensional array.
 
@@ -99,7 +99,7 @@ class ImageAccessorBase(ABC):
                 axes = axes.ravel()
                 axes[0] = self._plot(arr=self._subject_arr, figsize=figsize, title=self._root_image.name, cmap=cmap, ax=axes[0])
                 hist, histc = ski.exposure.histogram(image=self._subject_arr[:],
-                                                     nbins=2 ** self._root_image.metadata[METADATA_LABELS.BIT_DEPTH])
+                                                     nbins=2 ** self._root_image.metadata[METADATA.BIT_DEPTH])
                 axes[1].plot(histc, hist, lw=linewidth)
             case 3:
                 fig, axes = plt.subplots(nrows=2, ncols=2, figsize=figsize)
@@ -107,7 +107,7 @@ class ImageAccessorBase(ABC):
                 for idx, ax in enumerate(axes.ravel()):
                     if idx == 0: continue
                     hist, histc = ski.exposure.histogram(image=self._subject_arr[:, :, idx],
-                                                         nbins=2 ** self._root_image.metadata[METADATA_LABELS.BIT_DEPTH])
+                                                         nbins=2 ** self._root_image.metadata[METADATA.BIT_DEPTH])
                     ax.plot(histc, hist, lw=linewidth)
                     ax.set_title(f'Channel-{channel_names[idx - 1] if channel_names else idx}')
 

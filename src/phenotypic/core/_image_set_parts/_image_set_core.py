@@ -107,56 +107,50 @@ class ImageSetCore:
         #   self._hdf5_images_group_key/images/<image_name>/measurements <- that image's measurements
         self._hdf5_images_group_key: str = posixpath.join(self._hdf5_set_group_key, 'images')
 
-        # If input source path handling
-        if src_path:
+        if src_path:  # If src is pathlike object
+
             # If input path is an hdf5 file
+            if src_path.is_file() and src_path.suffix == '.h5':
+                if src_path == outpath:  # If src and outpath are the same
+                    pass
 
-            # If src and out are the same
-            if (src_path.is_file()) and (src_path == outpath):
-                pass
+                elif src_path.suffix in HDF.EXT:  # If src and outpath are different, but both hdf files
+                    with h5py.File(src_path, mode='r', libver='latest') as src_filehandler, self.hdf_.safe_writer() as writer:
+                        src_parent_group = self._get_hdf5_group(src_filehandler, self)
+                        out_parent_group = self.hdf_.get_root_group(writer)
 
-            # If src and out are different
-            elif src_path.is_file() and src_path.suffix == '.h5':
-                with h5py.File(src_path, mode='a', libver='latest') as src_filehandler, self.hdf_.safe_writer() as writer:
-                    src_parent_group = self._get_hdf5_group(src_filehandler, self)
-                    out_parent_group = self.hdf_.get_root_group(writer)
+                        if self.name in src_parent_group:  # If matching set name in src -> cpy images to outpath
+                            src_group = self._get_hdf5_group(src_filehandler, self._hdf5_set_group_key)
 
-                    #   if the image set name is in the ImageSet group, copy the images over
-                    if self.name in src_parent_group:
-                        src_group = self._get_hdf5_group(src_filehandler, self._hdf5_set_group_key)
+                            # overwrite if overwrite is true
+                            if self.name in out_parent_group and overwrite is True: del out_parent_group[self.name]
 
-                        # overwrite if overwrite is true
+                            # Should place a copy of the src_group into the parent group
+                            src_filehandler.copy(src_group, out_parent_group, name=self.name, shallow=False)
+
+                        elif HDF.SINGLE_IMAGE_ROOT_POSIX in src_filehandler:  # If no matching set name -> import all single images
+                            src_image_group = self._get_hdf5_group(src_filehandler, self._hdf5_parent_group_key)
+
+                            # overwrite if overwrite is true
+                            if self.name in out_parent_group and overwrite is True: del out_parent_group[self.name]
+                            src_filehandler.copy(src_image_group, out_parent_group, name=self.name, shallow=False)
+
+                        else:  # No matching name and no images in the src hdf file
+                            raise ValueError(f'No ImageSet named {self.name} or Image section found in {src_path}')
+
+                elif src_path.is_dir():  # If src_path is a directory -> Assume directory of images
+                    image_filenames = [x for x in os.listdir(src_path) if x.endswith(IO.ACCEPTED_FILE_EXTENSIONS)]
+                    image_filenames.sort()
+                    with self.hdf_.safe_writer() as writer:
+                        out_parent_group = self.hdf_.get_root_group(writer)
+
+                        # Overwrite handling
                         if self.name in out_parent_group and overwrite is True: del out_parent_group[self.name]
+                        images_group = self.hdf_.get_data_group(writer)
 
-                        # Should place a copy of the src_group into the parent group
-                        src_filehandler.copy(src_group, out_parent_group, name=self.name, shallow=False)
-
-                    #   else import all the images from Image section
-                    elif HDF.SINGLE_IMAGE_ROOT_POSIX in src_filehandler:
-                        src_image_group = self._get_hdf5_group(src_filehandler, self._hdf5_parent_group_key)
-
-                        # overwrite if overwrite is true
-                        if self.name in out_parent_group and overwrite is True: del out_parent_group[self.name]
-                        src_filehandler.copy(src_image_group, out_parent_group, name=self.name, shallow=False)
-
-                    else:
-                        raise ValueError(f'No ImageSet named {self.name} or Image section found in {src_path}')
-
-            # src_path image is a directory handling
-            # only need out handler
-            elif src_path.is_dir():
-                image_filenames = [x for x in os.listdir(src_path) if x.endswith(IO.ACCEPTED_FILE_EXTENSIONS)]
-                image_filenames.sort()
-                with self.hdf_.safe_writer() as writer:
-                    out_parent_group = self.hdf_.get_root_group(writer)
-
-                    # Overwrite handling
-                    if self.name in out_parent_group and overwrite is True: del out_parent_group[self.name]
-                    images_group = self.hdf_.get_data_group(writer)
-
-                    for fname in image_filenames:
-                        image = self.image_template.imread(src_path / fname)
-                        image._save_image2hdfgroup(grp=images_group, compression="gzip", compression_opts=4)
+                        for fname in image_filenames:
+                            image = self.image_template.imread(src_path / fname)
+                            image._save_image2hdfgroup(grp=images_group, compression="gzip", compression_opts=4)
 
         # Image list handling
         # Only need out handler for this
@@ -255,7 +249,7 @@ class ImageSetCore:
                 image_group = self._get_hdf5_group(out_handler, posixpath.join(self._hdf5_images_group_key, image_name))
                 image = self.image_template._load_from_hdf5_group(image_group)
             yield image
-    
+
     def clear_hdf5_lock(self) -> bool:
         """
         Utility method to clear HDF5 file consistency flags that may prevent file access.
@@ -274,29 +268,29 @@ class ImageSetCore:
         import subprocess
         import os
         import logging
-        
+
         logger = logging.getLogger(__name__)
-        
+
         if not os.path.exists(self._out_path):
             logger.info(f"HDF5 file {self._out_path} does not exist, no lock to clear")
             return True
-            
+
         try:
             logger.info(f"Attempting to clear HDF5 consistency flags for {self._out_path}")
-            result = subprocess.run(['h5clear', '-s', str(self._out_path)], 
-                                   capture_output=True, text=True, timeout=10)
+            result = subprocess.run(['h5clear', '-s', str(self._out_path)],
+                                    capture_output=True, text=True, timeout=10)
             success = result.returncode == 0
             if success:
                 logger.info("Successfully cleared HDF5 consistency flags")
             else:
                 logger.warning(f"h5clear -s failed: {result.stderr}")
-            
+
             return success
         except (subprocess.TimeoutExpired, subprocess.CalledProcessError, FileNotFoundError) as e:
             logger.warning(f"Could not run h5clear: {e}")
             logger.info(f"To manually clear the lock, run: h5clear -s {self._out_path} && h5clear -f {self._out_path}")
             return False
-    
+
     def apply(self, pipeline, inplace: bool = False, reset: bool = True, image_names: List[str] | str | None = None) -> 'ImageSet':
         """
         Apply a pipeline of operations to all images in the ImageSet.
@@ -321,7 +315,7 @@ class ImageSetCore:
         """
         import logging
         logger = logging.getLogger(__name__)
-        
+
         # Determine which images to process
         if image_names is None:
             target_images = self.get_image_names()
@@ -329,36 +323,36 @@ class ImageSetCore:
             target_images = [image_names]
         else:
             target_images = image_names
-            
+
         logger.info(f"Applying pipeline to {len(target_images)} images in ImageSet '{self.name}'")
-        
+
         # Preallocate measurement datasets if pipeline has measurements
         if hasattr(pipeline, '_measurements') and pipeline._measurements:
             logger.info("Pipeline contains measurements - preallocating datasets")
             self._preallocate_measurement_datasets_for_imageset(pipeline, target_images)
-        
+
         # Apply pipeline to each image
         for image_name in target_images:
             try:
                 image = self.get_image(image_name)
                 processed_image = pipeline.apply(image, inplace=inplace, reset=reset)
-                
+
                 if not inplace:
                     # Save the processed image back to HDF5
                     with self.hdf_.writer() as handle:
                         image_group = self.hdf_.get_image_group(handle=handle, image_name=image_name)
                         processed_image._save_image2hdfgroup(image_group)
-                        
+
                 logger.debug(f"Successfully applied pipeline to image '{image_name}'")
-                
+
             except Exception as e:
                 logger.error(f"Failed to apply pipeline to image '{image_name}': {e}")
                 # Mark image as ERROR in status
                 self._mark_image_status(image_name, 'ERROR')
                 continue
-                
+
         return self
-    
+
     def measure(self, pipeline, image_names: List[str] | str | None = None, include_metadata: bool = True) -> pd.DataFrame:
         """
         Apply measurements from a pipeline to all images in the ImageSet.
@@ -381,7 +375,7 @@ class ImageSetCore:
         """
         import logging
         logger = logging.getLogger(__name__)
-        
+
         # Determine which images to process
         if image_names is None:
             target_images = self.get_image_names()
@@ -389,47 +383,47 @@ class ImageSetCore:
             target_images = [image_names]
         else:
             target_images = image_names
-            
+
         logger.info(f"Measuring {len(target_images)} images in ImageSet '{self.name}'")
-        
+
         # Preallocate measurement datasets if pipeline has measurements
         if hasattr(pipeline, '_measurements') and pipeline._measurements:
             logger.info("Preallocating measurement datasets")
             self._preallocate_measurement_datasets_for_imageset(pipeline, target_images)
-        
+
         all_measurements = []
-        
+
         # Apply measurements to each image
         for image_name in target_images:
             try:
                 image = self.get_image(image_name)
                 measurements = pipeline.measure(image, include_metadata=include_metadata)
-                
+
                 # Add image name to measurements for identification
                 measurements['image_name'] = image_name
                 all_measurements.append(measurements)
-                
+
                 # Save measurements to HDF5
                 with self.hdf_.writer() as handle:
                     image_group = self.hdf_.get_image_group(handle=handle, image_name=image_name)
                     measurement_group = self.hdf_.get_measurement_group(handle=handle, image_name=image_name)
                     self.measurements._save_dataframe_to_hdf5_group(measurements, measurement_group)
-                    
+
                 logger.debug(f"Successfully measured image '{image_name}'")
-                
+
             except Exception as e:
                 logger.error(f"Failed to measure image '{image_name}': {e}")
                 # Mark image as ERROR in status
                 self._mark_image_status(image_name, 'ERROR')
                 continue
-        
+
         # Consolidate all measurements into a single DataFrame
         if all_measurements:
             return pd.concat(all_measurements, ignore_index=True)
         else:
             logger.warning("No measurements were successfully collected")
             return pd.DataFrame()
-    
+
     def _preallocate_measurement_datasets_for_imageset(self, pipeline, image_names: List[str]):
         """
         Preallocate measurement datasets for the given images and pipeline.
@@ -443,37 +437,37 @@ class ImageSetCore:
         """
         import logging
         logger = logging.getLogger(__name__)
-        
+
         try:
             # Get a sample image to determine measurement structure
             if not image_names:
                 logger.warning("No images provided for preallocation")
                 return
-                
+
             sample_image = self.get_image(image_names[0])
-            
+
             # Generate sample measurements to determine DataFrame structure
             sample_measurements = pipeline.measure(sample_image, include_metadata=True)
-            
+
             logger.info(f"Preallocating datasets for {len(image_names)} images based on sample measurements")
-            
+
             # Preallocate datasets for each image
             with self.hdf_.writer() as handle:
                 for image_name in image_names:
                     try:
                         measurement_group = self.hdf_.get_measurement_group(handle=handle, image_name=image_name)
                         self.measurements._preallocate_swmr_measurement_datasets(
-                            measurement_group, sample_measurements, group_name="measurements"
+                            measurement_group, sample_measurements, group_name="measurements",
                         )
                         logger.debug(f"Preallocated measurement datasets for image '{image_name}'")
                     except Exception as e:
                         logger.error(f"Failed to preallocate datasets for image '{image_name}': {e}")
                         continue
-                        
+
         except Exception as e:
             logger.error(f"Failed to preallocate measurement datasets: {e}")
             # Don't raise - allow processing to continue without preallocation
-    
+
     def _mark_image_status(self, image_name: str, status: str):
         """
         Mark an image with the given status.

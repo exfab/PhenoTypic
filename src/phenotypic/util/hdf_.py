@@ -5,6 +5,7 @@ from packaging.version import Version
 
 import h5py
 import phenotypic
+from pathlib import Path
 
 
 class HDF:
@@ -18,14 +19,16 @@ class HDF:
         SINGLE_IMAGE_ROOT_POSIX = f'/phenotypic/images/'
 
     IMAGE_SET_ROOT_POSIX = f'/phenotypic/image_sets/'
-    IMAGE_SET_DATA_POSIX = 'data'   # The image and individual measurement group
+    IMAGE_SET_DATA_POSIX = 'data'  # The image and individual measurement group
 
     # measurements and status are stored within in each image's group
     IMAGE_MEASUREMENT_SUBGROUP_KEY = 'measurements'
     IMAGE_STATUS_SUBGROUP_KEY = "status"
 
+    EXT = {'.h5', '.hdf5', '.hdf', '.he5'}
+
     def __init__(self, filepath, name: str, mode: Literal['single', 'set']):
-        self.filepath = filepath
+        self.filepath = Path(filepath)
         self.name = name
         self.mode = mode
         if mode == 'single':
@@ -110,7 +113,7 @@ class HDF:
 
         # This should not be reached due to the raise in the loop
         raise OSError(f"Unexpected error opening HDF5 file {self.filepath}")
-    
+
     def swmr_writer(self) -> h5py.File:
         """
         Returns a writer object that provides safe SWMR-compatible write access to an
@@ -139,7 +142,6 @@ class HDF:
             try:
                 # Create/open file with proper SWMR settings
                 file_handle = h5py.File(self.filepath, 'a', libver='latest')
-                
                 # Enable SWMR mode immediately after opening
                 try:
                     file_handle.swmr_mode = True
@@ -149,7 +151,7 @@ class HDF:
                     logger.warning(f"Could not enable SWMR mode: {swmr_error}")
                     # Return file handle without SWMR mode as fallback
                     return file_handle
-                    
+
             except OSError as e:
                 error_msg = str(e).lower()
                 # Handle various HDF5 locking scenarios
@@ -172,10 +174,10 @@ class HDF:
                             if os.path.exists(self.filepath):
                                 logger.info(f"Attempting to clear HDF5 consistency flags for {self.filepath}")
                                 # Clear both status and force flags for SWMR issues
-                                subprocess.run(['h5clear', '-s', str(self.filepath)], 
-                                             capture_output=True, text=True, timeout=10)
-                                subprocess.run(['h5clear', '-f', str(self.filepath)], 
-                                             capture_output=True, text=True, timeout=10)
+                                subprocess.run(['h5clear', '-s', str(self.filepath)],
+                                               capture_output=True, text=True, timeout=10)
+                                subprocess.run(['h5clear', '-f', str(self.filepath)],
+                                               capture_output=True, text=True, timeout=10)
                                 logger.info("Cleared HDF5 consistency flags")
                         except (subprocess.TimeoutExpired, subprocess.CalledProcessError, FileNotFoundError) as clear_error:
                             logger.warning(f"Could not run h5clear: {clear_error}")

@@ -136,15 +136,15 @@ class GRID_LINREG_STATS_EXTRACTOR:
 
 
 # Metadata constants
-class METADATA_LABELS:
+class METADATA(MeasurementInfo):
     """Constants for metadata labels."""
-    UUID = 'UUID'
-    IMAGE_NAME = 'ImageName'
-    PARENT_IMAGE_NAME = 'ParentImageName'
-    PARENT_UUID = 'ParentUUID'
-    IMFORMAT = 'ImageFormat'
-    IMAGE_TYPE = 'ImageType'
-    BIT_DEPTH = 'BitDepth'
+    UUID = 'UUID', 'The unique identifier of the image.'
+    IMAGE_NAME = 'ImageName', 'The name of the image.'
+    PARENT_IMAGE_NAME = 'ParentImageName', 'The name of the parent image.'
+    PARENT_UUID = 'ParentUUID', 'The UUID of the parent image.'
+    IMFORMAT = 'ImageFormat', 'The format of the image.'
+    IMAGE_TYPE = 'ImageType', 'The type of the image.'
+    BIT_DEPTH = 'BitDepth','The bit depth of the image.'
 
 
 class IMAGE_TYPES(Enum):

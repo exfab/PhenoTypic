@@ -10,7 +10,7 @@ import skimage.util
 import matplotlib.pyplot as plt
 
 from phenotypic.core._image_parts.accessor_abstracts import ImageAccessorBase
-from phenotypic.util.constants_ import METADATA_LABELS
+from phenotypic.util.constants_ import METADATA
 
 
 class MultiChannelAccessor(ImageAccessorBase):
@@ -32,13 +32,13 @@ class MultiChannelAccessor(ImageAccessorBase):
         fname = Path(fname)
         arr = self._subject_arr.copy()
         if (arr.dtype != np.uint8) or (arr.dtype != np.uint16):
-            match self._root_image.metadata[METADATA_LABELS.BIT_DEPTH]:
+            match self._root_image.metadata[METADATA.BIT_DEPTH]:
                 case 8:
                     arr = ski.util.img_as_ubyte(arr)
                 case 16:
                     arr = ski.util.img_as_uint(arr)
                 case _:
-                    raise AttributeError(f"Unsupported bit depth: {self._root_image.metadata[METADATA_LABELS.BIT_DEPTH]}")
+                    raise AttributeError(f"Unsupported bit depth: {self._root_image.metadata[METADATA.BIT_DEPTH]}")
         ski.io.imsave(fname=fname, arr=arr, check_contrast=False)
 
     def show(self,

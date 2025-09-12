@@ -11,7 +11,7 @@ from skimage.color import label2rgb
 
 import phenotypic
 from phenotypic.core._image_parts.accessor_abstracts import ImageAccessorBase
-from phenotypic.util.constants_ import METADATA_LABELS, IMAGE_TYPES, BBOX, GRID
+from phenotypic.util.constants_ import METADATA, IMAGE_TYPES, BBOX, GRID
 from phenotypic.util.exceptions_ import NoObjectsError
 
 
@@ -96,7 +96,7 @@ class GridAccessor(ImageAccessorBase):
             objmap = section_image.objmap[:]
             objmap[~np.isin(objmap, self._get_section_labels(idx))] = 0
             section_image.objmap = objmap
-            section_image.metadata[METADATA_LABELS.IMAGE_TYPE] = IMAGE_TYPES.GRID_SECTION.value
+            section_image.metadata[METADATA.IMAGE_TYPE] = IMAGE_TYPES.GRID_SECTION.value
 
             return section_image
         else:

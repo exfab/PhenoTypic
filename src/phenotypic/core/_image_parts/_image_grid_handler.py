@@ -10,7 +10,7 @@ from itertools import cycle
 from .._image import Image
 from phenotypic.measure import MeasureBounds
 from phenotypic.abstract import GridFinder
-from phenotypic.util.constants_ import IMAGE_TYPES, BBOX, METADATA_LABELS
+from phenotypic.util.constants_ import IMAGE_TYPES, BBOX, METADATA
 from phenotypic.util.exceptions_ import IllegalAssignmentError
 from phenotypic.grid import OptimalCenterGridFinder
 
@@ -41,7 +41,7 @@ class ImageGridHandler(Image):
                 (Defaults to 12).
 
     Attributes:
-        _grid_setter (Optional[GridFinder]): An object responsible for defining and optimizing the grid
+        grid_finder (Optional[GridFinder]): An object responsible for defining and optimizing the grid
             layout over the image, defaulting to an `OptimalCenterGridSetter` instance if none is provided.
         _accessors.grid (GridAccessor): An internal utility for managing grid-based operations such as
             accessing row and column edges and generating section maps for the image's grid system.
@@ -74,14 +74,14 @@ class ImageGridHandler(Image):
         """
         super().__init__(input_image=input_image, imformat=imformat, name=name, **kwargs)
 
-        if hasattr(input_image, '_grid_setter'):
-            grid_finder = input_image._grid_setter
+        if hasattr(input_image, 'grid_finder'):
+            grid_finder = input_image.grid_finder
         elif grid_finder is None:
             grid_finder = OptimalCenterGridFinder(nrows=nrows, ncols=ncols)
 
-        self._grid_setter: Optional[GridFinder] = grid_finder
+        self.grid_finder: Optional[GridFinder] = grid_finder
         self._accessors.grid = GridAccessor(self)
-        self.metadata[METADATA_LABELS.IMAGE_TYPE] = IMAGE_TYPES.GRID.value
+        self.metadata[METADATA.IMAGE_TYPE] = IMAGE_TYPES.GRID.value
 
     @property
     def grid(self) -> GridAccessor:
@@ -98,7 +98,7 @@ class ImageGridHandler(Image):
     def grid(self, grid):
         raise IllegalAssignmentError('grid')
 
-    def info(self, include_metadata:bool=True)->pd.DataFrame:
+    def info(self, include_metadata: bool = True) -> pd.DataFrame:
         return self.grid.info(include_metadata=include_metadata)
 
     @property
@@ -113,7 +113,7 @@ class ImageGridHandler(Image):
         Returns:
             int: The number of rows in the grid.
         """
-        return self._grid_setter.nrows
+        return self.grid_finder.nrows
 
     @nrows.setter
     def nrows(self, nrows):
@@ -128,7 +128,7 @@ class ImageGridHandler(Image):
         """
         if not isinstance(nrows, int):
             raise TypeError(f'Expected int, got {type(nrows)}')
-        self._grid_setter.nrows = nrows
+        self.grid_finder.nrows = nrows
 
     @property
     def ncols(self) -> int:
@@ -142,7 +142,7 @@ class ImageGridHandler(Image):
         Returns:
             int: The number of columns in the grid.
         """
-        return self._grid_setter.ncols
+        return self.grid_finder.ncols
 
     @ncols.setter
     def ncols(self, ncols):
@@ -160,7 +160,7 @@ class ImageGridHandler(Image):
         """
         if not isinstance(ncols, int):
             raise TypeError(f'Expected int, got {type(ncols)}')
-        self._grid_setter.ncols = ncols
+        self.grid_finder.ncols = ncols
 
     def __getitem__(self, key) -> Image:
         """Returns a copy of the image at the slices specified as a regular Image object.

@@ -93,32 +93,38 @@ class ImagePipelineBatch(ImagePipelineCore):
             *,
             inplace: bool = False,
             reset: bool = True,
-            num_workers: Optional[int] = None,
-            verbose: bool = False,
     ) -> Union[Image, None]:
         import phenotypic
         if isinstance(subject, phenotypic.Image):
             return super().apply(subject, inplace=inplace, reset=reset)
         if isinstance(subject, ImageSet):
-            self._run_imageset(subject, mode="apply", num_workers=num_workers, verbose=verbose)
+            self._run_imageset(subject, mode="apply", num_workers=self.num_workers, verbose=self.verbose)
             return None
-        raise TypeError("subject must be Image or ImageSet")
+        raise TypeError("image must be Image or ImageSet")
 
     def measure(
             self,
-            subject: Union[Image, ImageSet],
-            *,
-            num_workers: Optional[int] = None,
+            image: Union[Image, ImageSet],
             verbose: bool = False,
     ) -> pd.DataFrame:
         import phenotypic
-        if isinstance(subject, phenotypic.Image):
-            return super().measure(subject)
-        if isinstance(subject, ImageSet):
-            return self._run_imageset(subject, mode="measure",
-                                      num_workers=num_workers if num_workers else self.num_workers,
+        if isinstance(image, phenotypic.Image):
+            return super().measure(image)
+        if isinstance(image, ImageSet):
+            return self._run_imageset(image, mode="measure",
+                                      num_workers=self.num_workers,
                                       verbose=verbose if verbose else self.verbose)
-        raise TypeError("subject must be Image or ImageSet")
+        raise TypeError("image must be Image or ImageSet")
+
+    def apply_and_measure(self, image: Image, inplace: bool = False, reset: bool = True, include_metadata: bool = True) -> pd.DataFrame:
+        if isinstance(image, Image):
+            super().apply_and_measure(image=image, inplace=inplace, reset=reset, include_metadata=include_metadata)
+        elif isinstance(image, ImageSet):
+            self._run_imageset(image, mode="apply_and_measure", num_workers=self.num_workers, verbose=self.verbose)
+
+    # ----------------
+    # Implementation
+    # ----------------
 
     # TODO: Implement Pipeline apply on ImageSet metric
     def _run_imageset(self, image_set: ImageSet,
@@ -128,6 +134,8 @@ class ImagePipelineBatch(ImagePipelineCore):
                       verbose: bool = False) -> Union[pd.DataFrame, None]:
         assert self.num_workers >= 3, 'Not enough cores to run image set in parallel'
 
+        if mode == 'measure':   # Preallocate space
+            pass
 
     # Sequential HDF5 access pattern - no concurrent access needed
     # Producer completes all file access before writer starts

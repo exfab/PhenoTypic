@@ -109,7 +109,7 @@ class ImagePipelineBatchBroken(ImagePipelineCore):
         if isinstance(subject, ImageSet):
             self._run_imageset(subject, mode="apply", num_workers=num_workers, verbose=verbose)
             return None
-        raise TypeError("subject must be Image or ImageSet")
+        raise TypeError("image must be Image or ImageSet")
 
     # ------------------------------------------------------------------
     # Measure override
@@ -128,7 +128,7 @@ class ImagePipelineBatchBroken(ImagePipelineCore):
             return self._run_imageset(subject, mode="measure",
                                       num_workers=num_workers if num_workers else self.num_workers,
                                       verbose=verbose if verbose else self.verbose)
-        raise TypeError("subject must be Image or ImageSet")
+        raise TypeError("image must be Image or ImageSet")
 
     # ------------------------------------------------------------------
     # FORCED METHOD OVERRIDE - This ensures the correct method is always called
@@ -149,12 +149,12 @@ class ImagePipelineBatchBroken(ImagePipelineCore):
         # Handle flexible argument patterns
         if len(args) >= 1:
             subject = args[0]
-        elif 'subject' in kwargs:
-            subject = kwargs['subject']
+        elif 'image' in kwargs:
+            subject = kwargs['image']
         elif 'image' in kwargs:
             subject = kwargs['image']
         else:
-            raise ValueError("No subject/image argument provided")
+            raise ValueError("No image/image argument provided")
             
         # Extract other parameters with defaults
         inplace = kwargs.get('inplace', False)
@@ -180,7 +180,7 @@ class ImagePipelineBatchBroken(ImagePipelineCore):
         logger.debug("apply_and_measure called with ImageSet")
         if not isinstance(subject, ImageSet):
             raise TypeError(
-                "subject must be an Image or ImageSet, got " f"{type(subject)}",
+                "image must be an Image or ImageSet, got " f"{type(subject)}",
             )
 
         logger.debug("About to call _run_imageset")

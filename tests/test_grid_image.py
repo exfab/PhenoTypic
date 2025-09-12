@@ -14,7 +14,7 @@ def test_blank_gridimage_initialization():
     # Test default initialization
     grid_image = GridImage()
     assert grid_image is not None
-    assert isinstance(grid_image._grid_setter, OptimalCenterGridFinder)
+    assert isinstance(grid_image.grid_finder, OptimalCenterGridFinder)
 
 @timeit
 def test_gridimage_initialization(sample_image_array):
@@ -25,7 +25,7 @@ def test_gridimage_initialization(sample_image_array):
 
     grid_setter = OptimalCenterGridFinder(nrows=10, ncols=10)
     grid_image = GridImage(input_image=input_image, grid_finder=grid_setter)
-    assert grid_image._grid_setter == grid_setter
+    assert grid_image.grid_finder == grid_setter
 
 
 @timeit
@@ -63,7 +63,7 @@ def test_grid_show_overlay(plate_grid_images_with_detection):
 @timeit
 def test_optimal_grid_setter_defaults():
     grid_image = GridImage()
-    grid_setter = grid_image._grid_setter
+    grid_setter = grid_image.grid_finder
     assert isinstance(grid_setter, OptimalCenterGridFinder)
     assert grid_setter.nrows == 8
     assert grid_setter.ncols == 12
