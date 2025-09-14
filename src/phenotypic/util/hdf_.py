@@ -393,6 +393,78 @@ class HDF:
             )
 
     @staticmethod
+    def get_uncompressed_sizes_for_group(group: h5py.Group) -> tuple[dict[str, int], int]:
+        """Recursively collect the uncompressed (logical) sizes of SWMR-compatible datasets.
+
+        This function walks the provided HDF5 group and inspects every dataset without
+        reading any data. For each dataset that is compatible with SWMR writing rules
+        (i.e., chunked layout and no variable-length data types), it computes the
+        uncompressed size in bytes as: dtype.itemsize * number_of_elements.
+
+        Notes
+        - This works regardless of whether datasets are stored compressed on disk; the
+          reported size is the logical size when uncompressed in memory.
+        - Variable-length strings (and datasets containing variable-length fields) are
+          excluded because they are not SWMR-write friendly and their uncompressed size
+          cannot be determined from metadata alone.
+        - The operation is safe under SWMR: it only reads object metadata, creates no
+          new objects, and does not modify the file.
+
+        Args:
+            group: The root h5py.Group to traverse.
+
+        Returns:
+            A tuple (sizes, total_bytes) where:
+            - sizes: dict mapping absolute dataset paths (e.g., '/grp/ds') to uncompressed
+              size in bytes.
+            - total_bytes: sum of all values in sizes.
+        """
+        import numpy as _np
+        import h5py as _h5py
+
+        def _dtype_has_vlen(dt: _np.dtype) -> bool:
+            """Return True if dtype is or contains variable-length elements."""
+            # Direct vlen
+            if _h5py.check_vlen_dtype(dt) is not None:
+                return True
+            # String vlen
+            if _h5py.check_string_dtype(dt) is not None:
+                info = _h5py.check_string_dtype(dt)
+                # info.length is None for variable-length strings
+                if getattr(info, 'length', None) is None:
+                    return True
+                return False  # fixed-length string
+            # Compound: check fields recursively
+            if dt.fields:
+                for _, (subdt, _) in dt.fields.items():
+                    if _dtype_has_vlen(subdt):
+                        return True
+            return False
+
+        sizes: dict[str, int] = {}
+
+        def _visitor(name: str, obj: _h5py.Dataset | _h5py.Group) -> None:
+            if isinstance(obj, _h5py.Dataset):
+                # SWMR-write compatibility: chunked layout required
+                if obj.chunks is None:
+                    return
+                # Exclude variable-length dtypes (including vlen strings)
+                if _dtype_has_vlen(obj.dtype):
+                    return
+                # Compute logical size without reading data
+                try:
+                    n_elems = int(_np.prod(obj.shape, dtype=_np.int64)) if obj.shape is not None else 1
+                except Exception:
+                    # Fallback for unusual shapes
+                    n_elems = int(getattr(obj, 'size', 0))
+                itemsize = int(obj.dtype.itemsize)
+                sizes[obj.name] = itemsize * n_elems
+
+        group.visititems(_visitor)
+        total = int(sum(sizes.values()))
+        return sizes, total
+
+    @staticmethod
     def _get_string_dtype(length: int | None = None) -> h5py.special_dtype:
         """Get UTF-8 string dtype for HDF5.
 

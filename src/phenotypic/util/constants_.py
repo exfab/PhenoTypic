@@ -87,7 +87,7 @@ class IO:
     IMAGE_STATUS_SUBGROUP_KEY = "status"
 
 
-class SET_STATUS(MeasurementInfo):
+class PIPE_STATUS(MeasurementInfo):
     """Constants for image set status."""
 
     @classmethod

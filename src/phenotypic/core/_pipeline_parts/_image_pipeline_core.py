@@ -28,7 +28,7 @@ class ImagePipelineCore(ImageOperation):
         _ops (Dict[str, ImageOperation]): A dictionary where keys are string
             identifiers and values are `ImageOperation` objects representing operations to apply
             to an Image.
-        _measurements (Dict[str, MeasureFeatures]): A dictionary where keys are string
+        _meas (Dict[str, MeasureFeatures]): A dictionary where keys are string
             identifiers and values are `FeatureExtractor` objects for extracting features
             from images.
     """
@@ -60,7 +60,7 @@ class ImagePipelineCore(ImageOperation):
         self._ops: Dict[str, ImageOperation] = {}
         if ops is not None: self.set_ops(ops)
 
-        self._measurements: Dict[str, MeasureFeatures] = {}
+        self._meas: Dict[str, MeasureFeatures] = {}
         if meas is not None: self.set_measurements(meas)
 
         # Store benchmark and verbose flags
@@ -118,9 +118,9 @@ class ImagePipelineCore(ImageOperation):
         if isinstance(measurements, list):
             measurement_names = [x.__class__.__name__ for x in measurements if isinstance(x, MeasureFeatures)]
             measurement_names = self.__make_unique(measurement_names)
-            self._measurements = {measurement_names[i]: measurements[i] for i in range(len(measurements))}
+            self._meas = {measurement_names[i]: measurements[i] for i in range(len(measurements))}
         elif isinstance(measurements, dict):
-            self._measurements = measurements
+            self._meas = measurements
         else:
             raise TypeError(f'measurements must be a list or a dictionary, got {type(measurements)}')
 
@@ -283,7 +283,7 @@ class ImagePipelineCore(ImageOperation):
             try:
                 from tqdm import tqdm
                 # Create a tqdm instance without items to manually update it
-                total_measurements = len(self._measurements)
+                total_measurements = len(self._meas)
                 pbar = tqdm(total=total_measurements, desc="Applying measurements", file=sys.stdout)
                 has_tqdm = True
             except ImportError:
@@ -293,7 +293,7 @@ class ImagePipelineCore(ImageOperation):
         else:
             has_tqdm = False
 
-        for i, (key, measurement) in enumerate(self._measurements.items()):
+        for i, (key, measurement) in enumerate(self._meas.items()):
             try:
                 # Update progress bar description with current measurement
                 if self._benchmark and self._verbose:

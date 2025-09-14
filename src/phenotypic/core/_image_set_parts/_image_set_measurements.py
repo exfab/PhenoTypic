@@ -7,7 +7,7 @@ if TYPE_CHECKING: from phenotypic import Image
 
 import pandas as pd
 from ._image_set_accessors._image_set_measurements_accessor import SetMeasurementAccessor
-from phenotypic.util.constants_ import SET_STATUS
+from phenotypic.util.constants_ import PIPE_STATUS
 from ._image_set_status import ImageSetStatus
 
 
@@ -17,11 +17,11 @@ class ImageSetMeasurements(ImageSetStatus):
     """
     def __init__(self,
                  name: str,
-                 image_template: Image | None = None,
+                 grid_finder: Image | None = None,
                  src: List[Image] | PathLike | None = None,
                  outpath: PathLike | None = None,
                  overwrite: bool = False, ):
-        super().__init__(name=name, image_template=image_template,
+        super().__init__(name=name, grid_finder=grid_finder,
                          src=src, outpath=outpath, overwrite=overwrite)
         self._measurement_accessor = SetMeasurementAccessor(self)
 

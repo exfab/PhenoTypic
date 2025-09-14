@@ -54,31 +54,6 @@ dependencies = [
 [project.urls]
 Repository = "https://github.com/Wheeldon-Lab/PhenoTypic"
 
-#[project.optional-dependencies]
-#dev = [
-#    "pytest",
-#    "pytest-cov",
-#    "mypy",
-#    "ipykernel",
-#    "jupyter",
-#    "labelme",
-#    "pympler",
-#    "jupyter",
-#    "ipykernel",
-#    "sphinx",
-#    "sphinxcontrib-napoleon",
-#    "sphinx-autodoc-typehints",
-#    "sphinx-autobuild",
-#    "sphinxawesome-theme",
-#    "nbsphinx",
-#    "furo",
-#    "pydata-sphinx-theme",
-#    "sphinx-gallery",
-#    "myst-nb",
-#    "sphinx-autosummary-accessors",
-#    "sphinx-design",
-#]
-
 [dependency-groups]
 dev = [
     "ipykernel>=6.29.5",

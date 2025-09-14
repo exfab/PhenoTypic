@@ -14,6 +14,8 @@ import h5py
 from os import PathLike
 
 from ._image_set_accessors._image_set_measurements_accessor import SetMeasurementAccessor
+from phenotypic.abstract import GridFinder
+from phenotypic.grid import OptimalCenterGridFinder
 from phenotypic.util.constants_ import IO
 from phenotypic.util import HDF
 
@@ -44,7 +46,7 @@ class ImageSetCore:
 
     def __init__(self,
                  name: str,
-                 image_template: Image | None = None,
+                 grid_finder: GridFinder | None = None,
                  src: List[Image] | PathLike | str | None = None,
                  outpath: PathLike | str | None = None,
                  overwrite: bool = False, ):
@@ -58,8 +60,7 @@ class ImageSetCore:
 
         Args:
             name (str): The name of the image set to initialize.
-            image_template: (Image | None): The Image object with settings to be used when constructing the Image.
-                Can be a GridImage with ncols and nrows specified. Default is a 96-Plate GridImage
+            grid_finder: (Image | None): a grid finder object used for defining grids in an Image. If None ImageSet will use regular images
             src (List[Image] | PathLike | None, optional): The source for images. Can be:
                 - A list of Image objects for importing from in-memory images
                 - A PathLike object pointing to a source directory or HDF5 file containing images
@@ -76,8 +77,8 @@ class ImageSetCore:
         import phenotypic
         self.name = name
 
-        assert isinstance(image_template, (phenotypic.Image, type(None))), "image_template must be an Image object or None."
-        self.image_template = image_template if image_template else phenotypic.GridImage(ncols=12, nrows=8)
+        assert isinstance(grid_finder, (phenotypic.Image, type(None))), "grid_finder must be an Image object or None."
+        self.grid_finder = grid_finder if grid_finder else OptimalCenterGridFinder(nrows=8, ncols=12)
 
         # Automatically detect the type of src parameter
         image_list = None
@@ -149,7 +150,7 @@ class ImageSetCore:
                         images_group = self.hdf_.get_data_group(writer)
 
                         for fname in image_filenames:
-                            image = self.image_template.imread(src_path / fname)
+                            image = self.grid_finder.imread(src_path / fname)
                             image._save_image2hdfgroup(grp=images_group, compression="gzip", compression_opts=4)
 
         # Image list handling
@@ -227,7 +228,7 @@ class ImageSetCore:
         with self.hdf_.swmr_reader() as reader:
             image_group = self.hdf_.get_data_group(reader)
             if image_name in image_group:
-                return self.image_template._load_from_hdf5_group(image_group[image_name])
+                return self.grid_finder._load_from_hdf5_group(image_group[image_name])
             else:
                 raise ValueError(f'Image named {image_name} not found in ImageSet {self.name}.')
 
@@ -247,7 +248,7 @@ class ImageSetCore:
         for image_name in self.get_image_names():
             with h5py.File(self._out_path, mode='r', libver='latest', swmr=True) as out_handler:
                 image_group = self._get_hdf5_group(out_handler, posixpath.join(self._hdf5_images_group_key, image_name))
-                image = self.image_template._load_from_hdf5_group(image_group)
+                image = self.grid_finder._load_from_hdf5_group(image_group)
             yield image
 
     def clear_hdf5_lock(self) -> bool:
@@ -261,8 +262,8 @@ class ImageSetCore:
             bool: True if the lock was successfully cleared, False otherwise.
             
         Example:
-            >>> imageset = ImageSet(name='test', src='images/', outpath='output/')
-            >>> if not imageset.clear_hdf5_lock():
+            >>> image_set = ImageSet(name='test', src='images/', outpath='output/')
+            >>> if not image_set.clear_hdf5_lock():
             ...     print("Could not clear HDF5 lock. Try manually: h5clear -s output/test.h5")
         """
         import subprocess
@@ -311,7 +312,7 @@ class ImageSetCore:
         Example:
             >>> from phenotypic import ImagePipeline, CLAHE, OtsuDetector
             >>> pipeline = ImagePipeline([CLAHE(), OtsuDetector()])
-            >>> imageset.apply(pipeline, inplace=True)
+            >>> image_set.apply(pipeline, inplace=True)
         """
         import logging
         logger = logging.getLogger(__name__)
@@ -327,7 +328,7 @@ class ImageSetCore:
         logger.info(f"Applying pipeline to {len(target_images)} images in ImageSet '{self.name}'")
 
         # Preallocate measurement datasets if pipeline has measurements
-        if hasattr(pipeline, '_measurements') and pipeline._measurements:
+        if hasattr(pipeline, '_meas') and pipeline._meas:
             logger.info("Pipeline contains measurements - preallocating datasets")
             self._preallocate_measurement_datasets_for_imageset(pipeline, target_images)
 
@@ -371,7 +372,7 @@ class ImageSetCore:
         Example:
             >>> from phenotypic import ImagePipeline, MeasureShape
             >>> pipeline = ImagePipeline(meas=[MeasureShape()])
-            >>> measurements = imageset.measure(pipeline)
+            >>> measurements = image_set.measure(pipeline)
         """
         import logging
         logger = logging.getLogger(__name__)
@@ -387,7 +388,7 @@ class ImageSetCore:
         logger.info(f"Measuring {len(target_images)} images in ImageSet '{self.name}'")
 
         # Preallocate measurement datasets if pipeline has measurements
-        if hasattr(pipeline, '_measurements') and pipeline._measurements:
+        if hasattr(pipeline, '_meas') and pipeline._meas:
             logger.info("Preallocating measurement datasets")
             self._preallocate_measurement_datasets_for_imageset(pipeline, target_images)
 

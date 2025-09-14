@@ -33,6 +33,7 @@ measurement tables (one per image) so that users can continue their
 analyses in-memory once the batch job is finished.
 """
 from __future__ import annotations
+
 from typing import TYPE_CHECKING, Dict
 
 from ...abstract import ImageOperation, MeasureFeatures
@@ -55,10 +56,8 @@ import psutil
 import h5py
 
 from .._image_set import ImageSet
-from phenotypic.util.constants_ import SET_STATUS
+from phenotypic.util.constants_ import PIPE_STATUS
 from ._image_pipeline_core import ImagePipelineCore
-
-import threading
 
 # Create module-level logger
 logger = logging.getLogger(__name__)
@@ -137,7 +136,7 @@ class ImagePipelineBatchBroken(ImagePipelineCore):
         """FORCED OVERRIDE: Ensure ImagePipelineBatch method is always called."""
         logger.debug("ImagePipelineBatch.apply_and_measure called (forced override)")
         return self._batch_apply_and_measure(*args, **kwargs)
-    
+
     def _batch_apply_and_measure(self, *args, **kwargs) -> pd.DataFrame:
         """Apply the pipeline either to a single `Image` **or** an `ImageSet`.
         
@@ -145,7 +144,7 @@ class ImagePipelineBatchBroken(ImagePipelineCore):
         and routing to the appropriate processing logic based on the first argument type.
         """
         logger.debug("ImagePipelineBatch._batch_apply_and_measure called")
-        
+
         # Handle flexible argument patterns
         if len(args) >= 1:
             subject = args[0]
@@ -155,16 +154,16 @@ class ImagePipelineBatchBroken(ImagePipelineCore):
             subject = kwargs['image']
         else:
             raise ValueError("No image/image argument provided")
-            
+
         # Extract other parameters with defaults
         inplace = kwargs.get('inplace', False)
         reset = kwargs.get('reset', True)
         num_workers = kwargs.get('num_workers', None)
         verbose = kwargs.get('verbose', False)
-        
+
         logger.debug(f"Subject type: {type(subject)}")
         logger.debug(f"Method resolution: {self.__class__.__name__}.apply_and_measure")
-        
+
         # ------------------------------------------------------------------
         # Single image – just delegate to super-class.
         # ------------------------------------------------------------------
@@ -183,7 +182,7 @@ class ImagePipelineBatchBroken(ImagePipelineCore):
                 "image must be an Image or ImageSet, got " f"{type(subject)}",
             )
 
-        logger.debug("About to call _run_imageset")
+        logger.debug("About to call _coordinator")
         return self._run_imageset(subject, mode="apply_and_measure",
                                   num_workers=num_workers if num_workers else self.num_workers,
                                   verbose=verbose if verbose else self.verbose)
@@ -192,7 +191,7 @@ class ImagePipelineBatchBroken(ImagePipelineCore):
     # Internal helpers
     # ------------------------------------------------------------------
 
-    def _run_imageset(
+    def _coordinator(
             self,
             imageset: ImageSet,
             *,
@@ -210,7 +209,7 @@ class ImagePipelineBatchBroken(ImagePipelineCore):
         """
         # Create process-safe logger for this method
         parallel_logger = logging.getLogger(f"{__name__}.parallel_processing")
-        parallel_logger.debug(f"_run_imageset called with mode={mode}, num_workers={num_workers}")
+        parallel_logger.debug(f"_coordinator called with mode={mode}, num_workers={num_workers}")
         num_workers = num_workers or _mp.cpu_count() or 1
 
         # Cross-platform fix for AuthenticationString/HMAC pickling errors
@@ -220,7 +219,7 @@ class ImagePipelineBatchBroken(ImagePipelineCore):
             mp_context = _mp.get_context('spawn')
             parallel_logger.info("Using spawn multiprocessing context for cross-platform compatibility")
         except RuntimeError:
-            # Fallback to default context if spawn is not available
+            # Fallback to the default context if spawn is not available
             mp_context = _mp
             parallel_logger.info("Using default multiprocessing context (spawn not available)")
 
@@ -230,14 +229,14 @@ class ImagePipelineBatchBroken(ImagePipelineCore):
         # Step 1: Pre-allocate measurement datasets for SWMR compatibility
         parallel_logger.info("Pre-allocating measurement datasets for SWMR compatibility...")
         try:
-            result = self._preallocate_measurement_datasets(imageset)
+            self._preallocate_measurement_datasets(imageset)
             parallel_logger.info("Successfully pre-allocated measurement datasets")
-            
+
             # Signal that pre-allocation is complete
             parallel_logger.info("Signaling pre-allocation complete event")
             pre_allocation_complete.set()
             parallel_logger.info("Pre-allocation complete event has been set")
-            
+
         except Exception as e:
             parallel_logger.error(f"Failed to pre-allocate measurement datasets: {e}")
             raise
@@ -389,7 +388,7 @@ class ImagePipelineBatchBroken(ImagePipelineCore):
                     # Load actual image data
                     logger.debug(f"Loading image data for {name} ({i + 1}/{len(image_names)})")
                     try:
-                        image = imageset.image_template._load_from_hdf5_group(image_data_group[name])
+                        image = imageset.grid_finder._load_from_hdf5_group(image_data_group[name])
                         loaded_images[name] = image
                         logger.debug(f"Loaded image data for {name}")
                     except Exception as load_error:
@@ -401,7 +400,7 @@ class ImagePipelineBatchBroken(ImagePipelineCore):
             logger.error(f"Producer: Error during consolidated HDF5 access: {e}")
             producer_hdf5_complete.set()  # Signal completion even on error
             return
-        
+
         # Signal that producer has completed ALL HDF5 access - writer can now safely open file
         logger.info("Producer: Signaling HDF5 access completion to writer")
         producer_hdf5_complete.set()
@@ -412,7 +411,7 @@ class ImagePipelineBatchBroken(ImagePipelineCore):
             if stop_event.is_set():
                 logger.info(f"Stop event set, terminating producer after queuing {i} images")
                 break
-                
+
             image = loaded_images.get(name)
             work_q.put((name, image))
             logger.debug(f"Queued pre-loaded image for {name} ({i + 1}/{len(image_names)})")
@@ -466,8 +465,9 @@ class ImagePipelineBatchBroken(ImagePipelineCore):
                     result_q.put((name, b'', b'ERROR: Image loading failed'))
                     processed_count += 1
                     continue
-                    
-                logger.debug(f"Worker {worker_pid}: Received pre-loaded image '{name}', shape: {image.shape if hasattr(image, 'shape') else 'unknown'}")
+
+                logger.debug(
+                    f"Worker {worker_pid}: Received pre-loaded image '{name}', shape: {image.shape if hasattr(image, 'shape') else 'unknown'}")
 
                 processed_img = None
                 measurement = None
@@ -579,7 +579,7 @@ class ImagePipelineBatchBroken(ImagePipelineCore):
                 # Refresh the file handle to see pre-allocated datasets
                 logger.info("Writer: Refreshing HDF5 file handle to see pre-allocated datasets")
                 writer.flush()  # Ensure any pending writes are committed
-                
+
                 logger.info("Writer: Accessing image data group")
                 image_group = imageset.hdf_.get_data_group(handle=writer)
                 logger.info(
@@ -622,18 +622,18 @@ class ImagePipelineBatchBroken(ImagePipelineCore):
                             if isinstance(maybe_exc, Exception):
                                 logger.error(f"Writer: Worker failed processing {name}: {maybe_exc}")
                                 warnings.warn(f"Worker failed processing {name}: {maybe_exc}")
-                                status_group.attrs[SET_STATUS.ERROR.label] = True
+                                status_group.attrs[PIPE_STATUS.ERROR.label] = True
                                 errors += 1
                                 continue
                             else:
                                 # Not an exception, it's a processed image
                                 processed_img = maybe_exc
                                 logger.debug(f"Writer: Successfully unpickled processed image for '{name}'")
-                                status_group.attrs[SET_STATUS.PROCESSED.label] = True
+                                status_group.attrs[PIPE_STATUS.PROCESSED.label] = True
                         except Exception as unpickle_error:
                             logger.error(f"Writer: Could not unpickle image data for {name}: {unpickle_error}")
                             warnings.warn(f"Worker failed processing {name}: Could not unpickle image data - {unpickle_error}")
-                            status_group.attrs[SET_STATUS.ERROR.label] = True
+                            status_group.attrs[PIPE_STATUS.ERROR.label] = True
                             errors += 1
                             continue
                     else:
@@ -647,12 +647,12 @@ class ImagePipelineBatchBroken(ImagePipelineCore):
                             measurement = pickle.loads(meas_bytes)
                             logger.debug(
                                 f"Writer: Successfully unpickled measurements for '{name}', shape: {measurement.shape if hasattr(measurement, 'shape') else 'unknown'}")
-                            status_group.attrs[SET_STATUS.MEASURED.label] = True
+                            status_group.attrs[PIPE_STATUS.MEASURED.label] = True
                         except Exception as unpickle_error:
                             logger.error(f"Writer: Could not unpickle measurement data for {name}: {unpickle_error}")
                             warnings.warn(
                                 f"Worker failed processing measurements for {name}: Could not unpickle measurement data - {unpickle_error}")
-                            status_group.attrs[SET_STATUS.ERROR.label] = True
+                            status_group.attrs[PIPE_STATUS.ERROR.label] = True
                             errors += 1
                             continue
                     else:
@@ -675,7 +675,7 @@ class ImagePipelineBatchBroken(ImagePipelineCore):
                             else:
                                 logger.error(f"Writer: Failed to save processed image for '{name}': {handle_error}")
                             try:
-                                status_group.attrs[SET_STATUS.ERROR.label] = True
+                                status_group.attrs[PIPE_STATUS.ERROR.label] = True
                             except ValueError:
                                 logger.error(f"Writer: Cannot set error status for '{name}' - HDF5 handle invalid")
                             errors += 1
@@ -683,7 +683,7 @@ class ImagePipelineBatchBroken(ImagePipelineCore):
                         except Exception as save_error:
                             logger.error(f"Writer: Failed to save processed image for '{name}': {save_error}")
                             try:
-                                status_group.attrs[SET_STATUS.ERROR.label] = True
+                                status_group.attrs[PIPE_STATUS.ERROR.label] = True
                             except ValueError:
                                 logger.error(f"Writer: Cannot set error status for '{name}' - HDF5 handle invalid")
                             errors += 1
@@ -703,7 +703,7 @@ class ImagePipelineBatchBroken(ImagePipelineCore):
                                 logger.error(f"Writer: Image group for {name} not found - pre-allocation may have failed")
                                 logger.error(f"Writer: Available image groups: {list(image_group.keys())}")
                                 warnings.warn(f"Image group for {name} not found when saving measurements. Pre-allocation may have failed.")
-                                status_group.attrs[SET_STATUS.ERROR.label] = True
+                                status_group.attrs[PIPE_STATUS.ERROR.label] = True
                                 errors += 1
                                 continue
 
@@ -711,12 +711,12 @@ class ImagePipelineBatchBroken(ImagePipelineCore):
                             from .._image_set_parts._image_set_accessors._image_set_measurements_accessor import SetMeasurementAccessor
                             from phenotypic.util.constants_ import IO
                             logger.debug(f"Writer: Writing measurements for '{name}' to pre-allocated datasets")
-                            
+
                             # Debug: Check what's actually in the image group
                             logger.debug(f"Writer: Image group '{name}' contents: {list(img_group.keys())}")
                             measurement_key = IO.IMAGE_MEASUREMENT_IMAGE_SUBGROUP_KEY
                             logger.debug(f"Writer: Looking for measurement key: '{measurement_key}'")
-                            
+
                             if measurement_key in img_group:
                                 meas_group = img_group[measurement_key]
                                 logger.debug(f"Writer: Found measurement group, contents: {list(meas_group.keys())}")
@@ -732,16 +732,17 @@ class ImagePipelineBatchBroken(ImagePipelineCore):
                                     logger.debug(f"Writer: 'values' group not found in measurement group")
                             else:
                                 logger.debug(f"Writer: Measurement key '{measurement_key}' not found in image group")
-                            
+
                             # Write measurements to pre-allocated datasets (row_offset=0 since each image gets its own datasets)
                             SetMeasurementAccessor._write_dataframe_to_preallocated_datasets(
-                                df=measurement, 
+                                df=measurement,
                                 group=img_group,
                                 measurement_key=IO.IMAGE_MEASUREMENT_IMAGE_SUBGROUP_KEY,
-                                row_offset=0
+                                row_offset=0,
                             )
                             saved_measurements += 1
-                            logger.info(f"Writer: Successfully saved measurements for '{name}' to SWMR datasets ({saved_measurements} total)")
+                            logger.info(
+                                f"Writer: Successfully saved measurements for '{name}' to SWMR datasets ({saved_measurements} total)")
                         except ValueError as handle_error:
                             if "Invalid file identifier" in str(handle_error):
                                 logger.error(f"Writer: HDF5 handle error while saving measurements for '{name}': {handle_error}")
@@ -749,7 +750,7 @@ class ImagePipelineBatchBroken(ImagePipelineCore):
                             else:
                                 logger.error(f"Writer: Failed to save measurements for '{name}': {handle_error}")
                             try:
-                                status_group.attrs[SET_STATUS.ERROR.label] = True
+                                status_group.attrs[PIPE_STATUS.ERROR.label] = True
                             except ValueError:
                                 logger.error(f"Writer: Cannot set error status for '{name}' - HDF5 handle invalid")
                             errors += 1
@@ -757,7 +758,7 @@ class ImagePipelineBatchBroken(ImagePipelineCore):
                         except Exception as save_error:
                             logger.error(f"Writer: Failed to save measurements for '{name}': {save_error}")
                             try:
-                                status_group.attrs[SET_STATUS.ERROR.label] = True
+                                status_group.attrs[PIPE_STATUS.ERROR.label] = True
                             except ValueError:
                                 logger.error(f"Writer: Cannot set error status for '{name}' - HDF5 handle invalid")
                             errors += 1
@@ -853,16 +854,16 @@ class ImagePipelineBatchBroken(ImagePipelineCore):
         from phenotypic.data import load_plate_12hr
         from phenotypic import GridImage
         logger.debug("Imported required modules for dtype detection")
-        
+
         # Load a real plate image that will work with the pipeline
         plate_data = load_plate_12hr()
         test_image = GridImage(
             input_image=plate_data,
             name="dtype_test_plate",
             nrows=8,
-            ncols=12
+            ncols=12,
         )
-        
+
         # Apply pipeline operations to test image first, then measure
         # This ensures the image has detected objects for measurement
         try:
@@ -873,31 +874,31 @@ class ImagePipelineBatchBroken(ImagePipelineCore):
             # This ensures pre-allocation works even if the test image processing fails
             import pandas as pd
             import numpy as np
-            
+
             # Create a minimal test DataFrame with typical measurement structure
             test_measurements = pd.DataFrame({
                 'area': [100.0, 200.0],
-                'perimeter': [50.0, 75.0], 
+                'perimeter': [50.0, 75.0],
                 'circularity': [0.8, 0.9],
                 'mean_intensity': [128.5, 156.2]
             })
             # Set a default index name that matches pandas conventions
             test_measurements.index.name = None  # This will become 'level_0' when accessed
-        
+
         # Extract index information - use consistent naming with pandas defaults
         # When index.name is None, pandas uses 'level_0' in many contexts, so we should too
         index_name = test_measurements.index.name if test_measurements.index.name is not None else 'level_0'
         index_dtype = test_measurements.index.dtype
         index_dtypes = [(index_name, index_dtype)]
-        
+
         # Extract column information
         column_dtypes = []
         for i, col in enumerate(test_measurements.columns):
             col_dtype = test_measurements[col].dtype
             column_dtypes.append((col, col_dtype, i))
-        
+
         return index_dtypes, column_dtypes
-    
+
     def _preallocate_measurement_datasets(self, imageset: 'ImageSet'):
         """Pre-allocate empty measurement datasets for all images in SWMR-compatible format.
         
@@ -912,21 +913,20 @@ class ImagePipelineBatchBroken(ImagePipelineCore):
         import logging
         import os
         import threading
-        
+
         # Create parallel-safe logger with process/thread identification
         log_prefix = f"[PID:{os.getpid()}|{threading.current_thread().name}]"
         logger = logging.getLogger(f"{__name__}.preallocation")
-        
+
         logger.info(f"{log_prefix} Starting SWMR measurement dataset pre-allocation")
-        
+
         from phenotypic.core._image_set_parts._image_set_accessors._image_set_measurements_accessor import SetMeasurementAccessor
-        from phenotypic.util.constants_ import IO
-        
+
         # Get measurement structure from pipeline
         logger.debug(f"{log_prefix} Getting measurement dtypes for SWMR pre-allocation")
         index_dtypes, column_dtypes = self._get_measurement_dtypes_for_swmr()
         logger.info(f"{log_prefix} Pre-allocation structure - Index dtypes: {len(index_dtypes)}, Column dtypes: {len(column_dtypes)}")
-        
+
         # Get image names for processing (same as producer will use)
         try:
             image_names = list(imageset.get_image_names())
@@ -934,11 +934,11 @@ class ImagePipelineBatchBroken(ImagePipelineCore):
         except Exception as e:
             logger.error(f"{log_prefix} Failed to get image names: {e}")
             raise
-        
+
         if not image_names:
             logger.warning(f"{log_prefix} No images found in ImageSet - skipping pre-allocation")
             return
-        
+
         # Open file in normal write mode for pre-allocation (before SWMR)
         logger.debug(f"{log_prefix} Opening HDF5 file for pre-allocation: {imageset._out_path}")
         try:
@@ -946,51 +946,51 @@ class ImagePipelineBatchBroken(ImagePipelineCore):
                 # Get the data group containing all images
                 data_group = imageset.hdf_.get_data_group(writer)
                 logger.debug(f"{log_prefix} Found data group with {len(data_group.keys())} images")
-                
+
                 # Pre-allocate datasets for each image (using same names as producer/writer)
                 for image_name in image_names:
                     logger.debug(f"{log_prefix} Pre-allocating datasets for image: {image_name}")
                     image_group = data_group[image_name]
-                    
+
                     # Create status subgroup if it doesn't exist
                     if imageset.hdf_.IMAGE_STATUS_SUBGROUP_KEY not in image_group:
                         status_group = image_group.create_group(imageset.hdf_.IMAGE_STATUS_SUBGROUP_KEY)
                         logger.debug(f"{log_prefix} Created status group for {image_name}")
                     else:
                         status_group = image_group[imageset.hdf_.IMAGE_STATUS_SUBGROUP_KEY]
-                    
+
                     # Initialize status attributes
-                    status_group.attrs[SET_STATUS.PROCESSED.label] = False
-                    status_group.attrs[SET_STATUS.MEASURED.label] = False
-                    status_group.attrs[SET_STATUS.ERROR.label] = False
-                    
+                    status_group.attrs[PIPE_STATUS.PROCESSED.label] = False
+                    status_group.attrs[PIPE_STATUS.MEASURED.label] = False
+                    status_group.attrs[PIPE_STATUS.ERROR.label] = False
+
                     # Pre-allocate measurement datasets using SWMR-safe method
                     logger.debug(f"{log_prefix} Calling SetMeasurementAccessor._preallocate_swmr_measurement_datasets for {image_name}")
-                    
+
                     try:
                         SetMeasurementAccessor._preallocate_swmr_measurement_datasets(
                             image_group,
                             imageset.hdf_.IMAGE_MEASUREMENT_SUBGROUP_KEY,
                             index_dtypes,
                             column_dtypes,
-                            initial_size=1000  # Pre-allocate space for up to 1000 measurements per image
+                            initial_size=1000,  # Pre-allocate space for up to 1000 measurements per image
                         )
                         logger.debug(f"{log_prefix} Successfully pre-allocated datasets for {image_name}")
-                        
+
                     except Exception as e:
                         logger.error(f"{log_prefix} Failed to pre-allocate datasets for {image_name}: {e}")
                         # Mark image as having an error
-                        status_group.attrs[SET_STATUS.ERROR.label] = True
+                        status_group.attrs[PIPE_STATUS.ERROR.label] = True
                         raise
-                
+
                 # Flush changes to ensure datasets are written
                 logger.debug(f"{log_prefix} Flushing HDF5 writer after pre-allocation")
                 writer.flush()
-                
+
         except Exception as e:
             logger.error(f"{log_prefix} Pre-allocation failed: {e}")
             raise
-        
+
         logger.info(f"{log_prefix} SWMR measurement dataset pre-allocation completed successfully")
 
     def _get_meas_dtypes(self):
@@ -1002,11 +1002,11 @@ class ImagePipelineBatchBroken(ImagePipelineCore):
             name and data type of a column in the measurement data.
         """
         index_dtypes, column_dtypes = self._get_measurement_dtypes_for_swmr()
-        
+
         # Convert to legacy format
         index_info = (index_dtypes[0][0], index_dtypes[0][1]) if index_dtypes else ("index", object)
         column_info = [(name, dtype) for name, dtype, _ in column_dtypes]
-        
+
         return index_info, column_info
 
     def _aggregate_measurements_from_hdf5(self, imageset: 'ImageSet') -> pd.DataFrame:
@@ -1021,7 +1021,7 @@ class ImagePipelineBatchBroken(ImagePipelineCore):
         import pandas as pd
         from phenotypic.util.constants_ import IO
         from phenotypic.core._image_set_parts._image_set_accessors._image_set_measurements_accessor import SetMeasurementAccessor
-        
+
         measurements_list = []
 
         with imageset.hdf_.swmr_reader() as reader:
@@ -1033,7 +1033,7 @@ class ImagePipelineBatchBroken(ImagePipelineCore):
                 # Use the new SWMR-compatible loader first, fall back to old format
                 df = SetMeasurementAccessor._load_dataframe_from_hdf5_group_swmr(
                     image_subgroup,
-                    measurement_key=IO.IMAGE_MEASUREMENT_IMAGE_SUBGROUP_KEY
+                    measurement_key=IO.IMAGE_MEASUREMENT_IMAGE_SUBGROUP_KEY,
                 )
                 if not df.empty:
                     measurements_list.append(df)
@@ -1045,4 +1045,3 @@ class ImagePipelineBatchBroken(ImagePipelineCore):
             aggregated_df = pd.DataFrame()
 
         return aggregated_df
-

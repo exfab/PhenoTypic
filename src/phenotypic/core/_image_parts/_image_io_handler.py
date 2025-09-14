@@ -109,11 +109,13 @@ class ImageIOHandler(ImageColorSpace):
         name = str(name)
         if name in handler:
             return handler[name]
+        elif handler.swmr_mode is True:
+            raise ValueError('hdf5 handler in SWMR mode cannot create group')
         else:
             return handler.create_group(name)
 
     @staticmethod
-    def _save_array2hdf5(group, array, name, **kwargs):
+    def _save_array2hdf5(group:h5py.Group, array:np.ndarray, name:str, **kwargs):
         """
         Saves a given numpy array to an HDF5 group. If a dataset with the specified
         name already exists in the group, it checks if the shapes match. If the
@@ -136,6 +138,7 @@ class ImageIOHandler(ImageColorSpace):
         if name in group:
             if group[name].shape == array.shape:
                 group[name][:] = array
+            elif group.swmm
             else:
                 del group[name]
                 group.create_dataset(name, data=array, dtype=array.dtype, **kwargs)

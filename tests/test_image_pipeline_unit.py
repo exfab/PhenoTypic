@@ -53,7 +53,7 @@ def _make_dummy_imageset(tmp_path: Path):
     ]
     return ImageSet(
         name='iset',
-        image_template=Image(),
+        grid_finder=Image(),
         src=images,
         outpath=tmp_path / 'iset.h5',
         overwrite=True,
