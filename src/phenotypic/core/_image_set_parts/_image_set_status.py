@@ -69,7 +69,7 @@ class ImageSetStatus(ImageSetCore):
             if isinstance(image_names, str):
                 image_names = [image_names]
 
-        with self.hdf_.reader() as handle:
+        with self.hdf_.swmr_reader() as handle:
             status = []
             for name in image_names:
                 status_group = self.hdf_.get_data_group(handle=handle, image_name=name)

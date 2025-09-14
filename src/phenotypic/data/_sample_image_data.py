@@ -5,7 +5,6 @@ from typing import List, Literal, Union
 __current_file_dir = Path(os.path.dirname(os.path.abspath(__file__)))
 
 from skimage.io import imread
-import numpy as np
 
 from phenotypic import Image, GridImage
 import math
@@ -119,6 +118,38 @@ def make_synthetic_colony(
         return (img * 255.0 + 0.5).astype(np.uint8)
     else:
         return (img * 65535.0 + 0.5).astype(np.uint16)
+
+
+def load_synthetic_colony(mode: Literal['array', 'Image'] = 'array') -> Union[np.ndarray, Image]:
+    """
+    Loads synthetic colony data from a pre-saved file and returns it in the specified mode.
+
+    This function provides two modes for handling the synthetic colony data: 'array' and 'Image'.
+    Depending on the mode specified, it either returns the array directly or converts it into an
+    Image object. When 'Image' mode is selected, the object mask is also applied to the Image object.
+
+    Args:
+        mode (Literal['array', 'Image']): Specifies the format in which the synthetic colony
+            data should be returned. Use 'array' to return the raw data as an array or 'Image'
+            to return an Image object with the corresponding objmask.
+
+    Returns:
+        Union[np.ndarray, Image]: The synthetic colony data, either as a numpy array or an
+        Image object, depending on the specified mode.
+
+    Raises:
+        ValueError: If the mode is neither 'array' nor 'Image'.
+    """
+    data = np.load(__current_file_dir / 'synthetic_colony.npz')
+    match mode:
+        case 'array':
+            return data['array']
+        case 'Image':
+            image = Image(data['array'])
+            image.objmask = data['objmask']
+            return image
+        case _:
+            raise ValueError('Invalid mode')
 
 
 # Example:

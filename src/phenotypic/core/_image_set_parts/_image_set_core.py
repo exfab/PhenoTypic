@@ -218,13 +218,13 @@ class ImageSetCore:
         Returns:
             List[str]: A list of image names present in the specified HDF5 group.
         """
-        with h5py.File(self._out_path, mode='r') as out_handler:
-            set_group = self.hdf_.get_data_group(out_handler)
+        with self.hdf_.reader() as reader:
+            set_group = self.hdf_.get_data_group(reader)
             names = list(set_group.keys())
         return names
 
     def get_image(self, image_name: str) -> Image:
-        with self.hdf_.reader() as reader:
+        with self.hdf_.swmr_reader() as reader:
             image_group = self.hdf_.get_data_group(reader)
             if image_name in image_group:
                 return self.image_template._load_from_hdf5_group(image_group[image_name])

@@ -42,7 +42,7 @@ class ImageSetMeasurements(ImageSetStatus):
 
         logger.debug(f"🔍 get_measurement: Retrieving measurements for {len(image_names)} images: {image_names[:3]}{'...' if len(image_names) > 3 else ''}")
         
-        with self.hdf_.reader() as handle:
+        with self.hdf_.swmr_reader() as handle:
             measurements = []
 
             # iterate over each image

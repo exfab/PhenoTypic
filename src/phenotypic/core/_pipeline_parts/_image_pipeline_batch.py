@@ -33,6 +33,7 @@ measurement tables (one per image) so that users can continue their
 analyses in-memory once the batch job is finished.
 """
 from __future__ import annotations
+
 from typing import TYPE_CHECKING, Dict
 
 from ...abstract import ImageOperation, MeasureFeatures
@@ -40,25 +41,13 @@ from ...abstract import ImageOperation, MeasureFeatures
 if TYPE_CHECKING: from phenotypic import Image, ImageSet
 
 import multiprocessing as _mp
-from multiprocessing import Queue, Event
-from threading import Thread
-import queue as _queue
-import time
-from typing import List, Tuple, Union, Optional
+from typing import List, Union, Optional
 import logging
-import os
 
 import pandas as pd
-import pickle
-import warnings
-import psutil
-import h5py
 
 from .._image_set import ImageSet
-from phenotypic.util.constants_ import SET_STATUS
 from ._image_pipeline_core import ImagePipelineCore
-
-import threading
 
 # Create module-level logger
 logger = logging.getLogger(__name__)
@@ -89,56 +78,71 @@ class ImagePipelineBatch(ImagePipelineCore):
     # ---------------------------------------------------------------------
     def apply(  # type: ignore[override]
             self,
-            subject: Union[Image, ImageSet],
-            *,
+            image: Union[Image, ImageSet],
             inplace: bool = False,
             reset: bool = True,
     ) -> Union[Image, None]:
         import phenotypic
-        if isinstance(subject, phenotypic.Image):
-            return super().apply(subject, inplace=inplace, reset=reset)
-        if isinstance(subject, ImageSet):
-            self._run_imageset(subject, mode="apply", num_workers=self.num_workers, verbose=self.verbose)
+        if isinstance(image, phenotypic.Image):
+            return super().apply(image, inplace=inplace, reset=reset)
+        if isinstance(image, ImageSet):
+            self._run_imageset(image, mode="apply", num_workers=self.num_workers, verbose=self.verbose)
             return None
         raise TypeError("image must be Image or ImageSet")
 
     def measure(
             self,
             image: Union[Image, ImageSet],
+            include_metadata: bool = True,
             verbose: bool = False,
     ) -> pd.DataFrame:
         import phenotypic
         if isinstance(image, phenotypic.Image):
-            return super().measure(image)
+            return super().measure(image, include_metadata=include_metadata)
         if isinstance(image, ImageSet):
             return self._run_imageset(image, mode="measure",
                                       num_workers=self.num_workers,
-                                      verbose=verbose if verbose else self.verbose)
+                                      verbose=verbose if verbose else self.verbose,
+                                      include_metadata=include_metadata)
         raise TypeError("image must be Image or ImageSet")
 
-    def apply_and_measure(self, image: Image, inplace: bool = False, reset: bool = True, include_metadata: bool = True) -> pd.DataFrame:
+    def apply_and_measure(self, image: Image,
+                          inplace: bool = False,
+                          reset: bool = True,
+                          include_metadata: bool = True) -> pd.DataFrame:
         if isinstance(image, Image):
-            super().apply_and_measure(image=image, inplace=inplace, reset=reset, include_metadata=include_metadata)
+            return super().apply_and_measure(
+                image=image,
+                inplace=inplace,
+                reset=reset,
+                include_metadata=include_metadata,
+            )
         elif isinstance(image, ImageSet):
-            self._run_imageset(image, mode="apply_and_measure", num_workers=self.num_workers, verbose=self.verbose)
+            return self._run_imageset(image, mode="apply_and_measure", num_workers=self.num_workers, verbose=self.verbose)
 
     # ----------------
     # Implementation
     # ----------------
 
     # TODO: Implement Pipeline apply on ImageSet metric
-    def _run_imageset(self, image_set: ImageSet,
+    def _run_imageset(self,
+                      image_set: ImageSet,
                       *,
                       mode: str,
                       num_workers: Optional[int] = None,
-                      verbose: bool = False) -> Union[pd.DataFrame, None]:
+                      verbose: bool = False,
+                      include_metadata: bool = True
+                      ) -> Union[pd.DataFrame, None]:
         assert self.num_workers >= 3, 'Not enough cores to run image set in parallel'
 
-        if mode == 'measure':   # Preallocate space
-            pass
+        if mode == 'measure':  # Preallocate space
+            self._preallocate_measurement_datasets(image_set)
+
+
 
     # Sequential HDF5 access pattern - no concurrent access needed
     # Producer completes all file access before writer starts
+    # TODO: Finish implementing
     def _preallocate_measurement_datasets(self, imageset: ImageSet) -> None:
         """Pre-allocate measurement datasets for SWMR compatibility.
 
@@ -152,17 +156,28 @@ class ImagePipelineBatch(ImagePipelineCore):
                     Note:
                         - The image data is assumed to already be present
                     """
-        pass
+        sample_meas = self._get_measurements_dtypes_for_swmr()
+        image_names = imageset.get_image_names()
+        with imageset.hdf_.safe_writer() as writer:
+            for image_name in image_names:
+                meas_group = imageset.hdf_.get_image_measurement_subgroup(handle=writer, image_name=image_name)
+                imageset.hdf_.preallocate_frame_layout(
+                    group=meas_group,
+                    dataframe=sample_meas,
+                    chunks=25,
+                    compression='gzip',
+                    preallocate=100,
+                    string_fixed_length=100,
+                    require_swmr=False
+                )
 
-    def _get_measurements_dtypes_for_swmr(self):
+
+    def _get_measurements_dtypes_for_swmr(self) -> pd.DataFrame:
         # needed for dtype detection
-        from phenotypic import GridImage
-        from phenotypic.data import make_synthetic_colony
-        from phenotypic.detection import OtsuDetector
-        test_image = GridImage(make_synthetic_colony(h=50, w=50, seed=0), name='dtype_test_plat', nrows=8, ncols=12)
-        OtsuDetector().apply(image=test_image, inplace=True)
+        from phenotypic.data import load_synthetic_colony
+        test_image = load_synthetic_colony(mode='Image')
         try:
-            meas = super().apply(test_image, inplace=False, reset=True)
+            meas = super().measure(test_image, include_metadata=False)
         except KeyboardInterrupt:
             raise KeyboardInterrupt
         except Exception as e:

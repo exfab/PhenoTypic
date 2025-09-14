@@ -1,6 +1,7 @@
 from enum import Enum
 from textwrap import dedent
 
+
 class MeasurementInfo(str, Enum):
     # Subclasses must implement this
     @classmethod
@@ -13,7 +14,7 @@ class MeasurementInfo(str, Enum):
         return type(self).category()
 
     def __new__(cls, label: str, desc: str | None = None):
-        cat = cls.category()                 # use classmethod here
+        cat = cls.category()  # use classmethod here
         full = f"{cat}_{label}"
         obj = str.__new__(cls, full)
         obj._value_ = full
@@ -32,10 +33,10 @@ class MeasurementInfo(str, Enum):
 
     @classmethod
     def rst_table(
-        cls,
-        *,
-        title: str | None = None,
-        header: tuple[str, str] = ("Name", "Description"),
+            cls,
+            *,
+            title: str | None = None,
+            header: tuple[str, str] = ("Name", "Description"),
     ) -> str:
         title = title or cls.__name__
         left, right = header

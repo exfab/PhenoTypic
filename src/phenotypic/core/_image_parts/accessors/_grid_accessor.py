@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING: from phenotypic import GridImage
@@ -27,28 +28,29 @@ class GridAccessor(ImageAccessorBase):
 
     def __init__(self, root_image: GridImage):
         super().__init__(root_image)
+        self._root_image: GridImage = root_image
 
     @property
     def nrows(self) -> int:
-        return self._root_image._grid_setter.nrows
+        return self._root_image.grid_finder.nrows
 
     @nrows.setter
     def nrows(self, nrows: int):
         if nrows < 1: raise ValueError('Number of rows must be greater than 0')
         if type(nrows) != int: raise TypeError('Number of rows must be an integer')
 
-        self._root_image._grid_setter.nrows = nrows
+        self._root_image.grid_finder.nrows = nrows
 
     @property
     def ncols(self) -> int:
-        return self._root_image._grid_setter.ncols
+        return self._root_image.grid_finder.ncols
 
     @ncols.setter
     def ncols(self, ncols: int):
         if ncols < 1: raise ValueError('Number of columns must be greater than 0')
         if type(ncols) != int: raise TypeError('Number of columns must be an integer')
 
-        self._root_image._grid_setter.ncols = ncols
+        self._root_image.grid_finder.ncols = ncols
 
     def info(self, include_metadata=True) -> pd.DataFrame:
         """
@@ -58,7 +60,7 @@ class GridAccessor(ImageAccessorBase):
             pd.DataFrame: A DataFrame with measurement data derived from the
             parent's image grid settings.
         """
-        info = self._root_image._grid_setter.measure(self._root_image)
+        info = self._root_image.grid_finder.measure(self._root_image)
         if include_metadata:
             return self._root_image.metadata.insert_metadata(info)
         else:
@@ -116,11 +118,11 @@ class GridAccessor(ImageAccessorBase):
             num_vectors = self.nrows
             x_group = str(GRID.ROW_NUM)
             x_val = str(BBOX.CENTER_CC)
-            y_val =str(BBOX.CENTER_RR)
+            y_val = str(BBOX.CENTER_RR)
         elif axis == 1:
             num_vectors = self.ncols
             x_group = str(GRID.COL_NUM)
-            x_val =str(BBOX.CENTER_RR)
+            x_val = str(BBOX.CENTER_RR)
             y_val = str(BBOX.CENTER_CC)
         else:
             raise ValueError('Axis should be 0 or 1.')
@@ -167,7 +169,7 @@ class GridAccessor(ImageAccessorBase):
         # ).to_numpy()
         # edges = np.unique(np.concatenate([left_edges, right_edges]))
         # return edges.astype(int)
-        return self._root_image._grid_setter.get_col_edges(self._root_image)
+        return self._root_image.grid_finder.get_col_edges(self._root_image)
 
     def get_col_map(self) -> np.ndarray:
         """Returns a version of the object map with each object numbered according to their grid column number"""
@@ -220,7 +222,7 @@ class GridAccessor(ImageAccessorBase):
         # ).to_numpy()
         # edges = np.unique(np.concatenate([left_edges, right_edges]))
         # return edges.astype(int)
-        return self._root_image._grid_setter.get_row_edges(self._root_image)
+        return self._root_image.grid_finder.get_row_edges(self._root_image)
 
     def get_row_map(self) -> np.ndarray:
         """Returns a version of the object map with each object numbered according to their grid row number"""

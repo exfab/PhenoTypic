@@ -1,20 +1,18 @@
-from typing import Union, Tuple, Type, Optional, Literal
-
-import numpy as np
-import matplotlib.pyplot as plt
-import pandas as pd
-
-from matplotlib.patches import Rectangle
 from itertools import cycle
+from typing import Union, Tuple, Type, Optional
 
-from .._image import Image
-from phenotypic.measure import MeasureBounds
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+from matplotlib.patches import Rectangle
+
 from phenotypic.abstract import GridFinder
+from phenotypic.core._image_parts.accessors import GridAccessor
+from phenotypic.grid import OptimalCenterGridFinder
+from phenotypic.measure import MeasureBounds
 from phenotypic.util.constants_ import IMAGE_TYPES, BBOX, METADATA
 from phenotypic.util.exceptions_ import IllegalAssignmentError
-from phenotypic.grid import OptimalCenterGridFinder
-
-from phenotypic.core._image_parts.accessors import GridAccessor
+from .._image import Image
 
 
 class ImageGridHandler(Image):

@@ -127,6 +127,7 @@ class GRID(MeasurementInfo):
 
 
 # Feature extraction constants
+# TODO: Fix this constant access pattern
 class GRID_LINREG_STATS_EXTRACTOR:
     """Constants for grid linear regression statistics extractor."""
     ROW_LINREG_M, ROW_LINREG_B = 'RowLinReg_M', 'RowLinReg_B'
@@ -137,6 +138,20 @@ class GRID_LINREG_STATS_EXTRACTOR:
 
 # Metadata constants
 class METADATA(MeasurementInfo):
+    @classmethod
+    def category(cls) -> str:
+        return 'Metadata'
+
+    # Metadata values are not prepended with the category
+    def __new__(cls, label: str, desc: str | None = None):
+        full = f"{label}"
+        obj = str.__new__(cls, full)
+        obj._value_ = full
+        obj.label = label
+        obj.desc = desc or label
+        obj.pair = (label, obj.desc)
+        return obj
+
     """Constants for metadata labels."""
     UUID = 'UUID', 'The unique identifier of the image.'
     IMAGE_NAME = 'ImageName', 'The name of the image.'

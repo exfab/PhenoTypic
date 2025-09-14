@@ -353,7 +353,7 @@ class ImagePipelineBatchBroken(ImagePipelineCore):
         # Single HDF5 access session to load both metadata and images
         try:
             logger.info("Producer: Opening HDF5 file for consolidated access")
-            with imageset.hdf_.reader() as reader:
+            with imageset.hdf_.swmr_reader() as reader:
                 image_data_group = imageset.hdf_.get_data_group(handle=reader)
                 logger.info(f"Producer: Accessed image data group with {len(image_data_group)} entries")
 
@@ -804,7 +804,7 @@ class ImagePipelineBatchBroken(ImagePipelineCore):
         from phenotypic.util.constants_ import IO
         measurements_list = []
 
-        with imageset.hdf_.reader() as reader:
+        with imageset.hdf_.swmr_reader() as reader:
             image_group = reader[str(imageset.hdf_.set_data_posix)]
 
             for image_name in image_group.keys():
@@ -1024,7 +1024,7 @@ class ImagePipelineBatchBroken(ImagePipelineCore):
         
         measurements_list = []
 
-        with imageset.hdf_.reader() as reader:
+        with imageset.hdf_.swmr_reader() as reader:
             image_group = reader[str(imageset.hdf_.set_data_posix)]
 
             for image_name in image_group.keys():
