@@ -13,5 +13,27 @@ class ImagePipeline(ImagePipelineBatch):
         memblock_factor (float): Adjustment factor for memory allocation during operations.
         timeout (Optional[int]): Time limit for joining threads during multi-threaded execution.
 
+    ** Example **
+
+    .. code-block:: python
+       >>> import phenotypic as pt
+       >>> from phenotypic.detection import OtsuDetector()
+       >>> from phenotypic.measure import MeasureShape, MeasureIntensity()
+       >>>
+       >>> pipe = pt.ImagePipeline(ops=[OtsuDetector()], meas=[MeasureShape(), MeasureIntensity()])
+       >>>
+       >>> # Single image
+       >>> img = pt.Image(pt.data.load_colony(), name="Colony")
+       >>> meas = pipe.apply_and_measure(img)
+       >>> meas.head()
+       >>>
+       >>> image_set = pt.ImageSet(
+       >>>      name='example', grid_finder=pt.grid.OptimalCenterGridFinder(),
+       >>>      src=[pt.data.load_plate_12hr(), pt.data.load_plate_72hr()]
+       >>> )
+       >>> pipe_meas = pipe.apply_and_measure(image_set)
+       >>> meas.head()
+
+
     """
     pass

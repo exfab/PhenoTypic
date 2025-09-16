@@ -1,7 +1,8 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, Literal
 
-import pandas as pd
+import tempfile
+import weakref
+from typing import TYPE_CHECKING, Literal
 
 if TYPE_CHECKING: from phenotypic import Image
 
@@ -13,9 +14,7 @@ from typing import List
 import h5py
 from os import PathLike
 
-from ._image_set_accessors._image_set_measurements_accessor import SetMeasurementAccessor
 from phenotypic.abstract import GridFinder
-from phenotypic.grid import OptimalCenterGridFinder
 from phenotypic.util.constants_ import IO
 from phenotypic.util import HDF
 
@@ -49,6 +48,7 @@ class ImageSetCore:
                  grid_finder: GridFinder | None = None,
                  src: List[Image] | PathLike | str | None = None,
                  outpath: PathLike | str | None = None,
+                 default_mode: Literal['temp', 'cwd'] = 'temp',
                  overwrite: bool = False, ):
         """
         Initializes an image set for bulk processing of images.
@@ -74,6 +74,7 @@ class ImageSetCore:
             ValueError: If no images or image sections are found in the provided `src` path.
             ValueError: If `src` is not a list of `Image` objects or a valid path.
         """
+        self.default_mode = default_mode
         import phenotypic
         self.name = name
 
@@ -92,8 +93,26 @@ class ImageSetCore:
                 # src is a path-like object
                 src_path = src
 
-        src_path, outpath = Path(src_path) if src_path else None, Path(outpath) if outpath else Path.cwd() / f'{self.name}.hdf5'
+        src_path = Path(src_path) if src_path else None
+        # Track ownership of outpath for cleanup
+        owns_outpath = False
+        if outpath:
+            outpath = Path(outpath)
+        else:  # if outpath is None
+            if self.default_mode == 'cwd':
+                outpath = Path.cwd() / f'{self.name}.hdf5'
+            elif self.default_mode == 'temp':
+                # Create a temporary file path we own and can clean up later.
+                fd, tmp = tempfile.mkstemp(suffix='.h5', prefix=f'{self.name}_')
+                os.close(fd)  # Close OS-level fd; HDF will reopen as needed
+                outpath = Path(tmp)
+                owns_outpath = True
+
         if outpath.is_dir(): outpath = outpath / f'{self.name}.hdf5'
+
+        # Track whether this instance owns the outpath and should delete it on GC
+        self._owns_outpath = owns_outpath
+        self._out_finalizer = weakref.finalize(self, self._cleanup_outpath, outpath) if self._owns_outpath else None
 
         self.name, self._src_path, self._out_path = str(name), src_path, outpath
         self.hdf_ = HDF(filepath=outpath, name=self.name, mode='set')
@@ -170,6 +189,19 @@ class ImageSetCore:
             pass
         else:
             raise ValueError('image_list must be a list of Image objects or src_path must be a valid hdf5 file.')
+
+    def close(self) -> None:
+        """Close resources and delete the temporary outpath if this instance owns it."""
+        fin = getattr(self, "_out_finalizer", None)
+        if fin and fin.alive:
+            fin()
+
+    @staticmethod
+    def _cleanup_outpath(path: Path) -> None:
+        try:
+            path.unlink()
+        except FileNotFoundError:
+            pass
 
     def _add_image2group(self, group, image: Image, overwrite: bool):
         """Helper function to add an image to a group that allows for reusing file handlers"""

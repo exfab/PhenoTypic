@@ -3,6 +3,8 @@ from __future__ import annotations
 from os import PathLike
 from typing import TYPE_CHECKING, List
 
+from phenotypic.abstract import GridFinder
+
 if TYPE_CHECKING: from phenotypic import Image
 
 import pandas as pd
@@ -18,10 +20,29 @@ class ImageSetMeasurements(ImageSetStatus):
 
     def __init__(self,
                  name: str,
-                 grid_finder: Image | None = None,
+                 grid_finder: GridFinder | None = None,
                  src: List[Image] | PathLike | None = None,
                  outpath: PathLike | None = None,
                  overwrite: bool = False, ):
+        """
+        Initializes the instance with the specified parameters.
+
+        This constructor initializes an instance with the given name, grid finder,
+        source, output path, and overwrite settings. The initialization involves
+        calling the superclass constructor with the provided arguments and setting
+        up the measurement accessor using the SetMeasurementAccessor class.
+
+        Args:
+            name (str): A unique name identifying the instance.
+            grid_finder (GridFinder | None): An instance of GridFinder to help with
+                grid identification. Defaults to None.
+            src (List[Image] | PathLike | None): A list of image objects, a path-like
+                object, or None, representing the source of the data. Defaults to None.
+            outpath (PathLike | None): A path-like object specifying the output path
+                for processed or generated data. Defaults to None.
+            overwrite (bool): A flag indicating whether to overwrite existing files or
+                data at the output path. Defaults to False.
+        """
         super().__init__(name=name, grid_finder=grid_finder,
                          src=src, outpath=outpath, overwrite=overwrite)
         self._measurement_accessor = SetMeasurementAccessor(self)
