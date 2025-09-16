@@ -92,7 +92,10 @@ class MetadataAccessor:
         for key, value in self._public_protected_metadata.items():
             if key == METADATA.IMAGE_NAME:
                 value = self._parent_image.name # offload handling to image handler class
-            header = f'Metadata_{key}'
+            if not key.startswith(f'Metadata_'):
+                header = f'Metadata_{key}'
+            else:
+                header=key
             if header not in working_df.columns:
                 working_df.insert(loc=0, column=header, value=value, allow_duplicates=allow_duplicates)
         return working_df

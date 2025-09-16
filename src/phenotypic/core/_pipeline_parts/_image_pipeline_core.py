@@ -276,7 +276,7 @@ class ImagePipelineCore(ImageOperation):
             if self._verbose:
                 print(f"  Image info: {self._measurement_times['image_info']:.4f} seconds")
         else:
-            measurements = [image.grid.info() if hasattr(image, 'grid') else image.objects.info()]
+            measurements = [image.grid.info(include_metadata=False) if hasattr(image, 'grid') else image.objects.info(include_metadata=False)]
 
         # Create progress bar if verbose and benchmark are enabled
         if self._benchmark and self._verbose:
@@ -320,7 +320,7 @@ class ImagePipelineCore(ImageOperation):
             except Exception as e:
                 if self._benchmark and self._verbose and has_tqdm:
                     pbar.close()
-                raise Exception(f'Failed to apply measurement {key} to Image: {e}') from e
+                raise e
 
         # Close the progress bar if it exists
         if self._benchmark and self._verbose and has_tqdm:

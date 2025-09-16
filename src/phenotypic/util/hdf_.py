@@ -1,4 +1,5 @@
 import json
+import logging
 import posixpath
 from datetime import datetime
 from pathlib import Path
@@ -10,7 +11,7 @@ import pandas as pd
 from packaging.version import Version
 
 import phenotypic
-
+logger = logging.getLogger(__name__)
 
 class HDF:
     """
@@ -53,10 +54,18 @@ class HDF:
     IMAGE_MEASUREMENT_SUBGROUP_KEY = 'measurements'
     IMAGE_STATUS_SUBGROUP_KEY = "status"
 
+    PROTECTED_METADATA_SUBGROUP_KEY = "protected_metadata"
+    PUBLIC_METADATA_SUBGROUP_KEY = "public_metadata"
+
     EXT = {'.h5', '.hdf5', '.hdf', '.he5'}
 
     def __init__(self, filepath, name: str, mode: Literal['single', 'set']):
         self.filepath = Path(filepath)
+        if self.filepath.suffix not in self.EXT: raise ValueError('filepath is not an hdf5 file')
+        if not self.filepath.exists():
+            with h5py.File(name=self.filepath, mode='a', libver='latest') as hdf:
+                pass
+
         self.name = name
         self.mode = mode
         if mode == 'single':
@@ -342,8 +351,14 @@ class HDF:
     def get_image_measurement_subgroup(self, handle, image_name):
         return self.get_group(handle, posixpath.join(self.set_data_posix, image_name, self.IMAGE_MEASUREMENT_SUBGROUP_KEY))
 
-    def get_image_status_subgroup(self, handle, image_name):
+    def get_status_subgroup(self, handle, image_name):
         return self.get_group(handle, posixpath.join(self.set_data_posix, image_name, self.IMAGE_STATUS_SUBGROUP_KEY))
+
+    def get_protected_metadata_subgroup(self, handle:h5py.File, image_name:str) -> h5py.Group:
+        return self.get_group(handle=handle, posix=posixpath.join(self.set_data_posix, image_name, self.PROTECTED_METADATA_SUBGROUP_KEY))
+
+    def get_public_metadata_subgroup(self, handle:h5py.File, image_name:str) -> h5py.Group:
+        return self.get_group(handle=handle, posix=posixpath.join(self.set_data_posix, image_name, self.PUBLIC_METADATA_SUBGROUP_KEY))
 
     @staticmethod
     def save_array2hdf5(group, array, name, **kwargs):
@@ -1151,7 +1166,6 @@ class HDF:
             compression=compression,
             preallocate=max(preallocate, len(series)),
             string_fixed_length=string_fixed_length,
-            require_swmr=False,
         )
 
         # Write the data
@@ -1700,3 +1714,21 @@ class HDF:
         dataframe = pd.DataFrame(columns_data, index=index)
         result: pd.DataFrame = dataframe[column_order]  # Ensure column order
         return result
+
+    @staticmethod
+    def close_handle(handle: h5py.File|h5py.Group) -> None:
+        if handle is not None:
+            handle = handle.file if isinstance(handle, h5py.Group) else handle
+            try:
+                if hasattr(handle, 'id') and handle.id.valid:
+                    logger.warning('HDF5 file handle may not have been properly closed')
+
+                    # Force close
+                    handle.close()
+                else:
+                    logger.debug('HDF5 file handle properly closed')
+            except (ValueError, AttributeError):
+                # Handle is closed/invalid - this is expected
+                logger.debug(f'hdf5 file handle {handle} was properly closed or invalid')
+
+

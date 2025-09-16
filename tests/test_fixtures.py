@@ -1,6 +1,8 @@
 import importlib
 import inspect
 import pkgutil
+import os
+import tempfile
 
 import numpy as np
 import pytest
@@ -80,6 +82,19 @@ def sample_image_array(request):
     """Fixture that returns (image_array, input_imformat, true_imformat)"""
     arr = param2array(request.param)
     return arr
+
+@pytest.fixture
+def temp_hdf5_file():
+    """Create a temporary HDF5 file for testing."""
+    # Create temporary file with .h5 extension
+    with tempfile.NamedTemporaryFile(suffix=".h5", delete=False) as f:
+        temp_path = f.name
+
+    yield temp_path
+
+    # Cleanup
+    if os.path.exists(temp_path):
+        os.unlink(temp_path)
 
 
 @pytest.fixture(

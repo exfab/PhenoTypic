@@ -96,13 +96,13 @@ class PIPE_STATUS(MeasurementInfo):
 
     PROCESSED = 'Processed', "Whether the image has been processed successfully."
     MEASURED = 'Measured', "Whether the image has been measured successfully."
-    ERROR = 'Error', "Whether the image has encountered an error during processing."
-    INVALID_ANALYSIS = (
-        'AnalysisInvalid',
-        'Whether the image measurements are considered invalid. '
-        'This can be set during measurement extraction or post-processing.'
-    )
-    INVALID_SEGMENTATION = 'SegmentationInvalid', "Whether the image segmentation is considered valid."
+    # ERROR = 'Error', "Whether the image has encountered an error during processing."
+    # INVALID_ANALYSIS = (
+    #     'AnalysisInvalid',
+    #     'Whether the image measurements are considered invalid. '
+    #     'This can be set during measurement extraction or post-processing.'
+    # )
+    # INVALID_SEGMENTATION = 'SegmentationInvalid', "Whether the image segmentation is considered valid."
 
 
 
@@ -146,7 +146,7 @@ class METADATA(MeasurementInfo):
     def __new__(cls, label: str, desc: str | None = None):
         full = f"{label}"
         obj = str.__new__(cls, full)
-        obj._value_ = full
+        obj._value_ = label
         obj.label = label
         obj.desc = desc or label
         obj.pair = (label, obj.desc)

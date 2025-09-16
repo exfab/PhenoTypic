@@ -146,7 +146,7 @@ def load_synthetic_colony(mode: Literal['array', 'Image'] = 'array') -> Union[np
             return data['array']
         case 'Image':
             image = Image(data['array'])
-            image.objmask = data['objmask']
+            image.objmask[:] = data['objmask']
             return image
         case _:
             raise ValueError('Invalid mode')

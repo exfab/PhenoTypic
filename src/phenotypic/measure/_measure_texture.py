@@ -73,7 +73,7 @@ class TEXTURE(MeasurementInfo):
         """Return full texture labels with angles in order 0, 45, 90, 135 for each feature."""
         angles = ['0', '45', '90', '135']
         labels: list[str] = []
-        for member in cls.iter_labels():
+        for member in cls.get_labels():
             base = f"{str(member)}"
             for angle in angles:
                 labels.append(f"{base}{matrix_name}-deg({angle})-scale({scale}))")

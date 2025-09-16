@@ -56,7 +56,7 @@ class ImageSetStatus(ImageSetCore):
 
         with self.hdf_.writer() as handle:
             for name in image_names:
-                status_group = self.hdf_.get_image_status_subgroup(handle=handle, image_name=name)
+                status_group = self.hdf_.get_status_subgroup(handle=handle, image_name=name)
                 for stat in PIPE_STATUS:
                     # Statuses are worded in a way that they should be initially false
                     status_group.attrs[stat.label] = False
@@ -86,6 +86,6 @@ class ImageSetStatus(ImageSetCore):
         super()._add_image2group(group=group, image=image, overwrite=overwrite)
 
         # should work since it uses absolute pathing underneath
-        stat_group = self.hdf_.get_image_status_subgroup(handle=group, image_name=image.name)
+        stat_group = self.hdf_.get_status_subgroup(handle=group, image_name=image.name)
         for stat in PIPE_STATUS:
             stat_group.attrs[stat.label] = False

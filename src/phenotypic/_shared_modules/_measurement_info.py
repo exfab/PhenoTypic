@@ -19,9 +19,12 @@ class MeasurementInfo(str, Enum):
         obj = str.__new__(cls, full)
         obj._value_ = full
         obj.label = label
-        obj.desc = desc or label
+        obj.desc = desc if desc else ""
         obj.pair = (label, obj.desc)
         return obj
+
+    def __str__(self):
+        return self._value_
 
     @classmethod
     def get_labels(cls):

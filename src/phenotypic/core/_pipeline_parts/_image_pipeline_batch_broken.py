@@ -603,7 +603,7 @@ class ImagePipelineBatchBroken(ImagePipelineCore):
 
                     logger.info(f"Writer: Processing results for image '{name}'")
                     try:
-                        status_group = imageset.hdf_.get_image_status_subgroup(handle=writer, image_name=name)
+                        status_group = imageset.hdf_.get_status_subgroup(handle=writer, image_name=name)
                         logger.debug(f"Writer: Got status group for '{name}'")
                     except ValueError as handle_error:
                         logger.error(f"Writer: HDF5 handle error while processing '{name}': {handle_error}")
