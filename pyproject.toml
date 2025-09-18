@@ -30,7 +30,7 @@ classifiers = [
 ]
 
 dependencies = [
-    "pandas[excel,plot,performance,output-formatting,computation,hdf5,compression,clipboard]",
+    "pandas[excel,plot,performance,output-formatting,computation,hdf5,compression]",
     "numpy",
     "seaborn",
     "scikit-image",
