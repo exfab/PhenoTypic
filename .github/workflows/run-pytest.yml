@@ -39,7 +39,16 @@ jobs:
         run: |
           uv lock
           uv sync --group dev 
-          
 
-      - name: Run tests
-        run: source .venv/bin/activate && pytest -n auto
+      - name: Activate venv and run tests (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: |
+          source .venv/bin/activate
+          pytest -n auto
+
+      - name: Activate venv and run tests (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          .venv\Scripts\activate
+          pytest -n auto
+        shell: pwsh
