@@ -12,7 +12,7 @@ A modular image processing framework developed at the NSF Ex-FAB BioFoundry.
 *Documentation* @ https://exfab.github.io/PhenoTypic/
 
 ## Overview
-PhenoTypic provides a modular toolkit designed to simplify and accelerate the development of bio-image analysis pipelines. 
+PhenoTypic provides a modular toolkit designed to simplify and accelerate the development of reusable bio-image analysis pipelines. 
 Its structured architecture allows researchers and developers to seamlessly integrate custom computer vision modules, avoiding 
 the need to build entirely new packages from scratch. Additionally, PhenoTypic supports incorporating components from 
 other existing image analysis tools into a cohesive, unified ecosystem.
@@ -40,8 +40,11 @@ cd PhenoTypic
 pip install -e ".[dev]"
 ```  
 
-## Acknowledgements
+# Sponsors
+## ExFAB NSF BioFoundry
+## National Science Foundation
 
+## References
 ### CellProfiler
 
 **Reference:**

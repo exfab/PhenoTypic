@@ -69,7 +69,7 @@ dev = [
     "sphinxawesome-theme",
     "nbsphinx",
     "pydata-sphinx-theme",
-    "myst-nb;sys_platform!='win32'",
+    "myst-nb;sys_platform!='win32' and python_version=='3.10'",
     "sphinx-gallery",
     "sphinx-autosummary-accessors",
     "sphinx-design",
