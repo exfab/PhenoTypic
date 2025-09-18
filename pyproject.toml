@@ -45,8 +45,7 @@ dependencies = [
     "plotly-express>=0.4.1",
     "psutil>=7.0.0",
     "colour-science>=0.4.6",
-    "jaxtyping>=0.3.2",
-    "rawpy>=0.25.1",
+    "rawpy>=0.25.1; sys_platform!='win32'",
     "threadpoolctl>=3.6.0",
     "pandas2hdf>=1.0.0",
 ]
@@ -56,31 +55,26 @@ Repository = "https://github.com/Wheeldon-Lab/PhenoTypic"
 
 [dependency-groups]
 dev = [
-    "ipykernel>=6.29.5",
     "memory-profiler>=0.61.0",
-    "pympler>=1.1",
+    "pympler; sys_platform!='win32'",
     "pytest>=8.4.0",
     "pytest-cov",
     "mypy",
-    "ipykernel",
-    "jupyter",
-    "pympler",
-    "jupyter",
-    "ipykernel",
+    "jupyter;sys_platform!='win32'",
+    "ipykernel;sys_platform!='win32'",
     "sphinx",
     "sphinxcontrib-napoleon",
     "sphinx-autodoc-typehints",
     "sphinx-autobuild",
     "sphinxawesome-theme",
     "nbsphinx",
-    "furo",
     "pydata-sphinx-theme",
+    "myst-nb;sys_platform!='win32'",
     "sphinx-gallery",
-    "myst-nb",
     "sphinx-autosummary-accessors",
     "sphinx-design",
     "pytest-xdist>=3.8.0",
-    "notebook>=7.4.3",
+    "notebook;sys_platform!='win32'",
 ]
 
 [tool.pytest.ini_options]
@@ -98,7 +92,7 @@ version = { attr = "phenotypic.__version__" }
 
 [tool.uv]
 required-environments = [
-  "sys_platform == 'darwin' and platform_machine == 'arm64'",
-  "sys_platform == 'linux' and platform_machine == 'x86_64'",
-  "sys_platform == 'win32' and platform_machine == 'x86_64'",
+    "sys_platform == 'darwin' and platform_machine == 'arm64'",
+    "sys_platform == 'linux' and platform_machine == 'x86_64'",
+    "sys_platform == 'win32' and platform_machine == 'x86_64'",
 ]
