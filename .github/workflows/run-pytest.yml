@@ -3,10 +3,11 @@ name: run-pytest
 on:
   push:
     branches:
-      - main
+      - dev
   pull_request:
     branches:
       - main
+      - dev
   workflow_dispatch:
 
 permissions:
@@ -14,23 +15,40 @@ permissions:
 
 jobs:
   tests:
-    runs-on: ubuntu-latest
-    environment: run-pytest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-14, windows-latest]
+        python-version: [ "3.10", "3.11", "3.12" ]
+
+    runs-on: ${{matrix.os}}
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
         with:
-          python-version: '3.10'
-          cache: 'pip'
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "latest"
 
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip setuptools wheel pytest pytest-xdist
-          pip install --config-settings="group=dev" .
+          uv lock
+          uv sync --group dev 
 
-      - name: Run tests
-        run: pytest -n auto
+      - name: Activate venv and run tests (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: |
+          source .venv/bin/activate
+          pytest -n auto
+
+      - name: Activate venv and run tests (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          .venv\Scripts\activate
+          pytest -n auto
+        shell: pwsh

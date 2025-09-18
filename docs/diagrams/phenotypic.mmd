@@ -8,7 +8,7 @@ classDiagram
         #- _plot_obj_labels(ax, color, size, facecolor, object_label, **kwargs)
     }
 
-    class ImageArrDataAccessor {
+    class MultiChannelAccessor {
         note "An object for accessing the matrix elements of the image"
         +- __init__(parent_image, target_array, dtype)
         #- _parent_image
@@ -107,7 +107,7 @@ classDiagram
         #- _get_section_labels(idx)
     }
 
-    class HsbAccessor {
+    class HsvAccessor {
         note "An accessor for HSV color operations"
         +- __getitem__(key)
         +- __setitem__(key, value)
@@ -181,13 +181,13 @@ classDiagram
         note "The main image class"
     }
 
-    ImageAccessorBase <|-- ImageArrDataAccessor
+    ImageAccessorBase <|-- MultiChannelAccessor
     ImageAccessorBase <|-- GridAccessor
-    ImageAccessorBase <|-- HsbAccessor
+    ImageAccessorBase <|-- HsvAccessor
     ImageAccessorBase <|-- ObjectsAccessor
     
-    ImageArrDataAccessor <|-- ImageArray
-    ImageArrDataAccessor <|-- ImageMatrix
-    ImageArrDataAccessor <|-- ImageEnhancedMatrix
-    ImageArrDataAccessor <|-- ObjectMap
-    ImageArrDataAccessor <|-- ObjectMask
+    MultiChannelAccessor <|-- ImageArray
+    MultiChannelAccessor <|-- ImageMatrix
+    MultiChannelAccessor <|-- ImageEnhancedMatrix
+    MultiChannelAccessor <|-- ObjectMap
+    MultiChannelAccessor <|-- ObjectMask

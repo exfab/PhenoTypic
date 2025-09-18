@@ -8,11 +8,10 @@ import pandas as pd
 from skimage.measure import regionprops_table, regionprops
 from typing import List
 
-from phenotypic.util.constants_ import OBJECT, METADATA_LABELS, IMAGE_TYPES, BBOX
-from phenotypic.core._image_parts.accessor_abstracts import ImageAccessorBase
+from phenotypic.util.constants_ import OBJECT, METADATA, IMAGE_TYPES, BBOX
 
 
-class ObjectsAccessor(ImageAccessorBase):
+class ObjectsAccessor:
     """An accessor for an image objects and provides various utilities for interacting with labeled objects in an image.
 
     This class provides methods to retrieve information about labeled objects, interact with object properties,
@@ -24,6 +23,8 @@ class ObjectsAccessor(ImageAccessorBase):
         - Can only be called if an :class:`PhenoTypic.abstract.ObjectDetector` has been applied to the :class:`PhenoTypic.Image` object.
 
     """
+    def __init__(self, root_image: Image):
+        self._root_image = root_image
 
     def __len__(self):
         return self._root_image.num_objects
@@ -37,7 +38,7 @@ class ObjectsAccessor(ImageAccessorBase):
         current_object = self.props[index]
         label = current_object.label
         object_image = self._root_image[current_object.slice]
-        object_image.metadata[METADATA_LABELS.IMAGE_TYPE] = IMAGE_TYPES.OBJECT.value
+        object_image.metadata[METADATA.IMAGE_TYPE] = IMAGE_TYPES.OBJECT.value
         object_image.objmap[object_image.objmap[:] != label] = 0
         return object_image
 
@@ -132,3 +133,5 @@ class ObjectsAccessor(ImageAccessorBase):
     def relabel(self):
         """Relabels all the objects based on their connectivity"""
         self._root_image.objmap.relabel()
+
+

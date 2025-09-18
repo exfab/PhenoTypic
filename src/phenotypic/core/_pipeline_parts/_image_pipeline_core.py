@@ -28,7 +28,7 @@ class ImagePipelineCore(ImageOperation):
         _ops (Dict[str, ImageOperation]): A dictionary where keys are string
             identifiers and values are `ImageOperation` objects representing operations to apply
             to an Image.
-        _measurements (Dict[str, MeasureFeatures]): A dictionary where keys are string
+        _meas (Dict[str, MeasureFeatures]): A dictionary where keys are string
             identifiers and values are `FeatureExtractor` objects for extracting features
             from images.
     """
@@ -60,7 +60,7 @@ class ImagePipelineCore(ImageOperation):
         self._ops: Dict[str, ImageOperation] = {}
         if ops is not None: self.set_ops(ops)
 
-        self._measurements: Dict[str, MeasureFeatures] = {}
+        self._meas: Dict[str, MeasureFeatures] = {}
         if meas is not None: self.set_measurements(meas)
 
         # Store benchmark and verbose flags
@@ -118,9 +118,9 @@ class ImagePipelineCore(ImageOperation):
         if isinstance(measurements, list):
             measurement_names = [x.__class__.__name__ for x in measurements if isinstance(x, MeasureFeatures)]
             measurement_names = self.__make_unique(measurement_names)
-            self._measurements = {measurement_names[i]: measurements[i] for i in range(len(measurements))}
+            self._meas = {measurement_names[i]: measurements[i] for i in range(len(measurements))}
         elif isinstance(measurements, dict):
-            self._measurements = measurements
+            self._meas = measurements
         else:
             raise TypeError(f'measurements must be a list or a dictionary, got {type(measurements)}')
 
@@ -238,19 +238,25 @@ class ImagePipelineCore(ImageOperation):
 
     def measure(self, image: Image, include_metadata=True) -> pd.DataFrame:
         """
-        Measures various properties of an Image using queued measurement strategies.
-
-        The `measure` function applies the queued measurement strategies to the given
-        Image and returns a DataFrame containing consolidated object measurement results.
+        Measures properties of a given image and optionally includes metadata. The method performs
+        measurements using a set of predefined measurement operations. If benchmarking is enabled,
+        the execution time of each measurement is recorded. When verbose mode is active, detailed
+        logging of the measurement process is displayed. A progress bar is used to track progress
+        if the tqdm library is available.
 
         Args:
-            image (Image): The input_image Image on which the measurements will be applied.
-            inplace (bool): A flag indicating whether the modifications should be applied
-                directly to the input_image Image. Default is False.
+            image (Image): The image object for which measurements are performed. It must support
+                the `info` method and optionally a `grid` or `objects` attribute.
+            include_metadata (bool, optional): Indicates whether metadata should be included in
+                the measurements. Defaults to True.
 
         Returns:
-            pd.DataFrame: A DataFrame containing measurement results from all the
-            queued measurement strategies, merged on the same index.
+            pd.DataFrame: A DataFrame containing the results of all performed measurements combined
+                on the same index.
+
+        Raises:
+            Exception: An exception is raised if a measurement operation fails while being
+                applied to the image.
         """
         # Reset measurement times for new measure run if benchmarking is enabled
         if self._benchmark:
@@ -270,14 +276,14 @@ class ImagePipelineCore(ImageOperation):
             if self._verbose:
                 print(f"  Image info: {self._measurement_times['image_info']:.4f} seconds")
         else:
-            measurements = [image.grid.info() if hasattr(image, 'grid') else image.objects.info()]
+            measurements = [image.grid.info(include_metadata=False) if hasattr(image, 'grid') else image.objects.info(include_metadata=False)]
 
         # Create progress bar if verbose and benchmark are enabled
         if self._benchmark and self._verbose:
             try:
                 from tqdm import tqdm
                 # Create a tqdm instance without items to manually update it
-                total_measurements = len(self._measurements)
+                total_measurements = len(self._meas)
                 pbar = tqdm(total=total_measurements, desc="Applying measurements", file=sys.stdout)
                 has_tqdm = True
             except ImportError:
@@ -287,7 +293,7 @@ class ImagePipelineCore(ImageOperation):
         else:
             has_tqdm = False
 
-        for i, (key, measurement) in enumerate(self._measurements.items()):
+        for i, (key, measurement) in enumerate(self._meas.items()):
             try:
                 # Update progress bar description with current measurement
                 if self._benchmark and self._verbose:
@@ -314,7 +320,7 @@ class ImagePipelineCore(ImageOperation):
             except Exception as e:
                 if self._benchmark and self._verbose and has_tqdm:
                     pbar.close()
-                raise Exception(f'Failed to apply measurement {key} to Image: {e}') from e
+                raise e
 
         # Close the progress bar if it exists
         if self._benchmark and self._verbose and has_tqdm:
@@ -322,11 +328,32 @@ class ImagePipelineCore(ImageOperation):
 
         return self._merge_on_same_index(measurements)
 
-    def apply_and_measure(self, image: Image, inplace: bool = False, reset: bool = True) -> pd.DataFrame:
-        img = self.apply(image, inplace=inplace, reset=reset)
-        return self.measure(img)
+    def apply_and_measure(self, image: Image, inplace: bool = False, reset: bool = True, include_metadata: bool = True) -> pd.DataFrame:
+        """
+        Applies processing to the given image and measures the results.
 
-    def benchmark(self) -> pd.DataFrame:
+        This function first applies a processing method to the supplied image,
+        adjusting it based on the given parameters. After processing, the
+        resulting image is measured, and a DataFrame containing the measurement
+        data is returned.
+
+        Args:
+            image (Image): The image to process and measure.
+            inplace (bool): Whether to modify the original image directly or
+                work on a copy. Default is False.
+            reset (bool): Whether to reset any previous processing on the image
+                before applying the current method. Default is True.
+            include_metadata (bool): Whether to include metadata in the
+                measurement results. Default is True.
+
+        Returns:
+            pd.DataFrame: A DataFrame containing measurement data for the
+            processed image.
+        """
+        img = self.apply(image=image, inplace=inplace, reset=reset)
+        return self.measure(image=img, include_metadata=include_metadata)
+
+    def benchmark_results(self) -> pd.DataFrame:
         """
         Returns a table of execution times for operations and measurements.
 

@@ -60,8 +60,8 @@ class OBJECT:
 
 
 class BBOX(MeasurementInfo):
-    @property
-    def CATEGORY(self) -> str:
+    @classmethod
+    def category(cls) -> str:
         return 'Bbox'
 
     CENTER_RR = 'CenterRR', 'The row coordinate of the center of the bounding box.'
@@ -87,44 +87,29 @@ class IO:
     IMAGE_STATUS_SUBGROUP_KEY = "status"
 
 
-class SET_STATUS(MeasurementInfo):
+class PIPE_STATUS(MeasurementInfo):
     """Constants for image set status."""
 
-    @property
-    def CATEGORY(self) -> str:
+    @classmethod
+    def category(cls) -> str:
         return 'Status'
 
     PROCESSED = 'Processed', "Whether the image has been processed successfully."
     MEASURED = 'Measured', "Whether the image has been measured successfully."
-    ERROR = 'Error', "Whether the image has encountered an error during processing."
-    INVALID_ANALYSIS = (
-        'AnalysisInvalid',
-        'Whether the image measurements are considered invalid. '
-        'This can be set during measurement extraction or post-processing.'
-    )
-    INVALID_SEGMENTATION = 'SegmentationInvalid', "Whether the image segmentation is considered valid."
+    # ERROR = 'Error', "Whether the image has encountered an error during processing."
+    # INVALID_ANALYSIS = (
+    #     'AnalysisInvalid',
+    #     'Whether the image measurements are considered invalid. '
+    #     'This can be set during measurement extraction or post-processing.'
+    # )
+    # INVALID_SEGMENTATION = 'SegmentationInvalid', "Whether the image segmentation is considered valid."
 
 
-# Grid constants
-class GRID_DEP:
-    """
-    Constants for grid structure in the PhenoTypic module.
-
-    This class defines grid-related configurations, such as the number of rows and columns 
-    in the grid, intervals between these rows and columns, and grid section information 
-    like section number and index.
-    """
-    GRID_ROW_NUM = 'Grid_RowNum'
-    GRID_ROW_INTERVAL = 'Grid_RowInterval'
-    GRID_COL_NUM = 'Grid_ColNum'
-    GRID_COL_INTERVAL = 'Grid_ColInterval'
-    GRID_SECTION_NUM = 'Grid_SectionNum'
-    GRID_SECTION_IDX = 'Grid_SectionIndex'
 
 class GRID(MeasurementInfo):
     """Constants for grid structure in the PhenoTypic module."""
-    @property
-    def CATEGORY(self) -> str:
+    @classmethod
+    def category(cls) -> str:
         return 'Grid'
 
     ROW_NUM = 'RowNum','The row idx of the object'
@@ -142,6 +127,7 @@ class GRID(MeasurementInfo):
 
 
 # Feature extraction constants
+# TODO: Fix this constant access pattern
 class GRID_LINREG_STATS_EXTRACTOR:
     """Constants for grid linear regression statistics extractor."""
     ROW_LINREG_M, ROW_LINREG_B = 'RowLinReg_M', 'RowLinReg_B'
@@ -151,14 +137,29 @@ class GRID_LINREG_STATS_EXTRACTOR:
 
 
 # Metadata constants
-class METADATA_LABELS:
+class METADATA(MeasurementInfo):
+    @classmethod
+    def category(cls) -> str:
+        return 'Metadata'
+
+    # Metadata values are not prepended with the category
+    def __new__(cls, label: str, desc: str | None = None):
+        full = f"{label}"
+        obj = str.__new__(cls, full)
+        obj._value_ = label
+        obj.label = label
+        obj.desc = desc or label
+        obj.pair = (label, obj.desc)
+        return obj
+
     """Constants for metadata labels."""
-    UUID = 'UUID'
-    IMAGE_NAME = 'ImageName'
-    PARENT_IMAGE_NAME = 'ParentImageName'
-    PARENT_UUID = 'ParentUUID'
-    IMFORMAT = 'ImageFormat'
-    IMAGE_TYPE = 'ImageType'
+    UUID = 'UUID', 'The unique identifier of the image.'
+    IMAGE_NAME = 'ImageName', 'The name of the image.'
+    PARENT_IMAGE_NAME = 'ParentImageName', 'The name of the parent image.'
+    PARENT_UUID = 'ParentUUID', 'The UUID of the parent image.'
+    IMFORMAT = 'ImageFormat', 'The format of the image.'
+    IMAGE_TYPE = 'ImageType', 'The type of the image.'
+    BIT_DEPTH = 'BitDepth','The bit depth of the image.'
 
 
 class IMAGE_TYPES(Enum):

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import warnings
-from typing import TYPE_CHECKING, Literal, Tuple
+from typing import TYPE_CHECKING, Tuple
 
 if TYPE_CHECKING: from phenotypic import Image
 
@@ -10,9 +10,11 @@ import numpy as np
 import pickle
 from os import PathLike
 from pathlib import Path
-import posixpath
-from packaging.version import Version
-import rawpy
+try:
+    import rawpy
+except ImportError:
+    rawpy = None
+
 import skimage as ski
 
 import phenotypic
@@ -35,11 +37,12 @@ class ImageIOHandler(ImageColorSpace):
             super().__init__(input_image=input_image, imformat=imformat, name=name)
 
     @classmethod
-    def imread(cls, filepath: PathLike,
+    def imread(cls,
+               filepath: PathLike,
                gamma: Tuple[int, int] = None,
                demosaic_algorithm: rawpy.DemosaicAlgorithm = None,
-               use_camera_wb:bool=False,
-               median_filter_passes:int = 0,
+               use_camera_wb: bool = False,
+               median_filter_passes: int = 0,
                **kwargs) -> Image:
         """
         Reads an image file and returns an instance of the Image class. This method supports
@@ -69,14 +72,14 @@ class ImageIOHandler(ImageColorSpace):
         """
         # Convert to a Path object
         filepath = Path(filepath)
-        if filepath.suffix in IO.ACCEPTED_FILE_EXTENSIONS:
+        if filepath.suffix.lower() in IO.ACCEPTED_FILE_EXTENSIONS:
             image = cls(input_image=None)
             image.set_image(
                 input_image=ski.io.imread(filepath),
             )
             image.name = filepath.stem
             return image
-        elif filepath.suffix in IO.RAW_FILE_EXTENSIONS:
+        elif filepath.suffix.lower() in IO.RAW_FILE_EXTENSIONS and rawpy is not None:
             with rawpy.imread(filepath) as raw:
                 arr = raw.postprocess(
                     demosaic_algorithm=demosaic_algorithm if demosaic_algorithm else rawpy.DemosaicAlgorithm.AHD,
@@ -93,7 +96,7 @@ class ImageIOHandler(ImageColorSpace):
             raise UnsupportedFileTypeError(filepath.suffix)
 
     @staticmethod
-    def _get_hdf5_group(handler, name):
+    def _get_hdf5_group(handler: h5py.File | h5py.Group, name: str):
         """
         Retrieves an HDF5 group from the given handler by name. If the group does not
         exist, it creates a new group with the specified name.
@@ -105,14 +108,17 @@ class ImageIOHandler(ImageColorSpace):
         Returns:
             h5py.Group: The requested or newly created HDF5 group.
         """
+        file_handler = handler if isinstance(handler, h5py.File) else handler.file
         name = str(name)
         if name in handler:
             return handler[name]
+        elif file_handler.swmr_mode is True:
+            raise ValueError('hdf5 handler in SWMR mode cannot create group')
         else:
             return handler.create_group(name)
 
     @staticmethod
-    def _save_array2hdf5(group, array, name, **kwargs):
+    def _save_array2hdf5(group: h5py.Group, array: np.ndarray, name: str, **kwargs):
         """
         Saves a given numpy array to an HDF5 group. If a dataset with the specified
         name already exists in the group, it checks if the shapes match. If the
@@ -132,16 +138,21 @@ class ImageIOHandler(ImageColorSpace):
         """
         assert isinstance(array, np.ndarray), "array must be a numpy array."
 
+        file_handler = group.file if isinstance(group, h5py.Group) else group
         if name in group:
-            if group[name].shape == array.shape:
-                group[name][:] = array
+            dataset = group[name]
+            assert isinstance(dataset, h5py.Dataset), f"{name} is not a dataset."
+            if dataset.shape == array.shape:
+                dataset[:] = array
+            elif file_handler.swmr_mode is True:
+                raise ValueError('Shape does not match existing dataset shape and cannot be changed because file handler is in SWMR mode')
             else:
                 del group[name]
                 group.create_dataset(name, data=array, dtype=array.dtype, **kwargs)
         else:
             group.create_dataset(name, data=array, dtype=array.dtype, **kwargs)
 
-    def _save_image2hdfgroup(self, grp, compression, compression_opts, overwrite=False, ):
+    def _save_image2hdfgroup(self, grp, compression='gzip', compression_opts=4, overwrite=False, ):
         """Saves the image as a new group into the input hdf5 group."""
         if overwrite and self.name in grp:
             del grp[self.name]
@@ -187,16 +198,12 @@ class ImageIOHandler(ImageColorSpace):
         # 4) Store protected metadata in its own subgroup
         prot = image_group.require_group("protected_metadata")
         for key, val in self._metadata.protected.items():
-            prot.attrs[key] = str(val)
+            prot.attrs.modify(key, str(val))
 
         # 5) Store public metadata in its own subgroup
         pub = image_group.require_group("public_metadata")
         for key, val in self._metadata.public.items():
-            pub.attrs[key] = str(val)
-
-        # 6) Create measurements group
-        if HDF.IMAGE_MEASUREMENT_SUBGROUP_KEY not in image_group:
-            image_group.create_group(HDF.IMAGE_MEASUREMENT_SUBGROUP_KEY)
+            pub.attrs.modify(key, str(val))
 
     def save2hdf5(self, filename, compression="gzip", compression_opts=4, overwrite=False, ):
         """

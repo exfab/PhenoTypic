@@ -15,8 +15,8 @@ from phenotypic.abstract import MeasureFeatures, MeasurementInfo
 
 # TODO: Add more measurements
 class INTENSITY(MeasurementInfo):
-    @property
-    def CATEGORY(self):
+    @classmethod
+    def category(cls):
         return 'Intensity'
 
     INTEGRATED_INTENSITY = ('IntegratedIntensity', 'The sum of the object\'s pixels')

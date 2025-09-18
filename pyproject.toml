@@ -30,7 +30,7 @@ classifiers = [
 ]
 
 dependencies = [
-    "pandas[excel,plot,performance,output-formatting,computation,hdf5,compression,clipboard]",
+    "pandas[excel,plot,performance,output-formatting,computation,hdf5,compression]",
     "numpy",
     "seaborn",
     "scikit-image",
@@ -45,65 +45,36 @@ dependencies = [
     "plotly-express>=0.4.1",
     "psutil>=7.0.0",
     "colour-science>=0.4.6",
-    "jaxtyping>=0.3.2",
-    "rawpy>=0.25.1",
+    "rawpy;sys_platform!='win32'",
+    "threadpoolctl>=3.6.0",
+    "pandas2hdf>=1.0.0",
 ]
 
 [project.urls]
 Repository = "https://github.com/Wheeldon-Lab/PhenoTypic"
 
-#[project.optional-dependencies]
-#dev = [
-#    "pytest",
-#    "pytest-cov",
-#    "mypy",
-#    "ipykernel",
-#    "jupyter",
-#    "labelme",
-#    "pympler",
-#    "jupyter",
-#    "ipykernel",
-#    "sphinx",
-#    "sphinxcontrib-napoleon",
-#    "sphinx-autodoc-typehints",
-#    "sphinx-autobuild",
-#    "sphinxawesome-theme",
-#    "nbsphinx",
-#    "furo",
-#    "pydata-sphinx-theme",
-#    "sphinx-gallery",
-#    "myst-nb",
-#    "sphinx-autosummary-accessors",
-#    "sphinx-design",
-#]
-
 [dependency-groups]
 dev = [
-    "ipykernel>=6.29.5",
     "memory-profiler>=0.61.0",
-    "pympler>=1.1",
     "pytest>=8.4.0",
     "pytest-cov",
     "mypy",
-    "ipykernel",
-    "jupyter",
-    "pympler",
-    "jupyter",
-    "ipykernel",
     "sphinx",
     "sphinxcontrib-napoleon",
     "sphinx-autodoc-typehints",
     "sphinx-autobuild",
     "sphinxawesome-theme",
-    "nbsphinx",
-    "furo",
     "pydata-sphinx-theme",
     "sphinx-gallery",
-    "myst-nb",
     "sphinx-autosummary-accessors",
     "sphinx-design",
     "pytest-xdist>=3.8.0",
-    "notebook>=7.4.3",
+    "pympler; sys_platform!='win32'",
+    "jupyter;sys_platform!='win32'",
+    "ipykernel;sys_platform!='win32'",
+    "nbsphinx;sys_platform!='win32' and python_version=='3.10'",
+    "myst-nb;sys_platform!='win32' and python_version=='3.10'",
+    "notebook;sys_platform!='win32'",
 ]
 
 [tool.pytest.ini_options]
@@ -121,7 +92,7 @@ version = { attr = "phenotypic.__version__" }
 
 [tool.uv]
 required-environments = [
-  "sys_platform == 'darwin' and platform_machine == 'arm64'",
-  "sys_platform == 'linux' and platform_machine == 'x86_64'",
-  "sys_platform == 'win32' and platform_machine == 'x86_64'",
+    "sys_platform == 'darwin' and platform_machine == 'arm64'",
+    "sys_platform == 'linux' and platform_machine == 'x86_64'",
+    "sys_platform == 'win32' and platform_machine == 'x86_64'",
 ]

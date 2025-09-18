@@ -11,8 +11,8 @@ from phenotypic.abstract import MeasurementInfo
 
 
 class TEXTURE(MeasurementInfo):
-    @property
-    def CATEGORY(self) -> str:
+    @classmethod
+    def category(cls) -> str:
         return 'Texture'
 
     ANGULAR_SECOND_MOMENT = (
@@ -73,7 +73,7 @@ class TEXTURE(MeasurementInfo):
         """Return full texture labels with angles in order 0, 45, 90, 135 for each feature."""
         angles = ['0', '45', '90', '135']
         labels: list[str] = []
-        for member in cls.iter_labels():
+        for member in cls.get_labels():
             base = f"{str(member)}"
             for angle in angles:
                 labels.append(f"{base}{matrix_name}-deg({angle})-scale({scale}))")
@@ -131,7 +131,7 @@ class MeasureTexture(MeasureFeatures):
                 The rows are indexed by object labels, and columns represent different texture features.
         """
         return self._compute_haralick(image=image,
-                                      foreground_array=image.matrix.get_foreground(),
+                                      foreground_array=image.matrix.foreground(),
                                       foreground_name='Intensity',
                                       scale=self.scale,
                                       )

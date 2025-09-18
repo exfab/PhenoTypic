@@ -5,7 +5,7 @@ if TYPE_CHECKING: from phenotypic import Image
 
 import pandas as pd
 from os import PathLike
-from phenotypic.util.constants_ import SET_STATUS
+from phenotypic.util.constants_ import PIPE_STATUS
 from ._image_set_core import ImageSetCore
 
 
@@ -21,11 +21,11 @@ class ImageSetStatus(ImageSetCore):
     """
     def __init__(self,
                  name: str,
-                 image_template: Image | None = None,
+                 grid_finder: Image | None = None,
                  src: List[Image] | PathLike | None = None,
                  outpath: PathLike | None = None,
                  overwrite: bool = False, ):
-        super().__init__(name=name, image_template=image_template,
+        super().__init__(name=name, grid_finder=grid_finder,
                          src=src, outpath=outpath, overwrite=overwrite)
         if overwrite:
             self.reset_status()
@@ -34,7 +34,7 @@ class ImageSetStatus(ImageSetCore):
         """
         Resets the status attributes of specified image names or all available image
         names within the HDF5 file. This method updates the status attributes to an
-        initially false state, as defined by the SET_STATUS constants, for each
+        initially false state, as defined by the PIPE_STATUS constants, for each
         specified image.
 
         This method interacts with the HDF5 storage layer to ensure that the relevant
@@ -56,8 +56,8 @@ class ImageSetStatus(ImageSetCore):
 
         with self.hdf_.writer() as handle:
             for name in image_names:
-                status_group = self.hdf_.get_image_status_subgroup(handle=handle, image_name=name)
-                for stat in SET_STATUS:
+                status_group = self.hdf_.get_status_subgroup(handle=handle, image_name=name)
+                for stat in PIPE_STATUS:
                     # Statuses are worded in a way that they should be initially false
                     status_group.attrs[stat.label] = False
 
@@ -69,23 +69,23 @@ class ImageSetStatus(ImageSetCore):
             if isinstance(image_names, str):
                 image_names = [image_names]
 
-        with self.hdf_.reader() as handle:
+        with self.hdf_.swmr_reader() as handle:
             status = []
             for name in image_names:
                 status_group = self.hdf_.get_data_group(handle=handle, image_name=name)
                 status.append(
-                    status_group.attrs[x.label] for x in SET_STATUS
+                    status_group.attrs[x.label] for x in PIPE_STATUS
                 )
         return pd.DataFrame(
             data=status,
             index=image_names,
-            columns=SET_STATUS.get_headers()
+            columns=PIPE_STATUS.get_headers()
         )
 
     def _add_image2group(self, group, image: Image, overwrite: bool):
         super()._add_image2group(group=group, image=image, overwrite=overwrite)
 
         # should work since it uses absolute pathing underneath
-        stat_group = self.hdf_.get_image_status_subgroup(handle=group, image_name=image.name)
-        for stat in SET_STATUS:
+        stat_group = self.hdf_.get_status_subgroup(handle=group, image_name=image.name)
+        for stat in PIPE_STATUS:
             stat_group.attrs[stat.label] = False
