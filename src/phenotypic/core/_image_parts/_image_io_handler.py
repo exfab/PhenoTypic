@@ -10,7 +10,11 @@ import numpy as np
 import pickle
 from os import PathLike
 from pathlib import Path
-import rawpy
+try:
+    import rawpy
+except ImportError:
+    rawpy = None
+
 import skimage as ski
 
 import phenotypic
@@ -75,7 +79,7 @@ class ImageIOHandler(ImageColorSpace):
             )
             image.name = filepath.stem
             return image
-        elif filepath.suffix.lower() in IO.RAW_FILE_EXTENSIONS:
+        elif filepath.suffix.lower() in IO.RAW_FILE_EXTENSIONS and rawpy is not None:
             with rawpy.imread(filepath) as raw:
                 arr = raw.postprocess(
                     demosaic_algorithm=demosaic_algorithm if demosaic_algorithm else rawpy.DemosaicAlgorithm.AHD,
