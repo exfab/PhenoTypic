@@ -37,6 +37,7 @@ jobs:
 
       - name: Install dependencies
         run: |
+          uv lock
           uv sync --group dev 
           
 
