@@ -29,7 +29,7 @@ class MeasureBounds(MeasureFeatures):
             'bbox-1': str(BBOX.MIN_CC),
             'bbox-2': str(BBOX.MAX_RR),
             'bbox-3': str(BBOX.MAX_CC),
-        }).set_index(keys=OBJECT.LABEL)
+        })
 
         return results
 

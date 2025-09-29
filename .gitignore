@@ -29,7 +29,6 @@ docs/build/jupyter_execute/*
 docs/build
 .venv
 .junie
-uv.lock
 debug/*.log
 jupyter_prototypes/
 .cursor

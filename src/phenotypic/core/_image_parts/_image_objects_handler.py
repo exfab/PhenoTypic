@@ -45,4 +45,4 @@ class ImageObjectsHandler(ImageHandler):
 
     @objects.setter
     def objects(self, objects):
-        raise IllegalAssignmentError('objects')
+            raise IllegalAssignmentError('objects')

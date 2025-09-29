@@ -196,6 +196,8 @@ class MeasureTexture(MeasureFeatures):
 
             measurements[idx, :] = haralick_features.T.ravel()
 
-        return pd.DataFrame(measurements, index=image.objects.labels2series(), columns=measurement_names)
+        measurements= pd.DataFrame(measurements, columns=measurement_names)
+        measurements.insert(loc=0, column=OBJECT.LABEL, value=image.objects.labels2series())
+        return measurements
 
 MeasureTexture.__doc__ = TEXTURE.append_rst_to_doc(MeasureTexture)

@@ -14,7 +14,7 @@ from phenotypic.data import load_plate_12hr, load_plate_72hr
 from phenotypic.detection import OtsuDetector
 from phenotypic.enhancement import GaussianSmoother
 from phenotypic.measure import MeasureShape
-from phenotypic.objects import BorderObjectRemover
+from phenotypic.objedit import BorderObjectRemover
 from .resources.TestHelper import timeit
 from .test_fixtures import temp_hdf5_file
 

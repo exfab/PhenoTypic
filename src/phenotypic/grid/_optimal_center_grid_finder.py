@@ -1,5 +1,6 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, Literal
+
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING: from phenotypic import Image
 
@@ -9,16 +10,16 @@ from scipy.optimize import minimize_scalar
 from functools import partial
 
 from phenotypic.abstract import GridFinder
-from phenotypic.util.constants_ import OBJECT, BBOX, GRID
+from phenotypic.util.constants_ import BBOX, GRID
 
 
 class OptimalCenterGridFinder(GridFinder):
     """
-    Defines a class for finding the grid parameters based on optimal center of objects in a provided image.
+    Defines a class for finding the grid parameters based on the optimal center of object in a provided image.
 
     The OptimalCenterGridSetter class provides methods for setting up a grid on
     an image using row and column parameters, optimizing grid boundaries based on
-    object centroids, and categorizing objects based on their positions in grid
+    object centroids, and categorizing object based on their positions in grid
     sections. This class facilitates gridding for structured analysis, such as object
     segmentation or classification within images.
 
@@ -28,7 +29,7 @@ class OptimalCenterGridFinder(GridFinder):
         tol (float): Tolerance for the solver method. Defaults to 10e-3.
 
     """
-    __iter_limit = 100000
+    __iter_limit = 1e5
 
     def __init__(self, nrows: int = 8, ncols: int = 12,
                  tol: float = 0.01, max_iter: int | None = None):
@@ -96,7 +97,7 @@ class OptimalCenterGridFinder(GridFinder):
         """
         if axis == 0:
             current_grid_info = self._get_grid_info(image=image, row_padding=pad_sz, column_padding=col_pad)
-            current_obj_midpoints = (current_grid_info.loc[:, [str( BBOX.CENTER_RR), str(GRID.ROW_NUM)]]
+            current_obj_midpoints = (current_grid_info.loc[:, [str(BBOX.CENTER_RR), str(GRID.ROW_NUM)]]
                                      .groupby(str(GRID.ROW_NUM), observed=False)[str(BBOX.CENTER_RR)]
                                      .mean().values)
 
@@ -250,7 +251,7 @@ class OptimalCenterGridFinder(GridFinder):
         return self._get_col_edges(
             image=image,
             column_padding=optimal_col_padding,
-            info_table = image.objects.info(),
+            info_table=image.objects.info(),
         )
 
     def _get_grid_info(self, image: Image, row_padding: int = 0, column_padding: int = 0) -> pd.DataFrame:

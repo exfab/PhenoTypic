@@ -1,11 +1,12 @@
-import scipy.ndimage as ndimage
-from scipy.ndimage import distance_transform_edt
-from skimage import filters, segmentation, morphology, measure, feature
-import numpy as np
 from typing import Literal
 
+import numpy as np
+import scipy.ndimage as ndimage
+from scipy.ndimage import distance_transform_edt
+from skimage import feature, filters, morphology, segmentation
+
+from phenotypic import GridImage, Image
 from phenotypic.abstract import ThresholdDetector
-from phenotypic import Image, GridImage
 
 
 class WatershedDetector(ThresholdDetector):
@@ -48,7 +49,7 @@ class WatershedDetector(ThresholdDetector):
                  compactness: float = 0.001,
                  connectivity: int = 1,
                  relabel: bool = True,
-                 ignore_zeros:bool=True):
+                 ignore_zeros: bool = True):
         match footprint:
             case x if isinstance(x, int):
                 self.footprint = morphology.diamond(footprint)
@@ -66,13 +67,14 @@ class WatershedDetector(ThresholdDetector):
         self.ignore_zeros = ignore_zeros
 
     def _operate(self, image: Image | GridImage) -> Image:
-        enhanced_matrix = image.enh_matrix[:]
+        enhanced_matrix = image._data.enh_matrix  # direct access to reduce memory footprint, but careful to not delete
 
         # Determine footprint for peak detection
         if self.footprint == 'auto':
             if isinstance(image, GridImage):
-                est_footprint_diameter = max(image.shape[0] // image.grid.nrows, image.shape[1] // image.grid.ncols)
-                footprint = morphology.diamond(est_footprint_diameter // 2)
+                est_footprint_diameter = max(image.shape[0]//image.grid.nrows, image.shape[1]//image.grid.ncols)
+                footprint = morphology.diamond(est_footprint_diameter//2)
+                del est_footprint_diameter
             elif isinstance(image, Image):
                 # Not enough information with a normal image to infer
                 footprint = None
@@ -89,32 +91,46 @@ class WatershedDetector(ThresholdDetector):
                 threshold = filters.threshold_otsu(enh_vals)
             else:
                 threshold = filters.threshold_otsu(enh_vals)
-            
+
             # Create binary mask: zeros are always background, non-zeros compared to threshold
             binary = (enhanced_matrix != 0) & (enhanced_matrix >= threshold)
         else:
             enh_vals = enhanced_matrix
             threshold = filters.threshold_otsu(enh_vals)
             binary = enhanced_matrix >= threshold
-        binary = morphology.remove_small_objects(binary, min_size=self.min_size)
-        dist_matrix = distance_transform_edt(binary)
+
+        del threshold, enh_vals  # don't need these after obtaining binary mask
+
+        binary = morphology.remove_small_objects(binary, min_size=self.min_size)  # clean to reduce runtime
+        dist_matrix = distance_transform_edt(binary).astype(np.float32)
         max_peak_indices = feature.peak_local_max(
-            image=dist_matrix,
-            footprint=footprint,
-            labels=binary)
+                image=dist_matrix,
+                footprint=footprint,
+                labels=binary)
+
+        del footprint, dist_matrix
+
         max_peaks = np.zeros(shape=enhanced_matrix.shape)
         max_peaks[tuple(max_peak_indices.T)] = 1
+
+        del max_peak_indices
+
         max_peaks, _ = ndimage.label(max_peaks)  # label peaks
 
         # Sobel filter enhances edges which improve watershed to nearly the point of necessity in most cases
         gradient = filters.sobel(enhanced_matrix)
+
         objmap = segmentation.watershed(
-            image=gradient,
-            markers=max_peaks,
-            compactness=self.compactness,
-            connectivity=self.connectivity,
-            mask=binary,
+                image=gradient,
+                markers=max_peaks,
+                compactness=self.compactness,
+                connectivity=self.connectivity,
+                mask=binary,
         )
+        if objmap.dtype != np.uint16:
+            objmap = objmap.astype(image._OBJMAP_DTYPE)
+
+        del max_peaks, gradient, binary
 
         objmap = morphology.remove_small_objects(objmap, min_size=self.min_size)
         image.objmap[:] = objmap

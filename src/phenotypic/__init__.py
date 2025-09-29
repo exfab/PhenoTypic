@@ -12,7 +12,7 @@ from . import (
     measure,
     grid,
     abstract,
-    objects,
+    objedit,
     morphology,
     correction,
     enhancement,

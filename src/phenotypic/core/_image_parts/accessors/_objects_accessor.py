@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 from typing import TYPE_CHECKING, Any, Generator
 
 if TYPE_CHECKING: from phenotypic import Image
@@ -23,6 +24,7 @@ class ObjectsAccessor:
         - Can only be called if an :class:`PhenoTypic.abstract.ObjectDetector` has been applied to the :class:`PhenoTypic.Image` object.
 
     """
+
     def __init__(self, root_image: Image):
         self._root_image = root_image
 
@@ -101,21 +103,21 @@ class ObjectsAccessor:
 
         This is useful for joining measurements across different tables.
         """
-        info= pd.DataFrame(
+        info = pd.DataFrame(
             data=regionprops_table(
                 label_image=self._root_image.objmap[:],
                 properties=['label', 'centroid', 'bbox'],
             ),
         ).rename(columns={
             'label': OBJECT.LABEL,
-            'centroid-0':str(BBOX.CENTER_RR),
+            'centroid-0': str(BBOX.CENTER_RR),
             'centroid-1': str(BBOX.CENTER_CC),
             'bbox-0': str(BBOX.MIN_RR),
             'bbox-1': str(BBOX.MIN_CC),
             'bbox-2': str(BBOX.MAX_RR),
             'bbox-3': str(BBOX.MAX_CC),
         },
-        ).set_index(OBJECT.LABEL)
+        )
         if include_metadata:
             return self._root_image.metadata.insert_metadata(info)
         else:
@@ -133,5 +135,3 @@ class ObjectsAccessor:
     def relabel(self):
         """Relabels all the objects based on their connectivity"""
         self._root_image.objmap.relabel()
-
-

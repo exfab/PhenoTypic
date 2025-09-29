@@ -80,7 +80,7 @@ class ImageIOHandler(ImageColorSpace):
             image.name = filepath.stem
             return image
         elif filepath.suffix.lower() in IO.RAW_FILE_EXTENSIONS and rawpy is not None:
-            with rawpy.imread(filepath) as raw:
+            with rawpy.imread(str(filepath)) as raw:
                 arr = raw.postprocess(
                     demosaic_algorithm=demosaic_algorithm if demosaic_algorithm else rawpy.DemosaicAlgorithm.AHD,
                     use_camera_wb=use_camera_wb,

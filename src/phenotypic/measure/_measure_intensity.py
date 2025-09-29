@@ -4,6 +4,8 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+from phenotypic.util.constants_ import OBJECT
+
 if TYPE_CHECKING: from phenotypic import Image
 from enum import Enum
 from functools import partial
@@ -59,7 +61,8 @@ class MeasureIntensity(MeasureFeatures):
             str(INTENSITY.IQR_INTENSITY): self._calculate_iqr(array=intensity_matrix, labels=objmap),
         }
 
-        return pd.DataFrame(measurements, index=image.objects.labels2series())
-
+        measurements =  pd.DataFrame(measurements)
+        measurements.insert(loc=0, column=OBJECT.LABEL, value=image.objects.labels2series())
+        return measurements
 
 MeasureIntensity.__doc__ = INTENSITY.append_rst_to_doc(MeasureIntensity)

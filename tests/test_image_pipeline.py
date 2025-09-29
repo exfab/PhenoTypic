@@ -2,7 +2,7 @@ from phenotypic import ImagePipeline
 from phenotypic.enhancement import CLAHE, GaussianSmoother, MedianEnhancer, ContrastStretching
 from phenotypic.detection import OtsuDetector, WatershedDetector
 from phenotypic.grid import GridApply, MinResidualErrorReducer, GridAlignmentOutlierRemover
-from phenotypic.objects import BorderObjectRemover, SmallObjectRemover, LowCircularityRemover
+from phenotypic.objedit import BorderObjectRemover, SmallObjectRemover, LowCircularityRemover
 from phenotypic.measure import MeasureColor, MeasureShape, MeasureIntensity, MeasureTexture
 from phenotypic.morphology import MaskFill
 from phenotypic.correction import GridAligner

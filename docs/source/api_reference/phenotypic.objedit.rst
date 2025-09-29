@@ -1,10 +1,10 @@
-phenotypic.objects
+phenotypic.objedit
 ==================
 
 Module contents
 ---------------
 
-.. automodule:: phenotypic.objects
+.. automodule:: phenotypic.objedit
    :members:
    :undoc-members:
    :show-inheritance:

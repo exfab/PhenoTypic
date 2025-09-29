@@ -1,15 +1,39 @@
-from ._image import Image
-
-from typing import Optional
-import numpy as np
-from ._image_parts import ImageGridHandler
-
 from os import PathLike
 from pathlib import Path
+from typing import Optional
+
+import numpy as np
+
 from phenotypic.abstract import GridFinder
+from ._image import Image
+from ._image_parts._image_grid_io import ImageGridIO
 
 
-class GridImage(ImageGridHandler):
+class GridImage(ImageGridIO):
+    """
+    A specialized Image object that supports grid-based processing and overlay visualization.
+
+    This class extends the base `Image` class functionality to include grid handling,
+    grid-based slicing, and advanced visualization capabilities such as displaying overlay information
+    with gridlines and annotations. It interacts with the provided grid handling utilities
+    to determine grid structure and assign/overlay it effectively on the image.
+
+    Args:
+            input_image (Optional[Union[np.ndarray, Type[Image]]]): The input_image
+                image, which can be a NumPy array or an image-like object. If
+                this parameter is not provided, it defaults to None.
+            imformat (str): A string representing the schema of the input_image
+                image. It defaults to None if not provided.
+            grid_finder (Optional[GridFinder]): An optional GridFinder instance
+                for defining grids on the image. If not provided, it defaults to
+                a center grid setter.
+            nrows (int): An integer passed to the grid setter to specify the number of rows in the grid
+                (Defaults to 8).
+            ncols (int): An integer passed to the grid setter to specify the number of columns in the grid
+                (Defaults to 12).
+
+    """
+
     def __init__(self,
                  input_image: np.ndarray | Image | PathLike | Path | str | None = None,
                  imformat: str | None = None,
@@ -28,8 +52,7 @@ class GridImage(ImageGridHandler):
             nrows=nrows, ncols=ncols,
             illuminant=illuminant,
             color_profile=color_profile,
-            observer=observer
+            observer=observer,
         )
 
 
-GridImage.__doc__ = ImageGridHandler.__doc__

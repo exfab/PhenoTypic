@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 from typing import TYPE_CHECKING
 
 from typing_extensions import Callable
@@ -10,7 +11,6 @@ from numpy.typing import ArrayLike
 import pandas as pd
 import scipy
 import warnings
-import functools
 from functools import partial, wraps
 
 from ._base_operation import BaseOperation
@@ -23,6 +23,7 @@ def catch_warnings_decorator(func):
     A decorator that catches warnings, prepends the method name to the warning message,
     and reraises the warning.
     """
+
     @wraps(func)
     def wrapper(*args, **kwargs):
         with warnings.catch_warnings(record=True) as recorded_warnings:
@@ -36,6 +37,7 @@ def catch_warnings_decorator(func):
             warnings.warn(message, warning.category, stacklevel=2)
 
         return result
+
     return wrapper
 
 
@@ -52,7 +54,6 @@ class MeasureFeatures(BaseOperation):
         try:
             matched_args = self._get_matched_operation_args()
 
-            # Apply the operation to a copy so that the original image is not modified.
             return self._operate(image, **matched_args)
 
         except Exception as e:
@@ -100,7 +101,7 @@ class MeasureFeatures(BaseOperation):
             indexes = np.unique(labels)
             indexes = indexes[indexes != 0]
         else:
-            indexes=None
+            indexes = None
         return MeasureFeatures._repair_scipy_results(scipy.ndimage.center_of_mass(array, labels, index=indexes))
 
     @staticmethod
@@ -254,8 +255,8 @@ class MeasureFeatures(BaseOperation):
         if labels is not None:
             unique_labels, unique_counts = np.unique(labels, return_counts=True)
             unique_counts = unique_counts[unique_labels != 0]
-            biased_cv = MeasureFeatures._calculate_stddev(array, labels) / MeasureFeatures._calculate_mean(array, labels)
-            result = (1 + (1 / unique_counts)) * biased_cv
+            biased_cv = MeasureFeatures._calculate_stddev(array, labels)/MeasureFeatures._calculate_mean(array, labels)
+            result = (1 + (1/unique_counts))*biased_cv
         else:
             # For the case when labels is None, we can't calculate the coefficient of variation
             # because we need the counts of each label
@@ -269,7 +270,8 @@ class MeasureFeatures(BaseOperation):
             indexes = indexes[indexes != 0]
         else:
             indexes = None
-        min_extrema, max_extrema, min_pos, max_pos = MeasureFeatures._repair_scipy_results(scipy.ndimage.extrema(array, labels, index=indexes))
+        min_extrema, max_extrema, min_pos, max_pos = MeasureFeatures._repair_scipy_results(
+            scipy.ndimage.extrema(array, labels, index=indexes))
         return (
             MeasureFeatures._repair_scipy_results(min_extrema),
             MeasureFeatures._repair_scipy_results(max_extrema),
@@ -348,20 +350,21 @@ class MeasureFeatures(BaseOperation):
             index = np.unique(labels)
             index = index[index != 0]
         else:
-            index=None
+            index = None
 
         return MeasureFeatures._repair_scipy_results(
-            scipy.ndimage.labeled_comprehension(input=array, labels=labels, index=index,
-                                                func=func, out_dtype=out_dtype,
-                                                pass_positions=pass_positions,
-                                                default=default),
+                scipy.ndimage.labeled_comprehension(input=array, labels=labels, index=index,
+                                                    func=func, out_dtype=out_dtype,
+                                                    pass_positions=pass_positions,
+                                                    default=default),
         )
 
     @staticmethod
     @catch_warnings_decorator
     def _calculate_q1(array, labels=None, method: str = 'linear'):
         find_q1 = partial(np.quantile, q=0.25, method=method)
-        q1 = MeasureFeatures._funcmap2objects(func=find_q1, out_dtype=array.dtype, array=array, labels=labels, default=np.nan,
+        q1 = MeasureFeatures._funcmap2objects(func=find_q1, out_dtype=array.dtype, array=array, labels=labels,
+                                              default=np.nan,
                                               pass_positions=False)
         return MeasureFeatures._repair_scipy_results(q1)
 
@@ -369,7 +372,8 @@ class MeasureFeatures(BaseOperation):
     @catch_warnings_decorator
     def _calculate_q3(array, labels=None, method: str = 'linear'):
         find_q3 = partial(np.quantile, q=0.75, method=method)
-        q3 = MeasureFeatures._funcmap2objects(func=find_q3, out_dtype=array.dtype, array=array, labels=labels, default=np.nan,
+        q3 = MeasureFeatures._funcmap2objects(func=find_q3, out_dtype=array.dtype, array=array, labels=labels,
+                                              default=np.nan,
                                               pass_positions=False)
         return MeasureFeatures._repair_scipy_results(q3)
 
@@ -378,9 +382,9 @@ class MeasureFeatures(BaseOperation):
     def _calculate_iqr(array, labels=None, method: str = 'linear', nan_policy: str = 'omit'):
         find_iqr = partial(scipy.stats.iqr, axis=None, nan_policy=nan_policy, interpolation=method)
         return MeasureFeatures._repair_scipy_results(
-            MeasureFeatures._funcmap2objects(
-                func=find_iqr, out_dtype=array.dtype,
-                array=array, labels=labels,
-                default=np.nan, pass_positions=False,
-            ),
+                MeasureFeatures._funcmap2objects(
+                        func=find_iqr, out_dtype=array.dtype,
+                        array=array, labels=labels,
+                        default=np.nan, pass_positions=False,
+                ),
         )

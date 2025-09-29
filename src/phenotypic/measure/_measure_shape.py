@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-import warnings
-from enum import Enum
 from typing import TYPE_CHECKING
+
+from phenotypic.util.constants_ import OBJECT
 
 if TYPE_CHECKING: from phenotypic import Image
 
@@ -17,6 +17,7 @@ from phenotypic.abstract import MeasurementInfo, MeasureFeatures
 
 class SHAPE(MeasurementInfo):
     """The labels and descriptions of the shape measurements."""
+
     @classmethod
     def category(cls):
         return 'Shape'
@@ -43,7 +44,7 @@ class SHAPE(MeasurementInfo):
     )
     COMPACTNESS = (
         'Compactness',
-        r'Calculated as :math:`Calculated as \frac{\text{Perimeter}^2}{4\pi*\text{Area}}`. A filled circle will have a value of 1, while irregular or objects with holes have a value greater than 1'
+        r'Calculated as :math:`\frac{\text{Perimeter}^2}{4\pi*\text{Area}}`. A filled circle will have a value of 1, while irregular or objects with holes have a value greater than 1'
     )
     ORIENTATION = ('Orientation', 'The angle between the major axis and the horizontal axis in radians')
 
@@ -100,6 +101,9 @@ class MeasureShape(MeasureFeatures):
             measurements[str(SHAPE.CONVEX_AREA)][idx] = (convex_hull.area if convex_hull else np.nan)
             measurements[str(SHAPE.SOLIDITY)][idx] = ((current_props.area / convex_hull.area) if convex_hull else np.nan)
 
-        return pd.DataFrame(measurements, index=image.objects.labels2series())
+        measurements = pd.DataFrame(measurements)
+        measurements.insert(loc=0, column=OBJECT.LABEL, value=image.objects.labels2series())
+        return measurements
+
 
 MeasureShape.__doc__ = SHAPE.append_rst_to_doc(MeasureShape)

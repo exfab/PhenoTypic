@@ -307,7 +307,7 @@ class GridAccessor(ImageAccessorBase):
         """Returns the exact slices of a grid section based on its flattened index
 
         Note:
-            - Can crop objects in the image
+            - Can crop objedit in the image
 
         Return:
             (int, int, int, int): ((MinRow, MinCol), (MaxRow, MaxCol)) The slices to extract the grid section from the image.
@@ -321,7 +321,7 @@ class GridAccessor(ImageAccessorBase):
         return (min_rr, min_cc), (max_rr, max_cc)
 
     def _adv_get_grid_section_slices(self, idx) -> ((int, int), (int, int)):
-        """Returns the slices of a grid section based on its flattened index, and accounts for objects boundaries.
+        """Returns the slices of a grid section based on its flattened index, and accounts for object boundaries.
 
             Note:
                 - Can crop objects in the image

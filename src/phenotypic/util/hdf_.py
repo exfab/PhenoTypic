@@ -423,7 +423,7 @@ class HDF:
           excluded because they are not SWMR-write friendly and their uncompressed size
           cannot be determined from metadata alone.
         - The operation is safe under SWMR: it only reads object metadata, creates no
-          new objects, and does not modify the file.
+          new objedit, and does not modify the file.
 
         Args:
             group: The root h5py.Group to traverse.
@@ -966,7 +966,7 @@ class HDF:
         if group.file.swmr_mode and dataset not in group:
             raise RuntimeError(
                 "Cannot create new datasets while SWMR mode is enabled. "
-                "Create all objects before starting SWMR mode."
+                "Create all objedit before starting SWMR mode."
             )
 
         # Encode series for schema information using fixed-length strings
@@ -1437,7 +1437,7 @@ class HDF:
         if group.file.swmr_mode and "index" not in group:
             raise RuntimeError(
                 "Cannot create new groups/datasets while SWMR mode is enabled. "
-                "Create all objects before starting SWMR mode."
+                "Create all objedit before starting SWMR mode."
             )
 
         if len(dataframe.columns) == 0:

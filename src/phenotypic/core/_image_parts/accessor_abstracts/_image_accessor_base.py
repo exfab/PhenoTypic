@@ -257,7 +257,7 @@ class ImageAccessorBase(ABC):
         Displays an overlay of the object map on the parent image with optional annotations.
 
         This method enables visualization by overlaying object regions on the parent image. It
-        provides options for customization, including the ability to show_labels specific objects
+                provides options for customization, including the ability to show_labels specific objects
         and adjust visual styles like figure size, colors, and annotation properties.
 
         Args:
