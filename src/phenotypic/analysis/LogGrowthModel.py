@@ -1,4 +1,4 @@
-from typing import Callable, Tuple
+from typing import Callable, Literal, Tuple, List
 
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -11,6 +11,9 @@ class LogGrowthModel(ModelFitter):
 
     def __init__(self, on: str, groupby: List[str],
                  agg_func: Callable | str | list | dict | None = 'mean',
+                 time_label: str = 'Metadata_Time',
+                 size_label: Literal['Shape_Area', 'Intensity_IntegratedIntensity'] | str = 'Shape_Area',
+                 cap_label: str | None = None,
                  reg_factor=1.2, cap_penalty=5, loss='linear', verbose: bool = False, num_workers: int = 1):
         super().__init__(on=on, groupby=groupby, agg_func=agg_func, num_workers=num_workers)
         self.reg_factor = reg_factor
