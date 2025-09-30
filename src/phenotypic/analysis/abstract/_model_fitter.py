@@ -23,7 +23,8 @@ class ModelFitter(SetAnalyzer, ABC):
     @staticmethod
     @abc.abstractmethod
     def _model_func():
-        """The mathematical model that should be implemented."""
+        """The mathematical model that should be implemented. The first parameter should be the independent variable
+        such as time"""
         pass
 
     @staticmethod
