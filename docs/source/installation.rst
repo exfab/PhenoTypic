@@ -30,7 +30,7 @@ To install from source:
 
    .. code-block:: bash
 
-      git clone https://github.com/Xander-git/Phenotypic.git
+      git clone https://github.com/exfab/PhenoTypic.git
       cd phenotypic
 
 2. Install the package:
