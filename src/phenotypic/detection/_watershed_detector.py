@@ -50,6 +50,8 @@ class WatershedDetector(ThresholdDetector):
                  connectivity: int = 1,
                  relabel: bool = True,
                  ignore_zeros: bool = True):
+        super().__init__()
+        
         match footprint:
             case x if isinstance(x, int):
                 self.footprint = morphology.diamond(footprint)
@@ -66,8 +68,12 @@ class WatershedDetector(ThresholdDetector):
         self.relabel = relabel
         self.ignore_zeros = ignore_zeros
 
+
+
+
     def _operate(self, image: Image | GridImage) -> Image:
         enhanced_matrix = image._data.enh_matrix  # direct access to reduce memory footprint, but careful to not delete
+        self._log_memory_usage("getting enhanced matrix")
 
         # Determine footprint for peak detection
         if self.footprint == 'auto':
@@ -81,6 +87,7 @@ class WatershedDetector(ThresholdDetector):
         else:
             # Use the footprint as defined in __init__ (None, ndarray, or processed int)
             footprint = self.footprint
+        self._log_memory_usage("determining footprint")
 
         # Prepare values for threshold calculation
         if self.ignore_zeros:
@@ -100,25 +107,38 @@ class WatershedDetector(ThresholdDetector):
             binary = enhanced_matrix >= threshold
 
         del threshold, enh_vals  # don't need these after obtaining binary mask
+        self._log_memory_usage("threshold calculation and binary mask creation")
 
         binary = morphology.remove_small_objects(binary, min_size=self.min_size)  # clean to reduce runtime
+
+        # Memory-intensive distance transform operation
+        self._log_memory_usage("before distance transform", include_tracemalloc=True)
         dist_matrix = distance_transform_edt(binary).astype(np.float32)
+        self._log_memory_usage("after distance transform", include_tracemalloc=True)
+
         max_peak_indices = feature.peak_local_max(
                 image=dist_matrix,
                 footprint=footprint,
                 labels=binary)
 
         del footprint, dist_matrix
+        self._log_memory_usage("after peak detection", include_tracemalloc=True)
 
         max_peaks = np.zeros(shape=enhanced_matrix.shape)
         max_peaks[tuple(max_peak_indices.T)] = 1
 
         del max_peak_indices
+        self._log_memory_usage("creating max peaks array")
 
         max_peaks, _ = ndimage.label(max_peaks)  # label peaks
 
         # Sobel filter enhances edges which improve watershed to nearly the point of necessity in most cases
         gradient = filters.sobel(enhanced_matrix)
+        self._log_memory_usage("Sobel filter for gradient", include_tracemalloc=True)
+
+        # Memory-intensive watershed operation - detailed tracking
+        self._log_memory_usage("before watershed segmentation",
+                              include_process=True, include_tracemalloc=True)
 
         objmap = segmentation.watershed(
                 image=gradient,
@@ -127,6 +147,9 @@ class WatershedDetector(ThresholdDetector):
                 connectivity=self.connectivity,
                 mask=binary,
         )
+
+        self._log_memory_usage("after watershed segmentation",
+                              include_process=True, include_tracemalloc=True)
         if objmap.dtype != np.uint16:
             objmap = objmap.astype(image._OBJMAP_DTYPE)
 
@@ -135,4 +158,9 @@ class WatershedDetector(ThresholdDetector):
         objmap = morphology.remove_small_objects(objmap, min_size=self.min_size)
         image.objmap[:] = objmap
         image.objmap.relabel(connectivity=self.connectivity)
+
+        # Final comprehensive memory report
+        self._log_memory_usage("final cleanup and relabeling",
+                              include_process=True, include_tracemalloc=True)
+
         return image

@@ -14,10 +14,10 @@ import inspect
 import time
 import sys
 
-from phenotypic.abstract import MeasureFeatures, ImageOperation
+from phenotypic.abstract import MeasureFeatures, BaseOperation
 
 
-class ImagePipelineCore(ImageOperation):
+class ImagePipelineCore(BaseOperation):
     """
     Represents a handler for processing and measurement queues used in Image operations
     and feature extraction tasks.

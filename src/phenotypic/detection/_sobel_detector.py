@@ -14,10 +14,6 @@ class SobelDetector(ObjectDetector):
     providing a specific implementation of object detection suitable for edge enhancement
     and analysis.
 
-    Attributes:
-        mask (type): Represents the object mask computed after applying the Sobel
-            filter. Its type and structure depend on the parent ObjectDetector class
-            implementation.
     """
 
     def _operate(self, image: Image) -> Image:

@@ -9,6 +9,7 @@ import numpy as np
 from ._base_operation import BaseOperation
 from ..util.exceptions_ import InterfaceError, OperationIntegrityError
 
+from abc import abstractmethod
 
 class ImageOperation(BaseOperation):
     """
@@ -54,6 +55,7 @@ class ImageOperation(BaseOperation):
             raise RuntimeError(f'{self.__class__.__name__} failed on image {image.name}: {e}') from e
 
     @staticmethod
+    @abstractmethod
     def _operate(image: Image) -> Image:
         """
         A placeholder for the main subfunction for an image operator for processing image objects.
