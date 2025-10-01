@@ -28,14 +28,14 @@ Note: may not always be the most up-to-date version. Install from repo when late
 
 ### Manual Installation
 ```  
-git clone https://github.com/Wheeldon-Lab/PhenoTypic.git
+git clone https://github.com/exfab/PhenoTypic.git
 cd PhenoTypic
 pip install -e .
 ```  
 
 ### Dev Installation
 ```  
-git clone https://github.com/Wheeldon-Lab/PhenoTypic.git
+git clone https://github.com/exfab/PhenoTypic.git
 cd PhenoTypic
 pip install -e ".[dev]"
 ```  
