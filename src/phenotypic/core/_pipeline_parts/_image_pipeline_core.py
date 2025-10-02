@@ -14,7 +14,7 @@ import inspect
 import time
 import sys
 
-from phenotypic.abstract import MeasureFeatures, BaseOperation
+from phenotypic.abstract import MeasureFeatures, BaseOperation, ImageOperation
 
 
 class ImagePipelineCore(BaseOperation):
@@ -284,7 +284,7 @@ class ImagePipelineCore(BaseOperation):
         else:
             measurements = [
                 image.grid.info(include_metadata=False) if hasattr(image, 'grid') else image.objects.info(
-                    include_metadata=False)]
+                        include_metadata=False)]
 
         # Create progress bar if verbose and benchmark are enabled
         if self._benchmark and self._verbose:

@@ -25,12 +25,13 @@ docs/build/doctrees/*
 ./docs/build/jupyter_execute/*
 docs/build/jupyter_execute/*
 **.$**.bkp
-./docs/build
 docs/build
+docs/build/*
 .venv
 .junie
 debug/*.log
-jupyter_prototypes/
+_JupyterPrototypes/
 .cursor
 .windsurf
+build
 .zed

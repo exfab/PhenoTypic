@@ -1,9 +1,13 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING: from phenotypic import Image
 from skimage.filters import laplace
 from typing import Optional
 import numpy as np
 
 from ..abstract import ImageEnhancer
-from .. import Image
 
 
 class LaplaceEnhancer(ImageEnhancer):
@@ -20,9 +24,10 @@ class LaplaceEnhancer(ImageEnhancer):
         mask (Optional[numpy.ndarray]): An optional mask to limit the operation to
             specified regions of the image.
     """
+
     def __init__(self, kernel_size: Optional[int] = 3, mask: Optional[np.ndarray] = None):
         self.kernel_size: Optional[np.ndarray] = kernel_size
-        self.mask:Optional[np.ndarray] = mask
+        self.mask: Optional[np.ndarray] = mask
 
     def _operate(self, image: Image) -> Image:
         image.enh_matrix[:] = laplace(

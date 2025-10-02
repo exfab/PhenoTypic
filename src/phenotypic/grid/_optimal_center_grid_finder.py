@@ -13,7 +13,7 @@ from phenotypic.abstract import GridFinder
 from phenotypic.util.constants_ import BBOX, GRID
 
 
-class OptimalCenterGridFinder(GridFinder):
+class OptimalBinsGridFinder(GridFinder):
     """
     Defines a class for finding the grid parameters based on the optimal center of object in a provided image.
 
@@ -102,12 +102,12 @@ class OptimalCenterGridFinder(GridFinder):
                                      .mean().values)
 
             bin_edges = np.histogram_bin_edges(
-                a=current_grid_info.loc[:, str(BBOX.CENTER_RR)].values,
-                bins=self.nrows,
-                range=(
-                    current_grid_info.loc[:, str(BBOX.MIN_RR)].min() - pad_sz,
-                    current_grid_info.loc[:, str(BBOX.MAX_RR)].max() + pad_sz
-                ),
+                    a=current_grid_info.loc[:, str(BBOX.CENTER_RR)].values,
+                    bins=self.nrows,
+                    range=(
+                        current_grid_info.loc[:, str(BBOX.MIN_RR)].min() - pad_sz,
+                        current_grid_info.loc[:, str(BBOX.MAX_RR)].max() + pad_sz
+                    ),
             )
 
         elif axis == 1:
@@ -117,12 +117,12 @@ class OptimalCenterGridFinder(GridFinder):
                                      .mean().values)
 
             bin_edges = np.histogram_bin_edges(
-                a=current_grid_info.loc[:, str(BBOX.CENTER_CC)].values,
-                bins=self.ncols,
-                range=(
-                    current_grid_info.loc[:, str(BBOX.MIN_CC)].min() - pad_sz,
-                    current_grid_info.loc[:, str(BBOX.MAX_CC)].max() + pad_sz
-                ),
+                    a=current_grid_info.loc[:, str(BBOX.CENTER_CC)].values,
+                    bins=self.ncols,
+                    range=(
+                        current_grid_info.loc[:, str(BBOX.MIN_CC)].min() - pad_sz,
+                        current_grid_info.loc[:, str(BBOX.MAX_CC)].max() + pad_sz
+                    ),
             )
         else:
             raise ValueError(f"Invalid axis other_image: {axis}")
@@ -132,9 +132,9 @@ class OptimalCenterGridFinder(GridFinder):
         # (larger_point-smaller_point)/2 + smaller_point; Across all axis vectors
         larger_edges = bin_edges[1:]
         smaller_edges = bin_edges[:-1]
-        bin_midpoint = (larger_edges - smaller_edges) // 2 + smaller_edges
+        bin_midpoint = (larger_edges - smaller_edges)//2 + smaller_edges
 
-        return ((current_obj_midpoints - bin_midpoint) ** 2).sum() / len(current_obj_midpoints)
+        return ((current_obj_midpoints - bin_midpoint) ** 2).sum()/len(current_obj_midpoints)
 
     def _get_optimal_row_pad(self, image: Image) -> int:
         """
@@ -184,14 +184,14 @@ class OptimalCenterGridFinder(GridFinder):
         lower_row_bound = round(info_table.loc[:, str(BBOX.MIN_RR)].min() - row_padding)
         upper_row_bound = round(info_table.loc[:, str(BBOX.MAX_RR)].max() + row_padding)
         obj_row_range = np.clip(
-            a=[lower_row_bound, upper_row_bound],
-            a_min=0, a_max=image.shape[0] - 1,
+                a=[lower_row_bound, upper_row_bound],
+                a_min=0, a_max=image.shape[0] - 1,
         )
 
         row_edges = np.histogram_bin_edges(
-            a=info_table.loc[:, str(BBOX.CENTER_RR)],
-            bins=self.nrows,
-            range=tuple(obj_row_range),
+                a=info_table.loc[:, str(BBOX.CENTER_RR)],
+                bins=self.nrows,
+                range=tuple(obj_row_range),
         )
         np.round(a=row_edges, out=row_edges)
         row_edges.sort()
@@ -215,9 +215,9 @@ class OptimalCenterGridFinder(GridFinder):
         """
         optimal_row_padding = self._get_optimal_row_pad(image=image)
         return self._get_row_edges(
-            image=image,
-            row_padding=optimal_row_padding,
-            info_table=image.objects.info(),
+                image=image,
+                row_padding=optimal_row_padding,
+                info_table=image.objects.info(),
         )
 
     def _get_optimal_col_pad(self, image: Image) -> int:
@@ -233,13 +233,13 @@ class OptimalCenterGridFinder(GridFinder):
         lower_col_bound = round(info_table.loc[:, str(BBOX.MIN_CC)].min() - column_padding)
         upper_col_bound = round(info_table.loc[:, str(BBOX.MAX_CC)].max() + column_padding)
         obj_col_range = np.clip(
-            a=[lower_col_bound, upper_col_bound],
-            a_min=0, a_max=image.shape[1] - 1,
+                a=[lower_col_bound, upper_col_bound],
+                a_min=0, a_max=image.shape[1] - 1,
         )
         col_edges = np.histogram_bin_edges(
-            a=info_table.loc[:, str(BBOX.CENTER_CC)],
-            bins=self.ncols,
-            range=tuple(obj_col_range),
+                a=info_table.loc[:, str(BBOX.CENTER_CC)],
+                bins=self.ncols,
+                range=tuple(obj_col_range),
         )
         np.round(a=col_edges, out=col_edges)
         col_edges.sort()
@@ -249,9 +249,9 @@ class OptimalCenterGridFinder(GridFinder):
     def get_col_edges(self, image: Image):
         optimal_col_padding = self._get_optimal_col_pad(image=image)
         return self._get_col_edges(
-            image=image,
-            column_padding=optimal_col_padding,
-            info_table=image.objects.info(),
+                image=image,
+                column_padding=optimal_col_padding,
+                info_table=image.objects.info(),
         )
 
     def _get_grid_info(self, image: Image, row_padding: int = 0, column_padding: int = 0) -> pd.DataFrame:
@@ -261,20 +261,20 @@ class OptimalCenterGridFinder(GridFinder):
 
         # Add row number info
         info_table.loc[:, str(GRID.ROW_NUM)] = pd.cut(
-            info_table.loc[:, str(BBOX.CENTER_RR)],
-            bins=row_edges,
-            labels=range(self.nrows),
-            include_lowest=True,
-            right=True,
+                info_table.loc[:, str(BBOX.CENTER_RR)],
+                bins=row_edges,
+                labels=range(self.nrows),
+                include_lowest=True,
+                right=True,
         )
 
         # Add row interval info
         info_table.loc[:, str(GRID.ROW_INTERVAL)] = pd.cut(
-            info_table.loc[:, str(BBOX.CENTER_RR)],
-            bins=row_edges,
-            labels=[(row_edges[i], row_edges[i + 1]) for i in range(len(row_edges) - 1)],
-            include_lowest=True,
-            right=True,
+                info_table.loc[:, str(BBOX.CENTER_RR)],
+                bins=row_edges,
+                labels=[(row_edges[i], row_edges[i + 1]) for i in range(len(row_edges) - 1)],
+                include_lowest=True,
+                right=True,
         )
 
         # Grid Columns
@@ -282,32 +282,33 @@ class OptimalCenterGridFinder(GridFinder):
 
         # Add column number info
         info_table.loc[:, str(GRID.COL_NUM)] = pd.cut(
-            info_table.loc[:, str(BBOX.CENTER_CC)],
-            bins=col_edges,
-            labels=range(self.ncols),
-            include_lowest=True,
-            right=True,
+                info_table.loc[:, str(BBOX.CENTER_CC)],
+                bins=col_edges,
+                labels=range(self.ncols),
+                include_lowest=True,
+                right=True,
         )
 
         # Add column interval info
         info_table.loc[:, str(GRID.COL_INTERVAL)] = pd.cut(
-            info_table.loc[:, str(BBOX.CENTER_CC)],
-            bins=col_edges,
-            labels=[(col_edges[i], col_edges[i + 1]) for i in range(len(col_edges) - 1)],
-            include_lowest=True,
-            right=True,
+                info_table.loc[:, str(BBOX.CENTER_CC)],
+                bins=col_edges,
+                labels=[(col_edges[i], col_edges[i + 1]) for i in range(len(col_edges) - 1)],
+                include_lowest=True,
+                right=True,
         )
 
         # Grid Section Info
         info_table.loc[:, str(GRID.SECTION_IDX)] = list(zip(
-            info_table.loc[:, str(GRID.ROW_NUM)],
-            info_table.loc[:, str(GRID.COL_NUM)],
+                info_table.loc[:, str(GRID.ROW_NUM)],
+                info_table.loc[:, str(GRID.COL_NUM)],
         ),
         )
 
-        idx_map = np.reshape(np.arange(self.nrows * self.ncols), newshape=(self.nrows, self.ncols))
+        idx_map = np.reshape(np.arange(self.nrows*self.ncols), newshape=(self.nrows, self.ncols))
         for idx in np.sort(np.unique(info_table.loc[:, str(GRID.SECTION_IDX)].values)):
-            info_table.loc[info_table.loc[:, str(GRID.SECTION_IDX)] == idx, str(GRID.SECTION_NUM)] = idx_map[idx[0], idx[1]]
+            info_table.loc[info_table.loc[:, str(GRID.SECTION_IDX)] == idx, str(GRID.SECTION_NUM)] = idx_map[
+                idx[0], idx[1]]
 
         # Reduce memory consumption with categorical labels
         info_table.loc[:, str(GRID.SECTION_IDX)] = info_table.loc[:, str(GRID.SECTION_IDX)].astype('category')
@@ -322,11 +323,11 @@ class OptimalCenterGridFinder(GridFinder):
 
         else:
             return round(
-                minimize_scalar(partial_cost_func, bounds=(min_value, max_value),
-                                options={'maxiter': self.max_iter if self.max_iter else 1000,
-                                         'xatol': self.tol},
-                                ).x,
+                    minimize_scalar(partial_cost_func, bounds=(min_value, max_value),
+                                    options={'maxiter': self.max_iter if self.max_iter else 1000,
+                                             'xatol'  : self.tol},
+                                    ).x,
             )
 
 
-OptimalCenterGridFinder.measure.__doc__ = OptimalCenterGridFinder._operate.__doc__
+OptimalBinsGridFinder.measure.__doc__ = OptimalBinsGridFinder._operate.__doc__

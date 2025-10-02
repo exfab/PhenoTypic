@@ -1,9 +1,14 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING: from phenotypic import Image
+
 import pandas as pd
 import numpy as np
 from skimage.measure import regionprops_table
 import math
 
-from .. import Image
 from ..abstract import MapModifier
 from ..util.constants_ import OBJECT
 
@@ -39,6 +44,7 @@ class LowCircularityRemover(MapModifier):
         cutoff (float): The minimum threshold for the circularity score of
             objects. Must be a other_image between 0 and 1.
     """
+
     def __init__(self, cutoff: float = 0.785):
         if cutoff < 0 or cutoff > 1: raise ValueError('threshold should be a number between 0 and 1.')
         self.cutoff = cutoff
@@ -53,9 +59,10 @@ class LowCircularityRemover(MapModifier):
                  .set_index(OBJECT.LABEL))
 
         # Calculate circularity based on Polsby-Popper Score
-        table['circularity'] = (4 * math.pi * table['area']) / (table['perimeter'] ** 2)
+        table['circularity'] = (4*math.pi*table['area'])/(table['perimeter'] ** 2)
 
         passing_objects = table[table['circularity'] > self.cutoff]
-        failed_object_boolean_indices = ~(np.isin(element=image.objmap[:], test_elements=passing_objects.index.to_numpy()))
+        failed_object_boolean_indices = ~(
+            np.isin(element=image.objmap[:], test_elements=passing_objects.index.to_numpy()))
         image.objmap[failed_object_boolean_indices] = 0
         return image

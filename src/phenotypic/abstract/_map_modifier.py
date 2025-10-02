@@ -8,10 +8,11 @@ import numpy as np
 from ._image_operation import ImageOperation
 from phenotypic.util.exceptions_ import OperationFailedError, InterfaceError, DataIntegrityError
 from phenotypic.util.funcs_ import validate_operation_integrity
+from abc import ABC
 
 
 # <<Interface>>
-class MapModifier(ImageOperation):
+class MapModifier(ImageOperation, ABC):
     """Map modifiers edit the object map and are used for removing, combining, and re-ordering objects."""
 
     @validate_operation_integrity('image.array', 'image.matrix', 'image.enh_matrix')

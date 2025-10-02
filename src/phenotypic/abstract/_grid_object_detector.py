@@ -6,9 +6,10 @@ if TYPE_CHECKING: from phenotypic import GridImage
 from phenotypic.abstract import ObjectDetector, GridOperation
 from phenotypic.util.funcs_ import validate_operation_integrity
 from phenotypic.util.exceptions_ import GridImageInputError
+from abc import ABC
 
 
-class GridObjectDetector(ObjectDetector, GridOperation):
+class GridObjectDetector(ObjectDetector, GridOperation, ABC):
     """GridObjectDetectors are a type of ObjectDetector that use a grid to detect objects in an image. They change the image object mask and map."""
 
     @validate_operation_integrity('image.array', 'image.matrix', 'image.enh_matrix')

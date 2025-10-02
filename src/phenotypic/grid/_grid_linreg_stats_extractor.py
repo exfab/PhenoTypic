@@ -10,6 +10,7 @@ from phenotypic.util.constants_ import GRID_LINREG_STATS_EXTRACTOR, OBJECT, BBOX
 
 class MeasureGridLinRegStats(GridMeasureFeatures):
     def __init__(self, section_num: Optional[int] = None):
+        super().__init__()
         self.section_num = section_num
 
     def _operate(self, image: GridImage) -> pd.DataFrame:

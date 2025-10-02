@@ -1,5 +1,9 @@
-from .. import Image
-from ..abstract import ImageEnhancer
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING: from phenotypic import Image
+from phenotypic.abstract import ImageEnhancer
 
 from skimage.filters import median
 
@@ -28,6 +32,6 @@ class MedianEnhancer(ImageEnhancer):
             raise ValueError('mode must be one of "nearest","reflect","constant","mirror","wrap"')
 
     @staticmethod
-    def _operate(image: Image, mode:str, cval:float) -> Image:
+    def _operate(image: Image, mode: str, cval: float) -> Image:
         image.enh_matrix[:] = median(image=image.enh_matrix[:], behavior='ndimage', mode=mode, cval=cval)
         return image

@@ -86,7 +86,7 @@ def validate_operation_integrity(*targets: str):
             # Otherwise use default targets, but ensure 'image' parameter exists
             if 'image' not in sig.parameters:
                 raise OperationIntegrityError(
-                    f"{func.__name__}: no 'image' parameter and no targets given",
+                        f"{func.__name__}: no 'image' parameter and no targets given",
                 )
             # Default attributes to check on the image object
             eff_targets = [
@@ -101,19 +101,22 @@ def validate_operation_integrity(*targets: str):
             # Split the target path (e.g., 'image.array' -> ['image', 'array'])
             parts = target.split('.')
             # Get the root object from function arguments
-            obj = bound_args.arguments.get(parts[0])
+            obj: Image = bound_args.arguments.get(parts[0])
             if obj is None:
                 raise OperationIntegrityError(
-                    f"{func.__name__}: parameter '{parts[0]}' not found",
+                        f"{func.__name__}: parameter '{parts[0]}' not found",
                 )
 
             # Navigate through the attribute chain to get the final array
             for attr in parts[1:]:
-                obj = getattr(obj, attr)[:]  # Use [:] to get a view of the array
+                if obj._image_format.is_matrix() and attr is "array":
+                    pass
+                else:
+                    obj = getattr(obj, attr)[:]  # Use [:] to get a view of the array
             # Ensure the result is a NumPy array
             if not isinstance(obj, np.ndarray):
                 raise OperationIntegrityError(
-                    f"{func.__name__}: '{target}' is not a NumPy array",
+                        f"{func.__name__}: '{target}' is not a NumPy array",
                 )
             return obj
 
@@ -127,8 +130,8 @@ def validate_operation_integrity(*targets: str):
             # Step 4: Calculate hash values for all target arrays before function execution
             # This creates a dictionary mapping each target to its hash value
             pre_hashes = {tgt: murmur3_array_signature(_get_array(bound, tgt))
-                for tgt in eff_targets
-            }
+                          for tgt in eff_targets
+                          }
 
             # Step 5: Execute the original function
             result = func(*args, **kwargs)
@@ -145,7 +148,7 @@ def validate_operation_integrity(*targets: str):
                 # Ensure the attribute is still a NumPy array
                 if not isinstance(obj, np.ndarray):
                     raise OperationIntegrityError(
-                        f"{func.__name__}: '{tgt}' is not a NumPy array on result",
+                            f"{func.__name__}: '{tgt}' is not a NumPy array on result",
                     )
                 # Calculate new hash and compare with original
                 new_hash = murmur3_array_signature(obj)
@@ -189,7 +192,7 @@ def validate_measure_integrity(*targets: str):
             # apply only to methods with an 'image' parameter
             if 'image' not in sig.parameters:
                 raise OperationIntegrityError(
-                    f"{func.__name__}: no 'image' parameter and no targets given",
+                        f"{func.__name__}: no 'image' parameter and no targets given",
                 )
             eff_targets = [
                 'image.array',
@@ -203,13 +206,13 @@ def validate_measure_integrity(*targets: str):
             obj = bound_args.arguments.get(target.split('.')[0])
             if obj is None:
                 raise OperationIntegrityError(
-                    f"{func.__name__}: cannot find parameter '{target.split('.')[0]}'",
+                        f"{func.__name__}: cannot find parameter '{target.split('.')[0]}'",
                 )
             for attr in target.split('.')[1:]:
                 obj = getattr(obj, attr)[:]
             if not isinstance(obj, np.ndarray):
                 raise OperationIntegrityError(
-                    f"{func.__name__}: '{target}' is not a NumPy array")
+                        f"{func.__name__}: '{target}' is not a NumPy array")
             return obj
 
         @wraps(func)
@@ -219,8 +222,8 @@ def validate_measure_integrity(*targets: str):
 
             # hash each target before the call
             pre_hashes = {tgt: murmur3_array_signature(_get_array(bound, tgt))
-                for tgt in eff_targets
-            }
+                          for tgt in eff_targets
+                          }
 
             # execute the original method
             result = func(*args, **kwargs)
@@ -240,6 +243,7 @@ def validate_measure_integrity(*targets: str):
         return wrapper
 
     return decorator
+
 
 def normalize_rgb_bitdepth(image: np.ndarray) -> np.ndarray:
     """
@@ -262,7 +266,7 @@ def normalize_rgb_bitdepth(image: np.ndarray) -> np.ndarray:
 
     if np.issubdtype(img.dtype, np.integer):
         max_val = np.iinfo(img.dtype).max
-        return img.astype(np.float64) / max_val
+        return img.astype(np.float64)/max_val
 
     elif np.issubdtype(img.dtype, np.floating):
         tol = 1e-7
@@ -270,9 +274,9 @@ def normalize_rgb_bitdepth(image: np.ndarray) -> np.ndarray:
         if m <= 1.0 + tol:
             return img.astype(np.float32, copy=False)
         elif 1 < m <= (255 + tol):
-            return (img.astype(np.float32) / 255.0).clip(0, 1)
+            return (img.astype(np.float32)/255.0).clip(0, 1)
         elif 255 < m <= (65535.0 + tol):
-            return (img.astype(np.float32) / 65535.0).clip(0, 1)
+            return (img.astype(np.float32)/65535.0).clip(0, 1)
         else:
             raise ValueError(f'Invalid range: min={img.min():.02f} max={img.max():.02f}')
     else:

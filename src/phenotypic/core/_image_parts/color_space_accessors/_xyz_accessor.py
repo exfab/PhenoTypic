@@ -7,6 +7,7 @@ from phenotypic.util.colourspaces_ import sRGB_D50
 from phenotypic.util.exceptions_ import IllegalAssignmentError
 from phenotypic.util.funcs_ import normalize_rgb_bitdepth
 from ..accessor_abstracts._image_accessor_base import ImageAccessorBase
+from phenotypic.util.constants_ import IMAGE_FORMATS
 
 
 class XyzAccessor(ImageAccessorBase):
@@ -23,10 +24,9 @@ class XyzAccessor(ImageAccessorBase):
 
     @property
     def _subject_arr(self) -> np.ndarray:
-        rgb = self._root_image.array[:]
-        norm_rgb = normalize_rgb_bitdepth(rgb)
-        match (self._root_image.color_profile, self._root_image.illuminant):
-            case ("sRGB", "D50"):
+        norm_rgb = normalize_rgb_bitdepth(self._root_image.array[:])
+        match (self._root_image.imformat, self._root_image.color_profile, self._root_image.illuminant):
+            case (IMAGE_FORMATS.RGB,"sRGB", "D50"):
                 sRGB_D50.whitepoint = colour.CCS_ILLUMINANTS[self._root_image.observer]["D50"]
                 return colour.RGB_to_XYZ(
                         RGB=norm_rgb,
@@ -34,12 +34,27 @@ class XyzAccessor(ImageAccessorBase):
                         illuminant=sRGB_D50.whitepoint,
                         cctf_decoding=True,  # Assumes sRGB means non-linear
                 )
-            case ("sRGB", "D65"):
+            case (IMAGE_FORMATS.RGB,"sRGB", "D65"):
                 return colour.RGB_to_XYZ(
                         RGB=norm_rgb,
                         colourspace=colour.RGB_COLOURSPACES["sRGB"],
                         illuminant=colour.CCS_ILLUMINANTS[self._root_image.observer]["D65"],
                         cctf_decoding=True,  # Assumes sRGB means non-linear
+                )
+            case (IMAGE_FORMATS.LINEAR_SRGB, "sRGB", "D50"):
+                sRGB_D50.whitepoint = colour.CCS_ILLUMINANTS[self._root_image.observer]["D50"]
+                return colour.RGB_to_XYZ(
+                        RGB=norm_rgb,
+                        colourspace=sRGB_D50,
+                        illuminant=sRGB_D50.whitepoint,
+                        cctf_decoding=False,
+                )
+            case (IMAGE_FORMATS.LINEAR_SRGB,"sRGB", "D65"):
+                return colour.RGB_to_XYZ(
+                        RGB=norm_rgb,
+                        colourspace=colour.RGB_COLOURSPACES["sRGB"],
+                        illuminant=colour.CCS_ILLUMINANTS[self._root_image.observer]["D65"],
+                        cctf_decoding=False,
                 )
             case _:
                 raise ValueError(

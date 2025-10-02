@@ -24,6 +24,7 @@ from ._rolling_ball_preprocessor import RollingBallEnhancer
 from ._white_tophat_preprocessor import WhiteTophatEnhancer
 from ._laplace_preprocessor import LaplaceEnhancer
 from ._contrast_streching import ContrastStretching
+from ._sobel_filter import SobelFilter
 
 __all__ = [
     "CLAHE",
@@ -33,5 +34,6 @@ __all__ = [
     "RollingBallEnhancer",
     "WhiteTophatEnhancer",
     "LaplaceEnhancer",
-    "ContrastStretching"
+    "ContrastStretching",
+    "SobelFilter",
 ]

@@ -1,8 +1,13 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING: from phenotypic import Image
+
 import numpy as np
 from skimage.morphology import disk, square, white_tophat
 
 from ..abstract import MapModifier
-from .. import Image
 
 
 class WhiteTophatModifier(MapModifier):
@@ -12,17 +17,17 @@ class WhiteTophatModifier(MapModifier):
 
     def _operate(self, image: Image) -> Image:
         white_tophat_results = white_tophat(
-            image.objmask[:],
-            footprint=self._get_footprint(
-                self._get_footprint_radius(array=image.objmask[:])
-            )
+                image.objmask[:],
+                footprint=self._get_footprint(
+                        self._get_footprint_radius(array=image.objmask[:])
+                )
         )
         image.objmask[:] = image.objmask[:] & ~white_tophat_results
         return image
 
     def _get_footprint_radius(self, array: np.ndarray) -> int:
         if self.footprint_radius is None:
-            return int(np.min(array.shape) * 0.004)
+            return int(np.min(array.shape)*0.004)
         else:
             return self.footprint_radius
 
@@ -31,6 +36,6 @@ class WhiteTophatModifier(MapModifier):
             case 'disk':
                 return disk(radius=radius)
             case 'square':
-                return square(radius * 2)
+                return square(radius*2)
             case _:
                 raise ValueError('invalid footprint shape. White tophat transform only supports two dimensional shapes')

@@ -1,7 +1,12 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING: from phenotypic import Image
+
 import numpy as np
 from typing import Optional, Union
 
-from phenotypic import Image
 from phenotypic.abstract import MapModifier
 
 
@@ -15,9 +20,9 @@ class BorderObjectRemover(MapModifier):
 
     def _operate(self, image: Image) -> Image:
         if self.__edge_size is None:
-            edge_size = int(np.min(image.shape[[1, 2]]) * 0.01)
+            edge_size = int(np.min(image.shape[[1, 2]])*0.01)
         elif type(self.__edge_size) == float and 0.0 < self.__edge_size < 1.0:
-            edge_size = int(np.min(image.shape) * self.__edge_size)
+            edge_size = int(np.min(image.shape)*self.__edge_size)
         elif isinstance(self.__edge_size, (int, float)):
             edge_size = self.__edge_size
         else:

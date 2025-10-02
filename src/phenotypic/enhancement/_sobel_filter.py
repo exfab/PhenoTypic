@@ -1,10 +1,14 @@
+from __future__ import annotations
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING: from phenotypic import Image
+
 from skimage.filters import sobel
 
-from ..abstract import ObjectDetector
-from .. import Image
+from phenotypic.abstract import ImageEnhancer
 
 
-class SobelDetector(ObjectDetector):
+class SobelFilter(ImageEnhancer):
     """
     A specialized object detection class using Sobel filtering on image enhancement matrices for edge detection.
 
@@ -29,6 +33,5 @@ class SobelDetector(ObjectDetector):
             Image: The modified image after applying the Sobel filter on the enhancement
             matrix.
         """
-        enh_matrix = image.enh_matrix[:]
-        image.objmask[:] = sobel(image=enh_matrix)
+        image.enh_matrix[:] = sobel(image=image.enh_matrix[:])
         return image

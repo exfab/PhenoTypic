@@ -62,7 +62,7 @@ class BaseOperation(ABC):
 
     def __del__(self):
         """Automatically stop tracemalloc when the object is deleted."""
-        if self._tracemalloc_started:
+        if hasattr(self, '_tracemalloc_started') and self._tracemalloc_started:
             try:
                 tracemalloc.stop()
                 # Only log if we can determine logging is still available

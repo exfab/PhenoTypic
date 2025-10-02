@@ -7,9 +7,10 @@ from phenotypic.abstract import MapModifier
 from phenotypic.abstract import GridOperation
 from phenotypic.util.exceptions_ import GridImageInputError
 from phenotypic.util.funcs_ import validate_operation_integrity
+from abc import ABC
 
 
-class GridMapModifier(MapModifier, GridOperation):
+class GridMapModifier(MapModifier, GridOperation, ABC):
 
     @validate_operation_integrity('image.array', 'image.matrix', 'image.enh_matrix')
     def apply(self, image: GridImage, inplace: bool = False) -> GridImage:

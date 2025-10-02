@@ -8,8 +8,9 @@ if TYPE_CHECKING: from phenotypic import GridImage
 from phenotypic.abstract import ImageCorrector
 from phenotypic.abstract import GridOperation
 from phenotypic.util.exceptions_ import GridImageInputError, OutputValueError
+from abc import ABC
 
-class GridCorrector(ImageCorrector, GridOperation):
+class GridCorrector(ImageCorrector, GridOperation, ABC):
 
     def apply(self, image: GridImage, inplace=False) -> GridImage:
         from phenotypic import GridImage

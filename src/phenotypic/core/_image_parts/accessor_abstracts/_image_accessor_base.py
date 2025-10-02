@@ -1,14 +1,17 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, Tuple, Dict
+
+import os
+from typing import TYPE_CHECKING, Tuple
 
 if TYPE_CHECKING: from phenotypic import Image
 
 import skimage as ski
 import matplotlib.pyplot as plt
+from matplotlib.ticker import MultipleLocator
 import numpy as np
 
-from phenotypic.util.constants_ import MPL, METADATA, IMAGE_FORMATS
-from abc import ABC, abstractmethod
+from phenotypic.util.constants_ import MPL, METADATA
+from abc import ABC
 
 
 class ImageAccessorBase(ABC):
@@ -69,7 +72,8 @@ class ImageAccessorBase(ABC):
         foreground[self._root_image.objmask[:] == 0] = 0
         return foreground
 
-    def histogram(self, figsize: Tuple[int, int] = (10, 5), *, cmap='gray', linewidth=1, channel_names: list | None = None) -> Tuple[
+    def histogram(self, figsize: Tuple[int, int] = (10, 5), *, cmap='gray', linewidth=1,
+                  channel_names: list | None = None) -> Tuple[
         plt.Figure, plt.Axes]:
         """
         Plots the histogram(s) of an image along with the image itself. The behavior depends on
@@ -97,7 +101,8 @@ class ImageAccessorBase(ABC):
             case 2:
                 fig, axes = plt.subplots(nrows=1, ncols=2, figsize=figsize)
                 axes = axes.ravel()
-                axes[0] = self._plot(arr=self._subject_arr, figsize=figsize, title=self._root_image.name, cmap=cmap, ax=axes[0])
+                axes[0] = self._plot(arr=self._subject_arr, figsize=figsize, title=self._root_image.name, cmap=cmap,
+                                     ax=axes[0])
                 hist, histc = ski.exposure.histogram(image=self._subject_arr[:],
                                                      nbins=2 ** self._root_image.metadata[METADATA.BIT_DEPTH])
                 axes[1].plot(histc, hist, lw=linewidth)
@@ -154,15 +159,25 @@ class ImageAccessorBase(ABC):
         if 0 <= max_val <= 1:
             plot_arr = arr.copy().astype(np.float32)
         elif 1 < max_val <= 255:
-            plot_arr = (arr.copy().astype(np.float32) / 255).clip(0, 1)
+            plot_arr = (arr.copy().astype(np.float32)/255).clip(0, 1)
         elif 255 < max_val <= 65535:
-            plot_arr = (arr.copy().astype(np.float32) / 65535.0).clip(0, 1)
+            plot_arr = (arr.copy().astype(np.float32)/65535.0).clip(0, 1)
         else:
             raise ValueError("Values exceed 16-bit range")
 
         ax.imshow(plot_arr, cmap=cmap, **mpl_settings) if plot_arr.ndim == 2 else ax.imshow(plot_arr, **mpl_settings)
 
         ax.grid(False)
+        arr_shape = arr.shape
+
+        if arr_shape[0] > 500:
+            ax.yaxis.set_minor_locator(MultipleLocator(100))
+            ax.yaxis.set_major_locator(MultipleLocator(500))
+
+        if arr_shape[1] > 500:
+            ax.xaxis.set_minor_locator(MultipleLocator(100))
+            ax.xaxis.set_major_locator(MultipleLocator(500))
+
         if title is True:
             ax.set_title(self._root_image.name)
         elif title:
@@ -176,22 +191,22 @@ class ImageAccessorBase(ABC):
             if object_label is None:
                 text_rr, text_cc = props[i].centroid
                 ax.text(
-                    x=text_cc, y=text_rr,
-                    s=f'{label}',
-                    color=color,
-                    fontsize=size,
-                    bbox=dict(facecolor=facecolor, edgecolor='none', alpha=0.6, boxstyle='round'),
-                    **kwargs,
+                        x=text_cc, y=text_rr,
+                        s=f'{label}',
+                        color=color,
+                        fontsize=size,
+                        bbox=dict(facecolor=facecolor, edgecolor='none', alpha=0.6, boxstyle='round'),
+                        **kwargs,
                 )
             elif object_label == label:
                 text_rr, text_cc = props[i].centroid
                 ax.text(
-                    x=text_cc, y=text_rr,
-                    s=f'{label}',
-                    color=color,
-                    fontsize=size,
-                    bbox=dict(facecolor=facecolor, edgecolor='none', alpha=0.6, boxstyle='round'),
-                    **kwargs,
+                        x=text_cc, y=text_rr,
+                        s=f'{label}',
+                        color=color,
+                        fontsize=size,
+                        bbox=dict(facecolor=facecolor, edgecolor='none', alpha=0.6, boxstyle='round'),
+                        **kwargs,
                 )
         return ax
 
@@ -235,7 +250,7 @@ class ImageAccessorBase(ABC):
             the display. If an existing Axes is provided, its corresponding Figure is returned.
         """
         overlay_settings = overlay_settings if overlay_settings else {}
-        overlay_alpha = overlay_settings.get('alpha', 0.2)
+        overlay_alpha = overlay_settings.get('alpha', 0.15)
         overlay_arr = ski.color.label2rgb(label=objmap, image=arr, bg_label=0, alpha=overlay_alpha, **overlay_settings)
 
         fig, ax = self._plot(arr=overlay_arr, figsize=figsize, title=title, cmap=cmap, ax=ax, mpl_settings=mpl_settings)
@@ -288,21 +303,23 @@ class ImageAccessorBase(ABC):
         if label_settings is None: label_settings = {}
 
         fig, ax = self._plot_overlay(
-            arr=self._subject_arr,
-            objmap=objmap,
-            ax=ax,
-            figsize=figsize,
-            title=title,
-            mpl_settings=imshow_settings,
-            overlay_settings=overlay_settings,
+                arr=self._subject_arr,
+                objmap=objmap,
+                ax=ax,
+                figsize=figsize,
+                title=title,
+                mpl_settings=imshow_settings,
+                overlay_settings=overlay_settings,
         )
 
         if show_labels:
             ax = self._plot_obj_labels(
-                ax=ax,
-                color=label_settings.get('color', 'white'),
-                size=label_settings.get('size', 12),
-                facecolor=label_settings.get('facecolor', 'red'),
-                object_label=object_label,
+                    ax=ax,
+                    color=label_settings.get('color', 'white'),
+                    size=label_settings.get('size', 12),
+                    facecolor=label_settings.get('facecolor', 'red'),
+                    object_label=object_label,
             )
         return fig, ax
+
+    def imsave(self, filepath:str|os.PathLike):

@@ -1,8 +1,13 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING: from phenotypic import Image
+
 import numpy as np
 from scipy.ndimage import binary_fill_holes
 from typing import Optional
 
-from .. import Image
 from ..abstract import MapModifier
 from ..util.funcs_ import is_binary_mask
 
@@ -17,8 +22,8 @@ class MaskFill(MapModifier):
     @staticmethod
     def _operate(image: Image, structure, origin) -> Image:
         image.objmask[:] = binary_fill_holes(
-            input=image.objmask[:],
-            structure=structure,
-            origin=origin
+                input=image.objmask[:],
+                structure=structure,
+                origin=origin
         )
         return image

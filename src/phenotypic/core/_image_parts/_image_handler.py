@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING: from phenotypic import Image
@@ -14,7 +15,7 @@ from os import PathLike
 import skimage
 from skimage.color import rgb2gray, rgba2rgb
 from skimage.transform import rotate as skimage_rotate
-from scipy.ndimage import rotate as scipy_rotate
+import scipy.ndimage as ndimage
 from copy import deepcopy
 from typing import Type
 
@@ -51,8 +52,9 @@ class ImageHandler:
         _metadata (SimpleNamespace): Container holding private, protected, and public metadata for
             the image.
         _accessors (SimpleNamespace): Provides property-based access"""
-
-    _OBJMAP_DTYPE = np.uint16
+    _ARRAY8_DTYPE = np.uint8
+    _ARRAY16_DTYPE = np.uint16
+    _OBJMAP_DTYPE = np.uint32
 
     def __init__(self,
                  input_image: np.ndarray | Image | PathLike | None = None,
@@ -86,16 +88,16 @@ class ImageHandler:
 
         # Public metadata can be edited or removed
         self._metadata = SimpleNamespace(
-            private={
-                METADATA.UUID: uuid.uuid4()
-            },
-            protected={
-                METADATA.IMAGE_NAME: name,
-                METADATA.PARENT_IMAGE_NAME: b'',
-                METADATA.IMAGE_TYPE: IMAGE_TYPES.BASE.value,
-                METADATA.BIT_DEPTH: kwargs.get('bit_depth', 8)
-            },
-            public={},
+                private={
+                    METADATA.UUID: uuid.uuid4()
+                },
+                protected={
+                    METADATA.IMAGE_NAME       : name,
+                    METADATA.PARENT_IMAGE_NAME: b'',
+                    METADATA.IMAGE_TYPE       : IMAGE_TYPES.BASE.value,
+                    METADATA.BIT_DEPTH        : kwargs.get('bit_depth', 8)
+                },
+                public={},
         )
 
         # Initialize image accessors
@@ -159,16 +161,17 @@ class ImageHandler:
         if isinstance(other_image, self.__class__) or issubclass(type(other_image), ImageHandler):
             # Handle in the array case
             if other_image.imformat.is_array() and self.imformat.is_array():
-                if np.array_equal(self.array[key].shape, other_image.array.shape) is False: raise ValueError(
-                    'The image being set must be of the same shape as the image elements being accessed.',
-                )
+                if np.array_equal(self.array[key].shape, other_image.array.shape) is False:
+                    raise ValueError(
+                            'The image being set must be of the same shape as the image elements being accessed.',
+                    )
                 else:
                     self._data.array[key] = other_image._data.array[:]
 
             # handle other cases
             if np.array_equal(self.matrix[key].shape, other_image.matrix.shape) is False:
                 raise ValueError(
-                    'The image being set must be of the same shape as the image elements being accessed.',
+                        'The image being set must be of the same shape as the image elements being accessed.',
                 )
             else:
                 self._data.matrix[key] = other_image._data.matrix[:]
@@ -646,7 +649,8 @@ class ImageHandler:
 
 
         """
-        return ski.measure.regionprops(label_image=np.full(shape=self.shape, fill_value=1), intensity_image=self._data.matrix, cache=False)
+        return ski.measure.regionprops(label_image=np.full(shape=self.shape, fill_value=1),
+                                       intensity_image=self._data.matrix, cache=False)
 
     @property
     def num_objects(self) -> int:
@@ -668,7 +672,8 @@ class ImageHandler:
         # Create a new instance of ImageHandler
         return self.__class__(self)
 
-    def set_image(self, input_image: Image | np.ndarray | None = None, imformat: Literal['RGB', 'greyscale'] | None = None) -> None:
+    def set_image(self, input_image: Image | np.ndarray | None = None,
+                  imformat: Literal['RGB', 'greyscale'] | None = None) -> None:
         """
         Sets the image data and format based on the provided input_image and parameters.
 
@@ -693,7 +698,8 @@ class ImageHandler:
             case None:
                 self._clear_data()
             case _:
-                raise ValueError(f'input_image must be a NumPy array, a class instance, or None. Got {type(input_image)}')
+                raise ValueError(
+                        f'input_image must be a NumPy array, a class instance, or None. Got {type(input_image)}')
 
     def _clear_data(self):
         self._data.array = np.empty((0, 3), dtype=np.uint8)  # Create an empty 3D array
@@ -758,7 +764,7 @@ class ImageHandler:
             case 'GRAYSCALE' | IMAGE_FORMATS.GRAYSCALE | IMAGE_FORMATS.GRAYSCALE_SINGLE_CHANNEL:
                 self._image_format = IMAGE_FORMATS.GRAYSCALE
                 self._set_from_matrix(
-                    imarr if imarr.ndim == 2 else imarr[:, :, 0],
+                        imarr if imarr.ndim == 2 else imarr[:, :, 0],
                 )
 
             case 'RGB' | IMAGE_FORMATS.RGB | IMAGE_FORMATS.RGB_OR_BGR:
@@ -888,25 +894,50 @@ class ImageHandler:
         """
 
         if self._image_format.is_array():
-            return self.array.show_overlay(object_label=object_label, figsize=figsize, title=title, show_labels=show_labels, ax=ax,
+            return self.array.show_overlay(object_label=object_label, figsize=figsize, title=title,
+                                           show_labels=show_labels, ax=ax,
                                            label_settings=label_settings, overlay_settings=overlay_settings,
                                            imshow_settings=imshow_settings)
         else:
-            return self.matrix.show_overlay(object_label=object_label, figsize=figsize, title=title, show_labels=show_labels, ax=ax,
+            return self.matrix.show_overlay(object_label=object_label, figsize=figsize, title=title,
+                                            show_labels=show_labels, ax=ax,
                                             label_settings=label_settings, overlay_settings=overlay_settings,
                                             imshow_settings=imshow_settings)
 
-    def rotate(self, angle_of_rotation: int, mode: str = 'edge', cval=0, **kwargs) -> None:
-        """Rotate the image and all its components"""
-        if self._image_format.is_array():
-            self._data.array = skimage_rotate(image=self._data.array, angle=angle_of_rotation, mode=mode, clip=True, cval=cval, **kwargs)
+    def rotate(self, angle_of_rotation: int, mode: str = 'constant', cval=0, order=0, preserve_range=True) -> None:
+        """
+        Rotates various data attributes of the object by a specified angle.
 
-        self._data.matrix = skimage_rotate(image=self._data.matrix, angle=angle_of_rotation, mode=mode, clip=True, cval=cval, **kwargs)
-        self._data.enh_matrix = skimage_rotate(image=self._data.enh_matrix, angle=angle_of_rotation, mode=mode, clip=True, cval=cval,
-                                               **kwargs)
+        The method applies rotation transformations image data. It data that falls outside the border is clipped.
+
+        Args:
+            angle_of_rotation (int): The angle, in degrees, by which to rotate the data attributes.
+                Positive values indicate counterclockwise rotation.
+            mode (str): Mode parameter determining how borders are handled during the rotation.
+                Default is 'constant'.
+            cval: Constant value to fill edges in 'constant' mode. Default is 0.
+            order (int): The order of the spline interpolation for rotating images. Must be an
+                integer in the range [0, 5]. Default is 0 for nearest-neighbor interpolation.
+            preserve_range (bool): Whether to keep the original input range of values after
+                performing the rotation. Default is True.
+
+        Returns:
+            None
+        """
+        if self._image_format.is_array():
+            self._data.array = skimage_rotate(image=self._data.array, angle=angle_of_rotation, mode=mode, clip=True,
+                                              cval=cval, order=order, preserve_range=preserve_range)
+
+        self._data.matrix = skimage_rotate(image=self._data.matrix, angle=angle_of_rotation, mode=mode, clip=True,
+                                           cval=cval, order=order, preserve_range=preserve_range)
+        
+        self._data.enh_matrix = skimage_rotate(image=self._data.enh_matrix, angle=angle_of_rotation, mode=mode,
+                                               clip=True, cval=cval, order=order, preserve_range=preserve_range)
 
         # Rotate the object map while preserving the details and using nearest-neighbor interpolation
-        self.objmap[:] = scipy_rotate(input=self.objmap[:], angle=angle_of_rotation, mode='constant', cval=0, order=0, reshape=False)
+        # This one must be nearest-neighbor
+        self.objmap[:] = ndimage.rotate(input=self.objmap[:], angle=angle_of_rotation, mode='constant', cval=0, order=0,
+                                        reshape=False)
 
     def reset(self) -> Type[Image]:
         """

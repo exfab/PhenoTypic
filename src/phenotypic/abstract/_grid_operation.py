@@ -3,9 +3,10 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING: from phenotypic import GridImage
 from phenotypic.abstract import ImageOperation
+from abc import ABC
 
 
-class GridOperation(ImageOperation):
+class GridOperation(ImageOperation, ABC):
     def __init__(self, nrows: int = 8, ncols: int = 12):
         self.nrows = nrows
         self.ncols = ncols

@@ -1,8 +1,13 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING: from phenotypic import Image
+
 import numpy as np
 from skimage.restoration import rolling_ball
 
-from .. import Image
-from ..abstract import ImageEnhancer
+from phenotypic.abstract import ImageEnhancer
 
 
 class RollingBallEnhancer(ImageEnhancer):

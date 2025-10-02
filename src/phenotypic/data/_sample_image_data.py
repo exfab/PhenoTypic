@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 from pathlib import Path
 from typing import List, Literal, Union
@@ -6,15 +8,18 @@ __current_file_dir = Path(os.path.dirname(os.path.abspath(__file__)))
 
 from skimage.io import imread
 
-from phenotypic import Image, GridImage
 import math
-from typing import Iterable, Tuple
+from typing import Iterable, Tuple, TYPE_CHECKING
 import numpy as np
+
+if TYPE_CHECKING: from phenotypic import Image
 
 
 # TODO: Update filepaths for this file
 
 def _image_loader(filepath, mode: Literal['array', 'Image', 'GridImage']) -> Union[np.array, Image, GridImage]:
+    from phenotypic import Image, GridImage
+
     match mode:
         case 'array':
             return imread(filepath)
@@ -60,7 +65,7 @@ def make_synthetic_colony(
         acc = np.zeros((h, w), dtype=np.float32);
         total = 0.0
         for s in scales:
-            gh, gw = max(1, h // s), max(1, w // s)
+            gh, gw = max(1, h//s), max(1, w//s)
             g = rng.random((gh + 1, gw + 1)).astype(np.float32)
             y = np.linspace(0, gh, h, endpoint=False);
             x = np.linspace(0, gw, w, endpoint=False)
@@ -74,34 +79,34 @@ def make_synthetic_colony(
             b = g[y0[:, None], x1[None, :]]
             c = g[y1[:, None], x0[None, :]];
             d = g[y1[:, None], x1[None, :]]
-            acc += ((a * (1 - wx) + b * wx) * (1 - wy)[:, None] +
-                    (c * (1 - wx) + d * wx) * wy[:, None])
+            acc += ((a*(1 - wx) + b*wx)*(1 - wy)[:, None] +
+                    (c*(1 - wx) + d*wx)*wy[:, None])
             total += 1.0
-        acc = acc / max(total, 1e-6)
-        return (acc - acc.min()) / (np.ptp(acc) + 1e-6)
+        acc = acc/max(total, 1e-6)
+        return (acc - acc.min())/(np.ptp(acc) + 1e-6)
 
     def _colony_mask(h: int, w: int, cy: float, cx: float, base_r: float) -> np.ndarray:
         yy, xx = np.mgrid[0:h, 0:w]
         theta = np.arctan2(yy - cy, xx - cx)
         ntheta = 512
         ang = np.linspace(-math.pi, math.pi, ntheta, endpoint=False)
-        radial_noise = 0.08 * rng.standard_normal(ntheta).astype(np.float32)
-        r_lookup = base_r * (1.0 + np.interp(theta, ang, radial_noise, period=2 * math.pi))
+        radial_noise = 0.08*rng.standard_normal(ntheta).astype(np.float32)
+        r_lookup = base_r*(1.0 + np.interp(theta, ang, radial_noise, period=2*math.pi))
         d = np.sqrt((yy - cy) ** 2 + (xx - cx) ** 2)
-        edge_soft = max(base_r * 0.05, 1.0)
-        t = (r_lookup - d) / edge_soft
-        mask = np.clip(0.5 * (np.tanh(t) + 1.0), 0.0, 1.0)
+        edge_soft = max(base_r*0.05, 1.0)
+        t = (r_lookup - d)/edge_soft
+        mask = np.clip(0.5*(np.tanh(t) + 1.0), 0.0, 1.0)
         tex = _perlin_like(h, w, scales=(32, 16, 8))
-        return np.clip(mask * (0.85 + 0.15 * tex), 0.0, 1.0)
+        return np.clip(mask*(0.85 + 0.15*tex), 0.0, 1.0)
 
     # Agar background with mild texture
     agar = np.array(agar_rgb, dtype=np.float32)
-    bg_tex = 0.025 * (_perlin_like(h, w, scales=(64, 32)) - 0.5)
+    bg_tex = 0.025*(_perlin_like(h, w, scales=(64, 32)) - 0.5)
     bg = np.clip(agar[None, None, :] + bg_tex[..., None], 0.0, 1.0)
 
     # Colony placement
-    cy, cx = h * 0.5, w * 0.5
-    r = min(h, w) * 0.35
+    cy, cx = h*0.5, w*0.5
+    r = min(h, w)*0.35
     m = _colony_mask(h, w, cy, cx, r)[..., None]
 
     # Colony color, forced light
@@ -109,15 +114,15 @@ def make_synthetic_colony(
     col = np.clip(col, 0.86, 0.99)
 
     # Screen-like blending inside colony mask to guarantee lighter-than-agar
-    colony_region = 1.0 - (1.0 - bg) * (1.0 - col[None, None, :])
-    img = bg * (1.0 - m) + colony_region * m
+    colony_region = 1.0 - (1.0 - bg)*(1.0 - col[None, None, :])
+    img = bg*(1.0 - m) + colony_region*m
 
     # Quantize
     img = np.clip(img, 0.0, 1.0)
     if bit_depth == 8:
-        return (img * 255.0 + 0.5).astype(np.uint8)
+        return (img*255.0 + 0.5).astype(np.uint8)
     else:
-        return (img * 65535.0 + 0.5).astype(np.uint16)
+        return (img*65535.0 + 0.5).astype(np.uint16)
 
 
 def load_synthetic_colony(mode: Literal['array', 'Image'] = 'array') -> Union[np.ndarray, Image]:
@@ -140,7 +145,9 @@ def load_synthetic_colony(mode: Literal['array', 'Image'] = 'array') -> Union[np
     Raises:
         ValueError: If the mode is neither 'array' nor 'Image'.
     """
-    data = np.load(__current_file_dir / 'synthetic_colony.npz')
+    from phenotypic import Image
+
+    data = np.load(__current_file_dir/'synthetic_colony.npz')
     match mode:
         case 'array':
             return data['array']
@@ -157,55 +164,56 @@ def load_synthetic_colony(mode: Literal['array', 'Image'] = 'array') -> Union[np
 
 def load_plate_12hr() -> np.array:
     """Returns a plate image of a K. Marxianus colony 96 array plate at 12 hrs"""
-    return imread(__current_file_dir / 'StandardDay1.jpg')
+    return imread(__current_file_dir/'StandardDay1.jpg')
 
 
 def load_plate_72hr() -> np.array:
     """Return a image of a k. marxianus colony 96 array plate at 72 hrs"""
-    return imread(__current_file_dir / 'StandardDay6.jpg')
+    return imread(__current_file_dir/'StandardDay6.jpg')
 
 
 def load_plate_series() -> List[np.array]:
     """Return a series of plate images across 6 time samples"""
     series = []
-    fnames = os.listdir(__current_file_dir / 'PlateSeries')
+    fnames = os.listdir(__current_file_dir/'PlateSeries')
     fnames.sort()
     for fname in fnames:
-        series.append(imread(__current_file_dir / 'PlateSeries' / fname))
+        series.append(imread(__current_file_dir/'PlateSeries'/fname))
     return series
 
 
 def load_early_colony() -> np.array:
     """Returns a colony image array of K. Marxianus at 12 hrs"""
-    return imread(__current_file_dir / 'early_colony.png')
+    return imread(__current_file_dir/'early_colony.png')
 
 
 def load_faint_early_colony():
     """Returns a faint colony image array of K. Marxianus at 12 hrs"""
-    return imread(__current_file_dir / 'early_colony_faint.png')
+    return imread(__current_file_dir/'early_colony_faint.png')
 
 
 def load_colony():
     """Returns a colony image array of K. Marxianus at 72 hrs"""
-    return imread(__current_file_dir / 'later_colony.png')
+    return imread(__current_file_dir/'later_colony.png')
 
 
 def load_smear_plate_12hr():
     """Returns a plate image array of K. Marxianus that contains noise such as smears"""
-    return imread(__current_file_dir / 'difficult/1_1S_16.jpg')
+    return imread(__current_file_dir/'difficult/1_1S_16.jpg')
 
 
 def load_smear_plate_24hr():
     """Returns a plate image array of K. Marxianus that contains noise such as smears"""
-    return imread(__current_file_dir / 'difficult/2_2Y_6.jpg')
+    return imread(__current_file_dir/'difficult/2_2Y_6.jpg')
 
 
-def load_lactose_series(mode: Literal['array', 'Image', 'GridImage'] = 'array') -> List[Union[np.array, Image, GridImage]]:
+def load_lactose_series(mode: Literal['array', 'Image', 'GridImage'] = 'array') -> List[
+    Union[np.array, Image, GridImage]]:
     """Return a series of plate images across 6 time samples"""
     series = []
-    fnames = os.listdir(__current_file_dir / 'lactose')
+    fnames = os.listdir(__current_file_dir/'lactose')
     fnames.sort()
     for fname in fnames:
-        filepath = __current_file_dir / 'lactose' / fname
+        filepath = __current_file_dir/'lactose'/fname
         series.append(_image_loader(filepath, mode))
     return series

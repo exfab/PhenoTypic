@@ -8,7 +8,7 @@ from matplotlib.patches import Rectangle
 
 from phenotypic.abstract import GridFinder
 from phenotypic.core._image_parts.accessors import GridAccessor
-from phenotypic.grid import OptimalCenterGridFinder
+from phenotypic.grid import OptimalBinsGridFinder
 from phenotypic.measure import MeasureBounds
 from phenotypic.util.constants_ import IMAGE_TYPES, BBOX, METADATA
 from phenotypic.util.exceptions_ import IllegalAssignmentError
@@ -75,7 +75,7 @@ class ImageGridHandler(Image):
         if hasattr(input_image, 'grid_finder'):
             grid_finder = input_image.grid_finder
         elif grid_finder is None:
-            grid_finder = OptimalCenterGridFinder(nrows=nrows, ncols=ncols)
+            grid_finder = OptimalBinsGridFinder(nrows=nrows, ncols=ncols)
 
         self.grid_finder: Optional[GridFinder] = grid_finder
         self._accessors.grid = GridAccessor(self)
@@ -203,8 +203,8 @@ class ImageGridHandler(Image):
             Tuple[plt.Figure, plt.Axes]: Modified figure and axis containing the rendered overlay.
         """
         fig, ax = super().show_overlay(
-            object_label=object_label, ax=ax, figsize=figsize,
-            show_labels=show_labels, label_settings=label_settings,
+                object_label=object_label, ax=ax, figsize=figsize,
+                show_labels=show_labels, label_settings=label_settings,
         )
 
         if show_gridlines and self.num_objects > 0:
@@ -213,18 +213,22 @@ class ImageGridHandler(Image):
             lower_col_edges = col_edges[:-1]
 
             # Set x-axes labels to grid column numbers
-            col_centers = ((upper_col_edges - lower_col_edges) // 2) + lower_col_edges
-            ax.set_xticks(col_centers)
-            ax.set_xticklabels(np.arange(self.ncols))
+            secax_x = ax.secondary_xaxis('top')
+            col_centers = ((upper_col_edges - lower_col_edges)//2) + lower_col_edges
+            secax_x.set_xticks(col_centers)
+            secax_x.set_xticklabels(np.arange(self.ncols))
+            secax_x.set_xlabel('Grid Column Number')
 
             row_edges = self.grid.get_row_edges()
             upper_row_edges = row_edges[1:]
             lower_row_edges = row_edges[:-1]
 
             # Set y-axis labels to grid row numbers
-            row_centers = ((upper_row_edges - lower_row_edges) // 2) + lower_row_edges
-            ax.set_yticks(row_centers)
-            ax.set_yticklabels(np.arange(self.nrows))
+            secax_y = ax.secondary_yaxis('right')
+            row_centers = ((upper_row_edges - lower_row_edges)//2) + lower_row_edges
+            secax_y.set_yticks(row_centers)
+            secax_y.set_yticklabels(np.arange(self.nrows))
+            secax_y.set_xlabel('Grid Row Number')
 
             # Draw grid lines
             ax.vlines(x=col_edges, ymin=row_edges.min(), ymax=row_edges.max(), colors='c', linestyles='--')
@@ -248,11 +252,11 @@ class ImageGridHandler(Image):
                 height = max_rr - min_rr
 
                 ax.add_patch(
-                    Rectangle(
-                        (min_cc, min_rr), width=width, height=height,
-                        edgecolor=next(cmap_cycle),
-                        facecolor='none',
-                    ),
+                        Rectangle(
+                                (min_cc, min_rr), width=width, height=height,
+                                edgecolor=next(cmap_cycle),
+                                facecolor='none',
+                        ),
                 )
 
         return fig, ax

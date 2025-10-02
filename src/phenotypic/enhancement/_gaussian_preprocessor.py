@@ -1,7 +1,11 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING: from phenotypic import Image
 from skimage.filters import gaussian
 
 from ..abstract import ImageEnhancer
-from .. import Image
 
 
 class GaussianSmoother(ImageEnhancer):
@@ -22,6 +26,7 @@ class GaussianSmoother(ImageEnhancer):
         channel_axis (Optional[int]): The axis in the image that represents color channels. Set
             to None for grayscale images. Default is None.
     """
+
     def __init__(self, sigma=2, mode='reflect', truncate=4.0, channel_axis=None):
         self.sigma = sigma
         self.mode = mode

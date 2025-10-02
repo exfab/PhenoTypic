@@ -9,9 +9,9 @@ import numpy as np
 from ._base_operation import BaseOperation
 from ..util.exceptions_ import InterfaceError, OperationIntegrityError
 
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 
-class ImageOperation(BaseOperation):
+class ImageOperation(BaseOperation, ABC):
     """
     Represents an abstract base class for image operations.
 

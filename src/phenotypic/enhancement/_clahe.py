@@ -1,7 +1,12 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING: from phenotypic import Image
+
 from skimage.exposure import equalize_adapthist
 
-from .. import Image
-from ..abstract import ImageEnhancer
+from phenotypic.abstract import ImageEnhancer
 
 
 class CLAHE(ImageEnhancer):

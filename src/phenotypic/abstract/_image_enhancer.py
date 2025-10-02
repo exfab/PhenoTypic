@@ -7,9 +7,10 @@ import numpy as np
 from ._image_operation import ImageOperation
 from phenotypic.util.exceptions_ import InterfaceError, DataIntegrityError, OperationFailedError
 from phenotypic.util.funcs_ import validate_operation_integrity
+from abc import ABC
 
 
-class ImageEnhancer(ImageOperation):
+class ImageEnhancer(ImageOperation, ABC):
     """ImageEnhancers impact the enh_matrix of the Image object and are used for improving detection quality."""
 
     @validate_operation_integrity('image.array', 'image.matrix')

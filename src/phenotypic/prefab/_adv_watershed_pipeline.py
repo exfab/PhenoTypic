@@ -2,7 +2,7 @@ from typing import Literal
 
 import numpy as np
 
-from phenotypic import ImagePipeline
+from phenotypic.core._image_pipeline import ImagePipeline
 
 from phenotypic.enhancement import CLAHE, GaussianSmoother, MedianEnhancer, ContrastStretching
 from phenotypic.detection import OtsuDetector, WatershedDetector
@@ -43,7 +43,7 @@ class AdvWatershedPipeline(ImagePipeline):
                  footprint: Literal['auto'] | int | np.ndarray | None = 'auto',
                  min_size: int = 50,
                  compactness: float = 0.001,
-                 border_size: int = 1):
+                 border_size: int = 1, benchmark: bool = False, ):
         """
         Initializes the object with a sequence of operations and measurements for image
         processing. The sequence includes smoothing, enhancement, segmentation, border
@@ -71,24 +71,24 @@ class AdvWatershedPipeline(ImagePipeline):
         border_remover = BorderObjectRemover(border_size=border_size)
         min_residual_reducer = MinResidualErrorReducer()
         super().__init__(
-            ops=[
-                GaussianSmoother(sigma=sigma),
-                CLAHE(),
-                MedianEnhancer(),
-                watershed_detector,
-                border_remover,
-                GridOversizedObjectRemover(),
-                min_residual_reducer,
-                GridAligner(),
-                watershed_detector,
-                min_residual_reducer,
-                border_remover,
-                MaskFill()
-            ],
-            meas=[
-                MeasureShape(),
-                MeasureColor(),
-                MeasureTexture(),
-                MeasureIntensity()
-            ],
+                ops=[
+                    GaussianSmoother(sigma=sigma),
+                    CLAHE(),
+                    MedianEnhancer(),
+                    watershed_detector,
+                    border_remover,
+                    GridOversizedObjectRemover(),
+                    min_residual_reducer,
+                    GridAligner(),
+                    watershed_detector,
+                    min_residual_reducer,
+                    border_remover,
+                    MaskFill()
+                ],
+                meas=[
+                    MeasureShape(),
+                    MeasureColor(),
+                    MeasureTexture(),
+                    MeasureIntensity()
+                ], benchmark=benchmark
         )

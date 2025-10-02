@@ -48,6 +48,7 @@ dependencies = [
     "rawpy;sys_platform!='win32'",
     "threadpoolctl>=3.6.0",
     "pandas2hdf>=1.0.0",
+    "pympler>=1.0.1",
 ]
 
 [project.urls]

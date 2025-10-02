@@ -1,8 +1,13 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING: from phenotypic import Image
+
 import numpy as np
 from skimage.exposure import rescale_intensity
 
 from ..abstract import ImageEnhancer
-from .. import Image
 
 
 class ContrastStretching(ImageEnhancer):
@@ -22,6 +27,7 @@ class ContrastStretching(ImageEnhancer):
             Pixel values above this percentile will be adjusted to the upper bound of the
             intensity range.
     """
+
     def __init__(self, lower_percentile: int = 2, upper_percentile: int = 98):
         self.lower_percentile = lower_percentile
         self.upper_percentile = upper_percentile

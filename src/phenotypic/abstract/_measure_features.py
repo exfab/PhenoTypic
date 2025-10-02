@@ -16,6 +16,7 @@ from functools import partial, wraps
 from ._base_operation import BaseOperation
 from phenotypic.util.exceptions_ import OperationFailedError
 from phenotypic.util.funcs_ import validate_measure_integrity
+from abc import ABC
 
 
 def catch_warnings_decorator(func):
@@ -42,7 +43,7 @@ def catch_warnings_decorator(func):
 
 
 # <<Interface>>
-class MeasureFeatures(BaseOperation):
+class MeasureFeatures(BaseOperation, ABC):
     """
     A FeatureExtractor is an abstract object intended to calculate measurements on the values within detected objects of
     the image array. The __init__ constructor & _operate method is meant to be the only parts overloaded in inherited classes. This is so

@@ -1,3 +1,8 @@
+from __future__ import annotations
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING: from phenotypic import Image
+
 from typing import Literal
 
 import numpy as np
@@ -5,7 +10,6 @@ import scipy.ndimage as ndimage
 from scipy.ndimage import distance_transform_edt
 from skimage import feature, filters, morphology, segmentation
 
-from phenotypic import GridImage, Image
 from phenotypic.abstract import ThresholdDetector
 
 
@@ -72,6 +76,7 @@ class WatershedDetector(ThresholdDetector):
 
 
     def _operate(self, image: Image | GridImage) -> Image:
+        from phenotypic import Image, GridImage
         enhanced_matrix = image._data.enh_matrix  # direct access to reduce memory footprint, but careful to not delete
         self._log_memory_usage("getting enhanced matrix")
 

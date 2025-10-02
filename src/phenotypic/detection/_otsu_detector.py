@@ -1,7 +1,12 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING: from phenotypic import Image
 from skimage.filters import threshold_otsu
+from skimage.segmentation import clear_border
 
 from ..abstract import ThresholdDetector
-from .. import Image
 
 
 class OtsuDetector(ThresholdDetector):
@@ -17,8 +22,10 @@ class OtsuDetector(ThresholdDetector):
             omask attribute accordingly.
 
     """
-    def __init__(self, ignore_zeros:bool=True):
+
+    def __init__(self, ignore_zeros: bool = True, ignore_borders: bool = True):
         self.ignore_zeros = ignore_zeros
+        self.ignore_borders = ignore_borders
 
     def _operate(self, image: Image) -> Image:
         """Binarizes the given image matrix using the Otsu threshold method.
@@ -37,10 +44,13 @@ class OtsuDetector(ThresholdDetector):
                 to the computed binary mask other_image.
         """
         enh_matrix = image.enh_matrix[:]
-        image.objmask[:] = image.enh_matrix[:] >= threshold_otsu(
-            enh_matrix[enh_matrix != 0] if self.ignore_zeros else enh_matrix, nbins=256
+        mask = image.enh_matrix[:] >= threshold_otsu(
+                enh_matrix[enh_matrix != 0] if self.ignore_zeros else enh_matrix, nbins=256
         )
+        mask = clear_border(mask) if self.ignore_borders else mask
+        image.objmask = mask
         return image
+
 
 # Set the docstring so that it appears in the sphinx documentation
 OtsuDetector.apply.__doc__ = OtsuDetector._operate.__doc__

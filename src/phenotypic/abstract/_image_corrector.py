@@ -7,9 +7,10 @@ from typing import Union, Dict
 
 from ._image_operation import ImageOperation
 from phenotypic.util.exceptions_ import InterfaceError, OperationFailedError
+from abc import ABC
 
 
-class ImageCorrector(ImageOperation):
+class ImageCorrector(ImageOperation, ABC):
     """ImageCorrectors are for general operations that alter every image component such as rotating.
     These have no integrity checks due to every component being altered by the operation..
 
