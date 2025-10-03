@@ -41,10 +41,10 @@ def _make_imageset(tmp_path: Path):
         Image(load_plate_72hr(), name='72hr'),
     ]
     return ImageSet(
-        name="iset",
-        src=images,
-        outpath=tmp_path,
-        overwrite=True)
+            name="iset",
+            src=images,
+            outpath=tmp_path,
+            overwrite=True)
 
 
 def _make_dummy_imageset(tmp_path: Path):
@@ -53,10 +53,10 @@ def _make_dummy_imageset(tmp_path: Path):
         Image(np.full(shape=(3, 3, 3), fill_value=1), name='image2'),
     ]
     return ImageSet(
-        name='iset',
-        src=images,
-        outpath=tmp_path,
-        overwrite=True,
+            name='iset',
+            src=images,
+            outpath=tmp_path,
+            overwrite=True,
     )
 
 
@@ -81,7 +81,7 @@ def test_core_apply_and_measure():
 def test_batch_apply_and_measure(temp_hdf5_file):
     imageset = _make_imageset(temp_hdf5_file)
     pipe = ImagePipeline(ops=[GaussianSmoother(), OtsuDetector()], meas=[MeasureShape()], verbose=False,
-                         num_workers=2)
+                         njobs=2)
 
     df = pipe.apply_and_measure(imageset)
     assert df.empty is False, 'No measurements'

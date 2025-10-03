@@ -42,7 +42,7 @@ class AdvOtsuPipeline(ImagePipeline):
     def __init__(self, scale: int = 5, sigma: int = 5,
                  footprint: Literal['auto'] | int | np.ndarray | None = None,
                  min_size: int = 50,
-                 border_size: int = 1, benchmark: bool = False, ):
+                 border_size: int = 1, benchmark: bool = False, **kwargs):
         """
         Initializes the object with a sequence of operations and measurements for image
         processing. The sequence includes smoothing, enhancement, segmentation, border
@@ -95,5 +95,5 @@ class AdvOtsuPipeline(ImagePipeline):
                     MeasureColor(),
                     MeasureTexture(scale=scale),
                     MeasureIntensity()
-                ], benchmark=benchmark
+                ], benchmark=benchmark, **kwargs
         )
