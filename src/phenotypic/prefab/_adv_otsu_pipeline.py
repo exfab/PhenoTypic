@@ -4,7 +4,7 @@ import numpy as np
 
 from phenotypic.core._image_pipeline import ImagePipeline
 
-from phenotypic.enhancement import CLAHE, GaussianSmoother, MedianEnhancer, ContrastStretching
+from phenotypic.enhancement import CLAHE, GaussianSmoother, MedianEnhancer, ContrastStretching, SobelFilter
 from phenotypic.detection import OtsuDetector, WatershedDetector
 from phenotypic.correction import GridAligner
 from phenotypic.grid import (MinResidualErrorReducer, GridOversizedObjectRemover)
