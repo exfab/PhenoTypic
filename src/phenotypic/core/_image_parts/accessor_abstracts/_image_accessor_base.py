@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+from pathlib import Path
 from typing import TYPE_CHECKING, Tuple
 
 if TYPE_CHECKING: from phenotypic import Image
@@ -322,4 +323,8 @@ class ImageAccessorBase(ABC):
             )
         return fig, ax
 
-    def imsave(self, filepath:str|os.PathLike):
+    def imsave(self, filepath: str | os.PathLike):
+        from PIL import Image as PIL_Image
+
+        filepath = Path(filepath)
+        im = PIL_Image.fromarray(self._subject_arr)
