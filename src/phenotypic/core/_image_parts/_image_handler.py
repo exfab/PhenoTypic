@@ -54,7 +54,7 @@ class ImageHandler:
         _accessors (SimpleNamespace): Provides property-based access"""
     _ARRAY8_DTYPE = np.uint8
     _ARRAY16_DTYPE = np.uint16
-    _OBJMAP_DTYPE = np.uint32
+    _OBJMAP_DTYPE = np.uint16
 
     def __init__(self,
                  input_image: np.ndarray | Image | PathLike | None = None,
@@ -930,7 +930,7 @@ class ImageHandler:
 
         self._data.matrix = skimage_rotate(image=self._data.matrix, angle=angle_of_rotation, mode=mode, clip=True,
                                            cval=cval, order=order, preserve_range=preserve_range)
-        
+
         self._data.enh_matrix = skimage_rotate(image=self._data.enh_matrix, angle=angle_of_rotation, mode=mode,
                                                clip=True, cval=cval, order=order, preserve_range=preserve_range)
 
