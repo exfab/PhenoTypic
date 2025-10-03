@@ -17,6 +17,7 @@ from os import PathLike
 from phenotypic.abstract import GridFinder
 from phenotypic.util.constants_ import IO
 from phenotypic.util import HDF
+import phenotypic as pht
 
 
 class ImageSetCore:
@@ -76,6 +77,7 @@ class ImageSetCore:
         """
         self.default_mode = default_mode
         import phenotypic
+
         self.name = name
 
         assert isinstance(grid_finder, (phenotypic.Image, type(None))), "grid_finder must be an Image object or None."
@@ -100,7 +102,7 @@ class ImageSetCore:
             outpath = Path(outpath)
         else:  # if outpath is None
             if self.default_mode == 'cwd':
-                outpath = Path.cwd() / f'{self.name}.hdf5'
+                outpath = Path.cwd()/f'{self.name}.hdf5'
             elif self.default_mode == 'temp':
                 # Create a temporary file path we own and can clean up later.
                 fd, tmp = tempfile.mkstemp(suffix='.h5', prefix=f'{self.name}_')
@@ -108,7 +110,7 @@ class ImageSetCore:
                 outpath = Path(tmp)
                 owns_outpath = True
 
-        if outpath.is_dir(): outpath = outpath / f'{self.name}.hdf5'
+        if outpath.is_dir(): outpath = outpath/f'{self.name}.hdf5'
 
         # Track whether this instance owns the outpath and should delete it on GC
         self._owns_outpath = owns_outpath
@@ -135,7 +137,8 @@ class ImageSetCore:
                     pass
 
                 elif src_path.suffix in HDF.EXT:  # If src and outpath are different, but both hdf files
-                    with h5py.File(src_path, mode='r', libver='latest') as src_filehandler, self.hdf_.safe_writer() as writer:
+                    with h5py.File(src_path, mode='r',
+                                   libver='latest') as src_filehandler, self.hdf_.safe_writer() as writer:
                         src_parent_group = self._get_hdf5_group(src_filehandler, self)
                         out_parent_group = self.hdf_.get_root_group(writer)
 
@@ -169,13 +172,18 @@ class ImageSetCore:
                         images_group = self.hdf_.get_data_group(writer)
 
                         for fname in image_filenames:
-                            image = self.grid_finder.imread(src_path / fname)
+                            if self.grid_finder is not None:
+                                template = pht.GridImage
+                            else:
+                                template = pht.Image
+                            image = template.imread(src_path/fname)
                             image._save_image2hdfgroup(grp=images_group, compression="gzip", compression_opts=4)
 
         # Image list handling
         # Only need out handler for this
         elif isinstance(image_list, list):
-            assert all(isinstance(x, phenotypic.Image) for x in image_list), 'image_list must be a list of Image objects.'
+            assert all(
+                    isinstance(x, phenotypic.Image) for x in image_list), 'image_list must be a list of Image objects.'
             with self.hdf_.safe_writer() as writer:
                 out_group = self._get_hdf5_group(writer, self._hdf5_parent_group_key)
 
@@ -258,6 +266,7 @@ class ImageSetCore:
 
     def get_image(self, image_name: str) -> Image:
         import phenotypic as pt
+
         with self.hdf_.swmr_reader() as reader:
             image_group = self.hdf_.get_data_group(reader)
             if image_name in image_group:
