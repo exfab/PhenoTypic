@@ -162,7 +162,8 @@ class ImageSetCore:
                             raise ValueError(f'No ImageSet named {self.name} or Image section found in {src_path}')
 
                 elif src_path.is_dir():  # If src_path is a directory -> Assume directory of images
-                    image_filenames = [x for x in os.listdir(src_path) if x.endswith(IO.ACCEPTED_FILE_EXTENSIONS)]
+                    image_filenames = [x for x in os.listdir(src_path) if
+                                       x.endswith(IO.ACCEPTED_FILE_EXTENSIONS + IO.RAW_FILE_EXTENSIONS)]
                     image_filenames.sort()
                     with self.hdf_.safe_writer() as writer:
                         out_parent_group = self.hdf_.get_root_group(writer)
