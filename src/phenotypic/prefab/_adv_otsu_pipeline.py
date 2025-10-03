@@ -9,7 +9,7 @@ from phenotypic.detection import OtsuDetector, WatershedDetector
 from phenotypic.correction import GridAligner
 from phenotypic.grid import (MinResidualErrorReducer, GridOversizedObjectRemover)
 from phenotypic.objedit import BorderObjectRemover, SmallObjectRemover, LowCircularityRemover
-from phenotypic.morphology import MaskFill
+from phenotypic.morphology import MaskFill, MaskOpener
 from phenotypic.measure import MeasureIntensity, MeasureShape, MeasureTexture, MeasureColor
 
 
@@ -75,7 +75,7 @@ class AdvOtsuPipeline(ImagePipeline):
                     MedianEnhancer(),
                     SobelFilter(),
                     OtsuDetector(ignore_borders=True),
-                    MaskOpener(footprints),
+                    MaskOpener(footprint),
                     border_remover,
                     SmallObjectRemover(min_size),
                     MaskFill(),
