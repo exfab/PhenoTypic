@@ -40,9 +40,8 @@ class AdvOtsuPipeline(ImagePipeline):
     """
 
     def __init__(self, scale: int = 5, sigma: int = 5,
-                 footprint: Literal['auto'] | int | np.ndarray | None = 'auto',
+                 footprint: Literal['auto'] | int | np.ndarray | None = None,
                  min_size: int = 50,
-                 compactness: float = 0.001,
                  border_size: int = 1, benchmark: bool = False, ):
         """
         Initializes the object with a sequence of operations and measurements for image
@@ -71,12 +70,12 @@ class AdvOtsuPipeline(ImagePipeline):
         min_residual_reducer = MinResidualErrorReducer()
         super().__init__(
                 ops=[
-                    GaussianSmoother(sigma=5),
-                    CLAHE(footprint),
+                    GaussianSmoother(sigma=sigma),
+                    CLAHE(),
                     MedianEnhancer(),
                     SobelFilter(),
                     OtsuDetector(ignore_borders=True),
-                    MaskOpener(),
+                    MaskOpener(footprints),
                     border_remover,
                     SmallObjectRemover(min_size),
                     MaskFill(),
