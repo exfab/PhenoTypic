@@ -7,11 +7,12 @@ from skimage.measure import label
 import matplotlib.pyplot as plt
 import numpy as np
 
-from phenotypic.core._image_parts.accessor_abstracts import MultiChannelAccessor
-from phenotypic.util.exceptions_ import InvalidMaskValueError, InvalidMaskScalarValueError, ArrayKeyValueShapeMismatchError
+from phenotypic.core._image_parts.accessor_abstracts import SingleChannelAccessor
+from phenotypic.util.exceptions_ import InvalidMaskValueError, InvalidMaskScalarValueError, \
+    ArrayKeyValueShapeMismatchError
 
 
-class ObjectMask(MultiChannelAccessor):
+class ObjectMask(SingleChannelAccessor):
     """Represents a binary object mask linked to a parent image.
 
     This class allows for manipulation and analysis of a binary object mask associated with a parent image. It provides

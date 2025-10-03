@@ -173,11 +173,9 @@ class ImageAccessorBase(ABC):
 
         if arr_shape[0] > 500:
             ax.yaxis.set_minor_locator(MultipleLocator(100))
-            ax.yaxis.set_major_locator(MultipleLocator(500))
 
         if arr_shape[1] > 500:
             ax.xaxis.set_minor_locator(MultipleLocator(100))
-            ax.xaxis.set_major_locator(MultipleLocator(500))
 
         if title is True:
             ax.set_title(self._root_image.name)
@@ -323,8 +321,38 @@ class ImageAccessorBase(ABC):
             )
         return fig, ax
 
-    def imsave(self, filepath: str | os.PathLike):
+    def imsave(self, filepath: str | Path | None = None, ):
+        filepath = Path(filepath)
         from PIL import Image as PIL_Image
 
-        filepath = Path(filepath)
-        im = PIL_Image.fromarray(self._subject_arr)
+        arr2save = self._subject_arr
+        match filepath.suffix.lower():
+            case x if x in IO.JPEG_FILE_EXTENSIONS:
+                match arr2save.dtype:
+                    case np.uint8:
+                        pass
+                    case np.uint16:
+                        warnings.warn(
+                                'Saving a 16 bit array as a jpeg will result in information loss if the max value is higher than 255')
+                        arr2save = ski.util.img_as_ubyte(arr2save)
+                    case dt if np.issubdtype(dt, np.floating):
+                        warnings.warn(
+                                'Saving a float array as a jpeg will result in information loss if the max value is higher than 255')
+                        arr2save = ski.util.img_as_ubyte(arr2save)
+                PIL_Image.fromarray(arr2save).save(filepath, format=filepath.suffix.lower(), quality=100)
+            case x if x in IO.PNG_FILE_EXTENSIONS:
+                match arr2save.dtype:
+                    case np.uint8 | np.uint16:
+                        pass
+                    case dt if np.issubdtype(dt, np.floating):
+                        warnings.warn(
+                                '.png images only accept 8 bit ana 16 bit integer arrays. '
+                                'Converting this array may cause information loss')
+                        arr2save = ski.util.img_as_ubyte(arr2save) \
+                            if self._root_image.bit_depth == 8 \
+                            else ski.util.img_as_uint(arr2save)
+                PIL_Image.fromarray(arr2save).save(filepath, format=filepath.suffix.lower(), optimize=True)
+            case x if x in IO.TIFF_EXTENSIONS:
+                PIL_Image.fromarray(arr2save).save(filepath, format=filepath.suffix.lower())
+            case _:
+                raise ValueError(f'unknown file extension for saving:{filepath.suffix}')

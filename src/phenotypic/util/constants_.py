@@ -16,9 +16,12 @@ from packaging.version import Version
 from pathlib import Path
 
 DEFAULT_MPL_IMAGE_FIGSIZE = (8, 6)
+
+
 class MPL:
     """Holds defaults for matplotlib parameters"""
     FIGSIZE = (8, 6)
+
 
 # Image format constants
 class IMAGE_FORMATS(Enum):
@@ -78,8 +81,11 @@ class BBOX(MeasurementInfo):
 
 
 class IO:
-    ACCEPTED_FILE_EXTENSIONS = ('.png', '.jpg', '.jpeg', '.tif', '.tiff')
     RAW_FILE_EXTENSIONS = ('.cr3', '.CR3')
+    PNG_FILE_EXTENSIONS = ('.png', '.PNG')
+    JPEG_FILE_EXTENSIONS = ('.jpeg', '.JPEG')
+    TIFF_EXTENSIONS = ('.tif', '.tiff')
+    ACCEPTED_FILE_EXTENSIONS = PNG_FILE_EXTENSIONS + JPEG_FILE_EXTENSIONS + TIFF_EXTENSIONS
 
     if Version(phenotypic.__version__) < Version("0.7.1"):
         SINGLE_IMAGE_HDF5_PARENT_GROUP = Path(f'phenotypic/')
@@ -110,25 +116,25 @@ class PIPE_STATUS(MeasurementInfo):
     # INVALID_SEGMENTATION = 'SegmentationInvalid', "Whether the image segmentation is considered valid."
 
 
-
 class GRID(MeasurementInfo):
     """Constants for grid structure in the PhenoTypic module."""
+
     @classmethod
     def category(cls) -> str:
         return 'Grid'
 
-    ROW_NUM = 'RowNum','The row idx of the object'
-    ROW_INTERVAL_START = 'RowIntervalStart','The start of the row interval of the object'
-    ROW_INTERVAL_END = 'RowIntervalEnd','The end of the row interval of the object'
-    ROW_INTERVAL = 'RowInterval','The row interval of the object'
+    ROW_NUM = 'RowNum', 'The row idx of the object'
+    ROW_INTERVAL_START = 'RowIntervalStart', 'The start of the row interval of the object'
+    ROW_INTERVAL_END = 'RowIntervalEnd', 'The end of the row interval of the object'
+    ROW_INTERVAL = 'RowInterval', 'The row interval of the object'
 
-    COL_NUM = 'ColNum','The column idx of the object'
-    COL_INTERVAL_START = 'ColIntervalStart','The start of the column interval of the object'
-    COL_INTERVAL_END = 'ColIntervalEnd','The end of the column interval of the object'
-    COL_INTERVAL = 'ColInterval','The column interval of the object'
+    COL_NUM = 'ColNum', 'The column idx of the object'
+    COL_INTERVAL_START = 'ColIntervalStart', 'The start of the column interval of the object'
+    COL_INTERVAL_END = 'ColIntervalEnd', 'The end of the column interval of the object'
+    COL_INTERVAL = 'ColInterval', 'The column interval of the object'
 
-    SECTION_NUM = 'SectionNum','The section number of the object. Ordered left to right, top to bottom'
-    SECTION_IDX = 'SectionIndex','The section index of the object'
+    SECTION_NUM = 'SectionNum', 'The section number of the object. Ordered left to right, top to bottom'
+    SECTION_IDX = 'SectionIndex', 'The section index of the object'
 
 
 # Feature extraction constants
@@ -164,7 +170,7 @@ class METADATA(MeasurementInfo):
     PARENT_UUID = 'ParentUUID', 'The UUID of the parent image.'
     IMFORMAT = 'ImageFormat', 'The format of the image.'
     IMAGE_TYPE = 'ImageType', 'The type of the image.'
-    BIT_DEPTH = 'BitDepth','The bit depth of the image.'
+    BIT_DEPTH = 'BitDepth', 'The bit depth of the image.'
 
 
 class IMAGE_TYPES(Enum):

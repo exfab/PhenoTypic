@@ -1,13 +1,9 @@
-from abc import ABC
+import warnings
 from pathlib import Path
 
-import numpy
-import numpy as np
-import skimage
-
-import skimage as ski
-import skimage.util
 import matplotlib.pyplot as plt
+import numpy as np
+import skimage as ski
 
 from phenotypic.core._image_parts.accessor_abstracts import ImageAccessorBase
 from phenotypic.util.constants_ import METADATA

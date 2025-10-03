@@ -9,11 +9,11 @@ from scipy.sparse import csc_matrix, coo_matrix
 import matplotlib.pyplot as plt
 from skimage.measure import label
 
-from phenotypic.core._image_parts.accessor_abstracts import MultiChannelAccessor
+from phenotypic.core._image_parts.accessor_abstracts import SingleChannelAccessor
 from phenotypic.util.exceptions_ import ArrayKeyValueShapeMismatchError, InvalidMapValueError
 
 
-class ObjectMap(MultiChannelAccessor):
+class ObjectMap(SingleChannelAccessor):
     """Manages an object map for labeled regions in an image.
 
     This class provides a mechanism to manipulate and access labeled object maps
@@ -85,7 +85,8 @@ class ObjectMap(MultiChannelAccessor):
         """Returns a copy of the object map in COOrdinate format or ijv matrix"""
         return self._root_image._data.sparse_object_map.tocoo()
 
-    def show(self, figsize=None, title=None, cmap: str = 'tab20', ax: None | plt.Axes = None, mpl_params: None | dict = None) -> (
+    def show(self, figsize=None, title=None, cmap: str = 'tab20', ax: None | plt.Axes = None,
+             mpl_params: None | dict = None) -> (
             plt.Figure, plt.Axes
     ):
         """
@@ -120,7 +121,8 @@ class ObjectMap(MultiChannelAccessor):
 
     def relabel(self, connectivity: int = 1):
         """Relabels all the objects based on their connectivity"""
-        self._root_image._data.sparse_object_map = self._dense_to_sparse(label(self._root_image.objmask[:], connectivity=connectivity))
+        self._root_image._data.sparse_object_map = self._dense_to_sparse(
+            label(self._root_image.objmask[:], connectivity=connectivity))
 
     @staticmethod
     def _dense_to_sparse(arg) -> csc_matrix:

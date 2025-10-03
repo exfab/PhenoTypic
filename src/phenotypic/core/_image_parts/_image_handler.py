@@ -61,19 +61,28 @@ class ImageHandler:
                  imformat: str | None = None,
                  name: str | None = None, **kwargs):
         """
-        Initializes an instance of the image processing object, setting up internal structures, 
-        metadata, accessors, and initializing the provided input image or empty placeholders. The
-        constructor prepares the object to manage and manipulate image data effectively by 
-        defining attributes for image processing, metadata storage, and accessor functionality.
+        Initializes an image object with optional input image data and metadata. This class constructor
+        sets up the internal storage structure, formats metadata, and prepares accessors for image manipulation
+        and data extraction. If an input image is provided, it processes and stores it in the appropriate format.
 
         Args:
-            input_image: Input image data to initialize the object with. The image can be provided 
-                as a NumPy array, PIL Image, or a path-like object. If None, the object initializes
-                with empty data placeholders.
-            imformat: Format of the input image, specified as a string. If None, it will be inferred 
-                automatically based on the input image if applicable.
-            name: Name of the image data or identifier assigned to the image. If None, the name 
-                will be left empty or assigned a default value in protected metadata.
+            input_image (np.ndarray | Image | PathLike | None): Optional initial image input. It can be
+                a NumPy array, an image object, or a path-like object referring to an image file.
+            imformat (str | None): Optional format of the input image. This will specify the interpretation
+                of the input image's data structure.
+            name (str | None): Optional name for the image, which will be assigned to the metadata.
+            **kwargs: Additional keyword arguments. Relevant arguments include:
+                - bit_depth (int): Bit depth of the image. Defaults to 8 if not specified.
+
+        Attributes:
+            _image_format: Internal enumeration representing the format of the current image.
+            _data: Namespace object containing the underlying image data in different formats such as array,
+                matrix, enhanced matrix, and sparse object map.
+            _metadata: Namespace object containing private, protected, and public metadata information about
+                the image, including UUID, name, type, and bit depth.
+            _accessors: Namespace object offering various accessor objects for accessing and manipulating
+                image data, such as array manipulations, matrix operations, enhanced matrices, object masks,
+                and metadata access.
         """
 
         # Initialize core backend variables
@@ -224,6 +233,10 @@ class ImageHandler:
     @name.setter
     def name(self, value):
         self.metadata[METADATA.IMAGE_NAME] = str(value)
+
+    @property
+    def bit_depth(self) -> int:
+        return self.metadata[METADATA.BIT_DEPTH]
 
     @property
     def uuid(self):

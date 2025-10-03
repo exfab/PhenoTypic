@@ -59,9 +59,9 @@ class XyzAccessor(ImageAccessorBase):
             case _:
                 raise ValueError(
                     f'Unknown color_profile: {self._root_image.color_profile} or illuminant: {self._root_image.illuminant}')
-
     def __getitem__(self, key) -> np.ndarray:
         return self._subject_arr[key].copy()
 
     def __setitem__(self, key, value):
         raise IllegalAssignmentError('XYZ')
+

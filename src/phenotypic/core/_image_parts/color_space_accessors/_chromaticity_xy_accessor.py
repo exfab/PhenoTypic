@@ -1,18 +1,16 @@
 import colour
 import numpy as np
 
-from ..accessor_abstracts._image_accessor_base import ImageAccessorBase
-
-from phenotypic.util.colourspaces_ import sRGB_D50
-
-from phenotypic.util.funcs_ import normalize_rgb_bitdepth
+from ..accessor_abstracts import ColorSpaceAccessor
 
 
-class xyChromaticityAccessor(ImageAccessorBase):
+class xyChromaticityAccessor(ColorSpaceAccessor):
+    """Provides access to CIE xy chromaticity coordinates.
+    
+    Converts XYZ color space data to 2D chromaticity coordinates,
+    representing color independently of luminance.
+    """
 
     @property
     def _subject_arr(self) -> np.ndarray:
         return colour.XYZ_to_xy(XYZ=self._root_image.CieXYZ[:])
-
-    def __getitem__(self, key) -> np.ndarray:
-        return self._subject_arr[key].copy()
