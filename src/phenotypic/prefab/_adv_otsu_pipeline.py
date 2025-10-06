@@ -40,7 +40,7 @@ class AdvOtsuPipeline(ImagePipeline):
     """
 
     def __init__(self, scale: int = 5, sigma: int = 5,
-                 footprint: Literal['auto'] | int | np.ndarray | None = None,
+                 footprint: Literal['auto'] | int | np.ndarray | None = 'auto',
                  min_size: int = 50,
                  border_size: int = 1, benchmark: bool = False, **kwargs):
         """
