@@ -85,7 +85,7 @@ class ImageIOHandler(ImageColorSpace):
         if filepath.suffix.lower() in IO.ACCEPTED_FILE_EXTENSIONS:  # normal images
             arr = ski.io.imread(filepath)
 
-        elif filepath.suffix.lower() in IO.RAW_FILE_EXTENSIONS and rawpy is not None:   # raw sensor data handling
+        elif filepath.suffix.lower() in IO.RAW_FILE_EXTENSIONS and rawpy is not None:  # raw sensor data handling
             with rawpy.imread(str(filepath)) as raw:
                 arr = raw.postprocess(
                         demosaic_algorithm=demosaic_algorithm if demosaic_algorithm else rawpy.DemosaicAlgorithm.LINEAR,
@@ -97,7 +97,7 @@ class ImageIOHandler(ImageColorSpace):
                         output_color=rawpy.ColorSpace.sRGB,
                         **kwargs,
                 )
-            imformat = IMAGE_FORMATS.LINEAR_SRGB
+            imformat = IMAGE_FORMATS.LINEAR_RGB
 
         else:
             raise UnsupportedFileTypeError(filepath.suffix)
@@ -158,7 +158,7 @@ class ImageIOHandler(ImageColorSpace):
                 dataset[:] = array
             elif file_handler.swmr_mode is True:
                 raise ValueError(
-                    'Shape does not match existing dataset shape and cannot be changed because file handler is in SWMR mode')
+                        'Shape does not match existing dataset shape and cannot be changed because file handler is in SWMR mode')
             else:
                 del group[name]
                 group.create_dataset(name, data=array, dtype=array.dtype, **kwargs)

@@ -26,7 +26,7 @@ class XyzAccessor(ImageAccessorBase):
     def _subject_arr(self) -> np.ndarray:
         norm_rgb = normalize_rgb_bitdepth(self._root_image.array[:])
         match (self._root_image.imformat, self._root_image.color_profile, self._root_image.illuminant):
-            case (IMAGE_FORMATS.RGB,"sRGB", "D50"):
+            case (IMAGE_FORMATS.RGB, "sRGB", "D50"):
                 sRGB_D50.whitepoint = colour.CCS_ILLUMINANTS[self._root_image.observer]["D50"]
                 return colour.RGB_to_XYZ(
                         RGB=norm_rgb,
@@ -34,14 +34,14 @@ class XyzAccessor(ImageAccessorBase):
                         illuminant=sRGB_D50.whitepoint,
                         cctf_decoding=True,  # Assumes sRGB means non-linear
                 )
-            case (IMAGE_FORMATS.RGB,"sRGB", "D65"):
+            case (IMAGE_FORMATS.RGB, "sRGB", "D65"):
                 return colour.RGB_to_XYZ(
                         RGB=norm_rgb,
                         colourspace=colour.RGB_COLOURSPACES["sRGB"],
                         illuminant=colour.CCS_ILLUMINANTS[self._root_image.observer]["D65"],
                         cctf_decoding=True,  # Assumes sRGB means non-linear
                 )
-            case (IMAGE_FORMATS.LINEAR_SRGB, "sRGB", "D50"):
+            case (IMAGE_FORMATS.LINEAR_RGB, "sRGB", "D50"):
                 sRGB_D50.whitepoint = colour.CCS_ILLUMINANTS[self._root_image.observer]["D50"]
                 return colour.RGB_to_XYZ(
                         RGB=norm_rgb,
@@ -49,7 +49,7 @@ class XyzAccessor(ImageAccessorBase):
                         illuminant=sRGB_D50.whitepoint,
                         cctf_decoding=False,
                 )
-            case (IMAGE_FORMATS.LINEAR_SRGB,"sRGB", "D65"):
+            case (IMAGE_FORMATS.LINEAR_RGB, "sRGB", "D65"):
                 return colour.RGB_to_XYZ(
                         RGB=norm_rgb,
                         colourspace=colour.RGB_COLOURSPACES["sRGB"],
@@ -58,10 +58,10 @@ class XyzAccessor(ImageAccessorBase):
                 )
             case _:
                 raise ValueError(
-                    f'Unknown color_profile: {self._root_image.color_profile} or illuminant: {self._root_image.illuminant}')
+                        f'Unknown color_profile: {self._root_image.color_profile} or illuminant: {self._root_image.illuminant}')
+
     def __getitem__(self, key) -> np.ndarray:
         return self._subject_arr[key].copy()
 
     def __setitem__(self, key, value):
         raise IllegalAssignmentError('XYZ')
-

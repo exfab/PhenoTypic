@@ -13,10 +13,11 @@ import skimage.morphology as morphology
 
 # TODO: Complete this integration
 # Reference: https://omarwagih.github.io/gitter/
-class SineDetector(ObjectDetector):
-    """A python implementation of the Sine wave signal detection algorithm used by `gitter` in R."""
+class GitterDetector(ObjectDetector):
+    """A python implementation of the sine wave signal fitting detection algorithm used by `gitter` in R."""
 
-    def __init__(self, thresh_method='otsu', subtract_background: bool = True, remove_noise:bool=True,footprint_radius: int = 3):
+    def __init__(self, thresh_method='otsu', subtract_background: bool = True, remove_noise: bool = True,
+                 footprint_radius: int = 3):
         self.thresh_method = thresh_method
         self.subtract_background = subtract_background
         self.footprint_radius = footprint_radius
@@ -42,7 +43,7 @@ class SineDetector(ObjectDetector):
         Returns:
             np.array: the binary object mask
         """
-        kernel = morphology.square(width=self.footprint_radius * 2)
+        kernel = morphology.square(width=self.footprint_radius*2)
 
         enh_matrix = image.enh_matrix[:]
 
@@ -57,7 +58,7 @@ class SineDetector(ObjectDetector):
             case 'mean':
                 thresh = filters.threshold_mean(enh_matrix)
             case 'local':
-                thresh = filters.threshold_local(enh_matrix, block_size=self.footprint_radius * 2)
+                thresh = filters.threshold_local(enh_matrix, block_size=self.footprint_radius*2)
             case 'triangle':
                 thresh = filters.threshold_triangle(enh_matrix)
             case 'minimum':
@@ -73,9 +74,9 @@ class SineDetector(ObjectDetector):
         """Remove long stretches of 1s (possibly lines) and sum's the mask across axes"""
         # Calculate threshold based on image dimensions
         if axis == 1:
-            c = p * binary_image.shape[0]  # For rows: threshold based on number of rows
+            c = p*binary_image.shape[0]  # For rows: threshold based on number of rows
         else:
-            c = p * binary_image.shape[1]  # For columns: threshold based on number of columns
+            c = p*binary_image.shape[1]  # For columns: threshold based on number of columns
 
         # Identify problematic rows/columns with long stretches of 1s
         problematic = np.zeros(binary_image.shape[axis - 1], dtype=bool)
@@ -103,7 +104,7 @@ class SineDetector(ObjectDetector):
             sums = np.sum(binary_image, axis=0)
 
         # Split problematic array in half and zero out problematic regions
-        mid = len(problematic) // 2
+        mid = len(problematic)//2
         left_prob = problematic[:mid]
         right_prob = problematic[mid:]
 

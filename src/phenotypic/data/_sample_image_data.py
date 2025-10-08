@@ -12,7 +12,7 @@ import math
 from typing import Iterable, Tuple, TYPE_CHECKING
 import numpy as np
 
-if TYPE_CHECKING: from phenotypic import Image
+if TYPE_CHECKING: from phenotypic import Image, GridImage
 
 
 # TODO: Update filepaths for this file

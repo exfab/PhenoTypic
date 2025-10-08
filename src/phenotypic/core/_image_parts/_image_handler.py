@@ -784,6 +784,10 @@ class ImageHandler:
                 self._image_format = IMAGE_FORMATS.RGB
                 self._set_from_rgb(imarr)
 
+            case 'LINEAR RGB' | IMAGE_FORMATS.LINEAR_RGB:
+                self._image_format = IMAGE_FORMATS.LINEAR_RGB
+                self._set_from_rgb(imarr)
+
             case 'RGBA' | IMAGE_FORMATS.RGBA | IMAGE_FORMATS.RGBA_OR_BGRA:
                 self._image_format = IMAGE_FORMATS.RGB
                 self._set_from_rgb(rgba2rgb(imarr))

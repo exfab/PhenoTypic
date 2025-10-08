@@ -57,7 +57,7 @@ class ImagePipelineBatch(ImagePipelineCore):
                  timeout: int | None = None,
                  ):
         super().__init__(ops, meas, benchmark, verbose)
-        # Fix: Set default njobs to CPU count if -1, ensuring valid multiprocessing
+        # Fix: Set default n_jobs to CPU count if -1, ensuring valid multiprocessing
         if njobs == -1:
             self.num_workers = _mp.cpu_count() or 1
         else:
@@ -268,7 +268,7 @@ class ImagePipelineBatch(ImagePipelineCore):
                 assert PIPE_STATUS.PROCESSED in status_group.attrs, "processed flag missing from status group attrs"
                 assert PIPE_STATUS.MEASURED in status_group.attrs, "measured flag missing from status group attrs"
                 logger.debug(
-                    f'Allocating statuses for {image_name}: {status_group.attrs.keys()} -> {status_group.attrs.values()}')
+                        f'Allocating statuses for {image_name}: {status_group.attrs.keys()} -> {status_group.attrs.values()}')
                 meas_group = imageset.hdf_.get_image_measurement_subgroup(handle=writer, image_name=image_name)
 
                 imageset.hdf_.preallocate_frame_layout(

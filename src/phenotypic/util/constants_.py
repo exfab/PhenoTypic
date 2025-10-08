@@ -33,7 +33,7 @@ class IMAGE_FORMATS(Enum):
     RGB_OR_BGR = 'RGB/BGR (ambiguous)'
     RGBA_OR_BGRA = 'RGBA/BGRA (ambiguous)'
     RGB = 'RGB'
-    LINEAR_SRGB = 'Linear sRGB'
+    LINEAR_RGB = 'LINEAR RGB'
     RGBA = 'RGBA'
     BGR = 'BGR'
     BGRA = 'BGRA'
@@ -49,7 +49,7 @@ class IMAGE_FORMATS(Enum):
                         IMAGE_FORMATS.RGBA,
                         IMAGE_FORMATS.BGR,
                         IMAGE_FORMATS.BGRA,
-                        IMAGE_FORMATS.LINEAR_SRGB}
+                        IMAGE_FORMATS.LINEAR_RGB}
 
     def is_ambiguous(self):
         return self in {IMAGE_FORMATS.RGB_OR_BGR, IMAGE_FORMATS.RGBA_OR_BGRA}
