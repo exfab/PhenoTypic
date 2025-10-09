@@ -4,6 +4,8 @@ import os
 from pathlib import Path
 from typing import List, Literal, Union
 
+import pandas as pd
+
 __current_file_dir = Path(os.path.dirname(os.path.abspath(__file__)))
 
 from skimage.io import imread
@@ -217,3 +219,7 @@ def load_lactose_series(mode: Literal['array', 'Image', 'GridImage'] = 'array') 
         filepath = __current_file_dir/'lactose'/fname
         series.append(_image_loader(filepath, mode))
     return series
+
+
+def load_meas() -> pd.DataFrame:
+    return pd.read_csv(__current_file_dir/'meas/meas.csv', index_col=0)

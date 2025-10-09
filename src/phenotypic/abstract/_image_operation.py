@@ -11,6 +11,7 @@ from ..util.exceptions_ import InterfaceError, OperationIntegrityError
 
 from abc import ABC, abstractmethod
 
+
 class ImageOperation(BaseOperation, ABC):
     """
     Represents an abstract base class for image operations.
@@ -42,11 +43,11 @@ class ImageOperation(BaseOperation, ABC):
         try:
             matched_args = self._get_matched_operation_args()
             image = self._apply_to_single_image(
-                cls_name=self.__class__.__name__,
-                image=image,
-                operation=self._operate,
-                inplace=inplace,
-                matched_args=matched_args,
+                    cls_name=self.__class__.__name__,
+                    image=image,
+                    operation=self._operate,
+                    inplace=inplace,
+                    matched_args=matched_args,
             )
             return image
         except KeyboardInterrupt:

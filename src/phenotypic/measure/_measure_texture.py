@@ -137,7 +137,8 @@ class MeasureTexture(MeasureFeatures):
                                       )
 
     @staticmethod
-    def _compute_haralick(image: Image, foreground_array: np.ndarray, foreground_name: str, scale: int = 5) -> pd.DataFrame:
+    def _compute_haralick(image: Image, foreground_array: np.ndarray, foreground_name: str,
+                          scale: int = 5) -> pd.DataFrame:
         """
         Computes texture feature measurements using Haralick features for objects in a given image. The method
         calculates various statistical texture features such as Angular Second Moment, Contrast, Correlation,
@@ -196,8 +197,9 @@ class MeasureTexture(MeasureFeatures):
 
             measurements[idx, :] = haralick_features.T.ravel()
 
-        measurements= pd.DataFrame(measurements, columns=measurement_names)
+        measurements = pd.DataFrame(measurements, columns=measurement_names)
         measurements.insert(loc=0, column=OBJECT.LABEL, value=image.objects.labels2series())
         return measurements
+
 
 MeasureTexture.__doc__ = TEXTURE.append_rst_to_doc(MeasureTexture)

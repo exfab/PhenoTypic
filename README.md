@@ -59,8 +59,8 @@ pip install -e ".[dev]"
   detection algorithms
 - `phenotypic.grid`: modules that rely on grid and object information to function
 - `phenotypic.measure`: the various measurements
-- `phenotypic.morphology`: a suite of image morphology operations that can improve the object mask
-- `phenotypic.objedit`: different tools to edit edit the detected objects such as relabeling, joining, or removing
+- `phenotypic.objedit`: different tools to edit the detected objects such as morphology, relabeling, joining, or
+  removing
 - `phenotypic.prefab`: various premade image processing pipelines that are in use at ExFAB
 -
 

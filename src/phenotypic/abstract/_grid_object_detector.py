@@ -15,6 +15,7 @@ class GridObjectDetector(ObjectDetector, GridOperation, ABC):
     @validate_operation_integrity('image.array', 'image.matrix', 'image.enh_matrix')
     def apply(self, image: GridImage, inplace=False) -> GridImage:
         from phenotypic import GridImage
+
         if not isinstance(image, GridImage): raise GridImageInputError
         return super().apply(image=image, inplace=inplace)
 

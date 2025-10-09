@@ -10,6 +10,7 @@ from phenotypic.abstract import GridOperation
 from phenotypic.util.exceptions_ import GridImageInputError, OutputValueError
 from abc import ABC
 
+
 class GridCorrector(ImageCorrector, GridOperation, ABC):
 
     def apply(self, image: GridImage, inplace=False) -> GridImage:

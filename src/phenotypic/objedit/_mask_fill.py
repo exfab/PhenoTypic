@@ -8,8 +8,8 @@ import numpy as np
 from scipy.ndimage import binary_fill_holes
 from typing import Optional
 
-from ..abstract import MapModifier
-from ..util.funcs_ import is_binary_mask
+from phenotypic.abstract import MapModifier
+from phenotypic.util.funcs_ import is_binary_mask
 
 
 class MaskFill(MapModifier):

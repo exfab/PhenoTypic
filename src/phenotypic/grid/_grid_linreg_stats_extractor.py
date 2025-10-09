@@ -1,5 +1,6 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING, Optional
+
 if TYPE_CHECKING: from phenotypic import GridImage
 
 import pandas as pd
@@ -7,6 +8,7 @@ from scipy.spatial.distance import euclidean
 
 from phenotypic.abstract import GridMeasureFeatures
 from phenotypic.util.constants_ import GRID_LINREG_STATS_EXTRACTOR, OBJECT, BBOX, GRID
+
 
 class MeasureGridLinRegStats(GridMeasureFeatures):
     def __init__(self, section_num: Optional[int] = None):
@@ -39,7 +41,7 @@ class MeasureGridLinRegStats(GridMeasureFeatures):
         # NOTE: Row linear regression(CC) -> pred RR
         section_info.loc[:, GRID_LINREG_STATS_EXTRACTOR.PRED_RR] = \
             section_info.loc[:, str(BBOX.CENTER_CC)] \
-            * section_info.loc[:, GRID_LINREG_STATS_EXTRACTOR.ROW_LINREG_M] \
+            *section_info.loc[:, GRID_LINREG_STATS_EXTRACTOR.ROW_LINREG_M] \
             + section_info.loc[:, GRID_LINREG_STATS_EXTRACTOR.ROW_LINREG_B]
 
         # Get the current column linreg info
@@ -59,7 +61,7 @@ class MeasureGridLinRegStats(GridMeasureFeatures):
         # NOTE: Col linear regression(RR) -> pred CC
         section_info.loc[:, GRID_LINREG_STATS_EXTRACTOR.PRED_CC] = \
             section_info.loc[:, str(BBOX.CENTER_RR)] \
-            * section_info.loc[:, GRID_LINREG_STATS_EXTRACTOR.COL_LINREG_M] \
+            *section_info.loc[:, GRID_LINREG_STATS_EXTRACTOR.COL_LINREG_M] \
             + section_info.loc[:, GRID_LINREG_STATS_EXTRACTOR.COL_LINREG_B]
 
         # Calculate the distance each object is from it's predicted center. This is the residual error

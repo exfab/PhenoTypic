@@ -52,7 +52,8 @@ class ObjectsAccessor:
             list[skimage.measure.RegionProperties]: A list of properties for all
                 regions in the provided image.
         """
-        return regionprops(label_image=self._root_image.objmap[:], intensity_image=self._root_image.matrix[:], cache=False)
+        return regionprops(label_image=self._root_image.objmap[:], intensity_image=self._root_image.matrix[:],
+                           cache=False)
 
     @property
     def labels(self) -> List[str]:
@@ -104,18 +105,18 @@ class ObjectsAccessor:
         This is useful for joining measurements across different tables.
         """
         info = pd.DataFrame(
-            data=regionprops_table(
-                label_image=self._root_image.objmap[:],
-                properties=['label', 'centroid', 'bbox'],
-            ),
+                data=regionprops_table(
+                        label_image=self._root_image.objmap[:],
+                        properties=['label', 'centroid', 'bbox'],
+                ),
         ).rename(columns={
-            'label': OBJECT.LABEL,
+            'label'     : OBJECT.LABEL,
             'centroid-0': str(BBOX.CENTER_RR),
             'centroid-1': str(BBOX.CENTER_CC),
-            'bbox-0': str(BBOX.MIN_RR),
-            'bbox-1': str(BBOX.MIN_CC),
-            'bbox-2': str(BBOX.MAX_RR),
-            'bbox-3': str(BBOX.MAX_CC),
+            'bbox-0'    : str(BBOX.MIN_RR),
+            'bbox-1'    : str(BBOX.MIN_CC),
+            'bbox-2'    : str(BBOX.MAX_RR),
+            'bbox-3'    : str(BBOX.MAX_CC),
         },
         )
         if include_metadata:
@@ -127,9 +128,9 @@ class ObjectsAccessor:
         """Returns a consistently named pandas.Series containing the label number for each object in the image. Useful as an index for joining different measurements"""
         labels = self.labels
         return pd.Series(
-            data=labels,
-            index=range(len(labels)),
-            name=OBJECT.LABEL,
+                data=labels,
+                index=range(len(labels)),
+                name=OBJECT.LABEL,
         )
 
     def relabel(self):

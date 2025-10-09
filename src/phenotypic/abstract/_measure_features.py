@@ -272,7 +272,7 @@ class MeasureFeatures(BaseOperation, ABC):
         else:
             indexes = None
         min_extrema, max_extrema, min_pos, max_pos = MeasureFeatures._repair_scipy_results(
-            scipy.ndimage.extrema(array, labels, index=indexes))
+                scipy.ndimage.extrema(array, labels, index=indexes))
         return (
             MeasureFeatures._repair_scipy_results(min_extrema),
             MeasureFeatures._repair_scipy_results(max_extrema),

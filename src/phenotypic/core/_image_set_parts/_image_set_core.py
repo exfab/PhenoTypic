@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import tempfile
 import weakref
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Literal, Any, Dict
 
 if TYPE_CHECKING: from phenotypic import Image
 
@@ -46,7 +46,8 @@ class ImageSetCore:
 
     def __init__(self,
                  name: str,
-                 grid_finder: GridFinder | None = None,
+                 imparams: Dict[str, Any] | None = None,
+                 imtype: Literal["Image", "GridImage"] = "Image",
                  src: List[Image] | PathLike | str | None = None,
                  outpath: PathLike | str | None = None,
                  default_mode: Literal['temp', 'cwd'] = 'temp',
@@ -80,8 +81,8 @@ class ImageSetCore:
 
         self.name = name
 
-        assert isinstance(grid_finder, (phenotypic.Image, type(None))), "grid_finder must be an Image object or None."
-        self.grid_finder = grid_finder
+        self.imparams = imparams or {}
+        self.imtype = imtype
 
         # Automatically detect the type of src parameter
         image_list = None
@@ -205,6 +206,32 @@ class ImageSetCore:
         if fin and fin.alive:
             fin()
 
+    def _get_template(self):
+        if self.imtype == 'GridImage':
+            return pht.GridImage
+        elif self.imtype == 'Image':
+            return pht.Image
+        else:
+            raise ValueError(f'Image type {self.imtype} is not supported.')
+
+    # TODO: -[] import from other hdf5 file
+
+    # TODO: -[] load from list of images
+
+    # TODO: -[x] import directory case
+    def import_dir(self, dirpath: Path) -> None:
+        dirpath = Path(dirpath)
+        if not dirpath.is_dir(): raise ValueError(f'{dirpath} is not a directory.')
+        filepaths = [dirpath/x for x in os.listdir(dirpath)
+                     if x.endswith(IO.ACCEPTED_FILE_EXTENSIONS + IO.RAW_FILE_EXTENSIONS)]
+        filepaths.sort()
+        with self.hdf_.safe_writer() as writer:
+            data_group = self.hdf_.get_data_group(writer)
+            template = self._get_template()
+            for fpath in filepaths:
+                image = template.imread(fpath, **self.imparams)
+                image._save_image2hdfgroup(grp=data_group, compression="gzip", compression_opts=4)
+
     @staticmethod
     def _cleanup_outpath(path: Path) -> None:
         try:
@@ -283,5 +310,8 @@ class ImageSetCore:
         for image_name in self.get_image_names():
             with h5py.File(self._out_path, mode='r', libver='latest', swmr=True) as out_handler:
                 image_group = self._get_hdf5_group(out_handler, posixpath.join(self._hdf5_images_group_key, image_name))
-                image = self.grid_finder._load_from_hdf5_group(image_group)
+
+                template = self._get_template()
+
+                image = template(**self.imparams)._load_from_hdf5_group(image_group)
             yield image

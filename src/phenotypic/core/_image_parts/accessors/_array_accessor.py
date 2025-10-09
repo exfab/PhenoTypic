@@ -65,18 +65,19 @@ class ImageArray(MultiChannelAccessor):
         Raises:
             ArrayKeyValueShapeMismatchError: If the other_image is an array and its shape does not match
         """
-        if pd.api.types.is_scalar(value):   # handle scalar values
-            if not isinstance(value, (int, float, np.number)): # assert numeric value
+        if pd.api.types.is_scalar(value):  # handle scalar values
+            if not isinstance(value, (int, float, np.number)):  # assert numeric value
                 raise TypeError('Array values must be a numeric scalar or np.array')
 
         elif isinstance(value, np.ndarray):  # handle numpy arrays
-            if not np.issubdtype(value.dtype, np.number): # assert numeric numpy value
+            if not np.issubdtype(value.dtype, np.number):  # assert numeric numpy value
                 raise TypeError('Array values must be a numeric scalar or np.array')
             if value.shape != self._root_image._data.array[key].shape:  # assert window shape equals value shape
                 raise ArrayKeyValueShapeMismatchError
 
         else:
-            raise ValueError(f'Unsupported type for setting the array. Value should be scalar or a numpy array: {type(value)}')
+            raise ValueError(
+                f'Unsupported type for setting the array. Value should be scalar or a numpy array: {type(value)}')
 
         self._root_image._data.array[key] = value
         self._root_image._set_from_array(self._root_image._data.array, imformat=self._root_image.imformat)

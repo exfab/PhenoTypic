@@ -32,7 +32,6 @@ class LOG_GROWTH_MODEL(MeasurementInfo):
     RMSE = "RMSE", "The root mean squared error"
 
 
-# TODO
 class LogGrowthModel(ModelFitter):
     """
     A model for analyzing and fitting logarithmic growth data.
@@ -111,15 +110,19 @@ class LogGrowthModel(ModelFitter):
         return self._latest_model_scores
 
     def show(self,
-             criteria: Dict[str, Union[Any, List[Any]]],
+             criteria: Dict[str, Union[Any, List[Any]]] | None = None,
              figsize=(6, 4), cmap: str = 'tab20',
              legend=True, ax: plt.Axes = None) -> Tuple[plt.Figure, plt.Axes]:
         if ax is None:
             fig, ax = plt.subplots(figsize=figsize)
         else:
             fig = ax.get_figure()
-        filtered_model_scores = self._filter_by(df=self._latest_model_scores, criteria=criteria, copy=True)
-        filtered_measurements = self._filter_by(df=self._latest_measurements, criteria=criteria, copy=True)
+        if criteria is not None:
+            filtered_model_scores = self._filter_by(df=self._latest_model_scores, criteria=criteria, copy=True)
+            filtered_measurements = self._filter_by(df=self._latest_measurements, criteria=criteria, copy=True)
+        else:
+            filtered_model_scores = self._latest_model_scores
+            filtered_measurements = self._latest_measurements
         model_groups = {model_keys: model_groups for model_keys, model_groups in
                         filtered_model_scores.groupby(by=self.groupby)}
         meas_groups = {meas_keys: meas_groups for meas_keys, meas_groups in
@@ -137,11 +140,11 @@ class LogGrowthModel(ModelFitter):
                                       K=model_group[LOG_GROWTH_MODEL.K_FIT].iloc[0],
                                       N0=model_group[LOG_GROWTH_MODEL.N0_FIT].iloc[0],
                                       )
-            ax.plot(t, y_pred, label=model_key, c=curr_color)
+            ax.plot(t, y_pred, label=model_key, color=curr_color)
             ax.scatter(
                     x=curr_meas.loc[:, self.time_label],
                     y=curr_meas.loc[:, self.on],
-                    c=curr_color,
+                    color=curr_color, label=model_key,
             )
         return fig, ax
 

@@ -35,5 +35,3 @@ print(result['col2'])
 # Verify that non-duplicate column 'col3' was kept from both dataframes
 print("\nVerifying col3 values (should be from df1 since it's processed first):")
 print(result['col3'])
-
-

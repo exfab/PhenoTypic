@@ -53,6 +53,7 @@ class ImageSetMeasurements(ImageSetStatus):
 
     def get_measurement(self, image_names: List[str] | str | None = None) -> pd.DataFrame:
         import logging
+
         logger = logging.getLogger(f"ImageSet.get_measurement")
 
         if image_names is None:
@@ -63,7 +64,7 @@ class ImageSetMeasurements(ImageSetStatus):
                 image_names = [image_names]
 
         logger.debug(
-            f"🔍 get_measurement: Retrieving measurements for {len(image_names)} images: {image_names[:3]}{'...' if len(image_names) > 3 else ''}")
+                f"🔍 get_measurement: Retrieving measurements for {len(image_names)} images: {image_names[:3]}{'...' if len(image_names) > 3 else ''}")
 
         with self.hdf_.reader() as handle:
             measurements = []
@@ -85,7 +86,8 @@ class ImageSetMeasurements(ImageSetStatus):
                 if ((status_subgroup.attrs[PIPE_STATUS.PROCESSED])
                         and (status_subgroup.attrs[PIPE_STATUS.MEASURED])
                         and (measurement_key in image_group)):
-                    df = self.hdf_.load_frame(group=self.hdf_.get_image_measurement_subgroup(handle=handle, image_name=name), )
+                    df = self.hdf_.load_frame(
+                        group=self.hdf_.get_image_measurement_subgroup(handle=handle, image_name=name), )
 
                     prot_metadata_group = self.hdf_.get_protected_metadata_subgroup(handle=handle, image_name=name)
                     pub_metadata_group = self.hdf_.get_public_metadata_subgroup(handle=handle, image_name=name)

@@ -58,12 +58,12 @@ class GridAligner(GridCorrector):
         # Collect the X position of the vertices
         x_min = grid_info.groupby(x_group, observed=True)[x_val].min().to_numpy()
 
-        y_0 = (x_min * m) + b  # Find the corresponding y-other_image at the above x values
+        y_0 = (x_min*m) + b  # Find the corresponding y-other_image at the above x values
 
         # Find the x other_image of the upper ray
         x_max = grid_info.groupby(x_group, observed=True)[x_val].max().to_numpy()
 
-        y_1 = (x_max * m) + b  # Find the corresponding y-other_image at the above x values
+        y_1 = (x_max*m) + b  # Find the corresponding y-other_image at the above x values
 
         # Collect opening angle ray coordinate info
         xy_vertices = np.vstack([x_min, y_0]).T  # An array containing the x & y coordinates of the vertices
@@ -73,18 +73,19 @@ class GridAligner(GridCorrector):
         # Function to find the euclidead distance between two points within two xy arrays stacked column-wise
 
         # Get the size of each hypotenuse
-        hyp_dist = np.apply_along_axis(func1d=self._find_hyp_dist, axis=1, arr=np.column_stack([xy_vertices, xy_upper_ray]))
+        hyp_dist = np.apply_along_axis(func1d=self._find_hyp_dist, axis=1,
+                                       arr=np.column_stack([xy_vertices, xy_upper_ray]))
 
         adj_dist = x_max - x_min
 
         adj_over_hyp = np.divide(adj_dist, hyp_dist, where=(hyp_dist != 0) | (adj_dist != 0))
 
         # Find the angle of rotation from horizon in degrees
-        theta = np.arccos(adj_over_hyp) * (180.0 / np.pi)
+        theta = np.arccos(adj_over_hyp)*(180.0/np.pi)
 
         # Adds the correct orientation to the angle
         theta_sign = y_0 - y_1
-        theta = theta * (np.divide(theta_sign, abs(theta_sign), where=theta_sign != 0))
+        theta = theta*(np.divide(theta_sign, abs(theta_sign), where=theta_sign != 0))
 
         def find_angle_of_rot(x):
             new_theta = theta + x
@@ -93,8 +94,8 @@ class GridAligner(GridCorrector):
 
         largest_angle = np.abs(theta).max()
         optimal_angle = minimize_scalar(
-            fun=find_angle_of_rot,
-            bounds=(-largest_angle, largest_angle),
+                fun=find_angle_of_rot,
+                bounds=(-largest_angle, largest_angle),
         )
 
         image.rotate(angle_of_rotation=optimal_angle.x, mode=self.mode)

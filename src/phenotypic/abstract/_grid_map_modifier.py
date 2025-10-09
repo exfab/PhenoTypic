@@ -15,6 +15,7 @@ class GridMapModifier(MapModifier, GridOperation, ABC):
     @validate_operation_integrity('image.array', 'image.matrix', 'image.enh_matrix')
     def apply(self, image: GridImage, inplace: bool = False) -> GridImage:
         from phenotypic import GridImage
+
         if not isinstance(image, GridImage): raise GridImageInputError()
         output = super().apply(image=image, inplace=inplace)
         return output

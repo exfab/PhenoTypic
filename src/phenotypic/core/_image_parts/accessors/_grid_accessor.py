@@ -69,7 +69,7 @@ class GridAccessor(ImageAccessorBase):
     @property
     def _idx_ref_matrix(self):
         """Returns a matrix of grid positions to help with indexing"""
-        return np.reshape(np.arange(self.nrows * self.ncols), newshape=(self.nrows, self.ncols))
+        return np.reshape(np.arange(self.nrows*self.ncols), newshape=(self.nrows, self.ncols))
 
     def __getitem__(self, idx):
         """
@@ -143,11 +143,11 @@ class GridAccessor(ImageAccessorBase):
             y = grid_info.loc[grid_info.loc[:, x_group] == idx, y_val].to_numpy()
             y_mean = np.mean(y) if y.size > 0 else np.nan
 
-            covariance = ((x - x_mean) * (y - y_mean)).sum()
+            covariance = ((x - x_mean)*(y - y_mean)).sum()
             variance = ((x - x_mean) ** 2).sum()
             if variance != 0:
-                m_slope[idx] = covariance / variance
-                b_intercept[idx] = y_mean - m_slope[idx] * x_mean
+                m_slope[idx] = covariance/variance
+                b_intercept[idx] = y_mean - m_slope[idx]*x_mean
             else:
                 m_slope[idx] = 0
                 b_intercept[idx] = y_mean if axis == 0 else x_mean
@@ -180,8 +180,8 @@ class GridAccessor(ImageAccessorBase):
 
             # Edit the new map's objects to equal the column number
             col_map[np.isin(
-                element=self._root_image.objmap[:],
-                test_elements=subtable.index.to_numpy(),
+                    element=self._root_image.objmap[:],
+                    test_elements=subtable.index.to_numpy(),
             )] = n + 1
         return col_map
 
@@ -233,8 +233,8 @@ class GridAccessor(ImageAccessorBase):
 
             # Edit the new map's objects to equal the column number
             row_map[np.isin(
-                element=self._root_image.objmap[:],
-                test_elements=subtable.index.to_numpy(),
+                    element=self._root_image.objmap[:],
+                    test_elements=subtable.index.to_numpy(),
             )] = n + 1
         return row_map
 
@@ -274,8 +274,8 @@ class GridAccessor(ImageAccessorBase):
         for n, bidx in enumerate(np.sort(grid_info.loc[:, str(GRID.SECTION_NUM)].unique())):
             subtable = grid_info.loc[grid_info.loc[:, str(GRID.SECTION_NUM)] == bidx, :]
             section_map[np.isin(
-                element=self._root_image.objmap[:],
-                test_elements=subtable.index.to_numpy(),
+                    element=self._root_image.objmap[:],
+                    test_elements=subtable.index.to_numpy(),
             )] = n + 1
 
         return section_map

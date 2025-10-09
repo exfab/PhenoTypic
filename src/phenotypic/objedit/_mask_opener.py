@@ -4,7 +4,7 @@ from typing import Literal, TYPE_CHECKING
 
 if TYPE_CHECKING: from phenotypic import Image
 
-from ..abstract import MapModifier
+from phenotypic.abstract import MapModifier
 
 import numpy as np
 from skimage.morphology import binary_opening, diamond
@@ -43,6 +43,6 @@ class MaskOpener(MapModifier):
             footprint = self.footprint
         else:
             raise AttributeError('Invalid footprint type')
-        
+
         image.objmask[:] = binary_opening(image.objmask[:], footprint=footprint)
         return image

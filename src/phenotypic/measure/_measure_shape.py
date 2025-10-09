@@ -25,7 +25,8 @@ class SHAPE(MeasurementInfo):
     AREA = ('Area', "The sum of the object's pixels")
     PERIMETER = ('Perimeter', "The perimeter of the object's pixels")
     CIRCULARITY = (
-        'Circularity', r'Calculated as :math:`\frac{4\pi*\text{Area}}{\text{Perimeter}^2}`. A perfect circle has a other_image of 1.'
+        'Circularity',
+        r'Calculated as :math:`\frac{4\pi*\text{Area}}{\text{Perimeter}^2}`. A perfect circle has a other_image of 1.'
     )
     CONVEX_AREA = ('ConvexArea', 'The area of the convex hull of the object')
     MEDIAN_RADIUS = ('MedianRadius', 'The median radius of the object')
@@ -65,7 +66,8 @@ class MeasureShape(MeasureFeatures):
 
     def _operate(self, image: Image) -> pd.DataFrame:
         # Create empty numpy arrays to store measurements
-        measurements = {str(feature): np.zeros(shape=image.num_objects) for feature in SHAPE if feature != SHAPE.CATEGORY}
+        measurements = {str(feature): np.zeros(shape=image.num_objects) for feature in SHAPE if
+                        feature != SHAPE.CATEGORY}
 
         dist_matrix = distance_transform_edt(image.objmap[:])
         measurements[str(SHAPE.MEAN_RADIUS)] = self._calculate_mean(array=dist_matrix, labels=image.objmap[:])
@@ -83,11 +85,11 @@ class MeasureShape(MeasureFeatures):
             measurements[str(SHAPE.MINOR_AXIS_LENGTH)][idx] = current_props.minor_axis_length
             measurements[str(SHAPE.ORIENTATION)][idx] = current_props.orientation
 
-            numer = 4 * np.pi * current_props.area
+            numer = 4*np.pi*current_props.area
             denom = current_props.perimeter ** 2
 
-            measurements[str(SHAPE.CIRCULARITY)][idx] = numer / denom if denom != 0 else np.nan
-            measurements[str(SHAPE.COMPACTNESS)][idx] = denom / numer if numer != 0 else np.nan
+            measurements[str(SHAPE.CIRCULARITY)][idx] = numer/denom if denom != 0 else np.nan
+            measurements[str(SHAPE.COMPACTNESS)][idx] = denom/numer if numer != 0 else np.nan
 
             try:
                 with warnings.catch_warnings():
@@ -99,7 +101,7 @@ class MeasureShape(MeasureFeatures):
                 convex_hull = None
 
             measurements[str(SHAPE.CONVEX_AREA)][idx] = (convex_hull.area if convex_hull else np.nan)
-            measurements[str(SHAPE.SOLIDITY)][idx] = ((current_props.area / convex_hull.area) if convex_hull else np.nan)
+            measurements[str(SHAPE.SOLIDITY)][idx] = ((current_props.area/convex_hull.area) if convex_hull else np.nan)
 
         measurements = pd.DataFrame(measurements)
         measurements.insert(loc=0, column=OBJECT.LABEL, value=image.objects.labels2series())

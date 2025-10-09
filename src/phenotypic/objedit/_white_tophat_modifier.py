@@ -7,7 +7,7 @@ if TYPE_CHECKING: from phenotypic import Image
 import numpy as np
 from skimage.morphology import disk, square, white_tophat
 
-from ..abstract import MapModifier
+from phenotypic.abstract import MapModifier
 
 
 class WhiteTophatModifier(MapModifier):

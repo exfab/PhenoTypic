@@ -40,9 +40,9 @@ class ImageObjectsHandler(ImageHandler):
         else:
             return self._accessors.objects
 
-    def info(self, include_metadata:bool=True):
+    def info(self, include_metadata: bool = True):
         return self.objects.info(include_metadata=include_metadata)
 
     @objects.setter
     def objects(self, objects):
-            raise IllegalAssignmentError('objects')
+        raise IllegalAssignmentError('objects')

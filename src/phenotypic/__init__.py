@@ -1,11 +1,12 @@
-__version__ = "0.8.0"
+__version__ = "0.9.0"
 
 from .core._grid_image import GridImage
 from .core._image import Image
 from .core._image_pipeline import ImagePipeline
 from .core._image_set import ImageSet
 from .core._imread import imread
-from . import (abstract, correction, data, detection, enhancement, grid, measure, morphology, objedit, util, prefab)
+from . import (abstract, analysis, correction, data, detection, enhancement, grid, measure, objedit, util,
+               prefab)
 
 __all__ = [
     "Image",  # Class imported from core
@@ -13,6 +14,7 @@ __all__ = [
     "GridImage",  # Class imported from core
     "ImagePipeline",
     "ImageSet",
+    "analysis",
     "data",
     "detection",
     "measure",
@@ -20,7 +22,6 @@ __all__ = [
     "abstract",
     "objedit",
     "prefab",
-    "morphology",
     "correction",
     "enhancement",
     "util",

@@ -22,7 +22,7 @@ class MinResidualErrorReducer(GridMapModifier):
     def _operate(image: GridImage) -> GridImage:
         # Get the section objects in order of most amount. More objects in a section means
         # more potential spread that can affect linreg results.
-        max_iter = (image.grid.nrows * image.grid.ncols) * 4
+        max_iter = (image.grid.nrows*image.grid.ncols)*4
 
         # Initialize extractor here to save obj construction time
         linreg_stat_extractor = MeasureGridLinRegStats()

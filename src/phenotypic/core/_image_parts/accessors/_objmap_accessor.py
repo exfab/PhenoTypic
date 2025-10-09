@@ -122,7 +122,7 @@ class ObjectMap(SingleChannelAccessor):
     def relabel(self, connectivity: int = 1):
         """Relabels all the objects based on their connectivity"""
         self._root_image._data.sparse_object_map = self._dense_to_sparse(
-            label(self._root_image.objmask[:], connectivity=connectivity))
+                label(self._root_image.objmask[:], connectivity=connectivity))
 
     @staticmethod
     def _dense_to_sparse(arg) -> csc_matrix:

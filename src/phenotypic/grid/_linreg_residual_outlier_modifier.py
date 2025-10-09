@@ -1,5 +1,6 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
+
 if TYPE_CHECKING: from phenotypic import GridImage
 
 import numpy as np
@@ -70,8 +71,8 @@ class GridAlignmentOutlierRemover(GridMapModifier):
             row_variance = grid_info.groupby(str(GRID.ROW_NUM))[GRID_LINREG_STATS_EXTRACTOR.RESIDUAL_ERR].std()
 
             #   Divide standard deviation by mean
-            row_variance = row_variance\
-                           / grid_info.groupby(str(GRID.ROW_NUM))[GRID_LINREG_STATS_EXTRACTOR.RESIDUAL_ERR].mean()
+            row_variance = row_variance \
+                           /grid_info.groupby(str(GRID.ROW_NUM))[GRID_LINREG_STATS_EXTRACTOR.RESIDUAL_ERR].mean()
 
             over_limit_row_variance = row_variance.loc[row_variance > self.max_coeff_variance]
 
@@ -88,7 +89,7 @@ class GridAlignmentOutlierRemover(GridMapModifier):
                 # row_stddev = row_err.std()
                 # upper_row_cutoff = row_err_mean + row_stddev * self.cutoff_multiplier
 
-                upper_row_cutoff = row_err_mean + row_iqr * self.cutoff_multiplier
+                upper_row_cutoff = row_err_mean + row_iqr*self.cutoff_multiplier
                 outlier_obj_ids += row_err.loc[row_err >= upper_row_cutoff].index.tolist()
 
         # Column-wise residual outlier discovery
@@ -98,7 +99,8 @@ class GridAlignmentOutlierRemover(GridMapModifier):
             col_variance = grid_info.groupby(str(GRID.COL_NUM))[GRID_LINREG_STATS_EXTRACTOR.RESIDUAL_ERR].std()
 
             #   Divide standard deviation by mean
-            col_variance = col_variance / grid_info.groupby(str(GRID.COL_NUM))[GRID_LINREG_STATS_EXTRACTOR.RESIDUAL_ERR].mean()
+            col_variance = col_variance/grid_info.groupby(str(GRID.COL_NUM))[
+                GRID_LINREG_STATS_EXTRACTOR.RESIDUAL_ERR].mean()
 
             over_limit_col_variance = col_variance.loc[col_variance > self.max_coeff_variance]
 
@@ -113,7 +115,7 @@ class GridAlignmentOutlierRemover(GridMapModifier):
                 col_iqr = col_q3 - col_q1
                 # col_stddev = col_err.std()
 
-                upper_col_cutoff = col_err_mean + col_iqr * self.cutoff_multiplier
+                upper_col_cutoff = col_err_mean + col_iqr*self.cutoff_multiplier
                 outlier_obj_ids += col_err.loc[col_err >= upper_col_cutoff].index.tolist()
 
         # Remove objects from obj map

@@ -19,6 +19,7 @@ class ImageSetStatus(ImageSetCore):
         /phenotypic/image_sets/images/<image_name>/status
 
     """
+
     def __init__(self,
                  name: str,
                  grid_finder: Image | None = None,
@@ -74,12 +75,12 @@ class ImageSetStatus(ImageSetCore):
             for name in image_names:
                 status_group = self.hdf_.get_data_group(handle=handle, image_name=name)
                 status.append(
-                    status_group.attrs[x.label] for x in PIPE_STATUS
+                        status_group.attrs[x.label] for x in PIPE_STATUS
                 )
         return pd.DataFrame(
-            data=status,
-            index=image_names,
-            columns=PIPE_STATUS.get_headers()
+                data=status,
+                index=image_names,
+                columns=PIPE_STATUS.get_headers()
         )
 
     def _add_image2group(self, group, image: Image, overwrite: bool):

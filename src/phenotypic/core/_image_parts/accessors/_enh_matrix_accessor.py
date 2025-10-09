@@ -66,7 +66,8 @@ class ImageEnhancedMatrix(SingleChannelAccessor):
         elif isinstance(value, (int, float)):
             pass
         else:
-            raise TypeError(f'Unsupported type for setting the matrix. Value should be scalar or a numpy array: {type(value)}')
+            raise TypeError(
+                f'Unsupported type for setting the matrix. Value should be scalar or a numpy array: {type(value)}')
 
         self._root_image._data.enh_matrix[key] = value
         self._root_image.objmap.reset()

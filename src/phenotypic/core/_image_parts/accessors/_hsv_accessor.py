@@ -92,14 +92,14 @@ class HsvAccessor(ImageAccessorBase):
         axes_[1] = fig.add_subplot(2, 2, 2, projection='polar')
 
         # Get hue data and apply offset
-        hue_data = (self._subject_arr[:, :, 0] * 360 + hue_offset) % 360
+        hue_data = (self._subject_arr[:, :, 0]*360 + hue_offset)%360
 
         # Create bins
         bin_edges = np.arange(0, 360 + hue_bins, hue_bins)
         hist_counts, _ = np.histogram(hue_data.flatten(), bins=bin_edges)
 
         # Convert bin edges to radians and get bin centers
-        bin_centers_deg = (bin_edges[:-1] + bin_edges[1:]) / 2
+        bin_centers_deg = (bin_edges[:-1] + bin_edges[1:])/2
         bin_centers_rad = np.deg2rad(bin_centers_deg)
         bin_width_rad = np.deg2rad(hue_bins)
 
@@ -108,7 +108,7 @@ class HsvAccessor(ImageAccessorBase):
         colors = []
         for hue_deg in bin_centers_deg:
             # Create HSV color (hue/360, saturation=1, value=1)
-            hsv_color = np.array([hue_deg / 360, 1.0, 1.0])
+            hsv_color = np.array([hue_deg/360, 1.0, 1.0])
             # Convert to RGB
             rgb_color = mcolors.hsv_to_rgb(hsv_color)
             colors.append(rgb_color)
@@ -172,7 +172,7 @@ class HsvAccessor(ImageAccessorBase):
         fig, axes = plt.subplots(nrows=3, figsize=figsize)
         ax = axes.ravel()
 
-        hue = ax[0].imshow(self._subject_arr[:, :, 0] * 360, cmap='hsb', vmin=0, vmax=360)
+        hue = ax[0].imshow(self._subject_arr[:, :, 0]*360, cmap='hsb', vmin=0, vmax=360)
         ax[0].set_title('Hue')
         ax[0].grid(False)
         fig.colorbar(mappable=hue, ax=ax[0], shrink=shrink)
@@ -219,7 +219,7 @@ class HsvAccessor(ImageAccessorBase):
         fig, axes = plt.subplots(nrows=3, figsize=figsize)
         ax = axes.ravel()
 
-        hue = ax[0].imshow(np.ma.array(self._subject_arr[:, :, 0] * 360, mask=~self._root_image.objmask[:]),
+        hue = ax[0].imshow(np.ma.array(self._subject_arr[:, :, 0]*360, mask=~self._root_image.objmask[:]),
                            cmap='hsb', vmin=0, vmax=360,
                            )
         ax[0].set_title('Hue')
