@@ -83,7 +83,7 @@ class BBOX(MeasurementInfo):
 class IO:
     RAW_FILE_EXTENSIONS = ('.cr3', '.CR3')
     PNG_FILE_EXTENSIONS = ('.png', '.PNG')
-    JPEG_FILE_EXTENSIONS = ('.jpeg', '.JPEG')
+    JPEG_FILE_EXTENSIONS = ('.jpeg', '.JPEG', '.jpg')
     TIFF_EXTENSIONS = ('.tif', '.tiff')
     ACCEPTED_FILE_EXTENSIONS = PNG_FILE_EXTENSIONS + JPEG_FILE_EXTENSIONS + TIFF_EXTENSIONS
 
