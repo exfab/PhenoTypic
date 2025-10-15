@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import tempfile
 import weakref
-from typing import TYPE_CHECKING, Literal, Any, Dict
+from typing import Any, Dict, Literal, TYPE_CHECKING
 
 if TYPE_CHECKING: from phenotypic import Image
 
@@ -14,9 +14,8 @@ from typing import List
 import h5py
 from os import PathLike
 
-from phenotypic.abstract import GridFinder
-from phenotypic.util.constants_ import IO
-from phenotypic.util import HDF
+from phenotypic.tools.constants_ import IO
+from phenotypic.tools import HDF
 import phenotypic as pht
 
 
@@ -46,10 +45,9 @@ class ImageSetCore:
 
     def __init__(self,
                  name: str,
-                 imparams: Dict[str, Any] | None = None,
-                 imtype: Literal["Image", "GridImage"] = "Image",
-                 src: List[Image] | PathLike | str | None = None,
                  outpath: PathLike | str | None = None,
+                 imtype: Literal["Image", "GridImage"] = "Image",
+                 imparams: Dict[str, Any] | None = None,
                  default_mode: Literal['temp', 'cwd'] = 'temp',
                  overwrite: bool = False, ):
         """
@@ -84,19 +82,6 @@ class ImageSetCore:
         self.imparams = imparams or {}
         self.imtype = imtype
 
-        # Automatically detect the type of src parameter
-        image_list = None
-        src_path = None
-
-        if src is not None:
-            if isinstance(src, list):
-                # src is a list of images
-                image_list = src
-            else:
-                # src is a path-like object
-                src_path = src
-
-        src_path = Path(src_path) if src_path else None
         # Track ownership of outpath for cleanup
         owns_outpath = False
         if outpath:
@@ -111,94 +96,22 @@ class ImageSetCore:
                 outpath = Path(tmp)
                 owns_outpath = True
 
-        if outpath.is_dir(): outpath = outpath/f'{self.name}.hdf5'
+        if outpath.is_dir():
+            outpath = outpath/f'{self.name}.hdf5'
+        else:
+            if not outpath.suffix in HDF.EXT:
+                raise ValueError(f'Invalid output file extension: {outpath.suffix}')
 
         # Track whether this instance owns the outpath and should delete it on GC
         self._owns_outpath = owns_outpath
         self._out_finalizer = weakref.finalize(self, self._cleanup_outpath, outpath) if self._owns_outpath else None
 
-        self.name, self._src_path, self._out_path = str(name), src_path, outpath
+        self.name, self._out_path = str(name), outpath
         self.hdf_ = HDF(filepath=outpath, name=self.name, mode='set')
 
         self._overwrite = overwrite
 
-        # Define hdf5 group paths
-        self._hdf5_parent_group_key: str = HDF.IMAGE_SET_ROOT_POSIX
-        self._hdf5_set_group_key: str = posixpath.join(self._hdf5_parent_group_key, self.name)
-
-        # Reminder: SetMeasurementAccessor are stored with each image
-        #   self._hdf5_images_group_key/images/<image_name>/measurements <- that image's measurements
-        self._hdf5_images_group_key: str = posixpath.join(self._hdf5_set_group_key, 'images')
-
-        if src_path:  # If src is pathlike object
-
-            # If input path is an hdf5 file
-            if src_path.is_file() and src_path.suffix == '.h5':
-                if src_path == outpath:  # If src and outpath are the same
-                    pass
-
-                elif src_path.suffix in HDF.EXT:  # If src and outpath are different, but both hdf files
-                    with h5py.File(src_path, mode='r',
-                                   libver='latest') as src_filehandler, self.hdf_.safe_writer() as writer:
-                        src_parent_group = self._get_hdf5_group(src_filehandler, self)
-                        out_parent_group = self.hdf_.get_root_group(writer)
-
-                        if self.name in src_parent_group:  # If matching set name in src -> cpy images to outpath
-                            src_group = self._get_hdf5_group(src_filehandler, self._hdf5_set_group_key)
-
-                            # overwrite if overwrite is true
-                            if self.name in out_parent_group and overwrite is True: del out_parent_group[self.name]
-
-                            # Should place a copy of the src_group into the parent group
-                            src_filehandler.copy(src_group, out_parent_group, name=self.name, shallow=False)
-
-                        elif HDF.SINGLE_IMAGE_ROOT_POSIX in src_filehandler:  # If no matching set name -> import all single images
-                            src_image_group = self._get_hdf5_group(src_filehandler, self._hdf5_parent_group_key)
-
-                            # overwrite if overwrite is true
-                            if self.name in out_parent_group and overwrite is True: del out_parent_group[self.name]
-                            src_filehandler.copy(src_image_group, out_parent_group, name=self.name, shallow=False)
-
-                        else:  # No matching name and no images in the src hdf file
-                            raise ValueError(f'No ImageSet named {self.name} or Image section found in {src_path}')
-
-                elif src_path.is_dir():  # If src_path is a directory -> Assume directory of images
-                    image_filenames = [x for x in os.listdir(src_path) if
-                                       x.endswith(IO.ACCEPTED_FILE_EXTENSIONS + IO.RAW_FILE_EXTENSIONS)]
-                    image_filenames.sort()
-                    with self.hdf_.safe_writer() as writer:
-                        out_parent_group = self.hdf_.get_root_group(writer)
-
-                        # Overwrite handling
-                        if self.name in out_parent_group and overwrite is True: del out_parent_group[self.name]
-                        images_group = self.hdf_.get_data_group(writer)
-
-                        for fname in image_filenames:
-                            if self.grid_finder is not None:
-                                template = pht.GridImage
-                            else:
-                                template = pht.Image
-                            image = template.imread(src_path/fname)
-                            image._save_image2hdfgroup(grp=images_group, compression="gzip", compression_opts=4)
-
-        # Image list handling
-        # Only need out handler for this
-        elif isinstance(image_list, list):
-            assert all(
-                    isinstance(x, phenotypic.Image) for x in image_list), 'image_list must be a list of Image objects.'
-            with self.hdf_.safe_writer() as writer:
-                out_group = self._get_hdf5_group(writer, self._hdf5_parent_group_key)
-
-                # Overwrite the data in the output folder
-                if self.name in out_group and overwrite is True: del out_group[self.name]
-                images_group = self.hdf_.get_data_group(writer)
-
-                for image in image_list:
-                    image._save_image2hdfgroup(grp=images_group, compression="gzip", compression_opts=4)
-        elif not src_path and not image_list:  # connect to outpath hdf5 file only
-            pass
-        else:
-            raise ValueError('image_list must be a list of Image objects or src_path must be a valid hdf5 file.')
+        return
 
     def close(self) -> None:
         """Close resources and delete the temporary outpath if this instance owns it."""
@@ -214,11 +127,14 @@ class ImageSetCore:
         else:
             raise ValueError(f'Image type {self.imtype} is not supported.')
 
-    # TODO: -[] import from other hdf5 file
+    def import_images(self, images: List[Image]) -> None:
+        assert all(isinstance(x, pht.Image) for x in images), 'images must be a list of Image objects.'
+        with self.hdf_.safe_writer() as writer:
+            data_grp = self.hdf_.get_data_group(writer)
+            for image in images:
+                image._save_image2hdfgroup(grp=data_grp, compression="gzip", compression_opts=4)
+        return None
 
-    # TODO: -[] load from list of images
-
-    # TODO: -[x] import directory case
     def import_dir(self, dirpath: Path) -> None:
         dirpath = Path(dirpath)
         if not dirpath.is_dir(): raise ValueError(f'{dirpath} is not a directory.')
@@ -231,6 +147,7 @@ class ImageSetCore:
             for fpath in filepaths:
                 image = template.imread(fpath, **self.imparams)
                 image._save_image2hdfgroup(grp=data_group, compression="gzip", compression_opts=4)
+        return None
 
     @staticmethod
     def _cleanup_outpath(path: Path) -> None:
@@ -292,16 +209,45 @@ class ImageSetCore:
             names = list(set_group.keys())
         return names
 
+    def _get_image(self, image_name: str, handle: h5py.File | h5py.Group, **kwargs) -> Image:
+        """
+        Fetches an image object from an HDF5 group given the image name and handle.
+
+        This method retrieves an image from an HDF5 file or group using its name and
+        a given handle. The handle can be an HDF5 file or group and should contain
+        the desired image group.
+
+        Args:
+            image_name: str
+                The name of the image to retrieve from the HDF5 group.
+            handle: h5py.File | h5py.Group
+                The HDF5 file or group handle where the image is stored.
+            **kwargs:
+                Additional keyword arguments passed to the Image template constructor.
+
+        Returns:
+            Image
+                The corresponding Image object retrieved based on the provided
+                arguments.
+
+        Raises:
+            ValueError:
+                Raised if the specified image group cannot be located or loaded.
+            TypeError:
+                Raised if the handle provided is not of suitable types
+                (h5py.File or h5py.Group).
+        """
+        return self._get_template()._load_from_hdf5_group(
+                group=self.hdf_.get_image_group(handle=handle, image_name=image_name),
+                **kwargs
+        )
+
     def get_image(self, image_name: str) -> Image:
-        import phenotypic as pt
 
         with self.hdf_.swmr_reader() as reader:
             image_group = self.hdf_.get_data_group(reader)
             if image_name in image_group:
-                if self.grid_finder:
-                    image = pt.GridImage(grid_finder=self.grid_finder)._load_from_hdf5_group(image_group[image_name])
-                else:
-                    image = pt.Image()._load_from_hdf5_group(image_group[image_name])
+                image = self._get_template()._load_from_hdf5_group(image_group[image_name], **self.imparams)
             else:
                 raise ValueError(f'Image named {image_name} not found in ImageSet {self.name}.')
         return image

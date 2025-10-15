@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import warnings
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING: from phenotypic import Image
@@ -28,8 +29,8 @@ from phenotypic.core._image_parts.accessors import (
     MetadataAccessor,
 )
 
-from phenotypic.util.constants_ import IMAGE_FORMATS, METADATA, IMAGE_TYPES
-from phenotypic.util.exceptions_ import (
+from phenotypic.tools.constants_ import IMAGE_FORMATS, METADATA, IMAGE_TYPES
+from phenotypic.tools.exceptions_ import (
     EmptyImageError, IllegalAssignmentError
 )
 
@@ -48,7 +49,7 @@ class ImageHandler:
         _data.matrix (Optional[np.ndarray]): Internal representation of image data in matrix form.
         _data.enh_matrix (Optional[np.ndarray]): Enhanced matrix for extended manipulations.
         _data.sparse_object_map (Optional[csc_matrix]): Sparse object representation for mapping object labels.
-        _image_format (Optional[str]): Tracks the format/schema of the input_image image.
+        _image_format (Optional[str]): Tracks the format/schema of the arr image.
         _metadata (SimpleNamespace): Container holding private, protected, and public metadata for
             the image.
         _accessors (SimpleNamespace): Provides property-based access"""
@@ -57,8 +58,8 @@ class ImageHandler:
     _OBJMAP_DTYPE = np.uint16
 
     def __init__(self,
-                 input_image: np.ndarray | Image | PathLike | None = None,
-                 imformat: str | None = None,
+                 arr: np.ndarray | Image | None = None,
+                 imformat: str | IMAGE_FORMATS | None = None,
                  name: str | None = None, **kwargs):
         """
         Initializes an image object with optional input image data and metadata. This class constructor
@@ -66,7 +67,7 @@ class ImageHandler:
         and data extraction. If an input image is provided, it processes and stores it in the appropriate format.
 
         Args:
-            input_image (np.ndarray | Image | PathLike | None): Optional initial image input. It can be
+            arr (np.ndarray | Image | PathLike | None): Optional initial image input. It can be
                 a NumPy array, an image object, or a path-like object referring to an image file.
             imformat (str | None): Optional format of the input image. This will specify the interpretation
                 of the input image's data structure.
@@ -104,7 +105,7 @@ class ImageHandler:
                     METADATA.IMAGE_NAME       : name,
                     METADATA.PARENT_IMAGE_NAME: b'',
                     METADATA.IMAGE_TYPE       : IMAGE_TYPES.BASE.value,
-                    METADATA.BIT_DEPTH        : kwargs.get('bit_depth', 8)
+                    METADATA.BIT_DEPTH        : kwargs.get('bit_depth', None)
                 },
                 public={},
         )
@@ -124,7 +125,7 @@ class ImageHandler:
         self._clear_data()
 
         # Handle non-empty inputs
-        self.set_image(input_image=input_image, imformat=imformat)
+        self.set_image(input_image=arr, imformat=imformat)
 
     def __getitem__(self, key) -> Image:
         """Returns a new subimage from the current object based on the provided key. The subimage is initialized
@@ -144,9 +145,9 @@ class ImageHandler:
             KeyError: If the provided key does not match the expected slicing format or dimensions.
         """
         if self._image_format.is_array():
-            subimage = self.__class__(input_image=self.array[key], imformat=self.imformat)
+            subimage = self.__class__(arr=self.array[key], imformat=self.imformat)
         else:
-            subimage = self.__class__(input_image=self.matrix[key], imformat=self.imformat)
+            subimage = self.__class__(arr=self.matrix[key], imformat=self.imformat)
 
         subimage.enh_matrix[:] = self.enh_matrix[key].copy()
         subimage.objmap[:] = self.objmap[key].copy()
@@ -249,10 +250,10 @@ class ImageHandler:
 
     @property
     def shape(self):
-        """Returns the shape of the image array or matrix depending on input_image format or none if no image is set.
+        """Returns the shape of the image array or matrix depending on arr format or none if no image is set.
 
         Returns:
-            Optional[Tuple(int,int,...)]: Returns the shape of the array or matrix depending on input_image format or none if no image is set.
+            Optional[Tuple(int,int,...)]: Returns the shape of the array or matrix depending on arr format or none if no image is set.
         """
         if self._image_format.is_array():
             return self._data.array.shape
@@ -263,7 +264,7 @@ class ImageHandler:
 
     @property
     def imformat(self) -> IMAGE_FORMATS:
-        """Returns the input_image format of the image array or matrix depending on input_image format"""
+        """Returns the arr format of the image array or matrix depending on arr format"""
         if not self._image_format.is_none():
             # if self._data.matrix is None or self._data.enh_matrix is None or self._data.sparse_object_map is None:
             #     raise AttributeError('Unknown error. An image format exists, but missing _root_image data')
@@ -286,13 +287,13 @@ class ImageHandler:
         Note:
             - array/matrix element data is synced
             - change image shape by changing the image being represented with Image.set_image()
-            - Raises an error if the input_image image has no array form
+            - Raises an error if the arr image has no array form
 
         Returns:
             ImageArray: A class that can be accessed like a numpy array, but has extra methods to streamline development, or None if not set
 
         Raises:
-            NoArrayError: If no multichannel image data is set as input_image.
+            NoArrayError: If no multichannel image data is set as arr.
 
         .. code-block:: python
             from phenotypic import Image
@@ -550,10 +551,10 @@ class ImageHandler:
                 The diameter of a circle with the same area as the region.
 
             euler_number: int
-                Euler characteristic of the set of non-zero pixels. Computed as number of connected components subtracted by number of holes (input_image.ndim connectivity). In 3D, number of connected components plus number of holes subtracted by number of tunnels.
+                Euler characteristic of the set of non-zero pixels. Computed as number of connected components subtracted by number of holes (arr.ndim connectivity). In 3D, number of connected components plus number of holes subtracted by number of tunnels.
 
             extent: float
-                Ratio of pixels in the region to pixels in the total bounding box. Computed as area / (rows * cols)
+                Ratio of pixels in the region to pixels in the total bounding box. Computed as area / (nrows * ncols)
 
             feret_diameter_max: float
                 Maximum Feret’s diameter computed as the longest distance between points around a region’s convex hull contour as determined by find_contours. [5]
@@ -589,7 +590,7 @@ class ImageHandler:
                 Standard deviation of the intensity in the region.
 
             label: int
-                The label in the labeled input_image image.
+                The label in the labeled arr image.
 
             moments(3, 3): ndarray
                 Spatial moments up to 3rd order::
@@ -643,7 +644,7 @@ class ImageHandler:
                 Number of foreground pixels.
 
             orientation: float
-                Angle between the 0th axis (rows) and the major axis of the ellipse that has the same second moments as the region, ranging from -pi/2 to pi/2 counter-clockwise.
+                Angle between the 0th axis (nrows) and the major axis of the ellipse that has the same second moments as the region, ranging from -pi/2 to pi/2 counter-clockwise.
 
             perimeter: float
                 Perimeter of object which approximates the contour as a line through the centers of border pixels using a 4-connectivity.
@@ -688,23 +689,36 @@ class ImageHandler:
     def set_image(self, input_image: Image | np.ndarray | None = None,
                   imformat: Literal['RGB', 'greyscale'] | None = None) -> None:
         """
-        Sets the image data and format based on the provided input_image and parameters.
+        Sets the image data and format based on the provided arr and parameters.
 
         This method accepts an image in the form of an array, another class instance,
         or a None other_image, and sets the internal image data accordingly. It determines
-        how to process the input_image based on its type, and separates actions for arrays,
-        instances of the class, and None input_image.
+        how to process the arr based on its type, and separates actions for arrays,
+        instances of the class, and None arr.
 
         Args:
-            input_image (Image | np.ndarray): The image data input_image which can either
+            input_image (Image | np.ndarray): The image data arr which can either
                 be an instance of an Image, a NumPy array, or None. If None, the internal
                 image-related attributes are reset.
             imformat (Literal['RGB', 'greyscale'] | None): Optional format specifier
-                indicating the format of the input_image image. If None, it attempts to derive
+                indicating the format of the arr image. If None, it attempts to derive
                 the format automatically based on the image data.
         """
         match input_image:
             case x if isinstance(x, np.ndarray):
+                if self.bit_depth is None:
+                    match input_image.dtype:
+                        case np.uint8:
+                            bit_depth = 8
+                        case np.uint16:
+                            bit_depth = 16
+                        case y if np.issubdtype(y, np.floating):  # guess bit depth if floating
+                            bit_depth = 16
+                        case _:
+                            warnings.warn('Input image bit_depth could has an unknown dtype and could not be guessed. '
+                                          'defaulting to 16')
+                            bit_depth = 16
+                    self.metadata[METADATA.BIT_DEPTH] = bit_depth
                 self._set_from_array(x, imformat)
             case x if isinstance(x, ImageHandler) | issubclass(type(x), ImageHandler):
                 self._set_from_class_instance(x)
@@ -712,7 +726,7 @@ class ImageHandler:
                 self._clear_data()
             case _:
                 raise ValueError(
-                        f'input_image must be a NumPy array, a class instance, or None. Got {type(input_image)}')
+                        f'arr must be a NumPy array, a class instance, or None. Got {type(input_image)}')
 
     def _clear_data(self):
         self._data.array = np.empty((0, 3), dtype=np.uint8)  # Create an empty 3D array
@@ -756,10 +770,10 @@ class ImageHandler:
         """Initializes all the components of an image from an array
 
         Note:
-            The format of the input_image should already have been set or guessed
+            The format of the arr should already have been set or guessed
         Args:
-            imarr: the input_image image array
-            imformat: (str, optional) The format of the input_image image
+            imarr: the arr image array
+            imformat: (str, optional) The format of the arr image
         """
 
         # In the event of None for schema, PhenoTypic guesses the format
@@ -768,7 +782,7 @@ class ImageHandler:
 
         if type(imformat) == IMAGE_FORMATS:
             if imformat.is_ambiguous():
-                # phenotypic will assume in the event of rgb vs bgr that the input_image was rgb
+                # phenotypic will assume in the event of rgb vs bgr that the arr was rgb
                 imformat = IMAGE_FORMATS.RGB.value
             else:
                 imformat = imformat.value
@@ -807,10 +821,10 @@ class ImageHandler:
             IMAGE_FORMATS: Enum other_image indicating the detected format of the image.
 
         Raises:
-            TypeError: If the input_image is not a numpy array.
+            TypeError: If the arr is not a numpy array.
             ValueError: If the image has an unsupported number of dimensions or channels.
         """
-        # Ensure input_image is a numpy array
+        # Ensure arr is a numpy array
         if not isinstance(img, np.ndarray):
             raise TypeError("Input must be a numpy array.")
 

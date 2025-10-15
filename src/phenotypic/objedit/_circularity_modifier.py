@@ -10,7 +10,7 @@ from skimage.measure import regionprops_table
 import math
 
 from ..abstract import MapModifier
-from ..util.constants_ import OBJECT
+from ..tools.constants_ import OBJECT
 
 
 class LowCircularityRemover(MapModifier):

@@ -10,7 +10,7 @@ from scipy.optimize import minimize_scalar
 from functools import partial
 
 from phenotypic.abstract import GridFinder
-from phenotypic.util.constants_ import BBOX, GRID
+from phenotypic.tools.constants_ import BBOX, GRID
 
 
 class OptimalBinsGridFinder(GridFinder):
@@ -24,7 +24,7 @@ class OptimalBinsGridFinder(GridFinder):
     segmentation or classification within images.
 
     Attributes:
-        nrows (int): Number of rows in the grid.
+        nrows (int): Number of nrows in the grid.
         ncols (int): Number of columns in the grid.
         tol (float): Tolerance for the solver method. Defaults to 10e-3.
 
@@ -35,12 +35,12 @@ class OptimalBinsGridFinder(GridFinder):
                  tol: float = 0.01, max_iter: int | None = None):
         """
         Represents a configuration object for iterative computations with constraints on
-        the number of rows, columns, tolerance, and a maximum number of iterations. This
+        the number of nrows, columns, tolerance, and a maximum number of iterations. This
         provides a flexible structure enabling adjustments to the computation parameters
         such as matrix dimensions and convergence criteria.
 
         Attributes:
-            nrows (int): Number of rows for the computation grid or array.
+            nrows (int): Number of nrows for the computation grid or array.
             ncols (int): Number of columns for the computation grid or array.
             tol (float): Tolerance level for the convergence criteria.
             max_iter (int | None): Maximum number of allowable iterations. Defaults to
@@ -56,17 +56,17 @@ class OptimalBinsGridFinder(GridFinder):
 
     def _operate(self, image: Image) -> pd.DataFrame:
         """
-        Processes an input_image image to calculate and organize grid-based boundaries and centroids using coordinates. This
+        Processes an arr image to calculate and organize grid-based boundaries and centroids using coordinates. This
         function implements a two-pass approach to refine row and column boundaries with exact precision, ensuring accurate
-        grid labeling and indexing. The function dynamically computes boundary intervals and optimally segments the input_image
-        space into grids based on specified rows and columns.
+        grid labeling and indexing. The function dynamically computes boundary intervals and optimally segments the arr
+        space into grids based on specified nrows and columns.
 
         Args:
-            image (Image): The input_image image to be analyzed and processed.
+            image (Image): The arr image to be analyzed and processed.
 
         Returns:
             pd.DataFrame: A DataFrame containing the grid results including boundary intervals, grid indices, and section
-            numbers corresponding to the segmented input_image image.
+            numbers corresponding to the segmented arr image.
         """
         # Find the centroid and boundaries
         obj_info = image.objects.info()
@@ -143,7 +143,7 @@ class OptimalBinsGridFinder(GridFinder):
         of the image shape.
 
         Uses the object information from the image to compute the padding range, which is derived
-        from the minimum and maximum bounding box rows of the detected objects. Clips the calculated
+        from the minimum and maximum bounding box nrows of the detected objects. Clips the calculated
         padding size in case it results in a negative value.
 
         Args:
@@ -165,7 +165,7 @@ class OptimalBinsGridFinder(GridFinder):
         """
         Determine the row edges of an image based on object positions and padding.
 
-        This method calculates the edges defining rows for objects within an image
+        This method calculates the edges defining nrows for objects within an image
         based on their positions provided in a DataFrame, applying padding and
         binning logic. The row edges are adjusted to fit within the boundaries
         of the image.
@@ -200,7 +200,7 @@ class OptimalBinsGridFinder(GridFinder):
 
     def get_row_edges(self, image: Image):
         """
-        Extracts and returns the edges of rows from the given image.
+        Extracts and returns the edges of nrows from the given image.
 
         This method first calculates the optimal row padding for the provided image
         using an internal utility method and subsequently determines the row edges
@@ -211,7 +211,7 @@ class OptimalBinsGridFinder(GridFinder):
                 be identified.
 
         Returns:
-            list: A list representing the edges of the rows in the image.
+            list: A list representing the edges of the nrows in the image.
         """
         optimal_row_padding = self._get_optimal_row_pad(image=image)
         return self._get_row_edges(

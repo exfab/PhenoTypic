@@ -9,7 +9,7 @@ import pandas as pd
 import numpy as np
 
 from phenotypic.abstract import GridMeasureFeatures
-from phenotypic.util.constants_ import BBOX, GRID
+from phenotypic.tools.constants_ import BBOX, GRID
 from abc import ABC
 
 
@@ -22,7 +22,7 @@ class GridFinder(GridMeasureFeatures, ABC):
         - GridFinders should implement self.get_row_edges() and self.get_col_edges() methods to get the row and column edges for the grid.
 
     Parameters:
-        nrows (int): Number of rows in the grid.
+        nrows (int): Number of nrows in the grid.
         ncols (int): Number of columns in the grid.
 
     """

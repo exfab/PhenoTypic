@@ -3,7 +3,7 @@ from __future__ import annotations
 import numpy as np
 
 from phenotypic.core._image_parts.accessor_abstracts import SingleChannelAccessor
-from phenotypic.util.exceptions_ import ArrayKeyValueShapeMismatchError, EmptyImageError
+from phenotypic.tools.exceptions_ import ArrayKeyValueShapeMismatchError, EmptyImageError
 
 
 class ImageMatrix(SingleChannelAccessor):
@@ -55,7 +55,7 @@ class ImageMatrix(SingleChannelAccessor):
             assert 0 <= value <= 1, 'matrix values must be between 0 and 1'
         else:
             raise TypeError(
-                f'Unsupported type for setting the matrix. Value should be scalar or a numpy array: {type(value)}')
+                    f'Unsupported type for setting the matrix. Value should be scalar or a numpy array: {type(value)}')
 
         self._root_image._data.matrix[key] = value
         self._root_image.enh_matrix.reset()

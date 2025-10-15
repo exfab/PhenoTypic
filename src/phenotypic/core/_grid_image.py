@@ -1,15 +1,15 @@
 from os import PathLike
 from pathlib import Path
-from typing import Optional
+from typing import Literal, Optional
 
 import numpy as np
 
 from phenotypic.abstract import GridFinder
 from ._image import Image
-from ._image_parts._image_grid_io import ImageGridIO
+from ._image_parts._image_grid_handler import ImageGridHandler
 
 
-class GridImage(ImageGridIO):
+class GridImage(ImageGridHandler):
     """
     A specialized Image object that supports grid-based processing and overlay visualization.
 
@@ -19,7 +19,7 @@ class GridImage(ImageGridIO):
     to determine grid structure and assign/overlay it effectively on the image.
 
     Args:
-            input_image (Optional[Union[np.ndarray, Type[Image]]]): The input_image
+            arr (Optional[Union[np.ndarray, Type[Image]]]): The input_image
                 image, which can be a NumPy array or an image-like object. If
                 this parameter is not provided, it defaults to None.
             imformat (str): A string representing the schema of the input_image
@@ -27,7 +27,7 @@ class GridImage(ImageGridIO):
             grid_finder (Optional[GridFinder]): An optional GridFinder instance
                 for defining grids on the image. If not provided, it defaults to
                 a center grid setter.
-            nrows (int): An integer passed to the grid setter to specify the number of rows in the grid
+            nrows (int): An integer passed to the grid setter to specify the number of nrows in the grid
                 (Defaults to 8).
             ncols (int): An integer passed to the grid setter to specify the number of columns in the grid
                 (Defaults to 12).
@@ -35,24 +35,24 @@ class GridImage(ImageGridIO):
     """
 
     def __init__(self,
-                 input_image: np.ndarray | Image | PathLike | Path | str | None = None,
+                 arr: np.ndarray | Image | PathLike | Path | str | None = None,
                  imformat: str | None = None,
                  name: str | None = None,
                  grid_finder: Optional[GridFinder] = None,
                  nrows: int = 8, ncols: int = 12,
+                 bit_depth: Literal[8, 16] | None = None,
                  illuminant: str | None = 'D65',
                  color_profile='sRGB',
                  observer='CIE 1931 2 Degree Standard Observer',
                  ):
         super().__init__(
-            input_image=input_image,
-            imformat=imformat,
-            name=name,
-            grid_finder=grid_finder,
-            nrows=nrows, ncols=ncols,
-            illuminant=illuminant,
-            color_profile=color_profile,
-            observer=observer,
+                arr=arr,
+                imformat=imformat,
+                name=name,
+                grid_finder=grid_finder,
+                nrows=nrows, ncols=ncols,
+                bit_depth=bit_depth,
+                illuminant=illuminant,
+                color_profile=color_profile,
+                observer=observer,
         )
-
-

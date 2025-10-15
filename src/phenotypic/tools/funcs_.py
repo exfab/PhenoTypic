@@ -13,7 +13,7 @@ import inspect
 import mmh3
 from functools import wraps
 
-from phenotypic.util.exceptions_ import OperationIntegrityError
+from phenotypic.tools.exceptions_ import OperationIntegrityError
 
 
 def is_binary_mask(arr: np.ndarray):

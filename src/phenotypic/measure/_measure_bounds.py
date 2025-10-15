@@ -8,7 +8,7 @@ from skimage.measure import regionprops_table
 
 from phenotypic.abstract import MeasureFeatures
 
-from ..util.constants_ import OBJECT, BBOX
+from ..tools.constants_ import OBJECT, BBOX
 
 
 class MeasureBounds(MeasureFeatures):

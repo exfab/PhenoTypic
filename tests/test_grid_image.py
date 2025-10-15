@@ -3,7 +3,7 @@ import pytest
 from phenotypic import Image, GridImage
 from phenotypic.grid import OptimalBinsGridFinder
 from phenotypic.detection import OtsuDetector
-from phenotypic.util.exceptions_ import IllegalAssignmentError
+from phenotypic.tools.exceptions_ import IllegalAssignmentError
 
 from .resources.TestHelper import timeit
 
@@ -22,11 +22,11 @@ def test_blank_gridimage_initialization():
 def test_gridimage_initialization(sample_image_array):
     # Test custom initialization with _root_image and grid setter
     input_image = sample_image_array
-    grid_image = GridImage(input_image=input_image)
+    grid_image = GridImage(arr=input_image)
     assert grid_image.isempty() is False
 
     grid_setter = OptimalBinsGridFinder(nrows=10, ncols=10)
-    grid_image = GridImage(input_image=input_image, grid_finder=grid_setter)
+    grid_image = GridImage(arr=input_image, grid_finder=grid_setter)
     assert grid_image.grid_finder == grid_setter
 
 

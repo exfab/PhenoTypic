@@ -1,12 +1,18 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, Callable
+
+from typing import List, TYPE_CHECKING
 
 if TYPE_CHECKING: from phenotypic import Image
 
 import warnings
-from enum import Enum
 from mahotas.features.texture import haralick_features
+import mahotas as mh
+import numpy as np
+import pandas as pd
+from skimage.util import img_as_ubyte
 
+from phenotypic.abstract import MeasureFeatures
+from phenotypic.tools.constants_ import OBJECT
 from phenotypic.abstract import MeasurementInfo
 
 
@@ -52,41 +58,31 @@ class TEXTURE(MeasurementInfo):
         'Entropy of co-occurrence matrix; low for uniform patches, high for random variation.'
     )
     DIFFERENCE_VARIANCE = (
-        'DifferenceVariance',
+        'DiffVariance',
         'Variance of pixel-pair differences; high if difference sizes vary, low if uniform.'
     )
     DIFFERENCE_ENTROPY = (
-        'DifferenceEntropy',
+        'DiffEntropy',
         'Entropy of pixel-pair difference distribution; measures unpredictability of differences.'
     )
     IMC1 = (
-        'InformationCorrelation1',
+        'InfoCorrelation1',
         'Mutual-information measure between pixel pairs; how much one pixel reduces uncertainty of its neighbor.'
     )
     IMC2 = (
-        'InformationCorrelation2',
+        'InfoCorrelation2',
         'Normalized mutual-information; strength of dependency relative to maximum possible.'
     )
 
     @classmethod
     def get_headers(cls, scale: int, matrix_name) -> list[str]:
         """Return full texture labels with angles in order 0, 45, 90, 135 for each feature."""
-        angles = ['0', '45', '90', '135']
+        angles = [0, 45, 90, 135]
         labels: list[str] = []
         for member in cls.get_labels():
-            base = f"{str(member)}"
             for angle in angles:
-                labels.append(f"{base}{matrix_name}-deg({angle})-scale({scale}))")
+                labels.append(f"{cls.category()}{matrix_name}_{member}-deg{angle:03d}-scale{scale:02d}")
         return labels
-
-
-import mahotas as mh
-import numpy as np
-import pandas as pd
-from skimage.util import img_as_ubyte
-
-from phenotypic.abstract import MeasureFeatures
-from phenotypic.util.constants_ import OBJECT
 
 
 class MeasureTexture(MeasureFeatures):
@@ -107,14 +103,18 @@ class MeasureTexture(MeasureFeatures):
         [1] https://mahotas.readthedocs.io/en/latest/api.html#mahotas.features.haralick
     """
 
-    def __init__(self, scale: int = 5):
+    def __init__(self, scale: int | List[int] = 5, warn: bool = False):
         """Initialize the MeasureTexture instance with a specified scale parameter.
 
         Args:
             scale (int, optional): The distance parameter used in calculating Haralick features.
                 Defaults to 5.
         """
+        if not hasattr(scale, "__getitem__"):
+            scale = [scale]
+
         self.scale = scale
+        self.warn = warn
 
     def _operate(self, image: Image) -> pd.DataFrame:
         """Performs texture measurements on the image objects.
@@ -128,17 +128,28 @@ class MeasureTexture(MeasureFeatures):
 
         Returns:
             pd.DataFrame: A DataFrame containing texture measurements for each object in the image.
-                The rows are indexed by object labels, and columns represent different texture features.
+                The nrows are indexed by object labels, and columns represent different texture features.
         """
-        return self._compute_haralick(image=image,
+        meas = self._compute_haralick(image=image,
                                       foreground_array=image.matrix.foreground(),
-                                      foreground_name='Intensity',
-                                      scale=self.scale,
+                                      foreground_name='Gray',
+                                      scale=self.scale[0],
+                                      warn=self.warn
                                       )
+        if len(self.scale) > 1:
+            for scale in self.scale[1:]:
+                meas.merge(self._compute_haralick(
+                        image=image,
+                        foreground_array=image.matrix.foreground(),
+                        foreground_name='Gray',
+                        scale=scale,
+                        warn=self.warn
+                ), on=OBJECT.LABEL, how='outer')
+        return meas
 
     @staticmethod
     def _compute_haralick(image: Image, foreground_array: np.ndarray, foreground_name: str,
-                          scale: int = 5) -> pd.DataFrame:
+                          scale: int = 5, warn: bool = False) -> pd.DataFrame:
         """
         Computes texture feature measurements using Haralick features for objects in a given image. The method
         calculates various statistical texture features such as Angular Second Moment, Contrast, Correlation,
@@ -192,7 +203,7 @@ class MeasureTexture(MeasureFeatures):
                 raise KeyboardInterrupt
             except Exception as e:
                 # 4 for each direction, 13 for each texture feature
-                warnings.warn(f'Error in computing Haralick features for object {label}: {e}')
+                if warn: warnings.warn(f'Error in computing Haralick features for object {label}: {e}')
                 haralick_features = np.full((4, 13), np.nan, dtype=np.float64)
 
             measurements[idx, :] = haralick_features.T.ravel()

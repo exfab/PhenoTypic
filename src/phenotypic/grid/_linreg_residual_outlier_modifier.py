@@ -8,7 +8,7 @@ from typing import Optional
 
 from phenotypic.abstract import GridMapModifier
 from phenotypic.grid import MeasureGridLinRegStats
-from phenotypic.util.constants_ import GRID_LINREG_STATS_EXTRACTOR, GRID
+from phenotypic.tools.constants_ import GRID_LINREG_STATS_EXTRACTOR, GRID
 
 
 class GridAlignmentOutlierRemover(GridMapModifier):
@@ -22,12 +22,12 @@ class GridAlignmentOutlierRemover(GridMapModifier):
     removing noise that interferes with gridding
 
     Attributes:
-        axis (Optional[int]): Axis to analyze for outliers. If None, both rows and columns are
-            analyzed; 0 analyzes rows; 1 analyzes columns.
+        axis (Optional[int]): Axis to analyze for outliers. If None, both nrows and columns are
+            analyzed; 0 analyzes nrows; 1 analyzes columns.
         cutoff_multiplier (float): Multiplier to define the cutoff for residual error relative
             to the standard deviation. Higher values make the cutoff less strict.
         max_coeff_variance (int): Maximum coefficient of variance (standard deviation divided
-            by mean) allowed for rows or columns before they are analyzed for outliers.
+            by mean) allowed for nrows or columns before they are analyzed for outliers.
     """
 
     def __init__(self, axis: Optional[int] = None, stddev_multiplier=1.5, max_coeff_variance: int = 1):
@@ -42,12 +42,12 @@ class GridAlignmentOutlierRemover(GridMapModifier):
 
         Outlier identification is performed by first calculating the coefficient of
         variance for each row or column. Rows or columns with variance above a specified
-        threshold are considered for outlier detection. Within these rows or columns,
+        threshold are considered for outlier detection. Within these nrows or columns,
         objects with residual errors exceeding a computed cutoff based on standard
         deviation multiplier are identified and subsequently removed.
 
         Args:
-            image (GridImage): The GridImage object that represents the input_image grid
+            image (GridImage): The GridImage object that represents the arr grid
                 containing object information for analysis and modification.
 
         Returns:
@@ -76,7 +76,7 @@ class GridAlignmentOutlierRemover(GridMapModifier):
 
             over_limit_row_variance = row_variance.loc[row_variance > self.max_coeff_variance]
 
-            # Collect outlier objects in the rows with a variance over the maximum
+            # Collect outlier objects in the nrows with a variance over the maximum
             for row_idx in over_limit_row_variance.index:
                 row_err = grid_info.loc[
                     grid_info.loc[:, str(GRID.ROW_NUM)] == row_idx,

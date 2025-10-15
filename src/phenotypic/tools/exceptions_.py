@@ -25,7 +25,7 @@ class InterfaceError(NotImplementedError, PhenoTypicError):
 
     def __init__(self):
         super().__init__(
-            "An abstract method was called when it was not supposed to be. Make sure any inherited classes properly overload this method.",
+                "An abstract method was called when it was not supposed to be. Make sure any inherited classes properly overload this method.",
         )
 
 
@@ -63,7 +63,7 @@ class NoImageDataError(AttributeError):
 
     def __init__(self):
         super().__init__(
-            "No image has been loaded into this class. Use an io method or set the color_array or array equal to an image data array.",
+                "No image has been loaded into this class. Use an io method or set the color_array or array equal to an image data array.",
         )
 
 
@@ -80,7 +80,7 @@ class DataIntegrityError(AttributeError):
     def __init__(self, component, operation, image_name=None):
         image_str = f" for _root_image {image_name}" if image_name else ""
         super().__init__(
-            f"The {component} of the input_image was changed{image_str} by operation: {operation}. This operation should not change the {component} of the input_image.",
+                f"The {component} of the arr was changed{image_str} by operation: {operation}. This operation should not change the {component} of the arr.",
         )
 
 
@@ -103,7 +103,7 @@ class OperationIntegrityError(AttributeError):
     def __init__(self, opname: str, component: str, image_name=None):
         image_str = f" for _root_image {image_name}" if image_name else ""
         super().__init__(
-            f"{opname}: integrity check failed-{component} was modified for {image_str}",
+                f"{opname}: integrity check failed-{component} was modified for {image_str}",
         )
 
 
@@ -120,7 +120,7 @@ class IllegalAssignmentError(ValueError):
 
     def __init__(self, attr):
         super().__init__(
-            f"The {attr} attribute should not be directly assigned to a new object. If trying to change array elements use Image.{attr}[:]=other_image instead. If trying to change the _root_image being represented use Image.set_image(new_image).",
+                f"The {attr} attribute should not be directly assigned to a new object. If trying to change array elements use Image.{attr}[:]=other_image instead. If trying to change the _root_image being represented use Image.set_image(new_image).",
         )
 
 
@@ -136,7 +136,7 @@ class NoArrayError(AttributeError):
 
     def __init__(self):
         super().__init__(
-            "No array form found. Either input_image image was 2-D and had no array form. Set a multi-channel image or use a FormatConverter",
+                "No array form found. Either arr image was 2-D and had no array form. Set a multi-channel image or use a FormatConverter",
         )
 
 
@@ -146,7 +146,7 @@ class NoObjectsError(AttributeError):
     def __init__(self, image_name=None):
         image_str = f' "{image_name}"' if image_name else ""
         super().__init__(
-            f"No objects currently in _root_image:{image_str}. Apply a `Detector` to the Image object first or access _root_image-wide information using Image.props",
+                f"No objects currently in _root_image:{image_str}. Apply a `Detector` to the Image object first or access _root_image-wide information using Image.props",
         )
 
 
@@ -175,7 +175,7 @@ class IllegalElementAssignmentError(ImmutableComponentError):
 
     def __init__(self, component_name):
         super().__init__(
-            f"{component_name} components should not be changed directly. Change the {component_name} elements by using Image.set_image(new_image).",
+                f"{component_name} components should not be changed directly. Change the {component_name} elements by using Image.set_image(new_image).",
         )
 
 
@@ -191,11 +191,12 @@ class ArrayKeyValueShapeMismatchError(ValueError):
     """Exception raised when the shape of the other_image doesn't match the key's section."""
 
     def __init__(self):
-        super().__init__("The shape of the array being set does not match the shape of the section indicated being accessed")
+        super().__init__(
+            "The shape of the array being set does not match the shape of the section indicated being accessed")
 
 
 class InputShapeMismatchError(ValueError):
-    """Exception raised when input_image shape doesn't match the image matrix."""
+    """Exception raised when arr shape doesn't match the image matrix."""
 
     def __init__(self, param_name):
         super().__init__(f"The shape of {param_name} must be the same shape as the Image.matrix")
@@ -207,7 +208,7 @@ class InvalidMaskValueError(ValueError):
 
     def __init__(self, value_type):
         super().__init__(
-            f"The mask array section was trying to be set with an array of type {value_type} and could not be cast to a boolean array.",
+                f"The mask array section was trying to be set with an array of type {value_type} and could not be cast to a boolean array.",
         )
 
 
@@ -215,7 +216,8 @@ class InvalidMaskScalarValueError(ValueError):
     """Exception raised when trying to set mask with invalid scalar other_image."""
 
     def __init__(self):
-        super().__init__("The scalar other_image could not be converted to a boolean other_image. If other_image is an integer, it should be either 0 or 1.")
+        super().__init__(
+            "The scalar other_image could not be converted to a boolean other_image. If other_image is an integer, it should be either 0 or 1.")
 
 
 # Object map exceptions
@@ -224,7 +226,7 @@ class InvalidMapValueError(ValueError):
 
     def __init__(self, value_type):
         super().__init__(
-            f"ObjectMap elements were attempted to be set with {value_type}, but should only be set to an array of integers or an integer",
+                f"ObjectMap elements were attempted to be set with {value_type}, but should only be set to an array of integers or an integer",
         )
 
 
@@ -263,15 +265,15 @@ class ObjectNotFoundError(AttributeError):
 
     def __init__(self, label):
         super().__init__(
-            f"The object with label {label} is not in the object map. If you meant to access the object by index use Image.objects.at() instead",
+                f"The object with label {label} is not in the object map. If you meant to access the object by index use Image.objects.at() instead",
         )
 
 
 # Grid exceptions
 class GridImageInputError(ValueError):
-    """Exception raised when a non-GriddedImage object is provided as input_image."""
+    """Exception raised when a non-GriddedImage object is provided as arr."""
 
     def __init__(self):
         super().__init__(
-            "For GridOperation classes with the exception of GridExtractor objects, the input_image must be an instance of the GriddedImage object type.",
+                "For GridOperation classes with the exception of GridExtractor objects, the arr must be an instance of the GriddedImage object type.",
         )

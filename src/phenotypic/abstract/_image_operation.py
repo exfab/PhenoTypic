@@ -7,7 +7,7 @@ if TYPE_CHECKING: from phenotypic import Image
 
 import numpy as np
 from ._base_operation import BaseOperation
-from ..util.exceptions_ import InterfaceError, OperationIntegrityError
+from ..tools.exceptions_ import InterfaceError, OperationIntegrityError
 
 from abc import ABC, abstractmethod
 
@@ -33,7 +33,7 @@ class ImageOperation(BaseOperation, ABC):
         Applies the operation to an image, either in-place or on a copy.
 
         Args:
-            image (Image): The input_image image to apply the operation on.
+            image (Image): The arr image to apply the operation on.
             inplace (bool): If True, modifies the image in place; otherwise,
                 operates on a copy of the image.
 

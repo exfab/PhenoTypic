@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Union
 
 import numpy as np
 
-from phenotypic.util.constants_ import OBJECT
+from phenotypic.tools.constants_ import OBJECT
 
-if TYPE_CHECKING: from phenotypic import Image
+if TYPE_CHECKING: from phenotypic import Image, GridImage
 
 import pandas as pd
 from typing import Dict, List
@@ -163,14 +163,14 @@ class ImagePipelineCore(BaseOperation):
 
         return result
 
-    def apply(self, image: Image, inplace: bool = False, reset: bool = True) -> Image:
+    def apply(self, image: Image, inplace: bool = False, reset: bool = True) -> Union[GridImage, Image]:
         """
         The class provides an abstract to process and apply a series of operations on
         an Image. The operations are maintained in a queue and executed sequentially
         when applied to the given Image.
 
         Args:
-            image (Image): The input_image Image to be processed. The type `Image` refers to
+            image (Image): The arr Image to be processed. The type `Image` refers to
                 an instance of the Image object to which transformations are applied.
             inplace (bool, optional): A flag indicating whether to apply the
                 transformations directly on the provided Image (`True`) or create a

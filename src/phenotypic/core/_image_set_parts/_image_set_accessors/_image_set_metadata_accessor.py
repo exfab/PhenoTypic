@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+if TYPE_CHECKING: from phenotypic import ImageSet
 from typing import Dict, Tuple, Set, Any, Callable, Union, List, Optional
 
 import pandas as pd
@@ -11,12 +14,12 @@ from collections.abc import Mapping
 class ImageSetMetadataAccessor:
 
     def __init__(self, image_set):
-        self._image_set = image_set
+        self._image_set: ImageSet = image_set
 
     def _get_image_metadata(self, image_group) -> Dict[str, Any]:
         """Get image metadata with proper type conversion."""
         metadata = {}
-        
+
         # Get protected metadata
         try:
             if 'protected_metadata' in image_group:
@@ -25,7 +28,7 @@ class ImageSetMetadataAccessor:
                     metadata[key] = self._convert_hdf5_attribute(prot_attrs[key])
         except (KeyError, AttributeError):
             pass
-        
+
         # Get public metadata (may overwrite protected if same key exists)
         try:
             if 'public_metadata' in image_group:
@@ -34,7 +37,7 @@ class ImageSetMetadataAccessor:
                     metadata[key] = self._convert_hdf5_attribute(pub_attrs[key])
         except (KeyError, AttributeError):
             pass
-        
+
         return metadata
 
     def table(self) -> pd.DataFrame:
@@ -49,22 +52,22 @@ class ImageSetMetadataAccessor:
                          Columns include both protected and public metadata from all images.
         """
         image_names = self._image_set.get_image_names()
-        
+
         if not image_names:
             return pd.DataFrame()
-        
+
         # First pass: collect all unique metadata keys across all images
         all_keys = self._collect_all_metadata_keys(image_names)
-        
+
         # Second pass: build the DataFrame
         metadata_records = []
-        
-        with h5py.File(self._image_set._out_path, mode='r') as file_handler:
-            images_group = file_handler[self._image_set._hdf5_images_group_key]
-            
+
+        with self._image_set.hdf_.writer() as writer:
+            data_grp = self._image_set.hdf_.get_data_group(writer)
+
             for image_name in image_names:
-                if image_name in images_group:
-                    image_group = images_group[image_name]
+                if image_name in data_grp:
+                    image_group = data_grp[image_name]
                     metadata_dict = self._extract_image_metadata_safe(image_group, all_keys)
                     metadata_dict['image_name'] = image_name
                     metadata_records.append(metadata_dict)
@@ -73,16 +76,16 @@ class ImageSetMetadataAccessor:
                     metadata_dict = {key: np.nan for key in all_keys}
                     metadata_dict['image_name'] = image_name
                     metadata_records.append(metadata_dict)
-        
+
         if not metadata_records:
             return pd.DataFrame()
-        
+
         # Create DataFrame and set image_name as index
         df = pd.DataFrame(metadata_records)
         df.set_index('image_name', inplace=True)
-        
+
         return df
-    
+
     def _collect_all_metadata_keys(self, image_names: list) -> Set[str]:
         """
         Collects all unique metadata keys from all images in the image set.
@@ -94,18 +97,18 @@ class ImageSetMetadataAccessor:
             Set[str]: Set of all unique metadata keys found across all images.
         """
         all_keys = set()
-        
-        with h5py.File(self._image_set._out_path, mode='r') as file_handler:
-            images_group = file_handler[self._image_set._hdf5_images_group_key]
-            
+
+        with self._image_set.hdf_.writer() as writer:
+            data_grp = self._image_set.hdf_.get_data_group(writer)
+
             for image_name in image_names:
-                if image_name in images_group:
-                    image_group = images_group[image_name]
+                if image_name in data_grp:
+                    image_group = data_grp[image_name]
                     keys = self._get_image_metadata_keys_safe(image_group)
                     all_keys.update(keys)
-        
+
         return all_keys
-    
+
     def _get_image_metadata_keys_safe(self, image_group) -> Set[str]:
         """
         Safely extracts all metadata keys from an image group.
@@ -117,23 +120,23 @@ class ImageSetMetadataAccessor:
             Set[str]: Set of metadata keys for this image.
         """
         keys = set()
-        
+
         try:
             if 'protected_metadata' in image_group:
                 prot_group = image_group['protected_metadata']
                 keys.update(prot_group.attrs.keys())
         except (KeyError, AttributeError):
             pass
-        
+
         try:
             if 'public_metadata' in image_group:
                 pub_group = image_group['public_metadata']
                 keys.update(pub_group.attrs.keys())
         except (KeyError, AttributeError):
             pass
-        
+
         return keys
-    
+
     def _extract_image_metadata_safe(self, image_group, all_keys: Set[str]) -> Dict[str, Any]:
         """
         Safely extracts metadata from an image group, filling missing keys with np.nan.
@@ -146,11 +149,11 @@ class ImageSetMetadataAccessor:
             Dict[str, Any]: Dictionary with metadata values, missing keys filled with np.nan.
         """
         metadata_dict = {}
-        
+
         # Initialize all keys with np.nan
         for key in all_keys:
             metadata_dict[key] = np.nan
-        
+
         # Extract protected metadata
         try:
             if 'protected_metadata' in image_group:
@@ -159,7 +162,7 @@ class ImageSetMetadataAccessor:
                     metadata_dict[key] = self._convert_hdf5_attribute(prot_attrs[key])
         except (KeyError, AttributeError):
             pass
-        
+
         # Extract public metadata (may overwrite protected if same key exists)
         try:
             if 'public_metadata' in image_group:
@@ -168,9 +171,9 @@ class ImageSetMetadataAccessor:
                     metadata_dict[key] = self._convert_hdf5_attribute(pub_attrs[key])
         except (KeyError, AttributeError):
             pass
-        
+
         return metadata_dict
-    
+
     def _convert_hdf5_attribute(self, value: Any) -> Any:
         """
         Convert HDF5 attribute value to appropriate Python type.
@@ -185,29 +188,29 @@ class ImageSetMetadataAccessor:
             # Handle bytes (common in HDF5)
             if isinstance(value, bytes):
                 value = value.decode('utf-8')
-            
+
             # Handle numpy scalar types
             if hasattr(value, 'item'):
                 return value.item()
-            
+
             # Handle native boolean values (HDF5 stores these as numpy.bool_)
             if isinstance(value, (bool, np.bool_)):
                 return bool(value)
-            
+
             # Handle native numeric types
             if isinstance(value, (int, float, np.integer, np.floating)):
                 return value.item() if hasattr(value, 'item') else value
-            
+
             # Handle string representations that might be numeric or boolean
             if isinstance(value, str):
                 # Handle boolean strings (for backward compatibility)
                 if value.lower() in ('true', 'false'):
                     return value.lower() == 'true'
-                
+
                 # Handle empty strings as None
                 if value == "":
                     return None
-                
+
                 # Try to convert to numeric types
                 try:
                     # Try integer first
@@ -218,13 +221,13 @@ class ImageSetMetadataAccessor:
                 except ValueError:
                     # Keep as string if conversion fails
                     return value
-            
+
             return value
         except Exception:
             # If any conversion fails, return the original value
             return value
 
-    def update_metadata(self, 
+    def update_metadata(self,
                         data: Callable | Dict[str, Any] | pd.Series,
                         image_names: List[str] | None = None,
                         inplace: bool = True,
@@ -338,7 +341,7 @@ class ImageSetMetadataAccessor:
             invalid_names = [name for name in image_names if name not in available_names]
             if invalid_names:
                 raise ValueError(f"Image names not found in ImageSet: {invalid_names}")
-        
+
         # Automatically detect input type and apply appropriate method
         if callable(data):
             proposed_updates = self._apply_function_mapping(data, image_names, **kwargs)
@@ -348,10 +351,10 @@ class ImageSetMetadataAccessor:
             proposed_updates = self._apply_series_mapping(data, image_names)
         else:
             raise TypeError(f"Unsupported data type: {type(data)}. Expected Callable, Dict, or pd.Series.")
-        
+
         # Validate all proposed updates
         validated_updates = self._validate_metadata_updates(proposed_updates)
-        
+
         if inplace:
             # Apply updates to HDF5 file
             self._batch_update_hdf5(validated_updates)
@@ -359,7 +362,7 @@ class ImageSetMetadataAccessor:
         else:
             # Return proposed updates for preview
             return validated_updates
-    
+
     def _apply_function_mapping(self, func: Callable, image_names: List[str], **kwargs) -> Dict[str, Dict[str, Any]]:
         """
         Apply a custom function to update metadata for specified images.
@@ -380,43 +383,43 @@ class ImageSetMetadataAccessor:
             TypeError: If function signature is incompatible
         """
         updates = {}
-        
+
         # Detect function signature
         sig = inspect.signature(func)
         param_names = list(sig.parameters.keys())
-        
+
         # Determine if function expects name parameter
         expects_name = len(param_names) >= 2 and 'name' in param_names
-        
-        with h5py.File(self._image_set._out_path, mode='r') as file_handler:
-            images_group = file_handler[self._image_set._hdf5_images_group_key]
-            
+
+        with self._image_set.hdf_.writer() as writer:
+            data_grp = self._image_set.hdf_.get_data_group(writer)
+
             for image_name in image_names:
                 try:
-                    if image_name in images_group:
-                        image_group = images_group[image_name]
+                    if image_name in data_grp:
+                        image_group = data_grp[image_name]
                         current_metadata = self._get_image_metadata(image_group)
                     else:
                         current_metadata = {}
-                    
+
                     # Apply function with appropriate signature
                     try:
                         if expects_name:
                             updated_metadata = func(current_metadata.copy(), image_name, **kwargs)
                         else:
                             updated_metadata = func(current_metadata.copy(), **kwargs)
-                            
+
                         if not isinstance(updated_metadata, dict):
                             raise TypeError(f"Function must return a dictionary, got {type(updated_metadata)}")
                         updates[image_name] = updated_metadata
                     except Exception as e:
                         raise TypeError(f"Error applying function to image '{image_name}': {e}")
-                        
+
                 except Exception as e:
                     raise RuntimeError(f"Error processing image '{image_name}': {e}")
-        
+
         return updates
-    
+
     def _apply_dict_mapping(self, mapping: Dict[str, Any], image_names: List[str]) -> Dict[str, Dict[str, Any]]:
         """
         Apply dictionary-based updates to metadata for specified images.
@@ -430,38 +433,38 @@ class ImageSetMetadataAccessor:
             Dict[str, Dict[str, Any]]: Mapping of image names to updated metadata dictionaries
         """
         updates = {}
-        
-        with h5py.File(self._image_set._out_path, mode='r') as file_handler:
-            images_group = file_handler[self._image_set._hdf5_images_group_key]
-            
+
+        with self._image_set.hdf_.writer() as writer:
+            data_grp = self._image_set.hdf_.get_data_group(writer)
             for image_name in image_names:
                 try:
-                    if image_name in images_group:
-                        image_group = images_group[image_name]
+                    if image_name in data_grp:
+                        image_group = data_grp[image_name]
                         current_metadata = self._get_image_metadata(image_group)
                     else:
                         current_metadata = {}
-                    
+
                     # Start with current metadata
                     updated_metadata = current_metadata.copy()
-                    
+
                     # Apply mapping updates
                     for key, value in mapping.items():
                         if callable(value):
                             try:
                                 updated_metadata[key] = value(image_name)
                             except Exception as e:
-                                raise ValueError(f"Error applying function for key '{key}' to image '{image_name}': {e}")
+                                raise ValueError(
+                                        f"Error applying function for key '{key}' to image '{image_name}': {e}")
                         else:
                             updated_metadata[key] = value
-                    
+
                     updates[image_name] = updated_metadata
-                    
+
                 except Exception as e:
                     raise RuntimeError(f"Error processing image '{image_name}': {e}")
-        
+
         return updates
-    
+
     def _apply_series_mapping(self, series: pd.Series, image_names: List[str]) -> Dict[str, Dict[str, Any]]:
         """
         Apply pandas Series-based updates to metadata for specified images.
@@ -479,24 +482,24 @@ class ImageSetMetadataAccessor:
             ValueError: If Series name is missing for simple values or if images are missing
         """
         updates = {}
-        
+
         # Only process images that exist in both image_names and series index
         available_images = [name for name in image_names if name in series.index]
-        
-        with h5py.File(self._image_set._out_path, mode='r') as file_handler:
-            images_group = file_handler[self._image_set._hdf5_images_group_key]
-            
+
+        with self._image_set.hdf_.writer() as writer:
+            data_grp = self._image_set.hdf_.get_data_group(writer)
+
             for image_name in available_images:
                 try:
-                    if image_name in images_group:
-                        image_group = images_group[image_name]
+                    if image_name in data_grp:
+                        image_group = data_grp[image_name]
                         current_metadata = self._get_image_metadata(image_group)
                     else:
                         current_metadata = {}
-                    
+
                     # Get updates from series
                     series_value = series.loc[image_name]
-                    
+
                     if isinstance(series_value, dict):
                         # Dictionary values: use as-is
                         series_updates = series_value
@@ -505,18 +508,18 @@ class ImageSetMetadataAccessor:
                         if series.name is None:
                             raise ValueError("Series must have a name when using simple values")
                         series_updates = {series.name: series_value}
-                    
+
                     # Merge with current metadata
                     updated_metadata = current_metadata.copy()
                     updated_metadata.update(series_updates)
-                    
+
                     updates[image_name] = updated_metadata
-                    
+
                 except Exception as e:
                     raise RuntimeError(f"Error processing image '{image_name}': {e}")
-        
+
         return updates
-    
+
     def _validate_metadata_updates(self, updates: Dict[str, Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
         """
         Validate metadata updates to ensure they are compatible with HDF5 storage.
@@ -531,25 +534,25 @@ class ImageSetMetadataAccessor:
             ValueError: If metadata values are not HDF5-compatible
         """
         validated_updates = {}
-        
+
         for image_name, metadata_dict in updates.items():
             validated_metadata = {}
-            
+
             for key, value in metadata_dict.items():
                 # Convert key to string
                 str_key = str(key)
-                
+
                 # Validate and convert value for HDF5 compatibility
                 try:
                     validated_value = self._prepare_value_for_hdf5(value)
                     validated_metadata[str_key] = validated_value
                 except Exception as e:
                     raise ValueError(f"Invalid metadata value for key '{key}' in image '{image_name}': {e}")
-            
+
             validated_updates[image_name] = validated_metadata
-        
+
         return validated_updates
-    
+
     def _prepare_value_for_hdf5(self, value: Any) -> Any:
         """
         Prepare a metadata value for HDF5 storage with proper type preservation.
@@ -565,21 +568,21 @@ class ImageSetMetadataAccessor:
         """
         if value is None or (isinstance(value, float) and np.isnan(value)):
             return ""  # Empty string for null values
-        
+
         # Handle booleans natively
         if isinstance(value, bool):
             return value  # HDF5 supports native boolean storage
-        
+
         # Handle numeric types natively
         if isinstance(value, (int, float, np.integer, np.floating)):
             return value  # HDF5 supports native numeric storage
-        
+
         # Convert everything else to string
         try:
             return str(value)
         except Exception as e:
             raise ValueError(f"Cannot convert value to HDF5-compatible type: {e}")
-    
+
     def _batch_update_hdf5(self, updates: Dict[str, Dict[str, Any]]) -> None:
         """
         Efficiently update HDF5 file with metadata changes in batch mode.
@@ -592,24 +595,24 @@ class ImageSetMetadataAccessor:
         """
         if not updates:
             return
-        
+
         try:
-            with h5py.File(self._image_set._out_path, mode='r+', libver='latest') as file_handler:
-                images_group = file_handler[self._image_set._hdf5_images_group_key]
-                
+            with self._image_set.hdf_.writer() as writer:
+                images_group = self._image_set.hdf_.get_data_group(writer)
+
                 for image_name, metadata_dict in updates.items():
                     if image_name in images_group:
                         image_group = images_group[image_name]
-                        
+
                         # Update only public metadata (preserve protected metadata)
                         if 'public_metadata' in image_group:
                             pub_group = image_group['public_metadata']
-                            
+
                             # Get current protected metadata to avoid overwriting
                             protected_keys = set()
                             if 'protected_metadata' in image_group:
                                 protected_keys = set(image_group['protected_metadata'].attrs.keys())
-                            
+
                             # Update public metadata attributes
                             for key, value in metadata_dict.items():
                                 if key not in protected_keys:  # Only update non-protected keys
@@ -619,7 +622,6 @@ class ImageSetMetadataAccessor:
                             pub_group = image_group.create_group('public_metadata')
                             for key, value in metadata_dict.items():
                                 pub_group.attrs[key] = self._prepare_value_for_hdf5(value)
-                                
+
         except Exception as e:
             raise RuntimeError(f"Error updating HDF5 file: {e}")
-

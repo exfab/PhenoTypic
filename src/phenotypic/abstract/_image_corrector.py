@@ -6,7 +6,7 @@ if TYPE_CHECKING: from phenotypic import Image
 from typing import Union, Dict
 
 from ._image_operation import ImageOperation
-from phenotypic.util.exceptions_ import InterfaceError, OperationFailedError
+from phenotypic.tools.exceptions_ import InterfaceError, OperationFailedError
 from abc import ABC
 
 

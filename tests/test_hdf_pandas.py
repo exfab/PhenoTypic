@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from phenotypic.util.hdf_ import HDF
+from phenotypic.tools.hdf_ import HDF
 
 
 @pytest.fixture

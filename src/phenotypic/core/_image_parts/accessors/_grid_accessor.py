@@ -12,15 +12,15 @@ from skimage.color import label2rgb
 
 import phenotypic
 from phenotypic.core._image_parts.accessor_abstracts import ImageAccessorBase
-from phenotypic.util.constants_ import METADATA, IMAGE_TYPES, BBOX, GRID
-from phenotypic.util.exceptions_ import NoObjectsError
+from phenotypic.tools.constants_ import METADATA, IMAGE_TYPES, BBOX, GRID
+from phenotypic.tools.exceptions_ import NoObjectsError
 
 
 class GridAccessor(ImageAccessorBase):
     """A class for accessing and manipulating grid-based data from a parent image object.
 
     This class is designed to facilitate operations on grid structures within a parent image. It provides methods
-    for determining grid properties such as the number of rows and columns, retrieving grid-related information,
+    for determining grid properties such as the number of nrows and columns, retrieving grid-related information,
     and performing visualizations. The use of a parent image ensures that the grid operations are closely tied
     to a specific data context.
 
@@ -36,8 +36,8 @@ class GridAccessor(ImageAccessorBase):
 
     @nrows.setter
     def nrows(self, nrows: int):
-        if nrows < 1: raise ValueError('Number of rows must be greater than 0')
-        if type(nrows) != int: raise TypeError('Number of rows must be an integer')
+        if nrows < 1: raise ValueError('Number of nrows must be greater than 0')
+        if type(nrows) != int: raise TypeError('Number of nrows must be an integer')
 
         self._root_image.grid_finder.nrows = nrows
 
@@ -134,7 +134,7 @@ class GridAccessor(ImageAccessorBase):
         m_slope = np.full(shape=num_vectors, fill_value=np.nan)
         b_intercept = np.full(shape=num_vectors, fill_value=np.nan)
 
-        # Collect slope & intercept for the rows or columns
+        # Collect slope & intercept for the nrows or columns
         # Use 2D covariance/variance method for finding linear regression
         for idx in range(num_vectors):
             x = grid_info.loc[grid_info.loc[:, x_group] == idx, x_val].to_numpy()

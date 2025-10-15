@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Dict, Tuple, Literal
 import psutil
 
 from phenotypic.abstract import ImageOperation, MeasureFeatures
-from phenotypic.util.constants_ import PIPE_STATUS
+from phenotypic.tools.constants_ import PIPE_STATUS
 
 if TYPE_CHECKING: from phenotypic import Image, ImageSet, GridImage
 
@@ -74,7 +74,7 @@ class ImagePipelineBatch(ImagePipelineCore):
             image: Union[Image, ImageSet],
             inplace: bool = False,
             reset: bool = True,
-    ) -> Union[Image, None]:
+    ) -> Union[GridImage, Image, None]:
         import phenotypic
 
         if isinstance(image, phenotypic.Image):
@@ -322,11 +322,7 @@ class ImagePipelineBatch(ImagePipelineCore):
                     while psutil.virtual_memory().available < image_footprint*self.memblock_factor:
                         time.sleep(0.1)
 
-                    if image_set.grid_finder is None:
-                        image = pt.Image()
-                    else:
-                        image = pt.GridImage(grid_finder=image_set.grid_finder)
-                    image = image._load_from_hdf5_group(image_group)
+                    image = image_set._get_image(image_name=name, handle=image_group, **image_set.imparams)
 
                     assert isinstance(image, (pt.Image, pt.GridImage)), f"Invalid Image type: {type(image)}"
                     image_pkl = pickle.dumps(image)

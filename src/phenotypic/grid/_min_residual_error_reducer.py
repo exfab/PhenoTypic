@@ -7,7 +7,7 @@ import numpy as np
 
 from phenotypic.abstract import GridMapModifier
 from phenotypic.grid import MeasureGridLinRegStats
-from phenotypic.util.constants_ import GRID_LINREG_STATS_EXTRACTOR
+from phenotypic.tools.constants_ import GRID_LINREG_STATS_EXTRACTOR
 
 
 class MinResidualErrorReducer(GridMapModifier):

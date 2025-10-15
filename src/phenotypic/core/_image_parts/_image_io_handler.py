@@ -19,23 +19,19 @@ except ImportError:
 import skimage as ski
 
 import phenotypic
-from phenotypic.util.exceptions_ import UnsupportedFileTypeError
-from phenotypic.util.constants_ import IMAGE_FORMATS, IO
-from phenotypic.util.hdf_ import HDF
+from phenotypic.tools.exceptions_ import UnsupportedFileTypeError
+from phenotypic.tools.constants_ import IMAGE_FORMATS, IO
+from phenotypic.tools.hdf_ import HDF
 from ._image_color_handler import ImageColorSpace
 
 
 class ImageIOHandler(ImageColorSpace):
 
     def __init__(self,
-                 input_image: np.ndarray | Image | PathLike | Path | str | None = None,
+                 arr: np.ndarray | Image | None = None,
                  imformat: str | None = None,
                  name: str | None = None, **kwargs):
-        if isinstance(input_image, (PathLike, Path, str)):
-            input_image = Path(input_image)
-            super().__init__(input_image=self.imread(input_image), imformat=imformat, name=name, **kwargs)
-        else:
-            super().__init__(input_image=input_image, imformat=imformat, name=name)
+        super().__init__(arr=arr, imformat=imformat, name=name)
 
     @classmethod
     def imread(cls,
@@ -83,7 +79,7 @@ class ImageIOHandler(ImageColorSpace):
         imformat = None
 
         if filepath.suffix.lower() in IO.ACCEPTED_FILE_EXTENSIONS:  # normal images
-            arr = ski.io.imread(filepath)
+            arr = ski.io.imread(fname=filepath)
 
         elif filepath.suffix.lower() in IO.RAW_FILE_EXTENSIONS and rawpy is not None:  # raw sensor data handling
             with rawpy.imread(str(filepath)) as raw:
@@ -103,7 +99,7 @@ class ImageIOHandler(ImageColorSpace):
             raise UnsupportedFileTypeError(filepath.suffix)
 
         imformat = imparams.get('imformat', imformat)
-        image = cls(input_image=arr, imformat=imformat, **imparams)
+        image = cls(arr=arr, imformat=imformat, **imparams)
         image.name = filepath.stem
         return image
 
@@ -247,7 +243,7 @@ class ImageIOHandler(ImageColorSpace):
                                       overwrite=overwrite, )
 
     @classmethod
-    def _load_from_hdf5_group(cls, group) -> Image:
+    def _load_from_hdf5_group(cls, group, **kwargs) -> Image:
         # Instantiate a blank handler and populate internals
         # Load Image Format
         imformat = IMAGE_FORMATS[group.attrs["imformat"]]
@@ -256,10 +252,10 @@ class ImageIOHandler(ImageColorSpace):
         if imformat.is_array():
             # For arrays, preserve the original dtype from HDF5
             array_data = group["array"][()]
-            img = cls(input_image=array_data, imformat=imformat.value)
+            img = cls(arr=array_data, imformat=imformat.value, **kwargs)
             img.matrix[:] = matrix_data
         else:
-            img = cls(input_image=matrix_data, imformat=imformat.value)
+            img = cls(arr=matrix_data, imformat=imformat.value, **kwargs)
 
         # Load enhanced matrix and object map with proper dtype casting
         enh_matrix_data = group["enh_matrix"][()]
@@ -322,7 +318,7 @@ class ImageIOHandler(ImageColorSpace):
         with open(filename, 'rb') as f:
             loaded = pickle.load(f)
 
-        instance = cls(input_image=None, imformat=None, name=None)
+        instance = cls(arr=None, imformat=None, name=None)
 
         instance._image_format = loaded["_image_format"]
         instance._data.array = loaded["_data.array"]

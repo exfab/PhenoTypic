@@ -5,7 +5,17 @@ from .core._image import Image
 from .core._image_pipeline import ImagePipeline
 from .core._image_set import ImageSet
 from .core._imread import imread
-from . import (abstract, analysis, correction, data, detection, enhancement, grid, measure, objedit, util,
+
+from . import (abstract,
+               analysis,
+               correction,
+               data,
+               detection,
+               enhancement,
+               grid,
+               measure,
+               objedit,
+               tools,
                prefab)
 
 __all__ = [

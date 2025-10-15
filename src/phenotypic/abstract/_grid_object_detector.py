@@ -4,8 +4,8 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING: from phenotypic import GridImage
 
 from phenotypic.abstract import ObjectDetector, GridOperation
-from phenotypic.util.funcs_ import validate_operation_integrity
-from phenotypic.util.exceptions_ import GridImageInputError
+from phenotypic.tools.funcs_ import validate_operation_integrity
+from phenotypic.tools.exceptions_ import GridImageInputError
 from abc import ABC
 
 

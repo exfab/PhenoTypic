@@ -11,8 +11,8 @@ from skimage.color import rgb2hsv
 from skimage.exposure import histogram
 
 from phenotypic.core._image_parts.accessor_abstracts import ImageAccessorBase
-from phenotypic.util.constants_ import IMAGE_FORMATS
-from phenotypic.util.exceptions_ import IllegalAssignmentError
+from phenotypic.tools.constants_ import IMAGE_FORMATS
+from phenotypic.tools.exceptions_ import IllegalAssignmentError
 
 
 class HsvAccessor(ImageAccessorBase):

@@ -6,7 +6,7 @@ Constants are organized by module and functionality.
 
 Note: Class names are defined in ALL_CAPS to avoid namespace conflicts with actual classes 
     in the codebase (e.g., GRID_DEP vs an actual Grid class). When importing, use the format:
-        from PhenoTypic.util.constants import IMAGE_FORMATS, OBJECT
+        from PhenoTypic.tools.constants import IMAGE_FORMATS, OBJECT
 """
 
 from phenotypic._shared_modules._measurement_info import MeasurementInfo

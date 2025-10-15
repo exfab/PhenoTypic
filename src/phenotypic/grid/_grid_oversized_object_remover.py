@@ -6,7 +6,7 @@ if TYPE_CHECKING: from phenotypic import GridImage
 import numpy as np
 
 from phenotypic.abstract import GridMapModifier
-from phenotypic.util.constants_ import OBJECT, BBOX
+from phenotypic.tools.constants_ import OBJECT, BBOX
 
 
 class GridOversizedObjectRemover(GridMapModifier):
@@ -29,7 +29,7 @@ class GridOversizedObjectRemover(GridMapModifier):
         large objects in the image.
 
         Args:
-            image (GridImage): The input_image grid image containing grid metadata and object map.
+            image (GridImage): The arr grid image containing grid metadata and object map.
 
         Returns:
             GridImage: The processed grid image with specified objects removed.

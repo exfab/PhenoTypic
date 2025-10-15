@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from phenotypic.core._image_parts.accessor_abstracts import SingleChannelAccessor
-from phenotypic.util.exceptions_ import InvalidMaskValueError, InvalidMaskScalarValueError, \
+from phenotypic.tools.exceptions_ import InvalidMaskValueError, InvalidMaskScalarValueError, \
     ArrayKeyValueShapeMismatchError
 
 
@@ -39,7 +39,7 @@ class ObjectMask(SingleChannelAccessor):
             except TypeError:
                 raise InvalidMaskScalarValueError
         elif isinstance(value, np.ndarray):
-            # Check input_image and section have matching shape
+            # Check arr and section have matching shape
             if mask[key].shape != value.shape:
                 raise ArrayKeyValueShapeMismatchError
 

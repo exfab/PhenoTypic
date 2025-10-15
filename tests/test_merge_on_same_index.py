@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 from phenotypic.core._pipeline_parts._image_pipeline_core import ImagePipelineCore
-from phenotypic.util.constants_ import OBJECT
+from phenotypic.tools.constants_ import OBJECT
 
 # Create test dataframes with some identical columns
 df1 = pd.DataFrame({

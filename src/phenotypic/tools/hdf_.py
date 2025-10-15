@@ -11,7 +11,9 @@ import pandas as pd
 from packaging.version import Version
 
 import phenotypic
+
 logger = logging.getLogger(__name__)
+
 
 class HDF:
     """
@@ -131,7 +133,8 @@ class HDF:
                                     logger.info("Successfully cleared HDF5 consistency flags")
                                 else:
                                     logger.warning(f"h5clear failed: {result.stderr}")
-                        except (subprocess.TimeoutExpired, subprocess.CalledProcessError, FileNotFoundError) as clear_error:
+                        except (subprocess.TimeoutExpired, subprocess.CalledProcessError,
+                                FileNotFoundError) as clear_error:
                             logger.warning(f"Could not run h5clear: {clear_error}")
 
                         # Wait before retrying
@@ -216,7 +219,8 @@ class HDF:
                                 subprocess.run(['h5clear', '-f', str(self.filepath)],
                                                capture_output=True, text=True, timeout=10)
                                 logger.info("Cleared HDF5 consistency flags")
-                        except (subprocess.TimeoutExpired, subprocess.CalledProcessError, FileNotFoundError) as clear_error:
+                        except (subprocess.TimeoutExpired, subprocess.CalledProcessError,
+                                FileNotFoundError) as clear_error:
                             logger.warning(f"Could not run h5clear: {clear_error}")
 
                         # Wait before retrying
@@ -261,7 +265,7 @@ class HDF:
         return h5py.File(self.filepath, 'r', libver='latest', swmr=True)
 
     def reader(self) -> h5py.File:
-        return h5py.File(self.filepath, 'r', libver='latest', swmr=True)
+        return h5py.File(self.filepath, 'r', libver='latest', swmr=False)
 
     @staticmethod
     def get_group(handle: h5py.File, posix) -> h5py.Group:
@@ -349,16 +353,19 @@ class HDF:
             raise ValueError(f"Invalid mode {self.mode}")
 
     def get_image_measurement_subgroup(self, handle, image_name):
-        return self.get_group(handle, posixpath.join(self.set_data_posix, image_name, self.IMAGE_MEASUREMENT_SUBGROUP_KEY))
+        return self.get_group(handle,
+                              posixpath.join(self.set_data_posix, image_name, self.IMAGE_MEASUREMENT_SUBGROUP_KEY))
 
     def get_status_subgroup(self, handle, image_name):
         return self.get_group(handle, posixpath.join(self.set_data_posix, image_name, self.IMAGE_STATUS_SUBGROUP_KEY))
 
-    def get_protected_metadata_subgroup(self, handle:h5py.File, image_name:str) -> h5py.Group:
-        return self.get_group(handle=handle, posix=posixpath.join(self.set_data_posix, image_name, self.PROTECTED_METADATA_SUBGROUP_KEY))
+    def get_protected_metadata_subgroup(self, handle: h5py.File, image_name: str) -> h5py.Group:
+        return self.get_group(handle=handle, posix=posixpath.join(self.set_data_posix, image_name,
+                                                                  self.PROTECTED_METADATA_SUBGROUP_KEY))
 
-    def get_public_metadata_subgroup(self, handle:h5py.File, image_name:str) -> h5py.Group:
-        return self.get_group(handle=handle, posix=posixpath.join(self.set_data_posix, image_name, self.PUBLIC_METADATA_SUBGROUP_KEY))
+    def get_public_metadata_subgroup(self, handle: h5py.File, image_name: str) -> h5py.Group:
+        return self.get_group(handle=handle,
+                              posix=posixpath.join(self.set_data_posix, image_name, self.PUBLIC_METADATA_SUBGROUP_KEY))
 
     @staticmethod
     def save_array2hdf5(group, array, name, **kwargs):
@@ -404,7 +411,7 @@ class HDF:
         """
         if not g.file.swmr_mode:
             raise RuntimeError(
-                f"SWMR mode is required but not enabled on file {g.file.filename}"
+                    f"SWMR mode is required but not enabled on file {g.file.filename}"
             )
 
     @staticmethod
@@ -473,7 +480,7 @@ class HDF:
                     # Fallback for unusual shapes
                     n_elems = int(getattr(obj, 'size', 0))
                 itemsize = int(obj.dtype.itemsize)
-                sizes[obj.name] = itemsize * n_elems
+                sizes[obj.name] = itemsize*n_elems
 
         group.visititems(_visitor)
         total = int(sum(sizes.values()))
@@ -509,7 +516,7 @@ class HDF:
         """
         if len(s) < fixed_length:
             # Pad with spaces on the right
-            return s + " " * (fixed_length - len(s))
+            return s + " "*(fixed_length - len(s))
         elif len(s) > fixed_length:
             # Truncate to exactly fixed_length characters
             return s[:fixed_length]
@@ -519,9 +526,9 @@ class HDF:
 
     @staticmethod
     def _apply_fixed_length_to_strings(
-        str_array: np.ndarray[Any, np.dtype[Any]],
-        mask: np.ndarray[Any, np.dtype[Any]],
-        fixed_length: int,
+            str_array: np.ndarray[Any, np.dtype[Any]],
+            mask: np.ndarray[Any, np.dtype[Any]],
+            fixed_length: int,
     ) -> np.ndarray[Any, np.dtype[Any]]:
         """Apply fixed-length padding/truncation to string array.
 
@@ -557,7 +564,7 @@ class HDF:
 
     @staticmethod
     def _decode_fixed_length_strings(
-        str_array: np.ndarray[Any, np.dtype[Any]], mask: np.ndarray[Any, np.dtype[Any]]
+            str_array: np.ndarray[Any, np.dtype[Any]], mask: np.ndarray[Any, np.dtype[Any]]
     ) -> np.ndarray[Any, np.dtype[Any]]:
         """Decode fixed-length strings and trim trailing whitespace from valid entries.
 
@@ -585,9 +592,9 @@ class HDF:
 
     @staticmethod
     def _encode_values_for_hdf5(
-        values: pd.Series,
-        *,
-        string_fixed_length: int | None = None,
+            values: pd.Series,
+            *,
+            string_fixed_length: int | None = None,
     ) -> tuple[
         np.ndarray[Any, np.dtype[Any]], np.ndarray[Any, np.dtype[Any]] | None, str, str
     ]:
@@ -607,7 +614,7 @@ class HDF:
         orig_dtype = str(values.dtype)
 
         if pd.api.types.is_numeric_dtype(values.dtype) or pd.api.types.is_bool_dtype(
-            values.dtype
+                values.dtype
         ):
             # Convert to float64, with NaN for missing values
             encoded = values.astype(np.float64).values
@@ -617,8 +624,8 @@ class HDF:
             # Check if object dtype contains boolean-like values
             non_null_values = values.dropna()
             if len(non_null_values) > 0 and all(
-                isinstance(v, bool | np.bool_) or v in (True, False)
-                for v in non_null_values
+                    isinstance(v, bool | np.bool_) or v in (True, False)
+                    for v in non_null_values
             ):
                 # Treat as boolean/numeric data
                 encoded = values.astype(np.float64).values
@@ -635,7 +642,7 @@ class HDF:
                 if string_fixed_length is not None:
                     # Apply fixed-length padding/truncation
                     str_array = HDF._apply_fixed_length_to_strings(
-                        np.asarray(str_array), np.asarray(mask), string_fixed_length
+                            np.asarray(str_array), np.asarray(mask), string_fixed_length
                     )
                     # Create array with explicit UTF-8 encoding for fixed-length
                     try:
@@ -647,10 +654,10 @@ class HDF:
                             if mask[i] == 1:
                                 # Keep only ASCII characters for problematic Unicode
                                 ascii_safe_array[i] = s.encode("ascii", "ignore").decode(
-                                    "ascii"
+                                        "ascii"
                                 )[:string_fixed_length]
                         encoded = ascii_safe_array.astype(
-                            HDF._get_string_dtype(string_fixed_length)
+                                HDF._get_string_dtype(string_fixed_length)
                         )
                     values_kind = "string_utf8_fixed"
                 else:
@@ -667,7 +674,7 @@ class HDF:
             if string_fixed_length is not None:
                 # Apply fixed-length padding/truncation
                 str_array = HDF._apply_fixed_length_to_strings(
-                    np.asarray(str_array), np.asarray(mask), string_fixed_length
+                        np.asarray(str_array), np.asarray(mask), string_fixed_length
                 )
                 # Create array with explicit UTF-8 encoding for fixed-length
                 try:
@@ -679,10 +686,10 @@ class HDF:
                         if mask[i] == 1:
                             # Keep only ASCII characters for problematic Unicode
                             ascii_safe_array[i] = s.encode("ascii", "ignore").decode(
-                                "ascii"
+                                    "ascii"
                             )[:string_fixed_length]
                     encoded = ascii_safe_array.astype(
-                        HDF._get_string_dtype(string_fixed_length)
+                            HDF._get_string_dtype(string_fixed_length)
                     )
                 values_kind = "string_utf8_fixed"
             else:
@@ -700,9 +707,9 @@ class HDF:
 
     @staticmethod
     def _encode_index_for_hdf5(
-        index: pd.Index,
-        *,
-        string_fixed_length: int | None = None,
+            index: pd.Index,
+            *,
+            string_fixed_length: int | None = None,
     ) -> tuple[
         np.ndarray[Any, np.dtype[Any]] | list[np.ndarray[Any, np.dtype[Any]]],
         np.ndarray[Any, np.dtype[Any]] | list[np.ndarray[Any, np.dtype[Any]]],
@@ -742,10 +749,10 @@ class HDF:
                 if string_fixed_length is not None:
                     # Apply fixed-length padding/truncation
                     str_array = HDF._apply_fixed_length_to_strings(
-                        np.asarray(str_array), np.asarray(mask), string_fixed_length
+                            np.asarray(str_array), np.asarray(mask), string_fixed_length
                     )
                     encoded_arrays.append(
-                        str_array.astype(HDF._get_string_dtype(string_fixed_length))
+                            str_array.astype(HDF._get_string_dtype(string_fixed_length))
                     )
                 else:
                     encoded_arrays.append(str_array.astype(HDF._get_string_dtype()))
@@ -753,9 +760,9 @@ class HDF:
 
             metadata = {
                 "index_is_multiindex": 1,
-                "index_levels": index.nlevels,
-                "index_names": json.dumps(
-                    [str(name) if name is not None else None for name in index.names]
+                "index_levels"       : index.nlevels,
+                "index_names"        : json.dumps(
+                        [str(name) if name is not None else None for name in index.names]
                 ),
             }
             if string_fixed_length is not None:
@@ -774,18 +781,19 @@ class HDF:
             if string_fixed_length is not None:
                 # Apply fixed-length padding/truncation
                 str_array = HDF._apply_fixed_length_to_strings(
-                    np.asarray(str_array), np.asarray(mask), string_fixed_length
+                        np.asarray(str_array), np.asarray(mask), string_fixed_length
                 )
-                encoded_arrays = str_array.astype(HDF._get_string_dtype(string_fixed_length))  # type: ignore[assignment]
+                encoded_arrays = str_array.astype(
+                    HDF._get_string_dtype(string_fixed_length))  # type: ignore[assignment]
             else:
                 encoded_arrays = str_array.astype(HDF._get_string_dtype())  # type: ignore[assignment]
             mask_arrays = mask  # type: ignore[assignment]
 
             metadata = {
                 "index_is_multiindex": 0,
-                "index_levels": 1,
-                "index_names": json.dumps(
-                    [str(index.name) if index.name is not None else None]
+                "index_levels"       : 1,
+                "index_names"        : json.dumps(
+                        [str(index.name) if index.name is not None else None]
                 ),
             }
             if string_fixed_length is not None:
@@ -797,9 +805,9 @@ class HDF:
 
     @staticmethod
     def _decode_values_from_hdf5(
-        group: h5py.Group,
-        dataset_name: str = "values",
-        length: int | None = None,
+            group: h5py.Group,
+            dataset_name: str = "values",
+            length: int | None = None,
     ) -> tuple[np.ndarray[Any, np.dtype[Any]], str]:
         """Decode values from HDF5 storage back to numpy array.
 
@@ -841,9 +849,9 @@ class HDF:
 
     @staticmethod
     def _decode_index_from_hdf5(
-        group: h5py.Group,
-        index_dataset_name: str = "index",
-        length: int | None = None,
+            group: h5py.Group,
+            index_dataset_name: str = "index",
+            length: int | None = None,
     ) -> pd.Index:
         """Decode index from HDF5 storage back to pandas Index/MultiIndex.
 
@@ -909,37 +917,37 @@ class HDF:
 
     @staticmethod
     def _create_resizable_dataset(
-        group: h5py.Group,
-        name: str,
-        dtype: Any,
-        shape: tuple[int, ...],
-        maxshape: tuple[int | None, ...],
-        chunks: tuple[int, ...],
-        compression: str,
+            group: h5py.Group,
+            name: str,
+            dtype: Any,
+            shape: tuple[int, ...],
+            maxshape: tuple[int | None, ...],
+            chunks: tuple[int, ...],
+            compression: str,
     ) -> h5py.Dataset:
         """Create a resizable, chunked, compressed dataset."""
         return group.create_dataset(
-            name,
-            shape=shape,
-            maxshape=maxshape,
-            dtype=dtype,
-            chunks=chunks,
-            compression=compression,
+                name,
+                shape=shape,
+                maxshape=maxshape,
+                dtype=dtype,
+                chunks=chunks,
+                compression=compression,
         )
 
     # =================== MAIN PANDAS2HDF FUNCTIONS ===================
 
     @staticmethod
     def preallocate_series_layout(
-        group: h5py.Group,
-        series: pd.Series,
-        *,
-        dataset: str = "values",
-        index_dataset: str = "index",
-        chunks: tuple[int, ...] = (25,),
-        compression: str = "gzip",
-        preallocate: int = 100,
-        string_fixed_length: int = 100,
+            group: h5py.Group,
+            series: pd.Series,
+            *,
+            dataset: str = "values",
+            index_dataset: str = "index",
+            chunks: tuple[int, ...] = (25,),
+            compression: str = "gzip",
+            preallocate: int = 100,
+            string_fixed_length: int = 100,
     ) -> None:
         """Preallocate HDF5 layout for a pandas Series without writing data.
 
@@ -965,8 +973,8 @@ class HDF:
         # Prevent object creation under SWMR (SWMR programming model compliance)
         if group.file.swmr_mode and dataset not in group:
             raise RuntimeError(
-                "Cannot create new datasets while SWMR mode is enabled. "
-                "Create all objedit before starting SWMR mode."
+                    "Cannot create new datasets while SWMR mode is enabled. "
+                    "Create all objedit before starting SWMR mode."
             )
 
         # Encode series for schema information using fixed-length strings
@@ -980,7 +988,7 @@ class HDF:
         # Create values dataset
         if values_kind == "numeric_float64":
             HDF._create_resizable_dataset(
-                group, dataset, np.float64, (preallocate,), (None,), chunks, compression
+                    group, dataset, np.float64, (preallocate,), (None,), chunks, compression
             )
         else:  # string_utf8_fixed or string_utf8_vlen
             if values_kind == "string_utf8_fixed":
@@ -989,23 +997,23 @@ class HDF:
                 dtype = HDF._get_string_dtype()
 
             HDF._create_resizable_dataset(
-                group,
-                dataset,
-                dtype,
-                (preallocate,),
-                (None,),
-                chunks,
-                compression,
+                    group,
+                    dataset,
+                    dtype,
+                    (preallocate,),
+                    (None,),
+                    chunks,
+                    compression,
             )
             # Create values mask
             mask_dataset = HDF._create_resizable_dataset(
-                group,
-                f"{dataset}_mask",
-                np.uint8,
-                (preallocate,),
-                (None,),
-                chunks,
-                compression,
+                    group,
+                    f"{dataset}_mask",
+                    np.uint8,
+                    (preallocate,),
+                    (None,),
+                    chunks,
+                    compression,
             )
             mask_dataset[:] = 0  # Initialize to all missing
 
@@ -1023,44 +1031,44 @@ class HDF:
 
             for i in range(index_metadata["index_levels"]):
                 HDF._create_resizable_dataset(
-                    levels_group,
-                    f"L{i}",
-                    index_dtype,
-                    (preallocate,),
-                    (None,),
-                    chunks,
-                    compression,
+                        levels_group,
+                        f"L{i}",
+                        index_dtype,
+                        (preallocate,),
+                        (None,),
+                        chunks,
+                        compression,
                 )
                 mask_dataset = HDF._create_resizable_dataset(
-                    levels_group,
-                    f"L{i}_mask",
-                    np.uint8,
-                    (preallocate,),
-                    (None,),
-                    chunks,
-                    compression,
+                        levels_group,
+                        f"L{i}_mask",
+                        np.uint8,
+                        (preallocate,),
+                        (None,),
+                        chunks,
+                        compression,
                 )
                 mask_dataset[:] = 0  # Initialize to all missing
         else:
             # Create index group
             index_group = group.create_group(index_dataset)
             HDF._create_resizable_dataset(
-                index_group,
-                "values",
-                index_dtype,
-                (preallocate,),
-                (None,),
-                chunks,
-                compression,
+                    index_group,
+                    "values",
+                    index_dtype,
+                    (preallocate,),
+                    (None,),
+                    chunks,
+                    compression,
             )
             mask_dataset = HDF._create_resizable_dataset(
-                index_group,
-                "index_mask",
-                np.uint8,
-                (preallocate,),
-                (None,),
-                chunks,
-                compression,
+                    index_group,
+                    "index_mask",
+                    np.uint8,
+                    (preallocate,),
+                    (None,),
+                    chunks,
+                    compression,
             )
             mask_dataset[:] = 0  # Initialize to all missing
 
@@ -1086,19 +1094,18 @@ class HDF:
             else:
                 group.attrs[key] = value
 
-
     @staticmethod
     def save_series_new(
-        group: h5py.Group,
-        series: pd.Series,
-        *,
-        dataset: str = "values",
-        index_dataset: str = "index",
-        chunks: tuple[int, ...] = (25,),
-        compression: str = "gzip",
-        preallocate: int = 100,
-        string_fixed_length: int = 100,
-        require_swmr: bool = False,
+            group: h5py.Group,
+            series: pd.Series,
+            *,
+            dataset: str = "values",
+            index_dataset: str = "index",
+            chunks: tuple[int, ...] = (25,),
+            compression: str = "gzip",
+            preallocate: int = 100,
+            string_fixed_length: int = 100,
+            require_swmr: bool = False,
     ) -> None:
         """Create datasets and write a pandas Series to HDF5.
 
@@ -1127,12 +1134,12 @@ class HDF:
         if dataset in group and group.attrs.get("len", -1) == 0:
             # Use existing preallocated layout
             HDF.save_series_update(
-                group,
-                series,
-                start=0,
-                dataset=dataset,
-                index_dataset=index_dataset,
-                require_swmr=require_swmr,
+                    group,
+                    series,
+                    start=0,
+                    dataset=dataset,
+                    index_dataset=index_dataset,
+                    require_swmr=require_swmr,
             )
             return
 
@@ -1142,51 +1149,51 @@ class HDF:
             # For SWMR writes, datasets must already exist
             if dataset not in group:
                 raise RuntimeError(
-                    "Datasets must be created before starting SWMR mode. "
-                    "Use preallocate_series_layout() first, then start SWMR."
+                        "Datasets must be created before starting SWMR mode. "
+                        "Use preallocate_series_layout() first, then start SWMR."
                 )
             # Use update path
             HDF.save_series_update(
+                    group,
+                    series,
+                    start=0,
+                    dataset=dataset,
+                    index_dataset=index_dataset,
+                    require_swmr=require_swmr,
+            )
+            return
+
+        # Create new layout (require_swmr=False for creation phase)
+        HDF.preallocate_series_layout(
+                group,
+                series,
+                dataset=dataset,
+                index_dataset=index_dataset,
+                chunks=chunks,
+                compression=compression,
+                preallocate=max(preallocate, len(series)),
+                string_fixed_length=string_fixed_length,
+        )
+
+        # Write the data
+        HDF.save_series_update(
                 group,
                 series,
                 start=0,
                 dataset=dataset,
                 index_dataset=index_dataset,
                 require_swmr=require_swmr,
-            )
-            return
-
-        # Create new layout (require_swmr=False for creation phase)
-        HDF.preallocate_series_layout(
-            group,
-            series,
-            dataset=dataset,
-            index_dataset=index_dataset,
-            chunks=chunks,
-            compression=compression,
-            preallocate=max(preallocate, len(series)),
-            string_fixed_length=string_fixed_length,
-        )
-
-        # Write the data
-        HDF.save_series_update(
-            group,
-            series,
-            start=0,
-            dataset=dataset,
-            index_dataset=index_dataset,
-            require_swmr=require_swmr,
         )
 
     @staticmethod
     def save_series_update(
-        group: h5py.Group,
-        series: pd.Series,
-        *,
-        start: int = 0,
-        dataset: str = "values",
-        index_dataset: str = "index",
-        require_swmr: bool = True,
+            group: h5py.Group,
+            series: pd.Series,
+            *,
+            start: int = 0,
+            dataset: str = "values",
+            index_dataset: str = "index",
+            require_swmr: bool = True,
     ) -> None:
         """Update a pandas Series in HDF5 at specified position.
 
@@ -1217,7 +1224,7 @@ class HDF:
         # Validate that this is a contiguous update
         if start > current_len:
             raise ValueError(
-                f"Non-contiguous update: start={start}, current_len={current_len}"
+                    f"Non-contiguous update: start={start}, current_len={current_len}"
             )
 
         # Get stored schema to determine if fixed-length strings are used
@@ -1233,13 +1240,13 @@ class HDF:
         if require_swmr and group.file.swmr_mode:
             if stored_values_kind == "string_utf8_vlen":
                 raise RuntimeError(
-                    "Cannot write to variable-length string datasets under SWMR mode. "
-                    "Variable-length string writes are not allowed in SWMR mode."
+                        "Cannot write to variable-length string datasets under SWMR mode. "
+                        "Variable-length string writes are not allowed in SWMR mode."
                 )
             if stored_index_kind == "string_utf8_vlen":
                 raise RuntimeError(
-                    "Cannot write to variable-length string index datasets under SWMR mode. "
-                    "Variable-length string writes are not allowed in SWMR mode."
+                        "Cannot write to variable-length string index datasets under SWMR mode. "
+                        "Variable-length string writes are not allowed in SWMR mode."
                 )
 
         # Get fixed-length parameters from stored attributes
@@ -1253,23 +1260,23 @@ class HDF:
 
         # Encode data using stored schema
         encoded_values, values_mask, values_kind, _ = HDF._encode_values_for_hdf5(
-            series, string_fixed_length=string_fixed_length
+                series, string_fixed_length=string_fixed_length
         )
         encoded_index, index_masks, index_metadata, _ = HDF._encode_index_for_hdf5(
-            series.index, string_fixed_length=index_string_fixed_length
+                series.index, string_fixed_length=index_string_fixed_length
         )
 
         # Validate schema compatibility
         if stored_values_kind != values_kind:
             raise ValueError(
-                f"Values kind mismatch: expected {stored_values_kind}, got {values_kind}"
+                    f"Values kind mismatch: expected {stored_values_kind}, got {values_kind}"
             )
 
         expected_multiindex = bool(group.attrs["index_is_multiindex"])
         actual_multiindex = bool(index_metadata["index_is_multiindex"])
         if expected_multiindex != actual_multiindex:
             raise ValueError(
-                f"Index type mismatch: expected multiindex={expected_multiindex}, got {actual_multiindex}"
+                    f"Index type mismatch: expected multiindex={expected_multiindex}, got {actual_multiindex}"
             )
 
         # Resize datasets if needed
@@ -1288,7 +1295,7 @@ class HDF:
         if expected_multiindex:
             levels_group = group[f"{index_dataset}/levels"]
             for i, (level_data, level_mask) in enumerate(
-                zip(encoded_index, index_masks, strict=False)
+                    zip(encoded_index, index_masks, strict=False)
             ):
                 level_dataset = levels_group[f"L{i}"]
                 if end_pos > level_dataset.shape[0]:
@@ -1313,12 +1320,12 @@ class HDF:
 
     @staticmethod
     def save_series_append(
-        group: h5py.Group,
-        series: pd.Series,
-        *,
-        dataset: str = "values",
-        index_dataset: str = "index",
-        require_swmr: bool = True,
+            group: h5py.Group,
+            series: pd.Series,
+            *,
+            dataset: str = "values",
+            index_dataset: str = "index",
+            require_swmr: bool = True,
     ) -> None:
         """Append a pandas Series to existing HDF5 datasets.
 
@@ -1341,21 +1348,21 @@ class HDF:
 
         current_len = group.attrs["len"]
         HDF.save_series_update(
-            group,
-            series,
-            start=current_len,
-            dataset=dataset,
-            index_dataset=index_dataset,
-            require_swmr=require_swmr,
+                group,
+                series,
+                start=current_len,
+                dataset=dataset,
+                index_dataset=index_dataset,
+                require_swmr=require_swmr,
         )
 
     @staticmethod
     def load_series(
-        group: h5py.Group,
-        *,
-        dataset: str = "values",
-        index_dataset: str = "index",
-        require_swmr: bool = False,
+            group: h5py.Group,
+            *,
+            dataset: str = "values",
+            index_dataset: str = "index",
+            require_swmr: bool = False,
     ) -> pd.Series:
         """Load a pandas Series from HDF5 storage.
 
@@ -1403,14 +1410,14 @@ class HDF:
 
     @staticmethod
     def preallocate_frame_layout(
-        group: h5py.Group,
-        dataframe: pd.DataFrame,
-        *,
-        chunks: tuple[int, ...] = (25,),
-        compression: str = "gzip",
-        preallocate: int = 100,
-        string_fixed_length: int = 100,
-        require_swmr: bool = False,
+            group: h5py.Group,
+            dataframe: pd.DataFrame,
+            *,
+            chunks: tuple[int, ...] = (25,),
+            compression: str = "gzip",
+            preallocate: int = 100,
+            string_fixed_length: int = 100,
+            require_swmr: bool = False,
     ) -> None:
         """Preallocate HDF5 layout for a pandas DataFrame without writing data.
 
@@ -1436,8 +1443,8 @@ class HDF:
         # Prevent object creation under SWMR (SWMR programming model compliance)
         if group.file.swmr_mode and "index" not in group:
             raise RuntimeError(
-                "Cannot create new groups/datasets while SWMR mode is enabled. "
-                "Create all objedit before starting SWMR mode."
+                    "Cannot create new groups/datasets while SWMR mode is enabled. "
+                    "Create all objedit before starting SWMR mode."
             )
 
         if len(dataframe.columns) == 0:
@@ -1452,14 +1459,14 @@ class HDF:
         # Create a dummy series with string values to match the schema
         dummy_series = pd.Series([], dtype=str, index=dataframe.index[:0], name="__index__")
         HDF.preallocate_series_layout(
-            index_group,
-            dummy_series,
-            dataset="values",
-            index_dataset="index",
-            chunks=chunks,
-            compression=compression,
-            preallocate=preallocate,
-            string_fixed_length=string_fixed_length,
+                index_group,
+                dummy_series,
+                dataset="values",
+                index_dataset="index",
+                chunks=chunks,
+                compression=compression,
+                preallocate=preallocate,
+                string_fixed_length=string_fixed_length,
         )
 
         # Preallocate column layouts
@@ -1471,39 +1478,39 @@ class HDF:
                 # Use first few values to determine the proper schema
                 col_data = dataframe[col_name]
                 dummy_col_series = pd.Series(
-                    [col_data.iloc[0]] if not col_data.isna().iloc[0] else [None],
-                    dtype=col_data.dtype,
-                    index=dataframe.index[:1],
-                    name=col_name,
+                        [col_data.iloc[0]] if not col_data.isna().iloc[0] else [None],
+                        dtype=col_data.dtype,
+                        index=dataframe.index[:1],
+                        name=col_name,
                 )
             else:
                 # Fallback to dtype for empty dataframe
                 col_dtype = dataframe[col_name].dtype
                 dummy_col_series = pd.Series(
-                    [], dtype=col_dtype, index=dataframe.index[:0], name=col_name
+                        [], dtype=col_dtype, index=dataframe.index[:0], name=col_name
                 )
 
             HDF.preallocate_series_layout(
-                col_group,
-                dummy_col_series,
-                dataset="values",
-                index_dataset="index",
-                chunks=chunks,
-                compression=compression,
-                preallocate=preallocate,
-                string_fixed_length=string_fixed_length,
+                    col_group,
+                    dummy_col_series,
+                    dataset="values",
+                    index_dataset="index",
+                    chunks=chunks,
+                    compression=compression,
+                    preallocate=preallocate,
+                    string_fixed_length=string_fixed_length,
             )
 
     @staticmethod
     def save_frame_new(
-        group: h5py.Group,
-        dataframe: pd.DataFrame,
-        *,
-        chunks: tuple[int, ...] = (25,),
-        compression: str = "gzip",
-        preallocate: int = 100,
-        string_fixed_length: int = 100,
-        require_swmr: bool = False,
+            group: h5py.Group,
+            dataframe: pd.DataFrame,
+            *,
+            chunks: tuple[int, ...] = (25,),
+            compression: str = "gzip",
+            preallocate: int = 100,
+            string_fixed_length: int = 100,
+            require_swmr: bool = False,
     ) -> None:
         """Create datasets and write a pandas DataFrame to HDF5.
 
@@ -1534,8 +1541,8 @@ class HDF:
             # For SWMR writes, groups/datasets must already exist
             if "columns" not in group:
                 raise RuntimeError(
-                    "Groups/datasets must be created before starting SWMR mode. "
-                    "Use preallocate_frame_layout() first, then start SWMR."
+                        "Groups/datasets must be created before starting SWMR mode. "
+                        "Use preallocate_frame_layout() first, then start SWMR."
                 )
             # Use update path
             HDF.save_frame_update(group, dataframe, start=0, require_swmr=require_swmr)
@@ -1543,13 +1550,13 @@ class HDF:
 
         # Create new layout (require_swmr=False for creation phase)
         HDF.preallocate_frame_layout(
-            group,
-            dataframe,
-            chunks=chunks,
-            compression=compression,
-            preallocate=max(preallocate, len(dataframe)),
-            string_fixed_length=string_fixed_length,
-            require_swmr=False,
+                group,
+                dataframe,
+                chunks=chunks,
+                compression=compression,
+                preallocate=max(preallocate, len(dataframe)),
+                string_fixed_length=string_fixed_length,
+                require_swmr=False,
         )
 
         # Write the data
@@ -1557,11 +1564,11 @@ class HDF:
 
     @staticmethod
     def save_frame_update(
-        group: h5py.Group,
-        dataframe: pd.DataFrame,
-        *,
-        start: int = 0,
-        require_swmr: bool = True,
+            group: h5py.Group,
+            dataframe: pd.DataFrame,
+            *,
+            start: int = 0,
+            require_swmr: bool = True,
     ) -> None:
         """Update a pandas DataFrame in HDF5 at specified position.
 
@@ -1587,7 +1594,7 @@ class HDF:
         # Validate contiguous update
         if start > current_len:
             raise ValueError(
-                f"Non-contiguous update: start={start}, current_len={current_len}"
+                    f"Non-contiguous update: start={start}, current_len={current_len}"
             )
 
         # Validate column order matches
@@ -1597,22 +1604,22 @@ class HDF:
         stored_columns = json.loads(column_order_attr)
         if list(dataframe.columns) != stored_columns:
             raise ValueError(
-                f"Column order mismatch: expected {stored_columns}, got {list(dataframe.columns)}"
+                    f"Column order mismatch: expected {stored_columns}, got {list(dataframe.columns)}"
             )
 
         # Update index - create a dummy series to represent the actual index
         # We need to store the index structure, so we create a dummy series where the
         # index is the actual DataFrame index and values are just placeholders
         index_series = pd.Series(
-            ["dummy"] * len(dataframe), index=dataframe.index, name="__index__"
+                ["dummy"]*len(dataframe), index=dataframe.index, name="__index__"
         )
         HDF.save_series_update(
-            group["index"],
-            index_series,
-            start=start,
-            dataset="values",
-            index_dataset="index",
-            require_swmr=require_swmr,
+                group["index"],
+                index_series,
+                start=start,
+                dataset="values",
+                index_dataset="index",
+                require_swmr=require_swmr,
         )
 
         # Update each column
@@ -1621,12 +1628,12 @@ class HDF:
             col_series = dataframe[col_name]
             col_series.name = col_name
             HDF.save_series_update(
-                columns_group[str(col_name)],
-                col_series,
-                start=start,
-                dataset="values",
-                index_dataset="index",
-                require_swmr=require_swmr,
+                    columns_group[str(col_name)],
+                    col_series,
+                    start=start,
+                    dataset="values",
+                    index_dataset="index",
+                    require_swmr=require_swmr,
             )
 
         # Update frame length
@@ -1637,10 +1644,10 @@ class HDF:
 
     @staticmethod
     def save_frame_append(
-        group: h5py.Group,
-        dataframe: pd.DataFrame,
-        *,
-        require_swmr: bool = True,
+            group: h5py.Group,
+            dataframe: pd.DataFrame,
+            *,
+            require_swmr: bool = True,
     ) -> None:
         """Append a pandas DataFrame to existing HDF5 datasets.
 
@@ -1661,9 +1668,9 @@ class HDF:
 
     @staticmethod
     def load_frame(
-        group: h5py.Group,
-        *,
-        require_swmr: bool = False,
+            group: h5py.Group,
+            *,
+            require_swmr: bool = False,
     ) -> pd.DataFrame:
         """Load a pandas DataFrame from HDF5 storage.
 
@@ -1703,10 +1710,10 @@ class HDF:
         columns_data = {}
         for col_name in column_order:
             col_series = HDF.load_series(
-                columns_group[str(col_name)],
-                dataset="values",
-                index_dataset="index",
-                require_swmr=require_swmr,
+                    columns_group[str(col_name)],
+                    dataset="values",
+                    index_dataset="index",
+                    require_swmr=require_swmr,
             )
             columns_data[col_name] = col_series.values
 
@@ -1716,7 +1723,7 @@ class HDF:
         return result
 
     @staticmethod
-    def close_handle(handle: h5py.File|h5py.Group) -> None:
+    def close_handle(handle: h5py.File | h5py.Group) -> None:
         if handle is not None:
             handle = handle.file if isinstance(handle, h5py.Group) else handle
             try:
@@ -1730,5 +1737,3 @@ class HDF:
             except (ValueError, AttributeError):
                 # Handle is closed/invalid - this is expected
                 logger.debug(f'hdf5 file handle {handle} was properly closed or invalid')
-
-

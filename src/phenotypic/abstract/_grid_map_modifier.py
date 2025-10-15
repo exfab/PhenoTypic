@@ -5,8 +5,8 @@ if TYPE_CHECKING: from phenotypic import GridImage
 
 from phenotypic.abstract import MapModifier
 from phenotypic.abstract import GridOperation
-from phenotypic.util.exceptions_ import GridImageInputError
-from phenotypic.util.funcs_ import validate_operation_integrity
+from phenotypic.tools.exceptions_ import GridImageInputError
+from phenotypic.tools.funcs_ import validate_operation_integrity
 from abc import ABC
 
 

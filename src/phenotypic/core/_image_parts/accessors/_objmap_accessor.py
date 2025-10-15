@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 from skimage.measure import label
 
 from phenotypic.core._image_parts.accessor_abstracts import SingleChannelAccessor
-from phenotypic.util.exceptions_ import ArrayKeyValueShapeMismatchError, InvalidMapValueError
+from phenotypic.tools.exceptions_ import ArrayKeyValueShapeMismatchError, InvalidMapValueError
 
 
 class ObjectMap(SingleChannelAccessor):

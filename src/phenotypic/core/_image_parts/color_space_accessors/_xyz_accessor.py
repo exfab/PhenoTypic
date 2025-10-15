@@ -3,11 +3,11 @@ from __future__ import annotations
 import colour
 import numpy as np
 
-from phenotypic.util.colourspaces_ import sRGB_D50
-from phenotypic.util.exceptions_ import IllegalAssignmentError
-from phenotypic.util.funcs_ import normalize_rgb_bitdepth
+from phenotypic.tools.colourspaces_ import sRGB_D50
+from phenotypic.tools.exceptions_ import IllegalAssignmentError
+from phenotypic.tools.funcs_ import normalize_rgb_bitdepth
 from ..accessor_abstracts._image_accessor_base import ImageAccessorBase
-from phenotypic.util.constants_ import IMAGE_FORMATS
+from phenotypic.tools.constants_ import IMAGE_FORMATS
 
 
 class XyzAccessor(ImageAccessorBase):

@@ -11,7 +11,7 @@ from joblib import delayed, Parallel
 from sklearn.metrics import mean_absolute_error, mean_squared_error, root_mean_squared_error
 
 from phenotypic.analysis.abstract import ModelFitter
-from phenotypic.util.constants_ import MeasurementInfo
+from phenotypic.tools.constants_ import MeasurementInfo
 
 
 class LOG_GROWTH_MODEL(MeasurementInfo):

@@ -26,7 +26,7 @@ class ImageColorSpace(ImageObjectsHandler):
     """
 
     def __init__(self,
-                 input_image: np.ndarray | Image | PathLike | None = None,
+                 arr: np.ndarray | Image | None = None,
                  imformat: str | None = None,
                  name: str | None = None, **kwargs):
         """
@@ -37,7 +37,7 @@ class ImageColorSpace(ImageObjectsHandler):
         illuminant for color management.
 
         Args:
-            input_image: np.ndarray | Image | PathLike | None
+            arr: np.ndarray | Image | PathLike | None
                 The input image to process, which can be specified as a numpy array,
                 a PIL Image object, or a path-like object. Defaults to None.
 
@@ -72,7 +72,7 @@ class ImageColorSpace(ImageObjectsHandler):
         self.color_profile: str = kwargs.get('color_profile', 'sRGB')
         self.observer: str = kwargs.get('observer', "CIE 1931 2 Degree Standard Observer")
         self.illuminant: Literal["D50", "D65"] = kwargs.get('illuminant', "D65")
-        super().__init__(input_image=input_image, imformat=imformat, name=name, **kwargs)
+        super().__init__(arr=arr, imformat=imformat, name=name, **kwargs)
 
         # Device color profiles
         self._accessors.hsv = HsvAccessor(self)

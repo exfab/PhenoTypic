@@ -4,8 +4,8 @@ from pathlib import Path
 
 import numpy as np
 
-from phenotypic.util.constants_ import IO
-from phenotypic.util.exceptions_ import IllegalAssignmentError
+from phenotypic.tools.constants_ import IO
+from phenotypic.tools.exceptions_ import IllegalAssignmentError
 from ._image_accessor_base import ImageAccessorBase
 
 

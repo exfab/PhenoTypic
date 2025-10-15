@@ -1,11 +1,11 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, Literal, List
+from typing import Any, Dict, TYPE_CHECKING, Literal, List
 
 if TYPE_CHECKING: from phenotypic import Image
 
 import pandas as pd
 from os import PathLike
-from phenotypic.util.constants_ import PIPE_STATUS
+from phenotypic.tools.constants_ import PIPE_STATUS
 from ._image_set_core import ImageSetCore
 
 
@@ -22,12 +22,14 @@ class ImageSetStatus(ImageSetCore):
 
     def __init__(self,
                  name: str,
-                 grid_finder: Image | None = None,
-                 src: List[Image] | PathLike | None = None,
-                 outpath: PathLike | None = None,
-                 overwrite: bool = False, ):
-        super().__init__(name=name, grid_finder=grid_finder,
-                         src=src, outpath=outpath, overwrite=overwrite)
+                 outpath: PathLike | str | None = None,
+                 imtype: Literal["Image", "GridImage"] = "Image",
+                 imparams: Dict[str, Any] | None = None,
+                 default_mode: Literal['temp', 'cwd'] = 'temp',
+                 overwrite: bool = False,
+                 ):
+        super().__init__(name=name, outpath=outpath, imtype=imtype,
+                         imparams=imparams, default_mode=default_mode, overwrite=overwrite)
         if overwrite:
             self.reset_status()
 

@@ -40,24 +40,12 @@ def _make_imageset(tmp_path: Path):
         Image(load_plate_12hr(), name='12hr'),
         Image(load_plate_72hr(), name='72hr'),
     ]
-    return ImageSet(
+    imset = ImageSet(
             name="iset",
-            src=images,
             outpath=tmp_path,
-            overwrite=True)
-
-
-def _make_dummy_imageset(tmp_path: Path):
-    images = [
-        Image(np.full(shape=(2, 2, 3), fill_value=1), name='image1'),
-        Image(np.full(shape=(3, 3, 3), fill_value=1), name='image2'),
-    ]
-    return ImageSet(
-            name='iset',
-            src=images,
-            outpath=tmp_path,
-            overwrite=True,
-    )
+            overwrite=False)
+    imset.import_images(images)
+    return imset
 
 
 # ---------------------------------------------------------------------------
@@ -84,7 +72,7 @@ def test_batch_apply_and_measure(temp_hdf5_file):
                          njobs=2)
 
     df = pipe.apply_and_measure(imageset)
-    assert df.empty is False, 'No measurements'
+    assert df.empty is False, 'No measurements from batch apply_and_measure'
 
     alt_df = imageset.get_measurement()
     assert df.equals(alt_df), 'ImageSet.get_measurements() is different from results'

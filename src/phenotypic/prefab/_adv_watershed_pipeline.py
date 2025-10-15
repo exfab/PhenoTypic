@@ -2,7 +2,7 @@ from typing import Literal
 
 import numpy as np
 
-from phenotypic.core._image_pipeline import ImagePipeline
+from phenotypic.abstract import PrefabPipeline
 
 from phenotypic.enhancement import CLAHE, GaussianSmoother, MedianEnhancer, ContrastStretching
 from phenotypic.detection import OtsuDetector, WatershedDetector
@@ -13,7 +13,7 @@ from phenotypic.objedit import MaskFill
 from phenotypic.measure import MeasureIntensity, MeasureShape, MeasureTexture, MeasureColor
 
 
-class AdvWatershedPipeline(ImagePipeline):
+class AdvWatershedPipeline(PrefabPipeline):
     """
     The AdvWatershedPipeline class is a composite image processing pipeline that combines multiple layers of preprocessing, detection, and filtering steps
     that can will select the right colonies in most cases. This comes at the cost of being a more computationally expensive pipeline.

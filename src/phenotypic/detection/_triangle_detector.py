@@ -19,6 +19,7 @@ class TriangleDetector(ThresholdDetector):
         apply: Applies triangle thresholding to the enhancement matrix of the
             image and updates the object mask accordingly.
     """
+
     def _operate(self, image: Image) -> Image:
         """
         Applies a thresholding operation on the enhanced matrix of an image using
@@ -29,7 +30,7 @@ class TriangleDetector(ThresholdDetector):
         the output mask (`omask`) to True if the condition is satisfied.
 
         Args:
-            image (Image): The input_image image object containing an enhanced matrix
+            image (Image): The arr image object containing an enhanced matrix
                 (`enh_matrix`) which will be processed to generate an output mask.
 
         Returns:
@@ -37,6 +38,7 @@ class TriangleDetector(ThresholdDetector):
         """
         image.objmask[:] = image.enh_matrix[:] >= threshold_triangle(image.enh_matrix[:])
         return image
+
 
 # Set the docstring so that it appears in the sphinx documentation
 TriangleDetector.apply.__doc__ = TriangleDetector._operate.__doc__

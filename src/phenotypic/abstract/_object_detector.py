@@ -5,8 +5,8 @@ if TYPE_CHECKING: from phenotypic import Image
 
 import numpy as np
 from ._image_operation import ImageOperation
-from phenotypic.util.exceptions_ import OperationFailedError, DataIntegrityError, InterfaceError
-from phenotypic.util.funcs_ import validate_operation_integrity
+from phenotypic.tools.exceptions_ import OperationFailedError, DataIntegrityError, InterfaceError
+from phenotypic.tools.funcs_ import validate_operation_integrity
 from abc import ABC
 
 

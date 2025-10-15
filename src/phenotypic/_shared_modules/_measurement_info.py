@@ -45,7 +45,7 @@ class MeasurementInfo(str, Enum):
         left, right = header
         lines = [
             f".. list-table:: {title}",
-            "   :header-rows: 1",
+            "   :header-nrows: 1",
             "",
             f"   * - {left}",
             f"     - {right}",

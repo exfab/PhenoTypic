@@ -7,8 +7,8 @@ if TYPE_CHECKING: from phenotypic import GridImage
 import pandas as pd
 
 from phenotypic.abstract import MeasureFeatures
-from phenotypic.util.exceptions_ import GridImageInputError, OutputValueError
-from phenotypic.util.funcs_ import validate_measure_integrity
+from phenotypic.tools.exceptions_ import GridImageInputError, OutputValueError
+from phenotypic.tools.funcs_ import validate_measure_integrity
 from abc import ABC
 
 

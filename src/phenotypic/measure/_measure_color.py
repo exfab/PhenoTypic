@@ -10,7 +10,7 @@ import colour
 import logging
 
 from phenotypic.abstract import MeasureFeatures, MeasurementInfo
-from phenotypic.util.constants_ import OBJECT
+from phenotypic.tools.constants_ import OBJECT
 
 logger = logging.getLogger(__name__)
 
@@ -344,7 +344,7 @@ class MeasureColor(MeasureFeatures):
     @staticmethod
     def _compute_color_metrics(foreground: np.ndarray, labels: np.ndarray):
         """
-          Computes texture metrics from input_image image data and a binary foreground mask.
+          Computes texture metrics from arr image data and a binary foreground mask.
 
           This function processes gridded image objects and calculates various texture
           features using Haralick descriptors across segmented objects. The calculated

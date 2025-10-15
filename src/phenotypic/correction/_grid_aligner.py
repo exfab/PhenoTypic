@@ -8,7 +8,7 @@ from scipy.spatial.distance import euclidean
 from scipy.optimize import minimize_scalar
 
 from phenotypic.abstract import GridCorrector
-from phenotypic.util.constants_ import OBJECT, BBOX, GRID
+from phenotypic.tools.constants_ import OBJECT, BBOX, GRID
 
 
 class GridAligner(GridCorrector):
@@ -26,7 +26,7 @@ class GridAligner(GridCorrector):
     def _operate(self, image: GridImage):
         """Calculates the optimal rotation angle and applies it to a grid image for alignment along the specified axis.
 
-        The method performs alignment of a `GridImage` object along either rows or columns based on the specified
+        The method performs alignment of a `GridImage` object along either nrows or columns based on the specified
         axis. It calculates the linear regression slope and intercept for the axis, determines geometric properties of the grid
         vertices, and computes rotation angles needed to align the image. The optimal angle is found by minimizing the error
         across all computed angles, and the image is rotated accordingly.
@@ -35,7 +35,7 @@ class GridAligner(GridCorrector):
             ValueError: If the axis is not 0 (row-wise) or 1 (column-wise).
 
         Args:
-            image (ImageGridHandler): The input_image grid image object to be aligned.
+            image (ImageGridHandler): The arr grid image object to be aligned.
 
         Returns:
             ImageGridHandler: The rotated grid image object after alignment.

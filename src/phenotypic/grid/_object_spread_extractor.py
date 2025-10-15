@@ -7,7 +7,7 @@ from phenotypic.abstract import GridMeasureFeatures
 import pandas as pd
 import numpy as np
 from scipy.spatial import distance_matrix
-from phenotypic.util.constants_ import OBJECT, BBOX, GRID
+from phenotypic.tools.constants_ import OBJECT, BBOX, GRID
 
 
 class ObjectSpreadExtractor(GridMeasureFeatures):

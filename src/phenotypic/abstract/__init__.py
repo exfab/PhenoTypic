@@ -23,6 +23,7 @@ from ._grid_measure import GridMeasureFeatures
 from ._grid_finder import GridFinder
 from ._base_operation import BaseOperation
 from ._grid_object_detector import GridObjectDetector
+from ._prefab_pipeline import PrefabPipeline
 
 __all__ = [
     "MeasureFeatures",
@@ -39,5 +40,6 @@ __all__ = [
     "GridMeasureFeatures",
     'BaseOperation',
     "MeasurementInfo",
-    "GridObjectDetector"
+    "GridObjectDetector",
+    "PrefabPipeline",
 ]

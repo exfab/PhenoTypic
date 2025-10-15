@@ -6,7 +6,7 @@ if TYPE_CHECKING: pass
 import numpy as np
 
 from phenotypic.core._image_parts.accessor_abstracts import SingleChannelAccessor
-from phenotypic.util.exceptions_ import ArrayKeyValueShapeMismatchError, EmptyImageError
+from phenotypic.tools.exceptions_ import ArrayKeyValueShapeMismatchError, EmptyImageError
 
 
 class ImageEnhancedMatrix(SingleChannelAccessor):
@@ -67,7 +67,7 @@ class ImageEnhancedMatrix(SingleChannelAccessor):
             pass
         else:
             raise TypeError(
-                f'Unsupported type for setting the matrix. Value should be scalar or a numpy array: {type(value)}')
+                    f'Unsupported type for setting the matrix. Value should be scalar or a numpy array: {type(value)}')
 
         self._root_image._data.enh_matrix[key] = value
         self._root_image.objmap.reset()

@@ -74,11 +74,11 @@ class GitterDetector(ObjectDetector):
         """Remove long stretches of 1s (possibly lines) and sum's the mask across axes"""
         # Calculate threshold based on image dimensions
         if axis == 1:
-            c = p*binary_image.shape[0]  # For rows: threshold based on number of rows
+            c = p*binary_image.shape[0]  # For nrows: threshold based on number of nrows
         else:
             c = p*binary_image.shape[1]  # For columns: threshold based on number of columns
 
-        # Identify problematic rows/columns with long stretches of 1s
+        # Identify problematic nrows/columns with long stretches of 1s
         problematic = np.zeros(binary_image.shape[axis - 1], dtype=bool)
 
         for i in range(binary_image.shape[axis - 1]):

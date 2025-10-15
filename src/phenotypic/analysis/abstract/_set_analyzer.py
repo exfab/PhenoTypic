@@ -46,8 +46,8 @@ class SetAnalyzer(abc.ABC):
         """Filter a DataFrame by column->values mapping.
 
         For each column in `criteria`:
-          • If the value is scalar, keep rows where column == value.
-          • If the value is an iterable (e.g., list/tuple/set/ndarray), keep rows where column ∈ values.
+          • If the value is scalar, keep nrows where column == value.
+          • If the value is an iterable (e.g., list/tuple/set/ndarray), keep nrows where column ∈ values.
           • If the value is NA and `match_na=True`, match NA in that column.
 
         Args:

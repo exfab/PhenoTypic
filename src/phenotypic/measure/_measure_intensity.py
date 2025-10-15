@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from phenotypic.util.constants_ import OBJECT
+from phenotypic.tools.constants_ import OBJECT
 
 if TYPE_CHECKING: from phenotypic import Image
 from enum import Enum

@@ -6,7 +6,7 @@ import numpy as np
 import skimage as ski
 
 from phenotypic.core._image_parts.accessor_abstracts import ImageAccessorBase
-from phenotypic.util.constants_ import METADATA
+from phenotypic.tools.constants_ import METADATA
 
 
 class MultiChannelAccessor(ImageAccessorBase):

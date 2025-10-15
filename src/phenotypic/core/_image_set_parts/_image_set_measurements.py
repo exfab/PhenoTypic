@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from os import PathLike
-from typing import TYPE_CHECKING, List
+from typing import Any, Dict, Literal, TYPE_CHECKING, List
 
 from phenotypic.abstract import GridFinder
 
@@ -9,7 +9,7 @@ if TYPE_CHECKING: from phenotypic import Image
 
 import pandas as pd
 from ._image_set_accessors._image_set_measurements_accessor import SetMeasurementAccessor
-from phenotypic.util.constants_ import PIPE_STATUS
+from phenotypic.tools.constants_ import PIPE_STATUS
 from ._image_set_status import ImageSetStatus
 
 
@@ -20,9 +20,10 @@ class ImageSetMeasurements(ImageSetStatus):
 
     def __init__(self,
                  name: str,
-                 grid_finder: GridFinder | None = None,
-                 src: List[Image] | PathLike | None = None,
-                 outpath: PathLike | None = None,
+                 outpath: PathLike | str | None = None,
+                 imtype: Literal["Image", "GridImage"] = "Image",
+                 imparams: Dict[str, Any] | None = None,
+                 default_mode: Literal['temp', 'cwd'] = 'temp',
                  overwrite: bool = False, ):
         """
         Initializes the instance with the specified parameters.
@@ -43,8 +44,8 @@ class ImageSetMeasurements(ImageSetStatus):
             overwrite (bool): A flag indicating whether to overwrite existing files or
                 data at the output path. Defaults to False.
         """
-        super().__init__(name=name, grid_finder=grid_finder,
-                         src=src, outpath=outpath, overwrite=overwrite)
+        super().__init__(name=name, outpath=outpath, imtype=imtype, imparams=imparams, default_mode=default_mode,
+                         overwrite=overwrite)
         self._measurement_accessor = SetMeasurementAccessor(self)
 
     @property
@@ -87,7 +88,7 @@ class ImageSetMeasurements(ImageSetStatus):
                         and (status_subgroup.attrs[PIPE_STATUS.MEASURED])
                         and (measurement_key in image_group)):
                     df = self.hdf_.load_frame(
-                        group=self.hdf_.get_image_measurement_subgroup(handle=handle, image_name=name), )
+                            group=self.hdf_.get_image_measurement_subgroup(handle=handle, image_name=name), )
 
                     prot_metadata_group = self.hdf_.get_protected_metadata_subgroup(handle=handle, image_name=name)
                     pub_metadata_group = self.hdf_.get_public_metadata_subgroup(handle=handle, image_name=name)

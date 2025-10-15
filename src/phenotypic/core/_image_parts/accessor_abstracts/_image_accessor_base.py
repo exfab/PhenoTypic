@@ -4,6 +4,8 @@ import os
 from pathlib import Path
 from typing import TYPE_CHECKING, Tuple
 
+import pandas as pd
+
 if TYPE_CHECKING: from phenotypic import Image
 
 import skimage as ski
@@ -11,7 +13,7 @@ import matplotlib.pyplot as plt
 from matplotlib.ticker import MultipleLocator
 import numpy as np
 
-from phenotypic.util.constants_ import MPL, METADATA
+from phenotypic.tools.constants_ import MPL, METADATA
 from abc import ABC
 
 
@@ -61,6 +63,21 @@ class ImageAccessorBase(ABC):
             attribute.
         """
         return self._subject_arr.shape
+
+    def val_range(self) -> pd.Interval:
+        """
+        Return the closed interval [min, max] of the subject array values.
+
+        Returns:
+            pd.Interval: A single closed interval including both endpoints.
+        """
+        mn = self._subject_arr.min()
+        mx = self._subject_arr.max()
+        return pd.Interval(left=mn, right=mx, closed="both")
+
+    @property
+    def dtype(self):
+        return self._subject_arr.dtype
 
     def isempty(self):
         return True if self.shape[0] == 0 else False
@@ -234,7 +251,7 @@ class ImageAccessorBase(ABC):
                 (width, height). Defaults to (8, 6).
             title (str, optional): Title of the plot to be displayed. If not provided,
                 defaults to the name of the self.image.
-            cmap (str, optional): Colormap to apply to the image. Defaults to 'gray'. Only used if arr input_image is 2D.
+            cmap (str, optional): Colormap to apply to the image. Defaults to 'gray'. Only used if arr arr is 2D.
             ax (plt.Axes, optional): An existing Matplotlib Axes instance for rendering
                 the image. If None, a new figure and axes are created. Defaults to None.
             overlay_settings (dict | None, optional): Parameters passed to the

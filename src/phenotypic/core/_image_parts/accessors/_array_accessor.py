@@ -5,8 +5,8 @@ from typing import Optional
 import skimage
 
 from phenotypic.core._image_parts.accessor_abstracts import MultiChannelAccessor
-from phenotypic.util.constants_ import IMAGE_FORMATS
-from phenotypic.util.exceptions_ import ArrayKeyValueShapeMismatchError, NoArrayError, EmptyImageError
+from phenotypic.tools.constants_ import IMAGE_FORMATS
+from phenotypic.tools.exceptions_ import ArrayKeyValueShapeMismatchError, NoArrayError, EmptyImageError
 
 
 class ImageArray(MultiChannelAccessor):
@@ -77,7 +77,7 @@ class ImageArray(MultiChannelAccessor):
 
         else:
             raise ValueError(
-                f'Unsupported type for setting the array. Value should be scalar or a numpy array: {type(value)}')
+                    f'Unsupported type for setting the array. Value should be scalar or a numpy array: {type(value)}')
 
         self._root_image._data.array[key] = value
         self._root_image._set_from_array(self._root_image._data.array, imformat=self._root_image.imformat)
