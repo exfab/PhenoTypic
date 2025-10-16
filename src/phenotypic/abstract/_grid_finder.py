@@ -145,3 +145,38 @@ class GridFinder(GridMeasureFeatures, ABC):
 
         table.loc[:, str(GRID.SECTION_NUM)] = table.loc[:, str(GRID.SECTION_NUM)].astype('category')
         return table
+
+    def _get_grid_info(self, image: Image, row_edges: np.ndarray, col_edges: np.ndarray) -> pd.DataFrame:
+        """
+        Assembles complete grid information from row and column edges.
+        
+        This helper method takes pre-calculated edge coordinates and generates a complete
+        DataFrame with all grid metadata including row/column numbers, intervals, section
+        indices, and section numbers. This eliminates code duplication across different
+        GridFinder implementations.
+        
+        Args:
+            image (Image): The image object containing objects to be gridded.
+            row_edges (np.ndarray): Array of row edge coordinates (length = nrows + 1).
+            col_edges (np.ndarray): Array of column edge coordinates (length = ncols + 1).
+            
+        Returns:
+            pd.DataFrame: Complete grid information table with all metadata columns.
+        """
+        info_table = image.objects.info(include_metadata=False)
+        
+        # Add row information
+        info_table = self._add_row_number_info(table=info_table, row_edges=row_edges, imshape=image.shape)
+        info_table = self._add_row_interval_info(table=info_table, row_edges=row_edges, imshape=image.shape)
+        
+        # Add column information
+        info_table = self._add_col_number_info(table=info_table, col_edges=col_edges, imshape=image.shape)
+        info_table = self._add_col_interval_info(table=info_table, col_edges=col_edges, imshape=image.shape)
+        
+        # Add section information
+        info_table = self._add_section_interval_info(table=info_table, row_edges=row_edges, 
+                                                     col_edges=col_edges, imshape=image.shape)
+        info_table = self._add_section_number_info(table=info_table, row_edges=row_edges, 
+                                                   col_edges=col_edges, imshape=image.shape)
+        
+        return info_table
