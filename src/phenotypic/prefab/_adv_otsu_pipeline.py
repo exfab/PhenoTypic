@@ -38,10 +38,18 @@ class AdvOtsuPipeline(PrefabPipeline):
         - Intensity
     """
 
-    def __init__(self, scale: int = 5, sigma: int = 5,
-                 footprint: Literal['auto'] | int | np.ndarray | None = 'auto',
-                 min_size: int = 50,
-                 border_size: int = 1, benchmark: bool = False, **kwargs):
+    def __init__(self,
+                 gaussian_sigma: int = 5,
+                 gaussian_mode: str = 'reflect',
+                 gaussian_truncate: float = 4.0,
+                 otsu_ignore_zeros: bool = True,
+                 otsu_ignore_borders: bool = True,
+                 mask_opener_footprint: Literal['auto'] | int | np.ndarray | None = 'auto',
+                 border_remover_size: int = 1,
+                 small_object_min_size: int = 50,
+                 texture_scale: int = 5,
+                 texture_warn: bool = False,
+                 benchmark: bool = False, verbose: bool = False):
         """
         Initializes the object with a sequence of operations and measurements for image
         processing. The sequence includes smoothing, enhancement, segmentation, border
@@ -50,49 +58,49 @@ class AdvOtsuPipeline(PrefabPipeline):
         as image segmentation and feature extraction.
 
         Args:
-            sigma (int): The standard deviation of the Gaussian kernel used for smoothing
-                images during preprocessing. Helps reduce noise and improve segmentation.
-            footprint (Literal['auto'] | int | np.ndarray | None): The structuring element
-                used in the watershed segmentation algorithm. Can be 'auto' for automatic
-                detection, an integer for a square structuring element of given size, a
-                numpy array defining a custom structuring element, or None for no footprint.
-            min_size (int): Minimum allowable size (in pixels) of segmented objects. Objects
-                below this size are removed during processing.
-            compactness (float): Compactness parameter for the watershed algorithm. Controls
-                the smoothness of segment boundaries. Larger values produce smoother, more
-                rounded segments.
-            border_size (int): Size of the border (in pixels) within which segmented objects
-                are removed. This helps to eliminate artifacts and unwanted objects at the
-                edges of the processed images.
+            gaussian_sigma (int): Standard deviation for Gaussian kernel in smoothing.
+            gaussian_mode (str): Mode for handling image boundaries in Gaussian smoothing.
+            gaussian_truncate (float): Truncate filter at this many standard deviations.
+            otsu_ignore_zeros (bool): Whether to ignore zero pixels in Otsu thresholding.
+            otsu_ignore_borders (bool): Whether to ignore border objects in Otsu detection.
+            mask_opener_footprint: Structuring element for morphological opening.
+            border_remover_size (int): Size of border to remove objects from.
+            small_object_min_size (int): Minimum size of objects to retain.
+            texture_scale (int): Scale parameter for Haralick texture features.
+            texture_warn (bool): Whether to warn on texture computation errors.
+            footprint: Deprecated, use mask_opener_footprint.
+            min_size: Deprecated, use small_object_min_size.
+            border_size: Deprecated, use border_remover_size.
         """
-        border_remover = BorderObjectRemover(border_size=border_size)
+        border_remover = BorderObjectRemover(border_size=border_remover_size)
         min_residual_reducer = MinResidualErrorReducer()
-        super().__init__(
-                ops=[
-                    GaussianSmoother(sigma=sigma),
-                    CLAHE(),
-                    MedianEnhancer(),
-                    SobelFilter(),
-                    OtsuDetector(ignore_borders=True),
-                    MaskOpener(footprint),
-                    border_remover,
-                    SmallObjectRemover(min_size),
-                    MaskFill(),
-                    GridOversizedObjectRemover(),
-                    min_residual_reducer,
-                    GridAligner(),
-                    OtsuDetector(ignore_borders=True),
-                    MaskOpener(),
-                    border_remover,
-                    SmallObjectRemover(min_size),
-                    GridOversizedObjectRemover(),
-                    min_residual_reducer,
-                    MaskFill()
-                ],
-                meas=[
-                    MeasureShape(),
-                    MeasureColor(),
-                    MeasureTexture(scale=scale),
-                    MeasureIntensity()
-                ], benchmark=benchmark, **kwargs
-        )
+
+        self._ops = [
+            GaussianSmoother(sigma=gaussian_sigma, mode=gaussian_mode, truncate=gaussian_truncate),
+            CLAHE(),
+            MedianEnhancer(),
+            SobelFilter(),
+            OtsuDetector(ignore_zeros=otsu_ignore_zeros, ignore_borders=otsu_ignore_borders),
+            MaskOpener(footprint=mask_opener_footprint),
+            border_remover,
+            SmallObjectRemover(min_size=small_object_min_size),
+            MaskFill(),
+            GridOversizedObjectRemover(),
+            min_residual_reducer,
+            GridAligner(),
+            OtsuDetector(ignore_zeros=otsu_ignore_zeros, ignore_borders=otsu_ignore_borders),
+            MaskOpener(footprint=None),
+            border_remover,
+            SmallObjectRemover(min_size=small_object_min_size),
+            GridOversizedObjectRemover(),
+            min_residual_reducer,
+            MaskFill()
+        ]
+
+        self._meas = [
+            MeasureShape(),
+            MeasureColor(),
+            MeasureTexture(scale=texture_scale, warn=texture_warn),
+            MeasureIntensity()
+        ]
+        super().__init__(benchmark=benchmark, verbose=verbose)

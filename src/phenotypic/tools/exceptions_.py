@@ -146,7 +146,7 @@ class NoObjectsError(AttributeError):
     def __init__(self, image_name=None):
         image_str = f' "{image_name}"' if image_name else ""
         super().__init__(
-                f"No objects currently in _root_image:{image_str}. Apply a `Detector` to the Image object first or access _root_image-wide information using Image.props",
+                f"No objects currently in image:{image_str}. Apply a `Detector` to the Image object first or access image-wide information using Image.props",
         )
 
 
@@ -192,7 +192,7 @@ class ArrayKeyValueShapeMismatchError(ValueError):
 
     def __init__(self):
         super().__init__(
-            "The shape of the array being set does not match the shape of the section indicated being accessed")
+                "The shape of the array being set does not match the shape of the section indicated being accessed")
 
 
 class InputShapeMismatchError(ValueError):
@@ -217,7 +217,7 @@ class InvalidMaskScalarValueError(ValueError):
 
     def __init__(self):
         super().__init__(
-            "The scalar other_image could not be converted to a boolean other_image. If other_image is an integer, it should be either 0 or 1.")
+                "The scalar other_image could not be converted to a boolean other_image. If other_image is an integer, it should be either 0 or 1.")
 
 
 # Object map exceptions

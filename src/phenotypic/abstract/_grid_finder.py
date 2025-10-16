@@ -143,5 +143,41 @@ class GridFinder(GridMeasureFeatures, ABC):
         for idx in np.sort(np.unique(table.loc[:, str(GRID.SECTION_IDX)].values)):
             table.loc[table.loc[:, str(GRID.SECTION_IDX)] == idx, str(GRID.SECTION_NUM)] = idx_map[idx[0], idx[1]]
 
-        table.loc[:, str(GRID.SECTION_NUM)] = table.loc[:, str(GRID.SECTION_NUM)].astype('category')
+        # Explicitly convert to int before converting to category to avoid pandas FutureWarning
+        table.loc[:, str(GRID.SECTION_NUM)] = table.loc[:, str(GRID.SECTION_NUM)].astype(int).astype('category')
         return table
+
+    def _get_grid_info(self, image: Image, row_edges: np.ndarray, col_edges: np.ndarray) -> pd.DataFrame:
+        """
+        Assembles complete grid information DataFrame from row and column edges.
+
+        This method takes pre-computed row and column edges and creates a complete
+        grid information table by adding row numbers, column numbers, intervals,
+        and section identifiers to the object information from the image.
+
+        Args:
+            image (Image): The image containing objects to be gridded.
+            row_edges (np.ndarray): Array of row edge coordinates defining grid rows.
+            col_edges (np.ndarray): Array of column edge coordinates defining grid columns.
+
+        Returns:
+            pd.DataFrame: Complete grid information table with row/column numbers,
+                intervals, section indices, and section numbers.
+        """
+        info_table = image.objects.info(include_metadata=False)
+
+        # Add row information
+        info_table = self._add_row_number_info(table=info_table, row_edges=row_edges, imshape=image.shape)
+        info_table = self._add_row_interval_info(table=info_table, row_edges=row_edges, imshape=image.shape)
+
+        # Add column information
+        info_table = self._add_col_number_info(table=info_table, col_edges=col_edges, imshape=image.shape)
+        info_table = self._add_col_interval_info(table=info_table, col_edges=col_edges, imshape=image.shape)
+
+        # Add section information
+        info_table = self._add_section_interval_info(table=info_table, row_edges=row_edges, col_edges=col_edges,
+                                                     imshape=image.shape)
+        info_table = self._add_section_number_info(table=info_table, row_edges=row_edges, col_edges=col_edges,
+                                                   imshape=image.shape)
+
+        return info_table

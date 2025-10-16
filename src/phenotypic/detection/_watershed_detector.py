@@ -55,7 +55,7 @@ class WatershedDetector(ThresholdDetector):
                  relabel: bool = True,
                  ignore_zeros: bool = True):
         super().__init__()
-        
+
         match footprint:
             case x if isinstance(x, int):
                 self.footprint = morphology.diamond(footprint)
@@ -72,11 +72,9 @@ class WatershedDetector(ThresholdDetector):
         self.relabel = relabel
         self.ignore_zeros = ignore_zeros
 
-
-
-
     def _operate(self, image: Image | GridImage) -> Image:
         from phenotypic import Image, GridImage
+
         enhanced_matrix = image._data.enh_matrix  # direct access to reduce memory footprint, but careful to not delete
         self._log_memory_usage("getting enhanced matrix")
 
@@ -143,7 +141,7 @@ class WatershedDetector(ThresholdDetector):
 
         # Memory-intensive watershed operation - detailed tracking
         self._log_memory_usage("before watershed segmentation",
-                              include_process=True, include_tracemalloc=True)
+                               include_process=True, include_tracemalloc=True)
 
         objmap = segmentation.watershed(
                 image=gradient,
@@ -154,7 +152,7 @@ class WatershedDetector(ThresholdDetector):
         )
 
         self._log_memory_usage("after watershed segmentation",
-                              include_process=True, include_tracemalloc=True)
+                               include_process=True, include_tracemalloc=True)
         if objmap.dtype != np.uint16:
             objmap = objmap.astype(image._OBJMAP_DTYPE)
 
@@ -166,6 +164,6 @@ class WatershedDetector(ThresholdDetector):
 
         # Final comprehensive memory report
         self._log_memory_usage("final cleanup and relabeling",
-                              include_process=True, include_tracemalloc=True)
+                               include_process=True, include_tracemalloc=True)
 
         return image

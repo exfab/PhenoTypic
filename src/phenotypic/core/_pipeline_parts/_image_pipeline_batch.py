@@ -113,7 +113,7 @@ class ImagePipelineBatch(ImagePipelineCore):
                     include_metadata=include_metadata,
             )
         elif isinstance(image, pt.ImageSet):
-            return self._coordinator(image, mode="apply_and_measure", num_workers=self.num_workers)
+            return self._coordinator(image, mode="apply_and_measure", num_workers=self.num_workers, reset=reset)
         else:
             raise TypeError("image must be Image or ImageSet")
 
@@ -127,6 +127,7 @@ class ImagePipelineBatch(ImagePipelineCore):
                      *,
                      mode: str,
                      num_workers: Optional[int] = None,
+                     reset: bool = True,
                      ) -> Union[pd.DataFrame, None]:
         assert self.num_workers >= 2, 'Not enough cores to run image set in parallel'
         logger = logging.getLogger('ImagePipeline.coordinator')
@@ -213,7 +214,8 @@ class ImagePipelineBatch(ImagePipelineCore):
                                     meas_ops=self._meas,
                                     work_q=work_q,
                                     results_q=results_q,
-                                    mode=mode),
+                                    mode=mode,
+                                    reset=reset),
                         daemon=False,
                 )
                 for _ in range(self.num_workers - 1)
@@ -285,8 +287,9 @@ class ImagePipelineBatch(ImagePipelineCore):
     def _get_measurements_dtypes_for_swmr(self) -> pd.DataFrame:
         # needed for dtype detection
         from phenotypic.data import load_synthetic_colony
+        from phenotypic import GridImage
 
-        test_image = load_synthetic_colony(mode='Image')  # This is a tiny image for fast execution of measurements
+        test_image = GridImage(load_synthetic_colony(mode='array'))  # This is a tiny image for fast execution of measurements
         try:
             meas = super().measure(test_image, include_metadata=False)
         except KeyboardInterrupt:
@@ -392,13 +395,16 @@ class ImagePipelineBatch(ImagePipelineCore):
     def _worker(cls, ops, meas_ops,
                 work_q: _mp.Queue[bytes | None],
                 results_q: _mp.Queue[Tuple[str, bytes, bytes]],
-                mode: Literal['apply', 'measure', 'apply_and_measure']
+                mode: Literal['apply', 'measure', 'apply_and_measure'],
+                reset: bool
                 ) -> None:
-        logger = logging.getLogger(f"ImagePipeline.worker")
+        logger = logging.getLogger(f"ImagePipeline._worker()")
         worker_pid = os.getpid()
         logger.info(f"Worker started - PID: {worker_pid}, Mode: {mode}")
 
-        pipe = cls(ops, meas_ops, benchmark=False, verbose=False)
+        pipe = cls(benchmark=False, verbose=False)
+        pipe._ops = ops
+        pipe._meas = meas_ops
         while True:
             image = work_q.get()
             if image is None:  # Sentinel
@@ -407,14 +413,15 @@ class ImagePipelineBatch(ImagePipelineCore):
                 break
 
             else:
-                # default image name and meas value
                 image = pickle.loads(image)
+                
+                # default image name and meas value
                 image_name, meas = image.name, b''
 
                 logger.info(f'Starting processing of image {image.name} (PID: {worker_pid})')
                 if mode == 'apply' or mode == 'apply_and_measure':
                     try:
-                        pipe.apply(image, inplace=True)
+                        pipe.apply(image, inplace=True, reset=reset)
                         logger.debug(f'Image {image_name} successfully processed.')
                     except KeyboardInterrupt:
                         raise KeyboardInterrupt

@@ -211,8 +211,7 @@ class ImagePipelineCore(BaseOperation):
                         print(f"  Applying operation: {key}")
 
                 # Measure execution time if benchmarking is enabled
-                if self._benchmark:
-                    start_time = time.time()
+                if self._benchmark: start_time = time.time()
 
                 sig = inspect.signature(operation.apply)
                 if 'inplace' in sig.parameters:

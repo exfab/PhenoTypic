@@ -2,13 +2,16 @@
 
 ## Overview
 
-PhenoTypic implements a modular bio-image processing framework using several established design patterns. This document outlines the key design patterns used throughout the codebase with Mermaid diagrams illustrating their implementation and relationships.
+PhenoTypic implements a modular bio-image processing framework using several established design patterns. This document
+outlines the key design patterns used throughout the codebase with Mermaid diagrams illustrating their implementation
+and relationships.
 
 ---
 
 ## 1. Strategy Pattern - Pluggable Operations & Measurements
 
-The Strategy pattern is extensively used for operations and measurements, allowing users to swap algorithms dynamically without changing the core processing logic.
+The Strategy pattern is extensively used for operations and measurements, allowing users to swap algorithms dynamically
+without changing the core processing logic.
 
 ```mermaid
 graph TD
@@ -28,6 +31,7 @@ graph TD
 ```
 
 ### Code Implementation
+
 ```python
 # Abstract Strategy Interface
 class ImageOperation(BaseOperation):
@@ -61,7 +65,8 @@ result = pipeline.apply_and_measure(image)
 
 ## 2. Template Method Pattern - Abstract Base Classes
 
-The Template Method pattern is used extensively in abstract base classes to define the skeleton of algorithms while allowing subclasses to customize specific steps.
+The Template Method pattern is used extensively in abstract base classes to define the skeleton of algorithms while
+allowing subclasses to customize specific steps.
 
 ```mermaid
 graph TD
@@ -82,6 +87,7 @@ graph TD
 ```
 
 ### Code Implementation
+
 ```python
 class BaseOperation:
     def _get_matched_operation_args(self):
@@ -127,23 +133,22 @@ The pipeline system uses the Composite pattern to treat individual operations an
 graph TD
     A[Component Interface] --> B[ImageOperation]
     A --> C[Composite: ImagePipeline]
-
     C --> D[Children: List of Operations]
     D --> E[Operation 1: OtsuDetector]
     D --> F[Operation 2: GaussianSmoother]
     D --> G[Operation 3: MeasureShape]
-
     H[Client Code] --> I[Uniform Interface]
     I --> J[Single Operation: pipeline.apply(op, image)]
-    I --> K[Composite Pipeline: pipeline.apply(ops_list, image)]
+I --> K[Composite Pipeline: pipeline.apply(ops_list, image)]
 
-    C --> L[Composite Methods]
-    L --> M[add_operation]
-    L --> N[remove_operation]
-    L --> O[apply_all]
+C --> L[Composite Methods]
+L --> M[add_operation]
+L --> N[remove_operation]
+L --> O[apply_all]
 ```
 
 ### Code Implementation
+
 ```python
 class ImagePipeline(ImagePipelineCore):
     """Composite that manages collection of operations"""
@@ -206,6 +211,7 @@ graph TD
 ```
 
 ### Code Implementation
+
 ```python
 class PipelineObserver:
     """Observer interface"""
@@ -284,6 +290,7 @@ graph TD
 ```
 
 ### Code Implementation
+
 ```python
 class Image(ImageIOHandler):
     """
@@ -344,6 +351,7 @@ graph TD
 ```
 
 ### Code Implementation
+
 ```python
 # Command Interface
 class Command:
@@ -432,6 +440,7 @@ graph TD
 ```
 
 ### Code Implementation
+
 ```python
 class OperationFactory:
     """Factory for creating image operations"""
@@ -452,6 +461,7 @@ class OperationFactory:
     @classmethod
     def get_available_operations(cls):
         return list(cls._registry.keys())
+
 
 # Registration
 OperationFactory.register('otsu', OtsuDetector)
@@ -495,6 +505,7 @@ graph TD
 ```
 
 ### Code Implementation
+
 ```python
 # Decorator Base Class
 class OperationDecorator(ImageOperation):
@@ -573,6 +584,7 @@ graph TD
 ```
 
 ### Code Implementation
+
 ```python
 class ImageIterator:
     """Iterator interface"""
@@ -651,6 +663,7 @@ graph TD
 ```
 
 ### Key Interactions:
+
 1. **Strategy + Template Method**: Strategies implement template method hooks
 2. **Composite + Observer**: Pipeline notifies observers of composite operations
 3. **Facade + Command**: Facade simplifies command execution
@@ -662,7 +675,8 @@ graph TD
 
 ## Summary
 
-PhenoTypic demonstrates sophisticated use of design patterns to create a flexible, extensible bio-image processing framework:
+PhenoTypic demonstrates sophisticated use of design patterns to create a flexible, extensible bio-image processing
+framework:
 
 - **Strategy Pattern** enables pluggable operations and measurements
 - **Template Method** provides consistent operation frameworks
@@ -674,4 +688,5 @@ PhenoTypic demonstrates sophisticated use of design patterns to create a flexibl
 - **Decorator Pattern** adds cross-cutting concerns like logging and timing
 - **Iterator Pattern** provides flexible collection traversal
 
-This combination of patterns results in a framework that is both powerful for advanced users and accessible to entry-level data scientists, while maintaining clean, maintainable code architecture.
+This combination of patterns results in a framework that is both powerful for advanced users and accessible to
+entry-level data scientists, while maintaining clean, maintainable code architecture.

@@ -27,11 +27,18 @@ class GaussianSmoother(ImageEnhancer):
             to None for grayscale images. Default is None.
     """
 
-    def __init__(self, sigma=2, mode='reflect', truncate=4.0, channel_axis=None):
-        self.sigma = sigma
-        self.mode = mode
+    def __init__(self, sigma: int = 2, mode: str = 'reflect', truncate: float = 4.0):
+        if isinstance(sigma, int):
+            self.sigma = sigma
+        else:
+            raise TypeError('sigma must be an integer')
+
+        if mode in ['reflect', 'constant', 'nearest']:
+            self.mode = mode
+        else:
+            raise ValueError('mode must be one of "reflect", "constant", "nearest"')
+        
         self.truncate = truncate
-        self.channel_axis = channel_axis
 
     def _operate(self, image: Image) -> Image:
         image.enh_matrix[:] = gaussian(
@@ -39,6 +46,6 @@ class GaussianSmoother(ImageEnhancer):
                 sigma=self.sigma,
                 mode=self.mode,
                 truncate=self.truncate,
-                channel_axis=self.channel_axis
+                channel_axis=-1
         )
         return image

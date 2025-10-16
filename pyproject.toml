@@ -60,6 +60,13 @@ dev = [
     "pytest>=8.4.0",
     "pytest-cov",
     "mypy",
+    "pytest-xdist>=3.8.0",
+    "pympler; sys_platform!='win32'",
+    "jupyter;sys_platform!='win32'",
+    "ipykernel;sys_platform!='win32'",
+    "notebook;sys_platform!='win32'",
+]
+docs = [
     "sphinx",
     "sphinxcontrib-napoleon",
     "sphinx-autodoc-typehints",
@@ -69,13 +76,8 @@ dev = [
     "sphinx-gallery",
     "sphinx-autosummary-accessors",
     "sphinx-design",
-    "pytest-xdist>=3.8.0",
-    "pympler; sys_platform!='win32'",
-    "jupyter;sys_platform!='win32'",
-    "ipykernel;sys_platform!='win32'",
     "nbsphinx;sys_platform!='win32' and python_version=='3.10'",
     "myst-nb;sys_platform!='win32' and python_version=='3.10'",
-    "notebook;sys_platform!='win32'",
 ]
 
 [tool.pytest.ini_options]
