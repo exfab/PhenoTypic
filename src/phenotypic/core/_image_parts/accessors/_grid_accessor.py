@@ -12,7 +12,7 @@ from skimage.color import label2rgb
 
 import phenotypic
 from phenotypic.core._image_parts.accessor_abstracts import ImageAccessorBase
-from phenotypic.tools.constants_ import METADATA, IMAGE_TYPES, BBOX, GRID
+from phenotypic.tools.constants_ import METADATA, IMAGE_TYPES, BBOX, GRID, OBJECT
 from phenotypic.tools.exceptions_ import NoObjectsError
 
 
@@ -271,18 +271,18 @@ class GridAccessor(ImageAccessorBase):
         grid_info = self.info()
 
         section_map = self._root_image.objmap[:]
-        for n, bidx in enumerate(np.sort(grid_info.loc[:, str(GRID.SECTION_NUM)].unique())):
-            subtable = grid_info.loc[grid_info.loc[:, str(GRID.SECTION_NUM)] == bidx, :]
+        for n, bidx in enumerate(np.sort(grid_info.loc[:, GRID.SECTION_NUM].unique())):
+            subtable = grid_info.loc[grid_info.loc[:, GRID.SECTION_NUM] == bidx, :]
             section_map[np.isin(
                     element=self._root_image.objmap[:],
-                    test_elements=subtable.index.to_numpy(),
+                    test_elements=subtable.loc[:, OBJECT.LABEL].to_numpy(),
             )] = n + 1
 
         return section_map
 
     def get_section_counts(self, ascending=False) -> pd.DataFrame:
         """Returns a sorted dataframe with the number of objects within each section"""
-        return self.info().loc[:, str(GRID.SECTION_NUM)].value_counts().sort_values(ascending=ascending)
+        return self.info().loc[:, GRID.SECTION_NUM].value_counts().sort_values(ascending=ascending)
 
     def get_info_by_section(self, section_number):
         """ Get the grid info based on the section. Can be accessed by section number or row/column label_subset

@@ -68,33 +68,35 @@ class OptimalBinsGridFinder(GridFinder):
             pd.DataFrame: A DataFrame containing the grid results including boundary intervals, grid indices, and section
             numbers corresponding to the segmented arr image.
         """
-        # Get optimal row and column edges
-        row_edges = self.get_row_edges(image)
-        col_edges = self.get_col_edges(image)
+        # Find the centroid and boundaries
+        obj_info = image.objects.info(include_metadata=False)
 
-        # Use base class method to assemble grid info
-        return self._get_grid_info(image=image, row_edges=row_edges, col_edges=col_edges)
+        # W Find row padding search boundaries
+        min_rr, max_rr = obj_info.loc[:, str(BBOX.MIN_RR)].min(), obj_info.loc[:, str(BBOX.MAX_RR)].max()
+        max_row_pad_size = min(min_rr - 1, abs(image.shape[0] - max_rr - 1))
+        max_row_pad_size = 0 if max_row_pad_size < 0 else max_row_pad_size  # Clip in case pad size is negative
+
+        partial_row_pad_finder = partial(self._find_padding_midpoint_error, image=image, axis=0, row_pad=0, col_pad=0)
+        optimal_row_padding = int(self._apply_solver(partial_row_pad_finder, max_value=max_row_pad_size, min_value=0))
+
+        # Column Padding
+
+        ## Find column padding search boundaries
+        min_cc, max_cc = obj_info.loc[:, str(BBOX.MIN_CC)].min(), obj_info.loc[:, str(BBOX.MAX_CC)].max()
+        max_col_pad_size = min(min_cc - 1, abs(image.shape[1] - max_cc - 1))
+        max_col_pad_size = 0 if max_col_pad_size < 0 else max_col_pad_size  # Clip in case pad size is negative
+
+        partial_col_pad_finder = partial(self._find_padding_midpoint_error, image=image, axis=1, row_pad=0, col_pad=0)
+        optimal_col_padding = self._apply_solver(partial_col_pad_finder, max_value=max_col_pad_size, min_value=0)
+
+        return self._get_grid_info(image=image, row_padding=optimal_row_padding, column_padding=optimal_col_padding)
 
     def _find_padding_midpoint_error(self, pad_sz, image, axis, row_pad=0, col_pad=0) -> float:
         """
-        Calculates the mean squared error between object midpoints and grid bin midpoints.
 
-        Args:
-            pad_sz: Padding size to test.
-            image: Image object.
-            axis: 0 for rows, 1 for columns.
-            row_pad: Row padding (used when optimizing columns).
-            col_pad: Column padding (used when optimizing rows).
-
-        Returns:
-            float: Mean squared error between object and bin midpoints.
         """
-        obj_info = image.objects.info(include_metadata=False)
-
         if axis == 0:
-            row_edges = self._get_row_edges(image=image, row_padding=pad_sz, info_table=obj_info)
-            col_edges = self._get_col_edges(image=image, column_padding=col_pad, info_table=obj_info)
-            current_grid_info = self._get_grid_info(image=image, row_edges=row_edges, col_edges=col_edges)
+            current_grid_info = self._get_grid_info(image=image, row_padding=pad_sz, column_padding=col_pad)
             current_obj_midpoints = (current_grid_info.loc[:, [str(BBOX.CENTER_RR), str(GRID.ROW_NUM)]]
                                      .groupby(str(GRID.ROW_NUM), observed=False)[str(BBOX.CENTER_RR)]
                                      .mean().values)
@@ -109,9 +111,7 @@ class OptimalBinsGridFinder(GridFinder):
             )
 
         elif axis == 1:
-            row_edges = self._get_row_edges(image=image, row_padding=row_pad, info_table=obj_info)
-            col_edges = self._get_col_edges(image=image, column_padding=pad_sz, info_table=obj_info)
-            current_grid_info = self._get_grid_info(image=image, row_edges=row_edges, col_edges=col_edges)
+            current_grid_info = self._get_grid_info(image=image, row_padding=row_pad, column_padding=pad_sz)
             current_obj_midpoints = (current_grid_info.loc[:, [str(BBOX.CENTER_CC), str(GRID.COL_NUM)]]
                                      .groupby(str(GRID.COL_NUM), observed=False)[str(BBOX.CENTER_CC)]
                                      .mean().values)
@@ -254,6 +254,67 @@ class OptimalBinsGridFinder(GridFinder):
                 info_table=image.objects.info(include_metadata=False),
         )
 
+    def _get_grid_info(self, image: Image, row_padding: int = 0, column_padding: int = 0) -> pd.DataFrame:
+        info_table = image.objects.info(include_metadata=False)
+
+        row_edges = self._get_row_edges(image=image, row_padding=row_padding, info_table=info_table)
+
+        # Add row number info
+        info_table.loc[:, str(GRID.ROW_NUM)] = pd.cut(
+                info_table.loc[:, str(BBOX.CENTER_RR)],
+                bins=row_edges,
+                labels=range(self.nrows),
+                include_lowest=True,
+                right=True,
+        )
+
+        # Add row interval info
+        info_table.loc[:, str(GRID.ROW_INTERVAL)] = pd.cut(
+                info_table.loc[:, str(BBOX.CENTER_RR)],
+                bins=row_edges,
+                labels=[(row_edges[i], row_edges[i + 1]) for i in range(len(row_edges) - 1)],
+                include_lowest=True,
+                right=True,
+        )
+
+        # Grid Columns
+        col_edges = self._get_col_edges(image=image, column_padding=column_padding, info_table=info_table)
+
+        # Add column number info
+        info_table.loc[:, str(GRID.COL_NUM)] = pd.cut(
+                info_table.loc[:, str(BBOX.CENTER_CC)],
+                bins=col_edges,
+                labels=range(self.ncols),
+                include_lowest=True,
+                right=True,
+        )
+
+        # Add column interval info
+        info_table.loc[:, str(GRID.COL_INTERVAL)] = pd.cut(
+                info_table.loc[:, str(BBOX.CENTER_CC)],
+                bins=col_edges,
+                labels=[(col_edges[i], col_edges[i + 1]) for i in range(len(col_edges) - 1)],
+                include_lowest=True,
+                right=True,
+        )
+
+        # Grid Section Info
+        info_table.loc[:, str(GRID.SECTION_IDX)] = list(zip(
+                info_table.loc[:, str(GRID.ROW_NUM)],
+                info_table.loc[:, str(GRID.COL_NUM)],
+        ),
+        )
+
+        idx_map = np.reshape(np.arange(self.nrows*self.ncols), newshape=(self.nrows, self.ncols))
+        for idx in np.sort(np.unique(info_table.loc[:, str(GRID.SECTION_IDX)].values)):
+            info_table.loc[info_table.loc[:, str(GRID.SECTION_IDX)] == idx, str(GRID.SECTION_NUM)] = idx_map[
+                idx[0], idx[1]]
+
+        # Reduce memory consumption with categorical labels
+        info_table.loc[:, str(GRID.SECTION_IDX)] = info_table.loc[:, str(GRID.SECTION_IDX)].astype('category')
+        info_table[str(GRID.SECTION_NUM)] = info_table[str(GRID.SECTION_NUM)].astype(int).astype('category')
+
+        return info_table
 
     def _apply_solver(self, partial_cost_func, max_value, min_value=0) -> int:
         """Returns the optimal padding other_image that minimizes the mean squared differences between the object midpoints and grid midpoints."""
