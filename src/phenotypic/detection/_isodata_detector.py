@@ -3,22 +3,22 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING: from phenotypic import Image
-from skimage.filters import threshold_otsu
+from skimage.filters import threshold_isodata
 from skimage.segmentation import clear_border
 
 from ..abstract import ThresholdDetector
 
 
-class OtsuDetector(ThresholdDetector):
-    """Class for applying Otsu's thresholding to an image.
+class IsodataDetector(ThresholdDetector):
+    """Class for applying ISODATA thresholding to an image.
 
     This class inherits from the `ThresholdDetector` and provides the functionality
-    to apply Otsu's thresholding method on the enhancement matrix (`enh_matrix`) of an
+    to apply ISODATA thresholding method on the enhancement matrix (`enh_matrix`) of an
     arr image. The operation generates a binary mask (`objmask`) depending on the
     computed threshold other_image.
 
     Methods:
-        apply: Applies Otsu's thresholding on the arr image object and modifies its
+        apply: Applies ISODATA thresholding on the arr image object and modifies its
             omask attribute accordingly.
 
     """
@@ -28,11 +28,11 @@ class OtsuDetector(ThresholdDetector):
         self.ignore_borders = ignore_borders
 
     def _operate(self, image: Image) -> Image:
-        """Binarizes the given image matrix using the Otsu threshold method.
+        """Binarizes the given image matrix using the ISODATA threshold method.
 
         This function modifies the arr image by applying a binary mask to
         its enhanced matrix (`enh_matrix`). The binarization threshold is
-        automatically determined using Otsu's method. The resulting binary
+        automatically determined using ISODATA method. The resulting binary
         mask is stored in the image's `objmask` attribute.
 
         Args:
@@ -45,7 +45,7 @@ class OtsuDetector(ThresholdDetector):
         """
         enh_matrix = image.enh_matrix[:]
         nbins = 2 ** image.bit_depth
-        mask = image.enh_matrix[:] >= threshold_otsu(
+        mask = image.enh_matrix[:] >= threshold_isodata(
                 enh_matrix[enh_matrix != 0] if self.ignore_zeros else enh_matrix, nbins=nbins
         )
         mask = clear_border(mask) if self.ignore_borders else mask
@@ -54,4 +54,4 @@ class OtsuDetector(ThresholdDetector):
 
 
 # Set the docstring so that it appears in the sphinx documentation
-OtsuDetector.apply.__doc__ = OtsuDetector._operate.__doc__
+IsodataDetector.apply.__doc__ = IsodataDetector._operate.__doc__

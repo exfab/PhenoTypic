@@ -36,7 +36,8 @@ class TriangleDetector(ThresholdDetector):
         Returns:
             Image: The modified image object with an updated output mask (`omask`).
         """
-        image.objmask[:] = image.enh_matrix[:] >= threshold_triangle(image.enh_matrix[:])
+        nbins = 2 ** image.bit_depth
+        image.objmask[:] = image.enh_matrix[:] >= threshold_triangle(image.enh_matrix[:], nbins=nbins)
         return image
 
 

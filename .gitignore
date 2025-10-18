@@ -35,3 +35,4 @@ _JupyterPrototypes/
 .windsurf
 build
 .zed
+*.h5
