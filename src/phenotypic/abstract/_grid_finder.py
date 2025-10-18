@@ -143,7 +143,7 @@ class GridFinder(GridMeasureFeatures, ABC):
         for idx in np.sort(np.unique(table.loc[:, str(GRID.SECTION_IDX)].values)):
             table.loc[table.loc[:, str(GRID.SECTION_IDX)] == idx, str(GRID.SECTION_NUM)] = idx_map[idx[0], idx[1]]
 
-        table.loc[:, str(GRID.SECTION_NUM)] = table.loc[:, str(GRID.SECTION_NUM)].astype('category')
+        table.loc[:, str(GRID.SECTION_NUM)] = table.loc[:, str(GRID.SECTION_NUM)].astype(np.uint16).astype('category')
         return table
 
     def _get_grid_info(self, image: Image, row_edges: np.ndarray, col_edges: np.ndarray) -> pd.DataFrame:
@@ -164,19 +164,19 @@ class GridFinder(GridMeasureFeatures, ABC):
             pd.DataFrame: Complete grid information table with all metadata columns.
         """
         info_table = image.objects.info(include_metadata=False)
-        
+
         # Add row information
         info_table = self._add_row_number_info(table=info_table, row_edges=row_edges, imshape=image.shape)
         info_table = self._add_row_interval_info(table=info_table, row_edges=row_edges, imshape=image.shape)
-        
+
         # Add column information
         info_table = self._add_col_number_info(table=info_table, col_edges=col_edges, imshape=image.shape)
         info_table = self._add_col_interval_info(table=info_table, col_edges=col_edges, imshape=image.shape)
-        
+
         # Add section information
-        info_table = self._add_section_interval_info(table=info_table, row_edges=row_edges, 
+        info_table = self._add_section_interval_info(table=info_table, row_edges=row_edges,
                                                      col_edges=col_edges, imshape=image.shape)
-        info_table = self._add_section_number_info(table=info_table, row_edges=row_edges, 
+        info_table = self._add_section_number_info(table=info_table, row_edges=row_edges,
                                                    col_edges=col_edges, imshape=image.shape)
-        
+
         return info_table

@@ -208,6 +208,9 @@ def walk_package_for_measurements(pkg):
         ]
 
     seen = set()
+    # Classes that require constructor arguments and should be skipped in generic tests
+    skip_classes = {"ManualGridFinder"}
+    
     for mod in modules:
         if mod.__name__.startswith("_"):
             continue
@@ -219,7 +222,8 @@ def walk_package_for_measurements(pkg):
             if (inspect.ismodule(obj)
                     or inspect.isabstract(obj)
                     or not isinstance(obj, type)
-                    or not issubclass(obj, phenotypic.abstract.MeasureFeatures)):
+                    or not issubclass(obj, phenotypic.abstract.MeasureFeatures)
+                    or attr in skip_classes):
                 continue
 
             qualname = f"{mod.__name__}.{attr}"
