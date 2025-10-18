@@ -74,23 +74,6 @@ class GridFinder(GridMeasureFeatures, ABC):
         )
         return table
 
-    def _add_row_interval_info(self, table: pd.DataFrame, row_edges: np.array, imshape: (int, int)) -> pd.DataFrame:
-        row_edges = self._clip_row_edges(row_edges=row_edges, imshape=imshape)
-
-        # Get the bin indices
-        bin_indices = pd.cut(
-                table.loc[:, str(BBOX.CENTER_RR)],
-                bins=row_edges,
-                labels=False,
-                include_lowest=True,
-                right=True,
-        )
-
-        # Create start and end columns directly
-        table.loc[:, str(GRID.ROW_INTERVAL_START)] = [int(row_edges[i]) if pd.notna(i) else None for i in bin_indices]
-        table.loc[:, str(GRID.ROW_INTERVAL_END)] = [int(row_edges[i + 1]) if pd.notna(i) else None for i in bin_indices]
-
-        return table
 
     @staticmethod
     def _clip_col_edges(col_edges, imshape: (int, int, ...)) -> np.ndarray:
@@ -107,47 +90,37 @@ class GridFinder(GridMeasureFeatures, ABC):
         )
         return table
 
-    def _add_col_interval_info(self, table: pd.DataFrame, col_edges: np.array, imshape: (int, int)) -> pd.DataFrame:
-        col_edges = self._clip_col_edges(col_edges=col_edges, imshape=imshape)
-
-        # Get the bin indices
-        bin_indices = pd.cut(
-                table.loc[:, str(BBOX.CENTER_CC)],
-                bins=col_edges,
-                labels=False,
-                include_lowest=True,
-                right=True,
-        )
-
-        # Create start and end columns directly
-        table.loc[:, str(GRID.COL_INTERVAL_START)] = [int(col_edges[i]) if pd.notna(i) else None for i in bin_indices]
-        table.loc[:, str(GRID.COL_INTERVAL_END)] = [int(col_edges[i + 1]) if pd.notna(i) else None for i in bin_indices]
-
-        return table
-
-    def _add_section_interval_info(self, table: pd.DataFrame,
-                                   row_edges: np.array, col_edges: np.array,
-                                   imshape: (int, int)) -> pd.DataFrame:
-        if str(GRID.ROW_NUM) not in table.columns: self._add_row_number_info(table=table, row_edges=row_edges,
-                                                                             imshape=imshape)
-        if str(GRID.COL_NUM) not in table.columns: self._add_col_number_info(table=table, col_edges=col_edges,
-                                                                             imshape=imshape)
-        table.loc[:, str(GRID.SECTION_IDX)] = list(
-                zip(table.loc[:, str(GRID.ROW_NUM)], table.loc[:, str(GRID.COL_NUM)]))
-        table.loc[:, str(GRID.SECTION_IDX)] = table.loc[:, str(GRID.SECTION_IDX)].astype('category')
-        return table
 
     def _add_section_number_info(self, table: pd.DataFrame,
                                  row_edges: np.array, col_edges: np.array,
                                  imshape: (int, int)) -> pd.DataFrame:
-        if str(GRID.SECTION_IDX) not in table.columns: self._add_section_interval_info(
-                table=table, row_edges=row_edges, col_edges=col_edges, imshape=imshape
-        )
+        # Ensure ROW_NUM and COL_NUM exist
+        if str(GRID.ROW_NUM) not in table.columns:
+            self._add_row_number_info(table=table, row_edges=row_edges, imshape=imshape)
+        if str(GRID.COL_NUM) not in table.columns:
+            self._add_col_number_info(table=table, col_edges=col_edges, imshape=imshape)
+        
+        # Create section number directly from row and column indices
         idx_map = np.reshape(np.arange(self.nrows*self.ncols), (self.nrows, self.ncols))
-        for idx in np.sort(np.unique(table.loc[:, str(GRID.SECTION_IDX)].values)):
-            table.loc[table.loc[:, str(GRID.SECTION_IDX)] == idx, str(GRID.SECTION_NUM)] = idx_map[idx[0], idx[1]]
-
-        table.loc[:, str(GRID.SECTION_NUM)] = table.loc[:, str(GRID.SECTION_NUM)].astype(np.uint16).astype('category')
+        
+        # Compute section number for each row using vectorized operations
+        row_nums = table.loc[:, str(GRID.ROW_NUM)].values
+        col_nums = table.loc[:, str(GRID.COL_NUM)].values
+        
+        # Handle NaN values by masking
+        valid_mask = pd.notna(row_nums) & pd.notna(col_nums)
+        section_nums = np.full(len(table), np.nan)
+        
+        if valid_mask.any():
+            section_nums[valid_mask] = idx_map[
+                row_nums[valid_mask].astype(int), 
+                col_nums[valid_mask].astype(int)
+            ]
+        
+        # Create a new column with proper dtype handling
+        section_series = pd.Series(section_nums, index=table.index)
+        # Convert to nullable integer type first to handle NaN, then to categorical
+        table[str(GRID.SECTION_NUM)] = section_series.astype('Int64').astype(np.uint16).astype('category')
         return table
 
     def _get_grid_info(self, image: Image, row_edges: np.ndarray, col_edges: np.ndarray) -> pd.DataFrame:
@@ -155,9 +128,8 @@ class GridFinder(GridMeasureFeatures, ABC):
         Assembles complete grid information from row and column edges.
         
         This helper method takes pre-calculated edge coordinates and generates a complete
-        DataFrame with all grid metadata including row/column numbers, intervals, section
-        indices, and section numbers. This eliminates code duplication across different
-        GridFinder implementations.
+        DataFrame with all grid metadata including row/column numbers and section numbers.
+        This eliminates code duplication across different GridFinder implementations.
         
         Args:
             image (Image): The image object containing objects to be gridded.
@@ -165,21 +137,17 @@ class GridFinder(GridMeasureFeatures, ABC):
             col_edges (np.ndarray): Array of column edge coordinates (length = ncols + 1).
             
         Returns:
-            pd.DataFrame: Complete grid information table with all metadata columns.
+            pd.DataFrame: Complete grid information table with ROW_NUM, COL_NUM, and SECTION_NUM columns.
         """
         info_table = image.objects.info(include_metadata=False)
 
         # Add row information
         info_table = self._add_row_number_info(table=info_table, row_edges=row_edges, imshape=image.shape)
-        info_table = self._add_row_interval_info(table=info_table, row_edges=row_edges, imshape=image.shape)
 
         # Add column information
         info_table = self._add_col_number_info(table=info_table, col_edges=col_edges, imshape=image.shape)
-        info_table = self._add_col_interval_info(table=info_table, col_edges=col_edges, imshape=image.shape)
 
         # Add section information
-        info_table = self._add_section_interval_info(table=info_table, row_edges=row_edges,
-                                                     col_edges=col_edges, imshape=image.shape)
         info_table = self._add_section_number_info(table=info_table, row_edges=row_edges,
                                                    col_edges=col_edges, imshape=image.shape)
 

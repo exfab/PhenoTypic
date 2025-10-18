@@ -160,15 +160,6 @@ class GridAccessor(ImageAccessorBase):
 
     def get_col_edges(self) -> np.ndarray:
         """Returns the column edges of the grid"""
-        # intervals = self.info().loc[:, GRID_DEP.GRID_COL_INTERVAL]
-        # left_edges = intervals.apply(
-        #     lambda x: math.floor(x[0]) if math.floor(x[0]) > 0 else math.ceil(x[0])
-        # ).to_numpy()
-        # right_edges = intervals.apply(
-        #     lambda x: math.ceil(x[1]) if math.ceil(x[1]) > 0 else math.floor(x[1])
-        # ).to_numpy()
-        # edges = np.unique(np.concatenate([left_edges, right_edges]))
-        # return edges.astype(int)
         return self._root_image.grid_finder.get_col_edges(self._root_image)
 
     def get_col_map(self) -> np.ndarray:
@@ -213,15 +204,6 @@ class GridAccessor(ImageAccessorBase):
     # Optimize so it calls the grid finder's edges calculation
     def get_row_edges(self) -> np.ndarray:
         """Returns the row edges of the grid"""
-        # intervals = self.info().loc[:, str(GRID.ROW_INTERVAL)]
-        # left_edges = intervals.apply(
-        #     lambda x: math.floor(x[0]) if math.floor(x[0]) > 0 else math.ceil(x[0])
-        # ).to_numpy()
-        # right_edges = intervals.apply(
-        #     lambda x: math.ceil(x[1]) if math.ceil(x[1]) > 0 else math.floor(x[1])
-        # ).to_numpy()
-        # edges = np.unique(np.concatenate([left_edges, right_edges]))
-        # return edges.astype(int)
         return self._root_image.grid_finder.get_row_edges(self._root_image)
 
     def get_row_map(self) -> np.ndarray:

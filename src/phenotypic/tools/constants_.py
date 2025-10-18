@@ -126,15 +126,12 @@ class GRID(MeasurementInfo):
     ROW_NUM = 'RowNum', 'The row idx of the object'
     ROW_INTERVAL_START = 'RowIntervalStart', 'The start of the row interval of the object'
     ROW_INTERVAL_END = 'RowIntervalEnd', 'The end of the row interval of the object'
-    ROW_INTERVAL = 'RowInterval', 'The row interval of the object'
 
     COL_NUM = 'ColNum', 'The column idx of the object'
     COL_INTERVAL_START = 'ColIntervalStart', 'The start of the column interval of the object'
     COL_INTERVAL_END = 'ColIntervalEnd', 'The end of the column interval of the object'
-    COL_INTERVAL = 'ColInterval', 'The column interval of the object'
 
     SECTION_NUM = 'SectionNum', 'The section number of the object. Ordered left to right, top to bottom'
-    SECTION_IDX = 'SectionIndex', 'The section index of the object'
 
 
 # Feature extraction constants
