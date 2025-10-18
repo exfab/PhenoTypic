@@ -158,7 +158,7 @@ class MeasureTexture(MeasureFeatures):
     """
 
     def __init__(self, scale: int | List[int] = 5,
-                 quant_lvl: Literal[8, 16, 32, 64] = 32,
+                 quant_lvl: Literal[8, 16, 32, 64] = 64,
                  enhance: bool = False,
                  warn: bool = False):
         """
