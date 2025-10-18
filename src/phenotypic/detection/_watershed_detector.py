@@ -1,11 +1,13 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
 
-if TYPE_CHECKING: from phenotypic import Image
+if TYPE_CHECKING: from phenotypic import Image, GridImage
 
 from typing import Literal
+import gc
 
 import numpy as np
+import numpy.ma as ma
 import scipy.ndimage as ndimage
 from scipy.ndimage import distance_transform_edt
 from skimage import feature, filters, morphology, segmentation
@@ -94,29 +96,35 @@ class WatershedDetector(ThresholdDetector):
 
         # Prepare values for threshold calculation
         if self.ignore_zeros:
-            enh_vals = enhanced_matrix[enhanced_matrix != 0]
+            # Use masked array to avoid copying non-zero values
+            masked_enh = ma.masked_equal(enhanced_matrix, 0)
             # Safety check: if all values are zero, fall back to using all values
-            if len(enh_vals) == 0:
-                enh_vals = enhanced_matrix
-                threshold = filters.threshold_otsu(enh_vals)
+            if masked_enh.count() == 0:
+                threshold = filters.threshold_otsu(enhanced_matrix)
             else:
-                threshold = filters.threshold_otsu(enh_vals)
+                threshold = filters.threshold_otsu(masked_enh)
 
             # Create binary mask: zeros are always background, non-zeros compared to threshold
-            binary = (enhanced_matrix != 0) & (enhanced_matrix >= threshold)
+            binary = (enhanced_matrix >= threshold) & (enhanced_matrix != 0)
+            del masked_enh
         else:
-            enh_vals = enhanced_matrix
-            threshold = filters.threshold_otsu(enh_vals)
+            threshold = filters.threshold_otsu(enhanced_matrix)
             binary = enhanced_matrix >= threshold
 
-        del threshold, enh_vals  # don't need these after obtaining binary mask
+        del threshold  # don't need this after obtaining binary mask
         self._log_memory_usage("threshold calculation and binary mask creation")
 
         binary = morphology.remove_small_objects(binary, min_size=self.min_size)  # clean to reduce runtime
+        
+        # Ensure binary is contiguous for memory-efficient operations (only if needed)
+        if not binary.flags['C_CONTIGUOUS']:
+            binary = np.ascontiguousarray(binary)
 
         # Memory-intensive distance transform operation
         self._log_memory_usage("before distance transform", include_tracemalloc=True)
-        dist_matrix = distance_transform_edt(binary).astype(np.float32)
+        # Allocate float32 output directly to avoid intermediate float64 array
+        dist_matrix = np.empty(binary.shape, dtype=np.float64)
+        distance_transform_edt(binary, distances=dist_matrix)
         self._log_memory_usage("after distance transform", include_tracemalloc=True)
 
         max_peak_indices = feature.peak_local_max(
@@ -125,18 +133,21 @@ class WatershedDetector(ThresholdDetector):
                 labels=binary)
 
         del footprint, dist_matrix
+        gc.collect()  # Force garbage collection to free memory before watershed
         self._log_memory_usage("after peak detection", include_tracemalloc=True)
 
-        max_peaks = np.zeros(shape=enhanced_matrix.shape)
-        max_peaks[tuple(max_peak_indices.T)] = 1
+        # Create markers more efficiently: allocate once and label directly
+        max_peaks = np.zeros(shape=enhanced_matrix.shape, dtype=np.int32)
+        max_peaks[tuple(max_peak_indices.T)] = np.arange(1, len(max_peak_indices) + 1)
 
         del max_peak_indices
         self._log_memory_usage("creating max peaks array")
 
-        max_peaks, _ = ndimage.label(max_peaks)  # label peaks
-
         # Sobel filter enhances edges which improve watershed to nearly the point of necessity in most cases
         gradient = filters.sobel(enhanced_matrix)
+        # Convert to float32 and ensure contiguity in one step if needed
+        if gradient.dtype != np.float32 or not gradient.flags['C_CONTIGUOUS']:
+            gradient = np.asarray(gradient, dtype=np.float32, order='C')
         self._log_memory_usage("Sobel filter for gradient", include_tracemalloc=True)
 
         # Memory-intensive watershed operation - detailed tracking
@@ -157,6 +168,7 @@ class WatershedDetector(ThresholdDetector):
             objmap = objmap.astype(image._OBJMAP_DTYPE)
 
         del max_peaks, gradient, binary
+        gc.collect()  # Force garbage collection after watershed to free memory
 
         objmap = morphology.remove_small_objects(objmap, min_size=self.min_size)
         image.objmap[:] = objmap

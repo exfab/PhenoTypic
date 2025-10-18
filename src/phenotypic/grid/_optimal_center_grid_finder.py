@@ -47,8 +47,7 @@ class OptimalBinsGridFinder(GridFinder):
                 the predefined internal convergence limit if not provided.
 
         """
-        self.nrows: int = nrows
-        self.ncols: int = ncols
+        super().__init__(nrows=nrows, ncols=ncols)
 
         self.tol: float = tol
 
@@ -71,7 +70,7 @@ class OptimalBinsGridFinder(GridFinder):
         # Calculate optimal edges using optimization
         row_edges = self.get_row_edges(image)
         col_edges = self.get_col_edges(image)
-        
+
         # Use base class helper to assemble complete grid info
         return super()._get_grid_info(image=image, row_edges=row_edges, col_edges=col_edges)
 
@@ -90,12 +89,12 @@ class OptimalBinsGridFinder(GridFinder):
             float: Mean squared error between object and bin midpoints.
         """
         obj_info = image.objects.info(include_metadata=False)
-        
+
         if axis == 0:
             # Calculate row edges with current padding
             row_edges = self._get_row_edges(image=image, row_padding=pad_sz, info_table=obj_info)
             col_edges = self._get_col_edges(image=image, column_padding=col_pad, info_table=obj_info)
-            
+
             # Get grid info with these edges
             current_grid_info = super()._get_grid_info(image=image, row_edges=row_edges, col_edges=col_edges)
             current_obj_midpoints = (current_grid_info.loc[:, [str(BBOX.CENTER_RR), str(GRID.ROW_NUM)]]
@@ -115,7 +114,7 @@ class OptimalBinsGridFinder(GridFinder):
             # Calculate column edges with current padding
             row_edges = self._get_row_edges(image=image, row_padding=row_pad, info_table=obj_info)
             col_edges = self._get_col_edges(image=image, column_padding=pad_sz, info_table=obj_info)
-            
+
             # Get grid info with these edges
             current_grid_info = super()._get_grid_info(image=image, row_edges=row_edges, col_edges=col_edges)
             current_obj_midpoints = (current_grid_info.loc[:, [str(BBOX.CENTER_CC), str(GRID.COL_NUM)]]

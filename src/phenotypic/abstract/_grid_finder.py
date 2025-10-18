@@ -27,6 +27,10 @@ class GridFinder(GridMeasureFeatures, ABC):
 
     """
 
+    def __init__(self, nrows: int, ncols: int) -> None:
+        self.nrows = nrows
+        self.ncols = ncols
+
     @abc.abstractmethod
     def _operate(self, image: Image) -> pd.DataFrame:
         return pd.DataFrame()
