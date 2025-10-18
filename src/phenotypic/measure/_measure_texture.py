@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import functools
 from typing import List, Literal, TYPE_CHECKING
 
 if TYPE_CHECKING: from phenotypic import Image
@@ -9,7 +10,6 @@ import mahotas as mh
 import numpy as np
 import pandas as pd
 from skimage import exposure
-from skimage.util import img_as_ubyte
 
 from phenotypic.abstract import MeasureFeatures
 from phenotypic.tools.constants_ import OBJECT
@@ -140,21 +140,30 @@ class TEXTURE(MeasurementInfo):
 
 
 class MeasureTexture(MeasureFeatures):
-    """
-    Represents a measurement of texture features extracted from image objects.
+    """Provides functionality to measure texture features in an image using Haralick texture analysis.
 
-    This class is designed to calculate texture measurements derived from Haralick features,
-    tailored for segmented objects in an image. These features include statistical properties
-    that describe textural qualities, such as uniformity or variability, across different
-    directional orientations. The class leverages statistical methods and image processing
-    to extract meaningful characteristics applicable in image analysis tasks.
+    This class offers tools to extract texture features from foreground objects in an image, such
+    as Angular Second Moment, Contrast, Correlation, Variance, and Inverse Difference Moment.
+    These features are calculated over different directional orientations to quantify texture patterns
+    in segmented image objects.
 
     Attributes:
-        scale (int): The scale parameter used in the computation of texture features. It is
-            often used to define the spatial relationship between pixels.
+        scale (list[int]): A list of integer values representing the distance parameters used
+            to calculate Haralick features. Each value in the list corresponds to a scale at
+            which texture features are computed.
+        quant_lvl (Literal[8, 16, 32, 64]): The quantization level for processing image intensity.
+            Acceptable values are 8, 16, 32, or 64.
+        enhance (bool): A flag indicating whether to enhance the image before computing
+            texture measurements. Enhancement may improve feature detection but can introduce
+            bias in low-variance regions.
+        warn (bool): A flag determining if warnings should be issued during the computation process.
 
     References:
         [1] https://mahotas.readthedocs.io/en/latest/api.html#mahotas.features.haralick
+        [2] R. M. Haralick, K. Shanmugam, and I. Dinstein, “Textural Features for Image Classification,”
+                IEEE Transactions on Systems, Man, and Cybernetics, vol. SMC-3, no. 6, pp. 610–621, Nov. 1973,
+                doi: 10.1109/TSMC.1973.4309314.
+
     """
 
     def __init__(self, scale: int | List[int] = 5,
@@ -175,10 +184,10 @@ class MeasureTexture(MeasureFeatures):
                 Acceptable values are either 8, 16, 32, or 64.
             enhance (bool): A flag indicating whether to enhance the image before measuring texture. This can
                 increase the amount of detail captured but can bias the measurements in cases where the relative
-                variance between pixel intensities of an object are small
+                variance between pixel intensities of an object is small.
             warn (bool): A flag indicating whether warnings should be issued.
         """
-        if not hasattr(scale, "__getitem__"):
+        if not hasattr(scale, "__getitem__"):  # coerce iterable input
             scale = [scale]
 
         self.scale = scale
@@ -200,32 +209,29 @@ class MeasureTexture(MeasureFeatures):
             pd.DataFrame: A DataFrame containing texture measurements for each object in the image.
                 The nrows are indexed by object labels, and columns represent different texture features.
         """
-        meas = self._compute_haralick(image=image,
-                                      foreground_array=image.matrix.foreground(),
-                                      foreground_name='Gray',
-                                      scale=self.scale[0],
-                                      enhance=self.enhance,
-                                      warn=self.warn
-                                      )
+        compute_haralick = functools.partial(
+                self._compute_haralick,
+                image=image,
+                foreground_array=image.matrix.foreground(),
+                foreground_name='Gray',
+                quant_lvl=self.quant_lvl,
+                enhance=self.enhance,
+                warn=self.warn
+        )
+
+        meas = compute_haralick(scale=self.scale[0])
         if len(self.scale) > 1:
             for scale in self.scale[1:]:
-                meas.merge(self._compute_haralick(
-                        image=image,
-                        foreground_array=image.matrix.foreground(),
-                        foreground_name='Gray',
-                        scale=scale,
-                        quant_lvl=self.quant_lvl,
-                        enhance=self.enhance,
-                        warn=self.warn
-                ), on=OBJECT.LABEL, how='outer')
+                meas.merge(compute_haralick(scale=scale),
+                           on=OBJECT.LABEL, how='outer')
         return meas
 
     @staticmethod
     def _compute_haralick(image: Image, foreground_array: np.ndarray, foreground_name: str,
                           scale: int,
                           quant_lvl: int,
-                          enhance: bool = False,
-                          warn: bool = False,
+                          enhance: bool,
+                          warn: bool,
                           ) -> pd.DataFrame:
         """
         Computes texture feature measurements using Haralick features for objects in a given image. The method

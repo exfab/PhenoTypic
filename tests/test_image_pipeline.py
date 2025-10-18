@@ -47,8 +47,7 @@ def test_kmarx_pipeline(plate_grid_images):
                 'MeasureColor'    : MeasureColor(),
                 'MeasureShape'    : MeasureShape(),
                 'MeasureIntensity': MeasureIntensity(),
-                'MeasureTexture'  : MeasureTexture(scale=3),
-                'MeasureTexture2' : MeasureTexture(scale=4),
+                'MeasureTexture'  : MeasureTexture(scale=[3, 4], quant_lvl=8),
             }
     )
     output = kmarx_pipeline.apply(plate_grid_images)
