@@ -26,26 +26,65 @@ class ObjectMap(SingleChannelAccessor):
     """
 
     @property
+    def _backend(self):
+        """Returns the current sparse backend reference.
+        
+        This ensures we always access the live reference to the sparse object map,
+        even if it's been replaced by another operation.
+        """
+        return self._root_image._data.sparse_object_map
+    
+    @property
     def _num_objects(self):
         return len(self._labels)
 
     @property
     def _labels(self):
         """Returns the labels in the image."""
-        objmap = self._root_image._data.sparse_object_map.toarray()
+        objmap = self._backend.toarray()
         labels = np.unique(objmap)
         return labels[labels != 0]
+    
+    def __array__(self, dtype=None, copy=None):
+        """Implements the array interface for numpy compatibility.
+        
+        This allows numpy functions to operate on the dense form of the matrix.
+        For example: np.sum(objmap), np.max(objmap), etc.
+        
+        Args:
+            dtype: Optional dtype to cast the array to
+            copy: Optional copy parameter for NumPy 2.0+ compatibility
+            
+        Returns:
+            Dense numpy array representation of the object map
+        """
+        arr = self._backend.toarray()
+        if dtype is not None:
+            arr = arr.astype(dtype, copy=False if copy is None else copy)
+        elif copy:
+            arr = arr.copy()
+        return arr
 
     def __getitem__(self, key):
-        """Returns a copy of the object_map of the image."""
-        return self._root_image._data.sparse_object_map.toarray()[key]
+        """Returns a slice of the object_map as if it were a dense array.
+        
+        The slicing behavior matches numpy arrays, converting the sparse
+        representation to dense for the operation.
+        """
+        return self._backend.toarray()[key]
 
     def __setitem__(self, key, value):
-        """Uncompresses the csc array & changes the values at the specified coordinates before recompressing the object map array."""
-        dense = self._root_image._data.sparse_object_map.toarray()
+        """Sets values in the object map as if it were a dense array.
+        
+        Converts to dense, applies the update, then converts back to sparse.
+        The operation is atomic with respect to the backend reference.
+        """
+        # Get current backend and convert to dense once
+        dense = self._backend.toarray()
+        backend_dtype = self._backend.dtype
 
         if isinstance(value, np.ndarray):  # Array case
-            value = value.astype(self._root_image._data.sparse_object_map.dtype)
+            value = value.astype(backend_dtype)
             if dense[key].shape != value.shape:
                 raise ArrayKeyValueShapeMismatchError
             elif dense.dtype != value.dtype:
@@ -62,28 +101,30 @@ class ObjectMap(SingleChannelAccessor):
         # if 0 not in dense:
         #     dense = clear_border(dense, buffer_size=0, bgval=1)
 
-        self._root_image._data.sparse_object_map = self._dense_to_sparse(dense)
-        self._root_image._data.sparse_object_map.eliminate_zeros()  # Remove zero values to save space
+        # Update backend atomically
+        new_sparse = self._dense_to_sparse(dense)
+        new_sparse.eliminate_zeros()  # Remove zero values to save space
+        self._root_image._data.sparse_object_map = new_sparse
 
     @property
     def _subject_arr(self) -> np.ndarray:
-        return self._root_image._data.sparse_object_map.toarray()
+        return self._backend.toarray()
 
     @property
     def shape(self) -> tuple[int, int]:
-        return self._root_image._data.sparse_object_map.shape
+        return self._backend.shape
 
     def copy(self) -> np.ndarray:
         """Returns a copy of the object_map."""
-        return self._root_image._data.sparse_object_map.toarray().copy()
+        return self._backend.toarray().copy()
 
     def as_csc(self) -> csc_matrix:
         """Returns a copy of the object map as a compressed sparse column matrix"""
-        return self._root_image._data.sparse_object_map.tocsc()
+        return self._backend.tocsc()
 
     def as_coo(self) -> coo_matrix:
         """Returns a copy of the object map in COOrdinate format or ijv matrix"""
-        return self._root_image._data.sparse_object_map.tocoo()
+        return self._backend.tocoo()
 
     def show(self, figsize=None, title=None, cmap: str = 'tab20', ax: None | plt.Axes = None,
              mpl_params: None | dict = None) -> (
@@ -111,7 +152,7 @@ class ObjectMap(SingleChannelAccessor):
             tuple: A tuple containing the matplotlib Figure and Axes objects, where the
                 sparse object map is rendered.
         """
-        return self._plot(arr=self._root_image._data.sparse_object_map.toarray(),
+        return self._plot(arr=self._backend.toarray(),
                           figsize=figsize, title=title, ax=ax, cmap=cmap, mpl_settings=mpl_params,
                           )
 
@@ -120,9 +161,19 @@ class ObjectMap(SingleChannelAccessor):
         self._root_image._data.sparse_object_map = self._dense_to_sparse(self._root_image.matrix.shape)
 
     def relabel(self, connectivity: int = 1):
-        """Relabels all the objects based on their connectivity"""
-        self._root_image._data.sparse_object_map = self._dense_to_sparse(
-                label(self._root_image.objmask[:], connectivity=connectivity))
+        """Relabels all the objects based on their connectivity.
+        
+        This method relabels the object map using scikit-image's label function,
+        ensuring all connected components get unique labels.
+        
+        Args:
+            connectivity: Maximum number of orthogonal hops to consider a pixel/voxel 
+                         as a neighbor. Accepted values are 1 or 2 for 2D.
+        """
+        # Get the current mask and relabel it
+        mask = self._backend.toarray() > 0
+        relabeled = label(mask, connectivity=connectivity)
+        self._root_image._data.sparse_object_map = self._dense_to_sparse(relabeled)
 
     @staticmethod
     def _dense_to_sparse(arg) -> csc_matrix:

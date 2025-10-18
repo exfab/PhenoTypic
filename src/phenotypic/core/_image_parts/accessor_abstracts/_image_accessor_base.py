@@ -50,6 +50,26 @@ class ImageAccessorBase(ABC):
         """
         raise NotImplementedError("This property is abstract and must be implemented in a derived class.")
 
+    def __array__(self, dtype=None, copy=None):
+        """Implements the array interface for numpy compatibility.
+        
+        This allows numpy functions to operate directly on accessor objects.
+        For example: np.sum(accessor), np.mean(accessor), etc.
+        
+        Args:
+            dtype: Optional dtype to cast the array to
+            copy: Optional copy parameter for NumPy 2.0+ compatibility
+            
+        Returns:
+            np.ndarray: The underlying array data
+        """
+        arr = self._subject_arr
+        if dtype is not None:
+            arr = arr.astype(dtype, copy=False if copy is None else copy)
+        elif copy:
+            arr = arr.copy()
+        return arr
+
     @property
     def shape(self) -> Tuple[int, ...]:
         """

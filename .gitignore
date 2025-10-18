@@ -31,8 +31,11 @@ docs/build/*
 .junie
 debug/*.log
 _JupyterPrototypes/
-.cursor
-.windsurf
+**/.cursor
+**/.windsurf
 build
 .zed
 *.h5
+conda-recipe
+.run
+.ropeproject

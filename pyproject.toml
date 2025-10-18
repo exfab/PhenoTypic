@@ -47,7 +47,6 @@ dependencies = [
     "colour-science>=0.4.6",
     "rawpy;sys_platform!='win32'",
     "threadpoolctl>=3.6.0",
-    "pandas2hdf>=1.0.0",
     "pympler>=1.0.1",
 ]
 
@@ -76,8 +75,8 @@ docs = [
     "sphinx-gallery",
     "sphinx-autosummary-accessors",
     "sphinx-design",
-    "nbsphinx;sys_platform!='win32' and python_version=='3.10'",
-    "myst-nb;sys_platform!='win32' and python_version=='3.10'",
+    "nbsphinx",
+    "myst-nb",
 ]
 
 [tool.pytest.ini_options]
