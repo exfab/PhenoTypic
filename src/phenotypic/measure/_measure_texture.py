@@ -166,8 +166,9 @@ class MeasureTexture(MeasureFeatures):
 
     """
 
-    def __init__(self, scale: int | List[int] = 5,
-                 quant_lvl: Literal[8, 16, 32, 64] = 64,
+    def __init__(self,
+                 scale: int | List[int] = 5,
+                 quant_lvl: Literal[8, 16, 32, 64] = 32,
                  enhance: bool = False,
                  warn: bool = False):
         """
@@ -181,7 +182,7 @@ class MeasureTexture(MeasureFeatures):
                 converted into a list containing that integer.
             quant_lvl (Literal[8, 16, 32, 64]): The quantization level. A higher level adds
                 more computational complexity but increases detail captured.
-                Acceptable values are either 8, 16, 32, or 64.
+                Think of this like sensitivity to texture. Acceptable values are either 8, 16, 32, or 64.
             enhance (bool): A flag indicating whether to enhance the image before measuring texture. This can
                 increase the amount of detail captured but can bias the measurements in cases where the relative
                 variance between pixel intensities of an object is small.

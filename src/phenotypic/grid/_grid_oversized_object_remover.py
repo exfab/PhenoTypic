@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING: from phenotypic import GridImage
@@ -6,7 +7,7 @@ if TYPE_CHECKING: from phenotypic import GridImage
 import numpy as np
 
 from phenotypic.abstract import GridMapModifier
-from phenotypic.tools.constants_ import OBJECT, BBOX
+from phenotypic.tools.constants_ import BBOX, OBJECT
 
 
 class GridOversizedObjectRemover(GridMapModifier):
@@ -50,9 +51,9 @@ class GridOversizedObjectRemover(GridMapModifier):
                                      - grid_info.loc[:, str(BBOX.MIN_RR)]
 
         # Find objects that are past the max height & width
-        over_width_obj = grid_info.loc[grid_info.loc[:, 'width'] >= max_width, :].index.tolist()
+        over_width_obj = grid_info.loc[grid_info.loc[:, 'width'] >= max_width, OBJECT.LABEL].tolist()
 
-        over_height_obj = grid_info.loc[grid_info.loc[:, 'height'] >= max_height, :].index.tolist()
+        over_height_obj = grid_info.loc[grid_info.loc[:, 'height'] >= max_height, OBJECT.LABEL].tolist()
 
         # Create a numpy array with the objects to be removed
         obj_to_remove = np.array(over_width_obj + over_height_obj)
