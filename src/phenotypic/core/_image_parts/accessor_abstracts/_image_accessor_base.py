@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-import os
 from pathlib import Path
-from typing import TYPE_CHECKING, Tuple
+from typing import Tuple, TYPE_CHECKING
 
 import pandas as pd
 
@@ -13,7 +12,9 @@ import matplotlib.pyplot as plt
 from matplotlib.ticker import MultipleLocator
 import numpy as np
 
-from phenotypic.tools.constants_ import MPL, METADATA
+from phenotypic.tools.constants_ import MPL, METADATA, IO
+import warnings
+from phenotypic.tools.funcs_ import normalize_rgb_bitdepth
 from abc import ABC
 
 
@@ -84,6 +85,34 @@ class ImageAccessorBase(ABC):
         """
         return self._subject_arr.shape
 
+    @property
+    def ndim(self) -> int:
+        """
+        Returns the number of dimensions of the underlying array.
+
+        The `ndim` property provides access to the dimensionality of the array
+        being encapsulated in the object. This value corresponds to the number
+        of axes or dimensions the underlying array possesses. It can be useful
+        for understanding the structure of the contained data.
+
+        Returns:
+            int: The number of dimensions of the underlying array.
+        """
+        return self._subject_arr.ndim
+
+    @property
+    def size(self) -> int:
+        """
+        Gets the size of the subject array.
+
+        This property retrieves the total number of elements in the subject
+        array. It is read-only.
+
+        Returns:
+            int: The total number of elements in the subject array.
+        """
+        return self._subject_arr.size
+
     def val_range(self) -> pd.Interval:
         """
         Return the closed interval [min, max] of the subject array values.
@@ -135,7 +164,25 @@ class ImageAccessorBase(ABC):
         Raises:
             ValueError: If the dimensionality of the input image array is unsupported.
         """
-        match self._subject_arr.ndim:
+        arr = self._subject_arr
+        dtype = arr.dtype
+
+        if np.issubdtype(dtype, np.floating):
+            arr_min = arr.min()
+            arr_max = arr.max()
+            if arr_min < 0.0 or arr_max > 1.0:
+                raise ValueError(
+                        f"Float image arrays must be within [0.0, 1.0]. Found range [{arr_min}, {arr_max}].")
+            x_limits = (0.0, 1.0)
+        elif np.issubdtype(dtype, np.bool_):
+            x_limits = (0, 1)
+        elif np.issubdtype(dtype, np.integer):
+            dtype_info = np.iinfo(dtype)
+            x_limits = (dtype_info.min, dtype_info.max)
+        else:
+            raise TypeError(f"Unsupported image dtype for histogram plotting: {dtype}")
+
+        match self.ndim:
             case 2:
                 fig, axes = plt.subplots(nrows=1, ncols=2, figsize=figsize)
                 axes = axes.ravel()
@@ -144,15 +191,22 @@ class ImageAccessorBase(ABC):
                 hist, histc = ski.exposure.histogram(image=self._subject_arr[:],
                                                      nbins=2 ** self._root_image.metadata[METADATA.BIT_DEPTH])
                 axes[1].plot(histc, hist, lw=linewidth)
+                axes[1].set_xlim(x_limits)
+
             case 3:
                 fig, axes = plt.subplots(nrows=2, ncols=2, figsize=figsize)
-                axes[0] = self._plot(arr=self._subject_arr, figsize=figsize, title=self._root_image.name, ax=axes[0])
-                for idx, ax in enumerate(axes.ravel()):
-                    if idx == 0: continue
-                    hist, histc = ski.exposure.histogram(image=self._subject_arr[:, :, idx],
-                                                         nbins=2 ** self._root_image.metadata[METADATA.BIT_DEPTH])
-                    ax.plot(histc, hist, lw=linewidth)
-                    ax.set_title(f'Channel-{channel_names[idx - 1] if channel_names else idx}')
+
+                for idx, ax in enumerate(axes.flat):
+                    if idx == 0:
+                        self._plot(arr=self._subject_arr[:],
+                                   figsize=figsize, title=self._root_image.name,
+                                   ax=ax)
+                    else:
+                        hist, histc = ski.exposure.histogram(image=self._subject_arr[:, :, idx - 1],
+                                                             nbins=2 ** self._root_image.metadata[METADATA.BIT_DEPTH])
+                        ax.plot(histc, hist, lw=linewidth)
+                        ax.set_title(f'Channel-{channel_names[idx - 1] if channel_names else idx}')
+                        ax.set_xlim(x_limits)
 
             case _:
                 raise ValueError(f"Unsupported array dimension: {self._subject_arr.ndim}")
@@ -186,6 +240,7 @@ class ImageAccessorBase(ABC):
 
         """
         figsize = figsize if figsize else MPL.FIGSIZE
+
         fig, ax = (ax.get_figure(), ax) if ax else plt.subplots(figsize=figsize)
 
         mpl_settings = mpl_settings if mpl_settings else {}
@@ -193,26 +248,18 @@ class ImageAccessorBase(ABC):
 
         # matplotlib.imshow can only handle ranges 0-1 or 0-255
         # this adds handling for higher bit-depth images
-        max_val = arr.max()
-        if 0 <= max_val <= 1:
-            plot_arr = arr.copy().astype(np.float32)
-        elif 1 < max_val <= 255:
-            plot_arr = (arr.copy().astype(np.float32)/255).clip(0, 1)
-        elif 255 < max_val <= 65535:
-            plot_arr = (arr.copy().astype(np.float32)/65535.0).clip(0, 1)
-        else:
-            raise ValueError("Values exceed 16-bit range")
+        plot_arr = normalize_rgb_bitdepth(arr)
 
         ax.imshow(plot_arr, cmap=cmap, **mpl_settings) if plot_arr.ndim == 2 else ax.imshow(plot_arr, **mpl_settings)
 
         ax.grid(False)
-        arr_shape = arr.shape
 
-        if arr_shape[0] > 500:
-            ax.yaxis.set_minor_locator(MultipleLocator(100))
-
-        if arr_shape[1] > 500:
-            ax.xaxis.set_minor_locator(MultipleLocator(100))
+        # arr_shape = arr.shape
+        # if arr_shape[0] > 500:
+        #     ax.yaxis.set_minor_locator(MultipleLocator(100))
+        #
+        # if arr_shape[1] > 500:
+        #     ax.xaxis.set_minor_locator(MultipleLocator(100))
 
         if title is True:
             ax.set_title(self._root_image.name)

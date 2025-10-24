@@ -16,7 +16,7 @@ class GridOversizedObjectRemover(GridMapModifier):
 
     This class inherits from `GridMapModifier` and is designed to remove objects from the
     grid-based image representation that exceed the maximum allowable width or height of the
-    grid cells. The removal process sets the oversized object regions to the background other_image
+    grid cells. The removal process sets the oversized object regions to the background value
     of 0. This class is useful for preprocessing grid images for further analysis or visualization.
     """
 
@@ -26,7 +26,7 @@ class GridOversizedObjectRemover(GridMapModifier):
 
         This method processes the grid metadata of a `GridImage` object to identify objects
         that exceed the maximum calculated width and height. It sets such objects to a
-        background other_image of 0 in the object's mapping array. This helps filter out undesired
+        background value of 0 in the object's mapping array. This helps filter out undesired
         large objects in the image.
 
         Args:
@@ -51,14 +51,15 @@ class GridOversizedObjectRemover(GridMapModifier):
                                      - grid_info.loc[:, str(BBOX.MIN_RR)]
 
         # Find objects that are past the max height & width
-        over_width_obj = grid_info.loc[grid_info.loc[:, 'width'] >= max_width, OBJECT.LABEL].tolist()
+        over_width_obj = grid_info.loc[:, 'width'] >= max_width
 
-        over_height_obj = grid_info.loc[grid_info.loc[:, 'height'] >= max_height, OBJECT.LABEL].tolist()
-
-        # Create a numpy array with the objects to be removed
-        obj_to_remove = np.array(over_width_obj + over_height_obj)
+        over_height_obj = grid_info.loc[:, 'height'] >= max_height
+        oversized_obj_labels = grid_info.loc[
+            over_width_obj | over_height_obj,
+            OBJECT.LABEL
+        ].unique()
 
         # Set the target objects to the background val of 0
-        image.objmap[np.isin(image.objmap[:], obj_to_remove)] = 0
+        image.objmap[np.isin(image.objmap[:], oversized_obj_labels)] = 0
 
         return image

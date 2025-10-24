@@ -17,6 +17,7 @@ import multiprocessing as _mp
 import threading
 from typing import List, Union, Optional
 import logging
+from enum import Enum
 
 import pandas as pd
 
@@ -25,6 +26,12 @@ from ._image_pipeline_core import ImagePipelineCore
 
 # Create module-level logger
 logger = logging.getLogger(__name__)
+
+
+class PipelineMode(Enum):
+    APPLY = "apply"
+    MEASURE = "measure"
+    APPLY_MEASURE = "apply_measure"
 
 
 class ImagePipelineBatch(ImagePipelineCore):
@@ -80,7 +87,7 @@ class ImagePipelineBatch(ImagePipelineCore):
         if isinstance(image, phenotypic.Image):
             return super().apply(image, inplace=inplace, reset=reset)
         if isinstance(image, ImageSet):
-            self._coordinator(image, mode="apply", num_workers=self.num_workers, verbose=self.verbose)
+            self._coordinator(image, mode=PipelineMode.APPLY, num_workers=self.num_workers, verbose=self.verbose)
             return None
         raise TypeError("image must be Image or ImageSet")
 
@@ -95,7 +102,8 @@ class ImagePipelineBatch(ImagePipelineCore):
         if isinstance(image, phenotypic.Image):
             return super().measure(image, include_metadata=include_metadata)
         if isinstance(image, phenotypic.ImageSet):
-            return self._coordinator(image, mode="measure",
+            return self._coordinator(image,
+                                     mode=PipelineMode.MEASURE,
                                      num_workers=self.num_workers, )
         raise TypeError("image must be Image or ImageSet")
 
@@ -113,7 +121,9 @@ class ImagePipelineBatch(ImagePipelineCore):
                     include_metadata=include_metadata,
             )
         elif isinstance(image, pt.ImageSet):
-            return self._coordinator(image, mode="apply_and_measure", num_workers=self.num_workers, reset=reset)
+            return self._coordinator(image,
+                                     mode=PipelineMode.APPLY_MEASURE,
+                                     num_workers=self.num_workers, reset=reset)
         else:
             raise TypeError("image must be Image or ImageSet")
 
@@ -125,7 +135,7 @@ class ImagePipelineBatch(ImagePipelineCore):
     def _coordinator(self,
                      image_set: ImageSet,
                      *,
-                     mode: str,
+                     mode: PipelineMode,
                      num_workers: Optional[int] = None,
                      reset: bool = True,
                      ) -> Union[pd.DataFrame, None]:
@@ -135,7 +145,7 @@ class ImagePipelineBatch(ImagePipelineCore):
         Step 1: Allocate space for writing since SWMR mode only allows appending
         new data blocks.  This is required because SWMR does not allow concurrent writes.
         """
-        if mode == 'measure' or mode == 'apply_and_measure':
+        if mode in {PipelineMode.MEASURE, PipelineMode.APPLY_MEASURE}:
             logger.info(f"allocating measurement datasets for {image_set.name}")
             self._allocate_measurement_datasets(image_set)
             logger.debug(f'allocation done. ready to process images.')
@@ -169,7 +179,7 @@ class ImagePipelineBatch(ImagePipelineCore):
                 mp_context = _mp
                 parallel_logger.info("Using default multiprocessing context (spawn not available)")
 
-            work_q: _mp.Queue[str] = mp_context.Queue(maxsize=self.num_workers*2)
+            work_q: _mp.Queue[bytes | None] = mp_context.Queue(maxsize=self.num_workers*2)
             results_q: _mp.Queue[Tuple[str, bytes, bytes]] = mp_context.Queue()
             writer_access_event: threading.Event = threading.Event()
             thread_stop_event: threading.Event = threading.Event()
@@ -238,7 +248,7 @@ class ImagePipelineBatch(ImagePipelineCore):
         Step 3: Check file handles are closed and concatenate results into a single dataframe if in measure mode
         """
         logger.info('Cleaning up after processing and aggregating measurements...')
-        if mode == 'measure' or mode == 'apply_and_measure':
+        if mode in {PipelineMode.MEASURE, PipelineMode.APPLY_MEASURE}:
             return image_set.get_measurement()
         else:
             return None
@@ -289,7 +299,8 @@ class ImagePipelineBatch(ImagePipelineCore):
         from phenotypic.data import load_synthetic_colony
         from phenotypic import GridImage
 
-        test_image = GridImage(load_synthetic_colony(mode='array'))  # This is a tiny image for fast execution of measurements
+        test_image = GridImage(
+                load_synthetic_colony(mode='array'))  # This is a tiny image for fast execution of measurements
         try:
             meas = super().measure(test_image, include_metadata=False)
         except KeyboardInterrupt:
@@ -395,7 +406,7 @@ class ImagePipelineBatch(ImagePipelineCore):
     def _worker(cls, ops, meas_ops,
                 work_q: _mp.Queue[bytes | None],
                 results_q: _mp.Queue[Tuple[str, bytes, bytes]],
-                mode: Literal['apply', 'measure', 'apply_and_measure'],
+                mode: PipelineMode,
                 reset: bool
                 ) -> None:
         logger = logging.getLogger(f"ImagePipeline._worker()")
@@ -414,12 +425,12 @@ class ImagePipelineBatch(ImagePipelineCore):
 
             else:
                 image = pickle.loads(image)
-                
+
                 # default image name and meas value
                 image_name, meas = image.name, b''
 
                 logger.info(f'Starting processing of image {image.name} (PID: {worker_pid})')
-                if mode == 'apply' or mode == 'apply_and_measure':
+                if mode in {PipelineMode.APPLY, PipelineMode.APPLY_MEASURE}:
                     try:
                         pipe.apply(image, inplace=True, reset=reset)
                         logger.debug(f'Image {image_name} successfully processed.')
@@ -429,7 +440,7 @@ class ImagePipelineBatch(ImagePipelineCore):
                         logger.error(f"Exception occurred during apply phase on image {image.name}: {e}")
                         image = b''  # If processing error occurs we pass an empty byte string so that nothing is overwritten
 
-                if (mode == 'measure' or mode == 'apply_and_measure') and not isinstance(image, bytes):
+                if mode in {PipelineMode.APPLY, PipelineMode.APPLY_MEASURE} and not isinstance(image, bytes):
                     try:
                         meas = pipe.measure(image, include_metadata=False)
                         logger.debug(f'Measurements saved for image {image_name}')
