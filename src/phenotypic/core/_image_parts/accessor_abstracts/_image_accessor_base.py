@@ -37,8 +37,8 @@ class ImageAccessorBase(ABC):
     @property
     def _subject_arr(self) -> np.ndarray:
         """
-        Abstract property representing a image array. The image array is expected to be a NumPy ndarray
-        with a specific shape of (0, 0, 3), which can be used for various operations that require a structured
+        Abstract property representing an image array. The image array is expected to be a NumPy ndarray
+        with a specific shape of (r, c, ...), which can be used for various operations that require a structured
         multi-dimensional array.
 
         This property is abstract and must be implemented in any derived concrete class. The implementation
@@ -47,7 +47,7 @@ class ImageAccessorBase(ABC):
         Note: Read-only property. Changes should reference the specific array
 
         Returns:
-            np.ndarray: A NumPy ndarray object with shape (0, 0, 3).
+            np.ndarray: A NumPy ndarray object with shape (r, c, ...).
         """
         raise NotImplementedError("This property is abstract and must be implemented in a derived class.")
 
@@ -70,6 +70,18 @@ class ImageAccessorBase(ABC):
         elif copy:
             arr = arr.copy()
         return arr
+
+    def __len__(self) -> int:
+        """
+        Returns the length of the subject array.
+
+        This method calculates and returns the total number of elements contained in the
+        underlying array.
+
+        Returns:
+            int: The number of elements in the underlying array attribute.
+        """
+        return len(self._subject_arr)
 
     @property
     def shape(self) -> Tuple[int, ...]:

@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from typing import Optional
 
+import pandas as pd
 import skimage
 
 from phenotypic.core._image_parts.accessor_abstracts import MultiChannelAccessor

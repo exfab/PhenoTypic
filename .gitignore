@@ -36,6 +36,5 @@ _JupyterPrototypes/
 build
 .zed
 *.h5
-conda-recipe
 .run
 .ropeproject

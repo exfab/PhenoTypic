@@ -34,7 +34,7 @@ class LOG_GROWTH_MODEL(MeasurementInfo):
 
 class LogGrowthModel(ModelFitter):
     """
-    A model for analyzing and fitting logarithmic growth data.
+    A class for analyzing and fitting logarithmic growth data.
 
     This class provides tools for fitting a logarithmic growth model to data,
     analyzing grouped data, visualizing model results, and accessing summarized
@@ -56,16 +56,36 @@ class LogGrowthModel(ModelFitter):
             Defaults to None.
     """
 
-    def __init__(self, on: str,
+    def __init__(self,
+                 on: str,
                  groupby: List[str],
-                 agg_func: Callable | str | list | dict | None = 'mean',
                  time_label: str = 'Metadata_Time',
+                 agg_func: Callable | str | list | dict | None = 'mean',
                  Kmax_label: str | None = None,
                  growth_rate_penalty=1.2,
                  cap_penalty=5,
                  loss: Literal["linear"] = "linear",
                  verbose: bool = False,
                  n_jobs: int = 1):
+        """
+        This class initializes parameters for a data processing or modeling procedure.
+        It takes configuration arguments for handling data grouping, time management,
+        aggregation, penalties, loss calculation, and verbosity.
+
+        Args:
+            on (str): The target variable or column to process.
+            groupby (List[str]): The columns that define the grouping structure.
+            time_label (str): Column name that represents time in the data. Defaults to 'Metadata_Time'.
+            agg_func (Callable | str | list | dict | None): Aggregation function(s) to
+                apply to grouped data. Parameter is fed to `pandas.DataFrame.groupby.agg()`.
+                Defaults to 'mean'.
+            Kmax_label (str | None): Column name that provides maximum K value for processing. Defaults to None.
+            growth_rate_penalty: The penalty factor applied to growth rates. Defaults to 1.2.
+            cap_penalty: The maximum penalty factor applied to certain metrics. Defaults to 5.
+            loss (Literal["linear"]): Loss calculation method to apply. Defaults to "linear".
+            verbose (bool): If True, enables detailed logging for process execution. Defaults to False.
+            n_jobs (int): Number of parallel jobs to execute. Defaults to 1.
+        """
         super().__init__(on=on, groupby=groupby, agg_func=agg_func, num_workers=n_jobs)
         self.reg_factor = growth_rate_penalty
         self.kmax_penalty = cap_penalty

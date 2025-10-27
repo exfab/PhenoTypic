@@ -36,10 +36,15 @@
 
    .. autosummary::
    
+      ~GridImage.CieLab
+      ~GridImage.CieXYZ
+      ~GridImage.CieXYZ_D65
+      ~GridImage.Cie_xy
       ~GridImage.array
+      ~GridImage.bit_depth
       ~GridImage.enh_matrix
       ~GridImage.grid
-      ~GridImage.hsb
+      ~GridImage.hsv
       ~GridImage.imformat
       ~GridImage.matrix
       ~GridImage.metadata

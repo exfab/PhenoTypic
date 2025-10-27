@@ -15,7 +15,7 @@ from os import PathLike
 
 import skimage
 from skimage.color import rgb2gray, rgba2rgb
-from skimage.transform import rotate as skimage_rotate
+from skimage.transform import rotate as skimage_rotate, resize as skimage_resize
 import scipy.ndimage as ndimage
 from copy import deepcopy
 from typing import Type
