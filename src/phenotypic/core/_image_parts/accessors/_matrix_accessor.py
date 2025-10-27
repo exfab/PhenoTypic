@@ -32,7 +32,9 @@ class ImageMatrix(SingleChannelAccessor):
         if self.isempty():
             raise EmptyImageError
         else:
-            return self._root_image._data.matrix[key].copy()
+            view = self._root_image._data.matrix[key]
+            view.flags.writeable = False
+            return view
 
     def __setitem__(self, key, value):
         """

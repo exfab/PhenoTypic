@@ -18,7 +18,7 @@ class RollingBallEnhancer(ImageEnhancer):
         self._num_threads: int = num_threads
 
     def _operate(self, image: Image):
-        image.enh_matrix[:] -= rolling_ball(image=image.enh_matrix[:],
+        image.enh_matrix[:] -= rolling_ball(image=image.enh_matrix[:].copy(),
                                             radius=self._radius,
                                             kernel=self._kernel,
                                             nansafe=self._nansafe,

@@ -46,7 +46,9 @@ class ImageArray(MultiChannelAccessor):
             else:
                 raise NoArrayError
         else:
-            return self._root_image._data.array[key].copy()
+            view = self._root_image._data.array[key]
+            view.flags.writeable = False
+            return view
 
     def __setitem__(self, key, value):
         """

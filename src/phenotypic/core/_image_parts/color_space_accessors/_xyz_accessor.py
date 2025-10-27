@@ -6,11 +6,11 @@ import numpy as np
 from phenotypic.tools.colourspaces_ import sRGB_D50
 from phenotypic.tools.exceptions_ import IllegalAssignmentError
 from phenotypic.tools.funcs_ import normalize_rgb_bitdepth
-from ..accessor_abstracts._image_accessor_base import ImageAccessorBase
+from ..accessor_abstracts._color_space_accessor import ColorSpaceAccessor
 from phenotypic.tools.constants_ import IMAGE_FORMATS
 
 
-class XyzAccessor(ImageAccessorBase):
+class XyzAccessor(ColorSpaceAccessor):
     """Provides access to the XYZ color representation of an image.
 
     Converts image data from different color profiles and illuminants to its
@@ -59,9 +59,6 @@ class XyzAccessor(ImageAccessorBase):
             case _:
                 raise ValueError(
                         f'Unknown color_profile: {self._root_image.color_profile} or illuminant: {self._root_image.illuminant}')
-
-    def __getitem__(self, key) -> np.ndarray:
-        return self._subject_arr[key].copy()
 
     def __setitem__(self, key, value):
         raise IllegalAssignmentError('XYZ')

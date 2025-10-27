@@ -21,15 +21,10 @@ class ColorSpaceAccessor(ImageAccessorBase):
     """
 
     def __getitem__(self, key) -> np.ndarray:
-        """Access color space data by index.
-        
-        Args:
-            key: Index or slice for array access.
-            
-        Returns:
-            np.ndarray: Copy of the requested color space data.
-        """
-        return self._subject_arr[key].copy()
+        """Access color space data by index, returning a non-writeable view."""
+        view = self._subject_arr[key]
+        view.flags.writeable = False
+        return view
 
     def __setitem__(self, key, value):
         """Prevent direct modification of color space data.

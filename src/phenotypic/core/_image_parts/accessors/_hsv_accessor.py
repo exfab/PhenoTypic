@@ -44,7 +44,9 @@ class HsvAccessor(ImageAccessorBase):
                     raise AttributeError(f'Unsupported image format: {self._root_image.imformat} for HSV conversion.')
 
     def __getitem__(self, key) -> np.ndarray:
-        return self._subject_arr[key].copy()
+        view = self._subject_arr[key]
+        view.flags.writeable = False
+        return view
 
     def __setitem__(self, key, value):
         raise IllegalAssignmentError('HSV')
