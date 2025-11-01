@@ -7,8 +7,14 @@ import functools, types
 if TYPE_CHECKING: from phenotypic import Image
 
 import logging
-from pympler import muppy, summary
 import tracemalloc
+
+try:
+    from pympler import muppy, summary
+
+    PYMPLER_AVAILABLE = True
+except ImportError:
+    PYMPLER_AVAILABLE = False
 
 try:
     import psutil
@@ -37,19 +43,26 @@ class BaseOperation(ABC):
     def _log_memory_usage(self, step: str, include_process: bool = False, include_tracemalloc: bool = False) -> None:
         """Log memory usage if logger is in INFO mode."""
         if self._logger.isEnabledFor(logging.INFO):
-            # Object memory using pympler
-            all_objects = muppy.get_objects()
-            mem_summary = summary.summarize(all_objects)
-            object_memory = sum(mem[2] for mem in mem_summary)  # mem[2] is total size
+            log_msg_parts = [f"Memory usage after {step}:"]
 
-            log_msg = f"Memory usage after {step}: {object_memory/1024/1024:.2f} MB (objects)"
+            # Object memory using pympler
+            if PYMPLER_AVAILABLE:
+                try:
+                    all_objects = muppy.get_objects()
+                    mem_summary = summary.summarize(all_objects)
+                    object_memory = sum(mem[2] for mem in mem_summary)  # mem[2] is total size
+                    log_msg_parts.append(f"{object_memory/1024/1024:.2f} MB (objects)")
+                except Exception as e:
+                    self._logger.debug(f"Failed to get object memory: {e}")
+            else:
+                log_msg_parts.append("pympler not available")
 
             # Process memory using psutil
             if include_process and PSUTIL_AVAILABLE:
                 try:
                     process = psutil.Process()
                     process_memory = process.memory_info().rss
-                    log_msg += f", {process_memory/1024/1024:.2f} MB (process)"
+                    log_msg_parts.append(f"{process_memory/1024/1024:.2f} MB (process)")
                 except Exception as e:
                     self._logger.debug(f"Failed to get process memory: {e}")
 
@@ -57,10 +70,11 @@ class BaseOperation(ABC):
             if include_tracemalloc:
                 try:
                     current, peak = tracemalloc.get_traced_memory()
-                    log_msg += f", {current/1024/1024:.2f} MB current, {peak/1024/1024:.2f} MB peak (tracemalloc)"
+                    log_msg_parts.append(f"{current/1024/1024:.2f} MB current, {peak/1024/1024:.2f} MB peak (tracemalloc)")
                 except Exception as e:
                     self._logger.debug(f"Failed to get tracemalloc memory: {e}")
 
+            log_msg = ", ".join(log_msg_parts)
             self._logger.info(log_msg)
 
     def __del__(self):
