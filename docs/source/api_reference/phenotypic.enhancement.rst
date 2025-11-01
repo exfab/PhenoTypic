@@ -1,10 +1,10 @@
-phenotypic.enhancement
+phenotypic.enhance
 ======================
 
 Module contents
 ---------------
 
-.. automodule:: phenotypic.enhancement
+.. automodule:: phenotypic.enhance
    :members:
    :undoc-members:
    :show-inheritance:

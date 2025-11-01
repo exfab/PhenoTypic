@@ -34,7 +34,7 @@ These classes manage object-level abstractions and their corresponding data mapp
     - Region-based calculations
 
 2. :class:`ObjectMask`
-    An abstract specialized for working with binary masks of objects. Useful for morphological operations such as erosion, dilation, and closing.
+    An ABC_ specialized for working with binary masks of objects. Useful for morphological operations such as erosion, dilation, and closing.
 
     Note:
         Changes to the object mask will cause relabeling of the object map
@@ -65,7 +65,7 @@ HSV (Hue, Saturation, Brightness) Interface
 ===========================================
 
 1. :class:`HsbAccessor`
-Provides detailed access to the HSV (Hue, Saturation, Brightness) color space components of an image. This abstract includes support for:
+Provides detailed access to the HSV (Hue, Saturation, Brightness) color space components of an image. This ABC_ includes support for:
 
 - Direct pixel access via ``__getitem__`` and ``__setitem__``.
 - Advanced utilities for image visualization and object-specific manipulation in the HSV domain.
@@ -101,7 +101,7 @@ from ._objects_accessor import ObjectsAccessor
 # from ._measurement_container_interface import MeasurementAccessor
 from ._metadata_accessor import MetadataAccessor
 
-from ._hsb_accessor import HsbAccessor
+from ._hsv_accessor import HsvAccessor
 from ._grid_accessor import GridAccessor
 
 # Define __all__ to include all imported objects
@@ -112,7 +112,7 @@ __all__ = [
     "ObjectMap",
     "ObjectMask",
     "ObjectsAccessor",
-    "HsbAccessor",
+    "HsvAccessor",
     "GridAccessor",
     "MetadataAccessor",
 ]

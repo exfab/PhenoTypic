@@ -1,6 +1,6 @@
 import pytest
 
-from phenotypic.abstract import ImageOperation
+from phenotypic.ABC_ import ImageOperation
 
 import phenotypic
 from phenotypic.data import load_plate_12hr
@@ -8,6 +8,7 @@ from phenotypic.detection import WatershedDetector
 
 from .test_fixtures import _image_operations
 from .resources.TestHelper import timeit
+
 
 @pytest.mark.parametrize("qualname,obj", _image_operations)
 @timeit

@@ -1,14 +1,21 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, Tuple, Dict
+
+from pathlib import Path
+from typing import Tuple, TYPE_CHECKING
+
+import pandas as pd
 
 if TYPE_CHECKING: from phenotypic import Image
 
 import skimage as ski
 import matplotlib.pyplot as plt
+from matplotlib.ticker import MultipleLocator
 import numpy as np
 
-from phenotypic.util.constants_ import MPL, METADATA, IMAGE_FORMATS
-from abc import ABC, abstractmethod
+from phenotypic.tools.constants_ import MPL, METADATA, IO
+import warnings
+from phenotypic.tools.funcs_ import normalize_rgb_bitdepth
+from abc import ABC
 
 
 class ImageAccessorBase(ABC):
@@ -30,19 +37,51 @@ class ImageAccessorBase(ABC):
     @property
     def _subject_arr(self) -> np.ndarray:
         """
-        Abstract property representing a image array. The image array is expected to be a NumPy ndarray
-        with a specific shape of (0, 0, 3), which can be used for various operations that require a structured
+        Abstract property representing an image array. The image array is expected to be a NumPy ndarray
+        with a specific shape of (r, c, ...), which can be used for various operations that require a structured
         multi-dimensional array.
 
-        This property is abstract and must be implemented in any derived concrete class. The implementation
+        This property is ABC_ and must be implemented in any derived concrete class. The implementation
         should conform to the type signature and shape expectations as defined.
 
         Note: Read-only property. Changes should reference the specific array
 
         Returns:
-            np.ndarray: A NumPy ndarray object with shape (0, 0, 3).
+            np.ndarray: A NumPy ndarray object with shape (r, c, ...).
         """
-        raise NotImplementedError("This property is abstract and must be implemented in a derived class.")
+        raise NotImplementedError("This property is ABC_ and must be implemented in a derived class.")
+
+    def __array__(self, dtype=None, copy=None):
+        """Implements the array interface for numpy compatibility.
+        
+        This allows numpy functions to operate directly on accessor objects.
+        For example: np.sum(accessor), np.mean(accessor), etc.
+        
+        Args:
+            dtype: Optional dtype to cast the array to
+            copy: Optional copy parameter for NumPy 2.0+ compatibility
+            
+        Returns:
+            np.ndarray: The underlying array data
+        """
+        arr = self._subject_arr
+        if dtype is not None:
+            arr = arr.astype(dtype, copy=False if copy is None else copy)
+        elif copy:
+            arr = arr.copy()
+        return arr
+
+    def __len__(self) -> int:
+        """
+        Returns the length of the subject array.
+
+        This method calculates and returns the total number of elements contained in the
+        underlying array.
+
+        Returns:
+            int: The number of elements in the underlying array attribute.
+        """
+        return len(self._subject_arr)
 
     @property
     def shape(self) -> Tuple[int, ...]:
@@ -58,6 +97,49 @@ class ImageAccessorBase(ABC):
         """
         return self._subject_arr.shape
 
+    @property
+    def ndim(self) -> int:
+        """
+        Returns the number of dimensions of the underlying array.
+
+        The `ndim` property provides access to the dimensionality of the array
+        being encapsulated in the object. This value corresponds to the number
+        of axes or dimensions the underlying array possesses. It can be useful
+        for understanding the structure of the contained data.
+
+        Returns:
+            int: The number of dimensions of the underlying array.
+        """
+        return self._subject_arr.ndim
+
+    @property
+    def size(self) -> int:
+        """
+        Gets the size of the subject array.
+
+        This property retrieves the total number of elements in the subject
+        array. It is read-only.
+
+        Returns:
+            int: The total number of elements in the subject array.
+        """
+        return self._subject_arr.size
+
+    def val_range(self) -> pd.Interval:
+        """
+        Return the closed interval [min, max] of the subject array values.
+
+        Returns:
+            pd.Interval: A single closed interval including both endpoints.
+        """
+        mn = self._subject_arr.min()
+        mx = self._subject_arr.max()
+        return pd.Interval(left=mn, right=mx, closed="both")
+
+    @property
+    def dtype(self):
+        return self._subject_arr.dtype
+
     def isempty(self):
         return True if self.shape[0] == 0 else False
 
@@ -69,7 +151,8 @@ class ImageAccessorBase(ABC):
         foreground[self._root_image.objmask[:] == 0] = 0
         return foreground
 
-    def histogram(self, figsize: Tuple[int, int] = (10, 5), *, cmap='gray', linewidth=1, channel_names: list | None = None) -> Tuple[
+    def histogram(self, figsize: Tuple[int, int] = (10, 5), *, cmap='gray', linewidth=1,
+                  channel_names: list | None = None) -> Tuple[
         plt.Figure, plt.Axes]:
         """
         Plots the histogram(s) of an image along with the image itself. The behavior depends on
@@ -93,23 +176,49 @@ class ImageAccessorBase(ABC):
         Raises:
             ValueError: If the dimensionality of the input image array is unsupported.
         """
-        match self._subject_arr.ndim:
+        arr = self._subject_arr
+        dtype = arr.dtype
+
+        if np.issubdtype(dtype, np.floating):
+            arr_min = arr.min()
+            arr_max = arr.max()
+            if arr_min < 0.0 or arr_max > 1.0:
+                raise ValueError(
+                        f"Float image arrays must be within [0.0, 1.0]. Found range [{arr_min}, {arr_max}].")
+            x_limits = (0.0, 1.0)
+        elif np.issubdtype(dtype, np.bool_):
+            x_limits = (0, 1)
+        elif np.issubdtype(dtype, np.integer):
+            dtype_info = np.iinfo(dtype)
+            x_limits = (dtype_info.min, dtype_info.max)
+        else:
+            raise TypeError(f"Unsupported image dtype for histogram plotting: {dtype}")
+
+        match self.ndim:
             case 2:
                 fig, axes = plt.subplots(nrows=1, ncols=2, figsize=figsize)
                 axes = axes.ravel()
-                axes[0] = self._plot(arr=self._subject_arr, figsize=figsize, title=self._root_image.name, cmap=cmap, ax=axes[0])
+                axes[0] = self._plot(arr=self._subject_arr, figsize=figsize, title=self._root_image.name, cmap=cmap,
+                                     ax=axes[0])
                 hist, histc = ski.exposure.histogram(image=self._subject_arr[:],
                                                      nbins=2 ** self._root_image.metadata[METADATA.BIT_DEPTH])
                 axes[1].plot(histc, hist, lw=linewidth)
+                axes[1].set_xlim(x_limits)
+
             case 3:
                 fig, axes = plt.subplots(nrows=2, ncols=2, figsize=figsize)
-                axes[0] = self._plot(arr=self._subject_arr, figsize=figsize, title=self._root_image.name, ax=axes[0])
-                for idx, ax in enumerate(axes.ravel()):
-                    if idx == 0: continue
-                    hist, histc = ski.exposure.histogram(image=self._subject_arr[:, :, idx],
-                                                         nbins=2 ** self._root_image.metadata[METADATA.BIT_DEPTH])
-                    ax.plot(histc, hist, lw=linewidth)
-                    ax.set_title(f'Channel-{channel_names[idx - 1] if channel_names else idx}')
+
+                for idx, ax in enumerate(axes.flat):
+                    if idx == 0:
+                        self._plot(arr=self._subject_arr[:],
+                                   figsize=figsize, title=self._root_image.name,
+                                   ax=ax)
+                    else:
+                        hist, histc = ski.exposure.histogram(image=self._subject_arr[:, :, idx - 1],
+                                                             nbins=2 ** self._root_image.metadata[METADATA.BIT_DEPTH])
+                        ax.plot(histc, hist, lw=linewidth)
+                        ax.set_title(f'Channel-{channel_names[idx - 1] if channel_names else idx}')
+                        ax.set_xlim(x_limits)
 
             case _:
                 raise ValueError(f"Unsupported array dimension: {self._subject_arr.ndim}")
@@ -143,6 +252,7 @@ class ImageAccessorBase(ABC):
 
         """
         figsize = figsize if figsize else MPL.FIGSIZE
+
         fig, ax = (ax.get_figure(), ax) if ax else plt.subplots(figsize=figsize)
 
         mpl_settings = mpl_settings if mpl_settings else {}
@@ -150,19 +260,19 @@ class ImageAccessorBase(ABC):
 
         # matplotlib.imshow can only handle ranges 0-1 or 0-255
         # this adds handling for higher bit-depth images
-        max_val = arr.max()
-        if 0 <= max_val <= 1:
-            plot_arr = arr.copy().astype(np.float32)
-        elif 1 < max_val <= 255:
-            plot_arr = (arr.copy().astype(np.float32) / 255).clip(0, 1)
-        elif 255 < max_val <= 65535:
-            plot_arr = (arr.copy().astype(np.float32) / 65535.0).clip(0, 1)
-        else:
-            raise ValueError("Values exceed 16-bit range")
+        plot_arr = normalize_rgb_bitdepth(arr)
 
         ax.imshow(plot_arr, cmap=cmap, **mpl_settings) if plot_arr.ndim == 2 else ax.imshow(plot_arr, **mpl_settings)
 
         ax.grid(False)
+
+        # arr_shape = arr.shape
+        # if arr_shape[0] > 500:
+        #     ax.yaxis.set_minor_locator(MultipleLocator(100))
+        #
+        # if arr_shape[1] > 500:
+        #     ax.xaxis.set_minor_locator(MultipleLocator(100))
+
         if title is True:
             ax.set_title(self._root_image.name)
         elif title:
@@ -176,22 +286,22 @@ class ImageAccessorBase(ABC):
             if object_label is None:
                 text_rr, text_cc = props[i].centroid
                 ax.text(
-                    x=text_cc, y=text_rr,
-                    s=f'{label}',
-                    color=color,
-                    fontsize=size,
-                    bbox=dict(facecolor=facecolor, edgecolor='none', alpha=0.6, boxstyle='round'),
-                    **kwargs,
+                        x=text_cc, y=text_rr,
+                        s=f'{label}',
+                        color=color,
+                        fontsize=size,
+                        bbox=dict(facecolor=facecolor, edgecolor='none', alpha=0.6, boxstyle='round'),
+                        **kwargs,
                 )
             elif object_label == label:
                 text_rr, text_cc = props[i].centroid
                 ax.text(
-                    x=text_cc, y=text_rr,
-                    s=f'{label}',
-                    color=color,
-                    fontsize=size,
-                    bbox=dict(facecolor=facecolor, edgecolor='none', alpha=0.6, boxstyle='round'),
-                    **kwargs,
+                        x=text_cc, y=text_rr,
+                        s=f'{label}',
+                        color=color,
+                        fontsize=size,
+                        bbox=dict(facecolor=facecolor, edgecolor='none', alpha=0.6, boxstyle='round'),
+                        **kwargs,
                 )
         return ax
 
@@ -220,7 +330,7 @@ class ImageAccessorBase(ABC):
                 (width, height). Defaults to (8, 6).
             title (str, optional): Title of the plot to be displayed. If not provided,
                 defaults to the name of the self.image.
-            cmap (str, optional): Colormap to apply to the image. Defaults to 'gray'. Only used if arr input_image is 2D.
+            cmap (str, optional): Colormap to apply to the image. Defaults to 'gray'. Only used if arr arr is 2D.
             ax (plt.Axes, optional): An existing Matplotlib Axes instance for rendering
                 the image. If None, a new figure and axes are created. Defaults to None.
             overlay_settings (dict | None, optional): Parameters passed to the
@@ -235,7 +345,7 @@ class ImageAccessorBase(ABC):
             the display. If an existing Axes is provided, its corresponding Figure is returned.
         """
         overlay_settings = overlay_settings if overlay_settings else {}
-        overlay_alpha = overlay_settings.get('alpha', 0.2)
+        overlay_alpha = overlay_settings.get('alpha', 0.15)
         overlay_arr = ski.color.label2rgb(label=objmap, image=arr, bg_label=0, alpha=overlay_alpha, **overlay_settings)
 
         fig, ax = self._plot(arr=overlay_arr, figsize=figsize, title=title, cmap=cmap, ax=ax, mpl_settings=mpl_settings)
@@ -257,7 +367,7 @@ class ImageAccessorBase(ABC):
         Displays an overlay of the object map on the parent image with optional annotations.
 
         This method enables visualization by overlaying object regions on the parent image. It
-        provides options for customization, including the ability to show_labels specific objects
+                provides options for customization, including the ability to show_labels specific objects
         and adjust visual styles like figure size, colors, and annotation properties.
 
         Args:
@@ -288,21 +398,57 @@ class ImageAccessorBase(ABC):
         if label_settings is None: label_settings = {}
 
         fig, ax = self._plot_overlay(
-            arr=self._subject_arr,
-            objmap=objmap,
-            ax=ax,
-            figsize=figsize,
-            title=title,
-            mpl_settings=imshow_settings,
-            overlay_settings=overlay_settings,
+                arr=self._subject_arr,
+                objmap=objmap,
+                ax=ax,
+                figsize=figsize,
+                title=title,
+                mpl_settings=imshow_settings,
+                overlay_settings=overlay_settings,
         )
 
         if show_labels:
             ax = self._plot_obj_labels(
-                ax=ax,
-                color=label_settings.get('color', 'white'),
-                size=label_settings.get('size', 12),
-                facecolor=label_settings.get('facecolor', 'red'),
-                object_label=object_label,
+                    ax=ax,
+                    color=label_settings.get('color', 'white'),
+                    size=label_settings.get('size', 12),
+                    facecolor=label_settings.get('facecolor', 'red'),
+                    object_label=object_label,
             )
         return fig, ax
+
+    def imsave(self, filepath: str | Path | None = None, ):
+        filepath = Path(filepath)
+        from PIL import Image as PIL_Image
+
+        arr2save = self._subject_arr
+        match filepath.suffix.lower():
+            case x if x in IO.JPEG_FILE_EXTENSIONS:
+                match arr2save.dtype:
+                    case np.uint8:
+                        pass
+                    case np.uint16:
+                        warnings.warn(
+                                'Saving a 16 bit array as a jpeg will result in information loss if the max value is higher than 255')
+                        arr2save = ski.util.img_as_ubyte(arr2save)
+                    case dt if np.issubdtype(dt, np.floating):
+                        warnings.warn(
+                                'Saving a float array as a jpeg will result in information loss if the max value is higher than 255')
+                        arr2save = ski.util.img_as_ubyte(arr2save)
+                PIL_Image.fromarray(arr2save).save(filepath, format=filepath.suffix.lower(), quality=100)
+            case x if x in IO.PNG_FILE_EXTENSIONS:
+                match arr2save.dtype:
+                    case np.uint8 | np.uint16:
+                        pass
+                    case dt if np.issubdtype(dt, np.floating):
+                        warnings.warn(
+                                '.png images only accept 8 bit ana 16 bit integer arrays. '
+                                'Converting this array may cause information loss')
+                        arr2save = ski.util.img_as_ubyte(arr2save) \
+                            if self._root_image.bit_depth == 8 \
+                            else ski.util.img_as_uint(arr2save)
+                PIL_Image.fromarray(arr2save).save(filepath, format=filepath.suffix.lower(), optimize=True)
+            case x if x in IO.TIFF_EXTENSIONS:
+                PIL_Image.fromarray(arr2save).save(filepath, format=filepath.suffix.lower())
+            case _:
+                raise ValueError(f'unknown file extension for saving:{filepath.suffix}')

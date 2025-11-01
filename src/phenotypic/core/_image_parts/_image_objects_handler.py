@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-from os import PathLike
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING
 
-from ...util.exceptions_ import NoObjectsError, IllegalAssignmentError
+from ...tools.exceptions_ import IllegalAssignmentError, NoObjectsError
 
 if TYPE_CHECKING: from phenotypic import Image
 
@@ -17,10 +16,10 @@ class ImageObjectsHandler(ImageHandler):
     """Adds the ability to isolate and work with specific objects from an image."""
 
     def __init__(self,
-                 input_image: np.ndarray | Image | PathLike | None = None,
+                 arr: np.ndarray | Image | None = None,
                  imformat: str | None = None,
                  name: str | None = None, **kwargs):
-        super().__init__(input_image=input_image, imformat=imformat, name=name, **kwargs)
+        super().__init__(arr=arr, imformat=imformat, name=name, **kwargs)
         self._accessors.objects = ObjectsAccessor(self)
 
     @property
@@ -40,7 +39,7 @@ class ImageObjectsHandler(ImageHandler):
         else:
             return self._accessors.objects
 
-    def info(self, include_metadata:bool=True):
+    def info(self, include_metadata: bool = True):
         return self.objects.info(include_metadata=include_metadata)
 
     @objects.setter

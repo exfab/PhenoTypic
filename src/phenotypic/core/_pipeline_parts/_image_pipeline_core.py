@@ -1,18 +1,23 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING
 
-if TYPE_CHECKING: from phenotypic import Image
+from typing import TYPE_CHECKING, Union
+
+import numpy as np
+
+from phenotypic.tools.constants_ import OBJECT
+
+if TYPE_CHECKING: from phenotypic import Image, GridImage
 
 import pandas as pd
-from typing import Dict, Optional, List, Tuple
+from typing import Dict, List
 import inspect
 import time
 import sys
 
-from phenotypic.abstract import MeasureFeatures, ImageOperation
+from phenotypic.ABC_ import MeasureFeatures, BaseOperation, ImageOperation
 
 
-class ImagePipelineCore(ImageOperation):
+class ImagePipelineCore(BaseOperation):
     """
     Represents a handler for processing and measurement queues used in Image operations
     and feature extraction tasks.
@@ -40,7 +45,7 @@ class ImagePipelineCore(ImageOperation):
                  verbose: bool = False
                  ):
         """
-        This class represents a processing and measurement abstract for Image operations
+        This class represents a processing and measurement ABC_ for Image operations
         and feature extraction. It initializes operational and measurement queues based
         on the provided dictionaries.
 
@@ -158,14 +163,14 @@ class ImagePipelineCore(ImageOperation):
 
         return result
 
-    def apply(self, image: Image, inplace: bool = False, reset: bool = True) -> Image:
+    def apply(self, image: Image, inplace: bool = False, reset: bool = True) -> Union[GridImage, Image]:
         """
-        The class provides an abstract to process and apply a series of operations on
+        The class provides an ABC_ to process and apply a series of operations on
         an Image. The operations are maintained in a queue and executed sequentially
         when applied to the given Image.
 
         Args:
-            image (Image): The input_image Image to be processed. The type `Image` refers to
+            image (Image): The arr Image to be processed. The type `Image` refers to
                 an instance of the Image object to which transformations are applied.
             inplace (bool, optional): A flag indicating whether to apply the
                 transformations directly on the provided Image (`True`) or create a
@@ -184,6 +189,7 @@ class ImagePipelineCore(ImageOperation):
         if self._benchmark and self._verbose:
             try:
                 from tqdm import tqdm
+
                 # Create a tqdm instance without items to manually update it
                 total_ops = len(self._ops)
                 pbar = tqdm(total=total_ops, desc="Applying operations", file=sys.stdout)
@@ -205,8 +211,7 @@ class ImagePipelineCore(ImageOperation):
                         print(f"  Applying operation: {key}")
 
                 # Measure execution time if benchmarking is enabled
-                if self._benchmark:
-                    start_time = time.time()
+                if self._benchmark: start_time = time.time()
 
                 sig = inspect.signature(operation.apply)
                 if 'inplace' in sig.parameters:
@@ -276,12 +281,17 @@ class ImagePipelineCore(ImageOperation):
             if self._verbose:
                 print(f"  Image info: {self._measurement_times['image_info']:.4f} seconds")
         else:
-            measurements = [image.grid.info(include_metadata=False) if hasattr(image, 'grid') else image.objects.info(include_metadata=False)]
+            measurements = [
+                image.grid.info(include_metadata=False)
+                if hasattr(image, 'grid')
+                else image.objects.info(include_metadata=False)
+            ]
 
         # Create progress bar if verbose and benchmark are enabled
         if self._benchmark and self._verbose:
             try:
                 from tqdm import tqdm
+
                 # Create a tqdm instance without items to manually update it
                 total_measurements = len(self._meas)
                 pbar = tqdm(total=total_measurements, desc="Applying measurements", file=sys.stdout)
@@ -293,6 +303,7 @@ class ImagePipelineCore(ImageOperation):
         else:
             has_tqdm = False
 
+        # perform measurements
         for i, (key, measurement) in enumerate(self._meas.items()):
             try:
                 # Update progress bar description with current measurement
@@ -326,9 +337,10 @@ class ImagePipelineCore(ImageOperation):
         if self._benchmark and self._verbose and has_tqdm:
             pbar.close()
 
-        return self._merge_on_same_index(measurements)
+        return self._merge_on_object_labels(measurements)
 
-    def apply_and_measure(self, image: Image, inplace: bool = False, reset: bool = True, include_metadata: bool = True) -> pd.DataFrame:
+    def apply_and_measure(self, image: Image, inplace: bool = False, reset: bool = True,
+                          include_metadata: bool = True) -> pd.DataFrame:
         """
         Applies processing to the given image and measures the results.
 
@@ -369,16 +381,16 @@ class ImagePipelineCore(ImageOperation):
         # Add operation times
         for op_name, op_time in self._operation_times.items():
             data.append({
-                'Process Type': 'Operation',
-                'Process Name': op_name,
+                'Process Type'      : 'Operation',
+                'Process Name'      : op_name,
                 'Execution Time (s)': op_time
             })
 
         # Add measurement times
         for measure_name, measure_time in self._measurement_times.items():
             data.append({
-                'Process Type': 'Measurement',
-                'Process Name': measure_name,
+                'Process Type'      : 'Measurement',
+                'Process Name'      : measure_name,
                 'Execution Time (s)': measure_time
             })
 
@@ -391,8 +403,8 @@ class ImagePipelineCore(ImageOperation):
         # Calculate total time
         total_time = df['Execution Time (s)'].sum()
         total_row = pd.DataFrame([{
-            'Process Type': 'Total',
-            'Process Name': 'All Processes',
+            'Process Type'      : 'Total',
+            'Process Name'      : 'All Processes',
             'Execution Time (s)': total_time
         }])
         df = pd.concat([df, total_row], ignore_index=True)
@@ -400,9 +412,9 @@ class ImagePipelineCore(ImageOperation):
         return df
 
     @staticmethod
-    def _merge_on_same_index(dataframes_list: List[pd.DataFrame]) -> pd.DataFrame:
+    def _merge_on_object_labels(dataframes_list: List[pd.DataFrame]) -> pd.DataFrame:
         """
-        Merge multiple DataFrames only if they share the same index name.
+        Merge multiple DataFrames only if share object labels
 
         Args:
             dataframes_list: List of pandas DataFrames to merge
@@ -413,46 +425,23 @@ class ImagePipelineCore(ImageOperation):
         Raises:
             ValueError: If no DataFrames are provided or if no matching index names are found
         """
-        if not dataframes_list:
+        if not dataframes_list or not all([isinstance(x, pd.DataFrame) for x in dataframes_list]):
             raise ValueError("No DataFrames provided")
+        new_df = dataframes_list[0]
+        if new_df.index.name == OBJECT.LABEL: new_df = new_df.reset_index(drop=False)
 
-        # Get index names for all dataframes_list
-        index_names = [df.index.name for df in dataframes_list]
+        if len(dataframes_list) > 1:
+            for df in dataframes_list[1:]:
+                if df.index.name == OBJECT.LABEL: df = df.reset_index(drop=False)
 
-        # Group DataFrames by their index names
-        index_groups = {}
-        for df, idx_name in zip(dataframes_list, index_names):
-            if idx_name is not None:  # Skip unnamed indices
-                index_groups.setdefault(idx_name, []).append(df)
+                cols_to_merge_on = [OBJECT.LABEL]  # Resets each new other df
 
-        if not index_groups:
-            raise ValueError("No named indices found in the provided DataFrames")
+                for col_new_df in new_df.columns:
+                    if col_new_df != OBJECT.LABEL:  # skip the object label
+                        for col_other_df in df.columns:
+                            if col_new_df == col_other_df and np.all(df[col_new_df] == df[col_other_df]):
+                                cols_to_merge_on.append(col_other_df)
 
-        # Merge DataFrames for each index name
-        merged_results = []
-        for idx_name, df_group in index_groups.items():
-            if len(df_group) > 1:  # Only merge if we have multiple DataFrames with same index
-                # Merge all DataFrames in the group
-                merged_df = df_group[0]
-                for df in df_group[1:]:
-                    # Check for identical columns (same name and values)
-                    duplicate_columns = []
-                    for col in df.columns:
-                        if col in merged_df.columns:
-                            # Check if the column values are identical
-                            if df[col].equals(merged_df[col]):
-                                duplicate_columns.append(col)
+                new_df = new_df.merge(df, on=cols_to_merge_on, suffixes=('', '_merged'))
 
-                    # Remove duplicate columns from the incoming dataframe before merging
-                    if duplicate_columns:
-                        df = df.drop(columns=duplicate_columns)
-
-                    # Only join if there are columns left to merge
-                    if not df.empty and len(df.columns) > 0:
-                        merged_df = merged_df.join(df, how='outer', lsuffix='', rsuffix='_duplicate')
-                merged_results.append(merged_df)
-
-        if not merged_results:
-            raise ValueError("No DataFrames with matching index names found")
-
-        return merged_results[0] if len(merged_results) == 1 else merged_results
+        return new_df

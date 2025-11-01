@@ -7,11 +7,12 @@ from skimage.measure import label
 import matplotlib.pyplot as plt
 import numpy as np
 
-from phenotypic.core._image_parts.accessor_abstracts import MultiChannelAccessor
-from phenotypic.util.exceptions_ import InvalidMaskValueError, InvalidMaskScalarValueError, ArrayKeyValueShapeMismatchError
+from phenotypic.core._image_parts.accessor_abstracts import SingleChannelAccessor
+from phenotypic.tools.exceptions_ import InvalidMaskValueError, InvalidMaskScalarValueError, \
+    ArrayKeyValueShapeMismatchError
 
 
-class ObjectMask(MultiChannelAccessor):
+class ObjectMask(SingleChannelAccessor):
     """Represents a binary object mask linked to a parent image.
 
     This class allows for manipulation and analysis of a binary object mask associated with a parent image. It provides
@@ -21,16 +22,58 @@ class ObjectMask(MultiChannelAccessor):
     Note:
         - Changes to the object mask will reset the labeling of the object map.
     """
+    
+    @property
+    def _backend(self):
+        """Returns the current sparse backend reference from the object map.
+        
+        This ensures consistency with ObjectMap and avoids redundant conversions.
+        """
+        return self._root_image._data.sparse_object_map
+    
+    def __array__(self, dtype=None, copy=None):
+        """Implements the array interface for numpy compatibility.
+        
+        This allows numpy functions to operate on the dense form of the binary mask.
+        For example: np.sum(objmask), np.count_nonzero(objmask), etc.
+        
+        Args:
+            dtype: Optional dtype to cast the array to
+            copy: Optional copy parameter for NumPy 2.0+ compatibility
+            
+        Returns:
+            Dense binary numpy array (0s and 1s) representation of the object mask
+        """
+        arr = (self._backend.toarray() > 0).astype(int)
+        if dtype is not None:
+            arr = arr.astype(dtype, copy=False if copy is None else copy)
+        elif copy:
+            arr = arr.copy()
+        return arr
 
     def __getitem__(self, key):
-        """Returns a copy of the binary object mask in array form"""
-        return (self._root_image.objmap[key] > 0).astype(int)
+        """Returns a slice of the binary object mask as if it were a dense array.
+        
+        The slicing behavior matches numpy arrays, converting the sparse
+        representation to dense and then to binary (0s and 1s).
+        """
+        return (self._backend.toarray()[key] > 0).astype(int)
 
     def __setitem__(self, key, value: np.ndarray):
-        """Sets values of the object mask to other_image and resets the labeling in the map"""
-        mask = self._root_image.objmap[:] > 0
+        """Sets values of the object mask as if it were a dense array.
+        
+        This operation converts to dense, applies the update, relabels with scikit-image,
+        and updates the backend. The mask is automatically relabeled to maintain
+        consistent object IDs.
+        
+        Args:
+            key: Index or slice for the mask
+            value: Binary value(s) to set (int, bool, or ndarray)
+        """
+        # Get current mask as dense array (convert once)
+        mask = self._backend.toarray() > 0
 
-        # Check to make sure the section of the mask the key accesses is the same as the other_image
+        # Apply the value based on type
         if isinstance(value, (int, bool)):
             try:
                 value = 1 if value != 0 else 0
@@ -38,18 +81,21 @@ class ObjectMask(MultiChannelAccessor):
             except TypeError:
                 raise InvalidMaskScalarValueError
         elif isinstance(value, np.ndarray):
-            # Check input_image and section have matching shape
+            # Check arr and section have matching shape
             if mask[key].shape != value.shape:
                 raise ArrayKeyValueShapeMismatchError
 
-            # Sets the section of the binary mask to the other_image array
+            # Sets the section of the binary mask to the value array
             mask[key] = (value > 0)
         else:
             raise InvalidMaskValueError(type(value))
 
-        # Relabel the mask and set the underlying csc matrix to the new mask
-        # Where the reset of labeling occurs. May eventually add a way to sync without a label reset in the future
-        self._root_image.objmap[:] = label(mask)
+        # Relabel the mask and update the backend atomically
+        # This is where the relabeling occurs to maintain consistent object IDs
+        relabeled = label(mask)
+        new_sparse = self._root_image.objmap._dense_to_sparse(relabeled)
+        new_sparse.eliminate_zeros()
+        self._root_image._data.sparse_object_map = new_sparse
 
     @property
     def shape(self):
@@ -66,7 +112,7 @@ class ObjectMask(MultiChannelAccessor):
 
     def copy(self) -> np.ndarray:
         """Returns a copy of the binary object mask"""
-        return self._root_image.objmask[:].copy()
+        return (self._backend.toarray() > 0).astype(int).copy()
 
     def reset(self):
         """
@@ -95,16 +141,17 @@ class ObjectMask(MultiChannelAccessor):
         Returns:
             tuple(plt.Figure, plt.Axes): matplotlib figure and axes object
         """
-        return self._plot(arr=self._root_image.objmap[:] > 0, figsize=figsize, ax=ax, title=title, cmap=cmap)
+        return self._plot(arr=(self._backend.toarray() > 0), figsize=figsize, ax=ax, title=title, cmap=cmap)
 
     def _create_foreground(self, array: np.ndarray, bg_label: int = 0) -> np.ndarray:
         """Returns a copy of the array with every non-object pixel set to 0. Equivalent to np.ma.array.filled(bg_label)"""
-        mask = self._root_image.objmap[:] > 0
-        if array.ndim == 3: mask = np.dstack([(mask > 0) for _ in range(array.shape[-1])])
+        mask = self._backend.toarray() > 0
+        if array.ndim == 3: 
+            mask = np.dstack([mask for _ in range(array.shape[-1])])
 
         array[~mask] = bg_label
         return array
 
     @property
     def _subject_arr(self) -> np.ndarray:
-        return self._root_image.objmask[:] > 0
+        return (self._backend.toarray() > 0).astype(int)

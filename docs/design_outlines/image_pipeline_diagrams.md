@@ -205,7 +205,7 @@ sequenceDiagram
         MeasureFeatures-->>ImagePipelineCore: measurement_dataframe
     end
 
-    ImagePipelineCore->>ImagePipelineCore: _merge_on_same_index(dataframes)
+    ImagePipelineCore->>ImagePipelineCore: _merge_on_object_labels(dataframes)
     ImagePipelineCore-->>ImagePipeline: final_dataframe
     ImagePipeline-->>User: final_dataframe
 ```

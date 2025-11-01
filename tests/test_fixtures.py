@@ -1,7 +1,7 @@
 import importlib
 import inspect
-import pkgutil
 import os
+import pkgutil
 import tempfile
 
 import numpy as np
@@ -51,15 +51,15 @@ def param2array_plus_imformat(tag):
 
 
 @pytest.fixture(
-    scope='session',
-    params=[
-        pytest.param('km-plate-12hr', id='Plate-None-RGB', ),
-        pytest.param('km-plate-72hr', id='Plate-RGB-RGB', ),
-        pytest.param('km-colony-12hr', id='Colony-RGB-RGB', ),
-        pytest.param('km-colony-72hr', id='Colony-RGB-RGB', ),
-        pytest.param('black-square', id='Black-Square-Grayscale', ),
-        pytest.param('white-square', id='White-Square-Grayscale', )
-    ]
+        scope='session',
+        params=[
+            pytest.param('km-plate-12hr', id='Plate-None-RGB', ),
+            pytest.param('km-plate-72hr', id='Plate-RGB-RGB', ),
+            pytest.param('km-colony-12hr', id='Colony-RGB-RGB', ),
+            pytest.param('km-colony-72hr', id='Colony-RGB-RGB', ),
+            pytest.param('black-square', id='Black-Square-Grayscale', ),
+            pytest.param('white-square', id='White-Square-Grayscale', )
+        ]
 )
 def sample_image_array_with_imformat(request):
     """Fixture that returns (image_array, input_imformat, true_imformat)"""
@@ -68,20 +68,21 @@ def sample_image_array_with_imformat(request):
 
 
 @pytest.fixture(
-    scope='session',
-    params=[
-        pytest.param('km-plate-12hr', id='Plate-None-RGB', ),
-        pytest.param('km-plate-72hr', id='Plate-RGB-RGB', ),
-        pytest.param('km-colony-12hr', id='Colony-RGB-RGB', ),
-        pytest.param('km-colony-72hr', id='Colony-RGB-RGB', ),
-        pytest.param('black-square', id='Black-Square-Grayscale', ),
-        pytest.param('white-square', id='White-Square-Grayscale', )
-    ]
+        scope='session',
+        params=[
+            pytest.param('km-plate-12hr', id='Plate-None-RGB', ),
+            pytest.param('km-plate-72hr', id='Plate-RGB-RGB', ),
+            pytest.param('km-colony-12hr', id='Colony-RGB-RGB', ),
+            pytest.param('km-colony-72hr', id='Colony-RGB-RGB', ),
+            pytest.param('black-square', id='Black-Square-Grayscale', ),
+            pytest.param('white-square', id='White-Square-Grayscale', )
+        ]
 )
 def sample_image_array(request):
     """Fixture that returns (image_array, input_imformat, true_imformat)"""
     arr = param2array(request.param)
     return arr
+
 
 @pytest.fixture
 def temp_hdf5_file():
@@ -98,14 +99,15 @@ def temp_hdf5_file():
 
 
 @pytest.fixture(
-    scope='session',
-    params=[
-        pytest.param('km-plate-12hr', id='km-plate-12hr-GridImage', ),
-        pytest.param('km-plate-72hr', id='km-plate-72hr-GridImage', )
-    ]
+        scope='session',
+        params=[
+            pytest.param('km-plate-12hr', id='km-plate-12hr-GridImage', ),
+            pytest.param('km-plate-72hr', id='km-plate-72hr-GridImage', )
+        ]
 )
 def plate_grid_images(request):
     import phenotypic
+
     array = param2array(request.param)
     return phenotypic.GridImage(array)
 
@@ -118,6 +120,7 @@ def plate_grid_images(request):
                 )
 def plate_grid_images_with_detection(request):
     import phenotypic
+
     image = phenotypic.GridImage(param2array(request.param))
     return phenotypic.detection.OtsuDetector().apply(image)
 
@@ -129,8 +132,8 @@ def walk_package(pkg):
     if hasattr(pkg, "__path__"):  # add all sub‑modules
         modules += [
             importlib.import_module(name)
-            for _, name, _ in pkgutil.walk_packages(pkg.__path__, pkg.__name__ + ".")\
-                if not name.split(".")[-1].startswith("_")  # Skip modules with names starting with underscore
+            for _, name, _ in pkgutil.walk_packages(pkg.__path__, pkg.__name__ + ".") \
+            if not name.split(".")[-1].startswith("_")  # Skip modules with names starting with underscore
 
         ]
 
@@ -163,8 +166,8 @@ def walk_package_for_operations(pkg):
     if hasattr(pkg, "__path__"):  # add all sub‑modules
         modules += [
             importlib.import_module(name)
-            for _, name, _ in pkgutil.walk_packages(pkg.__path__, pkg.__name__ + ".")\
-                if not name.split(".")[-1].startswith("_")  # Skip modules with names starting with underscore
+            for _, name, _ in pkgutil.walk_packages(pkg.__path__, pkg.__name__ + ".") \
+            if not name.split(".")[-1].startswith("_")  # Skip modules with names starting with underscore
 
         ]
 
@@ -177,13 +180,10 @@ def walk_package_for_operations(pkg):
                 continue
 
             obj = getattr(mod, attr)
-            if inspect.ismodule(obj):
-                continue
-
-            if not isinstance(obj, type):   # make sure object is a class object
-                continue
-
-            if not issubclass(obj, phenotypic.abstract.ImageOperation):
+            if (inspect.ismodule(obj)
+                    or inspect.isabstract(obj)
+                    or not isinstance(obj, type)
+                    or not issubclass(obj, phenotypic.ABC_.ImageOperation)):
                 continue
 
             qualname = f"{mod.__name__}.{attr}"
@@ -202,12 +202,15 @@ def walk_package_for_measurements(pkg):
     if hasattr(pkg, "__path__"):  # add all sub‑modules
         modules += [
             importlib.import_module(name)
-            for _, name, _ in pkgutil.walk_packages(pkg.__path__, pkg.__name__ + ".")\
-                if not name.split(".")[-1].startswith("_")  # Skip modules with names starting with underscore
+            for _, name, _ in pkgutil.walk_packages(pkg.__path__, pkg.__name__ + ".") \
+            if not name.split(".")[-1].startswith("_")  # Skip modules with names starting with underscore
 
         ]
 
     seen = set()
+    # Classes that require constructor arguments and should be skipped in generic tests
+    skip_classes = {"ManualGridFinder"}
+
     for mod in modules:
         if mod.__name__.startswith("_"):
             continue
@@ -216,13 +219,11 @@ def walk_package_for_measurements(pkg):
                 continue
 
             obj = getattr(mod, attr)
-            if inspect.ismodule(obj):
-                continue
-
-            if not isinstance(obj, type): # make sure object is a class object
-                continue
-
-            if not issubclass(obj, phenotypic.abstract.MeasureFeatures):
+            if (inspect.ismodule(obj)
+                    or inspect.isabstract(obj)
+                    or not isinstance(obj, type)
+                    or not issubclass(obj, phenotypic.ABC_.MeasureFeatures)
+                    or attr in skip_classes):
                 continue
 
             qualname = f"{mod.__name__}.{attr}"

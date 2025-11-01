@@ -5,7 +5,7 @@ if TYPE_CHECKING: from phenotypic import Image
 
 import pandas as pd
 
-from phenotypic.abstract import MeasureFeatures
+from phenotypic.ABC_ import MeasureFeatures
 
 
 class MeasureTemplate(MeasureFeatures):

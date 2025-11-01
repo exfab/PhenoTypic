@@ -1,18 +1,14 @@
  name: Publish to PyPI
 
  on:
-   workflow_run:
-     workflows:
-       - run-pytest
+   release:
      types:
-       - completed
-     branches:
-       - main
+       - published
 
  jobs:
    deploy:
      # Only run on the original repo, not on forks
-     if: github.repository == 'exfab/PhenoTypic' && github.event.workflow_run.conclusion =='success'
+     if: github.repository == 'exfab/PhenoTypic' && github.event_name == 'release' && github.event.action == 'published'
      runs-on: ubuntu-latest
      environment: push_to_pypi
      steps:

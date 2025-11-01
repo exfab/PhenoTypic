@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import warnings
-from typing import TYPE_CHECKING, Tuple
+from typing import Tuple, TYPE_CHECKING
 
 if TYPE_CHECKING: from phenotypic import Image
 
@@ -10,6 +10,7 @@ import numpy as np
 import pickle
 from os import PathLike
 from pathlib import Path
+
 try:
     import rawpy
 except ImportError:
@@ -18,82 +19,98 @@ except ImportError:
 import skimage as ski
 
 import phenotypic
-from phenotypic.util.exceptions_ import UnsupportedFileTypeError
-from phenotypic.util.constants_ import IMAGE_FORMATS, IO
-from phenotypic.util.hdf_ import HDF
+from phenotypic.tools.exceptions_ import UnsupportedFileTypeError
+from phenotypic.tools.constants_ import IMAGE_FORMATS, IO
+from phenotypic.tools.hdf_ import HDF
 from ._image_color_handler import ImageColorSpace
 
 
 class ImageIOHandler(ImageColorSpace):
 
     def __init__(self,
-                 input_image: np.ndarray | Image | PathLike | Path | str | None = None,
+                 arr: np.ndarray | Image | None = None,
                  imformat: str | None = None,
                  name: str | None = None, **kwargs):
-        if isinstance(input_image, (PathLike, Path, str)):
-            input_image = Path(input_image)
-            super().__init__(input_image=self.imread(input_image), imformat=imformat, name=name, **kwargs)
-        else:
-            super().__init__(input_image=input_image, imformat=imformat, name=name)
+        super().__init__(arr=arr, imformat=imformat, name=name)
 
     @classmethod
     def imread(cls,
                filepath: PathLike,
-               gamma: Tuple[int, int] = None,
-               demosaic_algorithm: rawpy.DemosaicAlgorithm = None,
-               use_camera_wb: bool = False,
-               median_filter_passes: int = 0,
+               rawpy_params: dict | None = None,
                **kwargs) -> Image:
         """
-        Reads an image file and returns an instance of the Image class. This method supports
-        various file formats and processes raw image files using parameters such as gamma,
-        demosaic algorithms, and camera white balance settings. It ensures compatibility with
-        different file extensions defined in the `ACCEPTED_FILE_EXTENSIONS` and
-        `RAW_FILE_EXTENSIONS`. The method raises an UnsupportedFileTypeError if the file type
-        is not supported.
+        Reads an image file from the specified file path and returns an Image instance.
+        Supports common image formats and raw sensor data formats with optional processing
+        configurations.
 
         Args:
-            filepath (PathLike): Path to the image file that needs to be read.
-            gamma (Tuple[int, int], optional): Gamma correction values for postprocessing raw
-                image files. Defaults to None.
-            demosaic_algorithm (rawpy.DemosaicAlgorithm, optional): Demosaic algorithm to be
-                used for processing raw images. Defaults to None, which uses the `AHD` algorithm.
-            use_camera_wb (bool, optional): Whether to use the camera's white balance settings
-                for processing raw image files. Defaults to False.
-            median_filter_passes (int, optional): Number of passes for applying a median filter
-                during raw image postprocessing. Defaults to 0.
-            **kwargs: Additional parameters passed to the rawpy postprocessing method.
+            filepath (PathLike): The path to the image file to be read.
+            gamma (Tuple[int, int] | None): Gamma correction as a tuple (numerator, denominator).
+                If None, defaults to (1, 1) for no gamma correction.
+            demosaic_algorithm (rawpy.DemosaicAlgorithm | None): The demosaicing algorithm to
+                apply if reading raw sensor data. Defaults to None, using the
+                `rawpy.DemosaicAlgorithm.LINEAR`.
+            use_camera_wb (bool): Flag to indicate whether to use the camera's white balance
+                configuration if reading raw sensor data. Defaults to False.
+            median_filter_passes (int): The number of median filtering passes to apply to raw
+                sensor data. Defaults to 0.
+            rawpy_params (dict | None): Additional keyword arguments for rawpy's `postprocess`
+                function when reading raw sensor data. Defaults to None.
+            **kwargs: Additional keyword arguments for further configuration during the
+                initialization of the Image instance.
 
         Returns:
-            Image: Instance of the Image class with the processed or loaded image.
+            Image: An Image instance containing the image data and metadata.
 
         Raises:
-            UnsupportedFileTypeError: If the file extension of `filepath` is not supported.
+            UnsupportedFileTypeError: If the file extension is not supported or the necessary
+                libraries are not available for processing the specified file type.
         """
         # Convert to a Path object
         filepath = Path(filepath)
-        if filepath.suffix.lower() in IO.ACCEPTED_FILE_EXTENSIONS:
-            image = cls(input_image=None)
-            image.set_image(
-                input_image=ski.io.imread(filepath),
-            )
-            image.name = filepath.stem
-            return image
-        elif filepath.suffix.lower() in IO.RAW_FILE_EXTENSIONS and rawpy is not None:
-            with rawpy.imread(filepath) as raw:
+        rawpy_params = rawpy_params or {}
+        imformat = None
+
+        if filepath.suffix.lower() in IO.ACCEPTED_FILE_EXTENSIONS:  # normal images
+            arr = ski.io.imread(fname=filepath)
+
+        elif filepath.suffix.lower() in IO.RAW_FILE_EXTENSIONS and rawpy is not None:  # raw sensor data handling
+            use_auto_wb = rawpy_params.pop('use_auto_wb', False)
+            use_camera_wb = rawpy_params.pop('use_camera_wb', False)
+
+            no_auto_scale = rawpy_params.pop('no_auto_scale', False)  # TODO: implement calibration schema
+            no_auto_bright = rawpy_params.pop('no_auto_bright', False)  # TODO: implement calibration schema
+
+            if rawpy.DemosaicAlgorithm.AMAZE.isSupported():
+                default_demosaic = rawpy.DemosaicAlgorithm.AMAZE
+            else:
+                default_demosaic = rawpy.DemosaicAlgorithm.AHD
+
+            demosaic_algorithm = rawpy_params.pop('demosaic_algorithm', default_demosaic)
+            gamma = rawpy_params.pop('gamma', (1, 1))
+            with rawpy.imread(str(filepath)) as raw:
                 arr = raw.postprocess(
-                    demosaic_algorithm=demosaic_algorithm if demosaic_algorithm else rawpy.DemosaicAlgorithm.AHD,
-                    use_camera_wb=use_camera_wb,
-                    use_auto_wb=False,
-                    gamma=gamma if gamma else (1, 1),
-                    median_filter_passes=median_filter_passes,
-                    **kwargs,
+                        demosaic_algorithm=demosaic_algorithm,
+                        use_camera_wb=use_camera_wb,
+                        use_auto_wb=use_auto_wb,
+                        no_auto_scale=no_auto_scale,
+                        no_auto_bright=no_auto_bright,
+
+                        gamma=gamma,
+                        median_filter_passes=0,
+                        output_bps=16,  # Preserve as much detail as possible
+                        output_color=rawpy.ColorSpace.sRGB,
+                        **rawpy_params,
                 )
-            image = cls(input_image=arr)
-            image.name = filepath.stem
-            return image
+            imformat = IMAGE_FORMATS.LINEAR_RGB
+
         else:
             raise UnsupportedFileTypeError(filepath.suffix)
+
+        imformat = kwargs.pop('imformat', imformat)
+        image = cls(arr=arr, imformat=imformat, **kwargs)
+        image.name = filepath.stem
+        return image
 
     @staticmethod
     def _get_hdf5_group(handler: h5py.File | h5py.Group, name: str):
@@ -145,7 +162,8 @@ class ImageIOHandler(ImageColorSpace):
             if dataset.shape == array.shape:
                 dataset[:] = array
             elif file_handler.swmr_mode is True:
-                raise ValueError('Shape does not match existing dataset shape and cannot be changed because file handler is in SWMR mode')
+                raise ValueError(
+                        'Shape does not match existing dataset shape and cannot be changed because file handler is in SWMR mode')
             else:
                 del group[name]
                 group.create_dataset(name, data=array, dtype=array.dtype, **kwargs)
@@ -163,30 +181,30 @@ class ImageIOHandler(ImageColorSpace):
         if self._image_format.is_array():
             array = self.array[:]
             HDF.save_array2hdf5(
-                group=image_group, array=array, name="array",
-                dtype=array.dtype,
-                compression=compression, compression_opts=compression_opts,
+                    group=image_group, array=array, name="array",
+                    dtype=array.dtype,
+                    compression=compression, compression_opts=compression_opts,
             )
 
         matrix = self.matrix[:]
         HDF.save_array2hdf5(
-            group=image_group, array=matrix, name="matrix",
-            dtype=matrix.dtype,
-            compression=compression, compression_opts=compression_opts,
+                group=image_group, array=matrix, name="matrix",
+                dtype=matrix.dtype,
+                compression=compression, compression_opts=compression_opts,
         )
 
         enh_matrix = self.enh_matrix[:]
         HDF.save_array2hdf5(
-            group=image_group, array=enh_matrix, name="enh_matrix",
-            dtype=enh_matrix.dtype,
-            compression=compression, compression_opts=compression_opts,
+                group=image_group, array=enh_matrix, name="enh_matrix",
+                dtype=enh_matrix.dtype,
+                compression=compression, compression_opts=compression_opts,
         )
 
         objmap = self.objmap[:]
         HDF.save_array2hdf5(
-            group=image_group, array=objmap, name="objmap",
-            dtype=objmap.dtype,
-            compression=compression, compression_opts=compression_opts,
+                group=image_group, array=objmap, name="objmap",
+                dtype=objmap.dtype,
+                compression=compression, compression_opts=compression_opts,
         )
 
         # 3) Store string/enum as a group attribute
@@ -230,10 +248,11 @@ class ImageIOHandler(ImageColorSpace):
             grp = self._get_hdf5_group(filehandler, IO.SINGLE_IMAGE_HDF5_PARENT_GROUP)
 
             # 2) Save large arrays as datasets with chunking & compression
-            self._save_image2hdfgroup(grp=grp, compression=compression, compression_opts=compression_opts, overwrite=overwrite, )
+            self._save_image2hdfgroup(grp=grp, compression=compression, compression_opts=compression_opts,
+                                      overwrite=overwrite, )
 
     @classmethod
-    def _load_from_hdf5_group(cls, group) -> Image:
+    def _load_from_hdf5_group(cls, group, **kwargs) -> Image:
         # Instantiate a blank handler and populate internals
         # Load Image Format
         imformat = IMAGE_FORMATS[group.attrs["imformat"]]
@@ -242,10 +261,10 @@ class ImageIOHandler(ImageColorSpace):
         if imformat.is_array():
             # For arrays, preserve the original dtype from HDF5
             array_data = group["array"][()]
-            img = cls(input_image=array_data, imformat=imformat.value)
+            img = cls(arr=array_data, imformat=imformat.value, **kwargs)
             img.matrix[:] = matrix_data
         else:
-            img = cls(input_image=matrix_data, imformat=imformat.value)
+            img = cls(arr=matrix_data, imformat=imformat.value, **kwargs)
 
         # Load enhanced matrix and object map with proper dtype casting
         enh_matrix_data = group["enh_matrix"][()]
@@ -270,7 +289,7 @@ class ImageIOHandler(ImageColorSpace):
         Load an ImageHandler instance from an HDF5 file at the default hdf5 location
         """
         with h5py.File(filename, "r") as filehandler:
-            grp = filehandler[str(IO.SINGLE_IMAGE_HDF5_PARENT_GROUP / image_name)]
+            grp = filehandler[str(IO.SINGLE_IMAGE_HDF5_PARENT_GROUP/image_name)]
             img = cls._load_from_hdf5_group(grp)
 
         return img
@@ -284,13 +303,13 @@ class ImageIOHandler(ImageColorSpace):
         """
         with open(filename, 'wb') as filehandler:
             pickle.dump({
-                '_image_format': self._image_format,
-                "_data.array": self._data.array,
-                '_data.matrix': self._data.matrix,
-                '_data.enh_matrix': self._data.enh_matrix,
-                'objmap': self.objmap[:],
+                '_image_format'     : self._image_format,
+                "_data.array"       : self._data.array,
+                '_data.matrix'      : self._data.matrix,
+                '_data.enh_matrix'  : self._data.enh_matrix,
+                'objmap'            : self.objmap[:],
                 "protected_metadata": self._metadata.protected,
-                "public_metadata": self._metadata.public,
+                "public_metadata"   : self._metadata.public,
             }, filehandler,
             )
 
@@ -308,7 +327,7 @@ class ImageIOHandler(ImageColorSpace):
         with open(filename, 'rb') as f:
             loaded = pickle.load(f)
 
-        instance = cls(input_image=None, imformat=None, name=None)
+        instance = cls(arr=None, imformat=None, name=None)
 
         instance._image_format = loaded["_image_format"]
         instance._data.array = loaded["_data.array"]

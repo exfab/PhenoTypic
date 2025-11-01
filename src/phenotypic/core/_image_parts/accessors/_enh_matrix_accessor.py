@@ -6,7 +6,7 @@ if TYPE_CHECKING: pass
 import numpy as np
 
 from phenotypic.core._image_parts.accessor_abstracts import SingleChannelAccessor
-from phenotypic.util.exceptions_ import ArrayKeyValueShapeMismatchError, EmptyImageError
+from phenotypic.tools.exceptions_ import ArrayKeyValueShapeMismatchError, EmptyImageError
 
 
 class ImageEnhancedMatrix(SingleChannelAccessor):
@@ -19,22 +19,13 @@ class ImageEnhancedMatrix(SingleChannelAccessor):
     """
 
     def __getitem__(self, key) -> np.ndarray:
-        """
-        Provides a method to retrieve a copy of a specific portion of a parent image's detection
-        matrix based on the given key.
-
-        Args:
-            key: The index or slice used to access a specific part of the parent image's detection
-                matrix.
-
-        Returns:
-            numpy.ndarray: A copy of the corresponding portion of the parent image's detection
-                matrix.
-        """
+        """Return a non-writeable view of the enhanced matrix for the given index."""
         if self.isempty():
             raise EmptyImageError
         else:
-            return self._root_image._data.enh_matrix[key].copy()
+            view = self._root_image._data.enh_matrix[key]
+            view.flags.writeable = False
+            return view
 
     def __setitem__(self, key, value):
         """
@@ -66,7 +57,8 @@ class ImageEnhancedMatrix(SingleChannelAccessor):
         elif isinstance(value, (int, float)):
             pass
         else:
-            raise TypeError(f'Unsupported type for setting the matrix. Value should be scalar or a numpy array: {type(value)}')
+            raise TypeError(
+                    f'Unsupported type for setting the matrix. Value should be scalar or a numpy array: {type(value)}')
 
         self._root_image._data.enh_matrix[key] = value
         self._root_image.objmap.reset()

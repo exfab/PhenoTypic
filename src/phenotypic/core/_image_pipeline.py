@@ -28,7 +28,7 @@ class ImagePipeline(ImagePipelineBatch):
        >>> meas.head()
        >>>
        >>> image_set = pt.ImageSet(
-       >>>      name='example', grid_finder=pt.grid.OptimalCenterGridFinder(),
+       >>>      name='example', grid_finder=pt.grid.OptimalBinsGridFinder(),
        >>>      src=[pt.data.load_plate_12hr(), pt.data.load_plate_72hr()]
        >>> )
        >>> pipe_meas = pipe.apply_and_measure(image_set)

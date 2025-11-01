@@ -1,14 +1,9 @@
 name: documentation
 
 on:
-  workflow_run:
-    workflows:
-      - run-pytest
+  release:
     types:
-      - completed
-    branches:
-      - main
-
+      - published
 
 permissions:
   contents: write
@@ -34,7 +29,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          uv sync --dev
+          uv sync --group dev --group docs
 
       - name: Sphinx build
         run: |
@@ -46,7 +41,7 @@ jobs:
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
-        if: ${{ github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev') }}
+        if: ${{ github.event_name == 'release' && github.event.action == 'published' }}
         with:
           publish_branch: gh-pages
           github_token: ${{ secrets.GITHUB_TOKEN }}

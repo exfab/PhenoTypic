@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING: from phenotypic import GridImage, ImagePipeline
 
-from phenotypic.abstract import ImageOperation
+from phenotypic.ABC_ import ImageOperation
 
 
 class GridApply:
@@ -25,18 +25,17 @@ class GridApply:
         for row_i in range(len(row_edges) - 1):
             for col_i in range(len(col_edges) - 1):
                 subimage = image[
-                           row_edges[row_i]:row_edges[row_i + 1],
-                           col_edges[col_i]:col_edges[col_i + 1]
-                           ]
+                    row_edges[row_i]:row_edges[row_i + 1],
+                    col_edges[col_i]:col_edges[col_i + 1]
+                ]
                 try:
                     self.operation.apply(subimage, inplace=True)
                 except Exception as e:
                     raise RuntimeError(f"Error applying operation to section {row_i, col_i}: {e}")
 
-
                 image[
-                row_edges[row_i]:row_edges[row_i + 1],
-                col_edges[col_i]:col_edges[col_i + 1]
+                    row_edges[row_i]:row_edges[row_i + 1],
+                    col_edges[col_i]:col_edges[col_i + 1]
                 ] = subimage
 
         return image

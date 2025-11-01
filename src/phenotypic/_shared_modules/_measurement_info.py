@@ -1,3 +1,82 @@
+"""Base class for creating measurement information enumerations.
+
+This class provides a standardized way to define measurement types with categories,
+labels, and descriptions. It combines Enum functionality with string behavior,
+automatically prefixing labels with category names.
+
+Examples
+--------
+Create a custom measurement enumeration:
+
+>>> from phenotypic._shared_modules._measurement_info import MeasurementInfo
+>>>
+>>> class COLOR(MeasurementInfo):
+...     @classmethod
+...     def category(cls):
+...         return 'Color'
+...
+...     RED = ('Red', 'Red channel intensity')
+...     GREEN = ('Green', 'Green channel intensity')
+...     BLUE = ('Blue', 'Blue channel intensity')
+
+Access measurement information:
+
+>>> COLOR.RED
+<Color_Red: 'Color_Red'>
+>>> str(COLOR.RED)
+'Color_Red'
+>>> COLOR.RED.label
+'Red'
+>>> COLOR.RED.desc
+'Red channel intensity'
+>>> COLOR.RED.CATEGORY
+'Color'
+
+Get all labels and headers:
+
+>>> COLOR.get_labels()
+['Red', 'Green', 'Blue']
+>>> COLOR.get_headers()
+['Color_Red', 'Color_Green', 'Color_Blue']
+
+Generate RST documentation table:
+
+>>> print(COLOR.rst_table())
+.. list-table:: COLOR
+   :header-nrows: 1
+   <BLANKLINE>
+   * - Name
+     - Description
+   * - ``Red``
+     - Red channel intensity
+   * - ``Green``
+     - Green channel intensity
+   * - ``Blue``
+     - Blue channel intensity
+
+Append documentation to a class docstring:
+
+>>> class ColorProcessor:
+...     '''Processes color measurements.'''
+...     pass
+>>>
+>>> ColorProcessor.__doc__ = COLOR.append_rst_to_doc(ColorProcessor)
+>>> print(ColorProcessor.__doc__)
+Processes color measurements.
+<BLANKLINE>
+.. list-table:: COLOR
+   :header-nrows: 1
+   <BLANKLINE>
+   * - Name
+     - Description
+   * - ``Red``
+     - Red channel intensity
+   * - ``Green``
+     - Green channel intensity
+   * - ``Blue``
+     - Blue channel intensity
+"""
+
 from enum import Enum
 from textwrap import dedent
 
@@ -45,7 +124,7 @@ class MeasurementInfo(str, Enum):
         left, right = header
         lines = [
             f".. list-table:: {title}",
-            "   :header-rows: 1",
+            "   :header-nrows: 1",
             "",
             f"   * - {left}",
             f"     - {right}",

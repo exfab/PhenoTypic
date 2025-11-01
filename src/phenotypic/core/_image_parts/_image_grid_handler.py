@@ -6,12 +6,12 @@ import numpy as np
 import pandas as pd
 from matplotlib.patches import Rectangle
 
-from phenotypic.abstract import GridFinder
+from phenotypic.ABC_ import GridFinder
 from phenotypic.core._image_parts.accessors import GridAccessor
-from phenotypic.grid import OptimalCenterGridFinder
+from phenotypic.grid import OptimalBinsGridFinder
 from phenotypic.measure import MeasureBounds
-from phenotypic.util.constants_ import IMAGE_TYPES, BBOX, METADATA
-from phenotypic.util.exceptions_ import IllegalAssignmentError
+from phenotypic.tools.constants_ import IMAGE_TYPES, BBOX, METADATA
+from phenotypic.tools.exceptions_ import IllegalAssignmentError
 from .._image import Image
 
 
@@ -25,7 +25,7 @@ class ImageGridHandler(Image):
     to determine grid structure and assign/overlay it effectively on the image.
 
     Args:
-            input_image (Optional[Union[np.ndarray, Type[Image]]]): The input_image
+            arr (Optional[Union[np.ndarray, Type[Image]]]): The input_image
                 image, which can be a NumPy array or an image-like object. If
                 this parameter is not provided, it defaults to None.
             imformat (str): A string representing the schema of the input_image
@@ -33,7 +33,7 @@ class ImageGridHandler(Image):
             grid_finder (Optional[GridFinder]): An optional GridFinder instance
                 for defining grids on the image. If not provided, it defaults to
                 a center grid setter.
-            nrows (int): An integer passed to the grid setter to specify the number of rows in the grid
+            nrows (int): An integer passed to the grid setter to specify the number of nrows in the grid
                 (Defaults to 8).
             ncols (int): An integer passed to the grid setter to specify the number of columns in the grid
                 (Defaults to 12).
@@ -45,7 +45,7 @@ class ImageGridHandler(Image):
             accessing row and column edges and generating section maps for the image's grid system.
     """
 
-    def __init__(self, input_image: Optional[Union[np.ndarray, Image]] = None, imformat: str = None,
+    def __init__(self, arr: Optional[Union[np.ndarray, Image]] = None, imformat: str = None,
                  name: str = None,
                  grid_finder: Optional[GridFinder] = None,
                  nrows: int = 8, ncols: int = 12, **kwargs):
@@ -54,14 +54,14 @@ class ImageGridHandler(Image):
         mechanism, and dimensions of the grid.
 
         Args:
-            input_image (Optional[Union[np.ndarray, Image]]): The input image provided
+            arr (Optional[Union[np.ndarray, Image]]): The input image provided
                 as a NumPy array or an image object. Can be None if the image is
                 optional for initialization.
             imformat (str): The string representing the image format.
             name (str): The name identifier for the image.
             grid_finder (Optional[GridFinder]): Mechanism responsible for finding a grid
                 within the image. If None, an optimal center grid finder is instantiated.
-            nrows (int): Number of rows in the grid. Defaults to 8.
+            nrows (int): Number of nrows in the grid. Defaults to 8.
             ncols (int): Number of columns in the grid. Defaults to 12.
 
         Attributes:
@@ -70,12 +70,12 @@ class ImageGridHandler(Image):
             _accessors.grid (GridAccessor): The grid accessor object for managing and
                 accessing grid-related functionalities.
         """
-        super().__init__(input_image=input_image, imformat=imformat, name=name, **kwargs)
+        super().__init__(arr=arr, imformat=imformat, name=name, **kwargs)
 
-        if hasattr(input_image, 'grid_finder'):
-            grid_finder = input_image.grid_finder
+        if hasattr(arr, 'grid_finder'):
+            grid_finder = arr.grid_finder
         elif grid_finder is None:
-            grid_finder = OptimalCenterGridFinder(nrows=nrows, ncols=ncols)
+            grid_finder = OptimalBinsGridFinder(nrows=nrows, ncols=ncols)
 
         self.grid_finder: Optional[GridFinder] = grid_finder
         self._accessors.grid = GridAccessor(self)
@@ -102,24 +102,24 @@ class ImageGridHandler(Image):
     @property
     def nrows(self) -> int:
         """
-        Retrieves the number of rows in the grid.
+        Retrieves the number of nrows in the grid.
 
-        This property is used to access the number of rows present in the grid
+        This property is used to access the number of nrows present in the grid
         object. It encapsulates the `nrows` attribute of the `grid` and returns
         it as an integer.
 
         Returns:
-            int: The number of rows in the grid.
+            int: The number of nrows in the grid.
         """
         return self.grid_finder.nrows
 
     @nrows.setter
     def nrows(self, nrows):
         """
-        Sets the number of rows in the grid. Ensures that the provided value is of the correct type.
+        Sets the number of nrows in the grid. Ensures that the provided value is of the correct type.
 
         Args:
-            nrows (int): The number of rows to set. Must be an integer.
+            nrows (int): The number of nrows to set. Must be an integer.
 
         Raises:
             TypeError: If the provided value for nrows is not of type int.
@@ -167,9 +167,9 @@ class ImageGridHandler(Image):
             Image: A copy of the image at the slices indicated
         """
         if self._image_format.is_array():
-            subimage = Image(input_image=self.array[key], imformat=self.imformat)
+            subimage = Image(arr=self.array[key], imformat=self.imformat)
         else:
-            subimage = Image(input_image=self.matrix[key], imformat=self.imformat)
+            subimage = Image(arr=self.matrix[key], imformat=self.imformat)
 
         subimage.enh_matrix[:] = self.enh_matrix[key]
         subimage.objmap[:] = self.objmap[key]
@@ -203,8 +203,8 @@ class ImageGridHandler(Image):
             Tuple[plt.Figure, plt.Axes]: Modified figure and axis containing the rendered overlay.
         """
         fig, ax = super().show_overlay(
-            object_label=object_label, ax=ax, figsize=figsize,
-            show_labels=show_labels, label_settings=label_settings,
+                object_label=object_label, ax=ax, figsize=figsize,
+                show_labels=show_labels, label_settings=label_settings,
         )
 
         if show_gridlines and self.num_objects > 0:
@@ -213,18 +213,22 @@ class ImageGridHandler(Image):
             lower_col_edges = col_edges[:-1]
 
             # Set x-axes labels to grid column numbers
-            col_centers = ((upper_col_edges - lower_col_edges) // 2) + lower_col_edges
-            ax.set_xticks(col_centers)
-            ax.set_xticklabels(np.arange(self.ncols))
+            secax_x = ax.secondary_xaxis('top')
+            col_centers = ((upper_col_edges - lower_col_edges)//2) + lower_col_edges
+            secax_x.set_xticks(col_centers)
+            secax_x.set_xticklabels(np.arange(self.ncols))
+            secax_x.set_xlabel('Grid Column Number')
 
             row_edges = self.grid.get_row_edges()
             upper_row_edges = row_edges[1:]
             lower_row_edges = row_edges[:-1]
 
             # Set y-axis labels to grid row numbers
-            row_centers = ((upper_row_edges - lower_row_edges) // 2) + lower_row_edges
-            ax.set_yticks(row_centers)
-            ax.set_yticklabels(np.arange(self.nrows))
+            secax_y = ax.secondary_yaxis('right')
+            row_centers = ((upper_row_edges - lower_row_edges)//2) + lower_row_edges
+            secax_y.set_yticks(row_centers)
+            secax_y.set_yticklabels(np.arange(self.nrows))
+            secax_y.set_xlabel('Grid Row Number')
 
             # Draw grid lines
             ax.vlines(x=col_edges, ymin=row_edges.min(), ymax=row_edges.max(), colors='c', linestyles='--')
@@ -248,11 +252,11 @@ class ImageGridHandler(Image):
                 height = max_rr - min_rr
 
                 ax.add_patch(
-                    Rectangle(
-                        (min_cc, min_rr), width=width, height=height,
-                        edgecolor=next(cmap_cycle),
-                        facecolor='none',
-                    ),
+                        Rectangle(
+                                (min_cc, min_rr), width=width, height=height,
+                                edgecolor=next(cmap_cycle),
+                                facecolor='none',
+                        ),
                 )
 
         return fig, ax

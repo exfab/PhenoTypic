@@ -1,13 +1,14 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
+
 if TYPE_CHECKING: from phenotypic import GridImage
 
 import numpy as np
 from typing import Optional
 
-from phenotypic.abstract import GridMapModifier
+from phenotypic.ABC_ import GridMapModifier
 from phenotypic.grid import MeasureGridLinRegStats
-from phenotypic.util.constants_ import GRID_LINREG_STATS_EXTRACTOR, GRID
+from phenotypic.tools.constants_ import GRID_LINREG_STATS_EXTRACTOR, GRID
 
 
 class GridAlignmentOutlierRemover(GridMapModifier):
@@ -21,12 +22,12 @@ class GridAlignmentOutlierRemover(GridMapModifier):
     removing noise that interferes with gridding
 
     Attributes:
-        axis (Optional[int]): Axis to analyze for outliers. If None, both rows and columns are
-            analyzed; 0 analyzes rows; 1 analyzes columns.
+        axis (Optional[int]): Axis to analyze for outliers. If None, both nrows and columns are
+            analyzed; 0 analyzes nrows; 1 analyzes columns.
         cutoff_multiplier (float): Multiplier to define the cutoff for residual error relative
             to the standard deviation. Higher values make the cutoff less strict.
         max_coeff_variance (int): Maximum coefficient of variance (standard deviation divided
-            by mean) allowed for rows or columns before they are analyzed for outliers.
+            by mean) allowed for nrows or columns before they are analyzed for outliers.
     """
 
     def __init__(self, axis: Optional[int] = None, stddev_multiplier=1.5, max_coeff_variance: int = 1):
@@ -41,12 +42,12 @@ class GridAlignmentOutlierRemover(GridMapModifier):
 
         Outlier identification is performed by first calculating the coefficient of
         variance for each row or column. Rows or columns with variance above a specified
-        threshold are considered for outlier detection. Within these rows or columns,
+        threshold are considered for outlier detection. Within these nrows or columns,
         objects with residual errors exceeding a computed cutoff based on standard
         deviation multiplier are identified and subsequently removed.
 
         Args:
-            image (GridImage): The GridImage object that represents the input_image grid
+            image (GridImage): The GridImage object that represents the arr grid
                 containing object information for analysis and modification.
 
         Returns:
@@ -70,12 +71,12 @@ class GridAlignmentOutlierRemover(GridMapModifier):
             row_variance = grid_info.groupby(str(GRID.ROW_NUM))[GRID_LINREG_STATS_EXTRACTOR.RESIDUAL_ERR].std()
 
             #   Divide standard deviation by mean
-            row_variance = row_variance\
-                           / grid_info.groupby(str(GRID.ROW_NUM))[GRID_LINREG_STATS_EXTRACTOR.RESIDUAL_ERR].mean()
+            row_variance = row_variance \
+                           /grid_info.groupby(str(GRID.ROW_NUM))[GRID_LINREG_STATS_EXTRACTOR.RESIDUAL_ERR].mean()
 
             over_limit_row_variance = row_variance.loc[row_variance > self.max_coeff_variance]
 
-            # Collect outlier objects in the rows with a variance over the maximum
+            # Collect outlier objects in the nrows with a variance over the maximum
             for row_idx in over_limit_row_variance.index:
                 row_err = grid_info.loc[
                     grid_info.loc[:, str(GRID.ROW_NUM)] == row_idx,
@@ -88,7 +89,7 @@ class GridAlignmentOutlierRemover(GridMapModifier):
                 # row_stddev = row_err.std()
                 # upper_row_cutoff = row_err_mean + row_stddev * self.cutoff_multiplier
 
-                upper_row_cutoff = row_err_mean + row_iqr * self.cutoff_multiplier
+                upper_row_cutoff = row_err_mean + row_iqr*self.cutoff_multiplier
                 outlier_obj_ids += row_err.loc[row_err >= upper_row_cutoff].index.tolist()
 
         # Column-wise residual outlier discovery
@@ -98,7 +99,8 @@ class GridAlignmentOutlierRemover(GridMapModifier):
             col_variance = grid_info.groupby(str(GRID.COL_NUM))[GRID_LINREG_STATS_EXTRACTOR.RESIDUAL_ERR].std()
 
             #   Divide standard deviation by mean
-            col_variance = col_variance / grid_info.groupby(str(GRID.COL_NUM))[GRID_LINREG_STATS_EXTRACTOR.RESIDUAL_ERR].mean()
+            col_variance = col_variance/grid_info.groupby(str(GRID.COL_NUM))[
+                GRID_LINREG_STATS_EXTRACTOR.RESIDUAL_ERR].mean()
 
             over_limit_col_variance = col_variance.loc[col_variance > self.max_coeff_variance]
 
@@ -113,7 +115,7 @@ class GridAlignmentOutlierRemover(GridMapModifier):
                 col_iqr = col_q3 - col_q1
                 # col_stddev = col_err.std()
 
-                upper_col_cutoff = col_err_mean + col_iqr * self.cutoff_multiplier
+                upper_col_cutoff = col_err_mean + col_iqr*self.cutoff_multiplier
                 outlier_obj_ids += col_err.loc[col_err >= upper_col_cutoff].index.tolist()
 
         # Remove objects from obj map

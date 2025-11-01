@@ -18,3 +18,9 @@ help:
 # "make mode" option.  $(O) is meant as a shortcut for $(SPHINXOPTS).
 %: Makefile
 	@$(SPHINXBUILD) -M $@ "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
+
+apidoc:
+	sphinx-apidoc -o docs/source/api_reference phenotypic --force --module-first --separate
+
+html: apidoc
+	sphinx-build -n -W -b html docs/source docs/build/html

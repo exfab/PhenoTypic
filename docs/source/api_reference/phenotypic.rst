@@ -13,7 +13,7 @@ Subpackages
    phenotypic.correction
    phenotypic.data
    phenotypic.detection
-   phenotypic.enhancement
+   phenotypic.enhance
    phenotypic.grid
    phenotypic.measure
    phenotypic.morphology

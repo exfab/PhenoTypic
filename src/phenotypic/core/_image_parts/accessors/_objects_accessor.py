@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 from typing import TYPE_CHECKING, Any, Generator
 
 if TYPE_CHECKING: from phenotypic import Image
@@ -8,7 +9,7 @@ import pandas as pd
 from skimage.measure import regionprops_table, regionprops
 from typing import List
 
-from phenotypic.util.constants_ import OBJECT, METADATA, IMAGE_TYPES, BBOX
+from phenotypic.tools.constants_ import OBJECT, METADATA, IMAGE_TYPES, BBOX
 
 
 class ObjectsAccessor:
@@ -20,9 +21,10 @@ class ObjectsAccessor:
     labeling and analysis tools like `skimage.regionprops`.
 
     Notes:
-        - Can only be called if an :class:`PhenoTypic.abstract.ObjectDetector` has been applied to the :class:`PhenoTypic.Image` object.
+        - Can only be called if an :class:`PhenoTypic.ABC_.ObjectDetector` has been applied to the :class:`PhenoTypic.Image` object.
 
     """
+
     def __init__(self, root_image: Image):
         self._root_image = root_image
 
@@ -50,7 +52,8 @@ class ObjectsAccessor:
             list[skimage.measure.RegionProperties]: A list of properties for all
                 regions in the provided image.
         """
-        return regionprops(label_image=self._root_image.objmap[:], intensity_image=self._root_image.matrix[:], cache=False)
+        return regionprops(label_image=self._root_image.objmap[:], intensity_image=self._root_image.matrix[:],
+                           cache=False)
 
     @property
     def labels(self) -> List[str]:
@@ -101,21 +104,21 @@ class ObjectsAccessor:
 
         This is useful for joining measurements across different tables.
         """
-        info= pd.DataFrame(
-            data=regionprops_table(
-                label_image=self._root_image.objmap[:],
-                properties=['label', 'centroid', 'bbox'],
-            ),
+        info = pd.DataFrame(
+                data=regionprops_table(
+                        label_image=self._root_image.objmap[:],
+                        properties=['label', 'centroid', 'bbox'],
+                ),
         ).rename(columns={
-            'label': OBJECT.LABEL,
-            'centroid-0':str(BBOX.CENTER_RR),
+            'label'     : OBJECT.LABEL,
+            'centroid-0': str(BBOX.CENTER_RR),
             'centroid-1': str(BBOX.CENTER_CC),
-            'bbox-0': str(BBOX.MIN_RR),
-            'bbox-1': str(BBOX.MIN_CC),
-            'bbox-2': str(BBOX.MAX_RR),
-            'bbox-3': str(BBOX.MAX_CC),
+            'bbox-0'    : str(BBOX.MIN_RR),
+            'bbox-1'    : str(BBOX.MIN_CC),
+            'bbox-2'    : str(BBOX.MAX_RR),
+            'bbox-3'    : str(BBOX.MAX_CC),
         },
-        ).set_index(OBJECT.LABEL)
+        )
         if include_metadata:
             return self._root_image.metadata.insert_metadata(info)
         else:
@@ -125,13 +128,11 @@ class ObjectsAccessor:
         """Returns a consistently named pandas.Series containing the label number for each object in the image. Useful as an index for joining different measurements"""
         labels = self.labels
         return pd.Series(
-            data=labels,
-            index=range(len(labels)),
-            name=OBJECT.LABEL,
+                data=labels,
+                index=range(len(labels)),
+                name=OBJECT.LABEL,
         )
 
     def relabel(self):
         """Relabels all the objects based on their connectivity"""
         self._root_image.objmap.relabel()
-
-
