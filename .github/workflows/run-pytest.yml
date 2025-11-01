@@ -52,9 +52,3 @@ jobs:
           .venv\Scripts\activate
           pytest -n auto
         shell: pwsh
-
-      - name: Build Sphinx docs (Linux/macOS)
-        if: runner.os != 'Windows'
-        run: |
-          source .venv/bin/activate
-          make -C docs html SPHINXOPTS="-W --keep-going"

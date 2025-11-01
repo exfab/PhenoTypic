@@ -62,7 +62,6 @@ pip install -e ".[dev]"
 - `phenotypic.objedit`: different tools to edit the detected objects such as morphology, relabeling, joining, or
   removing
 - `phenotypic.prefab`: various premade image processing pipelines that are in use at ExFAB
--
 
 # Sponsors
 
