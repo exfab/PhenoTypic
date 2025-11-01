@@ -66,7 +66,7 @@ class TestLogGrowthModel:
         assert model.time_label == 'Metadata_Time'
         assert model.Kmax_label is None
         assert model.reg_factor == 1.2
-        assert model.kmax_penalty == 5
+        assert model.kmax_penalty == 2
         assert model.loss == "linear"
         assert not model.verbose
         assert model.n_jobs == 1
@@ -78,7 +78,7 @@ class TestLogGrowthModel:
                 time_label='Time',
                 Kmax_label='Max_Capacity',
                 growth_rate_penalty=2.0,
-                cap_penalty=10,
+                Kmax_penalty=10,
                 loss="linear",
                 verbose=True,
                 n_jobs=2

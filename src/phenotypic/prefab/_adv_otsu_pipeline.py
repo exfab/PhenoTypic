@@ -2,8 +2,8 @@ from typing import Literal
 
 import numpy as np
 
-from phenotypic.abstract import PrefabPipeline
-from phenotypic.enhancement import CLAHE, GaussianSmoother, MedianEnhancer, ContrastStretching, SobelFilter
+from phenotypic.ABC_ import PrefabPipeline
+from phenotypic.enhance import CLAHE, GaussianBlur, MedianEnhancer, ContrastStretching, SobelFilter
 from phenotypic.detection import OtsuDetector, WatershedDetector
 from phenotypic.correction import GridAligner
 from phenotypic.grid import (MinResidualErrorReducer, GridOversizedObjectRemover)
@@ -52,7 +52,7 @@ class AdvOtsuPipeline(PrefabPipeline):
                  benchmark: bool = False, verbose: bool = False):
         """
         Initializes the object with a sequence of operations and measurements for image
-        processing. The sequence includes smoothing, enhancement, segmentation, border
+        processing. The sequence includes smoothing, enhance, segmentation, border
         object removal, and various measurement steps for analyzing images. Customizable
         parameters allow for adjusting the processing pipeline for specific use cases such
         as image segmentation and feature extraction.
@@ -76,7 +76,7 @@ class AdvOtsuPipeline(PrefabPipeline):
         min_residual_reducer = MinResidualErrorReducer()
 
         self._ops = [
-            GaussianSmoother(sigma=gaussian_sigma, mode=gaussian_mode, truncate=gaussian_truncate),
+            GaussianBlur(sigma=gaussian_sigma, mode=gaussian_mode, truncate=gaussian_truncate),
             CLAHE(),
             MedianEnhancer(),
             SobelFilter(),

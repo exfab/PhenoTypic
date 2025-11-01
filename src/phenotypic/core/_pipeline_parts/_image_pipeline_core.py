@@ -14,7 +14,7 @@ import inspect
 import time
 import sys
 
-from phenotypic.abstract import MeasureFeatures, BaseOperation, ImageOperation
+from phenotypic.ABC_ import MeasureFeatures, BaseOperation, ImageOperation
 
 
 class ImagePipelineCore(BaseOperation):
@@ -45,7 +45,7 @@ class ImagePipelineCore(BaseOperation):
                  verbose: bool = False
                  ):
         """
-        This class represents a processing and measurement abstract for Image operations
+        This class represents a processing and measurement ABC_ for Image operations
         and feature extraction. It initializes operational and measurement queues based
         on the provided dictionaries.
 
@@ -165,7 +165,7 @@ class ImagePipelineCore(BaseOperation):
 
     def apply(self, image: Image, inplace: bool = False, reset: bool = True) -> Union[GridImage, Image]:
         """
-        The class provides an abstract to process and apply a series of operations on
+        The class provides an ABC_ to process and apply a series of operations on
         an Image. The operations are maintained in a queue and executed sequentially
         when applied to the given Image.
 
@@ -282,8 +282,10 @@ class ImagePipelineCore(BaseOperation):
                 print(f"  Image info: {self._measurement_times['image_info']:.4f} seconds")
         else:
             measurements = [
-                image.grid.info(include_metadata=False) if hasattr(image, 'grid') else image.objects.info(
-                        include_metadata=False)]
+                image.grid.info(include_metadata=False)
+                if hasattr(image, 'grid')
+                else image.objects.info(include_metadata=False)
+            ]
 
         # Create progress bar if verbose and benchmark are enabled
         if self._benchmark and self._verbose:
@@ -301,6 +303,7 @@ class ImagePipelineCore(BaseOperation):
         else:
             has_tqdm = False
 
+        # perform measurements
         for i, (key, measurement) in enumerate(self._meas.items()):
             try:
                 # Update progress bar description with current measurement

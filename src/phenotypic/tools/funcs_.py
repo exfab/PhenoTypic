@@ -14,6 +14,7 @@ import mmh3
 from functools import wraps
 
 from phenotypic.tools.exceptions_ import OperationIntegrityError
+from phenotypic.tools.constants_ import VALIDATE_OPS
 
 
 def is_binary_mask(arr: np.ndarray):
@@ -85,7 +86,7 @@ def validate_operation_integrity(*targets: str):
         else:
             # Otherwise use default targets, but ensure 'image' parameter exists
             if 'image' not in sig.parameters:
-                raise OperationIntegrityError(
+                raise AttributeError(
                         f"{func.__name__}: no 'image' parameter and no targets given",
                 )
             # Default attributes to check on the image object
@@ -103,7 +104,7 @@ def validate_operation_integrity(*targets: str):
             # Get the root object from function arguments
             obj: Image = bound_args.arguments.get(parts[0])
             if obj is None:
-                raise OperationIntegrityError(
+                raise AttributeError(
                         f"{func.__name__}: parameter '{parts[0]}' not found",
                 )
 
@@ -115,7 +116,7 @@ def validate_operation_integrity(*targets: str):
                     obj = getattr(obj, attr)[:]  # Use [:] to get a view of the array
             # Ensure the result is a NumPy array
             if not isinstance(obj, np.ndarray):
-                raise OperationIntegrityError(
+                raise RuntimeError(
                         f"{func.__name__}: '{target}' is not a NumPy array",
                 )
             return obj
@@ -129,32 +130,35 @@ def validate_operation_integrity(*targets: str):
 
             # Step 4: Calculate hash values for all target arrays before function execution
             # This creates a dictionary mapping each target to its hash value
-            pre_hashes = {tgt: murmur3_array_signature(_get_array(bound, tgt))
-                          for tgt in eff_targets
-                          }
+            if VALIDATE_OPS:
+                pre_hashes = {tgt: murmur3_array_signature(_get_array(bound, tgt))
+                              for tgt in eff_targets
+                              }
 
             # Step 5: Execute the original function
             result = func(*args, **kwargs)
 
             # Step 6: Verify integrity by comparing hash values after function execution
             # For each target, calculate a new hash and compare with the original
-            for tgt, old_hash in pre_hashes.items():
-                parts = tgt.split('.')
-                # Start with the result object returned by the function
-                obj = result
-                # Navigate through the attribute chain on the result object
-                for attr in parts[1:]:
-                    obj = getattr(obj, attr)[:]
-                # Ensure the attribute is still a NumPy array
-                if not isinstance(obj, np.ndarray):
-                    raise OperationIntegrityError(
-                            f"{func.__name__}: '{tgt}' is not a NumPy array on result",
-                    )
-                # Calculate new hash and compare with original
-                new_hash = murmur3_array_signature(obj)
-                # If hashes don't match, the array was modified - raise an error
-                if new_hash != old_hash:
-                    raise OperationIntegrityError(opname=f'{func.__name__}', component=f'{tgt}', )
+            if VALIDATE_OPS:
+                for tgt, old_hash in pre_hashes.items():
+                    parts = tgt.split('.')
+                    # Start with the result object returned by the function
+                    obj = result
+                    # Navigate through the attribute chain on the result object
+                    for attr in parts[1:]:
+                        obj = getattr(obj, attr)[:]
+                    # Ensure the attribute is still a NumPy array
+                    if not isinstance(obj, np.ndarray):
+                        raise RuntimeError(
+                                f"{func.__name__}: '{tgt}' is not a NumPy array on result",
+
+                        )
+                    # Calculate new hash and compare with original
+                    new_hash = murmur3_array_signature(obj)
+                    # If hashes don't match, the array was modified - raise an error
+                    if new_hash != old_hash:
+                        raise OperationIntegrityError(opname=f'{func.__name__}', component=f'{tgt}', )
 
             # Step 7: Return the original function's result if integrity check passes
             return result
@@ -221,18 +225,20 @@ def validate_measure_integrity(*targets: str):
             bound.apply_defaults()
 
             # hash each target before the call
-            pre_hashes = {tgt: murmur3_array_signature(_get_array(bound, tgt))
-                          for tgt in eff_targets
-                          }
+            if VALIDATE_OPS:
+                pre_hashes = {tgt: murmur3_array_signature(_get_array(bound, tgt))
+                              for tgt in eff_targets
+                              }
 
             # execute the original method
             result = func(*args, **kwargs)
 
             # re-hash and compare
-            for tgt, old in pre_hashes.items():
-                new = murmur3_array_signature(_get_array(bound, tgt))
-                if new != old:
-                    raise OperationIntegrityError(opname=f'{func.__name__}', component=f'{tgt}')
+            if VALIDATE_OPS:
+                for tgt, old in pre_hashes.items():
+                    new = murmur3_array_signature(_get_array(bound, tgt))
+                    if new != old:
+                        raise OperationIntegrityError(opname=f'{func.__name__}', component=f'{tgt}')
 
             return result
 

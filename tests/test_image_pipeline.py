@@ -1,5 +1,5 @@
 from phenotypic import ImagePipeline
-from phenotypic.enhancement import CLAHE, GaussianSmoother, MedianEnhancer, ContrastStretching
+from phenotypic.enhance import CLAHE, GaussianBlur, MedianEnhancer, ContrastStretching
 from phenotypic.detection import OtsuDetector, WatershedDetector
 from phenotypic.grid import GridApply, MinResidualErrorReducer, GridAlignmentOutlierRemover
 from phenotypic.objedit import BorderObjectRemover, SmallObjectRemover, LowCircularityRemover
@@ -31,7 +31,7 @@ def test_empty_pipeline():
 def test_kmarx_pipeline(plate_grid_images):
     kmarx_pipeline = ImagePipeline(
             ops={
-                'blur'                            : GaussianSmoother(sigma=5),
+                'blur'                            : GaussianBlur(sigma=5),
                 'clahe'                           : CLAHE(),
                 'median filter'                   : MedianEnhancer(),
                 'detection'                       : WatershedDetector(footprint='auto', min_size=50, relabel=True),
@@ -61,7 +61,7 @@ def test_kmarx_pipeline_pickleable(plate_grid_images):
 
     kmarx_pipeline = ImagePipeline(
             {
-                'blur'                            : GaussianSmoother(sigma=2),
+                'blur'                            : GaussianBlur(sigma=2),
                 'clahe'                           : CLAHE(),
                 'median filter'                   : MedianEnhancer(),
                 'detection'                       : OtsuDetector(),
@@ -72,7 +72,7 @@ def test_kmarx_pipeline_pickleable(plate_grid_images):
                 'outlier removal'                 : GridAlignmentOutlierRemover(),
                 'align'                           : GridAligner(),
                 'section-level detect'            : GridApply(ImagePipeline({
-                    'blur'               : GaussianSmoother(sigma=5),
+                    'blur'               : GaussianBlur(sigma=5),
                     'median filter'      : MedianEnhancer(),
                     'contrast stretching': ContrastStretching(),
                     'detection'          : OtsuDetector(),
@@ -92,7 +92,7 @@ def test_watershed_kmarx_pipeline_pickleable(plate_grid_images):
 
     kmarx_pipeline = ImagePipeline(
             ops={
-                'blur'                            : GaussianSmoother(sigma=5),
+                'blur'                            : GaussianBlur(sigma=5),
                 'clahe'                           : CLAHE(),
                 'median filter'                   : MedianEnhancer(),
                 'detection'                       : WatershedDetector(footprint='auto', min_size=100, relabel=True),
@@ -118,7 +118,7 @@ def test_watershed_kmarx_pipeline_with_measurements_pickleable(plate_grid_images
 
     kmarx_pipeline = ImagePipeline(
             ops={
-                'blur'                            : GaussianSmoother(sigma=5),
+                'blur'                            : GaussianBlur(sigma=5),
                 'clahe'                           : CLAHE(),
                 'median filter'                   : MedianEnhancer(),
                 'detection'                       : WatershedDetector(footprint='auto', min_size=100, relabel=True),

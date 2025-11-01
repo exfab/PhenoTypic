@@ -135,7 +135,7 @@ graph TD
     A --> C[Composite: ImagePipeline]
     C --> D[Children: List of Operations]
     D --> E[Operation 1: OtsuDetector]
-    D --> F[Operation 2: GaussianSmoother]
+    D --> F[Operation 2: GaussianBlur]
     D --> G[Operation 3: MeasureShape]
     H[Client Code] --> I[Uniform Interface]
     I --> J[Single Operation: pipeline.apply(op, image)]
@@ -466,7 +466,7 @@ class OperationFactory:
 # Registration
 OperationFactory.register('otsu', OtsuDetector)
 OperationFactory.register('watershed', WatershedDetector)
-OperationFactory.register('gaussian', GaussianSmoother)
+OperationFactory.register('gaussian', GaussianBlur)
 
 # Usage
 factory = OperationFactory()

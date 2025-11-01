@@ -11,9 +11,9 @@ import numpy as np
 import pandas as pd
 from skimage import exposure
 
-from phenotypic.abstract import MeasureFeatures
+from phenotypic.ABC_ import MeasureFeatures
 from phenotypic.tools.constants_ import OBJECT
-from phenotypic.abstract import MeasurementInfo
+from phenotypic.ABC_ import MeasurementInfo
 
 
 class TEXTURE(MeasurementInfo):
@@ -130,12 +130,16 @@ class TEXTURE(MeasurementInfo):
 
     @classmethod
     def get_headers(cls, scale: int, matrix_name) -> list[str]:
-        """Return full texture labels with angles in order 0, 45, 90, 135 for each feature."""
+        """Return full texture labels with angles in order 0, 45, 90, 135 for each feature and the
+        average across degrees of each feature at the end."""
         angles = [0, 45, 90, 135]
         labels: list[str] = []
         for member in cls.get_labels():
             for angle in angles:
                 labels.append(f"{cls.category()}{matrix_name}_{member}-deg{angle:03d}-scale{scale:02d}")
+
+        for member in cls.get_labels():
+            labels.append(f'{cls.category()}{matrix_name}_{member}-avg-scale{scale:02d}')
         return labels
 
 
@@ -173,7 +177,7 @@ class MeasureTexture(MeasureFeatures):
                  warn: bool = False):
         """
         Initializes an object with specific configurations for scale, quantization level,
-        enhancement, and warning behaviors. This constructor ensures that the 'scale'
+        enhance, and warning behaviors. This constructor ensures that the 'scale'
         parameter is always stored as a list.
 
         Args:
@@ -181,8 +185,8 @@ class MeasureTexture(MeasureFeatures):
                 the scale configuration. If a single integer is provided, it will be
                 converted into a list containing that integer.
             quant_lvl (Literal[8, 16, 32, 64]): The quantization level. A higher level adds
-                more computational complexity but increases detail captured.
-                Think of this like sensitivity to texture. Acceptable values are either 8, 16, 32, or 64.
+                more computational complexity but captures more discrete texture changes. A higher value is
+                not always more meaningful. Think of this like sensitivity to texture. Acceptable values are either 8, 16, 32, or 64.
             enhance (bool): A flag indicating whether to enhance the image before measuring texture. This can
                 increase the amount of detail captured but can bias the measurements in cases where the relative
                 variance between pixel intensities of an object is small.
@@ -267,7 +271,9 @@ class MeasureTexture(MeasureFeatures):
         props = image.objects.props
         objmap = image.objmap[:]
         measurement_names = TEXTURE.get_headers(scale, foreground_name)
-        measurements = np.empty(shape=(image.num_objects, len(measurement_names),), dtype=np.float64)
+        deg_measurement_names = measurement_names[:-13]  # there are 13 haralick features so we separate the avgs out
+        avg_measurement_names = measurement_names[-13:]
+        deg_meas = np.empty(shape=(image.num_objects, len(deg_measurement_names),), dtype=np.float64)
         for idx, label in enumerate(image.objects.labels):
             slices = props[idx].slice
             obj_fg = foreground_array[slices].copy()
@@ -300,11 +306,18 @@ class MeasureTexture(MeasureFeatures):
                 if warn: warnings.warn(f'Error in computing Haralick features for object {label}: {e}')
                 texture_statistics = np.full((4, 13), np.nan, dtype=np.float64)
 
-            measurements[idx, :] = texture_statistics.T.ravel()
+            deg_meas[idx, :] = texture_statistics.T.ravel()
 
-        measurements = pd.DataFrame(measurements, columns=measurement_names)
-        measurements.insert(loc=0, column=OBJECT.LABEL, value=image.objects.labels2series())
-        return measurements
+        avg_meas = np.empty(shape=(image.num_objects, len(avg_measurement_names),), dtype=np.float64)
+
+        # step through each feature and avg across degrees
+        for avg_col_idx, deg_start_idx in enumerate(range(0, deg_meas.shape[1], 4)):
+            avg_meas[:, avg_col_idx] = np.average(deg_meas[:, deg_start_idx:deg_start_idx + 4], axis=1)
+
+        meas = pd.DataFrame(np.hstack([deg_meas, avg_meas]), columns=measurement_names)
+
+        meas.insert(loc=0, column=OBJECT.LABEL, value=image.objects.labels2series())
+        return meas
 
     @staticmethod
     def _quantize_arr(arr: np.ndarray, quant_lvl) -> np.ndarray:

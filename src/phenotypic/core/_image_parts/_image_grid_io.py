@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Tuple
+from typing import Tuple, TYPE_CHECKING
 
 if TYPE_CHECKING: from phenotypic import GridImage
 
@@ -10,9 +10,10 @@ try:
     import rawpy
 except ImportError:
     rawpy = None
-import phenotypic.abstract
+import phenotypic.ABC_
 from phenotypic.grid import OptimalBinsGridFinder
 from ._image_grid_handler import ImageGridHandler
+from phenotypic.tools.constants_ import IMAGE_FORMATS
 
 
 class ImageGridIO(ImageGridHandler):
@@ -22,10 +23,12 @@ class ImageGridIO(ImageGridHandler):
                grid_finder: phenotypic.abstract.GridFinder | None = None,
                nrows: int = None,
                ncols: int = None,
+               *,
                gamma: Tuple[int, int] = None,
                demosaic_algorithm: rawpy.DemosaicAlgorithm = None,
                use_camera_wb: bool = False,
                median_filter_passes: int = 0,
+               rawpy_params: dict | None = None,
                **kwargs) -> GridImage:
         image = super().imread(
                 filepath=filepath,
@@ -33,6 +36,7 @@ class ImageGridIO(ImageGridHandler):
                 demosaic_algorithm=demosaic_algorithm,
                 use_camera_wb=use_camera_wb,
                 median_filter_passes=median_filter_passes,
+                rawpy_params=rawpy_params,
                 **kwargs,
         )
         if grid_finder is None:

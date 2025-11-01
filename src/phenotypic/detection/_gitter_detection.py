@@ -6,7 +6,7 @@ if TYPE_CHECKING: from phenotypic import Image
 import numpy as np
 from functools import partial
 
-from phenotypic.abstract import ObjectDetector
+from phenotypic.ABC_ import ObjectDetector
 import skimage.filters as filters
 import skimage.morphology as morphology
 

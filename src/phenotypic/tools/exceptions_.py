@@ -21,11 +21,11 @@ class UnknownError(PhenoTypicError):
 
 
 class InterfaceError(NotImplementedError, PhenoTypicError):
-    """Exception raised when an abstract method is called when it's not supposed to be."""
+    """Exception raised when an ABC_ method is called when it's not supposed to be."""
 
     def __init__(self):
         super().__init__(
-                "An abstract method was called when it was not supposed to be. Make sure any inherited classes properly overload this method.",
+                "An ABC_ method was called when it was not supposed to be. Make sure any inherited classes properly overload this method.",
         )
 
 
@@ -183,7 +183,7 @@ class InvalidHsvSchemaError(AttributeError):
     """Exception raised when trying to convert to HSV from a non-RGB imformat."""
 
     def __init__(self, imformat):
-        super().__init__(f"To be converted to HSV format, the imformat should be RGB, but got {schema}")
+        super().__init__(f"To be converted to HSV format, the imformat should be RGB, but got {imformat}")
 
 
 # Mutable component exceptions

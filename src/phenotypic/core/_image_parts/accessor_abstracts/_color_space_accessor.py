@@ -7,6 +7,7 @@ import numpy as np
 from phenotypic.tools.constants_ import IO
 from phenotypic.tools.exceptions_ import IllegalAssignmentError
 from ._image_accessor_base import ImageAccessorBase
+import os
 
 
 class ColorSpaceAccessor(ImageAccessorBase):

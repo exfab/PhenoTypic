@@ -6,7 +6,7 @@ if TYPE_CHECKING: from phenotypic import Image
 import pandas as pd
 from skimage.measure import regionprops_table
 
-from phenotypic.abstract import MeasureFeatures
+from phenotypic.ABC_ import MeasureFeatures
 
 from ..tools.constants_ import OBJECT, BBOX
 

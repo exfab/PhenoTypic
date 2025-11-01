@@ -17,6 +17,8 @@ from pathlib import Path
 
 DEFAULT_MPL_IMAGE_FIGSIZE = (8, 6)
 
+VALIDATE_OPS = True
+
 
 class MPL:
     """Holds defaults for matplotlib parameters"""

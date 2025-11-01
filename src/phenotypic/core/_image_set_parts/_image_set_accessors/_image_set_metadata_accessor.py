@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+from typing import Dict, Tuple, Set, Any, Callable, Union, List, Optional, TYPE_CHECKING
+
 if TYPE_CHECKING: from phenotypic import ImageSet
-from typing import Dict, Tuple, Set, Any, Callable, Union, List, Optional
 
 import pandas as pd
 import numpy as np

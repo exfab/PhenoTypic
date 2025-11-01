@@ -6,7 +6,7 @@ if TYPE_CHECKING: from phenotypic import Image
 
 from scipy.spatial.distance import euclidean
 
-from phenotypic.abstract import MapModifier
+from phenotypic.ABC_ import MapModifier
 from phenotypic.tools.constants_ import OBJECT, BBOX
 
 

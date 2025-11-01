@@ -7,7 +7,7 @@ if TYPE_CHECKING: from phenotypic import Image
 import pandas as pd
 import numpy as np
 
-from phenotypic.abstract import GridFinder
+from phenotypic.ABC_ import GridFinder
 
 
 class ManualGridFinder(GridFinder):

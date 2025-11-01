@@ -8,7 +8,7 @@ from skimage.filters.rank import median
 from skimage.morphology import disk, cube, ball, footprint_rectangle
 from skimage.util import img_as_ubyte, img_as_float
 
-from phenotypic.abstract import ImageEnhancer
+from phenotypic.ABC_ import ImageEnhancer
 
 
 class RankMedianEnhancer(ImageEnhancer):

@@ -12,7 +12,7 @@ from scipy.spatial import ConvexHull, qhull
 from scipy.ndimage import distance_transform_edt
 import numpy as np
 
-from phenotypic.abstract import MeasurementInfo, MeasureFeatures
+from phenotypic.ABC_ import MeasurementInfo, MeasureFeatures
 
 
 class SHAPE(MeasurementInfo):
@@ -95,7 +95,6 @@ class MeasureShape(MeasureFeatures):
                 with warnings.catch_warnings():
                     warnings.filterwarnings("ignore", message='Qhull')
                     convex_hull = ConvexHull(current_props.coords)
-
 
             except qhull.QhullError:
                 convex_hull = None

@@ -12,7 +12,7 @@ from functools import partial
 
 import pandas as pd
 
-from phenotypic.abstract import MeasureFeatures, MeasurementInfo
+from phenotypic.ABC_ import MeasureFeatures, MeasurementInfo
 
 
 # TODO: Add more measurements

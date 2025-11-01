@@ -12,7 +12,7 @@ import scipy.ndimage as ndimage
 from scipy.ndimage import distance_transform_edt
 from skimage import feature, filters, morphology, segmentation
 
-from phenotypic.abstract import ThresholdDetector
+from phenotypic.ABC_ import ThresholdDetector
 
 
 class WatershedDetector(ThresholdDetector):
@@ -26,7 +26,7 @@ class WatershedDetector(ThresholdDetector):
     image segmentation tasks, where proximity-based object identification is needed.
 
     Note:
-        Its recommended to use `GaussianSmoother` beforehand
+        Its recommended to use `GaussianBlur` beforehand
 
     Attributes:
         footprint (Literal['auto'] | np.ndarray | int | None): Structure element to define
@@ -77,7 +77,7 @@ class WatershedDetector(ThresholdDetector):
     def _operate(self, image: Image | GridImage) -> Image:
         from phenotypic import Image, GridImage
 
-        enhanced_matrix = image._data.enh_matrix  # direct access to reduce memory footprint, but careful to not delete
+        enhanced_matrix = image.enh_matrix[:]  # direct access to reduce memory footprint, but careful to not delete
         self._log_memory_usage("getting enhanced matrix")
 
         # Determine footprint for peak detection
@@ -115,7 +115,7 @@ class WatershedDetector(ThresholdDetector):
         self._log_memory_usage("threshold calculation and binary mask creation")
 
         binary = morphology.remove_small_objects(binary, min_size=self.min_size)  # clean to reduce runtime
-        
+
         # Ensure binary is contiguous for memory-efficient operations (only if needed)
         if not binary.flags['C_CONTIGUOUS']:
             binary = np.ascontiguousarray(binary)

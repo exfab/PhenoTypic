@@ -182,7 +182,7 @@ class ImageSetCore:
             ValueError: If the `overwrite` flag is set to False and the image name is already in the ImageSet
         """
         with self.hdf_.writer() as writer:
-            set_group = self.hdf_.get_group(writer, self._hdf5_images_group_key)
+            set_group = self.hdf_.get_data_group(writer)
             self._add_image2group(group=set_group, image=image, overwrite=overwrite if overwrite else self._overwrite)
 
     @staticmethod
@@ -255,7 +255,7 @@ class ImageSetCore:
     def iter_images(self) -> iter:
         for image_name in self.get_image_names():
             with h5py.File(self._out_path, mode='r', libver='latest', swmr=True) as out_handler:
-                image_group = self._get_hdf5_group(out_handler, posixpath.join(self._hdf5_images_group_key, image_name))
+                image_group = self._get_hdf5_group(out_handler, posixpath.join(self.hdf_.set_data_posix, image_name))
 
                 template = self._get_template()
 

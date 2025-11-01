@@ -1,7 +1,7 @@
 import pytest
 from .resources.TestHelper import walk_package_for_class, timeit
 import phenotypic
-from phenotypic.abstract import PrefabPipeline
+from phenotypic.ABC_ import PrefabPipeline
 
 __prefab_classes = walk_package_for_class(phenotypic, PrefabPipeline)
 

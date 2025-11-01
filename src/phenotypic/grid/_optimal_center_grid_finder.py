@@ -9,7 +9,7 @@ import numpy as np
 from scipy.optimize import minimize_scalar
 from functools import partial
 
-from phenotypic.abstract import GridFinder
+from phenotypic.ABC_ import GridFinder
 from phenotypic.tools.constants_ import BBOX, GRID
 
 

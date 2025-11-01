@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 from os import PathLike
-from typing import Any, Dict, Literal, TYPE_CHECKING, List
+from typing import Any, Dict, List, Literal, TYPE_CHECKING
 
-from phenotypic.abstract import GridFinder
+from phenotypic.ABC_ import GridFinder
 
 if TYPE_CHECKING: from phenotypic import Image
 
@@ -14,43 +14,6 @@ from ._image_set_status import ImageSetStatus
 
 
 class ImageSetMeasurements(ImageSetStatus):
-    """
-    This class adds measurement handling to the ImageSetStatus class.
-    """
-
-    def __init__(self,
-                 name: str,
-                 outpath: PathLike | str | None = None,
-                 imtype: Literal["Image", "GridImage"] = "Image",
-                 imparams: Dict[str, Any] | None = None,
-                 default_mode: Literal['temp', 'cwd'] = 'temp',
-                 overwrite: bool = False, ):
-        """
-        Initializes the instance with the specified parameters.
-
-        This constructor initializes an instance with the given name, grid finder,
-        source, output path, and overwrite settings. The initialization involves
-        calling the superclass constructor with the provided arguments and setting
-        up the measurement accessor using the SetMeasurementAccessor class.
-
-        Args:
-            name (str): A unique name identifying the instance.
-            grid_finder (GridFinder | None): An instance of GridFinder to help with
-                grid identification. Defaults to None.
-            src (List[Image] | PathLike | None): A list of image objects, a path-like
-                object, or None, representing the source of the data. Defaults to None.
-            outpath (PathLike | None): A path-like object specifying the output path
-                for processed or generated data. Defaults to None.
-            overwrite (bool): A flag indicating whether to overwrite existing files or
-                data at the output path. Defaults to False.
-        """
-        super().__init__(name=name, outpath=outpath, imtype=imtype, imparams=imparams, default_mode=default_mode,
-                         overwrite=overwrite)
-        self._measurement_accessor = SetMeasurementAccessor(self)
-
-    @property
-    def measurements(self) -> SetMeasurementAccessor:
-        return self._measurement_accessor
 
     def get_measurement(self, image_names: List[str] | str | None = None) -> pd.DataFrame:
         import logging
@@ -64,8 +27,8 @@ class ImageSetMeasurements(ImageSetStatus):
             if isinstance(image_names, str):
                 image_names = [image_names]
 
-        logger.debug(
-                f"🔍 get_measurement: Retrieving measurements for {len(image_names)} images: {image_names[:3]}{'...' if len(image_names) > 3 else ''}")
+        logger.debug(f"🔍 get_measurement: Retrieving measurements for {len(image_names)} images: "
+                     f"{image_names[:3]}{'...' if len(image_names) > 3 else ''}")
 
         with self.hdf_.reader() as handle:
             measurements = []
@@ -81,12 +44,17 @@ class ImageSetMeasurements(ImageSetStatus):
                 logger.debug(f"🔍 get_measurement: Looking for measurement key '{measurement_key}' in image group")
 
                 status_subgroup = self.hdf_.get_status_subgroup(handle=handle, image_name=name)
-                logger.debug(f'Image group status attrs for "{name}": {status_subgroup.attrs.keys()}')
+                status_attrs = status_subgroup.attrs
+                logger.debug(f'Image group status attrs for "{name}": {status_attrs.keys()}')
+
+                processed = bool(status_attrs[PIPE_STATUS.PROCESSED.label]) if (
+                        PIPE_STATUS.PROCESSED.label in status_attrs) else False
+                measured = bool(status_attrs[PIPE_STATUS.MEASURED.label]) if (
+                        PIPE_STATUS.MEASURED.label in status_attrs) else False
+
                 # TODO: Finish implementing measurement aggregator
                 # Validate that the measurements were sucessfully taken by the pipeline
-                if ((status_subgroup.attrs[PIPE_STATUS.PROCESSED])
-                        and (status_subgroup.attrs[PIPE_STATUS.MEASURED])
-                        and (measurement_key in image_group)):
+                if processed and measured and (measurement_key in image_group):
                     df = self.hdf_.load_frame(
                             group=self.hdf_.get_image_measurement_subgroup(handle=handle, image_name=name), )
 

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import warnings
-from typing import TYPE_CHECKING, Tuple
+from typing import Tuple, TYPE_CHECKING
 
 if TYPE_CHECKING: from phenotypic import Image
 
@@ -36,70 +36,79 @@ class ImageIOHandler(ImageColorSpace):
     @classmethod
     def imread(cls,
                filepath: PathLike,
-               imparams: dict | None = None,
-               gamma: Tuple[int, int] = None,
-               demosaic_algorithm: rawpy.DemosaicAlgorithm = None,
-               use_camera_wb: bool = False,
-               median_filter_passes: int = 0,
+               rawpy_params: dict | None = None,
                **kwargs) -> Image:
         """
-        Reads an image file from the specified filepath and processes it into an Image
-        object. This method supports standard image formats as well as raw image
-        formats (if rawpy is available). In the case of raw files, additional
-        processing options can be configured.
+        Reads an image file from the specified file path and returns an Image instance.
+        Supports common image formats and raw sensor data formats with optional processing
+        configurations.
 
         Args:
-            filepath (PathLike): The file path to the image to be read. Must represent
-                a valid image file supported by the application.
-            imparams (dict|None): Optional parameters to initialize the Image object
-                after raw image processing.
-            gamma (Tuple[int, int]|None): Tuple representing the gamma curve settings
-                for raw image postprocessing. Defaults to (1, 1) if not specified and
-                a raw image is being read.
-            demosaic_algorithm (rawpy.DemosaicAlgorithm|None): Algorithm for demosaicing
-                raw image data. Defaults to rawpy.DemosaicAlgorithm.AHD if not specified.
-            use_camera_wb (bool): Whether to use the camera's white balance settings when
-                processing raw images. Defaults to False.
-            median_filter_passes (int): Number of passes of median filtering to apply
-                during raw image postprocessing. Defaults to 0 for no median filtering.
-            **kwargs: Additional keyword arguments passed to the rawpy postprocessing
-                function.
+            filepath (PathLike): The path to the image file to be read.
+            gamma (Tuple[int, int] | None): Gamma correction as a tuple (numerator, denominator).
+                If None, defaults to (1, 1) for no gamma correction.
+            demosaic_algorithm (rawpy.DemosaicAlgorithm | None): The demosaicing algorithm to
+                apply if reading raw sensor data. Defaults to None, using the
+                `rawpy.DemosaicAlgorithm.LINEAR`.
+            use_camera_wb (bool): Flag to indicate whether to use the camera's white balance
+                configuration if reading raw sensor data. Defaults to False.
+            median_filter_passes (int): The number of median filtering passes to apply to raw
+                sensor data. Defaults to 0.
+            rawpy_params (dict | None): Additional keyword arguments for rawpy's `postprocess`
+                function when reading raw sensor data. Defaults to None.
+            **kwargs: Additional keyword arguments for further configuration during the
+                initialization of the Image instance.
 
         Returns:
-            Image: An Image object containing the processed image data from the input
-            filepath.
+            Image: An Image instance containing the image data and metadata.
 
         Raises:
-            UnsupportedFileTypeError: If the file has an unsupported suffix or if rawpy
-            is unavailable when processing a raw image file.
+            UnsupportedFileTypeError: If the file extension is not supported or the necessary
+                libraries are not available for processing the specified file type.
         """
         # Convert to a Path object
         filepath = Path(filepath)
-        imparams = imparams or {}
+        rawpy_params = rawpy_params or {}
         imformat = None
 
         if filepath.suffix.lower() in IO.ACCEPTED_FILE_EXTENSIONS:  # normal images
             arr = ski.io.imread(fname=filepath)
 
         elif filepath.suffix.lower() in IO.RAW_FILE_EXTENSIONS and rawpy is not None:  # raw sensor data handling
+            use_auto_wb = rawpy_params.pop('use_auto_wb', False)
+            use_camera_wb = rawpy_params.pop('use_camera_wb', False)
+
+            no_auto_scale = rawpy_params.pop('no_auto_scale', False)  # TODO: implement calibration schema
+            no_auto_bright = rawpy_params.pop('no_auto_bright', False)  # TODO: implement calibration schema
+
+            if rawpy.DemosaicAlgorithm.AMAZE.isSupported():
+                default_demosaic = rawpy.DemosaicAlgorithm.AMAZE
+            else:
+                default_demosaic = rawpy.DemosaicAlgorithm.AHD
+
+            demosaic_algorithm = rawpy_params.pop('demosaic_algorithm', default_demosaic)
+            gamma = rawpy_params.pop('gamma', (1, 1))
             with rawpy.imread(str(filepath)) as raw:
                 arr = raw.postprocess(
-                        demosaic_algorithm=demosaic_algorithm if demosaic_algorithm else rawpy.DemosaicAlgorithm.LINEAR,
+                        demosaic_algorithm=demosaic_algorithm,
                         use_camera_wb=use_camera_wb,
-                        use_auto_wb=False,
-                        gamma=gamma if gamma else (1, 1),
-                        median_filter_passes=median_filter_passes,
+                        use_auto_wb=use_auto_wb,
+                        no_auto_scale=no_auto_scale,
+                        no_auto_bright=no_auto_bright,
+
+                        gamma=gamma,
+                        median_filter_passes=0,
                         output_bps=16,  # Preserve as much detail as possible
                         output_color=rawpy.ColorSpace.sRGB,
-                        **kwargs,
+                        **rawpy_params,
                 )
             imformat = IMAGE_FORMATS.LINEAR_RGB
 
         else:
             raise UnsupportedFileTypeError(filepath.suffix)
 
-        imformat = imparams.get('imformat', imformat)
-        image = cls(arr=arr, imformat=imformat, **imparams)
+        imformat = kwargs.pop('imformat', imformat)
+        image = cls(arr=arr, imformat=imformat, **kwargs)
         image.name = filepath.stem
         return image
 

@@ -21,7 +21,7 @@ class ObjectsAccessor:
     labeling and analysis tools like `skimage.regionprops`.
 
     Notes:
-        - Can only be called if an :class:`PhenoTypic.abstract.ObjectDetector` has been applied to the :class:`PhenoTypic.Image` object.
+        - Can only be called if an :class:`PhenoTypic.ABC_.ObjectDetector` has been applied to the :class:`PhenoTypic.Image` object.
 
     """
 

@@ -303,14 +303,23 @@ class HDF:
             return handle[posix]
         else:
             # Check if file is opened in read-only mode - with error handling
+            # Handle both File and Group objects (Groups have a .file attribute)
             try:
-                file_mode = handle.mode
+                if isinstance(handle, h5py.Group) and not isinstance(handle, h5py.File):
+                    # For Group objects, access the parent file
+                    file_obj = handle.file
+                    file_mode = file_obj.mode
+                    swmr_mode = file_obj.swmr_mode
+                else:
+                    # For File objects, access directly
+                    file_mode = handle.mode
+                    swmr_mode = handle.swmr_mode
             except (ValueError, AttributeError) as e:
                 raise ValueError(f"Cannot determine file mode - HDF5 handle may be invalid: {e}")
 
             if file_mode == 'r':
                 raise KeyError(f"Group '{posix}' not found in HDF5 file opened in read-only mode")
-            if handle.swmr_mode is True:
+            if swmr_mode is True:
                 raise KeyError(f"Group '{posix}' not found in HDF5 file opened in SWMR mode")
             else:
                 # File has write permissions, safe to create group
@@ -1409,6 +1418,28 @@ class HDF:
     # =================== DATAFRAME FUNCTIONS ===================
 
     @staticmethod
+    def _convert_categorical_columns(dataframe: pd.DataFrame) -> pd.DataFrame:
+        """Convert categorical columns to their non-categorical representation.
+        
+        This method converts any categorical dtype columns to their underlying
+        data type representation, preserving the actual values but removing the
+        categorical encoding.
+        
+        Args:
+            dataframe: pandas DataFrame that may contain categorical columns.
+            
+        Returns:
+            DataFrame with categorical columns converted to their base dtypes.
+        """
+        df = dataframe.copy()
+        for col in df.columns:
+            if pd.api.types.is_categorical_dtype(df[col]):
+                # Convert categorical to its underlying dtype
+                # This preserves the actual values but removes categorical encoding
+                df[col] = df[col].astype(df[col].cat.categories.dtype)
+        return df
+
+    @staticmethod
     def preallocate_frame_layout(
             group: h5py.Group,
             dataframe: pd.DataFrame,
@@ -1437,6 +1468,9 @@ class HDF:
                          If group.file.swmr_mode is True and datasets don't exist.
             ValueError: If DataFrame validation fails.
         """
+        # Convert categorical columns to their base dtypes
+        dataframe = HDF._convert_categorical_columns(dataframe)
+        
         if require_swmr:
             HDF.assert_swmr_on(group)
 
@@ -1527,6 +1561,9 @@ class HDF:
             RuntimeError: If require_swmr=True and SWMR mode not enabled.
             ValueError: If DataFrame validation fails.
         """
+        # Convert categorical columns to their base dtypes
+        dataframe = HDF._convert_categorical_columns(dataframe)
+        
         if len(dataframe) == 0:
             raise ValueError("Cannot save empty DataFrame")
 
@@ -1582,6 +1619,9 @@ class HDF:
             RuntimeError: If require_swmr=True and SWMR mode not enabled.
             ValueError: If validation fails or schema mismatch.
         """
+        # Convert categorical columns to their base dtypes
+        dataframe = HDF._convert_categorical_columns(dataframe)
+        
         if require_swmr:
             HDF.assert_swmr_on(group)
 
@@ -1660,6 +1700,9 @@ class HDF:
             RuntimeError: If require_swmr=True and SWMR mode not enabled.
             ValueError: If validation fails or schema mismatch.
         """
+        # Convert categorical columns to their base dtypes
+        dataframe = HDF._convert_categorical_columns(dataframe)
+        
         if require_swmr:
             HDF.assert_swmr_on(group)
 

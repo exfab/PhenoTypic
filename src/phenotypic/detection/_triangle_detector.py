@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING: from phenotypic import Image
 from skimage.filters import threshold_triangle
 
-from ..abstract import ThresholdDetector
+from ..ABC_ import ThresholdDetector
 
 
 class TriangleDetector(ThresholdDetector):
@@ -12,11 +12,11 @@ class TriangleDetector(ThresholdDetector):
 
     This class inherits from ThresholdDetector and is specifically designed to
     detect triangles through a thresholding algorithm applied to the image's
-    enhancement matrix. The threshold is calculated using the triangle algorithm,
+    enhance matrix. The threshold is calculated using the triangle algorithm,
     and the result modifies the image's object mask.
 
     Methods:
-        apply: Applies triangle thresholding to the enhancement matrix of the
+        apply: Applies triangle thresholding to the enhance matrix of the
             image and updates the object mask accordingly.
     """
 

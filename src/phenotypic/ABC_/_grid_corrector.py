@@ -5,8 +5,8 @@ import pandas as pd
 
 if TYPE_CHECKING: from phenotypic import GridImage
 
-from phenotypic.abstract import ImageCorrector
-from phenotypic.abstract import GridOperation
+from phenotypic.ABC_ import ImageCorrector
+from phenotypic.ABC_ import GridOperation
 from phenotypic.tools.exceptions_ import GridImageInputError, OutputValueError
 from abc import ABC
 

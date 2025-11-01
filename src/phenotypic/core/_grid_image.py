@@ -4,7 +4,7 @@ from typing import Literal, Optional
 
 import numpy as np
 
-from phenotypic.abstract import GridFinder
+from phenotypic.ABC_ import GridFinder
 from ._image import Image
 from ._image_parts._image_grid_handler import ImageGridHandler
 

@@ -6,14 +6,14 @@ if TYPE_CHECKING: from phenotypic import Image
 from skimage.filters import threshold_yen
 from skimage.segmentation import clear_border
 
-from ..abstract import ThresholdDetector
+from ..ABC_ import ThresholdDetector
 
 
 class YenDetector(ThresholdDetector):
     """Class for applying Yen's thresholding to an image.
 
     This class inherits from the `ThresholdDetector` and provides the functionality
-    to apply Yen's thresholding method on the enhancement matrix (`enh_matrix`) of an
+    to apply Yen's thresholding method on the enhance matrix (`enh_matrix`) of an
     arr image. The operation generates a binary mask (`objmask`) depending on the
     computed threshold other_image.
 

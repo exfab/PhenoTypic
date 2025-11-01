@@ -63,7 +63,7 @@ class LogGrowthModel(ModelFitter):
                  agg_func: Callable | str | list | dict | None = 'mean',
                  Kmax_label: str | None = None,
                  growth_rate_penalty=1.2,
-                 cap_penalty=5,
+                 Kmax_penalty=2,
                  loss: Literal["linear"] = "linear",
                  verbose: bool = False,
                  n_jobs: int = 1):
@@ -81,14 +81,14 @@ class LogGrowthModel(ModelFitter):
                 Defaults to 'mean'.
             Kmax_label (str | None): Column name that provides maximum K value for processing. Defaults to None.
             growth_rate_penalty: The penalty factor applied to growth rates. Defaults to 1.2.
-            cap_penalty: The maximum penalty factor applied to certain metrics. Defaults to 5.
+            Kmax_penalty: The maximum penalty factor applied to the carrying capacity. Defaults to 2.
             loss (Literal["linear"]): Loss calculation method to apply. Defaults to "linear".
             verbose (bool): If True, enables detailed logging for process execution. Defaults to False.
             n_jobs (int): Number of parallel jobs to execute. Defaults to 1.
         """
         super().__init__(on=on, groupby=groupby, agg_func=agg_func, num_workers=n_jobs)
         self.reg_factor = growth_rate_penalty
-        self.kmax_penalty = cap_penalty
+        self.kmax_penalty = Kmax_penalty
         self.loss = loss
         self.verbose = verbose
 

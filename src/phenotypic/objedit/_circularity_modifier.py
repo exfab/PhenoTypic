@@ -9,7 +9,7 @@ import numpy as np
 from skimage.measure import regionprops_table
 import math
 
-from ..abstract import MapModifier
+from ..ABC_ import MapModifier
 from ..tools.constants_ import OBJECT
 
 

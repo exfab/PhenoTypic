@@ -1,4 +1,8 @@
-__version__ = "0.9.0"
+__version__ = "0.9.1"
+
+# Configure matplotlib to use non-interactive backend
+import matplotlib
+matplotlib.use('Agg')
 
 from .core._grid_image import GridImage
 from .core._image import Image
@@ -6,12 +10,12 @@ from .core._image_pipeline import ImagePipeline
 from .core._image_set import ImageSet
 from .core._imread import imread
 
-from . import (abstract,
+from . import (ABC_,
                analysis,
                correction,
                data,
                detection,
-               enhancement,
+               enhance,
                grid,
                measure,
                objedit,
@@ -29,10 +33,10 @@ __all__ = [
     "detection",
     "measure",
     "grid",
-    "abstract",
+    "ABC_",
     "objedit",
     "prefab",
     "correction",
-    "enhancement",
-    "util",
+    "enhance",
+    "tools",
 ]

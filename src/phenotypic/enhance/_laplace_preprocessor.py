@@ -7,7 +7,7 @@ from skimage.filters import laplace
 from typing import Optional
 import numpy as np
 
-from ..abstract import ImageEnhancer
+from ..ABC_ import ImageEnhancer
 
 
 class LaplaceEnhancer(ImageEnhancer):

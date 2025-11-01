@@ -17,6 +17,7 @@ class XyzD65Accessor(ColorSpaceAccessor):
         _root_image (Image): The root image object containing color profile,
             illuminant, and data for chromatic adaptation and XYZ conversions.
     """
+
     @property
     def _subject_arr(self) -> np.ndarray:
         """
@@ -37,7 +38,10 @@ class XyzD65Accessor(ColorSpaceAccessor):
         wp = colour.CCS_ILLUMINANTS[self._root_image.observer]
 
         # Creates a partial function so only the new XYZ whitepoint needs to be supplied
-        bradford_cat65 = partial(colour.chromatic_adaptation, XYZ=self._root_image.CieXYZ[:], XYZ_wr=colour.xy_to_XYZ(wp['D65']), method='Bradford')
+        bradford_cat65 = partial(colour.chromatic_adaptation,
+                                 XYZ=self._root_image.CieXYZ[:],
+                                 XYZ_wr=colour.xy_to_XYZ(wp['D65']),
+                                 method='Bradford')
 
         match (self._root_image.color_profile, self._root_image.illuminant):
             case ("sRGB", "D65"):
@@ -45,4 +49,5 @@ class XyzD65Accessor(ColorSpaceAccessor):
             case ("sRGB", "D50"):
                 return bradford_cat65(XYZ_w=colour.xy_to_XYZ(wp['D50']))
             case _:
-                raise ValueError(f'Unknown color_profile: {self._root_image.color_profile} or illuminant: {self._root_image.illuminant}')
+                raise ValueError(
+                        f'Unknown color_profile: {self._root_image.color_profile} or illuminant: {self._root_image.illuminant}')

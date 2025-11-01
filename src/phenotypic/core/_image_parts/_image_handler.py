@@ -3,6 +3,8 @@ from __future__ import annotations
 import warnings
 from typing import TYPE_CHECKING
 
+from scipy.sparse import csc_matrix
+
 if TYPE_CHECKING: from phenotypic import Image
 
 import uuid
@@ -15,10 +17,11 @@ from os import PathLike
 
 import skimage
 from skimage.color import rgb2gray, rgba2rgb
-from skimage.transform import rotate as skimage_rotate, resize as skimage_resize
+from skimage.transform import rotate as skimage_rotate
 import scipy.ndimage as ndimage
 from copy import deepcopy
 from typing import Type
+from dataclasses import dataclass
 
 from phenotypic.core._image_parts.accessors import (
     ImageArray,
@@ -33,6 +36,14 @@ from phenotypic.tools.constants_ import IMAGE_FORMATS, METADATA, IMAGE_TYPES
 from phenotypic.tools.exceptions_ import (
     EmptyImageError, IllegalAssignmentError
 )
+
+
+@dataclass
+class ImageData:
+    array: np.ndarray | None = None
+    matrix: np.ndarray | None = None
+    enh_matrix: np.ndarray | None = None
+    sparse_object_map: csc_matrix | None = None
 
 
 class ImageHandler:
@@ -90,11 +101,8 @@ class ImageHandler:
         self._image_format = IMAGE_FORMATS.NONE
 
         # Initialize image data
-        self._data = SimpleNamespace()
-        self._data.array = None
-        self._data.matrix = None
-        self._data.enh_matrix = None
-        self._data.sparse_object_map = None
+
+        self._data = ImageData()
 
         # Public metadata can be edited or removed
         self._metadata = SimpleNamespace(
@@ -687,7 +695,7 @@ class ImageHandler:
         return self.__class__(self)
 
     def set_image(self, input_image: Image | np.ndarray | None = None,
-                  imformat: Literal['RGB', 'greyscale'] | None = None) -> None:
+                  imformat: IMAGE_FORMATS | None = None) -> None:
         """
         Sets the image data and format based on the provided arr and parameters.
 
@@ -719,6 +727,7 @@ class ImageHandler:
                                           'defaulting to 16')
                             bit_depth = 16
                     self.metadata[METADATA.BIT_DEPTH] = bit_depth
+                # x = self._convert_float_array_to_int(x, bit_depth)
                 self._set_from_array(x, imformat)
             case x if isinstance(x, ImageHandler) | issubclass(type(x), ImageHandler):
                 self._set_from_class_instance(x)
@@ -727,6 +736,61 @@ class ImageHandler:
             case _:
                 raise ValueError(
                         f'arr must be a NumPy array, a class instance, or None. Got {type(input_image)}')
+
+    @staticmethod
+    def _convert_float_array_to_int(float_array: np.ndarray, bit_depth: Literal[8, 16]) -> np.ndarray:
+        """
+        Converts a normalized float array (values between 0 and 1) to integer array format.
+
+        This method checks if the input float array has values within the range [0, 1],
+        and if valid, converts it to either uint8 or uint16 based on the specified bit depth.
+
+        Args:
+            float_array (np.ndarray): A NumPy array with float values expected to be in range [0, 1].
+            bit_depth (Literal[8, 16]): The target bit depth for conversion. Must be either 8 or 16.
+                - 8: Converts to uint8 with max value of 255
+                - 16: Converts to uint16 with max value of 65535
+
+        Returns:
+            np.ndarray: The converted integer array with dtype uint8 or uint16.
+
+        Raises:
+            ValueError: If the array contains values outside the [0, 1] range.
+            ValueError: If bit_depth is not 8 or 16.
+
+        Examples:
+            >>> float_arr = np.array([[0.0, 0.5, 1.0], [0.25, 0.75, 0.1]], dtype=np.float32)
+            >>> result_8bit = ImageHandler.convert_float_array_to_int(float_arr, bit_depth=8)
+            >>> result_8bit.dtype
+            dtype('uint8')
+
+            >>> result_16bit = ImageHandler.convert_float_array_to_int(float_arr, bit_depth=16)
+            >>> result_16bit.dtype
+            dtype('uint16')
+        """
+        # Validate bit_depth parameter
+        if bit_depth not in (8, 16):
+            raise ValueError(f"bit_depth must be 8 or 16, got {bit_depth}")
+
+        # Check if array values are within [0, 1] range
+        if np.any(float_array < 0) or np.any(float_array > 1):
+            raise ValueError(
+                    f"Float array contains values outside [0, 1] range. "
+                    f"Min: {float_array.min()}, Max: {float_array.max()}"
+            )
+
+        # Select target dtype and max value based on bit depth
+        if bit_depth == 8:
+            target_dtype = np.uint8
+            max_value = 255
+        else:  # bit_depth == 16
+            target_dtype = np.uint16
+            max_value = 65535
+
+        # Convert by scaling to the appropriate integer range
+        converted_array = (float_array*max_value).astype(target_dtype)
+
+        return converted_array
 
     def _clear_data(self):
         self._data.array = np.empty((0, 3), dtype=np.uint8)  # Create an empty 3D array

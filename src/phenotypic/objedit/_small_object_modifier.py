@@ -6,7 +6,7 @@ if TYPE_CHECKING: from phenotypic import Image
 
 from skimage.morphology import remove_small_objects
 
-from ..abstract import MapModifier
+from ..ABC_ import MapModifier
 
 
 class SmallObjectRemover(MapModifier):

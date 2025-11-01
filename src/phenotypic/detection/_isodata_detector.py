@@ -6,14 +6,14 @@ if TYPE_CHECKING: from phenotypic import Image
 from skimage.filters import threshold_isodata
 from skimage.segmentation import clear_border
 
-from ..abstract import ThresholdDetector
+from ..ABC_ import ThresholdDetector
 
 
 class IsodataDetector(ThresholdDetector):
     """Class for applying ISODATA thresholding to an image.
 
     This class inherits from the `ThresholdDetector` and provides the functionality
-    to apply ISODATA thresholding method on the enhancement matrix (`enh_matrix`) of an
+    to apply ISODATA thresholding method on the enhance matrix (`enh_matrix`) of an
     arr image. The operation generates a binary mask (`objmask`) depending on the
     computed threshold other_image.
 

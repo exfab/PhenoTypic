@@ -4,7 +4,7 @@ from typing import Literal, TYPE_CHECKING
 
 if TYPE_CHECKING: from phenotypic import Image
 
-from phenotypic.abstract import MapModifier
+from phenotypic.ABC_ import MapModifier
 
 import numpy as np
 from skimage.morphology import binary_opening, diamond

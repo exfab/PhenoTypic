@@ -2,10 +2,10 @@ from typing import Literal
 
 import numpy as np
 
-from phenotypic.abstract import PrefabPipeline
+from phenotypic.ABC_ import PrefabPipeline
 from phenotypic.correction import GridAligner
 from phenotypic.detection import WatershedDetector
-from phenotypic.enhancement import CLAHE, GaussianSmoother, MedianEnhancer
+from phenotypic.enhance import CLAHE, GaussianBlur, MedianEnhancer
 from phenotypic.grid import (GridOversizedObjectRemover, MinResidualErrorReducer)
 from phenotypic.measure import MeasureColor, MeasureIntensity, MeasureShape, MeasureTexture
 from phenotypic.objedit import BorderObjectRemover, MaskFill
@@ -53,7 +53,7 @@ class AdvWatershedPipeline(PrefabPipeline):
                  benchmark: bool = False, **kwargs):
         """
         Initializes the object with a sequence of operations and measurements for image
-        processing. The sequence includes smoothing, enhancement, segmentation, border
+        processing. The sequence includes smoothing, enhance, segmentation, border
         object removal, and various measurement steps for analyzing images. Customizable
         parameters allow for adjusting the processing pipeline for specific use cases such
         as image segmentation and feature extraction.
@@ -83,7 +83,7 @@ class AdvWatershedPipeline(PrefabPipeline):
         min_residual_reducer = MinResidualErrorReducer()
 
         self._ops = [
-            GaussianSmoother(sigma=gaussian_sigma, mode=gaussian_mode, truncate=gaussian_truncate),
+            GaussianBlur(sigma=gaussian_sigma, mode=gaussian_mode, truncate=gaussian_truncate),
             CLAHE(),
             MedianEnhancer(),
             watershed_detector,

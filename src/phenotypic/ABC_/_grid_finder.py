@@ -8,7 +8,7 @@ if TYPE_CHECKING: from phenotypic import Image
 import pandas as pd
 import numpy as np
 
-from phenotypic.abstract import GridMeasureFeatures
+from phenotypic.ABC_ import GridMeasureFeatures
 from phenotypic.tools.constants_ import BBOX, GRID
 from abc import ABC
 
@@ -74,7 +74,6 @@ class GridFinder(GridMeasureFeatures, ABC):
         )
         return table
 
-
     @staticmethod
     def _clip_col_edges(col_edges, imshape: (int, int, ...)) -> np.ndarray:
         return np.clip(a=col_edges, a_min=0, a_max=imshape[1] - 1)
@@ -90,7 +89,6 @@ class GridFinder(GridMeasureFeatures, ABC):
         )
         return table
 
-
     def _add_section_number_info(self, table: pd.DataFrame,
                                  row_edges: np.array, col_edges: np.array,
                                  imshape: (int, int)) -> pd.DataFrame:
@@ -99,24 +97,24 @@ class GridFinder(GridMeasureFeatures, ABC):
             self._add_row_number_info(table=table, row_edges=row_edges, imshape=imshape)
         if str(GRID.COL_NUM) not in table.columns:
             self._add_col_number_info(table=table, col_edges=col_edges, imshape=imshape)
-        
+
         # Create section number directly from row and column indices
         idx_map = np.reshape(np.arange(self.nrows*self.ncols), (self.nrows, self.ncols))
-        
+
         # Compute section number for each row using vectorized operations
         row_nums = table.loc[:, str(GRID.ROW_NUM)].values
         col_nums = table.loc[:, str(GRID.COL_NUM)].values
-        
+
         # Handle NaN values by masking
         valid_mask = pd.notna(row_nums) & pd.notna(col_nums)
         section_nums = np.full(len(table), np.nan)
-        
+
         if valid_mask.any():
             section_nums[valid_mask] = idx_map[
-                row_nums[valid_mask].astype(int), 
+                row_nums[valid_mask].astype(int),
                 col_nums[valid_mask].astype(int)
             ]
-        
+
         # Create a new column with proper dtype handling
         section_series = pd.Series(section_nums, index=table.index)
         # Convert to nullable integer type first to handle NaN, then to categorical

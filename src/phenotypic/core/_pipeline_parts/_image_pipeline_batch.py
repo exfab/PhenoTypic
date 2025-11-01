@@ -4,11 +4,11 @@ import os
 import pickle
 import queue
 import time
-from typing import TYPE_CHECKING, Dict, Tuple, Literal
+from typing import Dict, Tuple, TYPE_CHECKING
 
 import psutil
 
-from phenotypic.abstract import ImageOperation, MeasureFeatures
+from phenotypic.ABC_ import ImageOperation, MeasureFeatures
 from phenotypic.tools.constants_ import PIPE_STATUS
 
 if TYPE_CHECKING: from phenotypic import Image, ImageSet, GridImage
@@ -141,6 +141,7 @@ class ImagePipelineBatch(ImagePipelineCore):
                      ) -> Union[pd.DataFrame, None]:
         assert self.num_workers >= 2, 'Not enough cores to run image set in parallel'
         logger = logging.getLogger('ImagePipeline.coordinator')
+
         """
         Step 1: Allocate space for writing since SWMR mode only allows appending
         new data blocks.  This is required because SWMR does not allow concurrent writes.
@@ -149,6 +150,7 @@ class ImagePipelineBatch(ImagePipelineCore):
             logger.info(f"allocating measurement datasets for {image_set.name}")
             self._allocate_measurement_datasets(image_set)
             logger.debug(f'allocation done. ready to process images.')
+
         """
         Step 2: spawn writer, producer, and worker processes.
             - single producer will wait till memory is available then enqueue image names to worker queue for processing
@@ -269,16 +271,16 @@ class ImagePipelineBatch(ImagePipelineCore):
                         - The image data is assumed to already be present
                     """
         logger = logging.getLogger('ImagePipeline')
-        sample_meas = self._get_measurements_dtypes_for_swmr()
+        sample_meas = self._get_measurements_dtypes_for_swmr(imageset.imtype)
         logger.debug(f'allocating measurements with columns: {sample_meas.columns}')
         image_names = imageset.get_image_names()
         with imageset.hdf_.safe_writer() as writer:
             for image_name in image_names:
                 status_group = imageset.hdf_.get_status_subgroup(handle=writer, image_name=image_name)
-                status_group.attrs[PIPE_STATUS.PROCESSED] = False
-                status_group.attrs[PIPE_STATUS.MEASURED] = False
-                assert PIPE_STATUS.PROCESSED in status_group.attrs, "processed flag missing from status group attrs"
-                assert PIPE_STATUS.MEASURED in status_group.attrs, "measured flag missing from status group attrs"
+                status_group.attrs.modify(name=PIPE_STATUS.PROCESSED.label, value=False)
+                status_group.attrs.modify(name=PIPE_STATUS.MEASURED.label, value=False)
+                assert PIPE_STATUS.PROCESSED.label in status_group.attrs, "processed flag missing from status group attrs"
+                assert PIPE_STATUS.MEASURED.label in status_group.attrs, "measured flag missing from status group attrs"
                 logger.debug(
                         f'Allocating statuses for {image_name}: {status_group.attrs.keys()} -> {status_group.attrs.values()}')
                 meas_group = imageset.hdf_.get_image_measurement_subgroup(handle=writer, image_name=image_name)
@@ -294,13 +296,25 @@ class ImagePipelineBatch(ImagePipelineCore):
                 )
         return
 
-    def _get_measurements_dtypes_for_swmr(self) -> pd.DataFrame:
+    def _get_measurements_dtypes_for_swmr(self, imtype: str) -> pd.DataFrame:
         # needed for dtype detection
         from phenotypic.data import load_synthetic_colony
-        from phenotypic import GridImage
+        from phenotypic import GridImage, Image
+        from phenotypic.ABC_ import ObjectDetector
 
-        test_image = GridImage(
-                load_synthetic_colony(mode='array'))  # This is a tiny image for fast execution of measurements
+        class DetectFull(ObjectDetector):
+            def _operate(self, image):
+                image.objmask[:] = 1
+                return image
+
+        # Create test image matching the ImageSet's image type
+        array_data = load_synthetic_colony(mode='array')
+        if imtype == "GridImage":
+            test_image = GridImage(array_data)
+        else:  # "Image" or default
+            test_image = Image(array_data, name="test")
+        
+        DetectFull().apply(test_image, inplace=True)
         try:
             meas = super().measure(test_image, include_metadata=False)
         except KeyboardInterrupt:
@@ -313,7 +327,8 @@ class ImagePipelineBatch(ImagePipelineCore):
 
         return meas
 
-    def _producer(self, image_set: ImageSet, image_names: List[str],
+    def _producer(self,
+                  image_set: ImageSet, image_names: List[str],
                   work_q: _mp.Queue[bytes | None],
                   writer_access_event: threading.Event,
                   stop_event: threading.Event) -> None:
@@ -379,7 +394,7 @@ class ImagePipelineBatch(ImagePipelineCore):
                             logger.info('Got valid image from queue')
                             image_group = image_set.hdf_.get_data_group(handle=writer)
                             image._save_image2hdfgroup(grp=image_group, overwrite=False)
-                            status_group.attrs.modify(PIPE_STATUS.PROCESSED, True)
+                            status_group.attrs.modify(PIPE_STATUS.PROCESSED.label, True)
                     except KeyboardInterrupt:
                         raise KeyboardInterrupt
                     except Exception as e:
@@ -393,7 +408,7 @@ class ImagePipelineBatch(ImagePipelineCore):
                             meas_group = image_set.hdf_.get_image_measurement_subgroup(handle=writer,
                                                                                        image_name=image_name)
                             image_set.hdf_.save_frame_update(meas_group, meas, start=0, require_swmr=True)
-                            status_group.attrs.modify(PIPE_STATUS.MEASURED, True)
+                            status_group.attrs.modify(PIPE_STATUS.MEASURED.label, True)
                     except KeyboardInterrupt:
                         raise KeyboardInterrupt
                     except Exception as e:
@@ -414,8 +429,10 @@ class ImagePipelineBatch(ImagePipelineCore):
         logger.info(f"Worker started - PID: {worker_pid}, Mode: {mode}")
 
         pipe = cls(benchmark=False, verbose=False)
-        pipe._ops = ops
-        pipe._meas = meas_ops
+        pipe.set_ops(ops)
+        pipe.set_measurements(meas_ops)
+        # pipe._ops = ops
+        # pipe._meas = meas_ops
         while True:
             image = work_q.get()
             if image is None:  # Sentinel
@@ -432,7 +449,7 @@ class ImagePipelineBatch(ImagePipelineCore):
                 logger.info(f'Starting processing of image {image.name} (PID: {worker_pid})')
                 if mode in {PipelineMode.APPLY, PipelineMode.APPLY_MEASURE}:
                     try:
-                        pipe.apply(image, inplace=True, reset=reset)
+                        image = pipe.apply(image, inplace=True, reset=reset)
                         logger.debug(f'Image {image_name} successfully processed.')
                     except KeyboardInterrupt:
                         raise KeyboardInterrupt
@@ -440,7 +457,7 @@ class ImagePipelineBatch(ImagePipelineCore):
                         logger.error(f"Exception occurred during apply phase on image {image.name}: {e}")
                         image = b''  # If processing error occurs we pass an empty byte string so that nothing is overwritten
 
-                if mode in {PipelineMode.APPLY, PipelineMode.APPLY_MEASURE} and not isinstance(image, bytes):
+                if mode in {PipelineMode.MEASURE, PipelineMode.APPLY_MEASURE} and not isinstance(image, bytes):
                     try:
                         meas = pipe.measure(image, include_metadata=False)
                         logger.debug(f'Measurements saved for image {image_name}')

@@ -5,15 +5,12 @@ Run together with the integration tests already present.
 
 from pathlib import Path
 
-import numpy as np
 import pandas as pd
 
-from phenotypic import ImagePipeline, Image, ImageSet
-from phenotypic.abstract import MeasureFeatures, ObjectDetector
-from phenotypic.data import load_plate_12hr, load_plate_72hr
+from phenotypic import Image, ImagePipeline, ImageSet
+from phenotypic.ABC_ import MeasureFeatures, ObjectDetector
+from phenotypic.data import load_plate_12hr
 from phenotypic.detection import OtsuDetector
-from phenotypic.enhancement import GaussianSmoother
-from phenotypic.measure import MeasureShape
 from phenotypic.objedit import BorderObjectRemover
 from .resources.TestHelper import timeit
 from .test_fixtures import temp_hdf5_file
@@ -21,12 +18,16 @@ from .test_fixtures import temp_hdf5_file
 
 class SumObjects(MeasureFeatures):
     def _operate(self, image: Image) -> pd.DataFrame:
-        return pd.DataFrame({'Sum': [image.array[:].sum()]}, index=image.objects.labels2series())
+        labels = image.objects.labels2series()
+        return pd.DataFrame({
+            labels.name: labels.values,
+            'Sum'      : SumObjects._calculate_sum(array=image.matrix[:], labels=image.objmap[:])
+        })
 
 
 class DetectFull(ObjectDetector):
     def _operate(self, image: Image) -> Image:
-        image.objmask[:] = 1
+        image.objmask[5:10, 5:10] = 1
         return image
 
 
@@ -36,10 +37,13 @@ class DetectFull(ObjectDetector):
 
 
 def _make_imageset(tmp_path: Path):
-    images = [
-        Image(load_plate_12hr(), name='12hr'),
-        Image(load_plate_72hr(), name='72hr'),
-    ]
+    from phenotypic.data import load_synthetic_colony
+
+    image1 = load_synthetic_colony(mode='Image')
+    image1.name = 'synth1'
+    image2 = load_synthetic_colony(mode='Image')
+    image2.name = 'synth2'
+    images = [image1, image2]
     imset = ImageSet(
             name="iset",
             outpath=tmp_path,
@@ -55,7 +59,8 @@ def _make_imageset(tmp_path: Path):
 @timeit
 def test_core_apply_and_measure():
     img = Image(load_plate_12hr(), name='12hr')
-    pipe = ImagePipeline(ops=[OtsuDetector(), BorderObjectRemover(border_size=1)], meas=[SumObjects()])
+    pipe = ImagePipeline(ops=[DetectFull()],
+                         meas=[SumObjects()], )
 
     df = pipe.apply_and_measure(img)
     assert not df.empty
@@ -68,8 +73,11 @@ def test_core_apply_and_measure():
 @timeit
 def test_batch_apply_and_measure(temp_hdf5_file):
     imageset = _make_imageset(temp_hdf5_file)
-    pipe = ImagePipeline(ops=[GaussianSmoother(), OtsuDetector()], meas=[MeasureShape()], verbose=False,
-                         njobs=2)
+    pipe = ImagePipeline(
+            ops=[DetectFull()],
+            meas=[SumObjects()],
+            verbose=False,
+            njobs=2)
 
     df = pipe.apply_and_measure(imageset)
     assert df.empty is False, 'No measurements from batch apply_and_measure'

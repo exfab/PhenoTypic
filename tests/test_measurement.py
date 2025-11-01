@@ -1,6 +1,6 @@
 import pytest
 
-from phenotypic.abstract import MeasureFeatures
+from phenotypic.ABC_ import MeasureFeatures
 
 import pandas as pd
 

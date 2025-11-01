@@ -3,8 +3,8 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING: from phenotypic import GridImage
 
-from phenotypic.abstract import MapModifier
-from phenotypic.abstract import GridOperation
+from phenotypic.ABC_ import MapModifier
+from phenotypic.ABC_ import GridOperation
 from phenotypic.tools.exceptions_ import GridImageInputError
 from phenotypic.tools.funcs_ import validate_operation_integrity
 from abc import ABC

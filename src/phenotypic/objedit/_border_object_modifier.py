@@ -7,7 +7,7 @@ if TYPE_CHECKING: from phenotypic import Image
 import numpy as np
 from typing import Optional, Union
 
-from phenotypic.abstract import MapModifier
+from phenotypic.ABC_ import MapModifier
 
 
 class BorderObjectRemover(MapModifier):

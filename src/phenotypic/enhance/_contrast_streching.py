@@ -7,7 +7,7 @@ if TYPE_CHECKING: from phenotypic import Image
 import numpy as np
 from skimage.exposure import rescale_intensity
 
-from ..abstract import ImageEnhancer
+from ..ABC_ import ImageEnhancer
 
 
 class ContrastStretching(ImageEnhancer):
@@ -17,7 +17,7 @@ class ContrastStretching(ImageEnhancer):
     Contrast stretching is a technique used to improve the contrast in the image by
     redistributing the range of pixel intensity values. This class allows adjustment
     of the intensity range using lower and upper percentiles of pixel values, enabling
-    fine-tuning of contrast enhancement for different types of images.
+    fine-tuning of contrast enhance for different types of images.
 
     Parameters:
         lower_percentile (int): The lower percentile other_image used for intensity rescaling.

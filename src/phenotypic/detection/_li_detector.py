@@ -6,7 +6,7 @@ if TYPE_CHECKING: from phenotypic import Image
 from skimage.filters import threshold_li
 from skimage.segmentation import clear_border
 
-from ..abstract import ThresholdDetector
+from ..ABC_ import ThresholdDetector
 
 
 class LiDetector(ThresholdDetector):
@@ -14,7 +14,7 @@ class LiDetector(ThresholdDetector):
 
     This class inherits from the `ThresholdDetector` and provides the functionality
     to apply Li's iterative Minimum Cross Entropy thresholding method on the 
-    enhancement matrix (`enh_matrix`) of an arr image. The operation generates a 
+    enhance matrix (`enh_matrix`) of an arr image. The operation generates a
     binary mask (`objmask`) depending on the computed threshold other_image.
 
     Methods:

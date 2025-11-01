@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 from matplotlib.patches import Rectangle
 
-from phenotypic.abstract import GridFinder
+from phenotypic.ABC_ import GridFinder
 from phenotypic.core._image_parts.accessors import GridAccessor
 from phenotypic.grid import OptimalBinsGridFinder
 from phenotypic.measure import MeasureBounds

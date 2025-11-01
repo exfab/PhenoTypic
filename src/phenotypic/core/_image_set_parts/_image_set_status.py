@@ -30,8 +30,8 @@ class ImageSetStatus(ImageSetCore):
                  ):
         super().__init__(name=name, outpath=outpath, imtype=imtype,
                          imparams=imparams, default_mode=default_mode, overwrite=overwrite)
-        if overwrite:
-            self.reset_status()
+        # Note: reset_status() is called later after images are imported
+        # Calling it here would fail because the HDF5 file structure isn't initialized yet
 
     def reset_status(self, image_names: List[str] | str | None = None):
         """
@@ -75,9 +75,9 @@ class ImageSetStatus(ImageSetCore):
         with self.hdf_.swmr_reader() as handle:
             status = []
             for name in image_names:
-                status_group = self.hdf_.get_data_group(handle=handle, image_name=name)
+                status_group = self.hdf_.get_status_subgroup(handle=handle, image_name=name)
                 status.append(
-                        status_group.attrs[x.label] for x in PIPE_STATUS
+                        [status_group.attrs[x.label] for x in PIPE_STATUS]
                 )
         return pd.DataFrame(
                 data=status,

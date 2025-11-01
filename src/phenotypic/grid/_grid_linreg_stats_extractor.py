@@ -6,7 +6,7 @@ if TYPE_CHECKING: from phenotypic import GridImage
 import pandas as pd
 from scipy.spatial.distance import euclidean
 
-from phenotypic.abstract import GridMeasureFeatures
+from phenotypic.ABC_ import GridMeasureFeatures
 from phenotypic.tools.constants_ import GRID_LINREG_STATS_EXTRACTOR, OBJECT, BBOX, GRID
 
 

@@ -2,7 +2,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING: from phenotypic import GridImage
-from phenotypic.abstract import GridMeasureFeatures
+from phenotypic.ABC_ import GridMeasureFeatures
 
 import pandas as pd
 import numpy as np
