@@ -55,7 +55,7 @@ pip install -e ".[dev]"
   gridding
 - `phenotypic.data`: sample images to experiment your workflow with
 - `phenotypic.detection`: a suite of operations to automaticall detect objects in your images
-- `phenotypic.enhancement`: preprocessing tools that alter a copy of your image and can improve the results of the
+- `phenotypic.enhance`: preprocessing tools that alter a copy of your image and can improve the results of the
   detection algorithms
 - `phenotypic.grid`: modules that rely on grid and object information to function
 - `phenotypic.measure`: the various measurements

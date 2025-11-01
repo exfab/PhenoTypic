@@ -1,7 +1,5 @@
 import pytest
 
-from phenotypic.ABC_ import MeasureFeatures
-
 import pandas as pd
 
 import phenotypic

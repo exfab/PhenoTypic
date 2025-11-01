@@ -104,26 +104,26 @@ class LogGrowthModel(ModelFitter):
             agg_dict[self.Kmax_label] = 'max'  # Use max for Kmax as it's a carrying capacity
         agg_data = data.groupby(by=self.groupby + [self.time_label], as_index=False).agg(agg_dict)
 
-        fitting_func = partial(self.__class__._apply2group_func,
-                               groupby_names=self.groupby,
-                               model=self.__class__._model_func,
-                               time_label=self.time_label,
-                               size_label=self.on,
-                               Kmax_label=self.Kmax_label,
-                               lam=self.reg_factor,
-                               alpha=self.kmax_penalty,
-                               loss=self.loss,
-                               verbose=self.verbose,
-                               )
-
         grouped = agg_data.groupby(by=self.groupby, as_index=True)
+        apply2group_kwargs = dict(
+                groupby_names=self.groupby,
+                model=self.__class__._model_func,
+                time_label=self.time_label,
+                size_label=self.on,
+                Kmax_label=self.Kmax_label,
+                lam=self.reg_factor,
+                alpha=self.kmax_penalty,
+                loss=self.loss,
+                verbose=self.verbose,
+        )
         if self.n_jobs == 1:
+
             model_res = []
             for key, group in grouped:
-                model_res.append(fitting_func(key, group))
+                model_res.append(self.__class__._apply2group_func(key, group, **apply2group_kwargs))
         else:
             model_res = Parallel(n_jobs=self.n_jobs)(
-                    delayed(fitting_func)(key, group)
+                    delayed(self.__class__._apply2group_func)(key, group, **apply2group_kwargs)
                     for key, group in grouped
             )
         self._latest_model_scores = pd.concat(model_res, axis=0).reset_index(drop=False)
