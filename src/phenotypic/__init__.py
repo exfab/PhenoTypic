@@ -2,6 +2,7 @@ __version__ = "0.9.1"
 
 # Configure matplotlib to use non-interactive backend
 import matplotlib
+
 matplotlib.use('Agg')
 
 from .core._grid_image import GridImage
@@ -28,12 +29,12 @@ __all__ = [
     "GridImage",  # Class imported from core
     "ImagePipeline",
     "ImageSet",
+    "ABC_",
     "analysis",
     "data",
     "detection",
     "measure",
     "grid",
-    "ABC_",
     "objedit",
     "prefab",
     "correction",

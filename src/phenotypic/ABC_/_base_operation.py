@@ -70,7 +70,8 @@ class BaseOperation(ABC):
             if include_tracemalloc:
                 try:
                     current, peak = tracemalloc.get_traced_memory()
-                    log_msg_parts.append(f"{current/1024/1024:.2f} MB current, {peak/1024/1024:.2f} MB peak (tracemalloc)")
+                    log_msg_parts.append(
+                            f"{current/1024/1024:.2f} MB current, {peak/1024/1024:.2f} MB peak (tracemalloc)")
                 except Exception as e:
                     self._logger.debug(f"Failed to get tracemalloc memory: {e}")
 

@@ -313,7 +313,7 @@ class ImagePipelineBatch(ImagePipelineCore):
             test_image = GridImage(array_data)
         else:  # "Image" or default
             test_image = Image(array_data, name="test")
-        
+
         DetectFull().apply(test_image, inplace=True)
         try:
             meas = super().measure(test_image, include_metadata=False)

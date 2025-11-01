@@ -104,9 +104,9 @@ class LogGrowthModel(ModelFitter):
             agg_dict[self.Kmax_label] = 'max'  # Use max for Kmax as it's a carrying capacity
         agg_data = data.groupby(by=self.groupby + [self.time_label], as_index=False).agg(agg_dict)
 
-        fitting_func = partial(self._apply2group_func,
+        fitting_func = partial(self.__class__._apply2group_func,
                                groupby_names=self.groupby,
-                               model=self._model_func,
+                               model=self.__class__._model_func,
                                time_label=self.time_label,
                                size_label=self.on,
                                Kmax_label=self.Kmax_label,
