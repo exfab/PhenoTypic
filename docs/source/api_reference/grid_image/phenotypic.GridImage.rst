@@ -36,17 +36,11 @@
 
    .. autosummary::
    
-      ~GridImage.CieLab
-      ~GridImage.CieXYZ
-      ~GridImage.CieXYZ_D65
-      ~GridImage.Cie_xy
-      ~GridImage.array
       ~GridImage.bit_depth
-      ~GridImage.enh_matrix
+      ~GridImage.color
+      ~GridImage.enh_gray
+      ~GridImage.gray
       ~GridImage.grid
-      ~GridImage.hsv
-      ~GridImage.imformat
-      ~GridImage.matrix
       ~GridImage.metadata
       ~GridImage.name
       ~GridImage.ncols
@@ -56,6 +50,7 @@
       ~GridImage.objmap
       ~GridImage.objmask
       ~GridImage.props
+      ~GridImage.rgb
       ~GridImage.shape
       ~GridImage.uuid
    

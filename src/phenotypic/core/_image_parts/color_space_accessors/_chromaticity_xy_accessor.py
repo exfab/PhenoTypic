@@ -13,4 +13,4 @@ class xyChromaticityAccessor(ColorSpaceAccessor):
 
     @property
     def _subject_arr(self) -> np.ndarray:
-        return colour.XYZ_to_xy(XYZ=self._root_image.CieXYZ[:])
+        return colour.XYZ_to_xy(XYZ=self._root_image.color.XYZ[:])

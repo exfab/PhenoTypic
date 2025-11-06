@@ -122,7 +122,7 @@ def plate_grid_images_with_detection(request):
     import phenotypic
 
     image = phenotypic.GridImage(param2array(request.param))
-    return phenotypic.detection.OtsuDetector().apply(image)
+    return phenotypic.detect.OtsuDetector().apply(image)
 
 
 def walk_package(pkg):

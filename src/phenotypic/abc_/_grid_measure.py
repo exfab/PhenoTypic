@@ -6,7 +6,7 @@ if TYPE_CHECKING: from phenotypic import GridImage
 
 import pandas as pd
 
-from phenotypic.ABC_ import MeasureFeatures
+from phenotypic.abc_ import MeasureFeatures
 from phenotypic.tools.exceptions_ import GridImageInputError, OutputValueError
 from phenotypic.tools.funcs_ import validate_measure_integrity
 from abc import ABC

@@ -33,15 +33,10 @@ class HsvAccessor(ImageAccessorBase):
 
     @property
     def _subject_arr(self) -> np.ndarray:
-        if self._root_image.imformat.is_matrix():
+        if self._root_image.rgb.isempty():
             raise AttributeError('HSV is not available for grayscale images')
         else:
-            match self._root_image.imformat:
-                case IMAGE_FORMATS.RGB:
-                    if self._root_image.array.isempty(): raise AttributeError('HSV is not available for empty images')
-                    return rgb2hsv(self._root_image.array[:])
-                case _:
-                    raise AttributeError(f'Unsupported image format: {self._root_image.imformat} for HSV conversion.')
+            return rgb2hsv(self._root_image.rgb[:])
 
     def __getitem__(self, key) -> np.ndarray:
         view = self._subject_arr[key]
@@ -54,7 +49,7 @@ class HsvAccessor(ImageAccessorBase):
     @property
     def shape(self) -> Optional[tuple[int, ...]]:
         """Returns the shape of the image"""
-        return self._root_image._data.array.shape
+        return self._root_image._data.rgb.shape
 
     def copy(self) -> np.ndarray:
         """Returns a copy of the image array"""
@@ -85,7 +80,7 @@ class HsvAccessor(ImageAccessorBase):
         axes_ = axes.ravel()
 
         # Original image
-        axes_[0].imshow(self._root_image.array[:])
+        axes_[0].imshow(self._root_image.rgb[:])
         axes_[0].set_title(self._root_image.name)
         axes_[0].grid(False)
 

@@ -14,7 +14,7 @@ import inspect
 import time
 import sys
 
-from phenotypic.ABC_ import MeasureFeatures, BaseOperation, ImageOperation
+from phenotypic.abc_ import MeasureFeatures, BaseOperation, ImageOperation
 
 
 class ImagePipelineCore(BaseOperation):
@@ -45,7 +45,7 @@ class ImagePipelineCore(BaseOperation):
                  verbose: bool = False
                  ):
         """
-        This class represents a processing and measurement ABC_ for Image operations
+        This class represents a processing and measurement abc_ for Image operations
         and feature extraction. It initializes operational and measurement queues based
         on the provided dictionaries.
 
@@ -165,7 +165,7 @@ class ImagePipelineCore(BaseOperation):
 
     def apply(self, image: Image, inplace: bool = False, reset: bool = True) -> Union[GridImage, Image]:
         """
-        The class provides an ABC_ to process and apply a series of operations on
+        The class provides an abc_ to process and apply a series of operations on
         an Image. The operations are maintained in a queue and executed sequentially
         when applied to the given Image.
 

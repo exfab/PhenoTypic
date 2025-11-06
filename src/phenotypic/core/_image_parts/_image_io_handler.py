@@ -29,9 +29,8 @@ class ImageIOHandler(ImageColorSpace):
 
     def __init__(self,
                  arr: np.ndarray | Image | None = None,
-                 imformat: str | None = None,
                  name: str | None = None, **kwargs):
-        super().__init__(arr=arr, imformat=imformat, name=name)
+        super().__init__(arr=arr, name=name)
 
     @classmethod
     def imread(cls,
@@ -69,7 +68,6 @@ class ImageIOHandler(ImageColorSpace):
         # Convert to a Path object
         filepath = Path(filepath)
         rawpy_params = rawpy_params or {}
-        imformat = None
 
         if filepath.suffix.lower() in IO.ACCEPTED_FILE_EXTENSIONS:  # normal images
             arr = ski.io.imread(fname=filepath)
@@ -81,7 +79,7 @@ class ImageIOHandler(ImageColorSpace):
             no_auto_scale = rawpy_params.pop('no_auto_scale', False)  # TODO: implement calibration schema
             no_auto_bright = rawpy_params.pop('no_auto_bright', False)  # TODO: implement calibration schema
 
-            if rawpy.DemosaicAlgorithm.AMAZE.isSupported():
+            if rawpy.DemosaicAlgorithm.AMAZE.isSupported:
                 default_demosaic = rawpy.DemosaicAlgorithm.AMAZE
             else:
                 default_demosaic = rawpy.DemosaicAlgorithm.AHD
@@ -102,13 +100,11 @@ class ImageIOHandler(ImageColorSpace):
                         output_color=rawpy.ColorSpace.sRGB,
                         **rawpy_params,
                 )
-            imformat = IMAGE_FORMATS.LINEAR_RGB
 
         else:
             raise UnsupportedFileTypeError(filepath.suffix)
 
-        imformat = kwargs.pop('imformat', imformat)
-        image = cls(arr=arr, imformat=imformat, **kwargs)
+        image = cls(arr=arr, **kwargs)
         image.name = filepath.stem
         return image
 
@@ -178,24 +174,24 @@ class ImageIOHandler(ImageColorSpace):
         # create the group container for the images information
         image_group = self._get_hdf5_group(grp, self.name)
 
-        if self._image_format.is_array():
-            array = self.array[:]
+        if not self.rgb.isempty():
+            array = self.rgb[:]
             HDF.save_array2hdf5(
-                    group=image_group, array=array, name="array",
+                    group=image_group, array=array, name="rgb",
                     dtype=array.dtype,
                     compression=compression, compression_opts=compression_opts,
             )
 
-        matrix = self.matrix[:]
+        matrix = self.gray[:]
         HDF.save_array2hdf5(
-                group=image_group, array=matrix, name="matrix",
+                group=image_group, array=matrix, name="gray",
                 dtype=matrix.dtype,
                 compression=compression, compression_opts=compression_opts,
         )
 
-        enh_matrix = self.enh_matrix[:]
+        enh_matrix = self.enh_gray[:]
         HDF.save_array2hdf5(
-                group=image_group, array=enh_matrix, name="enh_matrix",
+                group=image_group, array=enh_matrix, name="enh_gray",
                 dtype=enh_matrix.dtype,
                 compression=compression, compression_opts=compression_opts,
         )
@@ -207,10 +203,7 @@ class ImageIOHandler(ImageColorSpace):
                 compression=compression, compression_opts=compression_opts,
         )
 
-        # 3) Store string/enum as a group attribute
-        #    h5py supports variable-length UTF-8 strings automatically
-        image_group.attrs["imformat"] = self.imformat.value
-
+        # 3) Store version info
         image_group.attrs["version"] = phenotypic.__version__
 
         # 4) Store protected metadata in its own subgroup
@@ -254,21 +247,21 @@ class ImageIOHandler(ImageColorSpace):
     @classmethod
     def _load_from_hdf5_group(cls, group, **kwargs) -> Image:
         # Instantiate a blank handler and populate internals
-        # Load Image Format
-        imformat = IMAGE_FORMATS[group.attrs["imformat"]]
         # Read datasets back into numpy arrays with proper dtype handling
-        matrix_data = group["matrix"][()]
-        if imformat.is_array():
-            # For arrays, preserve the original dtype from HDF5
-            array_data = group["array"][()]
-            img = cls(arr=array_data, imformat=imformat.value, **kwargs)
-            img.matrix[:] = matrix_data
-        else:
-            img = cls(arr=matrix_data, imformat=imformat.value, **kwargs)
+        matrix_data = group["gray"][()]
 
-        # Load enhanced matrix and object map with proper dtype casting
-        enh_matrix_data = group["enh_matrix"][()]
-        img.enh_matrix[:] = enh_matrix_data
+        # Determine format from available datasets
+        if "rgb" in group:
+            # For arrays, preserve the original dtype from HDF5
+            array_data = group["rgb"][()]
+            img = cls(arr=array_data, **kwargs)
+            img.gray[:] = matrix_data
+        else:
+            img = cls(arr=matrix_data, **kwargs)
+
+        # Load enhanced gray and object map with proper dtype casting
+        enh_matrix_data = group["enh_gray"][()]
+        img.enh_gray[:] = enh_matrix_data
 
         # Object map should preserve its original dtype (usually integer labels)
         img.objmap[:] = group["objmap"][()]
@@ -303,10 +296,9 @@ class ImageIOHandler(ImageColorSpace):
         """
         with open(filename, 'wb') as filehandler:
             pickle.dump({
-                '_image_format'     : self._image_format,
-                "_data.array"       : self._data.array,
-                '_data.matrix'      : self._data.matrix,
-                '_data.enh_matrix'  : self._data.enh_matrix,
+                "_data.rgb"         : self._data.rgb,
+                '_data.gray'        : self._data.gray,
+                '_data.enh_gray'    : self._data.enh_gray,
                 'objmap'            : self.objmap[:],
                 "protected_metadata": self._metadata.protected,
                 "public_metadata"   : self._metadata.public,
@@ -327,16 +319,16 @@ class ImageIOHandler(ImageColorSpace):
         with open(filename, 'rb') as f:
             loaded = pickle.load(f)
 
-        instance = cls(arr=None, imformat=None, name=None)
+        # Determine format from available data
+        if loaded["_data.rgb"].size > 0:
+            instance = cls(arr=loaded["_data.rgb"], name=None)
+        else:
+            instance = cls(arr=loaded["_data.gray"], name=None)
 
-        instance._image_format = loaded["_image_format"]
-        instance._data.array = loaded["_data.array"]
-        instance._data.matrix = loaded["_data.matrix"]
-
-        instance.enh_matrix.reset()
+        instance.enh_gray.reset()
         instance.objmap.reset()
 
-        instance._data.enh_matrix = loaded["_data.enh_matrix"]
+        instance._data.enh_gray = loaded["_data.enh_gray"]
         instance.objmap[:] = loaded["objmap"]
         instance._metadata.protected = loaded["protected_metadata"]
         instance._metadata.public = loaded["public_metadata"]

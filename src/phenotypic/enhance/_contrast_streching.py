@@ -7,7 +7,7 @@ if TYPE_CHECKING: from phenotypic import Image
 import numpy as np
 from skimage.exposure import rescale_intensity
 
-from ..ABC_ import ImageEnhancer
+from ..abc_ import ImageEnhancer
 
 
 class ContrastStretching(ImageEnhancer):
@@ -33,6 +33,6 @@ class ContrastStretching(ImageEnhancer):
         self.upper_percentile = upper_percentile
 
     def _operate(self, image: Image) -> Image:
-        p_lower, p_upper = np.percentile(image.enh_matrix[:], (self.lower_percentile, self.upper_percentile))
-        image.enh_matrix[:] = rescale_intensity(image=image.enh_matrix[:], in_range=(p_lower, p_upper))
+        p_lower, p_upper = np.percentile(image.enh_gray[:], (self.lower_percentile, self.upper_percentile))
+        image.enh_gray[:] = rescale_intensity(image=image.enh_gray[:], in_range=(p_lower, p_upper))
         return image

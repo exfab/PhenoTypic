@@ -6,7 +6,7 @@ if TYPE_CHECKING: from phenotypic import Image
 import numpy as np
 from functools import partial
 
-from phenotypic.ABC_ import ObjectDetector
+from phenotypic.abc_ import ObjectDetector
 import skimage.filters as filters
 import skimage.morphology as morphology
 
@@ -24,7 +24,7 @@ class GitterDetector(ObjectDetector):
         self.remove_noise = remove_noise
 
     def _operate(self, image: Image) -> Image:
-        enh_matrix = image.enh_matrix[:]
+        enh_matrix = image.enh_gray[:]
         objmask = self._thresholding(enh_matrix)
         if self.remove_noise:
             objmask = morphology.binary_opening(objmask, morphology.diamond(radius=self.footprint_radius))
@@ -45,7 +45,7 @@ class GitterDetector(ObjectDetector):
         """
         kernel = morphology.square(width=self.footprint_radius*2)
 
-        enh_matrix = image.enh_matrix[:]
+        enh_matrix = image.enh_gray[:]
 
         # Subtract background
         if self.subtract_background:

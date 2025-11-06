@@ -5,7 +5,7 @@ if TYPE_CHECKING: from phenotypic import Image
 
 from skimage.filters import sobel
 
-from phenotypic.ABC_ import ImageEnhancer
+from phenotypic.abc_ import ImageEnhancer
 
 
 class SobelFilter(ImageEnhancer):
@@ -19,5 +19,5 @@ class SobelFilter(ImageEnhancer):
     """
 
     def _operate(self, image: Image) -> Image:
-        image.enh_matrix[:] = sobel(image=image.enh_matrix[:])
+        image.enh_gray[:] = sobel(image=image.enh_gray[:])
         return image

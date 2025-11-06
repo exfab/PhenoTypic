@@ -3,8 +3,8 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING: from phenotypic import GridImage
 
-from phenotypic.ABC_ import MapModifier
-from phenotypic.ABC_ import GridOperation
+from phenotypic.abc_ import MapModifier
+from phenotypic.abc_ import GridOperation
 from phenotypic.tools.exceptions_ import GridImageInputError
 from phenotypic.tools.funcs_ import validate_operation_integrity
 from abc import ABC
@@ -12,7 +12,7 @@ from abc import ABC
 
 class GridMapModifier(MapModifier, GridOperation, ABC):
 
-    @validate_operation_integrity('image.array', 'image.matrix', 'image.enh_matrix')
+    @validate_operation_integrity('image.rgb', 'image.gray', 'image.enh_gray')
     def apply(self, image: GridImage, inplace: bool = False) -> GridImage:
         from phenotypic import GridImage
 

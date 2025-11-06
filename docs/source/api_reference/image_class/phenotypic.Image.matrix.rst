@@ -1,11 +1,9 @@
-﻿
-
-phenotypic.Image.matrix
+﻿phenotypic.Image.gray
 =======================
 
 .. currentmodule:: phenotypic
 
-.. autoproperty:: Image.matrix
+.. autoproperty:: Image.gray
 
 
 

@@ -17,9 +17,9 @@ class ImageObjectsHandler(ImageHandler):
 
     def __init__(self,
                  arr: np.ndarray | Image | None = None,
-                 imformat: str | None = None,
-                 name: str | None = None, **kwargs):
-        super().__init__(arr=arr, imformat=imformat, name=name, **kwargs)
+                 name: str | None = None,
+                 bit_depth: int | None = None, ):
+        super().__init__(arr=arr, name=name, bit_depth=bit_depth)
         self._accessors.objects = ObjectsAccessor(self)
 
     @property

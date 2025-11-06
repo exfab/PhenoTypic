@@ -11,8 +11,8 @@ from abc import ABC
 
 
 class ImageEnhancer(ImageOperation, ABC):
-    """ImageEnhancers impact the enh_matrix of the Image object and are used for improving detection quality."""
+    """ImageEnhancers impact the enh_gray of the Image object and are used for improving detection quality."""
 
-    @validate_operation_integrity('image.array', 'image.matrix')
+    @validate_operation_integrity('image.rgb', 'image.gray')
     def apply(self, image: Image, inplace: bool = False) -> Image:
         return super().apply(image=image, inplace=inplace)

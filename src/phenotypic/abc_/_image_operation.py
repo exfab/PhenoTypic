@@ -14,9 +14,9 @@ from abc import ABC, abstractmethod
 
 class ImageOperation(BaseOperation, ABC):
     """
-    Represents an ABC_ base class for image operations.
+    Represents an abc_ base class for image operations.
 
-    This class provides a common ABC_ for applying transformations or
+    This class provides a common abc_ for applying transformations or
     operations to images. It defines a method to apply the operation and
     enforces the implementation of the specific operation in a subclass.
     Users can apply operations either in-place or on a copy of the image.

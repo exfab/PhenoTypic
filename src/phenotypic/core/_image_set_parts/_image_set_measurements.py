@@ -3,7 +3,7 @@ from __future__ import annotations
 from os import PathLike
 from typing import Any, Dict, List, Literal, TYPE_CHECKING
 
-from phenotypic.ABC_ import GridFinder
+from phenotypic.abc_ import GridFinder
 
 if TYPE_CHECKING: from phenotypic import Image
 

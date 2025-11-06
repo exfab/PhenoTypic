@@ -1,8 +1,5 @@
-phenotypic.measure
-==================
-
-Module contents
----------------
+phenotypic.measure package
+==========================
 
 .. automodule:: phenotypic.measure
    :members:

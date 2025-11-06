@@ -14,6 +14,6 @@ class CieLabAccessor(ColorSpaceAccessor):
     @property
     def _subject_arr(self) -> np.ndarray:
         return colour.XYZ_to_Lab(
-            XYZ=self._root_image.CieXYZ[:],
+            XYZ=self._root_image.color.XYZ[:],
             illuminant=colour.CCS_ILLUMINANTS[self._root_image.observer][self._root_image.illuminant],
         )

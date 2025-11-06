@@ -50,8 +50,8 @@ def murmur3_array_signature(arr: np.ndarray) -> bytes:
     """
     Return a 128‑bit MurmurHash3 digest of *arr*.
 
-    The array is converted to a C‑contiguous view so that ``memoryview`` can
-    safely expose its buffer.  If the array is already contiguous this is a
+    The rgb is converted to a C‑contiguous view so that ``memoryview`` can
+    safely expose its buffer.  If the rgb is already contiguous this is a
     zero‑copy operation.
     """
     if not arr.flags["C_CONTIGUOUS"]:
@@ -64,10 +64,10 @@ def validate_operation_integrity(*targets: str):
     Decorator to ensure that key NumPy arrays on the 'image' argument
     remain unchanged by an ImageOperation.apply() call.
     If no targets are specified, defaults to checking:
-        image.array, image.matrix, image.enh_matrix, image.objmap
+        image.rgb, image.gray, image.enh_gray, image.objmap
 
     Example Usage:
-        @validate_member_integrity('image.array', 'image.objmap')
+        @validate_member_integrity('image.rgb', 'image.objmap')
         def func(image: Image,...):
             ...
     """
@@ -91,15 +91,15 @@ def validate_operation_integrity(*targets: str):
                 )
             # Default attributes to check on the image object
             eff_targets = [
-                'image.array',
-                'image.matrix',
-                'image.enh_matrix',
+                'image.rgb',
+                'image.gray',
+                'image.enh_gray',
                 'image.objmap'
             ]
 
         # Helper function to retrieve a NumPy array from an object by attribute path
         def _get_array(bound_args, target: str) -> np.ndarray:
-            # Split the target path (e.g., 'image.array' -> ['image', 'array'])
+            # Split the target path (e.g., 'image.rgb' -> ['image', 'rgb'])
             parts = target.split('.')
             # Get the root object from function arguments
             obj: Image = bound_args.arguments.get(parts[0])
@@ -108,13 +108,13 @@ def validate_operation_integrity(*targets: str):
                         f"{func.__name__}: parameter '{parts[0]}' not found",
                 )
 
-            # Navigate through the attribute chain to get the final array
+            # Navigate through the attribute chain to get the final rgb
             for attr in parts[1:]:
-                if obj._image_format.is_matrix() and attr == "array":
+                if obj.rgb.isempty() and attr == "rgb":
                     pass
                 else:
-                    obj = getattr(obj, attr)[:]  # Use [:] to get a view of the array
-            # Ensure the result is a NumPy array
+                    obj = getattr(obj, attr)[:]  # Use [:] to get a view of the rgb
+            # Ensure the result is a NumPy rgb
             if not isinstance(obj, np.ndarray):
                 raise RuntimeError(
                         f"{func.__name__}: '{target}' is not a NumPy array",
@@ -151,7 +151,7 @@ def validate_operation_integrity(*targets: str):
                     # Ensure the attribute is still a NumPy array
                     if not isinstance(obj, np.ndarray):
                         raise RuntimeError(
-                                f"{func.__name__}: '{tgt}' is not a NumPy array on result",
+                                f"{func.__name__}: '{tgt}' is not a NumPy rgb on result",
 
                         )
                     # Calculate new hash and compare with original
@@ -178,9 +178,9 @@ def validate_measure_integrity(*targets: str):
     are not mutated by an MeasureFeatures.measure() call.
 
     If you pass explicit targets, it will honor those—for example:
-        @validate_member_integrity('image.array')
+        @validate_member_integrity('image.rgb')
     Otherwise it defaults to checking:
-        image.array, image.matrix, image.enh_matrix, image.objmap
+        image.rgb, image.gray, image.enh_gray, image.objmap
     """
 
     def decorator(func):
@@ -199,14 +199,14 @@ def validate_measure_integrity(*targets: str):
                         f"{func.__name__}: no 'image' parameter and no targets given",
                 )
             eff_targets = [
-                'image.array',
-                'image.matrix',
-                'image.enh_matrix',
+                'image.rgb',
+                'image.gray',
+                'image.enh_gray',
                 'image.objmap'
             ]
 
         def _get_array(bound_args, target: str) -> np.ndarray:
-            # e.g. target = 'image.array'
+            # e.g. target = 'image.rgb'
             obj = bound_args.arguments.get(target.split('.')[0])
             if obj is None:
                 raise OperationIntegrityError(
@@ -253,7 +253,7 @@ def validate_measure_integrity(*targets: str):
 
 def normalize_rgb_bitdepth(image: np.ndarray) -> np.ndarray:
     """
-    Normalize an RGB array to [0,1] using bit-depth inference.
+    Normalize an RGB rgb to [0,1] using bit-depth inference.
 
     Rules:
     - If dtype is integer: use dtype max (e.g. 255 for uint8, 65535 for uint16).
@@ -263,7 +263,7 @@ def normalize_rgb_bitdepth(image: np.ndarray) -> np.ndarray:
         * Else → assume 8-bit, divide by 255.
 
     Args:
-        image: RGB array.
+        image: RGB rgb.
 
     Returns:
         np.ndarray: float64 normalized image in [0,1].

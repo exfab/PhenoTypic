@@ -39,13 +39,13 @@ class XyzD65Accessor(ColorSpaceAccessor):
 
         # Creates a partial function so only the new XYZ whitepoint needs to be supplied
         bradford_cat65 = partial(colour.chromatic_adaptation,
-                                 XYZ=self._root_image.CieXYZ[:],
+                                 XYZ=self._root_image.color.XYZ[:],
                                  XYZ_wr=colour.xy_to_XYZ(wp['D65']),
                                  method='Bradford')
 
         match (self._root_image.color_profile, self._root_image.illuminant):
             case ("sRGB", "D65"):
-                return self._root_image.CieXYZ[:]
+                return self._root_image.color.XYZ[:]
             case ("sRGB", "D50"):
                 return bradford_cat65(XYZ_w=colour.xy_to_XYZ(wp['D50']))
             case _:

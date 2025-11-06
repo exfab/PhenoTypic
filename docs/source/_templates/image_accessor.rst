@@ -11,14 +11,15 @@
 {% set accessor_class = objname.split('.')[-1] %}
 {% set accessor_module = "phenotypic.core.accessors" %}
 {% set class_map = {
-    "array": "ImageArray",
-    "matrix": "ImageMatrix",
-    "enh_matrix": "ImageEnhancedMatrix",
+    "rgb": "ImageRGB",
+    "gray": "ImageMatrix",
+    "enh_gray": "ImageEnhancedMatrix",
     "objmap": "ObjectMap",
     "objmask": "ObjectMask",
     "objects": "ObjectsAccessor",
-    "hsb": "HsbAccessor",
-    "grid": "GridAccessor"
+    "grid": "GridAccessor",
+    "metadata": "MetadataAccessor",
+    "color": "ColorAccessor"
 } %}
 
 {% if accessor_class in class_map %}

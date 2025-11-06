@@ -6,9 +6,9 @@ import numpy as np
 import pandas as pd
 from matplotlib.patches import Rectangle
 
-from phenotypic.ABC_ import GridFinder
+from phenotypic.abc_ import GridFinder
 from phenotypic.core._image_parts.accessors import GridAccessor
-from phenotypic.grid import OptimalBinsGridFinder
+from phenotypic.grid import AutoGridFinder
 from phenotypic.measure import MeasureBounds
 from phenotypic.tools.constants_ import IMAGE_TYPES, BBOX, METADATA
 from phenotypic.tools.exceptions_ import IllegalAssignmentError
@@ -28,8 +28,6 @@ class ImageGridHandler(Image):
             arr (Optional[Union[np.ndarray, Type[Image]]]): The input_image
                 image, which can be a NumPy array or an image-like object. If
                 this parameter is not provided, it defaults to None.
-            imformat (str): A string representing the schema of the input_image
-                image. It defaults to None if not provided.
             grid_finder (Optional[GridFinder]): An optional GridFinder instance
                 for defining grids on the image. If not provided, it defaults to
                 a center grid setter.
@@ -45,7 +43,7 @@ class ImageGridHandler(Image):
             accessing row and column edges and generating section maps for the image's grid system.
     """
 
-    def __init__(self, arr: Optional[Union[np.ndarray, Image]] = None, imformat: str = None,
+    def __init__(self, arr: Optional[Union[np.ndarray, Image]] = None,
                  name: str = None,
                  grid_finder: Optional[GridFinder] = None,
                  nrows: int = 8, ncols: int = 12, **kwargs):
@@ -57,7 +55,6 @@ class ImageGridHandler(Image):
             arr (Optional[Union[np.ndarray, Image]]): The input image provided
                 as a NumPy array or an image object. Can be None if the image is
                 optional for initialization.
-            imformat (str): The string representing the image format.
             name (str): The name identifier for the image.
             grid_finder (Optional[GridFinder]): Mechanism responsible for finding a grid
                 within the image. If None, an optimal center grid finder is instantiated.
@@ -70,12 +67,12 @@ class ImageGridHandler(Image):
             _accessors.grid (GridAccessor): The grid accessor object for managing and
                 accessing grid-related functionalities.
         """
-        super().__init__(arr=arr, imformat=imformat, name=name, **kwargs)
+        super().__init__(arr=arr, name=name, **kwargs)
 
         if hasattr(arr, 'grid_finder'):
             grid_finder = arr.grid_finder
         elif grid_finder is None:
-            grid_finder = OptimalBinsGridFinder(nrows=nrows, ncols=ncols)
+            grid_finder = AutoGridFinder(nrows=nrows, ncols=ncols)
 
         self.grid_finder: Optional[GridFinder] = grid_finder
         self._accessors.grid = GridAccessor(self)
@@ -166,12 +163,12 @@ class ImageGridHandler(Image):
         Returns:
             Image: A copy of the image at the slices indicated
         """
-        if self._image_format.is_array():
-            subimage = Image(arr=self.array[key], imformat=self.imformat)
+        if not self.rgb.isempty():
+            subimage = Image(arr=self.rgb[key])
         else:
-            subimage = Image(arr=self.matrix[key], imformat=self.imformat)
+            subimage = Image(arr=self.gray[key])
 
-        subimage.enh_matrix[:] = self.enh_matrix[key]
+        subimage.enh_gray[:] = self.enh_gray[key]
         subimage.objmap[:] = self.objmap[key]
         return subimage
 

@@ -9,7 +9,7 @@ import numpy as np
 from skimage.measure import regionprops_table
 import math
 
-from ..ABC_ import MapModifier
+from ..abc_ import MapModifier
 from ..tools.constants_ import OBJECT
 
 
@@ -51,7 +51,7 @@ class LowCircularityRemover(MapModifier):
 
     def _operate(self, image: Image) -> Image:
         # Create intial measurement table
-        table = (pd.DataFrame(regionprops_table(label_image=image.objmap[:], intensity_image=image.matrix[:],
+        table = (pd.DataFrame(regionprops_table(label_image=image.objmap[:], intensity_image=image.gray[:],
                                                 properties=['label', 'area', 'perimeter']
                                                 )
                               )

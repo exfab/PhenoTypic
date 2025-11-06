@@ -7,12 +7,12 @@ from skimage.filters import laplace
 from typing import Optional
 import numpy as np
 
-from ..ABC_ import ImageEnhancer
+from ..abc_ import ImageEnhancer
 
 
 class LaplaceEnhancer(ImageEnhancer):
     """
-    The LaplaceEnhancer class applies a Laplacian filter to an image's enhanced matrix.
+    The LaplaceEnhancer class applies a Laplacian filter to an image's enhanced gray.
 
     This class is designed to preprocess images by enhancing their features using
     a Laplacian operation. The filter applies edge detection, which emphasizes
@@ -30,8 +30,8 @@ class LaplaceEnhancer(ImageEnhancer):
         self.mask: Optional[np.ndarray] = mask
 
     def _operate(self, image: Image) -> Image:
-        image.enh_matrix[:] = laplace(
-                image=image.enh_matrix[:],
+        image.enh_gray[:] = laplace(
+                image=image.enh_gray[:],
                 ksize=self.kernel_size,
                 mask=self.mask,
         )

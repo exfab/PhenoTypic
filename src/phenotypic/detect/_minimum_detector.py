@@ -3,22 +3,22 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING: from phenotypic import Image
-from skimage.filters import threshold_yen
+from skimage.filters import threshold_minimum
 from skimage.segmentation import clear_border
 
-from ..ABC_ import ThresholdDetector
+from ..abc_ import ThresholdDetector
 
 
-class YenDetector(ThresholdDetector):
-    """Class for applying Yen's thresholding to an image.
+class MinimumDetector(ThresholdDetector):
+    """Class for applying Minimum thresholding to an image.
 
     This class inherits from the `ThresholdDetector` and provides the functionality
-    to apply Yen's thresholding method on the enhance matrix (`enh_matrix`) of an
+    to apply Minimum thresholding method on the enhance matrix (`enh_gray`) of an
     arr image. The operation generates a binary mask (`objmask`) depending on the
     computed threshold other_image.
 
     Methods:
-        apply: Applies Yen's thresholding on the arr image object and modifies its
+        apply: Applies Minimum thresholding on the arr image object and modifies its
             omask attribute accordingly.
 
     """
@@ -28,24 +28,24 @@ class YenDetector(ThresholdDetector):
         self.ignore_borders = ignore_borders
 
     def _operate(self, image: Image) -> Image:
-        """Binarizes the given image matrix using the Yen threshold method.
+        """Binarizes the given image matrix using the Minimum threshold method.
 
         This function modifies the arr image by applying a binary mask to
-        its enhanced matrix (`enh_matrix`). The binarization threshold is
-        automatically determined using Yen's method. The resulting binary
+        its enhanced matrix (`enh_gray`). The binarization threshold is
+        automatically determined using Minimum method. The resulting binary
         mask is stored in the image's `objmask` attribute.
 
         Args:
-            image (Image): The arr image object. It must have an `enh_matrix`
+            image (Image): The arr image object. It must have an `enh_gray`
                 attribute, which is used as the basis for creating the binary mask.
 
         Returns:
             Image: The arr image object with its `objmask` attribute updated
                 to the computed binary mask other_image.
         """
-        enh_matrix = image.enh_matrix[:]
+        enh_matrix = image.enh_gray[:]
         nbins = 2 ** image.bit_depth
-        mask = image.enh_matrix[:] >= threshold_yen(
+        mask = image.enh_gray[:] >= threshold_minimum(
                 enh_matrix[enh_matrix != 0] if self.ignore_zeros else enh_matrix, nbins=nbins
         )
         mask = clear_border(mask) if self.ignore_borders else mask
@@ -54,4 +54,4 @@ class YenDetector(ThresholdDetector):
 
 
 # Set the docstring so that it appears in the sphinx documentation
-YenDetector.apply.__doc__ = YenDetector._operate.__doc__
+MinimumDetector.apply.__doc__ = MinimumDetector._operate.__doc__

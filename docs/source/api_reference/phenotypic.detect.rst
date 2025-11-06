@@ -1,7 +1,7 @@
-phenotypic.prefab package
+phenotypic.detect package
 =========================
 
-.. automodule:: phenotypic.prefab
+.. automodule:: phenotypic.detect
    :members:
    :undoc-members:
    :show-inheritance:

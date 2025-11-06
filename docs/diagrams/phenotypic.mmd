@@ -9,7 +9,7 @@ classDiagram
     }
 
     class MultiChannelAccessor {
-        note "An object for accessing the matrix elements of the image"
+        note "An object for accessing the gray elements of the image"
         +- __init__(parent_image, target_array, dtype)
         #- _parent_image
         #- _target_arr
@@ -17,11 +17,11 @@ classDiagram
         +- shape()
         +- isempty()
         #- _norm2dtypeMatrix(normalized_value)
-        #- _dtype2normMatrix(matrix)
+        #- _dtype2normMatrix(gray)
         +- foreground()
     }
 
-    class ImageArray {
+    class ImageRGB {
         note "An accessor for handling image arrays"
         +- __getitem__(key)
         +- __setitem__(key, value)
@@ -46,7 +46,7 @@ classDiagram
     }
 
     class ImageEnhancedMatrix {
-        note "An enhanced matrix accessor for images"
+        note "An enhanced gray accessor for images"
         +- __getitem__(key)
         +- __setitem__(key, value)
         +- shape()
@@ -185,8 +185,7 @@ classDiagram
     ImageAccessorBase <|-- GridAccessor
     ImageAccessorBase <|-- HsvAccessor
     ImageAccessorBase <|-- ObjectsAccessor
-    
-    MultiChannelAccessor <|-- ImageArray
+    MultiChannelAccessor <|-- ImageRGB
     MultiChannelAccessor <|-- ImageMatrix
     MultiChannelAccessor <|-- ImageEnhancedMatrix
     MultiChannelAccessor <|-- ObjectMap

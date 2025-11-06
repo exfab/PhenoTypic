@@ -9,7 +9,7 @@ import pandas as pd
 import colour
 import logging
 
-from phenotypic.ABC_ import MeasureFeatures, MeasurementInfo
+from phenotypic.abc_ import MeasureFeatures, MeasurementInfo
 from phenotypic.tools.constants_ import OBJECT
 
 logger = logging.getLogger(__name__)
@@ -229,7 +229,7 @@ class MeasureColor(MeasureFeatures):
 
         data = {}
         if self.include_XYZ:
-            cieXYZ_foreground = image.CieXYZ.foreground()
+            cieXYZ_foreground = image.color.XYZ.foreground()
             X_meas = MeasureColor._compute_color_metrics(foreground=cieXYZ_foreground[..., 0], labels=image.objmap[:])
             X_meas = {key: value for key, value in zip(ColorXYZ.cieX_headers(), X_meas)}
 
@@ -242,7 +242,7 @@ class MeasureColor(MeasureFeatures):
             del cieXYZ_foreground
             data = {**data, **X_meas, **Y_meas, **Z_meas}
 
-        xy_foreground = image.Cie_xy.foreground()
+        xy_foreground = image.color.xy.foreground()
         x_meas = MeasureColor._compute_color_metrics(foreground=xy_foreground[..., 0], labels=image.objmap[:])
         x_meas = {key: value for key, value in zip(Colorxy.x_headers(), x_meas)}
 
@@ -252,7 +252,7 @@ class MeasureColor(MeasureFeatures):
         del xy_foreground
         data = {**data, **x_meas, **y_meas}
 
-        Lab_foreground = image.CieLab.foreground()
+        Lab_foreground = image.color.Lab.foreground()
         lstar_meas = MeasureColor._compute_color_metrics(foreground=Lab_foreground[..., 0], labels=image.objmap[:])
         lstar_meas = {key: value for key, value in zip(ColorLab.l_star_headers(), lstar_meas)}
 
@@ -266,7 +266,7 @@ class MeasureColor(MeasureFeatures):
         data = {**data, **lstar_meas, **astar_meas, **bstar_meas}
 
         # HSB Measurements
-        hsb_foreground = image.hsv.foreground()
+        hsb_foreground = image.color.hsv.foreground()
         logger.info("Computing color metrics for hue array")
         hue_meas = MeasureColor._compute_color_metrics(foreground=hsb_foreground[..., 0], labels=image.objmap[:],
                                                        )

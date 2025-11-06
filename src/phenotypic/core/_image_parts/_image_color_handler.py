@@ -7,13 +7,9 @@ if TYPE_CHECKING: from phenotypic import Image
 import numpy as np
 from os import PathLike
 
-from phenotypic.core._image_parts.accessors import HsvAccessor
-from .color_space_accessors._xyz_accessor import XyzAccessor
-from .color_space_accessors._xyz_d65_accessor import XyzD65Accessor
-from .color_space_accessors._cielab_accessor import CieLabAccessor
-from .color_space_accessors._chromaticity_xy_accessor import xyChromaticityAccessor
-
+from .accessors._color_accessor import ColorAccessor
 from ._image_objects_handler import ImageObjectsHandler
+import colour
 
 
 class ImageColorSpace(ImageObjectsHandler):
@@ -27,8 +23,13 @@ class ImageColorSpace(ImageObjectsHandler):
 
     def __init__(self,
                  arr: np.ndarray | Image | None = None,
-                 imformat: str | None = None,
-                 name: str | None = None, **kwargs):
+                 name: str | None = None, bit_depth: Literal[8, 16] | None = 8,
+                 *,
+                 color_profile: str = 'sRGB',
+                 gamma_encoding: colour.CCTF_ENCODINGS | str | None = None,
+                 observer: str = 'CIE 1931 2 Degree Standard Observer',
+                 illuminant: Literal["D65", "D50"] = "D65",
+                 ) -> None:
         """
         Initializes an object with attributes for image processing and handling color profiles.
 
@@ -40,10 +41,6 @@ class ImageColorSpace(ImageObjectsHandler):
             arr: np.ndarray | Image | PathLike | None
                 The input image to process, which can be specified as a numpy array,
                 a PIL Image object, or a path-like object. Defaults to None.
-
-            imformat: str | None
-                The format of the input image, which specifies the structure or encoding
-                of the image data. Defaults to None.
 
             name: str | None
                 The optional name of the image or the processing instance. Useful for
@@ -57,65 +54,49 @@ class ImageColorSpace(ImageObjectsHandler):
                 The color profile associated with the image, specifying how colors are
                 represented. Defaults to 'sRGB'.
 
+            observer: str
+                The CIE standard observer specification. Defaults to 
+                "CIE 1931 2 Degree Standard Observer".
+
             illuminant: Literal["D50", "D65"]
                 The color temperature or reference white point used in image color
                 processing. Options are "D50" or "D65". Defaults to "D65".
 
-            _known_gamma_decoding: bool
-                Tracks whether the gamma decoding for the color profile has been applied.
-                A warning is issued if not applied. Defaults to False.
-
-            _accessors.hsb: HsvAccessor
-                Provides access to HSV-related processing methods tailored for the image.
+            color: ColorAccessor
+                Provides unified access to all color space representations including
+                XYZ, Lab, xy chromaticity, and HSV.
 
         """
-        self.color_profile: str = kwargs.get('color_profile', 'sRGB')
-        self.observer: str = kwargs.get('observer', "CIE 1931 2 Degree Standard Observer")
-        self.illuminant: Literal["D50", "D65"] = kwargs.get('illuminant', "D65")
-        super().__init__(arr=arr, imformat=imformat, name=name, **kwargs)
+        self.color_profile: str = color_profile
 
-        # Device color profiles
-        self._accessors.hsv = HsvAccessor(self)
-        self._accessors.CieXYZ = XyzAccessor(self)
-        self._accessors.CieXYZD65 = XyzD65Accessor(self)
-        self._accessors.CieLab = CieLabAccessor(self)
-        self._accessors.Ciexy = xyChromaticityAccessor(self)
+        self.observer: str = observer
+        self.illuminant: Literal["D50", "D65"] = illuminant
+        super().__init__(arr=arr, name=name, bit_depth=bit_depth)
+
+        # Initialize color accessor
+        self._accessors.color = ColorAccessor(self)
 
     @property
-    def CieXYZ(self) -> XyzAccessor:
-        return self._accessors.CieXYZ
-
-    @property
-    def CieXYZ_D65(self) -> XyzD65Accessor:
-        return self._accessors.CieXYZD65
-
-    @property
-    def Cie_xy(self) -> xyChromaticityAccessor:
-        return self._accessors.Ciexy
-
-    @property
-    def CieLab(self) -> CieLabAccessor:
+    def color(self) -> ColorAccessor:
         """
-        Gets the CieLab color space accessor associated with this instance.
-
-        This property provides access to the CieLabAccessor object,
-        allowing operations related to the CieLab color space.
-
+        Access all color space representations through a unified interface.
+        
+        This property provides access to the ColorAccessor object, which groups
+        all color space transformations and representations including:
+        
+        - XYZ: CIE XYZ color space
+        - XYZ_D65: CIE XYZ under D65 illuminant
+        - Lab: CIE L*a*b* perceptually uniform color space
+        - xy: CIE xy chromaticity coordinates
+        - hsv: HSV (Hue, Saturation, Value) color space
+        
         Returns:
-            CieLabAccessor: An accessor for performing operations and
-            manipulations in the CieLab color space.
+            ColorAccessor: Unified accessor for all color space representations.
+            
+        Examples:
+            >>> img = Image('sample.jpg')
+            >>> xyz_data = img.color.XYZ[:]
+            >>> lab_data = img.color.Lab[:]
+            >>> hue = img.color.hsv.hue
         """
-        return self._accessors.CieLab
-
-    @property
-    def hsv(self) -> HsvAccessor:
-        """Returns the HSV accessor.
-
-        This property returns an instance of the HsvAccessor associated with the
-        current object, allowing access to HSV (hue, saturation, other_image) related
-        functionalities controlled by this handler.
-
-        Returns:
-            HsvAccessor: The instance of the HSV accessor.
-        """
-        return self._accessors.hsv
+        return self._accessors.color

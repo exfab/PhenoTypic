@@ -8,7 +8,7 @@ from typing import Dict, Tuple, TYPE_CHECKING
 
 import psutil
 
-from phenotypic.ABC_ import ImageOperation, MeasureFeatures
+from phenotypic.abc_ import ImageOperation, MeasureFeatures
 from phenotypic.tools.constants_ import PIPE_STATUS
 
 if TYPE_CHECKING: from phenotypic import Image, ImageSet, GridImage
@@ -300,7 +300,7 @@ class ImagePipelineBatch(ImagePipelineCore):
         # needed for dtype detection
         from phenotypic.data import load_synthetic_colony
         from phenotypic import GridImage, Image
-        from phenotypic.ABC_ import ObjectDetector
+        from phenotypic.abc_ import ObjectDetector
 
         class DetectFull(ObjectDetector):
             def _operate(self, image):

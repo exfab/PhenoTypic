@@ -14,6 +14,6 @@ from abc import ABC
 class ObjectDetector(ImageOperation, ABC):
     """ObjectDetectors are for detecting objects in an image. They change the image object mask and map."""
 
-    @validate_operation_integrity('image.array', 'image.matrix', 'image.enh_matrix')
+    @validate_operation_integrity('image.rgb', 'image.gray', 'image.enh_gray')
     def apply(self, image: Image, inplace=False) -> Image:
         return super().apply(image=image, inplace=inplace)

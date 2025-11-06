@@ -11,9 +11,9 @@ import numpy as np
 import pandas as pd
 from skimage import exposure
 
-from phenotypic.ABC_ import MeasureFeatures
+from phenotypic.abc_ import MeasureFeatures
 from phenotypic.tools.constants_ import OBJECT
-from phenotypic.ABC_ import MeasurementInfo
+from phenotypic.abc_ import MeasurementInfo
 
 
 class TEXTURE(MeasurementInfo):
@@ -217,7 +217,7 @@ class MeasureTexture(MeasureFeatures):
         compute_haralick = functools.partial(
                 self._compute_haralick,
                 image=image,
-                foreground_array=image.matrix.foreground(),
+                foreground_array=image.gray.foreground(),
                 foreground_name='Gray',
                 quant_lvl=self.quant_lvl,
                 enhance=self.enhance,

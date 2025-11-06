@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING: from phenotypic import Image
 from skimage.filters import gaussian
 
-from ..ABC_ import ImageEnhancer
+from ..abc_ import ImageEnhancer
 
 
 class GaussianBlur(ImageEnhancer):
@@ -47,8 +47,8 @@ class GaussianBlur(ImageEnhancer):
         self.truncate = truncate
 
     def _operate(self, image: Image) -> Image:
-        image.enh_matrix[:] = gaussian(
-                image=image.enh_matrix[:],
+        image.enh_gray[:] = gaussian(
+                image=image.enh_gray[:],
                 sigma=self.sigma,
                 mode=self.mode,
                 truncate=self.truncate,

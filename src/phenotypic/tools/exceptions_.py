@@ -21,11 +21,11 @@ class UnknownError(PhenoTypicError):
 
 
 class InterfaceError(NotImplementedError, PhenoTypicError):
-    """Exception raised when an ABC_ method is called when it's not supposed to be."""
+    """Exception raised when an abc_ method is called when it's not supposed to be."""
 
     def __init__(self):
         super().__init__(
-                "An ABC_ method was called when it was not supposed to be. Make sure any inherited classes properly overload this method.",
+                "An abc_ method was called when it was not supposed to be. Make sure any inherited classes properly overload this method.",
         )
 
 
@@ -171,7 +171,7 @@ class ImmutableComponentError(AttributeError):
 
 
 class IllegalElementAssignmentError(ImmutableComponentError):
-    """Exception raised when trying to change array/matrix elements directly."""
+    """Exception raised when trying to change rgb/gray elements directly."""
 
     def __init__(self, component_name):
         super().__init__(
@@ -196,10 +196,10 @@ class ArrayKeyValueShapeMismatchError(ValueError):
 
 
 class InputShapeMismatchError(ValueError):
-    """Exception raised when arr shape doesn't match the image matrix."""
+    """Exception raised when arr shape doesn't match the image gray."""
 
     def __init__(self, param_name):
-        super().__init__(f"The shape of {param_name} must be the same shape as the Image.matrix")
+        super().__init__(f"The shape of {param_name} must be the same shape as the Image.gray")
 
 
 # Mask exceptions

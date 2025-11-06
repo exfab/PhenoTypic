@@ -3,14 +3,14 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING: from phenotypic import Image
-from phenotypic.ABC_ import ImageEnhancer
+from phenotypic.abc_ import ImageEnhancer
 
 from skimage.filters import median
 
 
 class MedianEnhancer(ImageEnhancer):
     """
-    The MedianEnhancer class applies a median filter operation to an image's enhanced matrix using
+    The MedianEnhancer class applies a median filter operation to an image's enhanced gray using
     specified boundary conditions and a constant fill other_image if required.
 
     This preprocessor enhances image data by replacing each pixel other_image with the median of
@@ -33,5 +33,5 @@ class MedianEnhancer(ImageEnhancer):
 
     @staticmethod
     def _operate(image: Image, mode: str, cval: float) -> Image:
-        image.enh_matrix[:] = median(image=image.enh_matrix[:], behavior='ndimage', mode=mode, cval=cval)
+        image.enh_gray[:] = median(image=image.enh_gray[:], behavior='ndimage', mode=mode, cval=cval)
         return image

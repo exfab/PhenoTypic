@@ -1,8 +1,5 @@
-phenotypic.objedit
-==================
-
-Module contents
----------------
+phenotypic.objedit package
+==========================
 
 .. automodule:: phenotypic.objedit
    :members:

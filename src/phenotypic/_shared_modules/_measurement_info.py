@@ -123,14 +123,15 @@ class MeasurementInfo(str, Enum):
         title = title or cls.__name__
         left, right = header
         lines = [
-            f".. list-table:: {title}",
-            "   :header-nrows: 1",
+            ".. toggle:: Measurement Info",
+            f"  .. list-table:: {title}",
+            "     :header-nrows: 1",
             "",
-            f"   * - {left}",
-            f"     - {right}",
+            f"     * - {left}",
+            f"       - {right}",
         ]
         for m in cls:
-            lines += [f"   * - ``{m.label}``", f"     - {m.desc}"]
+            lines += [f"     * - ``{m.label}``", f"       - {m.desc}"]
         return dedent("\n".join(lines))
 
     @classmethod

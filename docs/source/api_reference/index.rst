@@ -18,9 +18,9 @@ Image
     :toctree: image_class
     :template: image_accessor.rst
 
-    Image.array
-    Image.matrix
-    Image.enh_matrix
+    Image.rgb
+    Image.gray
+    Image.enh_gray
     Image.objmask
     Image.objmap
     Image.objects

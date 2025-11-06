@@ -59,11 +59,11 @@ class EdgeCorrector(SetAnalyzer):
             >>> # 8×12 plate; 3×3 active block centered at (4,6)
             >>> rows, cols = 8, 12
             >>> block_rc = [(r, c) for r in range(3, 6) for c in range(5, 8)]
-            >>> active = np.array([r*cols + c for r, c in block_rc], dtype=np.int64)
+            >>> active = np.rgb([r*cols + c for r, c in block_rc], dtype=np.int64)
             >>> 
             >>> # Fully surrounded (default, since min_neighbors=None → all)
             >>> res_all = EdgeCorrector._surrounded_positions(active, (rows, cols), connectivity=4)
-            >>> assert np.array_equal(res_all, np.array([4*cols + 6], dtype=np.int64))
+            >>> assert np.array_equal(res_all, np.rgb([4*cols + 6], dtype=np.int64))
             >>> 
             >>> # Threshold: at least 3 of 4 neighbors
             >>> idxs, counts = EdgeCorrector._surrounded_positions(

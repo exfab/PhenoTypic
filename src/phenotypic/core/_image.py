@@ -17,29 +17,26 @@ class Image(ImageIOHandler):
     schema definition, and subcomponent handling to streamline image processing tasks.
 
     Note:
-        - If the arr is 2-D, the ImageHandler leaves the array form as empty
-        - If the arr is 3-D, the ImageHandler will automatically set the matrix component to the grayscale representation.
+        - If the arr is 2-D, the ImageHandler leaves the rgb form as empty
+        - If the arr is 3-D, the ImageHandler will automatically set the gray component to the grayscale representation.
         - Added in v0.5.0, HSV handling support
     """
 
     def __init__(self,
                  arr: np.ndarray | Image | None = None,
-                 imformat: str | None = None,
                  name: str | None = None,
                  bit_depth: Literal[8, 16] | None = None,
                  illuminant: str | None = 'D65',
                  color_profile='sRGB',
                  observer='CIE 1931 2 Degree Standard Observer'):
         """
-        Initializes an instance of the class with optional attributes for array data, image format,
+        Initializes an instance of the class with optional attributes for array data,
         name, bit depth, illuminant, color profile, and observer. The class is constructed to handle
         data related to image processing and its various configurations.
 
         Args:
             arr (np.ndarray | Image | None): An optional array or image object. It
                 represents the pixel data or image source.
-            imformat (str | None): An optional string representing the format of
-                the image. This could be file formats like "JPEG", "PNG", etc.
             name (str | None): An optional name or identifier for the image instance.
             bit_depth (Literal[8, 16] | None): An optional bit depth of the image.
                 Either 8 or 16 bits for pixel representation. If None is specified, the bit depth
@@ -53,7 +50,6 @@ class Image(ImageIOHandler):
         """
         super().__init__(
                 arr=arr,
-                imformat=imformat,
                 name=name,
                 bit_depth=bit_depth,
                 illuminant=illuminant,

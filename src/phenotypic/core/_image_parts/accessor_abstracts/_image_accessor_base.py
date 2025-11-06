@@ -41,7 +41,7 @@ class ImageAccessorBase(ABC):
         with a specific shape of (r, c, ...), which can be used for various operations that require a structured
         multi-dimensional array.
 
-        This property is ABC_ and must be implemented in any derived concrete class. The implementation
+        This property is abc_ and must be implemented in any derived concrete class. The implementation
         should conform to the type signature and shape expectations as defined.
 
         Note: Read-only property. Changes should reference the specific array
@@ -49,7 +49,7 @@ class ImageAccessorBase(ABC):
         Returns:
             np.ndarray: A NumPy ndarray object with shape (r, c, ...).
         """
-        raise NotImplementedError("This property is ABC_ and must be implemented in a derived class.")
+        raise NotImplementedError("This property is abc_ and must be implemented in a derived class.")
 
     def __array__(self, dtype=None, copy=None):
         """Implements the array interface for numpy compatibility.

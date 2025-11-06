@@ -2,9 +2,9 @@ from typing import Literal
 
 import numpy as np
 
-from phenotypic.ABC_ import PrefabPipeline
+from phenotypic.abc_ import PrefabPipeline
 from phenotypic.enhance import CLAHE, GaussianBlur, MedianEnhancer, ContrastStretching, SobelFilter
-from phenotypic.detection import OtsuDetector, WatershedDetector
+from phenotypic.detect import OtsuDetector, WatershedDetector
 from phenotypic.correction import GridAligner
 from phenotypic.grid import (MinResidualErrorReducer, GridOversizedObjectRemover)
 from phenotypic.objedit import BorderObjectRemover, SmallObjectRemover, LowCircularityRemover

@@ -39,9 +39,9 @@ class ImageOperation(BaseOperation):
         # Template method with integrity checks
         matched_args = self._get_matched_operation_args()
         return self._apply_to_single_image(
-            operation=self._operate,
-            inplace=inplace,
-            matched_args=matched_args
+                operation=self._operate,
+                inplace=inplace,
+                matched_args=matched_args
         )
 
     @staticmethod
@@ -49,12 +49,14 @@ class ImageOperation(BaseOperation):
         # Concrete strategy implements this
         raise InterfaceError
 
+
 # Concrete Strategy
 class OtsuDetector(ThresholdDetector):
     def _operate(self, image: Image) -> Image:
-        threshold = threshold_otsu(image.enh_matrix)
-        image.objmask[:] = image.enh_matrix[:] >= threshold
+        threshold = threshold_otsu(image.enh_gray)
+        image.objmask[:] = image.enh_gray[:] >= threshold
         return image
+
 
 # Context usage
 pipeline = ImagePipeline(ops=[OtsuDetector()], meas=[MeasureShape()])
@@ -361,6 +363,7 @@ class Command:
     def undo(self, image):
         pass
 
+
 # Concrete Command
 class OtsuDetector(ImageOperation):
     def __init__(self, ignore_zeros=True):
@@ -371,10 +374,10 @@ class OtsuDetector(ImageOperation):
         """Execute the command"""
         self._previous_mask = image.objmask.copy()
         threshold = threshold_otsu(
-            image.enh_matrix[image.enh_matrix != 0] if self.ignore_zeros
-            else image.enh_matrix
+                image.enh_gray[image.enh_gray != 0] if self.ignore_zeros
+                else image.enh_gray
         )
-        image.objmask[:] = image.enh_matrix[:] >= threshold
+        image.objmask[:] = image.enh_gray[:] >= threshold
         return image
 
     def undo(self, image):
@@ -382,6 +385,7 @@ class OtsuDetector(ImageOperation):
         if self._previous_mask is not None:
             image.objmask[:] = self._previous_mask
         return image
+
 
 # Invoker
 class ImagePipeline:
