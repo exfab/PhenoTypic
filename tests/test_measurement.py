@@ -4,7 +4,7 @@ import pandas as pd
 
 import phenotypic
 from phenotypic.data import load_plate_72hr
-from phenotypic.detection import OtsuDetector
+from phenotypic.detect import OtsuDetector
 from phenotypic.objedit import MaskOpener
 
 from .test_fixtures import _image_measurements

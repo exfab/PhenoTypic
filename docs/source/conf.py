@@ -31,10 +31,10 @@ Link
 
 """
 
-
 import os
 import sys
 import sphinx_autosummary_accessors
+
 sys.path.insert(0, os.path.abspath('../../src'))
 sys.path.insert(0, os.path.abspath('./_extensions'))
 
@@ -50,6 +50,7 @@ DARK_LOGO_PATH = './_static/assets/200x150/dark_logo_sponsor.svg'
 # Try to get the version from PhenoTypic, but use a default if not available
 try:
     import phenotypic
+
     version = str(phenotypic.__version__)
 except ImportError:
     version = '0.1.0'  # Default version if PhenoTypic is not installed
@@ -73,16 +74,17 @@ extensions = [
     'sphinx_autosummary_accessors',
     'sphinx_design',
     'myst_nb',
-    'class_members'
+    'class_members',
+    "sphinx_togglebutton"
 ]
 
 autosummary_generate = True
 
 autodoc_default_options = {
-    'members': True,  # Document class members
-    'undoc-members': True,  # Include undocumented members
-    'private-members': False,  # Include private members (e.g., `_method`)
-    'show-inheritance': True,  # Show class inheritance in docs
+    'members'          : True,  # Document class members
+    'undoc-members'    : True,  # Include undocumented members
+    'private-members'  : False,  # Include private members (e.g., `_method`)
+    'show-inheritance' : True,  # Show class inheritance in docs
     'inherited-members': True,  # Include inherited members
 }
 
@@ -114,16 +116,16 @@ myst_nb_output_stderr = "remove"
 
 # sphinx-gallery configuration
 sphinx_gallery_conf = {
-    'examples_dirs': '../../examples',   # path to your example scripts
-    'gallery_dirs': 'auto_examples',     # path to where to save gallery generated output
-    'filename_pattern': '/example_',     # pattern to match example files
-    'ignore_pattern': '__init__.py',   # pattern to ignore
-    'plot_gallery': 'True',             # generate plots
-    'thumbnail_size': (400, 300),       # thumbnail size
-    'download_all_examples': True,      # download all examples as a zip file
-    'line_numbers': True,               # show line numbers in code blocks
-    'remove_config_comments': True,     # remove config comments from code blocks
-    'capture_repr': ('_repr_html_', '__repr__'),  # capture representations for display
+    'examples_dirs'         : '../../examples',  # path to your example scripts
+    'gallery_dirs'          : 'auto_examples',  # path to where to save gallery generated output
+    'filename_pattern'      : '/example_',  # pattern to match example files
+    'ignore_pattern'        : '__init__.py',  # pattern to ignore
+    'plot_gallery'          : 'True',  # generate plots
+    'thumbnail_size'        : (400, 300),  # thumbnail size
+    'download_all_examples' : True,  # download all examples as a zip file
+    'line_numbers'          : True,  # show line numbers in code blocks
+    'remove_config_comments': True,  # remove config comments from code blocks
+    'capture_repr'          : ('_repr_html_', '__repr__'),  # capture representations for display
 }
 exclude_patterns = ['_build', '**.ipynb_checkpoints', '*.ipynb', 'auto_examples']
 
@@ -147,24 +149,24 @@ if html_theme == 'pydata_sphinx_theme':
     }
     html_logo = LIGHT_LOGO_PATH
     html_theme_options = {
-        "logo": {
-            "alt_text": "PhenoTypic",
-            "link": "index",
-            "image_light":LIGHT_LOGO_PATH,
-            "image_dark":DARK_LOGO_PATH
+        "logo"                : {
+            "alt_text"   : "PhenoTypic",
+            "link"       : "index",
+            "image_light": LIGHT_LOGO_PATH,
+            "image_dark" : DARK_LOGO_PATH
         },
-        "icon_links": [
+        "icon_links"          : [
             {
                 "name": "GitHub",
-                "url": github_url,
+                "url" : github_url,
                 "icon": "fa-brands fa-github",
             }
         ],
         "use_edit_page_button": False,
-        "show_toc_level": 3,
+        "show_toc_level"      : 3,
 
         "navigation_with_keys": True,
-        "show_prev_next": False,
+        "show_prev_next"      : False,
     }
 
 # Napoleon Settings
@@ -183,5 +185,11 @@ napoleon_use_rtype = True
 # Type aliases for cleaner documentation
 python_type_aliases = {
     'matplotlib.axes._axes.Axes': 'matplotlib.axes.Axes',
-    'matplotlib.figure.Figure': 'matplotlib.figure.Figure'
+    'matplotlib.figure.Figure'  : 'matplotlib.figure.Figure'
+}
+
+intersphinx_mapping = {
+    "python"    : ("https://docs.python.org/3", {}),
+    "colour"    : ("https://colour.readthedocs.io/en/latest/", {}),
+    "matplotlib": ("https://matplotlib.org/stable/api/index.html", {}),
 }

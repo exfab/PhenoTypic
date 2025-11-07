@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING: from phenotypic import GridImage, ImagePipeline
 
-from phenotypic.ABC_ import ImageOperation
+from phenotypic.abc_ import ImageOperation
 
 
 class GridApply:
@@ -11,7 +11,7 @@ class GridApply:
 
     Parameters:
         image_op (ImageOperation): A PhenoTypic operation to be applied to each grid section.
-        reset_enh_matrix (bool): Whether to reset the enh_matrix attribute of the image before applying the operation.
+        reset_enh_matrix (bool): Whether to reset the enh_gray attribute of the image before applying the operation.
     """
 
     def __init__(self, image_op: ImageOperation | ImagePipeline,

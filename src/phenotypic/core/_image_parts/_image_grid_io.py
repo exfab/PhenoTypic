@@ -10,8 +10,8 @@ try:
     import rawpy
 except ImportError:
     rawpy = None
-import phenotypic.ABC_
-from phenotypic.grid import OptimalBinsGridFinder
+import phenotypic.abc_
+from phenotypic.grid import AutoGridFinder
 from ._image_grid_handler import ImageGridHandler
 from phenotypic.tools.constants_ import IMAGE_FORMATS
 
@@ -40,7 +40,7 @@ class ImageGridIO(ImageGridHandler):
                 **kwargs,
         )
         if grid_finder is None:
-            grid_finder = OptimalBinsGridFinder(
+            grid_finder = AutoGridFinder(
                     nrows=nrows if nrows else 8,
                     ncols=ncols if ncols else 12,
             )

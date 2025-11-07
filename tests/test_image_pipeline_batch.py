@@ -8,9 +8,9 @@ from pathlib import Path
 import pandas as pd
 
 from phenotypic import Image, ImagePipeline, ImageSet
-from phenotypic.ABC_ import MeasureFeatures, ObjectDetector
+from phenotypic.abc_ import MeasureFeatures, ObjectDetector
 from phenotypic.data import load_plate_12hr
-from phenotypic.detection import OtsuDetector
+from phenotypic.detect import OtsuDetector
 from phenotypic.objedit import BorderObjectRemover
 from .resources.TestHelper import timeit
 from .test_fixtures import temp_hdf5_file
@@ -21,7 +21,7 @@ class SumObjects(MeasureFeatures):
         labels = image.objects.labels2series()
         return pd.DataFrame({
             labels.name: labels.values,
-            'Sum'      : SumObjects._calculate_sum(array=image.matrix[:], labels=image.objmap[:])
+            'Sum'      : SumObjects._calculate_sum(array=image.gray[:], labels=image.objmap[:])
         })
 
 

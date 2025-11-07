@@ -1,6 +1,6 @@
 """
 The enhance module provides a collection of image enhance operations designed to improve
-detection and segmentation results by modifying the image's enhance matrix.
+detection and segmentation results by modifying the image's enhance gray.
 
 Available enhancers:
     - CLAHE: Contrast Limited Adaptive Histogram Equalization for local contrast enhance
@@ -13,7 +13,7 @@ Available enhancers:
     - LaplaceEnhancer: Applies Laplacian operator for edge detection
     - ContrastStretching: Enhances image contrast through intensity stretching
 
-Each enhancer operates on a copy of the original image matrix to preserve the source data
+Each enhancer operates on a copy of the original image gray to preserve the source data
 while allowing for multiple enhance operations to be applied sequentially.
 """
 

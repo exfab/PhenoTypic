@@ -7,7 +7,7 @@ import numpy as np
 from scipy.spatial.distance import euclidean
 from scipy.optimize import minimize_scalar
 
-from phenotypic.ABC_ import GridCorrector
+from phenotypic.abc_ import GridCorrector
 from phenotypic.tools.constants_ import OBJECT, BBOX, GRID
 
 

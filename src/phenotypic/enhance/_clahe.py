@@ -6,7 +6,7 @@ if TYPE_CHECKING: from phenotypic import Image
 
 from skimage.exposure import equalize_adapthist
 
-from phenotypic.ABC_ import ImageEnhancer
+from phenotypic.abc_ import ImageEnhancer
 
 
 class CLAHE(ImageEnhancer):
@@ -32,8 +32,8 @@ class CLAHE(ImageEnhancer):
         self.clip_limit: float = clip_limit
 
     def _operate(self, image: Image) -> Image:
-        image.enh_matrix[:] = equalize_adapthist(
-                image=image.enh_matrix[:],
+        image.enh_gray[:] = equalize_adapthist(
+                image=image.enh_gray[:],
                 kernel_size=self.kernel_size if self.kernel_size else self._auto_kernel_size(image),
                 clip_limit=self.clip_limit,
                 nbins=2 ** image.bit_depth
@@ -42,4 +42,4 @@ class CLAHE(ImageEnhancer):
 
     @staticmethod
     def _auto_kernel_size(image: Image) -> int:
-        return int(min(image.matrix.shape[:1])*(1.0/15.0))
+        return int(min(image.gray.shape[:1])*(1.0/15.0))

@@ -11,7 +11,7 @@ from phenotypic.core._image_parts.accessor_abstracts import ImageAccessorBase
 
 class SingleChannelAccessor(ImageAccessorBase):
     """
-    Handles interaction with Image 2-d matrix data by providing access to Image attributes and data.
+    Handles interaction with Image 2-d gray data by providing access to Image attributes and data.
 
     This class serves as a bridge for interacting with Image-related data structures.
     It is responsible for accessing and manipulating data associated with a parent
@@ -29,7 +29,7 @@ class SingleChannelAccessor(ImageAccessorBase):
              title: str | None = None,
              ax: plt.Axes | None = None,
              cmap: str | None = 'gray',
-             foreground_only:bool=False,
+             foreground_only: bool = False,
              *,
              mpl_settings: dict | None = None) -> tuple[plt.Figure, plt.Axes]:
         """
@@ -58,10 +58,10 @@ class SingleChannelAccessor(ImageAccessorBase):
                 containing the generated plot.
         """
         return self._plot(
-            arr=self[:] if not foreground_only else self.foreground(),
-            figsize=figsize,
-            ax=ax,
-            title=title,
-            cmap=cmap,
-            mpl_settings=mpl_settings,
+                arr=self[:] if not foreground_only else self.foreground(),
+                figsize=figsize,
+                ax=ax,
+                title=title,
+                cmap=cmap,
+                mpl_settings=mpl_settings,
         )

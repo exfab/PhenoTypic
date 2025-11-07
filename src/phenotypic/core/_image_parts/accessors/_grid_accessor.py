@@ -186,9 +186,9 @@ class GridAccessor(ImageAccessorBase):
         func_ax.grid(False)
 
         if use_enhanced:
-            func_ax.imshow(label2rgb(label=self.get_col_map(), image=self._root_image.enh_matrix[:]))
+            func_ax.imshow(label2rgb(label=self.get_col_map(), image=self._root_image.enh_gray[:]))
         else:
-            func_ax.imshow(label2rgb(label=self.get_col_map(), image=self._root_image.matrix[:]))
+            func_ax.imshow(label2rgb(label=self.get_col_map(), image=self._root_image.gray[:]))
 
         if show_gridlines:
             col_edges = self.get_col_edges()
@@ -230,9 +230,9 @@ class GridAccessor(ImageAccessorBase):
         func_ax.grid(False)
 
         if use_enhanced:
-            func_ax.imshow(label2rgb(label=self.get_row_map(), image=self._root_image.enh_matrix[:]))
+            func_ax.imshow(label2rgb(label=self.get_row_map(), image=self._root_image.enh_gray[:]))
         else:
-            func_ax.imshow(label2rgb(label=self.get_row_map(), image=self._root_image.matrix[:]))
+            func_ax.imshow(label2rgb(label=self.get_row_map(), image=self._root_image.gray[:]))
 
         if show_gridlines:
             col_edges = self.get_col_edges()

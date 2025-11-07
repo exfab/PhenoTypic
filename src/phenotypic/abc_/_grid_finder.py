@@ -8,7 +8,7 @@ if TYPE_CHECKING: from phenotypic import Image
 import pandas as pd
 import numpy as np
 
-from phenotypic.ABC_ import GridMeasureFeatures
+from phenotypic.abc_ import GridMeasureFeatures
 from phenotypic.tools.constants_ import BBOX, GRID
 from abc import ABC
 
@@ -38,7 +38,7 @@ class GridFinder(GridMeasureFeatures, ABC):
     @abc.abstractmethod
     def get_row_edges(self, image: Image) -> np.ndarray:
         """
-        This method is to returns the row edges of the grid as numpy array.
+        This method is to returns the row edges of the grid as numpy rgb.
         Args:
             image (Image): Image object.
         Returns:
@@ -49,7 +49,7 @@ class GridFinder(GridMeasureFeatures, ABC):
     @abc.abstractmethod
     def get_col_edges(self, image: Image) -> np.ndarray:
         """
-        This method is to returns the column edges of the grid as numpy array.
+        This method is to returns the column edges of the grid as numpy rgb.
         Args:
             image:
 

@@ -25,7 +25,8 @@ class XyzD65Accessor(ColorSpaceAccessor):
 
         This method assumes the 2-degree standard observer and handles chromatic
         adaptation as necessary based on the specified color profile and illuminant.
-        It uses the Bradford transformation method for chromatic adaptation where
+        It uses the `colour.chromatic_adaptation <https://colour.readthedocs.io/en/develop/generated/colour.chromatic_adaptation.html>`_
+        function with the Bradford transformation method for chromatic adaptation where
         applicable.
 
         Returns:
@@ -39,14 +40,14 @@ class XyzD65Accessor(ColorSpaceAccessor):
 
         # Creates a partial function so only the new XYZ whitepoint needs to be supplied
         bradford_cat65 = partial(colour.chromatic_adaptation,
-                                 XYZ=self._root_image.CieXYZ[:],
+                                 XYZ=self._root_image.color.XYZ[:],
                                  XYZ_wr=colour.xy_to_XYZ(wp['D65']),
                                  method='Bradford')
 
-        match (self._root_image.color_profile, self._root_image.illuminant):
-            case ("sRGB", "D65"):
-                return self._root_image.CieXYZ[:]
-            case ("sRGB", "D50"):
+        match self._root_image.illuminant:
+            case "D65":
+                return self._root_image.color.XYZ[:]
+            case "D50":
                 return bradford_cat65(XYZ_w=colour.xy_to_XYZ(wp['D50']))
             case _:
                 raise ValueError(

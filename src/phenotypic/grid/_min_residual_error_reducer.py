@@ -5,7 +5,7 @@ if TYPE_CHECKING: from phenotypic import GridImage
 
 import numpy as np
 
-from phenotypic.ABC_ import GridMapModifier
+from phenotypic.abc_ import GridMapModifier
 from phenotypic.grid import MeasureGridLinRegStats
 from phenotypic.tools.constants_ import GRID_LINREG_STATS_EXTRACTOR
 

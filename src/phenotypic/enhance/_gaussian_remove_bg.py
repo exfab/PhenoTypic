@@ -7,12 +7,12 @@ if TYPE_CHECKING: from phenotypic import Image
 import numpy as np
 from skimage.filters import gaussian
 
-from phenotypic.ABC_ import ImageEnhancer
+from phenotypic.abc_ import ImageEnhancer
 
 
 class GaussianRemoveBG(ImageEnhancer):
     """
-    Provides methods for image enhance on the enhanced grayscale matrix
+    Provides methods for image enhance on the enhanced grayscale gray
     using Gaussian background subtraction.
 
     The class implements an algorithm that estimates the background using a
@@ -59,11 +59,11 @@ class GaussianRemoveBG(ImageEnhancer):
         self.preserve_range: bool = preserve_range
 
     def _operate(self, image: Image):
-        background = gaussian(image=image.enh_matrix[:],
+        background = gaussian(image=image.enh_gray[:],
                               sigma=self.sigma,
                               mode=self.mode,
                               cval=self.cval,
                               truncate=self.truncate,
                               preserve_range=self.preserve_range)
-        image.enh_matrix[:] = image.enh_matrix[:] - background
+        image.enh_gray[:] = image.enh_gray[:] - background
         return image

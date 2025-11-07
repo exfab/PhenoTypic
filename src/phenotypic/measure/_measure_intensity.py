@@ -12,7 +12,7 @@ from functools import partial
 
 import pandas as pd
 
-from phenotypic.ABC_ import MeasureFeatures, MeasurementInfo
+from phenotypic.abc_ import MeasureFeatures, MeasurementInfo
 
 
 # TODO: Add more measurements
@@ -45,7 +45,7 @@ class MeasureIntensity(MeasureFeatures):
     """
 
     def _operate(self, image: Image) -> pd.DataFrame:
-        intensity_matrix, objmap = image.matrix[:].copy(), image.objmap[:].copy()
+        intensity_matrix, objmap = image.gray[:].copy(), image.objmap[:].copy()
         measurements = {
             str(INTENSITY.INTEGRATED_INTENSITY)          : self._calculate_sum(array=intensity_matrix, labels=objmap),
             str(INTENSITY.MINIMUM_INTENSITY)             : self._calculate_minimum(array=intensity_matrix,

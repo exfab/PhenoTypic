@@ -12,7 +12,7 @@ import scipy.ndimage as ndimage
 from scipy.ndimage import distance_transform_edt
 from skimage import feature, filters, morphology, segmentation
 
-from phenotypic.ABC_ import ThresholdDetector
+from phenotypic.abc_ import ThresholdDetector
 
 
 class WatershedDetector(ThresholdDetector):
@@ -77,8 +77,8 @@ class WatershedDetector(ThresholdDetector):
     def _operate(self, image: Image | GridImage) -> Image:
         from phenotypic import Image, GridImage
 
-        enhanced_matrix = image.enh_matrix[:]  # direct access to reduce memory footprint, but careful to not delete
-        self._log_memory_usage("getting enhanced matrix")
+        enhanced_matrix = image.enh_gray[:]  # direct access to reduce memory footprint, but careful to not delete
+        self._log_memory_usage("getting enhanced gray")
 
         # Determine footprint for peak detection
         if self.footprint == 'auto':

@@ -8,7 +8,7 @@ import numpy as np
 from scipy.ndimage import binary_fill_holes
 from typing import Optional
 
-from phenotypic.ABC_ import MapModifier
+from phenotypic.abc_ import MapModifier
 from phenotypic.tools.funcs_ import is_binary_mask
 
 

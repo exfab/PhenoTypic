@@ -1,8 +1,5 @@
 phenotypic.enhance
-======================
-
-Module contents
----------------
+==================
 
 .. automodule:: phenotypic.enhance
    :members:

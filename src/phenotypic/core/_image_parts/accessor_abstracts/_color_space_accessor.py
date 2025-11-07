@@ -31,7 +31,7 @@ class ColorSpaceAccessor(ImageAccessorBase):
         """Prevent direct modification of color space data.
         
         Args:
-            key: Index or slice for array access.
+            key: Index or slice for rgb access.
             value: Value to assign (not allowed).
             
         Raises:

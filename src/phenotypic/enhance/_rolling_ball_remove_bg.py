@@ -7,12 +7,12 @@ if TYPE_CHECKING: from phenotypic import Image
 import numpy as np
 from skimage.restoration import rolling_ball
 
-from phenotypic.ABC_ import ImageEnhancer
+from phenotypic.abc_ import ImageEnhancer
 
 
 class RollingBallRemoveBG(ImageEnhancer):
     """
-    Provides methods for image enhance on the enhanced grayscale matrix
+    Provides methods for image enhance on the enhanced grayscale gray
     using a rolling ball subtraction technique.
 
     The class implements an algorithm that uses a rolling ball approach to subtract
@@ -24,7 +24,7 @@ class RollingBallRemoveBG(ImageEnhancer):
     Attributes:
         radius (int): The radius for the rolling ball operation defining the extent of
             influence or smoothing.
-        kernel (np.ndarray): An optional kernel matrix used for computational purposes
+        kernel (np.ndarray): An optional kernel gray used for computational purposes
             during the enhance operation.
         nansafe (bool): A boolean flag indicating whether computations should handle
             NaN (Not a Number) values safely.
@@ -51,9 +51,9 @@ class RollingBallRemoveBG(ImageEnhancer):
         self.nansafe: bool = nansafe
 
     def _operate(self, image: Image):
-        image.enh_matrix[:] = image.enh_matrix[:] \
-                              - rolling_ball(image=image.enh_matrix[:],
-                                             radius=self.radius,
-                                             kernel=self.kernel,
-                                             nansafe=self.nansafe)
+        image.enh_gray[:] = image.enh_gray[:] \
+                            - rolling_ball(image=image.enh_gray[:],
+                                           radius=self.radius,
+                                           kernel=self.kernel,
+                                           nansafe=self.nansafe)
         return image

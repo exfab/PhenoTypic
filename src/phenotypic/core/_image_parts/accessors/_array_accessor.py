@@ -10,11 +10,11 @@ from phenotypic.tools.constants_ import IMAGE_FORMATS
 from phenotypic.tools.exceptions_ import ArrayKeyValueShapeMismatchError, NoArrayError, EmptyImageError
 
 
-class ImageArray(MultiChannelAccessor):
-    """An accessor for handling image arrays with helper methods for accessing, modifying, visualizing, and analyzing the multichannel image data.
+class ImageRGB(MultiChannelAccessor):
+    """An accessor for handling image rgb values with helper methods for accessing, modifying, visualizing, and analyzing the multichannel image data.
 
     It relies on the parent image handler object that serves as the bridge to the underlying image
-    array and associated metadata or attributes.
+    rgb and associated metadata or attributes.
 
     The class allows users to interact with image arrays intuitively while providing
     features such as advanced visualization (both for the raw images and their derived
@@ -41,12 +41,12 @@ class ImageArray(MultiChannelAccessor):
             np.ndarray: A copy of the extracted subregion represented as a NumPy array.
         """
         if self.isempty():
-            if self._root_image.matrix.isempty():
+            if self._root_image.gray.isempty():
                 raise EmptyImageError
             else:
                 raise NoArrayError
         else:
-            view = self._root_image._data.array[key]
+            view = self._root_image._data.rgb[key]
             view.flags.writeable = False
             return view
 
@@ -75,16 +75,16 @@ class ImageArray(MultiChannelAccessor):
         elif isinstance(value, np.ndarray):  # handle numpy arrays
             if not np.issubdtype(value.dtype, np.number):  # assert numeric numpy value
                 raise TypeError('Array values must be a numeric scalar or np.array')
-            if value.shape != self._root_image._data.array[key].shape:  # assert window shape equals value shape
+            if value.shape != self._root_image._data.rgb[key].shape:  # assert window shape equals value shape
                 raise ArrayKeyValueShapeMismatchError
 
         else:
             raise ValueError(
                     f'Unsupported type for setting the array. Value should be scalar or a numpy array: {type(value)}')
 
-        self._root_image._data.array[key] = value
-        self._root_image._set_from_array(self._root_image._data.array, imformat=self._root_image.imformat)
+        self._root_image._data.rgb[key] = value
+        self._root_image._set_from_array(self._root_image._data.rgb)
 
     @property
     def _subject_arr(self):
-        return self._root_image._data.array.copy()
+        return self._root_image._data.rgb.copy()

@@ -1,4 +1,5 @@
 from memory_profiler import profile
+
 globals()['profile'] = profile
 
 import types
@@ -11,6 +12,7 @@ import os
 import time
 from functools import wraps
 
+
 def profile_ram(func):
     @wraps(func)
     def wrapper(*args, **kwargs):
@@ -22,11 +24,13 @@ def profile_ram(func):
 
         after = process.memory_info().rss
         t1 = time.perf_counter()
-        delta = (after - before) / 1024**2  # in MB
+        delta = (after - before)/1024 ** 2  # in MB
 
         print(f"[RAM] {func.__qualname__} used {delta:.3f} MB in {t1 - t0:.3f}s")
         return result
+
     return wrapper
+
 
 def auto_profile_module(module):
     for name in dir(module):
@@ -53,7 +57,9 @@ def auto_profile_package(pkg):
             module = importlib.import_module(module_name)
             auto_profile_module(module)
 
+
 import types
+
 
 def auto_profile_module_ram(module):
     for name in dir(module):
@@ -69,10 +75,10 @@ def auto_profile_module_ram(module):
                 if isinstance(attr, (types.FunctionType, types.MethodType)):
                     setattr(obj, attr_name, profile_ram(attr))
 
+
 import phenotypic
 
 auto_profile_package(phenotypic)
-
 
 
 def walk_package_for_measurements(pkg):
@@ -82,8 +88,8 @@ def walk_package_for_measurements(pkg):
     if hasattr(pkg, "__path__"):  # add all sub‑modules
         modules += [
             importlib.import_module(name)
-            for _, name, _ in pkgutil.walk_packages(pkg.__path__, pkg.__name__ + ".")\
-                if not name.split(".")[-1].startswith("_")  # Skip modules with names starting with underscore
+            for _, name, _ in pkgutil.walk_packages(pkg.__path__, pkg.__name__ + ".") \
+            if not name.split(".")[-1].startswith("_")  # Skip modules with names starting with underscore
 
         ]
 
@@ -99,7 +105,7 @@ def walk_package_for_measurements(pkg):
             if inspect.ismodule(obj):
                 continue
 
-            if not isinstance(obj, type): # make sure object is a class object
+            if not isinstance(obj, type):  # make sure object is a class object
                 continue
 
             if not issubclass(obj, phenotypic.abstract.MeasureFeatures):
@@ -110,10 +116,12 @@ def walk_package_for_measurements(pkg):
                 seen.add(qualname)
                 yield qualname, obj
 
+
 import phenotypic
 from phenotypic.data import load_plate_12hr
-from phenotypic.detection import WatershedDetector
+from phenotypic.detect import WatershedDetector
 import pandas as pd
+
 
 def test_measurement(qualname, obj):
     """The goal of this test is to ensure that all operations are callable with basic functionality,
@@ -140,8 +148,8 @@ def walk_package_for_operations(pkg):
     if hasattr(pkg, "__path__"):  # add all sub‑modules
         modules += [
             importlib.import_module(name)
-            for _, name, _ in pkgutil.walk_packages(pkg.__path__, pkg.__name__ + ".")\
-                if not name.split(".")[-1].startswith("_")  # Skip modules with names starting with underscore
+            for _, name, _ in pkgutil.walk_packages(pkg.__path__, pkg.__name__ + ".") \
+            if not name.split(".")[-1].startswith("_")  # Skip modules with names starting with underscore
 
         ]
 
@@ -157,7 +165,7 @@ def walk_package_for_operations(pkg):
             if inspect.ismodule(obj):
                 continue
 
-            if not isinstance(obj, type):   # make sure object is a class object
+            if not isinstance(obj, type):  # make sure object is a class object
                 continue
 
             if not issubclass(obj, phenotypic.abstract.ImageOperation):
@@ -181,6 +189,7 @@ def test_operation(qualname, obj):
         raise KeyboardInterrupt
     except Exception as e:
         print(f"Failed on {qualname} - e")
+
 
 for qualname, obj in walk_package_for_operations(phenotypic):
     test_operation(qualname, obj)

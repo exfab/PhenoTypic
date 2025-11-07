@@ -1,10 +1,10 @@
 import pytest
 
-from phenotypic.ABC_ import ImageOperation
+from phenotypic.abc_ import ImageOperation
 
 import phenotypic
 from phenotypic.data import load_plate_12hr
-from phenotypic.detection import WatershedDetector
+from phenotypic.detect import WatershedDetector
 
 from .test_fixtures import _image_operations
 from .resources.TestHelper import timeit

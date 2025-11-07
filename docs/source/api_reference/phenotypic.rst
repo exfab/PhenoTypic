@@ -1,31 +1,26 @@
 phenotypic
 ==========
 
+.. automodule:: phenotypic
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 Subpackages
 -----------
 
 .. toctree::
    :maxdepth: 4
-   Image
-   GridImage
-   phenotypic.abstract
+
+   phenotypic.ABC_
+   phenotypic.analysis
    phenotypic.core
    phenotypic.correction
    phenotypic.data
-   phenotypic.detection
+   phenotypic.detect
    phenotypic.enhance
    phenotypic.grid
    phenotypic.measure
-   phenotypic.morphology
-   phenotypic.objects
-   phenotypic.pipeline
-   phenotypic.transform
-   phenotypic.util
-
-Module contents
----------------
-
-.. automodule:: phenotypic
-   :members:
-   :undoc-members:
-   :show-inheritance:
+   phenotypic.objedit
+   phenotypic.prefab
+   phenotypic.tools

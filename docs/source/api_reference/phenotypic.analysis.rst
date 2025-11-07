@@ -1,7 +1,15 @@
-phenotypic.analysis package
-===========================
+phenotypic.analysis
+===================
 
 .. automodule:: phenotypic.analysis
    :members:
-   :show-inheritance:
    :undoc-members:
+   :show-inheritance:
+
+Subpackages
+-----------
+
+.. toctree::
+   :maxdepth: 4
+
+   phenotypic.analysis.abstract

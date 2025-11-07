@@ -14,8 +14,10 @@ class XyzAccessor(ColorSpaceAccessor):
     """Provides access to the XYZ color representation of an image.
 
     Converts image data from different color profiles and illuminants to its
-    corresponding XYZ color representation. The class ensures accurate color
-    management while preventing direct modifications to the data.
+    corresponding XYZ color representation using the
+    `colour.RGB_to_XYZ <https://colour.readthedocs.io/en/develop/generated/colour.RGB_to_XYZ.html>`_
+    function. The class ensures accurate color management while preventing direct
+    modifications to the data.
 
     Attributes:
         _root_image (Image): The source image object containing all necessary
@@ -24,41 +26,44 @@ class XyzAccessor(ColorSpaceAccessor):
 
     @property
     def _subject_arr(self) -> np.ndarray:
-        norm_rgb = normalize_rgb_bitdepth(self._root_image.array[:])
-        match (self._root_image.imformat, self._root_image.color_profile, self._root_image.illuminant):
-            case (IMAGE_FORMATS.RGB, "sRGB", "D50"):
+        if self._root_image.rgb.isempty():
+            raise AttributeError('XYZ conversion is not available for grayscale images')
+        norm_rgb = normalize_rgb_bitdepth(self._root_image.rgb[:])
+        match (self._root_image.gamma_encoding, self._root_image.illuminant):
+            case ('sRGB', "D50"):
                 sRGB_D50.whitepoint = colour.CCS_ILLUMINANTS[self._root_image.observer]["D50"]
                 return colour.RGB_to_XYZ(
                         RGB=norm_rgb,
                         colourspace=sRGB_D50,
                         illuminant=sRGB_D50.whitepoint,
-                        cctf_decoding=True,  # Assumes sRGB means non-linear
+                        cctf_decoding=True,
                 )
-            case (IMAGE_FORMATS.RGB, "sRGB", "D65"):
+            case ("sRGB", "D65"):
                 return colour.RGB_to_XYZ(
                         RGB=norm_rgb,
                         colourspace=colour.RGB_COLOURSPACES["sRGB"],
                         illuminant=colour.CCS_ILLUMINANTS[self._root_image.observer]["D65"],
-                        cctf_decoding=True,  # Assumes sRGB means non-linear
+                        cctf_decoding=True,
                 )
-            case (IMAGE_FORMATS.LINEAR_RGB, "sRGB", "D50"):
+            case (None, "D50"):
                 sRGB_D50.whitepoint = colour.CCS_ILLUMINANTS[self._root_image.observer]["D50"]
                 return colour.RGB_to_XYZ(
-                        RGB=norm_rgb,
-                        colourspace=sRGB_D50,
+                        rgb=norm_rgb,
+                        colourspace=colour.RGB_COLOURSPACES["sRGB"],
                         illuminant=sRGB_D50.whitepoint,
                         cctf_decoding=False,
                 )
-            case (IMAGE_FORMATS.LINEAR_RGB, "sRGB", "D65"):
+            case (None, "D65"):
                 return colour.RGB_to_XYZ(
-                        RGB=norm_rgb,
+                        rgb=norm_rgb,
                         colourspace=colour.RGB_COLOURSPACES["sRGB"],
                         illuminant=colour.CCS_ILLUMINANTS[self._root_image.observer]["D65"],
                         cctf_decoding=False,
                 )
             case _:
                 raise ValueError(
-                        f'Unknown color_profile: {self._root_image.color_profile} or illuminant: {self._root_image.illuminant}')
+                        f'Unknown color_profile: {self._root_image.gamma_encoding} '
+                        f'or illuminant: {self._root_image.illuminant}')
 
     def __setitem__(self, key, value):
         raise IllegalAssignmentError('XYZ')

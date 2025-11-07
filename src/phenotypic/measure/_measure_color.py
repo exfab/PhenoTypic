@@ -9,13 +9,12 @@ import pandas as pd
 import colour
 import logging
 
-from phenotypic.ABC_ import MeasureFeatures, MeasurementInfo
+from phenotypic.abc_ import MeasureFeatures, MeasurementInfo
 from phenotypic.tools.constants_ import OBJECT
 
 logger = logging.getLogger(__name__)
 
 
-# TODO: Dominant wavelength, purity, and luminance calculation commented out until algorithm optimization
 class ColorXYZ(MeasurementInfo):
     @classmethod
     def category(cls):
@@ -226,10 +225,9 @@ class MeasureColor(MeasureFeatures):
         self.include_XYZ = include_XYZ
 
     def _operate(self, image: Image):
-
         data = {}
         if self.include_XYZ:
-            cieXYZ_foreground = image.CieXYZ.foreground()
+            cieXYZ_foreground = image.color.XYZ.foreground()
             X_meas = MeasureColor._compute_color_metrics(foreground=cieXYZ_foreground[..., 0], labels=image.objmap[:])
             X_meas = {key: value for key, value in zip(ColorXYZ.cieX_headers(), X_meas)}
 
@@ -242,7 +240,7 @@ class MeasureColor(MeasureFeatures):
             del cieXYZ_foreground
             data = {**data, **X_meas, **Y_meas, **Z_meas}
 
-        xy_foreground = image.Cie_xy.foreground()
+        xy_foreground = image.color.xy.foreground()
         x_meas = MeasureColor._compute_color_metrics(foreground=xy_foreground[..., 0], labels=image.objmap[:])
         x_meas = {key: value for key, value in zip(Colorxy.x_headers(), x_meas)}
 
@@ -252,7 +250,7 @@ class MeasureColor(MeasureFeatures):
         del xy_foreground
         data = {**data, **x_meas, **y_meas}
 
-        Lab_foreground = image.CieLab.foreground()
+        Lab_foreground = image.color.Lab.foreground()
         lstar_meas = MeasureColor._compute_color_metrics(foreground=Lab_foreground[..., 0], labels=image.objmap[:])
         lstar_meas = {key: value for key, value in zip(ColorLab.l_star_headers(), lstar_meas)}
 
@@ -266,7 +264,7 @@ class MeasureColor(MeasureFeatures):
         data = {**data, **lstar_meas, **astar_meas, **bstar_meas}
 
         # HSB Measurements
-        hsb_foreground = image.hsv.foreground()
+        hsb_foreground = image.color.hsv.foreground()
         logger.info("Computing color metrics for hue array")
         hue_meas = MeasureColor._compute_color_metrics(foreground=hsb_foreground[..., 0], labels=image.objmap[:],
                                                        )
@@ -327,58 +325,6 @@ class MeasureColor(MeasureFeatures):
             MeasureFeatures._calculate_coeff_variation(array=foreground, labels=labels),
         ]
         return measurements
-
-    @staticmethod
-    def _dominant_wavelength_xy(xy: np.ndarray,
-                                labels: np.ndarray | None = None,
-                                white: str = "D65",
-                                observer: str = "CIE 1931 2 Degree Standard Observer"):
-        """
-        Computes the dominant wavelength and purity for given chromaticity coordinates.
-
-        This static method calculates the dominant wavelength and excitation purity for a
-        set of chromaticity coordinates (`xy`) relative to a specified white point and
-        observer. The computation is vectorized, allowing for efficient processing of
-        multiple chromaticity values simultaneously. Near-white numerics are handled,
-        ensuring robust results for inputs very close to the white point.
-
-        Args:
-            xy (numpy.ndarray): A NumPy array of shape (..., 2) where the last dimension
-                contains the chromaticity coordinates (x, y).
-            white (str, optional): A string specifying the white point to use. Default
-                is "D65".
-            observer (str, optional): A string specifying the standard observer to use.
-                Default is "CIE 1931 2 Degree Standard Observer".
-
-        Returns:
-            tuple: A tuple containing:
-                - numpy.ndarray: Dominant wavelengths (in nanometers) as a NumPy array
-                    with the same shape as the input chromaticity coordinates without
-                    the last dimension.
-                - numpy.ndarray: Excitation purity as a NumPy array with the same shape
-                    as the chromaticity coordinates without the last dimension.
-        """
-        wp = colour.CCS_ILLUMINANTS[observer][white]  # achromatic xy
-        orig_shape = xy.shape[:-1]
-        if labels:
-            xy = xy.copy()
-            xy[labels == 0] = np.nan
-
-        xy_flat = xy.reshape(-1, 2)
-
-        # Get the indexes of all the coords where there is an object
-        xy_flat_obj_mask = ~np.isnan(xy_flat).any(axis=1)
-        xy_not_nan = xy_flat[xy_flat_obj_mask, :]
-
-        wl_nm_obj, _, _ = colour.dominant_wavelength(xy=xy_not_nan, xy_n=wp)  # vectorized
-        final_wl_nm = np.zeros(shape=xy_flat.shape[0])
-        final_wl_nm[xy_flat_obj_mask] = wl_nm_obj
-
-        purity_obj = colour.excitation_purity(xy=xy_not_nan, xy_n=wp)
-        final_purity = np.zeros(shape=xy_flat.shape[0])
-        final_purity[xy_flat_obj_mask] = purity_obj
-
-        return final_wl_nm.reshape(orig_shape), final_purity.reshape(orig_shape)
 
 
 MeasureColor.__doc__ = ColorHSV.append_rst_to_doc(

@@ -33,7 +33,7 @@ class ObjectMap(SingleChannelAccessor):
         even if it's been replaced by another operation.
         """
         return self._root_image._data.sparse_object_map
-    
+
     @property
     def _num_objects(self):
         return len(self._labels)
@@ -44,7 +44,7 @@ class ObjectMap(SingleChannelAccessor):
         objmap = self._backend.toarray()
         labels = np.unique(objmap)
         return labels[labels != 0]
-    
+
     def __array__(self, dtype=None, copy=None):
         """Implements the array interface for numpy compatibility.
         
@@ -158,7 +158,7 @@ class ObjectMap(SingleChannelAccessor):
 
     def reset(self) -> None:
         """Resets the object_map to an empty map array with no objects in it."""
-        self._root_image._data.sparse_object_map = self._dense_to_sparse(self._root_image.matrix.shape)
+        self._root_image._data.sparse_object_map = self._dense_to_sparse(self._root_image.gray.shape)
 
     def relabel(self, connectivity: int = 1):
         """Relabels all the objects based on their connectivity.

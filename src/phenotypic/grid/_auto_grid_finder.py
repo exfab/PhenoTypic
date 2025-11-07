@@ -9,25 +9,25 @@ import numpy as np
 from scipy.optimize import minimize_scalar
 from functools import partial
 
-from phenotypic.ABC_ import GridFinder
+from phenotypic.abc_ import GridFinder
 from phenotypic.tools.constants_ import BBOX, GRID
 
 
-class OptimalBinsGridFinder(GridFinder):
+class AutoGridFinder(GridFinder):
     """
-    Defines a class for finding the grid parameters based on the optimal center of object in a provided image.
+    Automatically adjusts and processes grid configurations for images based on
+    parameters like row and column counts, tolerance, and iteration constraints.
 
-    The OptimalCenterGridSetter class provides methods for setting up a grid on
-    an image using row and column parameters, optimizing grid boundaries based on
-    object centroids, and categorizing object based on their positions in grid
-    sections. This class facilitates gridding for structured analysis, such as object
-    segmentation or classification within images.
+    This class extends `GridFinder` and adds flexibility to define custom grid
+    specifications, compute padding, manage convergence criteria, and optimize
+    grid alignment for image processing tasks.
 
     Attributes:
-        nrows (int): Number of nrows in the grid.
-        ncols (int): Number of columns in the grid.
-        tol (float): Tolerance for the solver method. Defaults to 10e-3.
-
+        __iter_limit (float): Internal limit for the maximum number of iterations.
+        nrows (int): Number of rows for the grid structure.
+        ncols (int): Number of columns for the grid structure.
+        tol (float): Tolerance level to assess convergence.
+        max_iter (int): Maximum allowable iterations, capped by the internal limit.
     """
     __iter_limit = 1e5
 
@@ -273,4 +273,4 @@ class OptimalBinsGridFinder(GridFinder):
             )
 
 
-OptimalBinsGridFinder.measure.__doc__ = OptimalBinsGridFinder._operate.__doc__
+AutoGridFinder.measure.__doc__ = AutoGridFinder._operate.__doc__

@@ -29,9 +29,8 @@ class ImageIOHandler(ImageColorSpace):
 
     def __init__(self,
                  arr: np.ndarray | Image | None = None,
-                 imformat: str | None = None,
                  name: str | None = None, **kwargs):
-        super().__init__(arr=arr, imformat=imformat, name=name)
+        super().__init__(arr=arr, name=name)
 
     @classmethod
     def imread(cls,
@@ -39,37 +38,35 @@ class ImageIOHandler(ImageColorSpace):
                rawpy_params: dict | None = None,
                **kwargs) -> Image:
         """
-        Reads an image file from the specified file path and returns an Image instance.
-        Supports common image formats and raw sensor data formats with optional processing
-        configurations.
+        imread is a class method responsible for reading an image file from the specified
+        path and performing necessary preprocessing based on the file format and additional
+        parameters. The method supports a variety of image file types including common
+        formats (e.g., JPEG, PNG) as well as raw sensor data. It uses the scikit-image library
+        for loading standard images and rawpy for processing raw image files. This method also
+        handles additional configurations for raw image preprocessing via rawpy parameters, such
+        as white balance, gamma correction, and demosaic algorithm.
 
         Args:
-            filepath (PathLike): The path to the image file to be read.
-            gamma (Tuple[int, int] | None): Gamma correction as a tuple (numerator, denominator).
-                If None, defaults to (1, 1) for no gamma correction.
-            demosaic_algorithm (rawpy.DemosaicAlgorithm | None): The demosaicing algorithm to
-                apply if reading raw sensor data. Defaults to None, using the
-                `rawpy.DemosaicAlgorithm.LINEAR`.
-            use_camera_wb (bool): Flag to indicate whether to use the camera's white balance
-                configuration if reading raw sensor data. Defaults to False.
-            median_filter_passes (int): The number of median filtering passes to apply to raw
-                sensor data. Defaults to 0.
-            rawpy_params (dict | None): Additional keyword arguments for rawpy's `postprocess`
-                function when reading raw sensor data. Defaults to None.
-            **kwargs: Additional keyword arguments for further configuration during the
-                initialization of the Image instance.
+            filepath (PathLike): Path to the image file to be read. It can be any valid file
+                path-like object (e.g., str, pathlib.Path).
+            rawpy_params (dict | None): Optional dictionary of parameters for processing raw image
+                files when using rawpy. Supports options like white balance settings, demosaic
+                algorithm, gamma correction, and others. Defaults to None.
+            **kwargs: Arbitrary keyword arguments to be passed for additional configurations
+                specific to the Image instantiation.
 
         Returns:
-            Image: An Image instance containing the image data and metadata.
+            Image: An instance of the Image class containing the processed image array and any
+                additional metadata.
 
         Raises:
-            UnsupportedFileTypeError: If the file extension is not supported or the necessary
-                libraries are not available for processing the specified file type.
+            UnsupportedFileTypeError: If the file type of the provided filepath is not supported
+                by the method, either due to its extension not being recognized or due to the
+                absence of required libraries like rawpy.
         """
         # Convert to a Path object
         filepath = Path(filepath)
         rawpy_params = rawpy_params or {}
-        imformat = None
 
         if filepath.suffix.lower() in IO.ACCEPTED_FILE_EXTENSIONS:  # normal images
             arr = ski.io.imread(fname=filepath)
@@ -81,7 +78,7 @@ class ImageIOHandler(ImageColorSpace):
             no_auto_scale = rawpy_params.pop('no_auto_scale', False)  # TODO: implement calibration schema
             no_auto_bright = rawpy_params.pop('no_auto_bright', False)  # TODO: implement calibration schema
 
-            if rawpy.DemosaicAlgorithm.AMAZE.isSupported():
+            if rawpy.DemosaicAlgorithm.AMAZE.isSupported:
                 default_demosaic = rawpy.DemosaicAlgorithm.AMAZE
             else:
                 default_demosaic = rawpy.DemosaicAlgorithm.AHD
@@ -102,13 +99,11 @@ class ImageIOHandler(ImageColorSpace):
                         output_color=rawpy.ColorSpace.sRGB,
                         **rawpy_params,
                 )
-            imformat = IMAGE_FORMATS.LINEAR_RGB
 
         else:
             raise UnsupportedFileTypeError(filepath.suffix)
 
-        imformat = kwargs.pop('imformat', imformat)
-        image = cls(arr=arr, imformat=imformat, **kwargs)
+        image = cls(arr=arr, **kwargs)
         image.name = filepath.stem
         return image
 
@@ -178,24 +173,24 @@ class ImageIOHandler(ImageColorSpace):
         # create the group container for the images information
         image_group = self._get_hdf5_group(grp, self.name)
 
-        if self._image_format.is_array():
-            array = self.array[:]
+        if not self.rgb.isempty():
+            array = self.rgb[:]
             HDF.save_array2hdf5(
-                    group=image_group, array=array, name="array",
+                    group=image_group, array=array, name="rgb",
                     dtype=array.dtype,
                     compression=compression, compression_opts=compression_opts,
             )
 
-        matrix = self.matrix[:]
+        matrix = self.gray[:]
         HDF.save_array2hdf5(
-                group=image_group, array=matrix, name="matrix",
+                group=image_group, array=matrix, name="gray",
                 dtype=matrix.dtype,
                 compression=compression, compression_opts=compression_opts,
         )
 
-        enh_matrix = self.enh_matrix[:]
+        enh_matrix = self.enh_gray[:]
         HDF.save_array2hdf5(
-                group=image_group, array=enh_matrix, name="enh_matrix",
+                group=image_group, array=enh_matrix, name="enh_gray",
                 dtype=enh_matrix.dtype,
                 compression=compression, compression_opts=compression_opts,
         )
@@ -207,10 +202,7 @@ class ImageIOHandler(ImageColorSpace):
                 compression=compression, compression_opts=compression_opts,
         )
 
-        # 3) Store string/enum as a group attribute
-        #    h5py supports variable-length UTF-8 strings automatically
-        image_group.attrs["imformat"] = self.imformat.value
-
+        # 3) Store version info
         image_group.attrs["version"] = phenotypic.__version__
 
         # 4) Store protected metadata in its own subgroup
@@ -254,21 +246,21 @@ class ImageIOHandler(ImageColorSpace):
     @classmethod
     def _load_from_hdf5_group(cls, group, **kwargs) -> Image:
         # Instantiate a blank handler and populate internals
-        # Load Image Format
-        imformat = IMAGE_FORMATS[group.attrs["imformat"]]
         # Read datasets back into numpy arrays with proper dtype handling
-        matrix_data = group["matrix"][()]
-        if imformat.is_array():
-            # For arrays, preserve the original dtype from HDF5
-            array_data = group["array"][()]
-            img = cls(arr=array_data, imformat=imformat.value, **kwargs)
-            img.matrix[:] = matrix_data
-        else:
-            img = cls(arr=matrix_data, imformat=imformat.value, **kwargs)
+        matrix_data = group["gray"][()]
 
-        # Load enhanced matrix and object map with proper dtype casting
-        enh_matrix_data = group["enh_matrix"][()]
-        img.enh_matrix[:] = enh_matrix_data
+        # Determine format from available datasets
+        if "rgb" in group:
+            # For arrays, preserve the original dtype from HDF5
+            array_data = group["rgb"][()]
+            img = cls(arr=array_data, **kwargs)
+            img.gray[:] = matrix_data
+        else:
+            img = cls(arr=matrix_data, **kwargs)
+
+        # Load enhanced gray and object map with proper dtype casting
+        enh_matrix_data = group["enh_gray"][()]
+        img.enh_gray[:] = enh_matrix_data
 
         # Object map should preserve its original dtype (usually integer labels)
         img.objmap[:] = group["objmap"][()]
@@ -303,10 +295,9 @@ class ImageIOHandler(ImageColorSpace):
         """
         with open(filename, 'wb') as filehandler:
             pickle.dump({
-                '_image_format'     : self._image_format,
-                "_data.array"       : self._data.array,
-                '_data.matrix'      : self._data.matrix,
-                '_data.enh_matrix'  : self._data.enh_matrix,
+                "_data.rgb"         : self._data.rgb,
+                '_data.gray'        : self._data.gray,
+                '_data.enh_gray'    : self._data.enh_gray,
                 'objmap'            : self.objmap[:],
                 "protected_metadata": self._metadata.protected,
                 "public_metadata"   : self._metadata.public,
@@ -327,16 +318,16 @@ class ImageIOHandler(ImageColorSpace):
         with open(filename, 'rb') as f:
             loaded = pickle.load(f)
 
-        instance = cls(arr=None, imformat=None, name=None)
+        # Determine format from available data
+        if loaded["_data.rgb"].size > 0:
+            instance = cls(arr=loaded["_data.rgb"], name=None)
+        else:
+            instance = cls(arr=loaded["_data.gray"], name=None)
 
-        instance._image_format = loaded["_image_format"]
-        instance._data.array = loaded["_data.array"]
-        instance._data.matrix = loaded["_data.matrix"]
-
-        instance.enh_matrix.reset()
+        instance.enh_gray.reset()
         instance.objmap.reset()
 
-        instance._data.enh_matrix = loaded["_data.enh_matrix"]
+        instance._data.enh_gray = loaded["_data.enh_gray"]
         instance.objmap[:] = loaded["objmap"]
         instance._metadata.protected = loaded["protected_metadata"]
         instance._metadata.public = loaded["public_metadata"]

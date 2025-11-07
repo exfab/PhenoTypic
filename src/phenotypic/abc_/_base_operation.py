@@ -27,7 +27,7 @@ from abc import ABC
 
 
 class BaseOperation(ABC):
-    """BaseOperation is an ABC_ object intended to be the parent of all other operations.
+    """BaseOperation is an abc_ object intended to be the parent of all other operations.
     It provides the basic functionality for all operations, including measurements."""
 
     def __init__(self):

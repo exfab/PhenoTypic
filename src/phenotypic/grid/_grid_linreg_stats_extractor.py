@@ -1,16 +1,31 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, Optional
+
+from typing import Optional, TYPE_CHECKING
 
 if TYPE_CHECKING: from phenotypic import GridImage
 
 import pandas as pd
 from scipy.spatial.distance import euclidean
 
-from phenotypic.ABC_ import GridMeasureFeatures
+from phenotypic.abc_ import GridMeasureFeatures
 from phenotypic.tools.constants_ import GRID_LINREG_STATS_EXTRACTOR, OBJECT, BBOX, GRID
 
 
 class MeasureGridLinRegStats(GridMeasureFeatures):
+    """
+    A class that calculates linear regression statistics for grid data and their residual errors.
+
+    This class extends the GridMeasureFeatures base class to perform calculations related to
+    row-wise and column-wise linear regression statistics for objects in a grid. It computes
+    the predicted centroids and calculates the residual errors based on the actual and
+    predicted positions. It also supports operations on specific sections if a section number
+    is specified.
+
+    Attributes:
+        section_num (Optional[int]): Section number specifying the part of the grid to process.
+            If None, operations will be performed on the entire grid.
+    """
+
     def __init__(self, section_num: Optional[int] = None):
         super().__init__()
         self.section_num = section_num
@@ -59,10 +74,11 @@ class MeasureGridLinRegStats(GridMeasureFeatures):
                                 right_on=str(GRID.COL_NUM))
 
         # NOTE: Col linear regression(RR) -> pred CC
-        section_info.loc[:, GRID_LINREG_STATS_EXTRACTOR.PRED_CC] = \
-            section_info.loc[:, str(BBOX.CENTER_RR)] \
-            *section_info.loc[:, GRID_LINREG_STATS_EXTRACTOR.COL_LINREG_M] \
-            + section_info.loc[:, GRID_LINREG_STATS_EXTRACTOR.COL_LINREG_B]
+        section_info.loc[:, GRID_LINREG_STATS_EXTRACTOR.PRED_CC] = (
+                section_info.loc[:, str(BBOX.CENTER_RR)]
+                *section_info.loc[:, GRID_LINREG_STATS_EXTRACTOR.COL_LINREG_M]
+                + section_info.loc[:, GRID_LINREG_STATS_EXTRACTOR.COL_LINREG_B]
+        )
 
         # Calculate the distance each object is from it's predicted center. This is the residual error
         section_info.loc[:, GRID_LINREG_STATS_EXTRACTOR.RESIDUAL_ERR] = section_info.apply(

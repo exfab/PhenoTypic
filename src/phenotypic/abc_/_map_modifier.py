@@ -15,6 +15,6 @@ from abc import ABC
 class MapModifier(ImageOperation, ABC):
     """Map modifiers edit the object map and are used for removing, combining, and re-ordering objects."""
 
-    @validate_operation_integrity('image.array', 'image.matrix', 'image.enh_matrix')
+    @validate_operation_integrity('image.rgb', 'image.gray', 'image.enh_gray')
     def apply(self, image: Image, inplace: bool = False) -> Image:
         return super().apply(image=image, inplace=inplace)

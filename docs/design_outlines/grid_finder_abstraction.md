@@ -45,7 +45,7 @@ The `GridFinder` abstract base class defines the interface that all grid finding
 
 ## Implementations
 
-### 1. OptimalBinsGridFinder ✅ **IMPLEMENTED**
+### 1. AutoGridFinder ✅ **IMPLEMENTED**
 
 **Purpose:** Automatically finds optimal grid placement by minimizing the error between object centroids and grid bin
 midpoints.
@@ -126,7 +126,7 @@ To create a new grid finding strategy:
 ### Step 1: Inherit from GridFinder
 
 ```python
-from phenotypic.ABC_ import GridFinder
+from phenotypic.abc_ import GridFinder
 import numpy as np
 import pandas as pd
 
@@ -142,10 +142,12 @@ class MyCustomGridFinder(GridFinder):
 
 ```python
     def get_row_edges(self, image: Image) -> np.ndarray:
-    # Your logic to calculate row edges
-    # Must return array of length (nrows + 1)
-    row_edges =  # ... your calculation ...
-    return row_edges
+
+
+# Your logic to calculate row edges
+# Must return array of length (nrows + 1)
+row_edges =  # ... your calculation ...
+return row_edges
 
 
 def get_col_edges(self, image: Image) -> np.ndarray:
@@ -159,12 +161,14 @@ def get_col_edges(self, image: Image) -> np.ndarray:
 
 ```python
     def _operate(self, image: Image) -> pd.DataFrame:
-    # Get edges using your methods
-    row_edges = self.get_row_edges(image)
-    col_edges = self.get_col_edges(image)
 
-    # Use base class helper to assemble grid info
-    return super()._get_grid_info(image=image, row_edges=row_edges, col_edges=col_edges)
+
+# Get edges using your methods
+row_edges = self.get_row_edges(image)
+col_edges = self.get_col_edges(image)
+
+# Use base class helper to assemble grid info
+return super()._get_grid_info(image=image, row_edges=row_edges, col_edges=col_edges)
 ```
 
 ## Example Use Cases for New Implementations
@@ -224,7 +228,7 @@ def get_row_edges(self, image: Image) -> np.ndarray:
 
 ## Migration Guide
 
-For existing code using `OptimalBinsGridFinder`:
+For existing code using `AutoGridFinder`:
 
 - **No changes required** - the public API remains the same
 - Internal implementation is cleaner but functionality is identical

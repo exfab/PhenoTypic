@@ -21,7 +21,7 @@ class ObjectsAccessor:
     labeling and analysis tools like `skimage.regionprops`.
 
     Notes:
-        - Can only be called if an :class:`PhenoTypic.ABC_.ObjectDetector` has been applied to the :class:`PhenoTypic.Image` object.
+        - Can only be called if an :class:`PhenoTypic.abc_.ObjectDetector` has been applied to the :class:`PhenoTypic.Image` object.
 
     """
 
@@ -52,7 +52,7 @@ class ObjectsAccessor:
             list[skimage.measure.RegionProperties]: A list of properties for all
                 regions in the provided image.
         """
-        return regionprops(label_image=self._root_image.objmap[:], intensity_image=self._root_image.matrix[:],
+        return regionprops(label_image=self._root_image.objmap[:], intensity_image=self._root_image.gray[:],
                            cache=False)
 
     @property

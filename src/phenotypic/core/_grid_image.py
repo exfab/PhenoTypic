@@ -4,7 +4,7 @@ from typing import Literal, Optional
 
 import numpy as np
 
-from phenotypic.ABC_ import GridFinder
+from phenotypic.abc_ import GridFinder
 from ._image import Image
 from ._image_parts._image_grid_handler import ImageGridHandler
 
@@ -20,10 +20,8 @@ class GridImage(ImageGridHandler):
 
     Args:
             arr (Optional[Union[np.ndarray, Type[Image]]]): The input_image
-                image, which can be a NumPy array or an image-like object. If
+                image, which can be a NumPy rgb or an image-like object. If
                 this parameter is not provided, it defaults to None.
-            imformat (str): A string representing the schema of the input_image
-                image. It defaults to None if not provided.
             grid_finder (Optional[GridFinder]): An optional GridFinder instance
                 for defining grids on the image. If not provided, it defaults to
                 a center grid setter.
@@ -36,7 +34,6 @@ class GridImage(ImageGridHandler):
 
     def __init__(self,
                  arr: np.ndarray | Image | PathLike | Path | str | None = None,
-                 imformat: str | None = None,
                  name: str | None = None,
                  grid_finder: Optional[GridFinder] = None,
                  nrows: int = 8, ncols: int = 12,
@@ -47,7 +44,6 @@ class GridImage(ImageGridHandler):
                  ):
         super().__init__(
                 arr=arr,
-                imformat=imformat,
                 name=name,
                 grid_finder=grid_finder,
                 nrows=nrows, ncols=ncols,

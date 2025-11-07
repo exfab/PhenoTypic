@@ -1,6 +1,6 @@
 from phenotypic import ImagePipeline
 from phenotypic.enhance import CLAHE, GaussianBlur, MedianEnhancer, ContrastStretching
-from phenotypic.detection import OtsuDetector, WatershedDetector
+from phenotypic.detect import OtsuDetector, WatershedDetector
 from phenotypic.grid import GridApply, MinResidualErrorReducer, GridAlignmentOutlierRemover
 from phenotypic.objedit import BorderObjectRemover, SmallObjectRemover, LowCircularityRemover
 from phenotypic.measure import MeasureColor, MeasureShape, MeasureIntensity, MeasureTexture

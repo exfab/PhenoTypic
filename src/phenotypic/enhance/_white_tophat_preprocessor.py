@@ -7,7 +7,7 @@ if TYPE_CHECKING: from phenotypic import Image
 import numpy as np
 from skimage.morphology import disk, square, white_tophat, cube, ball, diamond
 
-from phenotypic.ABC_ import ImageEnhancer
+from phenotypic.abc_ import ImageEnhancer
 
 
 class WhiteTophatEnhancer(ImageEnhancer):
@@ -17,12 +17,12 @@ class WhiteTophatEnhancer(ImageEnhancer):
 
     def _operate(self, image: Image) -> Image:
         white_tophat_results = white_tophat(
-                image.enh_matrix[:],
+                image.enh_gray[:],
                 footprint=self._get_footprint(
-                        self._get_footprint_radius(detection_matrix=image.enh_matrix[:]),
+                        self._get_footprint_radius(detection_matrix=image.enh_gray[:]),
                 ),
         )
-        image.enh_matrix[:] = image.enh_matrix[:] - white_tophat_results
+        image.enh_gray[:] = image.enh_gray[:] - white_tophat_results
 
         return image
 
