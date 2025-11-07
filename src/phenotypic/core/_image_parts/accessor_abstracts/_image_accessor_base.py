@@ -175,6 +175,10 @@ class ImageAccessorBase(ABC):
 
         Raises:
             ValueError: If the dimensionality of the input image array is unsupported.
+
+        Notes:
+            This method uses `skimage.exposure.histogram <https://scikit-image.org/docs/stable/api/skimage.exposure.html#skimage.exposure.histogram>`_
+            for computing the histogram data.
         """
         arr = self._subject_arr
         dtype = arr.dtype

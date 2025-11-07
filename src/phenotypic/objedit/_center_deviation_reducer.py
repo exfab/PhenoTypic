@@ -13,7 +13,8 @@ from phenotypic.tools.constants_ import OBJECT, BBOX
 class CenterDeviationReducer(MapModifier):
     """Removes objects based on how far away they are from the center of the image.
 
-    Useful for isolated colony images
+    Useful for isolated colony images. Use with `phenotypic.grid.GridApply` to remove objects from how far
+    they are from the center of the grid position.
 
     """
 

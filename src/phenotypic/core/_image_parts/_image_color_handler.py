@@ -5,7 +5,6 @@ from typing import Literal, TYPE_CHECKING
 if TYPE_CHECKING: from phenotypic import Image
 
 import numpy as np
-from os import PathLike
 
 from .accessors._color_accessor import ColorAccessor
 from ._image_objects_handler import ImageObjectsHandler
@@ -13,8 +12,21 @@ import colour
 
 
 class ImageColorSpace(ImageObjectsHandler):
-    """
-    Adds color space handling to the image class
+    """Represents an image's color space and its associated properties and transformations.
+
+    This class encapsulates various properties of an image's color space, including gamma encoding, observer model,
+    illuminant, and color profile. It provides mechanisms for handling image data with specific attributes
+    and accessing color transformations through a unified interface. It supports initialization with image
+    data as a NumPy array or another compatible image format, along with metadata.
+
+    Attributes:
+        color_profile (str): The color profile associated with the image (default: 'sRGB').
+        gamma_encoding (colour.CCTF_ENCODINGS | str | None): The gamma encoding applied to the image, as
+            either a predefined encoding in `colour.CCTF_ENCODINGS` or a string representation
+            (default: 'sRGB').
+        observer (str): The observer model employed for the image (default: 'CIE 1931 2 Degree Standard Observer').
+        illuminant (Literal["D65", "D50"]): The illuminant type defining the lighting conditions for the image
+            (default: "D65").
 
     References:
         - http://www.brucelindbloom.com/index.html?Eqn_ChromAdapt.html
@@ -25,50 +37,31 @@ class ImageColorSpace(ImageObjectsHandler):
                  arr: np.ndarray | Image | None = None,
                  name: str | None = None, bit_depth: Literal[8, 16] | None = 8,
                  *,
-                 color_profile: str = 'sRGB',
-                 gamma_encoding: colour.CCTF_ENCODINGS | str | None = None,
-                 observer: str = 'CIE 1931 2 Degree Standard Observer',
+                 gamma_encoding: Literal["sRGB"] | None = 'sRGB',
                  illuminant: Literal["D65", "D50"] = "D65",
-                 ) -> None:
+                 observer: str = 'CIE 1931 2 Degree Standard Observer',
+                 ):
         """
-        Initializes an object with attributes for image processing and handling color profiles.
-
-        The constructor accepts an image input along with its format, name, and additional
-        optional parameters. These parameters allow customization of the color profile and
-        illuminant for color management.
-
-        Args:
-            arr: np.ndarray | Image | PathLike | None
-                The input image to process, which can be specified as a numpy array,
-                a PIL Image object, or a path-like object. Defaults to None.
-
-            name: str | None
-                The optional name of the image or the processing instance. Useful for
-                tracking or logging purposes. Defaults to None.
-
-            **kwargs: dict
-                Additional keyword arguments that allow customization of various settings.
+        Represents an image with associated metadata and color properties. This class is
+        used for handling image data with specific attributes such as bit depth, gamma
+        encoding, observer, and illuminant. It provides functionality for working with
+        color images, with the ability to set and retrieve associated metadata and color
+        attributes.
 
         Attributes:
-            color_profile: str
-                The color profile associated with the image, specifying how colors are
-                represented. Defaults to 'sRGB'.
-
             observer: str
-                The CIE standard observer specification. Defaults to 
-                "CIE 1931 2 Degree Standard Observer".
-
-            illuminant: Literal["D50", "D65"]
-                The color temperature or reference white point used in image color
-                processing. Options are "D50" or "D65". Defaults to "D65".
-
-            color: ColorAccessor
-                Provides unified access to all color space representations including
-                XYZ, Lab, xy chromaticity, and HSV.
-
+                The standard observer used in the color computations, such as 'CIE 1931
+                2 Degree Standard Observer'.
+            illuminant: Literal["D65", "D50"]
+                The illuminant used, typically "D65" for daylight conditions or "D50"
+                for standard viewing for imaging.
         """
-        self.color_profile: str = color_profile
+        if (gamma_encoding != "sRGB") and (gamma_encoding is not None):
+            raise ValueError(f'only sRGB or None for linear is supported for gamma encoding: got {gamma_encoding}')
+        if illuminant not in ["D65", "D50"]:
+            raise ValueError('illuminant must be "D65" or "D50"')
 
+        self.gamma_encoding = gamma_encoding
         self.observer: str = observer
         self.illuminant: Literal["D50", "D65"] = illuminant
         super().__init__(arr=arr, name=name, bit_depth=bit_depth)
@@ -94,9 +87,9 @@ class ImageColorSpace(ImageObjectsHandler):
             ColorAccessor: Unified accessor for all color space representations.
             
         Examples:
-            >>> img = Image('sample.jpg')
+            >>> img = Image.imread('sample.jpg')
             >>> xyz_data = img.color.XYZ[:]
             >>> lab_data = img.color.Lab[:]
-            >>> hue = img.color.hsv.hue
+            >>> hue = img.color.hsv[..., 0] # hue is the first matrix in the array
         """
         return self._accessors.color

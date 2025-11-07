@@ -1,16 +1,108 @@
 from __future__ import annotations
 
 import numpy as np
+import pandas as pd
 
-from .abstract import SetAnalyzer
+from .abc_ import SetAnalyzer
 
 
 class EdgeCorrector(SetAnalyzer):
     """Analyzer for detecting and correcting edge effects in colony detection.
     
-    This class provides methods to identify colonies that are fully surrounded
-    by neighbors versus those at edges that may need correction.
+    This class identifies colonies at grid edges (missing orthogonal neighbors) and
+    caps their measurement values to prevent edge effects in growth assays. Edge
+    colonies often show artificially inflated measurements due to lack of competition
+    for resources.
+    
+    Args:
+        on: Column name for grouping/aggregation operations.
+        groupby: List of column names to group by (e.g., ['ImageName', 'Metadata_Plate']).
+        measurement_col: Name of measurement column to correct (e.g., 'Area', 'MeanRadius').
+        nrows: Number of rows in the grid layout. Default is 8.
+        ncols: Number of columns in the grid layout. Default is 12.
+        top_n: Number of top values to average for correction threshold. Default is 3.
+        connectivity: Neighbor pattern - 4 for orthogonal (N/S/E/W) or 8 for all adjacent. Default is 4.
+        agg_func: Aggregation function for parent class. Default is 'mean'.
+        num_workers: Number of parallel workers. Default is 1.
+    
+    Attributes:
+        nrows: Grid row count.
+        ncols: Grid column count.
+        top_n: Number of top values for threshold calculation.
+        connectivity: Neighbor connectivity pattern (4 or 8).
+        measurement_col: Column to apply edge correction to.
+    
+    Examples:
+        >>> import pandas as pd
+        >>> from phenotypic.analysis import EdgeCorrector
+        >>> from phenotypic.tools.constants_ import GRID
+        >>> 
+        >>> # Create sample data with grid info and measurements
+        >>> data = pd.DataFrame({
+        ...     'ImageName': ['img1'] * 96,
+        ...     str(GRID.SECTION_NUM): range(96),
+        ...     'Area': np.random.uniform(100, 500, 96)
+        ... })
+        >>> 
+        >>> # Initialize corrector
+        >>> corrector = EdgeCorrector(
+        ...     on='Area',
+        ...     groupby=['ImageName'],
+        ...     measurement_col='Area',
+        ...     nrows=8,
+        ...     ncols=12,
+        ...     top_n=10,
+        ...     connectivity=4
+        ... )
+        >>> 
+        >>> # Apply edge correction
+        >>> corrected_data = corrector.analyze(data)
     """
+
+    def __init__(
+            self,
+            on: str,
+            groupby: list[str],
+            measurement_col: str,
+            nrows: int = 8,
+            ncols: int = 12,
+            top_n: int = 3,
+            connectivity: int = 4,
+            agg_func: str = 'mean',
+            num_workers: int = 1
+    ):
+        """Initialize EdgeCorrector with grid and correction parameters.
+        
+        Args:
+            on: Column name for grouping/aggregation operations.
+            groupby: List of column names to group by.
+            measurement_col: Name of measurement column to correct.
+            nrows: Number of rows in grid. Default is 8.
+            ncols: Number of columns in grid. Default is 12.
+            top_n: Number of top values for averaging threshold. Default is 3.
+            connectivity: Neighbor pattern (4 or 8). Default is 4.
+            agg_func: Aggregation function. Default is 'mean'.
+            num_workers: Number of workers. Default is 1.
+            
+        Raises:
+            ValueError: If connectivity is not 4 or 8.
+            ValueError: If nrows, ncols, or top_n are not positive.
+        """
+        super().__init__(on=on, groupby=groupby, agg_func=agg_func, num_workers=num_workers)
+
+        if connectivity not in (4, 8):
+            raise ValueError(f"connectivity must be 4 or 8, got {connectivity}")
+        if nrows <= 0 or ncols <= 0:
+            raise ValueError(f"nrows and ncols must be positive, got nrows={nrows}, ncols={ncols}")
+        if top_n <= 0:
+            raise ValueError(f"top_n must be positive, got {top_n}")
+
+        self.nrows = nrows
+        self.ncols = ncols
+        self.top_n = top_n
+        self.connectivity = connectivity
+        self.measurement_col = measurement_col
+        self._original_data: pd.DataFrame = pd.DataFrame()
 
     @staticmethod
     def _surrounded_positions(
@@ -59,11 +151,11 @@ class EdgeCorrector(SetAnalyzer):
             >>> # 8×12 plate; 3×3 active block centered at (4,6)
             >>> rows, cols = 8, 12
             >>> block_rc = [(r, c) for r in range(3, 6) for c in range(5, 8)]
-            >>> active = np.rgb([r*cols + c for r, c in block_rc], dtype=np.int64)
+            >>> active = np.array([r*cols + c for r, c in block_rc], dtype=np.int64)
             >>> 
             >>> # Fully surrounded (default, since min_neighbors=None → all)
             >>> res_all = EdgeCorrector._surrounded_positions(active, (rows, cols), connectivity=4)
-            >>> assert np.array_equal(res_all, np.rgb([4*cols + 6], dtype=np.int64))
+            >>> assert np.array_equal(res_all, np.array([4*cols + 6], dtype=np.int64))
             >>> 
             >>> # Threshold: at least 3 of 4 neighbors
             >>> idxs, counts = EdgeCorrector._surrounded_positions(
@@ -168,50 +260,357 @@ class EdgeCorrector(SetAnalyzer):
 
         return result_idx
 
-    def analyze(self, data):
-        """Analyze data for edge correction.
+    def analyze(self, data: pd.DataFrame) -> pd.DataFrame:
+        """Analyze and apply edge correction to grid-based colony measurements.
+        
+        This method processes the input DataFrame by grouping according to specified
+        columns and applying edge correction to each group independently. Edge colonies
+        (those missing orthogonal neighbors) have their measurements capped to prevent
+        artificially inflated values.
         
         Args:
-            data: Input DataFrame containing colony measurements.
+            data: DataFrame containing grid section numbers (GRID.SECTION_NUM) and
+                measurement data. Must include all columns specified in self.groupby
+                and self.measurement_col.
         
         Returns:
-            DataFrame with edge correction analysis results.
+            DataFrame with corrected measurement values. Original structure is preserved
+            with only the measurement column modified for edge-affected rows.
         
-        Note:
-            This method is a placeholder and will be implemented in future iterations.
-        """
-        raise NotImplementedError("analyze() will be implemented in future iterations")
-
-    def show(self):
-        """Display analysis results.
+        Raises:
+            KeyError: If required columns are missing from input DataFrame.
+            ValueError: If data is empty or malformed.
         
-        Note:
-            This method is a placeholder and will be implemented in future iterations.
+        Examples:
+            >>> import pandas as pd
+            >>> import numpy as np
+            >>> from phenotypic.analysis import EdgeCorrector
+            >>> from phenotypic.tools.constants_ import GRID
+            >>> 
+            >>> # Create sample grid data with measurements
+            >>> np.random.seed(42)
+            >>> data = pd.DataFrame({
+            ...     'ImageName': ['img1'] * 96,
+            ...     GRID.SECTION_NUM: range(96),
+            ...     'Area': np.random.uniform(100, 500, 96)
+            ... })
+            >>> 
+            >>> # Apply edge correction
+            >>> corrector = EdgeCorrector(
+            ...     on='Area',
+            ...     groupby=['ImageName'],
+            ...     measurement_col='Area',
+            ...     nrows=8,
+            ...     ncols=12,
+            ...     top_n=10
+            ... )
+            >>> corrected = corrector.analyze(data)
+            >>> 
+            >>> # Check results
+            >>> results = corrector.results()
+        
+        Notes:
+            - Stores original data in self._original_data for comparison
+            - Stores corrected data in self._latest_measurements for retrieval
+            - Groups are processed independently with their own thresholds
         """
-        raise NotImplementedError("show() will be implemented in future iterations")
+        from phenotypic.tools.constants_ import GRID
 
-    def results(self):
-        """Return analysis results.
+        # Validate input
+        if data is None or len(data) == 0:
+            raise ValueError("Input data cannot be empty")
+
+        # Store original data for comparison
+        self._original_data = data.copy()
+
+        # Check required columns
+        section_col = str(GRID.SECTION_NUM)
+        required_cols = set(self.groupby + [section_col, self.measurement_col])
+        missing_cols = required_cols - set(data.columns)
+
+        if missing_cols:
+            raise KeyError(f"Missing required columns: {missing_cols}")
+
+        # Prepare configuration for _apply2group_func
+        config = {
+            'nrows'          : self.nrows,
+            'ncols'          : self.ncols,
+            'top_n'          : self.top_n,
+            'connectivity'   : self.connectivity,
+            'measurement_col': self.measurement_col,
+            'section_col'    : section_col
+        }
+
+        # Apply correction to each group
+        if len(self.groupby) > 0:
+            # Suppress FutureWarning by explicitly including groups
+            import warnings
+
+            with warnings.catch_warnings():
+                warnings.filterwarnings('ignore', category=FutureWarning,
+                                        message='.*grouping columns.*')
+                corrected_data = data.groupby(
+                        self.groupby,
+                        group_keys=False,
+                        observed=True
+                ).apply(
+                        lambda group: self._apply2group_func(group, config)
+                )
+        else:
+            # No grouping - apply to entire dataset
+            corrected_data = self._apply2group_func(data, config)
+
+        # Store results
+        self._latest_measurements = corrected_data.reset_index(drop=True)
+
+        return self._latest_measurements
+
+    def show(self, figsize: tuple[int, int] = (14, 5)):
+        """Display visualization of edge correction results.
+        
+        Creates a multi-panel figure showing:
+        1. Histogram comparing original vs corrected value distributions
+        2. Scatter plot highlighting which colonies were corrected
+        3. Summary statistics
+        
+        Args:
+            figsize: Figure size as (width, height) in inches. Default is (14, 5).
+        
+        Raises:
+            RuntimeError: If analyze() has not been called yet.
+        
+        Examples:
+            >>> corrector = EdgeCorrector(
+            ...     on='Area',
+            ...     groupby=['ImageName'],
+            ...     measurement_col='Area'
+            ... )
+            >>> corrector.analyze(data)
+            >>> corrector.show()  # Display comparison plots
+        
+        Notes:
+            - Requires analyze() to be called first to populate data
+            - Shows original vs corrected distributions
+            - Highlights corrected data points in red
+            - Displays summary statistics in the plot
+        """
+        import matplotlib.pyplot as plt
+        from phenotypic.tools.constants_ import GRID
+
+        # Check if analyze has been called
+        if self._latest_measurements.empty or self._original_data.empty:
+            raise RuntimeError("No data to display. Call analyze() first.")
+
+        # Get measurement column
+        meas_col = self.measurement_col
+        section_col = str(GRID.SECTION_NUM)
+
+        # Identify which rows were corrected
+        original_values = self._original_data[meas_col]
+        corrected_values = self._latest_measurements[meas_col]
+        was_corrected = ~np.isclose(original_values.values, corrected_values.values)
+
+        # Create figure with subplots
+        fig, axes = plt.subplots(1, 2, figsize=figsize)
+
+        # Panel 1: Histogram comparison
+        ax1 = axes[0]
+        ax1.hist(original_values, bins=30, alpha=0.6, label='Original', color='blue', edgecolor='black')
+        ax1.hist(corrected_values, bins=30, alpha=0.6, label='Corrected', color='green', edgecolor='black')
+        ax1.set_xlabel(meas_col)
+        ax1.set_ylabel('Frequency')
+        ax1.set_title(f'Distribution: {meas_col}')
+        ax1.legend()
+        ax1.grid(True, alpha=0.3)
+
+        # Panel 2: Scatter plot with corrections highlighted
+        ax2 = axes[1]
+
+        # Plot all points
+        ax2.scatter(
+                self._original_data.index[~was_corrected],
+                original_values[~was_corrected],
+                alpha=0.5,
+                s=30,
+                color='blue',
+                label='Unchanged'
+        )
+
+        # Highlight corrected points
+        if was_corrected.any():
+            ax2.scatter(
+                    self._original_data.index[was_corrected],
+                    original_values[was_corrected],
+                    alpha=0.7,
+                    s=50,
+                    color='red',
+                    marker='x',
+                    label='Original (corrected)'
+            )
+            ax2.scatter(
+                    self._original_data.index[was_corrected],
+                    corrected_values[was_corrected],
+                    alpha=0.7,
+                    s=30,
+                    color='green',
+                    marker='o',
+                    label='Corrected value'
+            )
+
+        ax2.set_xlabel('Row Index')
+        ax2.set_ylabel(meas_col)
+        ax2.set_title('Edge Correction Applied')
+        ax2.legend()
+        ax2.grid(True, alpha=0.3)
+
+        # Add summary statistics as text
+        n_corrected = was_corrected.sum()
+        n_total = len(original_values)
+        pct_corrected = 100*n_corrected/n_total if n_total > 0 else 0
+
+        summary_text = (
+            f"Corrected: {n_corrected}/{n_total} ({pct_corrected:.1f}%)\n"
+            f"Original mean: {original_values.mean():.2f}\n"
+            f"Corrected mean: {corrected_values.mean():.2f}"
+        )
+
+        fig.text(0.5, 0.02, summary_text, ha='center', fontsize=10,
+                 bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
+
+        plt.tight_layout(rect=[0, 0.08, 1, 1])
+        plt.show()
+
+    def results(self) -> pd.DataFrame:
+        """Return the corrected measurement DataFrame.
+        
+        Returns the DataFrame with edge-corrected measurements from the most recent
+        call to analyze(). This allows retrieval of results after processing.
         
         Returns:
-            Analysis results.
+            DataFrame with corrected measurements. If analyze() has not been called,
+            returns an empty DataFrame.
         
-        Note:
-            This method is a placeholder and will be implemented in future iterations.
+        Examples:
+            >>> corrector = EdgeCorrector(
+            ...     on='Area',
+            ...     groupby=['ImageName'],
+            ...     measurement_col='Area'
+            ... )
+            >>> corrected = corrector.analyze(data)
+            >>> results = corrector.results()  # Same as corrected
+            >>> assert results.equals(corrected)
+        
+        Notes:
+            - Returns the DataFrame stored in self._latest_measurements
+            - Contains the same structure as input but with corrected values
+            - Use this method to retrieve results after calling analyze()
         """
-        raise NotImplementedError("results() will be implemented in future iterations")
+        return self._latest_measurements
 
     @staticmethod
-    def _apply2group_func(group):
-        """Apply function to a group of data.
+    def _apply2group_func(group: pd.DataFrame, config: dict) -> pd.DataFrame:
+        """Apply edge correction to a single group of data.
+        
+        This method identifies grid sections with missing orthogonal neighbors (edge sections),
+        calculates a correction threshold from the top N values, and caps measurements that
+        exceed this threshold.
         
         Args:
-            group: DataFrame group to process.
+            group: DataFrame containing grid and measurement data for a single group.
+            config: Configuration dictionary containing:
+                - 'nrows': Number of grid rows
+                - 'ncols': Number of grid columns  
+                - 'top_n': Number of top values for threshold calculation
+                - 'connectivity': Neighbor pattern (4 or 8)
+                - 'measurement_col': Column name to correct
+                - 'section_col': Column name containing section numbers
         
         Returns:
-            Processed group data.
+            DataFrame with corrected measurement values for edge sections.
         
-        Note:
-            This method is a placeholder and will be implemented in future iterations.
+        Notes:
+            - Only sections at edges (missing neighbors) are corrected
+            - Only values exceeding the threshold are capped
+            - Values below threshold and interior sections remain unchanged
+            - Handles cases with fewer than top_n values gracefully
+        
+        Examples:
+            >>> config = {
+            ...     'nrows': 8, 'ncols': 12, 'top_n': 10,
+            ...     'connectivity': 4, 'measurement_col': 'Area',
+            ...     'section_col': 'SectionNum'
+            ... }
+            >>> corrected_group = EdgeCorrector._apply2group_func(group, config)
         """
-        raise NotImplementedError("_apply2group_func() will be implemented in future iterations")
+        from phenotypic.tools.constants_ import GRID
+
+        # Extract configuration
+        nrows = config['nrows']
+        ncols = config['ncols']
+        top_n = config['top_n']
+        connectivity = config['connectivity']
+        measurement_col = config['measurement_col']
+        section_col = config.get('section_col', str(GRID.SECTION_NUM))
+
+        # Make a copy to avoid modifying the original
+        group = group.copy()
+
+        # Handle empty groups
+        if len(group) == 0:
+            return group
+
+        # Get unique section numbers present in the data
+        present_sections = group[section_col].dropna().unique()
+
+        # Handle case where no sections are present
+        if len(present_sections) == 0:
+            return group
+
+        # Convert section numbers to 0-indexed flattened indices
+        # Assuming section numbers are 0-indexed already (row * ncols + col)
+        active_indices = present_sections.astype(int)
+
+        # Find fully-surrounded (interior) sections
+        try:
+            surrounded_indices = EdgeCorrector._surrounded_positions(
+                    active_idx=active_indices,
+                    shape=(nrows, ncols),
+                    connectivity=connectivity,
+                    min_neighbors=None,  # Require all neighbors (fully surrounded)
+                    return_counts=False
+            )
+        except ValueError:
+            # If validation fails, return group unchanged
+            return group
+
+        # Identify edge sections (all sections - surrounded sections)
+        surrounded_set = set(surrounded_indices)
+        edge_sections = [sec for sec in present_sections if sec not in surrounded_set]
+
+        # If no edge sections, return unchanged
+        if len(edge_sections) == 0:
+            return group
+
+        # Calculate threshold from top N values across entire group
+        if measurement_col not in group.columns:
+            return group
+
+        # Use actual number of values if fewer than top_n available
+        actual_top_n = min(top_n, len(group))
+
+        if actual_top_n == 0:
+            return group
+
+        # Get top N values and calculate threshold
+        top_values = group.nlargest(actual_top_n, measurement_col)[measurement_col]
+        threshold = top_values.mean()
+
+        # Apply correction: cap edge values that exceed threshold
+        edge_mask = group[section_col].isin(edge_sections)
+        exceeds_threshold = group[measurement_col] > threshold
+        correction_mask = edge_mask & exceeds_threshold
+
+        # Apply the correction
+        group.loc[correction_mask, measurement_col] = threshold
+
+        return group

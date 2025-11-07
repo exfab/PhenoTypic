@@ -1,5 +1,5 @@
-phenotypic.transform package
-============================
+phenotypic.transform
+====================
 
 Module contents
 ---------------

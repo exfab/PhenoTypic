@@ -440,7 +440,8 @@ class ImageHandler(ImageDataManager):
         Notes:
             (Excerpt from skimage.measure.regionprops documentation on available properties.):
 
-            Read more at :class:`skimage.measure.regionprops`
+            Read more at :class:`skimage.measure.regionprops` or
+            `scikit-image documentation <https://scikit-image.org/docs/stable/api/skimage.measure.html#skimage.measure.regionprops>`_
 
             area: float
                 Area of the region i.e. number of pixels of the region scaled by pixel-area.

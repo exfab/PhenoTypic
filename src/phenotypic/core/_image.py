@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Literal, TYPE_CHECKING
 
+import colour
 import numpy as np
 
 if TYPE_CHECKING: from phenotypic import Image
@@ -26,9 +27,12 @@ class Image(ImageIOHandler):
                  arr: np.ndarray | Image | None = None,
                  name: str | None = None,
                  bit_depth: Literal[8, 16] | None = None,
-                 illuminant: str | None = 'D65',
                  color_profile='sRGB',
-                 observer='CIE 1931 2 Degree Standard Observer'):
+                 gamma_encoding: str | None = 'sRGB',
+                 illuminant: str | None = 'D65',
+                 observer='CIE 1931 2 Degree Standard Observer'
+
+                 ):
         """
         Initializes an instance of the class with optional attributes for array data,
         name, bit depth, illuminant, color profile, and observer. The class is constructed to handle
@@ -52,7 +56,7 @@ class Image(ImageIOHandler):
                 arr=arr,
                 name=name,
                 bit_depth=bit_depth,
+                gamma_encoding=gamma_encoding,
                 illuminant=illuminant,
-                color_profile=color_profile,
-                observer=observer
+                observer=observer,
         )

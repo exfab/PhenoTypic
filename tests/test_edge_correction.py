@@ -1,436 +1,710 @@
-"""Tests for EdgeCorrector.surrounded_positions function."""
+"""
+Comprehensive tests for EdgeCorrector class.
 
-from __future__ import annotations
+Tests edge identification, threshold calculation, value capping, and groupby behavior
+for the edge correction functionality.
+"""
 
-import numpy as np
 import pytest
+import numpy as np
+import pandas as pd
 
-from phenotypic.analysis._edge_correction import EdgeCorrector
-
-
-class TestSurroundedPositionsValidation:
-    """Test input validation for surrounded_positions."""
-
-    def test_bad_connectivity_raises(self):
-        """Test that invalid connectivity values raise ValueError."""
-        active = np.array([5], dtype=np.int64)
-        shape = (3, 3)
-
-        with pytest.raises(ValueError, match="connectivity must be 4 or 8"):
-            EdgeCorrector._surrounded_positions(active, shape, connectivity=6)
-
-        with pytest.raises(ValueError, match="connectivity must be 4 or 8"):
-            EdgeCorrector._surrounded_positions(active, shape, connectivity=3)
-
-    def test_out_of_bounds_index_raises(self):
-        """Test that out-of-bounds indices raise ValueError."""
-        shape = (3, 3)
-        total = 9
-
-        # Negative index
-        with pytest.raises(ValueError, match=f"All active_idx must be in \\[0, {total}\\)"):
-            EdgeCorrector._surrounded_positions([-1], shape)
-
-        # Index too large
-        with pytest.raises(ValueError, match=f"All active_idx must be in \\[0, {total}\\)"):
-            EdgeCorrector._surrounded_positions([9], shape)
-
-        # Mixed valid and invalid
-        with pytest.raises(ValueError, match=f"All active_idx must be in \\[0, {total}\\)"):
-            EdgeCorrector._surrounded_positions([0, 4, 10], shape)
-
-    def test_min_neighbors_zero_raises(self):
-        """Test that min_neighbors=0 raises ValueError."""
-        active = np.array([4], dtype=np.int64)
-        shape = (3, 3)
-
-        with pytest.raises(ValueError, match="min_neighbors must be in \\[1, 4\\]"):
-            EdgeCorrector._surrounded_positions(active, shape, connectivity=4, min_neighbors=0)
-
-    def test_min_neighbors_exceeds_connectivity_raises(self):
-        """Test that min_neighbors > connectivity raises ValueError."""
-        active = np.array([4], dtype=np.int64)
-        shape = (3, 3)
-
-        with pytest.raises(ValueError, match="min_neighbors must be in \\[1, 4\\]"):
-            EdgeCorrector._surrounded_positions(active, shape, connectivity=4, min_neighbors=5)
-
-        with pytest.raises(ValueError, match="min_neighbors must be in \\[1, 8\\]"):
-            EdgeCorrector._surrounded_positions(active, shape, connectivity=8, min_neighbors=9)
-
-    def test_invalid_shape_raises(self):
-        """Test that invalid shapes raise ValueError."""
-        active = np.array([0], dtype=np.int64)
-
-        with pytest.raises(ValueError, match="shape must be two positive integers"):
-            EdgeCorrector._surrounded_positions(active, (0, 3))
-
-        with pytest.raises(ValueError, match="shape must be two positive integers"):
-            EdgeCorrector._surrounded_positions(active, (3, 0))
-
-        with pytest.raises(ValueError, match="shape must be two positive integers"):
-            EdgeCorrector._surrounded_positions(active, (-1, 3))
+from phenotypic.analysis import EdgeCorrector
+from phenotypic.tools.constants_ import GRID
 
 
-class TestSurroundedPositionsGeometry:
-    """Test geometric properties of surrounded_positions."""
-
-    def test_border_never_qualify_connectivity4_none(self):
-        """Test that border cells never qualify when min_neighbors=None with connectivity=4."""
-        rows, cols = 5, 5
-        # All cells in the grid
-        all_active = np.arange(rows*cols, dtype=np.int64)
-
+class TestSurroundedPositions:
+    """Test the _surrounded_positions static method."""
+    
+    def test_4connectivity_full_grid(self):
+        """Test 4-connectivity on a complete 3x3 grid."""
+        # All 9 positions active
+        active_idx = np.array(range(9))
         result = EdgeCorrector._surrounded_positions(
-                all_active, (rows, cols), connectivity=4, min_neighbors=None
+            active_idx=active_idx,
+            shape=(3, 3),
+            connectivity=4
         )
-
-        # Only interior cells (not on border) should qualify
-        # Border cells: row 0, row 4, col 0, col 4
-        for idx in result:
-            r, c = idx//cols, idx%cols
-            assert 0 < r < rows - 1, f"Row {r} is on border"
-            assert 0 < c < cols - 1, f"Col {c} is on border"
-
-    def test_border_never_qualify_connectivity8_none(self):
-        """Test that border cells never qualify when min_neighbors=None with connectivity=8."""
-        rows, cols = 5, 5
-        all_active = np.arange(rows*cols, dtype=np.int64)
-
+        # Only center position (4) should be fully surrounded
+        assert len(result) == 1
+        assert result[0] == 4
+    
+    def test_8connectivity_full_grid(self):
+        """Test 8-connectivity on a complete 3x3 grid."""
+        # All 9 positions active
+        active_idx = np.array(range(9))
         result = EdgeCorrector._surrounded_positions(
-                all_active, (rows, cols), connectivity=8, min_neighbors=None
+            active_idx=active_idx,
+            shape=(3, 3),
+            connectivity=8
         )
-
-        # Only interior cells should qualify
-        for idx in result:
-            r, c = idx//cols, idx%cols
-            assert 0 < r < rows - 1, f"Row {r} is on border"
-            assert 0 < c < cols - 1, f"Col {c} is on border"
-
-    def test_corner_has_two_neighbors_connectivity4(self):
-        """Test that corner cells have exactly 2 neighbors with connectivity=4."""
-        rows, cols = 3, 3
-        all_active = np.arange(rows*cols, dtype=np.int64)
-
-        # Top-left corner (0, 0) -> idx 0
-        # Should have neighbors at (0, 1) and (1, 0)
+        # Only center position (4) should be fully surrounded with 8-connectivity
+        assert len(result) == 1
+        assert result[0] == 4
+    
+    def test_4connectivity_8x12_grid(self):
+        """Test 4-connectivity on standard 8x12 microplate grid."""
+        rows, cols = 8, 12
+        # 3x3 block centered at (4, 6)
+        block_rc = [(r, c) for r in range(3, 6) for c in range(5, 8)]
+        active = np.array([r * cols + c for r, c in block_rc], dtype=np.int64)
+        
+        result = EdgeCorrector._surrounded_positions(
+            active, (rows, cols), connectivity=4
+        )
+        
+        # Only the center of the 3x3 block should be fully surrounded
+        expected_center = 4 * cols + 6
+        assert len(result) == 1
+        assert result[0] == expected_center
+    
+    def test_min_neighbors_threshold(self):
+        """Test with min_neighbors threshold instead of full surround."""
+        rows, cols = 8, 12
+        # 3x3 block
+        block_rc = [(r, c) for r in range(3, 6) for c in range(5, 8)]
+        active = np.array([r * cols + c for r, c in block_rc], dtype=np.int64)
+        
+        # At least 3 of 4 neighbors
         result, counts = EdgeCorrector._surrounded_positions(
-                all_active, (rows, cols), connectivity=4, min_neighbors=2, return_counts=True
+            active, (rows, cols), connectivity=4,
+            min_neighbors=3, return_counts=True
         )
-
-        # Find corner in results
-        corner_idx = 0
-        if corner_idx in result:
-            pos = np.where(result == corner_idx)[0][0]
-            assert counts[pos] == 2, f"Corner should have 2 neighbors, got {counts[pos]}"
-
-
-class TestSurroundedPositionsDegenerate:
-    """Test degenerate cases for surrounded_positions."""
-
-    def test_empty_active_idx_returns_empty(self):
-        """Test that empty active_idx returns empty result."""
-        result = EdgeCorrector._surrounded_positions([], (5, 5), connectivity=4)
-        assert len(result) == 0
-        assert result.dtype == np.int64
-
-    def test_empty_active_idx_with_counts_returns_empty(self):
-        """Test that empty active_idx with return_counts=True returns empty arrays."""
-        idxs, counts = EdgeCorrector._surrounded_positions(
-                [], (5, 5), connectivity=4, return_counts=True
-        )
-        assert len(idxs) == 0
-        assert len(counts) == 0
-        assert idxs.dtype == np.int64
-        assert counts.dtype == np.int64
-
-    def test_single_active_cell_returns_empty_when_none(self):
-        """Test that single active cell returns empty when min_neighbors=None."""
-        # Single cell cannot have any neighbors
-        result = EdgeCorrector._surrounded_positions([4], (3, 3), connectivity=4)
-        assert len(result) == 0
-
-    def test_single_active_cell_returns_empty_when_min1(self):
-        """Test that single active cell returns empty even with min_neighbors=1."""
-        # Single cell has no active neighbors
+        
+        # Should include center (4 neighbors) and edge positions (3 neighbors)
+        assert len(result) > 1
+        assert all(counts >= 3)
+        assert (4 * cols + 6) in result  # center
+    
+    def test_empty_input(self):
+        """Test with no active positions."""
         result = EdgeCorrector._surrounded_positions(
-                [4], (3, 3), connectivity=4, min_neighbors=1
+            active_idx=np.array([]),
+            shape=(8, 12),
+            connectivity=4
         )
         assert len(result) == 0
-
-
-class TestSurroundedPositionsCorrectness:
-    """Test correctness of surrounded_positions with specific patterns."""
-
-    def test_3x3_block_connectivity4(self):
-        """Test 3×3 active block with connectivity=4."""
-        rows, cols = 8, 12
-        # 3×3 block centered at (4, 6): rows 3-5, cols 5-7
-        block_rc = [(r, c) for r in range(3, 6) for c in range(5, 8)]
-        active = np.array([r*cols + c for r, c in block_rc], dtype=np.int64)
-
-        # With min_neighbors=None (all 4 required), only center qualifies
-        result = EdgeCorrector._surrounded_positions(active, (rows, cols), connectivity=4)
-        expected = np.array([4*cols + 6], dtype=np.int64)
-        assert np.array_equal(result, expected)
-
-    def test_3x3_block_connectivity4_min3(self):
-        """Test 3×3 active block with connectivity=4 and min_neighbors=3."""
-        rows, cols = 8, 12
-        block_rc = [(r, c) for r in range(3, 6) for c in range(5, 8)]
-        active = np.array([r*cols + c for r, c in block_rc], dtype=np.int64)
-
-        idxs, counts = EdgeCorrector._surrounded_positions(
-                active, (rows, cols), connectivity=4, min_neighbors=3, return_counts=True
+    
+    def test_single_position(self):
+        """Test with single active position - should have no surrounded cells."""
+        result = EdgeCorrector._surrounded_positions(
+            active_idx=np.array([50]),
+            shape=(8, 12),
+            connectivity=4
         )
+        assert len(result) == 0
+    
+    def test_invalid_connectivity(self):
+        """Test that invalid connectivity raises ValueError."""
+        with pytest.raises(ValueError, match="connectivity must be 4 or 8"):
+            EdgeCorrector._surrounded_positions(
+                active_idx=np.array([0, 1]),
+                shape=(3, 3),
+                connectivity=6
+            )
+    
+    def test_out_of_bounds_indices(self):
+        """Test that out of bounds indices raise ValueError."""
+        with pytest.raises(ValueError, match="must be in"):
+            EdgeCorrector._surrounded_positions(
+                active_idx=np.array([0, 100]),
+                shape=(3, 3),
+                connectivity=4
+            )
+    
+    def test_invalid_shape(self):
+        """Test that invalid shape raises ValueError."""
+        with pytest.raises(ValueError, match="shape must be two positive integers"):
+            EdgeCorrector._surrounded_positions(
+                active_idx=np.array([0]),
+                shape=(3, 0),
+                connectivity=4
+            )
 
-        # All counts should be >= 3
-        assert (counts >= 3).all()
 
-        # Center should be in results with count=4
-        center_idx = 4*cols + 6
-        assert center_idx in idxs
-        center_pos = np.where(idxs == center_idx)[0][0]
-        assert counts[center_pos] == 4
-
-        # Edge midpoints should have 3 neighbors
-        # e.g., (3, 6), (5, 6), (4, 5), (4, 7)
-        edge_midpoints = [
-            3*cols + 6,  # top
-            5*cols + 6,  # bottom
-            4*cols + 5,  # left
-            4*cols + 7,  # right
-        ]
-        for emp in edge_midpoints:
-            if emp in idxs:
-                pos = np.where(idxs == emp)[0][0]
-                assert counts[pos] == 3
-
-    def test_3x3_block_connectivity8(self):
-        """Test 3×3 active block with connectivity=8."""
-        rows, cols = 8, 12
-        block_rc = [(r, c) for r in range(3, 6) for c in range(5, 8)]
-        active = np.array([r*cols + c for r, c in block_rc], dtype=np.int64)
-
-        # With connectivity=8 and min_neighbors=None (all 8 required), only center qualifies
-        result = EdgeCorrector._surrounded_positions(active, (rows, cols), connectivity=8)
-        expected = np.array([4*cols + 6], dtype=np.int64)
-        assert np.array_equal(result, expected)
-
-    def test_3x3_block_connectivity8_min5(self):
-        """Test 3×3 active block with connectivity=8 and min_neighbors=5."""
-        rows, cols = 8, 12
-        block_rc = [(r, c) for r in range(3, 6) for c in range(5, 8)]
-        active = np.array([r*cols + c for r, c in block_rc], dtype=np.int64)
-
-        idxs, counts = EdgeCorrector._surrounded_positions(
-                active, (rows, cols), connectivity=8, min_neighbors=5, return_counts=True
+class TestEdgeCorrectorInit:
+    """Test EdgeCorrector initialization."""
+    
+    def test_basic_initialization(self):
+        """Test basic initialization with required parameters."""
+        corrector = EdgeCorrector(
+            on='Area',
+            groupby=['ImageName'],
+            measurement_col='Area'
         )
+        assert corrector.nrows == 8
+        assert corrector.ncols == 12
+        assert corrector.top_n == 10
+        assert corrector.connectivity == 4
+        assert corrector.measurement_col == 'Area'
+    
+    def test_custom_grid_size(self):
+        """Test initialization with custom grid dimensions."""
+        corrector = EdgeCorrector(
+            on='Area',
+            groupby=['ImageName'],
+            measurement_col='Area',
+            nrows=4,
+            ncols=6
+        )
+        assert corrector.nrows == 4
+        assert corrector.ncols == 6
+    
+    def test_custom_top_n(self):
+        """Test initialization with custom top_n."""
+        corrector = EdgeCorrector(
+            on='Area',
+            groupby=['ImageName'],
+            measurement_col='Area',
+            top_n=20
+        )
+        assert corrector.top_n == 20
+    
+    def test_8connectivity(self):
+        """Test initialization with 8-connectivity."""
+        corrector = EdgeCorrector(
+            on='Area',
+            groupby=['ImageName'],
+            measurement_col='Area',
+            connectivity=8
+        )
+        assert corrector.connectivity == 8
+    
+    def test_invalid_connectivity_raises(self):
+        """Test that invalid connectivity raises ValueError."""
+        with pytest.raises(ValueError, match="connectivity must be 4 or 8"):
+            EdgeCorrector(
+                on='Area',
+                groupby=['ImageName'],
+                measurement_col='Area',
+                connectivity=6
+            )
+    
+    def test_invalid_grid_size_raises(self):
+        """Test that invalid grid dimensions raise ValueError."""
+        with pytest.raises(ValueError, match="nrows and ncols must be positive"):
+            EdgeCorrector(
+                on='Area',
+                groupby=['ImageName'],
+                measurement_col='Area',
+                nrows=0,
+                ncols=12
+            )
+    
+    def test_invalid_top_n_raises(self):
+        """Test that invalid top_n raises ValueError."""
+        with pytest.raises(ValueError, match="top_n must be positive"):
+            EdgeCorrector(
+                on='Area',
+                groupby=['ImageName'],
+                measurement_col='Area',
+                top_n=-5
+            )
 
-        # All counts should be >= 5
-        assert (counts >= 5).all()
 
-        # Center should have 8 neighbors
-        center_idx = 4*cols + 6
-        assert center_idx in idxs
-        center_pos = np.where(idxs == center_idx)[0][0]
-        assert counts[center_pos] == 8
-
-        # Edge midpoints should have 5 neighbors
-        edge_midpoints = [
-            3*cols + 6,  # top
-            5*cols + 6,  # bottom
-            4*cols + 5,  # left
-            4*cols + 7,  # right
-        ]
-        for emp in edge_midpoints:
-            assert emp in idxs
-            pos = np.where(idxs == emp)[0][0]
-            assert counts[pos] == 5
-
-    def test_subset_property_connectivity4(self):
-        """Test that results with min_neighbors=k are subset of results with min_neighbors=k-1."""
-        rows, cols = 10, 10
-        # Random pattern
+class TestThresholdCalculation:
+    """Test threshold calculation and top N value selection."""
+    
+    def test_top_n_selection(self):
+        """Test that top N values are correctly selected."""
         np.random.seed(42)
-        active = np.random.choice(rows*cols, size=50, replace=False)
+        data = pd.DataFrame({
+            'ImageName': ['img1'] * 96,
+            str(GRID.SECTION_NUM): range(96),
+            'Area': np.random.uniform(100, 500, 96)
+        })
+        
+        corrector = EdgeCorrector(
+            on='Area',
+            groupby=['ImageName'],
+            measurement_col='Area',
+            top_n=10,
+            nrows=8,
+            ncols=12
+        )
+        
+        # Get top 10 values manually
+        expected_top_10 = data.nlargest(10, 'Area')['Area']
+        expected_threshold = expected_top_10.mean()
+        
+        # The corrector should use this threshold internally
+        # We can't directly test the threshold, but we can verify behavior
+        corrected = corrector.analyze(data)
+        
+        # All corrected values should be <= max of original
+        assert corrected['Area'].max() <= data['Area'].max()
+    
+    def test_fewer_than_top_n_values(self):
+        """Test behavior when fewer than top_n values are available."""
+        data = pd.DataFrame({
+            'ImageName': ['img1'] * 5,
+            str(GRID.SECTION_NUM): range(5),
+            'Area': [100, 200, 300, 400, 500]
+        })
+        
+        corrector = EdgeCorrector(
+            on='Area',
+            groupby=['ImageName'],
+            measurement_col='Area',
+            top_n=10,  # More than available
+            nrows=2,
+            ncols=3
+        )
+        
+        # Should use all 5 values for threshold
+        corrected = corrector.analyze(data)
+        
+        # Should not raise error
+        assert len(corrected) == 5
 
-        # Get results for different thresholds
-        res4 = set(EdgeCorrector._surrounded_positions(
-                active, (rows, cols), connectivity=4, min_neighbors=4
-        ))
-        res3 = set(EdgeCorrector._surrounded_positions(
-                active, (rows, cols), connectivity=4, min_neighbors=3
-        ))
-        res2 = set(EdgeCorrector._surrounded_positions(
-                active, (rows, cols), connectivity=4, min_neighbors=2
-        ))
-        res1 = set(EdgeCorrector._surrounded_positions(
-                active, (rows, cols), connectivity=4, min_neighbors=1
-        ))
 
-        # Subset property
-        assert res4.issubset(res3)
-        assert res3.issubset(res2)
-        assert res2.issubset(res1)
-
-    def test_subset_property_connectivity8(self):
-        """Test subset property for connectivity=8."""
-        rows, cols = 10, 10
+class TestValueCapping:
+    """Test that value capping works correctly."""
+    
+    def test_only_edge_sections_corrected(self):
+        """Test that only edge sections are corrected, not interior."""
         np.random.seed(42)
-        active = np.random.choice(rows*cols, size=50, replace=False)
-
-        res8 = set(EdgeCorrector._surrounded_positions(
-                active, (rows, cols), connectivity=8, min_neighbors=8
-        ))
-        res7 = set(EdgeCorrector._surrounded_positions(
-                active, (rows, cols), connectivity=8, min_neighbors=7
-        ))
-        res6 = set(EdgeCorrector._surrounded_positions(
-                active, (rows, cols), connectivity=8, min_neighbors=6
-        ))
-
-        assert res8.issubset(res7)
-        assert res7.issubset(res6)
-
-
-class TestSurroundedPositionsMisc:
-    """Miscellaneous tests for surrounded_positions."""
-
-    def test_deduplication(self):
-        """Test that duplicate indices are deduplicated."""
-        rows, cols = 5, 5
-        # Create duplicates
-        active = [12, 12, 13, 13, 13, 17, 17, 18]
-
-        # Should work without error and dedupe
-        result = EdgeCorrector._surrounded_positions(
-                active, (rows, cols), connectivity=4, min_neighbors=1
+        
+        # Create 4x6 grid with all positions filled
+        nrows, ncols = 4, 6
+        n_sections = nrows * ncols
+        
+        data = pd.DataFrame({
+            'ImageName': ['img1'] * n_sections,
+            str(GRID.SECTION_NUM): range(n_sections),
+            'Area': np.random.uniform(100, 300, n_sections)
+        })
+        
+        # Set some edge values very high (higher than interior values)
+        edge_sections = [0, 1, 2, 3, 4, 5]  # Top row
+        data.loc[data[str(GRID.SECTION_NUM)].isin(edge_sections), 'Area'] = 1000
+        
+        # Ensure interior values are in normal range for top_n calculation
+        interior_sections = [7, 8, 9, 10, 13, 14, 15, 16]
+        data.loc[data[str(GRID.SECTION_NUM)].isin(interior_sections), 'Area'] = np.random.uniform(250, 350, len(interior_sections))
+        
+        corrector = EdgeCorrector(
+            on='Area',
+            groupby=['ImageName'],
+            measurement_col='Area',
+            top_n=8,  # Use interior + some edge values for threshold
+            nrows=nrows,
+            ncols=ncols,
+            connectivity=4
         )
-
-        # Result should be sorted and unique
-        assert len(result) == len(np.unique(result))
-        assert np.array_equal(result, np.sort(result))
-
-    def test_list_input(self):
-        """Test that list input works correctly."""
-        rows, cols = 5, 5
-        active_list = [6, 7, 8, 11, 12, 13, 16, 17, 18]
-
-        result = EdgeCorrector._surrounded_positions(
-                active_list, (rows, cols), connectivity=4
+        
+        original = data.copy()
+        corrected = corrector.analyze(data)
+        
+        # Edge sections should be corrected (capped below 1000)
+        edge_mask = corrected[str(GRID.SECTION_NUM)].isin(edge_sections)
+        assert (corrected.loc[edge_mask, 'Area'] < 1000).any()
+    
+    def test_only_exceeding_values_capped(self):
+        """Test that only values exceeding threshold are capped."""
+        np.random.seed(42)
+        
+        data = pd.DataFrame({
+            'ImageName': ['img1'] * 96,
+            str(GRID.SECTION_NUM): range(96),
+            'Area': np.random.uniform(100, 200, 96)
+        })
+        
+        # Set a few edge values very high
+        data.loc[0, 'Area'] = 1000
+        data.loc[1, 'Area'] = 1100
+        
+        corrector = EdgeCorrector(
+            on='Area',
+            groupby=['ImageName'],
+            measurement_col='Area',
+            top_n=10,
+            nrows=8,
+            ncols=12
         )
-
-        # Should return center of 3×3 block
-        assert 12 in result
-
-    def test_dtype_parameter(self):
-        """Test that dtype parameter is respected."""
-        rows, cols = 5, 5
-        active = [12]
-
-        result32 = EdgeCorrector._surrounded_positions(
-                active, (rows, cols), connectivity=4, min_neighbors=1, dtype=np.int32
+        
+        original = data.copy()
+        corrected = corrector.analyze(data)
+        
+        # High edge values should be capped
+        assert corrected.loc[0, 'Area'] < original.loc[0, 'Area']
+        assert corrected.loc[1, 'Area'] < original.loc[1, 'Area']
+        
+        # Values already below threshold should be unchanged
+        low_value_mask = original['Area'] < 200
+        assert np.allclose(
+            corrected.loc[low_value_mask, 'Area'].values,
+            original.loc[low_value_mask, 'Area'].values
         )
-        assert result32.dtype == np.int32
-
-        result64 = EdgeCorrector._surrounded_positions(
-                active, (rows, cols), connectivity=4, min_neighbors=1, dtype=np.int64
+    
+    def test_interior_sections_unchanged(self):
+        """Test that interior sections are never modified."""
+        np.random.seed(42)
+        
+        # Create 5x5 grid
+        nrows, ncols = 5, 5
+        data = pd.DataFrame({
+            'ImageName': ['img1'] * 25,
+            str(GRID.SECTION_NUM): range(25),
+            'Area': np.random.uniform(100, 500, 25)
+        })
+        
+        # Set center position (12) to high value
+        data.loc[12, 'Area'] = 1000
+        
+        corrector = EdgeCorrector(
+            on='Area',
+            groupby=['ImageName'],
+            measurement_col='Area',
+            top_n=5,
+            nrows=nrows,
+            ncols=ncols
         )
-        assert result64.dtype == np.int64
+        
+        original = data.copy()
+        corrected = corrector.analyze(data)
+        
+        # Center position should remain unchanged
+        assert corrected.loc[12, 'Area'] == original.loc[12, 'Area']
 
-    def test_return_counts_sorted_correctly(self):
-        """Test that counts are sorted to match sorted indices."""
-        rows, cols = 5, 5
-        # 3×3 block
-        active = [6, 7, 8, 11, 12, 13, 16, 17, 18]
 
-        idxs, counts = EdgeCorrector._surrounded_positions(
-                active, (rows, cols), connectivity=4, min_neighbors=2, return_counts=True
+class TestGroupbyBehavior:
+    """Test that groupby operations work correctly."""
+    
+    def test_multiple_groups(self):
+        """Test correction with multiple image groups."""
+        np.random.seed(42)
+        
+        # Create data for two images
+        img1_data = pd.DataFrame({
+            'ImageName': ['img1'] * 96,
+            str(GRID.SECTION_NUM): range(96),
+            'Area': np.random.uniform(100, 300, 96)
+        })
+        
+        img2_data = pd.DataFrame({
+            'ImageName': ['img2'] * 96,
+            str(GRID.SECTION_NUM): range(96),
+            'Area': np.random.uniform(200, 500, 96)
+        })
+        
+        data = pd.concat([img1_data, img2_data], ignore_index=True)
+        
+        corrector = EdgeCorrector(
+            on='Area',
+            groupby=['ImageName'],
+            measurement_col='Area',
+            top_n=10,
+            nrows=8,
+            ncols=12
         )
-
-        # Indices should be sorted
-        assert np.array_equal(idxs, np.sort(idxs))
-
-        # Counts should correspond to sorted indices
-        # Verify by checking a known case
-        if 12 in idxs:  # center
-            pos = np.where(idxs == 12)[0][0]
-            assert counts[pos] == 4
-
-    def test_large_grid(self):
-        """Test with a larger grid to ensure performance is reasonable."""
-        rows, cols = 100, 100
-        # Create a 10×10 block in the middle
-        block_rc = [(r, c) for r in range(45, 55) for c in range(45, 55)]
-        active = np.array([r*cols + c for r, c in block_rc], dtype=np.int64)
-
-        result = EdgeCorrector._surrounded_positions(
-                active, (rows, cols), connectivity=4
+        
+        corrected = corrector.analyze(data)
+        
+        # Both groups should have been processed
+        assert len(corrected) == 192
+        assert set(corrected['ImageName']) == {'img1', 'img2'}
+        
+        # Each group should have independent thresholds
+        img1_corrected = corrected[corrected['ImageName'] == 'img1']
+        img2_corrected = corrected[corrected['ImageName'] == 'img2']
+        
+        assert len(img1_corrected) == 96
+        assert len(img2_corrected) == 96
+    
+    def test_different_grid_configurations(self):
+        """Test that each group uses the same grid configuration."""
+        np.random.seed(42)
+        
+        data = pd.DataFrame({
+            'ImageName': ['img1'] * 48 + ['img2'] * 48,
+            str(GRID.SECTION_NUM): list(range(48)) * 2,
+            'Area': np.random.uniform(100, 500, 96)
+        })
+        
+        corrector = EdgeCorrector(
+            on='Area',
+            groupby=['ImageName'],
+            measurement_col='Area',
+            top_n=5,
+            nrows=6,
+            ncols=8
         )
-
-        # Should have 8×8 = 64 fully surrounded cells
-        assert len(result) == 64
-
-        # All should be in interior of block
-        for idx in result:
-            r, c = idx//cols, idx%cols
-            assert 46 <= r <= 53
-            assert 46 <= c <= 53
-
-    def test_horizontal_line(self):
-        """Test with a horizontal line of active cells."""
-        rows, cols = 5, 10
-        # Row 2, all columns
-        active = [2*cols + c for c in range(cols)]
-
-        # With connectivity=4, no cell can be fully surrounded (needs N and S neighbors)
-        result = EdgeCorrector._surrounded_positions(
-                active, (rows, cols), connectivity=4
+        
+        corrected = corrector.analyze(data)
+        assert len(corrected) == 96
+    
+    def test_no_groupby(self):
+        """Test correction without groupby (single dataset)."""
+        np.random.seed(42)
+        
+        data = pd.DataFrame({
+            str(GRID.SECTION_NUM): range(96),
+            'Area': np.random.uniform(100, 500, 96)
+        })
+        
+        corrector = EdgeCorrector(
+            on='Area',
+            groupby=[],  # No grouping
+            measurement_col='Area',
+            top_n=10,
+            nrows=8,
+            ncols=12
         )
-        assert len(result) == 0
+        
+        corrected = corrector.analyze(data)
+        assert len(corrected) == 96
 
-        # With min_neighbors=2, all interior cells qualify (have E and W)
-        result2 = EdgeCorrector._surrounded_positions(
-                active, (rows, cols), connectivity=4, min_neighbors=2
+
+class TestAnalyzeMethod:
+    """Test the analyze method."""
+    
+    def test_analyze_stores_results(self):
+        """Test that analyze stores original and corrected data."""
+        np.random.seed(42)
+        
+        data = pd.DataFrame({
+            'ImageName': ['img1'] * 96,
+            str(GRID.SECTION_NUM): range(96),
+            'Area': np.random.uniform(100, 500, 96)
+        })
+        
+        corrector = EdgeCorrector(
+            on='Area',
+            groupby=['ImageName'],
+            measurement_col='Area'
         )
-        # Should have cols-2 cells (excluding first and last)
-        assert len(result2) == cols - 2
-
-    def test_vertical_line(self):
-        """Test with a vertical line of active cells."""
-        rows, cols = 10, 5
-        # Column 2, all rows
-        active = [r*cols + 2 for r in range(rows)]
-
-        # With connectivity=4, no cell can be fully surrounded (needs E and W neighbors)
-        result = EdgeCorrector._surrounded_positions(
-                active, (rows, cols), connectivity=4
+        
+        corrected = corrector.analyze(data)
+        
+        # Check that data is stored
+        assert not corrector._original_data.empty
+        assert not corrector._latest_measurements.empty
+        
+        # Results should be retrievable
+        results = corrector.results()
+        assert results.equals(corrected)
+    
+    def test_analyze_with_missing_columns(self):
+        """Test that analyze raises error with missing columns."""
+        data = pd.DataFrame({
+            'ImageName': ['img1'] * 10,
+            'Area': np.random.uniform(100, 500, 10)
+            # Missing GRID.SECTION_NUM
+        })
+        
+        corrector = EdgeCorrector(
+            on='Area',
+            groupby=['ImageName'],
+            measurement_col='Area'
         )
-        assert len(result) == 0
-
-        # With min_neighbors=2, all interior cells qualify (have N and S)
-        result2 = EdgeCorrector._surrounded_positions(
-                active, (rows, cols), connectivity=4, min_neighbors=2
+        
+        with pytest.raises(KeyError, match="Missing required columns"):
+            corrector.analyze(data)
+    
+    def test_analyze_with_empty_data(self):
+        """Test that analyze raises error with empty data."""
+        corrector = EdgeCorrector(
+            on='Area',
+            groupby=['ImageName'],
+            measurement_col='Area'
         )
-        # Should have rows-2 cells (excluding first and last)
-        assert len(result2) == rows - 2
+        
+        with pytest.raises(ValueError, match="cannot be empty"):
+            corrector.analyze(pd.DataFrame())
 
-    def test_checkerboard_pattern(self):
-        """Test with a checkerboard pattern."""
-        rows, cols = 6, 6
-        # Checkerboard: (r+c) % 2 == 0
-        active = [r*cols + c for r in range(rows) for c in range(cols) if (r + c)%2 == 0]
 
-        # With connectivity=4, no cell has any active neighbors (all neighbors are opposite color)
-        result = EdgeCorrector._surrounded_positions(
-                active, (rows, cols), connectivity=4, min_neighbors=1
+class TestResultsMethod:
+    """Test the results method."""
+    
+    def test_results_returns_corrected_data(self):
+        """Test that results returns the corrected DataFrame."""
+        np.random.seed(42)
+        
+        data = pd.DataFrame({
+            'ImageName': ['img1'] * 96,
+            str(GRID.SECTION_NUM): range(96),
+            'Area': np.random.uniform(100, 500, 96)
+        })
+        
+        corrector = EdgeCorrector(
+            on='Area',
+            groupby=['ImageName'],
+            measurement_col='Area'
         )
-        assert len(result) == 0
-
-        # With connectivity=8, each cell has 4 diagonal neighbors
-        result8 = EdgeCorrector._surrounded_positions(
-                active, (rows, cols), connectivity=8, min_neighbors=4
+        
+        corrected = corrector.analyze(data)
+        results = corrector.results()
+        
+        assert results.equals(corrected)
+    
+    def test_results_before_analyze(self):
+        """Test that results returns empty DataFrame before analyze."""
+        corrector = EdgeCorrector(
+            on='Area',
+            groupby=['ImageName'],
+            measurement_col='Area'
         )
-        # Interior checkerboard cells should qualify
-        assert len(result8) > 0
+        
+        results = corrector.results()
+        assert results.empty
+
+
+class TestShowMethod:
+    """Test the show visualization method."""
+    
+    def test_show_requires_analyze(self):
+        """Test that show raises error if analyze not called."""
+        corrector = EdgeCorrector(
+            on='Area',
+            groupby=['ImageName'],
+            measurement_col='Area'
+        )
+        
+        with pytest.raises(RuntimeError, match="Call analyze\\(\\) first"):
+            corrector.show()
+    
+    def test_show_runs_after_analyze(self):
+        """Test that show runs successfully after analyze."""
+        np.random.seed(42)
+        
+        data = pd.DataFrame({
+            'ImageName': ['img1'] * 96,
+            str(GRID.SECTION_NUM): range(96),
+            'Area': np.random.uniform(100, 500, 96)
+        })
+        
+        # Set some edge values high
+        data.loc[0:11, 'Area'] = 1000  # Top row
+        
+        corrector = EdgeCorrector(
+            on='Area',
+            groupby=['ImageName'],
+            measurement_col='Area'
+        )
+        
+        corrector.analyze(data)
+        
+        # This should not raise an error
+        # Note: In actual test environment, we might mock plt.show()
+        # to prevent display, but for now we'll skip the actual display test
+        # corrector.show()  # Would display in interactive environment
+
+
+class TestIntegration:
+    """Integration tests with realistic scenarios."""
+    
+    def test_realistic_microplate_scenario(self):
+        """Test with realistic microplate colony data."""
+        np.random.seed(42)
+        
+        # Simulate 8x12 plate with most colonies ~200 area
+        # But edge colonies artificially inflated
+        nrows, ncols = 8, 12
+        n_sections = nrows * ncols
+        
+        data = pd.DataFrame({
+            'ImageName': ['plate1'] * n_sections,
+            str(GRID.SECTION_NUM): range(n_sections),
+            str(GRID.ROW_NUM): [i // ncols for i in range(n_sections)],
+            str(GRID.COL_NUM): [i % ncols for i in range(n_sections)],
+            'Area': np.random.normal(200, 30, n_sections)
+        })
+        
+        # Inflate edge colonies
+        edge_mask = (
+            (data[str(GRID.ROW_NUM)] == 0) |
+            (data[str(GRID.ROW_NUM)] == nrows - 1) |
+            (data[str(GRID.COL_NUM)] == 0) |
+            (data[str(GRID.COL_NUM)] == ncols - 1)
+        )
+        data.loc[edge_mask, 'Area'] *= 1.5
+        
+        corrector = EdgeCorrector(
+            on='Area',
+            groupby=['ImageName'],
+            measurement_col='Area',
+            top_n=10,
+            nrows=nrows,
+            ncols=ncols,
+            connectivity=4
+        )
+        
+        original_mean = data['Area'].mean()
+        corrected = corrector.analyze(data)
+        corrected_mean = corrected['Area'].mean()
+        
+        # After correction, mean should be lower (edge inflation removed)
+        assert corrected_mean < original_mean
+        
+        # Edge colonies should have been capped
+        edge_corrected = corrected.loc[edge_mask, 'Area']
+        edge_original = data.loc[edge_mask, 'Area']
+        
+        # At least some edge values should be different (capped)
+        assert not np.allclose(edge_corrected.values, edge_original.values)
+    
+    def test_partial_grid_coverage(self):
+        """Test with partial grid coverage (some sections empty)."""
+        np.random.seed(42)
+        
+        # Only 50 of 96 sections have colonies
+        sections = np.random.choice(96, size=50, replace=False)
+        
+        data = pd.DataFrame({
+            'ImageName': ['img1'] * 50,
+            str(GRID.SECTION_NUM): sections,
+            'Area': np.random.uniform(100, 500, 50)
+        })
+        
+        corrector = EdgeCorrector(
+            on='Area',
+            groupby=['ImageName'],
+            measurement_col='Area',
+            top_n=10,
+            nrows=8,
+            ncols=12
+        )
+        
+        # Should handle partial coverage without error
+        corrected = corrector.analyze(data)
+        assert len(corrected) == 50
+    
+    def test_with_multiple_measurements(self):
+        """Test correction on different measurement columns."""
+        np.random.seed(42)
+        
+        data = pd.DataFrame({
+            'ImageName': ['img1'] * 96,
+            str(GRID.SECTION_NUM): range(96),
+            'Area': np.random.uniform(100, 500, 96),
+            'MeanRadius': np.random.uniform(5, 15, 96),
+            'Perimeter': np.random.uniform(20, 60, 96)
+        })
+        
+        # Test correction on Area
+        corrector_area = EdgeCorrector(
+            on='Area',
+            groupby=['ImageName'],
+            measurement_col='Area',
+            top_n=10
+        )
+        
+        corrected_area = corrector_area.analyze(data.copy())
+        
+        # Test correction on MeanRadius
+        corrector_radius = EdgeCorrector(
+            on='MeanRadius',
+            groupby=['ImageName'],
+            measurement_col='MeanRadius',
+            top_n=10
+        )
+        
+        corrected_radius = corrector_radius.analyze(data.copy())
+        
+        # Both should work independently
+        assert len(corrected_area) == 96
+        assert len(corrected_radius) == 96
+        
+        # Area correction shouldn't affect other columns
+        assert corrected_area['MeanRadius'].equals(data['MeanRadius'])

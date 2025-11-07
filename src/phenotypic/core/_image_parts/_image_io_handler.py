@@ -38,32 +38,31 @@ class ImageIOHandler(ImageColorSpace):
                rawpy_params: dict | None = None,
                **kwargs) -> Image:
         """
-        Reads an image file from the specified file path and returns an Image instance.
-        Supports common image formats and raw sensor data formats with optional processing
-        configurations.
+        imread is a class method responsible for reading an image file from the specified
+        path and performing necessary preprocessing based on the file format and additional
+        parameters. The method supports a variety of image file types including common
+        formats (e.g., JPEG, PNG) as well as raw sensor data. It uses the scikit-image library
+        for loading standard images and rawpy for processing raw image files. This method also
+        handles additional configurations for raw image preprocessing via rawpy parameters, such
+        as white balance, gamma correction, and demosaic algorithm.
 
         Args:
-            filepath (PathLike): The path to the image file to be read.
-            gamma (Tuple[int, int] | None): Gamma correction as a tuple (numerator, denominator).
-                If None, defaults to (1, 1) for no gamma correction.
-            demosaic_algorithm (rawpy.DemosaicAlgorithm | None): The demosaicing algorithm to
-                apply if reading raw sensor data. Defaults to None, using the
-                `rawpy.DemosaicAlgorithm.LINEAR`.
-            use_camera_wb (bool): Flag to indicate whether to use the camera's white balance
-                configuration if reading raw sensor data. Defaults to False.
-            median_filter_passes (int): The number of median filtering passes to apply to raw
-                sensor data. Defaults to 0.
-            rawpy_params (dict | None): Additional keyword arguments for rawpy's `postprocess`
-                function when reading raw sensor data. Defaults to None.
-            **kwargs: Additional keyword arguments for further configuration during the
-                initialization of the Image instance.
+            filepath (PathLike): Path to the image file to be read. It can be any valid file
+                path-like object (e.g., str, pathlib.Path).
+            rawpy_params (dict | None): Optional dictionary of parameters for processing raw image
+                files when using rawpy. Supports options like white balance settings, demosaic
+                algorithm, gamma correction, and others. Defaults to None.
+            **kwargs: Arbitrary keyword arguments to be passed for additional configurations
+                specific to the Image instantiation.
 
         Returns:
-            Image: An Image instance containing the image data and metadata.
+            Image: An instance of the Image class containing the processed image array and any
+                additional metadata.
 
         Raises:
-            UnsupportedFileTypeError: If the file extension is not supported or the necessary
-                libraries are not available for processing the specified file type.
+            UnsupportedFileTypeError: If the file type of the provided filepath is not supported
+                by the method, either due to its extension not being recognized or due to the
+                absence of required libraries like rawpy.
         """
         # Convert to a Path object
         filepath = Path(filepath)

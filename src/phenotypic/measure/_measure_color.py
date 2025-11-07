@@ -15,7 +15,6 @@ from phenotypic.tools.constants_ import OBJECT
 logger = logging.getLogger(__name__)
 
 
-# TODO: Dominant wavelength, purity, and luminance calculation commented out until algorithm optimization
 class ColorXYZ(MeasurementInfo):
     @classmethod
     def category(cls):
@@ -226,7 +225,6 @@ class MeasureColor(MeasureFeatures):
         self.include_XYZ = include_XYZ
 
     def _operate(self, image: Image):
-
         data = {}
         if self.include_XYZ:
             cieXYZ_foreground = image.color.XYZ.foreground()
@@ -327,58 +325,6 @@ class MeasureColor(MeasureFeatures):
             MeasureFeatures._calculate_coeff_variation(array=foreground, labels=labels),
         ]
         return measurements
-
-    @staticmethod
-    def _dominant_wavelength_xy(xy: np.ndarray,
-                                labels: np.ndarray | None = None,
-                                white: str = "D65",
-                                observer: str = "CIE 1931 2 Degree Standard Observer"):
-        """
-        Computes the dominant wavelength and purity for given chromaticity coordinates.
-
-        This static method calculates the dominant wavelength and excitation purity for a
-        set of chromaticity coordinates (`xy`) relative to a specified white point and
-        observer. The computation is vectorized, allowing for efficient processing of
-        multiple chromaticity values simultaneously. Near-white numerics are handled,
-        ensuring robust results for inputs very close to the white point.
-
-        Args:
-            xy (numpy.ndarray): A NumPy array of shape (..., 2) where the last dimension
-                contains the chromaticity coordinates (x, y).
-            white (str, optional): A string specifying the white point to use. Default
-                is "D65".
-            observer (str, optional): A string specifying the standard observer to use.
-                Default is "CIE 1931 2 Degree Standard Observer".
-
-        Returns:
-            tuple: A tuple containing:
-                - numpy.ndarray: Dominant wavelengths (in nanometers) as a NumPy array
-                    with the same shape as the input chromaticity coordinates without
-                    the last dimension.
-                - numpy.ndarray: Excitation purity as a NumPy array with the same shape
-                    as the chromaticity coordinates without the last dimension.
-        """
-        wp = colour.CCS_ILLUMINANTS[observer][white]  # achromatic xy
-        orig_shape = xy.shape[:-1]
-        if labels:
-            xy = xy.copy()
-            xy[labels == 0] = np.nan
-
-        xy_flat = xy.reshape(-1, 2)
-
-        # Get the indexes of all the coords where there is an object
-        xy_flat_obj_mask = ~np.isnan(xy_flat).any(axis=1)
-        xy_not_nan = xy_flat[xy_flat_obj_mask, :]
-
-        wl_nm_obj, _, _ = colour.dominant_wavelength(xy=xy_not_nan, xy_n=wp)  # vectorized
-        final_wl_nm = np.zeros(shape=xy_flat.shape[0])
-        final_wl_nm[xy_flat_obj_mask] = wl_nm_obj
-
-        purity_obj = colour.excitation_purity(xy=xy_not_nan, xy_n=wp)
-        final_purity = np.zeros(shape=xy_flat.shape[0])
-        final_purity[xy_flat_obj_mask] = purity_obj
-
-        return final_wl_nm.reshape(orig_shape), final_purity.reshape(orig_shape)
 
 
 MeasureColor.__doc__ = ColorHSV.append_rst_to_doc(

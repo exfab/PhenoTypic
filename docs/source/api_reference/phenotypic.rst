@@ -1,5 +1,5 @@
-phenotypic package
-==================
+phenotypic
+==========
 
 .. automodule:: phenotypic
    :members:

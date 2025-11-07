@@ -6,9 +6,10 @@ from ..accessor_abstracts import ColorSpaceAccessor
 
 class xyChromaticityAccessor(ColorSpaceAccessor):
     """Provides access to CIE xy chromaticity coordinates.
-    
-    Converts XYZ color space data to 2D chromaticity coordinates,
-    representing color independently of luminance.
+
+    Converts XYZ color space data to 2D chromaticity coordinates
+    using the `colour.XYZ_to_xy <https://colour.readthedocs.io/en/develop/generated/colour.XYZ_to_xy.html>`_
+    function, representing color independently of luminance.
     """
 
     @property

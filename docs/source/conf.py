@@ -187,3 +187,9 @@ python_type_aliases = {
     'matplotlib.axes._axes.Axes': 'matplotlib.axes.Axes',
     'matplotlib.figure.Figure'  : 'matplotlib.figure.Figure'
 }
+
+intersphinx_mapping = {
+    "python"    : ("https://docs.python.org/3", {}),
+    "colour"    : ("https://colour.readthedocs.io/en/latest/", {}),
+    "matplotlib": ("https://matplotlib.org/stable/api/index.html", {}),
+}
