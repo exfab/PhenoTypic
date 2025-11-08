@@ -10,6 +10,7 @@ import importlib
 import psutil
 import os
 import time
+import traceback
 from functools import wraps
 
 
@@ -134,7 +135,8 @@ def test_measurement(qualname, obj):
     except KeyboardInterrupt:
         raise KeyboardInterrupt
     except Exception as e:
-        print(f"Failed on {qualname} - e")
+        tb_str = ''.join(traceback.format_exception(type(e), e, e.__traceback__))
+        print(f"Failed on {qualname} - {tb_str}")
 
 
 for qualname, obj in walk_package_for_measurements(phenotypic):
@@ -188,7 +190,8 @@ def test_operation(qualname, obj):
     except KeyboardInterrupt:
         raise KeyboardInterrupt
     except Exception as e:
-        print(f"Failed on {qualname} - e")
+        tb_str = ''.join(traceback.format_exception(type(e), e, e.__traceback__))
+        print(f"Failed on {qualname} - {tb_str}")
 
 
 for qualname, obj in walk_package_for_operations(phenotypic):

@@ -268,11 +268,11 @@ class ImageIOHandler(ImageColorSpace):
         # 3) Restore metadata
         prot = group["protected_metadata"].attrs
         img._metadata.protected.clear()
-        img._metadata.protected.update({k: prot[k] for k in prot})
+        img._metadata.protected.update({k: int(prot[k]) if prot[k].isdigit() else prot[k] for k in prot})
 
         pub = group["public_metadata"].attrs
         img._metadata.public.clear()
-        img._metadata.public.update({k: pub[k] for k in pub})
+        img._metadata.public.update({k: int(pub[k]) if pub[k].isdigit() else pub[k] for k in pub})
         return img
 
     @classmethod

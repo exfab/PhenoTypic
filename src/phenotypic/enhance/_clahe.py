@@ -36,7 +36,7 @@ class CLAHE(ImageEnhancer):
                 image=image.enh_gray[:],
                 kernel_size=self.kernel_size if self.kernel_size else self._auto_kernel_size(image),
                 clip_limit=self.clip_limit,
-                nbins=2 ** image.bit_depth
+                nbins=2 ** int(image.bit_depth)
         )
         return image
 

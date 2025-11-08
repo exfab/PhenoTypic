@@ -22,7 +22,7 @@ class ObjectMask(SingleChannelAccessor):
     Note:
         - Changes to the object mask will reset the labeling of the object map.
     """
-    
+
     @property
     def _backend(self):
         """Returns the current sparse backend reference from the object map.
@@ -30,7 +30,7 @@ class ObjectMask(SingleChannelAccessor):
         This ensures consistency with ObjectMap and avoids redundant conversions.
         """
         return self._root_image._data.sparse_object_map
-    
+
     def __array__(self, dtype=None, copy=None):
         """Implements the array interface for numpy compatibility.
         
@@ -141,12 +141,12 @@ class ObjectMask(SingleChannelAccessor):
         Returns:
             tuple(plt.Figure, plt.Axes): matplotlib figure and axes object
         """
-        return self._plot(arr=(self._backend.toarray() > 0), figsize=figsize, ax=ax, title=title, cmap=cmap)
+        return self._plot(arr=self._subject_arr, figsize=figsize, ax=ax, title=title, cmap=cmap)
 
     def _create_foreground(self, array: np.ndarray, bg_label: int = 0) -> np.ndarray:
         """Returns a copy of the array with every non-object pixel set to 0. Equivalent to np.ma.array.filled(bg_label)"""
         mask = self._backend.toarray() > 0
-        if array.ndim == 3: 
+        if array.ndim == 3:
             mask = np.dstack([mask for _ in range(array.shape[-1])])
 
         array[~mask] = bg_label
