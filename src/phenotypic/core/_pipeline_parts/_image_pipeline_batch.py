@@ -18,6 +18,7 @@ import threading
 from typing import List, Union, Optional
 import logging
 from enum import Enum
+import traceback
 
 import pandas as pd
 
@@ -398,7 +399,9 @@ class ImagePipelineBatch(ImagePipelineCore):
                     except KeyboardInterrupt:
                         raise KeyboardInterrupt
                     except Exception as e:
-                        logger.error(f'Error saving image {image_name}: {e}')
+                        tb_str = ''.join(traceback.format_exception(type(e), e, e.__traceback__))
+
+                        logger.error(f'Error saving image {image_name}: {tb_str}')
 
                     logger.info(f'Starting measurement processing for: {image_name}')
                     try:  # save measurements if pipeline successfully executed
@@ -454,7 +457,8 @@ class ImagePipelineBatch(ImagePipelineCore):
                     except KeyboardInterrupt:
                         raise KeyboardInterrupt
                     except Exception as e:
-                        logger.error(f"Exception occurred during apply phase on image {image.name}: {e}")
+                        tb_str = ''.join(traceback.format_exception(type(e), e, e.__traceback__))
+                        logger.error(f"Exception occurred during apply phase on image {image.name}: {tb_str}")
                         image = b''  # If processing error occurs we pass an empty byte string so that nothing is overwritten
 
                 if mode in {PipelineMode.MEASURE, PipelineMode.APPLY_MEASURE} and not isinstance(image, bytes):
@@ -464,7 +468,9 @@ class ImagePipelineBatch(ImagePipelineCore):
                     except KeyboardInterrupt:
                         raise KeyboardInterrupt
                     except Exception as e:
-                        logger.error(f"Exception occurred during measure phase on image {image.name}: {e}")
+                        tb_str = ''.join(traceback.format_exception(type(e), e, e.__traceback__))
+
+                        logger.error(f"Exception occurred during measure phase on image {image.name}: {tb_str}")
                         meas = b''
 
                 results_q.put((image_name, pickle.dumps(image), pickle.dumps(meas)))

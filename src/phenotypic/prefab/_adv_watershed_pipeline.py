@@ -76,13 +76,14 @@ class AdvWatershedPipeline(PrefabPipeline):
             compactness: Deprecated, use watershed_compactness.
             border_size: Deprecated, use border_remover_size.
         """
+
         watershed_detector = WatershedDetector(footprint=watershed_footprint, min_size=watershed_min_size,
                                                compactness=watershed_compactness, connectivity=watershed_connectivity,
                                                relabel=watershed_relabel, ignore_zeros=watershed_ignore_zeros)
         border_remover = BorderObjectRemover(border_size=border_remover_size)
         min_residual_reducer = MinResidualErrorReducer()
 
-        self._ops = [
+        ops = [
             GaussianBlur(sigma=gaussian_sigma, mode=gaussian_mode, truncate=gaussian_truncate),
             CLAHE(),
             MedianEnhancer(),
@@ -97,10 +98,10 @@ class AdvWatershedPipeline(PrefabPipeline):
             MaskFill()
         ]
 
-        self._meas = [
+        meas = [
             MeasureShape(),
             MeasureColor(),
             MeasureTexture(scale=texture_scale, warn=texture_warn),
             MeasureIntensity()
         ]
-        super().__init__(benchmark=benchmark, **kwargs)
+        super().__init__(ops=ops, meas=meas, benchmark=benchmark, **kwargs)

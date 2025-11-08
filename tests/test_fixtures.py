@@ -183,7 +183,7 @@ def walk_package_for_operations(pkg):
             if (inspect.ismodule(obj)
                     or inspect.isabstract(obj)
                     or not isinstance(obj, type)
-                    or not issubclass(obj, phenotypic.ABC_.ImageOperation)):
+                    or not issubclass(obj, phenotypic.abc_.ImageOperation)):
                 continue
 
             qualname = f"{mod.__name__}.{attr}"
@@ -222,7 +222,7 @@ def walk_package_for_measurements(pkg):
             if (inspect.ismodule(obj)
                     or inspect.isabstract(obj)
                     or not isinstance(obj, type)
-                    or not issubclass(obj, phenotypic.ABC_.MeasureFeatures)
+                    or not issubclass(obj, phenotypic.abc_.MeasureFeatures)
                     or attr in skip_classes):
                 continue
 

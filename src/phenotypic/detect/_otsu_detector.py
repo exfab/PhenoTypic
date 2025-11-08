@@ -44,7 +44,7 @@ class OtsuDetector(ThresholdDetector):
                 to the computed binary mask other_image.
         """
         enh_matrix = image.enh_gray[:]
-        nbins = 2 ** image.bit_depth
+        nbins = 2 ** int(image.bit_depth)
         mask = image.enh_gray[:] >= threshold_otsu(
                 enh_matrix[enh_matrix != 0] if self.ignore_zeros else enh_matrix, nbins=nbins
         )

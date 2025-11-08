@@ -1,5 +1,5 @@
  <div style="background-color: white; display: inline-block; padding: 10px; border-radius: 5px;">
-  <img src="./docs/source/_static/assets/200x150/light_logo.svg" alt="Phenotypic Logo" style="width: 200px; height: auto;">
+  <img src="./docs/source/_static/assets/200x150/light_logo_sponsor.png" alt="Phenotypic Logo" style="width: 200px; height: auto;">
 </div>
 
 # PhenoTypic: A Python Framework for Bio-Image Analysis
