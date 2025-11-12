@@ -1,6 +1,7 @@
 # ImagePipeline and ImageSet UML & Interaction Diagrams
 
-This document contains comprehensive UML and interaction diagrams for the `ImagePipeline` and `ImageSet` classes in the PhenoTypic framework.
+This document contains comprehensive UML and interaction diagrams for the `ImagePipeline` and `ImageSet` classes in the
+PhenoTypic framework.
 
 ## UML Class Diagram
 
@@ -19,7 +20,7 @@ classDiagram
         -_verbose: bool
         +__init__(ops, meas, benchmark, verbose)
         +set_ops(ops): void
-        +set_measurements(measurements): void
+        +set_meas(measurements): void
         +apply(image, inplace, reset): Image
         +measure(image, include_metadata): DataFrame
         +apply_and_measure(image, inplace, reset, include_metadata): DataFrame
@@ -89,22 +90,22 @@ classDiagram
         +measure(image): DataFrame
         +_operate(image): DataFrame
         +_repair_scipy_results(scipy_output): np.array
-        +_calculate_center_of_mass(array, labels): np.ndarray
-        +_calculate_max(array, labels): np.ndarray
-        +_calculate_mean(array, labels): np.ndarray
-        +_calculate_median(array, labels): np.ndarray
-        +_calculate_minimum(array, labels): np.ndarray
-        +_calculate_stddev(array, labels): np.ndarray
-        +_calculate_sum(array, labels): np.ndarray
-        +_calculate_variance(array, labels): np.ndarray
-        +_calculate_coeff_variation(array, labels): np.ndarray
-        +_calculate_extrema(array, labels): tuple
-        +_calculate_min_extrema(array, labels): tuple
-        +_calculate_max_extrema(array, labels): tuple
-        +_funcmap2objects(func, out_dtype, array, labels, default, pass_positions): np.ndarray
-        +_calculate_q1(array, labels, method): np.ndarray
-        +_calculate_q3(array, labels, method): np.ndarray
-        +_calculate_iqr(array, labels, method, nan_policy): np.ndarray
+        +_calculate_center_of_mass(array, objmap): np.ndarray
+        +_calculate_max(array, objmap): np.ndarray
+        +_calculate_mean(array, objmap): np.ndarray
+        +_calculate_median(array, objmap): np.ndarray
+        +_calculate_minimum(array, objmap): np.ndarray
+        +_calculate_stddev(array, objmap): np.ndarray
+        +_calculate_sum(array, objmap): np.ndarray
+        +_calculate_variance(array, objmap): np.ndarray
+        +_calculate_coeff_variation(array, objmap): np.ndarray
+        +_calculate_extrema(array, objmap): tuple
+        +_calculate_min_extrema(array, objmap): tuple
+        +_calculate_max_extrema(array, objmap): tuple
+        +_funcmap2objects(func, out_dtype, array, objmap, default, pass_positions): np.ndarray
+        +_calculate_q1(array, objmap, method): np.ndarray
+        +_calculate_q3(array, objmap, method): np.ndarray
+        +_calculate_iqr(array, objmap, method, nan_policy): np.ndarray
     }
 
     class SetMeasurementAccessor {
@@ -143,35 +144,28 @@ classDiagram
         +_save_image2hdfgroup(group, compression, compression_opts): void
     }
 
-    %% Inheritance relationships
+%% Inheritance relationships
     ImageOperation <|-- ImagePipelineCore
     ImagePipelineCore <|-- ImagePipelineBatch
     ImagePipelineBatch <|-- ImagePipeline
-
     ImageSetCore <|-- ImageSetStatus
     ImageSetStatus <|-- ImageSetMeasurements
     ImageSetMeasurements <|-- ImageSet
-
     BaseOperation <|-- ImageOperation
     BaseOperation <|-- MeasureFeatures
-
-    %% Composition relationships
-    ImagePipelineCore *-- ImageOperation : contains
-    ImagePipelineCore *-- MeasureFeatures : contains
-
-    ImageSetMeasurements *-- SetMeasurementAccessor : contains
-    ImageSetCore *-- HDF : contains
-    ImageSetCore *-- GridFinder : contains
-
-    SetMeasurementAccessor *-- HDF : uses
-
-    %% Usage relationships
-    ImagePipeline --> Image : processes
-    ImagePipeline --> ImageSet : processes
-    ImageSet --> Image : contains
-    ImageSet --> HDF : uses
-
-    %% Note about relationships
+%% Composition relationships
+    ImagePipelineCore *-- ImageOperation: contains
+    ImagePipelineCore *-- MeasureFeatures: contains
+    ImageSetMeasurements *-- SetMeasurementAccessor: contains
+    ImageSetCore *-- HDF: contains
+    ImageSetCore *-- GridFinder: contains
+    SetMeasurementAccessor *-- HDF: uses
+%% Usage relationships
+    ImagePipeline --> Image: processes
+    ImagePipeline --> ImageSet: processes
+    ImageSet --> Image: contains
+    ImageSet --> HDF: uses
+%% Note about relationships
     note for ImagePipeline "Can process both single Image and ImageSet objects"
     note for ImageSet "Manages collections of images in HDF5 format"
 ```
@@ -332,27 +326,33 @@ sequenceDiagram
 ## Key Design Patterns Illustrated
 
 ### 1. **Template Method Pattern**
+
 - `ImagePipelineCore` defines the skeleton of the algorithm in `apply_and_measure()`
 - Subclasses like `ImagePipelineBatch` implement specific steps like `_coordinator()`
 
 ### 2. **Strategy Pattern**
+
 - `ImageOperation` and `MeasureFeatures` define interfaces for interchangeable algorithms
 - Concrete implementations can be swapped at runtime
 
 ### 3. **Producer-Consumer Pattern**
+
 - `ImagePipelineBatch` uses multiple threads/processes:
-  - **Producer**: Loads images from HDF5 and queues them for processing
-  - **Consumers (Workers)**: Process images in parallel
-  - **Writer**: Saves results back to HDF5
+    - **Producer**: Loads images from HDF5 and queues them for processing
+    - **Consumers (Workers)**: Process images in parallel
+    - **Writer**: Saves results back to HDF5
 
 ### 4. **Composite Pattern**
+
 - `ImageSet` acts as a container for multiple `Image` objects
 - Both single images and image sets can be processed uniformly by pipelines
 
 ### 5. **Adapter Pattern**
+
 - `SetMeasurementAccessor` adapts HDF5 operations to a measurement-specific interface
 
 ### 6. **Factory Method Pattern**
+
 - `ImageSet.get_image()` creates appropriate `Image` or `GridImage` objects based on `grid_finder`
 
 ## Performance Considerations

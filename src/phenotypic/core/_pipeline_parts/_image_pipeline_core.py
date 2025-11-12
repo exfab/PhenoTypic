@@ -66,7 +66,7 @@ class ImagePipelineCore(BaseOperation):
         if ops is not None: self.set_ops(ops)
 
         self._meas: Dict[str, MeasureFeatures] = {}
-        if meas is not None: self.set_measurements(meas)
+        if meas is not None: self.set_meas(meas)
 
         # Store benchmark and verbose flags
         self._benchmark = benchmark
@@ -101,7 +101,7 @@ class ImagePipelineCore(BaseOperation):
         else:
             raise TypeError(f'ops must be a list or a dictionary, got {type(ops)}')
 
-    def set_measurements(self, measurements: List[MeasureFeatures] | Dict[str, MeasureFeatures]):
+    def set_meas(self, measurements: List[MeasureFeatures] | Dict[str, MeasureFeatures]):
         """
         Sets the measurements to be used for further computation. The input can be either
         a list of `MeasureFeatures` objects or a dictionary with string keys and `MeasureFeatures`

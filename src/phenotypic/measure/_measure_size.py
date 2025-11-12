@@ -20,12 +20,16 @@ class SIZE(MeasurementInfo):
         return 'Size'
 
     AREA = ('Area',
-            "Total number of pixels occupied by the microbial colony. Represents colony biomass and growth extent on agar plates. Larger areas typically indicate more robust growth or longer incubation times.")
-    INTEGRATED_INTENSITY = ('IntegratedIntensity', 'The sum of the object\'s grayscale pixels')
+            "Total number of pixels occupied by the microbial colony."
+            "Larger areas typically indicate more robust growth or longer incubation times.")
+    INTEGRATED_INTENSITY = ('IntegratedIntensity', r'The sum of the object\'s grayscale pixels. Calculated as'
+                                                   r'$\sum{pixel values}*area$')
 
 
 class MeasureSize(MeasureFeatures):
-    """Calculates basic size measurements of the objects in the image.
+    """Calculates basic size measurements of the objects in the image. The measurements are
+    equivalent to their counterparts in `phenotypic.measure.MeasureShape` and `phenotypic.measure.MeasureIntensity`,
+    but are provided in this class for convenience.
 
     Returns:
         pd.DataFrame: A dataframe containing the size measurements of the objects in the image.
@@ -40,7 +44,7 @@ class MeasureSize(MeasureFeatures):
         # Calculate integrated intensity using the sum calculation method from base class
         intensity_matrix = image.gray[:].copy()
         objmap = image.objmap[:].copy()
-        measurements[str(SIZE.INTEGRATED_INTENSITY)] = self._calculate_sum(array=intensity_matrix, labels=objmap)
+        measurements[str(SIZE.INTEGRATED_INTENSITY)] = self._calculate_sum(array=intensity_matrix, objmap=objmap)
 
         # Calculate area from object properties
         obj_props = image.objects.props
@@ -54,4 +58,3 @@ class MeasureSize(MeasureFeatures):
 
 
 MeasureSize.__doc__ = SIZE.append_rst_to_doc(MeasureSize)
-

@@ -87,192 +87,200 @@ class MeasureFeatures(BaseOperation, ABC):
 
     @staticmethod
     @catch_warnings_decorator
-    def _calculate_center_of_mass(array: np.ndarray, labels: ArrayLike = None):
+    def _calculate_center_of_mass(array: np.ndarray, objmap: ArrayLike = None):
         """Calculates the center of mass for each labeled object in the array.
 
         Args:
             array: Input array to process.
-            labels: Array of labels of the same shape as the input array. If None, all non-zero
+            objmap: Array of labels of the same shape as the input array. If None, all non-zero
                 elements of the input are treated as a single object.
 
         Returns:
             np.ndarray: Coordinates of the center of mass for each labeled object.
         """
-        if labels is not None:
-            indexes = np.unique(labels)
+        if objmap is not None:
+            indexes = np.unique(objmap)
             indexes = indexes[indexes != 0]
         else:
             indexes = None
-        return MeasureFeatures._repair_scipy_results(scipy.ndimage.center_of_mass(array, labels, index=indexes))
+        return MeasureFeatures._repair_scipy_results(scipy.ndimage.center_of_mass(array, objmap, index=indexes))
 
     @staticmethod
     @catch_warnings_decorator
-    def _calculate_max(array: np.ndarray, labels: ArrayLike = None):
+    def _calculate_max(array: np.ndarray, objmap: ArrayLike = None):
         """Calculates the maximum value for each labeled object in the array.
 
         Args:
             array: Input array to process.
-            labels: Array of labels of the same shape as the input array. If None, all non-zero
+            objmap: Array of labels of the same shape as the input array. If None, all non-zero
                 elements of the input are treated as a single object.
 
         Returns:
             np.ndarray: Maximum value for each labeled object.
         """
-        if labels is not None:
-            indexes = np.unique(labels)
+        if objmap is not None:
+            indexes = np.unique(objmap)
             indexes = indexes[indexes != 0]
         else:
             indexes = None
-        return MeasureFeatures._repair_scipy_results(scipy.ndimage.maximum(array, labels, index=indexes))
+        return MeasureFeatures._repair_scipy_results(scipy.ndimage.maximum(array, objmap, index=indexes))
 
     @staticmethod
     @catch_warnings_decorator
-    def _calculate_mean(array: np.ndarray, labels: ArrayLike = None):
+    def _calculate_mean(array: np.ndarray, objmap: ArrayLike = None):
         """Calculates the mean value for each labeled object in the array.
 
         Args:
             array: Input array to process.
-            labels: Array of labels of the same shape as the input array. If None, all non-zero
+            objmap: Array of labels of the same shape as the input array. If None, all non-zero
                 elements of the input are treated as a single object.
 
         Returns:
             np.ndarray: Mean value for each labeled object.
         """
-        if labels is not None:
-            indexes = np.unique(labels)
+        if objmap is not None:
+            indexes = np.unique(objmap)
             indexes = indexes[indexes != 0]
         else:
             indexes = None
-        return MeasureFeatures._repair_scipy_results(scipy.ndimage.mean(array, labels, index=indexes))
+        return MeasureFeatures._repair_scipy_results(scipy.ndimage.mean(array, objmap, index=indexes))
 
     @staticmethod
     @catch_warnings_decorator
-    def _calculate_median(array: np.ndarray, labels: ArrayLike = None):
+    def _calculate_median(array: np.ndarray, objmap: ArrayLike = None):
         """Calculates the median value for each labeled object in the array.
 
         Args:
             array: Input array to process.
-            labels: Array of labels of the same shape as the input array. If None, all non-zero
+            objmap: Array of labels of the same shape as the input array. If None, all non-zero
                 elements of the input are treated as a single object.
 
         Returns:
             np.ndarray: Median value for each labeled object.
         """
-        if labels is not None:
-            indexes = np.unique(labels)
+        if objmap is not None:
+            indexes = np.unique(objmap)
             indexes = indexes[indexes != 0]
         else:
             indexes = None
-        return MeasureFeatures._repair_scipy_results(scipy.ndimage.median(array, labels, index=indexes))
+        return MeasureFeatures._repair_scipy_results(scipy.ndimage.median(array, objmap, index=indexes))
 
     @staticmethod
     @catch_warnings_decorator
-    def _calculate_minimum(array: np.ndarray, labels: ArrayLike = None):
+    def _calculate_minimum(array: np.ndarray, objmap: ArrayLike = None):
         """Calculates the minimum value for each labeled object in the array.
 
         Args:
             array: Input array to process.
-            labels: Array of labels of the same shape as the input array. If None, all non-zero
+            objmap: Array of labels of the same shape as the input array. If None, all non-zero
                 elements of the input are treated as a single object.
 
         Returns:
             np.ndarray: Minimum value for each labeled object.
         """
-        if labels is not None:
-            indexes = np.unique(labels)
+        if objmap is not None:
+            indexes = np.unique(objmap)
             indexes = indexes[indexes != 0]
         else:
             indexes = None
-        return MeasureFeatures._repair_scipy_results(scipy.ndimage.minimum(array, labels, index=indexes))
+        return MeasureFeatures._repair_scipy_results(scipy.ndimage.minimum(array, objmap, index=indexes))
 
     @staticmethod
     @catch_warnings_decorator
-    def _calculate_stddev(array: np.ndarray, labels: ArrayLike = None):
+    def _calculate_stddev(array: np.ndarray, objmap: ArrayLike = None):
         """Calculates the standard deviation for each labeled object in the array.
 
         Args:
             array: Input array to process.
-            labels: Array of labels of the same shape as the input array. If None, all non-zero
+            objmap: Array of labels of the same shape as the input array. If None, all non-zero
                 elements of the input are treated as a single object.
 
         Returns:
             np.ndarray: Standard deviation for each labeled object.
         """
-        if labels is not None:
-            indexes = np.unique(labels)
+        if objmap is not None:
+            indexes = np.unique(objmap)
             indexes = indexes[indexes != 0]
         else:
             indexes = None
-        return MeasureFeatures._repair_scipy_results(scipy.ndimage.standard_deviation(array, labels, index=indexes))
+        return MeasureFeatures._repair_scipy_results(scipy.ndimage.standard_deviation(array, objmap, index=indexes))
 
     @staticmethod
     @catch_warnings_decorator
-    def _calculate_sum(array: np.ndarray, labels: ArrayLike = None):
+    def _calculate_sum(array: np.ndarray, objmap: ArrayLike = None):
         """Calculates the sum of values for each labeled object in the array.
 
         Args:
             array: Input array to process.
-            labels: Array of labels of the same shape as the input array. If None, all non-zero
+            objmap: Array of labels of the same shape as the input array. If None, all non-zero
                 elements of the input are treated as a single object.
 
         Returns:
             np.ndarray: Sum of values for each labeled object.
         """
-        if labels is not None:
-            indexes = np.unique(labels)
+        if objmap is not None:
+            indexes = np.unique(objmap)
             indexes = indexes[indexes != 0]
         else:
             indexes = None
-        return MeasureFeatures._repair_scipy_results(scipy.ndimage.sum_labels(array, labels, index=indexes))
+        return MeasureFeatures._repair_scipy_results(scipy.ndimage.sum_labels(array, objmap, index=indexes))
 
     @staticmethod
     @catch_warnings_decorator
-    def _calculate_variance(array: np.ndarray, labels: ArrayLike = None):
+    def _calculate_variance(array: np.ndarray, objmap: ArrayLike = None):
         """Calculates the variance for each labeled object in the array.
 
         Args:
             array: Input array to process.
-            labels: Array of labels of the same shape as the input array. If None, all non-zero
+            objmap: Array of labels of the same shape as the input array. If None, all non-zero
                 elements of the input are treated as a single object.
 
         Returns:
             np.ndarray: Variance for each labeled object.
         """
-        if labels is not None:
-            indexes = np.unique(labels)
+        if objmap is not None:
+            indexes = np.unique(objmap)
             indexes = indexes[indexes != 0]
         else:
             indexes = None
-        return MeasureFeatures._repair_scipy_results(scipy.ndimage.variance(array, labels, index=indexes))
+        return MeasureFeatures._repair_scipy_results(scipy.ndimage.variance(array, objmap, index=indexes))
 
     @staticmethod
     @catch_warnings_decorator
-    def _calculate_coeff_variation(array: np.ndarray, labels: ArrayLike = None):
+    def _calculate_coeff_variation(array: np.ndarray, objmap: ArrayLike = None):
         """Calculates unbiased coefficient of variation (CV) for each object in the image, assuming normal distribution.
+
+        Args:
+            array: Input array to process.
+            objmap: Array of labels of the same shape as the input array. If None, all non-zero
+                elements of the input are treated as a single object.
+
+        Returns:
+            np.ndarray: Coefficient of variation for each labeled object.
 
         References:
             - https://en.wikipedia.org/wiki/Coefficient_of_variation
         """
-        if labels is not None:
-            unique_labels, unique_counts = np.unique(labels, return_counts=True)
+        if objmap is not None:
+            unique_labels, unique_counts = np.unique(objmap, return_counts=True)
             unique_counts = unique_counts[unique_labels != 0]
-            biased_cv = MeasureFeatures._calculate_stddev(array, labels)/MeasureFeatures._calculate_mean(array, labels)
+            biased_cv = MeasureFeatures._calculate_stddev(array, objmap)/MeasureFeatures._calculate_mean(array, objmap)
             result = (1 + (1/unique_counts))*biased_cv
         else:
-            # For the case when labels is None, we can't calculate the coefficient of variation
+            # For the case when objmap is None, we can't calculate the coefficient of variation
             # because we need the counts of each label
             result = np.nan
         return MeasureFeatures._repair_scipy_results(result)
 
     @staticmethod
-    def _calculate_extrema(array: np.ndarray, labels: ArrayLike = None):
-        if labels is not None:
-            indexes = np.unique(labels)
+    def _calculate_extrema(array: np.ndarray, objmap: ArrayLike = None):
+        if objmap is not None:
+            indexes = np.unique(objmap)
             indexes = indexes[indexes != 0]
         else:
             indexes = None
         min_extrema, max_extrema, min_pos, max_pos = MeasureFeatures._repair_scipy_results(
-                scipy.ndimage.extrema(array, labels, index=indexes))
+                scipy.ndimage.extrema(array, objmap, index=indexes))
         return (
             MeasureFeatures._repair_scipy_results(min_extrema),
             MeasureFeatures._repair_scipy_results(max_extrema),
@@ -282,12 +290,12 @@ class MeasureFeatures(BaseOperation, ABC):
 
     @staticmethod
     @catch_warnings_decorator
-    def _calculate_min_extrema(array: np.ndarray, labels: ArrayLike = None):
+    def _calculate_min_extrema(array: np.ndarray, objmap: ArrayLike = None):
         """Calculates the minimum extrema and their positions for each labeled object in the array.
 
         Args:
             array: Input array to process.
-            labels: Array of labels of the same shape as the input array. If None, all non-zero
+            objmap: Array of labels of the same shape as the input array. If None, all non-zero
                 elements of the input are treated as a single object.
 
         Returns:
@@ -295,17 +303,17 @@ class MeasureFeatures(BaseOperation, ABC):
                 - np.ndarray: Minimum extrema values for each labeled object.
                 - np.ndarray: Positions of minimum extrema for each labeled object.
         """
-        min_extrema, _, min_pos, _ = MeasureFeatures._calculate_extrema(array, labels)
+        min_extrema, _, min_pos, _ = MeasureFeatures._calculate_extrema(array, objmap)
         return min_extrema, min_pos
 
     @staticmethod
     @catch_warnings_decorator
-    def _calculate_max_extrema(array: np.ndarray, labels: ArrayLike = None):
+    def _calculate_max_extrema(array: np.ndarray, objmap: ArrayLike = None):
         """Calculates the maximum extrema and their positions for each labeled object in the array.
 
         Args:
             array: Input array to process.
-            labels: Array of labels of the same shape as the input array. If None, all non-zero
+            objmap: Array of labels of the same shape as the input array. If None, all non-zero
                 elements of the input are treated as a single object.
 
         Returns:
@@ -313,12 +321,12 @@ class MeasureFeatures(BaseOperation, ABC):
                 - np.ndarray: Maximum extrema values for each labeled object.
                 - np.ndarray: Positions of maximum extrema for each labeled object.
         """
-        _, max_extreme, _, max_pos = MeasureFeatures._calculate_extrema(array, labels)
+        _, max_extreme, _, max_pos = MeasureFeatures._calculate_extrema(array, objmap)
         return max_extreme, max_pos
 
     @staticmethod
     def _funcmap2objects(func: Callable, out_dtype: np.dtype,
-                         array: np.ndarray, labels: ArrayLike = None,
+                         array: np.ndarray, objmap: ArrayLike = None,
                          default: int | float | np.nan = np.nan,
                          pass_positions: bool = False):
         """Apply a custom function to labeled regions in an array.
@@ -333,9 +341,8 @@ class MeasureFeatures(BaseOperation, ABC):
                 pass_positions is True.
             out_dtype: Data type of the output array.
             array: Input array to process.
-            labels: Array of labels of the same shape as an input array. If None, all non-zero
+            objmap: Array of labels of the same shape as an input array. If None, all non-zero
                 elements of the input are treated as a single object.
-            index: Labels to include in the calculation. If None, all labels are used.
             default: The value to use for labels that are not in the index. Defaults to np.nan.
             pass_positions: If True, the positions where the input array is non-zero are 
                 passed to func. Defaults to False.
@@ -347,14 +354,14 @@ class MeasureFeatures(BaseOperation, ABC):
             This is a wrapper around scipy.ndimage.labeled_comprehension that ensures the
             output is always a proper numpy array.
         """
-        if labels is not None:
-            index = np.unique(labels)
+        if objmap is not None:
+            index = np.unique(objmap)
             index = index[index != 0]
         else:
             index = None
 
         return MeasureFeatures._repair_scipy_results(
-                scipy.ndimage.labeled_comprehension(input=array, labels=labels, index=index,
+                scipy.ndimage.labeled_comprehension(input=array, labels=objmap, index=index,
                                                     func=func, out_dtype=out_dtype,
                                                     pass_positions=pass_positions,
                                                     default=default),
@@ -362,30 +369,30 @@ class MeasureFeatures(BaseOperation, ABC):
 
     @staticmethod
     @catch_warnings_decorator
-    def _calculate_q1(array, labels=None, method: str = 'linear'):
+    def _calculate_q1(array, objmap=None, method: str = 'linear'):
         find_q1 = partial(np.quantile, q=0.25, method=method)
-        q1 = MeasureFeatures._funcmap2objects(func=find_q1, out_dtype=array.dtype, array=array, labels=labels,
+        q1 = MeasureFeatures._funcmap2objects(func=find_q1, out_dtype=array.dtype, array=array, objmap=objmap,
                                               default=np.nan,
                                               pass_positions=False)
         return MeasureFeatures._repair_scipy_results(q1)
 
     @staticmethod
     @catch_warnings_decorator
-    def _calculate_q3(array, labels=None, method: str = 'linear'):
+    def _calculate_q3(array, objmap=None, method: str = 'linear'):
         find_q3 = partial(np.quantile, q=0.75, method=method)
-        q3 = MeasureFeatures._funcmap2objects(func=find_q3, out_dtype=array.dtype, array=array, labels=labels,
+        q3 = MeasureFeatures._funcmap2objects(func=find_q3, out_dtype=array.dtype, array=array, objmap=objmap,
                                               default=np.nan,
                                               pass_positions=False)
         return MeasureFeatures._repair_scipy_results(q3)
 
     @staticmethod
     @catch_warnings_decorator
-    def _calculate_iqr(array, labels=None, method: str = 'linear', nan_policy: str = 'omit'):
+    def _calculate_iqr(array, objmap=None, method: str = 'linear', nan_policy: str = 'omit'):
         find_iqr = partial(scipy.stats.iqr, axis=None, nan_policy=nan_policy, interpolation=method)
         return MeasureFeatures._repair_scipy_results(
                 MeasureFeatures._funcmap2objects(
                         func=find_iqr, out_dtype=array.dtype,
-                        array=array, labels=labels,
+                        array=array, objmap=objmap,
                         default=np.nan, pass_positions=False,
                 ),
         )

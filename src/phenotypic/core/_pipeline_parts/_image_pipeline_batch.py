@@ -434,7 +434,7 @@ class ImagePipelineBatch(ImagePipelineCore):
 
         pipe = cls(benchmark=False, verbose=False)
         pipe.set_ops(ops)
-        pipe.set_measurements(meas_ops)
+        pipe.set_meas(meas_ops)
         # pipe._ops = ops
         # pipe._meas = meas_ops
         while True:

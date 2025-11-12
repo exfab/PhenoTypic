@@ -104,3 +104,6 @@ class AdvOtsuPipeline(PrefabPipeline):
             MeasureIntensity()
         ]
         super().__init__(benchmark=benchmark, verbose=verbose)
+
+
+__all__ = "AdvOtsuPipeline"

@@ -350,16 +350,14 @@ def load_lactose_series(mode: Literal['array', 'Image', 'GridImage'] = 'array') 
     return series
 
 
-def load_sample_dataset(mode: Literal['array', 'Image', 'GridImage'] = 'array') -> List[
+def yield_sample_dataset(mode: Literal['array', 'Image', 'GridImage'] = 'array') -> iter[
     Union[np.array, Image, GridImage]]:
     """Return a series of plate images across 6 time samples"""
-    series = []
     fnames = os.listdir(__current_file_dir/'PhenoTypicSampleSubset')
     fnames.sort()
     for fname in fnames:
         filepath = __current_file_dir/'PhenoTypicSampleSubset'/fname
-        series.append(_image_loader(filepath, mode))
-    return series
+        yield _image_loader(filepath, mode)
 
 
 def load_meas() -> pd.DataFrame:

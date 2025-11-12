@@ -13,28 +13,31 @@ from phenotypic.objedit import BorderObjectRemover, MaskFill
 
 class AdvWatershedPipeline(PrefabPipeline):
     """
-    The AdvWatershedPipeline class is a composite image processing pipeline that combines multiple layers of preprocessing, detection, and filtering steps
-    that can will select the right colonies in most cases. This comes at the cost of being a more computationally expensive pipeline.
+    Provides an image processing pipeline with advanced watershed segmentation.
 
-    Pipeline Steps:
-        1. Gaussian Smoothing
-        2. CLAHE
-        3. Median Enhancement
-        4. Watershed Segmentation
-        5. Border Object Removal
-        6. Grid Oversized Object Removal
-        7. Minimum Residual Error Reduction
-        8. Grid Alignment
-        9. Repeat Watershed Segmentation
-        10. Repeat Border Object Removal
-        11. Repeat Minimum Residual Error Reduction
-        12. Mask Fill
+    This class defines a sequence of operations and measurements designed for
+    image analysis. It includes smoothing, enhancement, segmentation, border
+    object removal, and various analysis steps. The pipeline is highly customizable
+    for tasks such as image segmentation and feature extraction, making it suitable
+    for applications involving image quantification and preprocessing.
 
-    Measurements:
-        - Shape
-        - Color
-        - Texture
-        - Intensity
+    Attributes:
+        gaussian_sigma (int): Standard deviation for Gaussian kernel in smoothing.
+        gaussian_mode (str): Mode for handling image boundaries during Gaussian smoothing.
+        gaussian_truncate (float): Truncate the Gaussian kernel at this many standard deviations.
+        watershed_footprint (Literal['auto'] | np.ndarray | int | None): Structuring element for
+            identifying watershed peaks or 'auto' for adaptive detection.
+        watershed_min_size (int): Minimum size of regions in watershed segmentation.
+        watershed_compactness (float): Compactness parameter for controlling watershed region shapes.
+        watershed_connectivity (int): Pixel connectivity parameter for watershed segmentation.
+        watershed_relabel (bool): Indicates whether the regions should be relabeled post watershed.
+        watershed_ignore_zeros (bool): Indicates whether pixels with zero value should be excluded
+            from watershed processing.
+        border_remover_size (int): Size of the border region where detected objects are removed.
+        texture_scale (int): Scale parameter controlling Haralick texture computation.
+        texture_warn (bool): Indicates whether warnings are raised for texture computation errors.
+        benchmark (bool): Indicates whether benchmarking is enabled across the pipeline
+            for performance evaluation.
     """
 
     def __init__(self,
