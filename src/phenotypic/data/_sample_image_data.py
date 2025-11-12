@@ -135,6 +135,7 @@ def load_synthetic_colony(mode: Literal['array', 'Image'] = 'array') -> Union[np
     Depending on the mode specified, it either returns the array directly or converts it into an
     Image object. When 'Image' mode is selected, the object mask is also applied to the Image object.
 
+
     Args:
         mode (Literal['array', 'Image']): Specifies the format in which the synthetic colony
             data should be returned. Use 'array' to return the raw data as an array or 'Image'
@@ -146,6 +147,9 @@ def load_synthetic_colony(mode: Literal['array', 'Image'] = 'array') -> Union[np
 
     Raises:
         ValueError: If the mode is neither 'array' nor 'Image'.
+
+    Example:
+        img = make_synthetic_colony(h=384, w=384, bit_depth=16)
     """
     from phenotypic import Image
 
@@ -288,10 +292,6 @@ def make_synthetic_plate(
     else:
         return (img*65535.0 + 0.5).astype(np.uint16)
 
-
-# Example:
-# img = make_synthetic_colony(h=384, w=384, bit_depth=16)
-# plate = make_synthetic_plate(nrows=8, ncols=12, plate_h=2048, plate_w=3072)
 
 def load_plate_12hr() -> np.array:
     """Returns a plate image of a K. Marxianus colony 96 array plate at 12 hrs"""
