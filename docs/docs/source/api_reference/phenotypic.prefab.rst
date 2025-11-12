@@ -1,5 +1,5 @@
-phenotypic.prefab package
-=========================
+phenotypic.prefab
+=================
 
 .. automodule:: phenotypic.prefab
    :members:

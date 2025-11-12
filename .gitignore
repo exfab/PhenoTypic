@@ -38,3 +38,4 @@ build
 *.h5
 .run
 .ropeproject
+docs/source/auto_examples

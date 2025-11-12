@@ -415,7 +415,8 @@ class ImagePipelineBatch(ImagePipelineCore):
                     except KeyboardInterrupt:
                         raise KeyboardInterrupt
                     except Exception as e:
-                        logger.error(f'Error saving measurements for {image_name}: {e}')
+                        tb_str = ''.join(traceback.format_exception(type(e), e, e.__traceback__))
+                        logger.error(f'Error saving measurements for {image_name}: {tb_str}')
 
                 except queue.Empty:  # release GIL if queue is empty
                     continue

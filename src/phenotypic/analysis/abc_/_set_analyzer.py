@@ -43,21 +43,85 @@ class SetAnalyzer(abc.ABC):
                    *,
                    copy: bool = True,
                    match_na: bool = False) -> pd.DataFrame:
-        """Filter a DataFrame by column->values mapping.
+        """Row-wise filter by column-value criteria.
 
-        For each column in `criteria`:
-          • If the value is scalar, keep nrows where column == value.
-          • If the value is an iterable (e.g., list/tuple/set/ndarray), keep nrows where column ∈ values.
-          • If the value is NA and `match_na=True`, match NA in that column.
+        This helper builds a boolean mask across rows using an "AND across columns"
+        logic based on a mapping from column names to desired values. It is
+        intentionally lightweight and side-effect free (unless ``copy=False``),
+        making it convenient to pre-filter measurement tables before grouping or
+        aggregation in concrete ``SetAnalyzer`` implementations.
 
-        Args:
-            df: Input DataFrame.
-            criteria: Dict of {column_name: value_or_iterable_of_values}.
-            copy: Return a copy to avoid view warnings.
-            match_na: If True, NA in `criteria` matches NA in the column.
+        Matching rules per criterion (for each ``col -> val``):
+          - If ``val`` is a scalar (not list-like): keep rows where ``df[col] == val``.
+          - If ``val`` is list-like (e.g., list/tuple/set/ndarray): keep rows where
+            ``df[col]`` is contained in that collection (``isin`` semantics).
+          - If ``val`` is NA and ``match_na=True``: treat NA as a match for NA values in ``df[col]``.
+            If ``match_na=False``, NA does not match anything.
 
-        Returns:
-            Filtered DataFrame.
+        The final mask is the conjunction (logical AND) of every per-column mask.
+        If any referenced column is missing, a ``KeyError`` is raised. The function
+        may short-circuit and return an empty frame early if intermediate masks
+        eliminate all rows.
+
+        Parameters
+        ----------
+        df : pandas.DataFrame
+            Input DataFrame to filter.
+        criteria : Mapping[str, Any]
+            Mapping from column name to either a scalar value or an iterable of
+            acceptable values for that column.
+        copy : bool, default True
+            If True, return a copy of the filtered frame to avoid pandas' view
+            warnings. If False, return a view when possible.
+        match_na : bool, default False
+            Whether NA values provided in ``criteria`` should match NA values in
+            the corresponding DataFrame column.
+
+        Returns
+        -------
+        pandas.DataFrame
+            The filtered DataFrame (empty if no rows satisfy all criteria).
+
+        Raises
+        ------
+        KeyError
+            If a column specified in ``criteria`` is not present in ``df``.
+
+        Notes
+        -----
+        - String values are treated as scalars, not list-like.
+        - For list-like criteria, presence of NA in the list only matters when
+          ``match_na=True``; in that case, NA in the column is also considered a match.
+
+        Examples
+        --------
+        Filter by a single scalar value:
+        >>> import pandas as pd
+        >>> from phenotypic.analysis.abc_._set_analyzer import SetAnalyzer
+        >>> data = pd.DataFrame({
+        ...     'plate': ['P1', 'P1', 'P2', 'P2'],
+        ...     'strain': ['WT', 'KO', 'WT', 'KO'],
+        ...     'rep': [1, 1, 2, 2],
+        ...     'value': [10.0, 12.5, 9.7, 11.2],
+        ... })
+        >>> SetAnalyzer._filter_by(data, {'plate': 'P1'})
+          plate strain  rep  value
+        0    P1     WT    1   10.0
+        1    P1     KO    1   12.5
+
+        Filter where a column is in a list of acceptable values:
+        >>> SetAnalyzer._filter_by(data, {'strain': ['WT', 'KO'], 'rep': [2]})
+          plate strain  rep  value
+        2    P2     WT    2    9.7
+        3    P2     KO    2   11.2
+
+        Match NA values explicitly:
+        >>> data2 = data.copy()
+        >>> data2.loc[1, 'strain'] = pd.NA
+        >>> SetAnalyzer._filter_by(data2, {'strain': [pd.NA, 'WT']}, match_na=True)
+          plate strain  rep  value
+        0    P1     WT    1   10.0
+        1    P1   <NA>    1   12.5
         """
 
         def _is_list_like(x: Any) -> bool:

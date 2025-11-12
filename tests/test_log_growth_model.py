@@ -251,7 +251,7 @@ class TestLogGrowthModel:
         t = np.array([0, 1, 2, 5])
         r, K, N0 = 0.5, 1000, 50
 
-        result = LogGrowthModel._model_func(t, r, K, N0)
+        result = LogGrowthModel.model_func(t, r, K, N0)
 
         # Check initial condition
         assert abs(result[0] - N0) < 1e-10
@@ -261,7 +261,7 @@ class TestLogGrowthModel:
         assert result[-1] > result[0]  # Should increase
 
         # Test with scalar input
-        scalar_result = LogGrowthModel._model_func(1.0, r, K, N0)
+        scalar_result = LogGrowthModel.model_func(1.0, r, K, N0)
         assert isinstance(scalar_result, (float, np.floating))
 
     def test_loss_function(self):
@@ -270,7 +270,7 @@ class TestLogGrowthModel:
         params = [r, K, N0]
 
         t = np.array([0, 1, 2])
-        y = LogGrowthModel._model_func(t, r, K, N0)
+        y = LogGrowthModel.model_func(t, r, K, N0)
         lam, alpha = 1.0, 1.0
 
         loss = LogGrowthModel._loss_func(params, t, y, lam, alpha)

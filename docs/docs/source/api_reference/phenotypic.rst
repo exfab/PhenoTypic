@@ -12,7 +12,7 @@ Subpackages
 .. toctree::
    :maxdepth: 4
 
-   phenotypic.ABC_
+   phenotypic.abc_
    phenotypic.analysis
    phenotypic.core
    phenotypic.correction

@@ -350,5 +350,33 @@ def load_lactose_series(mode: Literal['array', 'Image', 'GridImage'] = 'array') 
     return series
 
 
+def load_sample_dataset(mode: Literal['array', 'Image', 'GridImage'] = 'array') -> List[
+    Union[np.array, Image, GridImage]]:
+    """Return a series of plate images across 6 time samples"""
+    series = []
+    fnames = os.listdir(__current_file_dir/'PhenoTypicSampleSubset')
+    fnames.sort()
+    for fname in fnames:
+        filepath = __current_file_dir/'PhenoTypicSampleSubset'/fname
+        series.append(_image_loader(filepath, mode))
+    return series
+
+
 def load_meas() -> pd.DataFrame:
-    return pd.read_csv(__current_file_dir/'meas/meas.csv', index_col=0)
+    """
+    Loads sample measurements for 3 strains using each of the measurement modules
+
+    Returns:
+        pd.DataFrame: A DataFrame containing the loaded measurement data.
+    """
+    return pd.read_csv(__current_file_dir/'meas/all_meas.csv', index_col=0)
+
+
+def load_area_meas() -> pd.DataFrame:
+    """
+    Loads sample measurements for 3 strains using area measurements
+
+    Returns:
+        pd.DataFrame: A DataFrame containing the sample area measurement data.
+    """
+    return pd.read_csv(__current_file_dir/'meas/area_meas.csv', index_col=0)

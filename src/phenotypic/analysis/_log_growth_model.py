@@ -107,7 +107,7 @@ class LogGrowthModel(ModelFitter):
         grouped = agg_data.groupby(by=self.groupby, as_index=True)
         apply2group_kwargs = dict(
                 groupby_names=self.groupby,
-                model=self.__class__._model_func,
+                model=self.__class__.model_func,
                 time_label=self.time_label,
                 size_label=self.on,
                 Kmax_label=self.Kmax_label,
@@ -131,48 +131,67 @@ class LogGrowthModel(ModelFitter):
 
     def show(self,
              criteria: Dict[str, Union[Any, List[Any]]] | None = None,
-             figsize=(6, 4), cmap: str = 'tab20',
+             figsize=(6, 4),
+             cmap: str = 'tab20',
              legend=True, ax: plt.Axes = None) -> Tuple[plt.Figure, plt.Axes]:
         if ax is None:
             fig, ax = plt.subplots(figsize=figsize)
         else:
             fig = ax.get_figure()
+
+        # apply filtering of data table
         if criteria is not None:
             filtered_model_scores = self._filter_by(df=self._latest_model_scores, criteria=criteria, copy=True)
             filtered_measurements = self._filter_by(df=self._latest_measurements, criteria=criteria, copy=True)
         else:
             filtered_model_scores = self._latest_model_scores
             filtered_measurements = self._latest_measurements
+
         model_groups = {model_keys: model_groups for model_keys, model_groups in
                         filtered_model_scores.groupby(by=self.groupby)}
         meas_groups = {meas_keys: meas_groups for meas_keys, meas_groups in
                        filtered_measurements.groupby(by=self.groupby)}
+
         tmax = filtered_measurements.loc[:, self.time_label].max()
         t = np.arange(stop=tmax, step=1)
+
         cmap = cm.get_cmap(cmap)
-        color_iter = itertools.cycle(cmap(np.linspace(0, 1, 256)))
+        color_iter = itertools.cycle(cmap(np.linspace(start=0, stop=len(model_groups))))
         next(color_iter)
         for model_key, model_group in model_groups.items():
             curr_meas = meas_groups[model_key]
             curr_color = next(color_iter)
-            y_pred = self._model_func(t=t,
-                                      r=model_group[LOG_GROWTH_MODEL.R_FIT].iloc[0],
-                                      K=model_group[LOG_GROWTH_MODEL.K_FIT].iloc[0],
-                                      N0=model_group[LOG_GROWTH_MODEL.N0_FIT].iloc[0],
-                                      )
-            ax.plot(t, y_pred, label=model_key, color=curr_color)
-            ax.scatter(
-                    x=curr_meas.loc[:, self.time_label],
-                    y=curr_meas.loc[:, self.on],
-                    color=curr_color, label=model_key,
+            y_pred = self.model_func(t=t,
+                                     r=model_group[LOG_GROWTH_MODEL.R_FIT].iloc[0],
+                                     K=model_group[LOG_GROWTH_MODEL.K_FIT].iloc[0],
+                                     N0=model_group[LOG_GROWTH_MODEL.N0_FIT].iloc[0],
+                                     )
+            ax.plot(t, y_pred, color=curr_color)
+
+            curr_time_groups = curr_meas.groupby(by=self.time_label)
+            curr_mean = curr_time_groups[self.on].mean()
+            curr_stddev = curr_time_groups[self.on].std()
+            curr_stderr = curr_stddev/np.sqrt(curr_time_groups[self.on].count())
+
+            ax.errorbar(
+                    x=curr_mean.index.values,
+                    y=curr_mean.values,
+                    yerr=curr_stderr,
+                    fmt='o',
+                    color=curr_color,
+                    ecolor=curr_color,
+                    elinewidth=1,
+                    capsize=2,
+                    label=f'{model_key[0]} (mean±SE)',
             )
+        ax.legend()
         return fig, ax
 
     def results(self) -> pd.DataFrame:
         return self._latest_model_scores
 
     @staticmethod
-    def _model_func(t: np.ndarray[float] | float, r: float, K: float, N0: float):
+    def model_func(t: np.ndarray[float] | float, r: float, K: float, N0: float):
         """
         Computes the value of the logistic growth model for a given time point or array
         of time points and parameters. The logistic model describes growth that
@@ -218,7 +237,8 @@ class LogGrowthModel(ModelFitter):
         penalty calculation.
 
         Note:
-            This function is meant to be used in conjunction with the scipy least squares optimization method
+            This function is used in conjunction with the `scipy.optimize.least_squares` solver to
+            find the parameters
 
         Args:
             params (List[float]): A list containing the parameters [r, K, N0], where:
@@ -242,7 +262,7 @@ class LogGrowthModel(ModelFitter):
         r, K, N0 = params
 
         # Original cost function (residuals)
-        cost_func = y - LogGrowthModel._model_func(t=t, r=r, K=K, N0=N0)
+        cost_func = y - LogGrowthModel.model_func(t=t, r=r, K=K, N0=N0)
 
         # Original regularization term
         dN_dt = r*K/4
@@ -325,7 +345,7 @@ class LogGrowthModel(ModelFitter):
                 LOG_GROWTH_MODEL.GROWTH_RATE: (x[0]*x[1])/4,
             }
 
-            y_pred = LogGrowthModel._model_func(t=t_data, r=x[0], K=x[1], N0=x[2])
+            y_pred = LogGrowthModel.model_func(t=t_data, r=x[0], K=x[1], N0=x[2])
             model_stats = {
                 LOG_GROWTH_MODEL.K_MAX      : K_max,
                 LOG_GROWTH_MODEL.NUM_SAMPLES: n_samples,

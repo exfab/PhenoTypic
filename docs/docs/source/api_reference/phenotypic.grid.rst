@@ -1,5 +1,5 @@
-phenotypic.grid package
-=======================
+phenotypic.grid
+===============
 
 .. automodule:: phenotypic.grid
    :members:
