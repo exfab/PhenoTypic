@@ -4,6 +4,7 @@ import abc
 from typing import TYPE_CHECKING, Callable, List
 
 import pandas as pd
+import numpy as np
 from collections.abc import Iterable
 from typing import Any, Mapping
 
@@ -34,7 +35,7 @@ class SetAnalyzer(abc.ABC):
 
     @staticmethod
     @abc.abstractmethod
-    def _apply2group_func(group: pd.DataFrame):
+    def _apply2group_func(group: pd.DataFrame, **kwargs):
         pass
 
     @staticmethod
@@ -152,3 +153,34 @@ class SetAnalyzer(abc.ABC):
 
         out = df[mask]
         return out.copy() if copy else out
+
+    @staticmethod
+    def _ensure_float_array(arr):
+        """
+        Detects dtype and converts string-numeric or mixed arrays to float.
+        Leaves numeric arrays unchanged.
+        """
+        k = arr.dtype.kind
+
+        # Already numeric
+        if k in {'i', 'u', 'f', 'c'}:
+            return arr.astype(float)
+
+        # String or object with strings
+        if k in {'U', 'S', 'O'}:
+            return SetAnalyzer.__smart_float_convert(arr)
+
+        raise TypeError(f"Unsupported array dtype: {arr.dtype}")
+
+    @staticmethod
+    def __smart_float_convert(arr):
+        out = []
+        for x in arr:
+            if x is None:
+                out.append(np.nan)
+                continue
+            try:
+                out.append(float(str(x).replace(",", "").strip()))
+            except ValueError:
+                raise ValueError(f"Value '{x}' cannot be converted to float")
+        return np.array(out, dtype=float)

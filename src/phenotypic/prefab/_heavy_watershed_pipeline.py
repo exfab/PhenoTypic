@@ -8,18 +8,21 @@ from phenotypic.detect import WatershedDetector
 from phenotypic.enhance import CLAHE, GaussianBlur, MedianEnhancer
 from phenotypic.grid import (GridOversizedObjectRemover, MinResidualErrorReducer)
 from phenotypic.measure import MeasureColor, MeasureIntensity, MeasureShape, MeasureTexture
-from phenotypic.objedit import BorderObjectRemover, MaskFill
+from phenotypic.refine import BorderObjectRemover, MaskFill
 
 
-class AdvWatershedPipeline(PrefabPipeline):
+class HeavyWatershedPipeline(PrefabPipeline):
     """
-    Provides an image processing pipeline with advanced watershed segmentation.
+    Provides an image processing pipeline with robust preprocessing/post-processing and watershed segmentation.
 
     This class defines a sequence of operations and measurements designed for
     image analysis. It includes smoothing, enhancement, segmentation, border
     object removal, and various analysis steps. The pipeline is highly customizable
     for tasks such as image segmentation and feature extraction, making it suitable
     for applications involving image quantification and preprocessing.
+
+    Note:
+        This pipeline uses computationally intensive operations aimed at cases where there is heavy background noise
 
     Attributes:
         gaussian_sigma (int): Standard deviation for Gaussian kernel in smoothing.

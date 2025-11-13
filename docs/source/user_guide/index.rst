@@ -11,14 +11,10 @@ This section contains comprehensive guides for using Phenotypic. It includes ins
    :caption: User Guide Topics
 
    ../installation
-   getting_started
-   basic_concepts
-   advanced_usage
    examples/index
-   tutorial/index
 
 Placeholder Pages
-----------------
+-----------------
 
 **Getting Started** (Coming Soon)
    A quick introduction to Phenotypic and its basic functionality.

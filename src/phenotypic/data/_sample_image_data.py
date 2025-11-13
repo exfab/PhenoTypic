@@ -19,7 +19,8 @@ if TYPE_CHECKING: from phenotypic import Image, GridImage
 
 # TODO: Update filepaths for this file
 
-def _image_loader(filepath, mode: Literal['array', 'Image', 'GridImage']) -> Union[np.array, Image, GridImage]:
+def _image_loader(filepath,
+                  mode: Literal['array', 'Image', 'GridImage', 'filepath']) -> Union[np.array, Image, GridImage]:
     from phenotypic import Image, GridImage
 
     match mode:
@@ -29,8 +30,10 @@ def _image_loader(filepath, mode: Literal['array', 'Image', 'GridImage']) -> Uni
             return Image.imread(filepath)
         case 'GridImage':
             return GridImage.imread(filepath)
+        case 'filepath':
+            return filepath
         case _:
-            return imread(filepath)
+            raise ValueError(f"Unknown mode: {mode}")
 
 
 def make_synthetic_colony(
@@ -353,7 +356,7 @@ def load_lactose_series(mode: Literal['array', 'Image', 'GridImage'] = 'array') 
 def yield_sample_dataset(mode: Literal['array', 'Image', 'GridImage'] = 'array') -> iter[
     Union[np.array, Image, GridImage]]:
     """Return a series of plate images across 6 time samples"""
-    fnames = os.listdir(__current_file_dir/'PhenoTypicSampleSubset')
+    fnames = [x for x in os.listdir(__current_file_dir/'PhenoTypicSampleSubset') if x.endswith(".jpg")]
     fnames.sort()
     for fname in fnames:
         filepath = __current_file_dir/'PhenoTypicSampleSubset'/fname

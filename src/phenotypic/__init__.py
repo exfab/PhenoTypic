@@ -14,7 +14,7 @@ from . import (abc_,
                enhance,
                grid,
                measure,
-               objedit,
+               refine,
                tools,
                prefab)
 
@@ -30,7 +30,7 @@ __all__ = [
     "detect",
     "measure",
     "grid",
-    "objedit",
+    "refine",
     "prefab",
     "correction",
     "enhance",

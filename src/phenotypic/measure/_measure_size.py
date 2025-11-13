@@ -44,13 +44,9 @@ class MeasureSize(MeasureFeatures):
         # Calculate integrated intensity using the sum calculation method from base class
         intensity_matrix = image.gray[:].copy()
         objmap = image.objmap[:].copy()
-        measurements[str(SIZE.INTEGRATED_INTENSITY)] = self._calculate_sum(array=intensity_matrix, objmap=objmap)
 
-        # Calculate area from object properties
-        obj_props = image.objects.props
-        for idx, obj_image in enumerate(image.objects):
-            current_props = obj_props[idx]
-            measurements[str(SIZE.AREA)][idx] = current_props.area
+        measurements[SIZE.AREA] = self._calculate_sum(array=image.objmask[:], objmap=objmap)
+        measurements[SIZE.INTEGRATED_INTENSITY] = self._calculate_sum(array=intensity_matrix, objmap=objmap)
 
         measurements = pd.DataFrame(measurements)
         measurements.insert(loc=0, column=OBJECT.LABEL, value=image.objects.labels2series())

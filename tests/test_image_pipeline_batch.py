@@ -11,7 +11,7 @@ from phenotypic import Image, ImagePipeline, ImageSet
 from phenotypic.abc_ import MeasureFeatures, ObjectDetector
 from phenotypic.data import load_plate_12hr
 from phenotypic.detect import OtsuDetector
-from phenotypic.objedit import BorderObjectRemover
+from phenotypic.refine import BorderObjectRemover
 from .resources.TestHelper import timeit
 from .test_fixtures import temp_hdf5_file
 
@@ -21,7 +21,7 @@ class SumObjects(MeasureFeatures):
         labels = image.objects.labels2series()
         return pd.DataFrame({
             labels.name: labels.values,
-            'Sum'      : SumObjects._calculate_sum(array=image.gray[:], labels=image.objmap[:])
+            'Sum'      : SumObjects._calculate_sum(array=image.gray[:], objmap=image.objmap[:])
         })
 
 
@@ -72,6 +72,20 @@ def test_core_apply_and_measure():
 
 @timeit
 def test_batch_apply_and_measure(temp_hdf5_file):
+    """
+    Tests the batch application and measurement of image processing and measurement
+    pipelines. This function validates if the pipeline's `apply_and_measure`
+    method works correctly by comparing the generated DataFrame to the one retrieved
+    via `ImageSet.get_measurement()`.
+
+    Args:
+        temp_hdf5_file: Temporary HDF5 file used to create an ImageSet for testing.
+
+    Raises:
+        AssertionError: If the resulting DataFrame from `apply_and_measure` is either
+            empty or not equal to the alternative DataFrame retrieved from
+            `ImageSet.get_measurement()`.
+    """
     imageset = _make_imageset(temp_hdf5_file)
     pipe = ImagePipeline(
             ops=[DetectFull()],
@@ -84,3 +98,32 @@ def test_batch_apply_and_measure(temp_hdf5_file):
 
     alt_df = imageset.get_measurement()
     assert df.equals(alt_df), 'ImageSet.get_measurements() is different from results'
+
+
+@timeit
+def test_batch_apply_and_measure_repeated(temp_hdf5_file):
+    """
+    Tests the batch application and measurement functionality of the image
+    pipeline and ensures consistency across repeated runs.
+
+    Args:
+        temp_hdf5_file: Temporary HDF5 file where the dataset is stored. Used
+            as the input source for creating the image set.
+
+    Raises:
+        AssertionError: If the resulting dataframe from the batch application
+            is empty or if the results from two successive batch applications
+            are not identical.
+    """
+    imageset = _make_imageset(temp_hdf5_file)
+    pipe = ImagePipeline(
+            ops=[DetectFull()],
+            meas=[SumObjects()],
+            verbose=False,
+            njobs=2)
+
+    df = pipe.apply_and_measure(imageset)
+    assert df.empty is False, 'No measurements from batch apply_and_measure'
+
+    df2 = pipe.apply_and_measure(imageset)
+    assert df2.equals(df), 'apply_and_measure run 2 is different from run 1 results'

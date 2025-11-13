@@ -9,6 +9,7 @@ if TYPE_CHECKING: from phenotypic import Image
 import numpy as np
 from numpy.typing import ArrayLike
 import pandas as pd
+from pandas.api.types import is_scalar
 import scipy
 import warnings
 from functools import partial, wraps
@@ -16,6 +17,7 @@ from functools import partial, wraps
 from ._base_operation import BaseOperation
 from phenotypic.tools.exceptions_ import OperationFailedError
 from phenotypic.tools.funcs_ import validate_measure_integrity
+from phenotypic.tools.constants_ import OBJECT
 from abc import ABC
 
 
@@ -51,11 +53,47 @@ class MeasureFeatures(BaseOperation, ABC):
     """
 
     @validate_measure_integrity()
-    def measure(self, image: Image) -> pd.DataFrame:
+    def measure(self, image: Image, include_meta: bool = False) -> pd.DataFrame:
+        """
+        Executes a measurement operation on the provided image and optionally includes
+        metadata for the output.
+
+        This method applies a series of operations to the input image using arguments
+        matched from pre-defined configurations. It returns the results in a
+        pandas DataFrame. Optionally, additional metadata about the operation can
+        be included. If any exceptions occur during operation, they are captured and
+        re-raised as a custom `OperationFailedError`.
+
+        Args:
+            image (Image): The image on which the measurement operation is to be
+                performed.
+            include_meta (bool, optional): Determines whether to include metadata
+                about the operation in the result. Defaults to False.
+
+        Raises:
+            OperationFailedError: If the operation fails due to any exception, this
+                error is raised, encapsulating details about the failure.
+
+        Returns:
+            pd.DataFrame: A DataFrame containing the results of the measurement
+                operation. If `include_meta` is True, additional columns with the
+                metadata are added.
+        """
+
         try:
             matched_args = self._get_matched_operation_args()
 
-            return self._operate(image, **matched_args)
+            meas = self._operate(image, **matched_args)
+            if include_meta:
+                meta = (image.grid.info(include_metadata=True)
+                        if hasattr(image, 'grid')
+                        else image.objects.info(include_metadata=True)
+                        )
+                meas = meta.merge(meas, on=OBJECT.LABEL)
+
+            return meas
+
+
 
         except Exception as e:
             raise OperationFailedError(operation=self.__class__.__name__,
@@ -69,21 +107,22 @@ class MeasureFeatures(BaseOperation, ABC):
         return pd.DataFrame()
 
     @staticmethod
-    def _repair_scipy_results(scipy_output) -> np.array:
-        """Tests and ensures scipy result is a numpy array.
-
-        This is helpful for bulk measurements using scipy.ndimage measurement functions.
+    def _ensure_array(value) -> np.ndarray:
+        """
+        Ensures that the input value is converted into a numpy array. This utility method
+        is particularly useful for scenarios where scalar inputs need to be handled
+        uniformly as an array for consistency in computations.
 
         Args:
-            scipy_output: The output from a scipy function that needs to be converted to a numpy array.
+            value: The input value which can be a scalar or already an array-like entity.
 
         Returns:
-            np.array: A numpy array containing the scipy output.
+            np.ndarray: A numpy array representation of the input value.
         """
-        if getattr(scipy_output, "__getitem__", False):
-            return np.array(scipy_output)
+        if is_scalar(value):
+            return np.asarray(value)
         else:
-            return np.array([scipy_output])
+            return np.asarray(value)
 
     @staticmethod
     @catch_warnings_decorator
@@ -103,7 +142,7 @@ class MeasureFeatures(BaseOperation, ABC):
             indexes = indexes[indexes != 0]
         else:
             indexes = None
-        return MeasureFeatures._repair_scipy_results(scipy.ndimage.center_of_mass(array, objmap, index=indexes))
+        return MeasureFeatures._ensure_array(scipy.ndimage.center_of_mass(array, objmap, index=indexes))
 
     @staticmethod
     @catch_warnings_decorator
@@ -123,7 +162,7 @@ class MeasureFeatures(BaseOperation, ABC):
             indexes = indexes[indexes != 0]
         else:
             indexes = None
-        return MeasureFeatures._repair_scipy_results(scipy.ndimage.maximum(array, objmap, index=indexes))
+        return MeasureFeatures._ensure_array(scipy.ndimage.maximum(array, objmap, index=indexes))
 
     @staticmethod
     @catch_warnings_decorator
@@ -143,7 +182,7 @@ class MeasureFeatures(BaseOperation, ABC):
             indexes = indexes[indexes != 0]
         else:
             indexes = None
-        return MeasureFeatures._repair_scipy_results(scipy.ndimage.mean(array, objmap, index=indexes))
+        return MeasureFeatures._ensure_array(scipy.ndimage.mean(array, objmap, index=indexes))
 
     @staticmethod
     @catch_warnings_decorator
@@ -163,7 +202,7 @@ class MeasureFeatures(BaseOperation, ABC):
             indexes = indexes[indexes != 0]
         else:
             indexes = None
-        return MeasureFeatures._repair_scipy_results(scipy.ndimage.median(array, objmap, index=indexes))
+        return MeasureFeatures._ensure_array(scipy.ndimage.median(array, objmap, index=indexes))
 
     @staticmethod
     @catch_warnings_decorator
@@ -183,7 +222,7 @@ class MeasureFeatures(BaseOperation, ABC):
             indexes = indexes[indexes != 0]
         else:
             indexes = None
-        return MeasureFeatures._repair_scipy_results(scipy.ndimage.minimum(array, objmap, index=indexes))
+        return MeasureFeatures._ensure_array(scipy.ndimage.minimum(array, objmap, index=indexes))
 
     @staticmethod
     @catch_warnings_decorator
@@ -203,7 +242,7 @@ class MeasureFeatures(BaseOperation, ABC):
             indexes = indexes[indexes != 0]
         else:
             indexes = None
-        return MeasureFeatures._repair_scipy_results(scipy.ndimage.standard_deviation(array, objmap, index=indexes))
+        return MeasureFeatures._ensure_array(scipy.ndimage.standard_deviation(array, objmap, index=indexes))
 
     @staticmethod
     @catch_warnings_decorator
@@ -223,7 +262,7 @@ class MeasureFeatures(BaseOperation, ABC):
             indexes = indexes[indexes != 0]
         else:
             indexes = None
-        return MeasureFeatures._repair_scipy_results(scipy.ndimage.sum_labels(array, objmap, index=indexes))
+        return MeasureFeatures._ensure_array(scipy.ndimage.sum_labels(array, objmap, index=indexes))
 
     @staticmethod
     @catch_warnings_decorator
@@ -243,7 +282,7 @@ class MeasureFeatures(BaseOperation, ABC):
             indexes = indexes[indexes != 0]
         else:
             indexes = None
-        return MeasureFeatures._repair_scipy_results(scipy.ndimage.variance(array, objmap, index=indexes))
+        return MeasureFeatures._ensure_array(scipy.ndimage.variance(array, objmap, index=indexes))
 
     @staticmethod
     @catch_warnings_decorator
@@ -270,7 +309,7 @@ class MeasureFeatures(BaseOperation, ABC):
             # For the case when objmap is None, we can't calculate the coefficient of variation
             # because we need the counts of each label
             result = np.nan
-        return MeasureFeatures._repair_scipy_results(result)
+        return MeasureFeatures._ensure_array(result)
 
     @staticmethod
     def _calculate_extrema(array: np.ndarray, objmap: ArrayLike = None):
@@ -279,13 +318,13 @@ class MeasureFeatures(BaseOperation, ABC):
             indexes = indexes[indexes != 0]
         else:
             indexes = None
-        min_extrema, max_extrema, min_pos, max_pos = MeasureFeatures._repair_scipy_results(
+        min_extrema, max_extrema, min_pos, max_pos = MeasureFeatures._ensure_array(
                 scipy.ndimage.extrema(array, objmap, index=indexes))
         return (
-            MeasureFeatures._repair_scipy_results(min_extrema),
-            MeasureFeatures._repair_scipy_results(max_extrema),
-            MeasureFeatures._repair_scipy_results(min_pos),
-            MeasureFeatures._repair_scipy_results(max_pos)
+            MeasureFeatures._ensure_array(min_extrema),
+            MeasureFeatures._ensure_array(max_extrema),
+            MeasureFeatures._ensure_array(min_pos),
+            MeasureFeatures._ensure_array(max_pos)
         )
 
     @staticmethod
@@ -360,7 +399,7 @@ class MeasureFeatures(BaseOperation, ABC):
         else:
             index = None
 
-        return MeasureFeatures._repair_scipy_results(
+        return MeasureFeatures._ensure_array(
                 scipy.ndimage.labeled_comprehension(input=array, labels=objmap, index=index,
                                                     func=func, out_dtype=out_dtype,
                                                     pass_positions=pass_positions,
@@ -374,7 +413,7 @@ class MeasureFeatures(BaseOperation, ABC):
         q1 = MeasureFeatures._funcmap2objects(func=find_q1, out_dtype=array.dtype, array=array, objmap=objmap,
                                               default=np.nan,
                                               pass_positions=False)
-        return MeasureFeatures._repair_scipy_results(q1)
+        return MeasureFeatures._ensure_array(q1)
 
     @staticmethod
     @catch_warnings_decorator
@@ -383,13 +422,13 @@ class MeasureFeatures(BaseOperation, ABC):
         q3 = MeasureFeatures._funcmap2objects(func=find_q3, out_dtype=array.dtype, array=array, objmap=objmap,
                                               default=np.nan,
                                               pass_positions=False)
-        return MeasureFeatures._repair_scipy_results(q3)
+        return MeasureFeatures._ensure_array(q3)
 
     @staticmethod
     @catch_warnings_decorator
     def _calculate_iqr(array, objmap=None, method: str = 'linear', nan_policy: str = 'omit'):
         find_iqr = partial(scipy.stats.iqr, axis=None, nan_policy=nan_policy, interpolation=method)
-        return MeasureFeatures._repair_scipy_results(
+        return MeasureFeatures._ensure_array(
                 MeasureFeatures._funcmap2objects(
                         func=find_iqr, out_dtype=array.dtype,
                         array=array, objmap=objmap,

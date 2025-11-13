@@ -8,6 +8,3 @@ Welcome to the Phenotypic tutorial section! These tutorials provide in-depth exa
 .. toctree::
    :maxdepth: 2
    :caption: Tutorial Topics
-
-   tutorial
-

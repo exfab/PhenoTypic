@@ -17,7 +17,7 @@ class ImagePipeline(ImagePipelineBatch):
 
     .. code-block:: python
        >>> import phenotypic as pt
-       >>> from phenotypic.detection import OtsuDetector()
+       >>> from phenotypic.detect import OtsuDetector()
        >>> from phenotypic.measure import MeasureShape, MeasureIntensity()
        >>>
        >>> pipe = pt.ImagePipeline(ops=[OtsuDetector()], meas=[MeasureShape(), MeasureIntensity()])

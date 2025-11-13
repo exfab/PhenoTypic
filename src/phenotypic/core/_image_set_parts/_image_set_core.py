@@ -75,7 +75,6 @@ class ImageSetCore:
             ValueError: If `src` is not a list of `Image` objects or a valid path.
         """
         self.default_mode = default_mode
-        import phenotypic
 
         self.name = name
 
@@ -133,7 +132,8 @@ class ImageSetCore:
             data_grp = self.hdf_.get_data_group(writer)
             for image in images:
                 image._save_image2hdfgroup(grp=data_grp, compression="gzip", compression_opts=4)
-        return None
+
+        return
 
     def import_dir(self, dirpath: Path) -> None:
         dirpath = Path(dirpath)
@@ -147,7 +147,8 @@ class ImageSetCore:
             for fpath in filepaths:
                 image = template.imread(fpath, **self.imparams)
                 image._save_image2hdfgroup(grp=data_group, compression="gzip", compression_opts=4)
-        return None
+
+        return
 
     @staticmethod
     def _cleanup_outpath(path: Path) -> None:
@@ -181,7 +182,7 @@ class ImageSetCore:
         Raises:
             ValueError: If the `overwrite` flag is set to False and the image name is already in the ImageSet
         """
-        with self.hdf_.writer() as writer:
+        with self.hdf_.strict_writer() as writer:
             set_group = self.hdf_.get_data_group(writer)
             self._add_image2group(group=set_group, image=image, overwrite=overwrite if overwrite else self._overwrite)
 

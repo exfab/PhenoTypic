@@ -5,7 +5,7 @@ from phenotypic import ImagePipeline
 from phenotypic.enhance import CLAHE, GaussianBlur, MedianEnhancer, ContrastStretching
 from phenotypic.detect import OtsuDetector
 from phenotypic.grid import GridApply, MinResidualErrorReducer, GridAlignmentOutlierRemover
-from phenotypic.objedit import BorderObjectRemover, SmallObjectRemover, LowCircularityRemover
+from phenotypic.refine import BorderObjectRemover, SmallObjectRemover, LowCircularityRemover
 from phenotypic.correction import GridAligner
 
 from phenotypic.measure import MeasureColor, MeasureShape, MeasureIntensity, MeasureTexture
@@ -139,55 +139,57 @@ class GridSectionPipeline(PrefabPipeline):
             benchmark (bool): Indicates whether benchmarking is enabled across the pipeline.
         """
         ops = {
-            'blur': GaussianBlur(sigma=gaussian_sigma, mode=gaussian_mode, truncate=gaussian_truncate),
-            'clahe': CLAHE(kernel_size=clahe_kernel_size, clip_limit=clahe_clip_limit),
-            'median filter': MedianEnhancer(mode=median_mode, cval=median_cval),
-            'detection': OtsuDetector(ignore_zeros=otsu_ignore_zeros, ignore_borders=otsu_ignore_borders),
-            'border_removal': BorderObjectRemover(border_size=border_remover_size),
-            'low circularity remover': LowCircularityRemover(cutoff=circularity_cutoff),
-            'small object remover': SmallObjectRemover(min_size=small_object_min_size),
+            'blur'                            : GaussianBlur(sigma=gaussian_sigma, mode=gaussian_mode,
+                                                             truncate=gaussian_truncate),
+            'clahe'                           : CLAHE(kernel_size=clahe_kernel_size, clip_limit=clahe_clip_limit),
+            'median filter'                   : MedianEnhancer(mode=median_mode, cval=median_cval),
+            'detection'                       : OtsuDetector(ignore_zeros=otsu_ignore_zeros,
+                                                             ignore_borders=otsu_ignore_borders),
+            'border_removal'                  : BorderObjectRemover(border_size=border_remover_size),
+            'low circularity remover'         : LowCircularityRemover(cutoff=circularity_cutoff),
+            'small object remover'            : SmallObjectRemover(min_size=small_object_min_size),
             'Reduce by section residual error': MinResidualErrorReducer(),
-            'outlier removal': GridAlignmentOutlierRemover(
-                axis=outlier_axis,
-                stddev_multiplier=outlier_stddev_multiplier,
-                max_coeff_variance=outlier_max_coeff_variance
+            'outlier removal'                 : GridAlignmentOutlierRemover(
+                    axis=outlier_axis,
+                    stddev_multiplier=outlier_stddev_multiplier,
+                    max_coeff_variance=outlier_max_coeff_variance
             ),
-            'align': GridAligner(axis=aligner_axis, mode=aligner_mode),
-            'section-level detect': GridApply(
-                ImagePipeline({
-                    'blur': GaussianBlur(
-                        sigma=section_blur_sigma,
-                        mode=section_blur_mode,
-                        truncate=section_blur_truncate
-                    ),
-                    'median filter': MedianEnhancer(mode=section_median_mode, cval=section_median_cval),
-                    'contrast stretching': ContrastStretching(
-                        lower_percentile=section_contrast_lower_percentile,
-                        upper_percentile=section_contrast_upper_percentile
-                    ),
-                    'detection': OtsuDetector(
-                        ignore_zeros=section_otsu_ignore_zeros,
-                        ignore_borders=section_otsu_ignore_borders
-                    ),
-                }),
-                reset_enh_matrix=grid_apply_reset_enh_matrix
+            'align'                           : GridAligner(axis=aligner_axis, mode=aligner_mode),
+            'section-level detect'            : GridApply(
+                    ImagePipeline({
+                        'blur'               : GaussianBlur(
+                                sigma=section_blur_sigma,
+                                mode=section_blur_mode,
+                                truncate=section_blur_truncate
+                        ),
+                        'median filter'      : MedianEnhancer(mode=section_median_mode, cval=section_median_cval),
+                        'contrast stretching': ContrastStretching(
+                                lower_percentile=section_contrast_lower_percentile,
+                                upper_percentile=section_contrast_upper_percentile
+                        ),
+                        'detection'          : OtsuDetector(
+                                ignore_zeros=section_otsu_ignore_zeros,
+                                ignore_borders=section_otsu_ignore_borders
+                        ),
+                    }),
+                    reset_enh_matrix=grid_apply_reset_enh_matrix
             ),
-            'small object remover 2': SmallObjectRemover(min_size=small_object_min_size_2),
-            'grid_reduction': MinResidualErrorReducer()
+            'small object remover 2'          : SmallObjectRemover(min_size=small_object_min_size_2),
+            'grid_reduction'                  : MinResidualErrorReducer()
         }
         meas = {
-            'MeasureColor': MeasureColor(
-                white_chroma_max=color_white_chroma_max,
-                chroma_min=color_chroma_min,
-                include_XYZ=color_include_XYZ
+            'MeasureColor'    : MeasureColor(
+                    white_chroma_max=color_white_chroma_max,
+                    chroma_min=color_chroma_min,
+                    include_XYZ=color_include_XYZ
             ),
-            'MeasureShape': MeasureShape(),
+            'MeasureShape'    : MeasureShape(),
             'MeasureIntensity': MeasureIntensity(),
-            'MeasureTexture': MeasureTexture(
-                scale=texture_scale,
-                quant_lvl=texture_quant_lvl,
-                enhance=texture_enhance,
-                warn=texture_warn
+            'MeasureTexture'  : MeasureTexture(
+                    scale=texture_scale,
+                    quant_lvl=texture_quant_lvl,
+                    enhance=texture_enhance,
+                    warn=texture_warn
             )
         }
         super().__init__(ops=ops, meas=meas, benchmark=benchmark, **kwargs)

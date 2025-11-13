@@ -26,7 +26,7 @@ This directory contains example scripts demonstrating usage of the PhenoTypic li
 
     .. container:: sphx-glr-download sphx-glr-download-python
 
-      :download:`Download all examples in Python source code: auto_examples_python.zip </auto_examples/auto_examples_python.zip>`
+      :download:`Download all examples in Python source code: auto_examples_python.zip </user_guide/auto_examples/auto_examples_python.zip>`
 
 
 .. only:: html

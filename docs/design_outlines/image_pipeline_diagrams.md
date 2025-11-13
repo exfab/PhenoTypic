@@ -89,7 +89,7 @@ classDiagram
     class MeasureFeatures {
         +measure(image): DataFrame
         +_operate(image): DataFrame
-        +_repair_scipy_results(scipy_output): np.array
+        +_ensure_array(scipy_output): np.array
         +_calculate_center_of_mass(array, objmap): np.ndarray
         +_calculate_max(array, objmap): np.ndarray
         +_calculate_mean(array, objmap): np.ndarray

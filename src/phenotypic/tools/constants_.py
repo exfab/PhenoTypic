@@ -174,7 +174,7 @@ class METADATA(MeasurementInfo):
 
 class IMAGE_TYPES(Enum):
     """The string labels for different types of images generated when accessing subimages of a parent image."""
-    BASE = 'Base'
+    BASE = "Image"
     CROP = 'Crop'
     OBJECT = 'Object'
     GRID = 'GridImage'

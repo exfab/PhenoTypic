@@ -60,10 +60,8 @@ class MetadataAccessor:
             raise PermissionError('Private metadata cannot be modified.')
         elif key in self._protected_metadata:
             self._protected_metadata[key] = value
-        elif key in self._public_metadata:
-            self._public_metadata[key] = value
         else:
-            raise KeyError
+            self._public_metadata[key] = value
 
     def __delitem__(self, key):
         if key in self._private_metadata or key in self._protected_metadata:
@@ -88,6 +86,9 @@ class MetadataAccessor:
             return default
 
     def insert_metadata(self, df: pd.DataFrame, inplace=False, allow_duplicates=False) -> pd.DataFrame:
+        """
+
+        """
         working_df = df if inplace else df.copy()
         for key, value in self._public_protected_metadata.items():
             if key == METADATA.IMAGE_NAME:

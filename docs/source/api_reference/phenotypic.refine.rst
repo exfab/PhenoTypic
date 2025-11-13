@@ -1,7 +1,7 @@
-phenotypic.prefab package
+phenotypic.refine package
 =========================
 
-.. automodule:: phenotypic.prefab
+.. automodule:: phenotypic.refine
    :members:
    :undoc-members:
    :show-inheritance:

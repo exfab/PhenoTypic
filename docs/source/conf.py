@@ -117,7 +117,7 @@ myst_nb_output_stderr = "remove"
 # sphinx-gallery configuration
 sphinx_gallery_conf = {
     'examples_dirs'         : '../../examples',  # path to your example scripts
-    'gallery_dirs'          : 'auto_examples',  # path to where to save gallery generated output
+    'gallery_dirs'          : 'user_guide/auto_examples',  # path to where to save gallery generated output
     'filename_pattern'      : '/example_',  # pattern to match example files
     'ignore_pattern'        : '__init__.py',  # pattern to ignore
     'plot_gallery'          : 'True',  # generate plots
@@ -189,7 +189,7 @@ python_type_aliases = {
 }
 
 intersphinx_mapping = {
-    "python"    : ("https://docs.python.org/3", {}),
-    "colour"    : ("https://colour.readthedocs.io/en/latest/", {}),
-    "matplotlib": ("https://matplotlib.org/stable/api/index.html", {}),
+    "python"    : ("https://docs.python.org/3", None),
+    "colour"    : ("https://colour.readthedocs.io/en/latest/", None),
+    "matplotlib": ("https://matplotlib.org/stable/", None),
 }

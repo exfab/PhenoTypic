@@ -60,3 +60,73 @@ class Image(ImageIOHandler):
                 illuminant=illuminant,
                 observer=observer,
         )
+    
+    def interactive_measure(
+        self,
+        port: int = 8050,
+        height: int = 800,
+        mode: Literal['inline', 'external', 'jupyterlab'] = 'external',
+        detector_type: str = 'otsu'
+    ) -> None:
+        """Launch an interactive Dash application for measuring object areas.
+        
+        This method creates and runs an interactive web-based tool that displays
+        the image with detected objects and provides:
+        - Visual overlay of detected objects
+        - Click-to-select individual objects
+        - Real-time area measurements
+        - Adjustable overlay transparency
+        - Export measurements to CSV
+        
+        The tool is particularly useful for:
+        - Validating detection results
+        - Measuring colony areas in microbiology images
+        - Interactive quality control of image analysis
+        - Parameter refinement for detection algorithms
+        
+        Note:
+            Requires optional dependencies: dash and jupyter-dash.
+            Install with: pip install phenotypic[interactive]
+        
+        Args:
+            port: Port number for the Dash server. Defaults to 8050.
+            height: Height of the image display in pixels. Defaults to 800.
+            mode: Display mode - 'inline' (embedded in notebook), 'external' 
+                (opens in browser), or 'jupyterlab' (for JupyterLab). 
+                Defaults to 'external'.
+            detector_type: Type of detector for parameter tuning reference.
+                Currently informational only. Defaults to 'otsu'.
+        
+        Raises:
+            ImportError: If dash or jupyter-dash are not installed.
+            ValueError: If the image has no grayscale data.
+        
+        Example:
+            >>> import phenotypic as pht
+            >>> from phenotypic.detect import OtsuDetector
+            >>> 
+            >>> # Load and process image
+            >>> image = pht.Image.imread('colony_plate.jpg')
+            >>> detector = OtsuDetector()
+            >>> detector.apply(image)
+            >>> 
+            >>> # Launch interactive measurement tool
+            >>> image.interactive_measure(mode='external')
+            >>> 
+            >>> # In Jupyter, use inline mode
+            >>> image.interactive_measure(mode='inline', height=600)
+        
+        See Also:
+            :class:`phenotypic.tools.InteractiveMeasurementAnalyzer`: The underlying analyzer class.
+            :class:`phenotypic.measure.MeasureSize`: Non-interactive area measurement.
+        """
+        from phenotypic.tools import InteractiveMeasurementAnalyzer
+        
+        analyzer = InteractiveMeasurementAnalyzer(
+            image=self,
+            port=port,
+            height=height,
+            mode=mode,
+            detector_type=detector_type
+        )
+        analyzer.run()

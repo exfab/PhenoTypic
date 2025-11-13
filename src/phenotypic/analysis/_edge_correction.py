@@ -101,7 +101,7 @@ class EdgeCorrector(SetAnalyzer):
         self.ncols = ncols
         self.top_n = top_n
         self.connectivity = connectivity
-        self.measurement_col = measurement_col
+        self.on = measurement_col
         self._original_data: pd.DataFrame = pd.DataFrame()
 
     @staticmethod
@@ -271,7 +271,7 @@ class EdgeCorrector(SetAnalyzer):
         Args:
             data: DataFrame containing grid section numbers (GRID.SECTION_NUM) and
                 measurement data. Must include all columns specified in self.groupby
-                and self.measurement_col.
+                and self.on.
         
         Returns:
             DataFrame with corrected measurement values. Original structure is preserved
@@ -321,11 +321,11 @@ class EdgeCorrector(SetAnalyzer):
             raise ValueError("Input data cannot be empty")
 
         # Store original data for comparison
-        self._original_data = data.copy()
+        self._original_data = data
 
         # Check required columns
         section_col = str(GRID.SECTION_NUM)
-        required_cols = set(self.groupby + [section_col, self.measurement_col])
+        required_cols = set(self.groupby + [section_col, self.on])
         missing_cols = required_cols - set(data.columns)
 
         if missing_cols:
@@ -337,7 +337,7 @@ class EdgeCorrector(SetAnalyzer):
             'ncols'          : self.ncols,
             'top_n'          : self.top_n,
             'connectivity'   : self.connectivity,
-            'measurement_col': self.measurement_col,
+            'measurement_col': self.on,
             'section_col'    : section_col
         }
 
@@ -381,9 +381,9 @@ class EdgeCorrector(SetAnalyzer):
         
         Examples:
             >>> corrector = EdgeCorrector(
-            ...     on='Area',
+            ...     on='Size_Area',
             ...     groupby=['ImageName'],
-            ...     measurement_col='Area'
+            ...     measurement_col='Size_Area'
             ... )
             >>> corrector.analyze(data)
             >>> corrector.show()  # Display comparison plots
@@ -402,8 +402,7 @@ class EdgeCorrector(SetAnalyzer):
             raise RuntimeError("No data to display. Call analyze() first.")
 
         # Get measurement column
-        meas_col = self.measurement_col
-        section_col = str(GRID.SECTION_NUM)
+        meas_col = self.on
 
         # Identify which rows were corrected
         original_values = self._original_data[meas_col]

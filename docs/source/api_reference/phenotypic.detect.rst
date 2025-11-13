@@ -1,5 +1,5 @@
-phenotypic.detect
-=================
+phenotypic.detect package
+=========================
 
 .. automodule:: phenotypic.detect
    :members:

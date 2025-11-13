@@ -289,7 +289,7 @@ class GridAccessor(ImageAccessorBase):
         """Returns the exact slices of a grid section based on its flattened index
 
         Note:
-            - Can crop objedit in the image
+            - Can crop refineobjects in the image
 
         Return:
             (int, int, int, int): ((MinRow, MinCol), (MaxRow, MaxCol)) The slices to extract the grid section from the image.

@@ -3,9 +3,9 @@ from __future__ import annotations
 import uuid
 import warnings
 from copy import deepcopy
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from types import SimpleNamespace
-from typing import Literal, TYPE_CHECKING
+from typing import Any, Literal, TYPE_CHECKING, Union
 
 import numpy as np
 from scipy.sparse import csc_matrix
@@ -30,6 +30,13 @@ class ImageData:
         self.gray = np.empty((0, 2), dtype=np.float32)
         self.enh_gray = np.empty((0, 2), dtype=np.float32)
         self.sparse_object_map = csc_matrix((0, 0), dtype=np.uint16)
+
+
+@dataclass
+class Metadata:
+    private: dict[str, Any] = field(default_factory=dict)
+    protected: dict[str, Union[int, str, float, bool]] = field(default_factory=dict)
+    public: dict[str, Union[int, str, float, bool]] = field(default_factory=dict)
 
 
 class ImageDataManager:
@@ -69,13 +76,13 @@ class ImageDataManager:
         self._data = ImageData()
 
         # Initialize metadata structure
-        self._metadata = SimpleNamespace(
+        self._metadata = Metadata(
                 private={
                     METADATA.UUID: uuid.uuid4()
                 },
                 protected={
                     METADATA.IMAGE_NAME       : name,
-                    METADATA.PARENT_IMAGE_NAME: b'',
+                    METADATA.PARENT_IMAGE_NAME: b"",
                     METADATA.IMAGE_TYPE       : IMAGE_TYPES.BASE.value,
                     METADATA.BIT_DEPTH        : bit_depth,
                 },

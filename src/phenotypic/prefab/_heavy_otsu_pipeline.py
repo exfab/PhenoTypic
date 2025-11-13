@@ -7,14 +7,14 @@ from phenotypic.enhance import CLAHE, GaussianBlur, MedianEnhancer, ContrastStre
 from phenotypic.detect import OtsuDetector, WatershedDetector
 from phenotypic.correction import GridAligner
 from phenotypic.grid import (MinResidualErrorReducer, GridOversizedObjectRemover)
-from phenotypic.objedit import BorderObjectRemover, SmallObjectRemover, LowCircularityRemover
-from phenotypic.objedit import MaskFill, MaskOpener
+from phenotypic.refine import BorderObjectRemover, SmallObjectRemover, LowCircularityRemover
+from phenotypic.refine import MaskFill, MaskOpener
 from phenotypic.measure import MeasureIntensity, MeasureShape, MeasureTexture, MeasureColor
 
 
-class AdvOtsuPipeline(PrefabPipeline):
+class HeavyOtsuPipeline(PrefabPipeline):
     """
-    The AdvWatershedPipeline class is a composite image processing pipeline that combines multiple layers of preprocessing, detection, and filtering steps
+    The HeavyWatershedPipeline class is a composite image processing pipeline that combines multiple layers of preprocessing, detection, and filtering steps
     that can will select the right colonies in most cases. This comes at the cost of being a more computationally expensive pipeline.
 
     Pipeline Steps:
@@ -106,4 +106,4 @@ class AdvOtsuPipeline(PrefabPipeline):
         super().__init__(benchmark=benchmark, verbose=verbose)
 
 
-__all__ = "AdvOtsuPipeline"
+__all__ = "HeavyOtsuPipeline"

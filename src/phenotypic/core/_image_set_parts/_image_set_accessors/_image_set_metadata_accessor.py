@@ -63,7 +63,7 @@ class ImageSetMetadataAccessor:
         # Second pass: build the DataFrame
         metadata_records = []
 
-        with self._image_set.hdf_.writer() as writer:
+        with self._image_set.hdf_.strict_writer() as writer:
             data_grp = self._image_set.hdf_.get_data_group(writer)
 
             for image_name in image_names:
@@ -99,7 +99,7 @@ class ImageSetMetadataAccessor:
         """
         all_keys = set()
 
-        with self._image_set.hdf_.writer() as writer:
+        with self._image_set.hdf_.strict_writer() as writer:
             data_grp = self._image_set.hdf_.get_data_group(writer)
 
             for image_name in image_names:
@@ -392,7 +392,7 @@ class ImageSetMetadataAccessor:
         # Determine if function expects name parameter
         expects_name = len(param_names) >= 2 and 'name' in param_names
 
-        with self._image_set.hdf_.writer() as writer:
+        with self._image_set.hdf_.strict_writer() as writer:
             data_grp = self._image_set.hdf_.get_data_group(writer)
 
             for image_name in image_names:
@@ -435,7 +435,7 @@ class ImageSetMetadataAccessor:
         """
         updates = {}
 
-        with self._image_set.hdf_.writer() as writer:
+        with self._image_set.hdf_.strict_writer() as writer:
             data_grp = self._image_set.hdf_.get_data_group(writer)
             for image_name in image_names:
                 try:
@@ -487,7 +487,7 @@ class ImageSetMetadataAccessor:
         # Only process images that exist in both image_names and series index
         available_images = [name for name in image_names if name in series.index]
 
-        with self._image_set.hdf_.writer() as writer:
+        with self._image_set.hdf_.strict_writer() as writer:
             data_grp = self._image_set.hdf_.get_data_group(writer)
 
             for image_name in available_images:
@@ -598,7 +598,7 @@ class ImageSetMetadataAccessor:
             return
 
         try:
-            with self._image_set.hdf_.writer() as writer:
+            with self._image_set.hdf_.strict_writer() as writer:
                 images_group = self._image_set.hdf_.get_data_group(writer)
 
                 for image_name, metadata_dict in updates.items():

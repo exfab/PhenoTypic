@@ -8,7 +8,7 @@ Available enhancers:
     - MedianEnhancer: Uses median filtering for noise reduction
     - RankMedianEnhancer: Applies rank-based median filtering for enhanced noise removal
     - RollingBallEnhancer: Implements rolling ball algorithm for background subtraction
-    - GaussianRemoveBG: Uses Gaussian blur for background estimation and subtraction
+    - GaussianSubtract: Uses Gaussian blur for background estimation and subtraction
     - WhiteTophatEnhancer: Performs white tophat transformation for feature extraction
     - LaplaceEnhancer: Applies Laplacian operator for edge detection
     - ContrastStretching: Enhances image contrast through intensity stretching
@@ -22,7 +22,7 @@ from ._gaussian_preprocessor import GaussianBlur
 from ._median_enhancer import MedianEnhancer
 from ._rank_median_preprocessor import RankMedianEnhancer
 from ._rolling_ball_remove_bg import RollingBallRemoveBG
-from ._gaussian_remove_bg import GaussianRemoveBG
+from ._gaussian_subtract import GaussianSubtract
 from ._white_tophat_preprocessor import WhiteTophatEnhancer
 from ._laplace_preprocessor import LaplaceEnhancer
 from ._contrast_streching import ContrastStretching
@@ -34,7 +34,7 @@ __all__ = [
     "MedianEnhancer",
     "RankMedianEnhancer",
     "RollingBallRemoveBG",
-    "GaussianRemoveBG",
+    "GaussianSubtract",
     "WhiteTophatEnhancer",
     "LaplaceEnhancer",
     "ContrastStretching",

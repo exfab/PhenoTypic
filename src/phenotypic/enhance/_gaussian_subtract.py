@@ -10,7 +10,7 @@ from skimage.filters import gaussian
 from phenotypic.abc_ import ImageEnhancer
 
 
-class GaussianRemoveBG(ImageEnhancer):
+class GaussianSubtract(ImageEnhancer):
     """
     Provides methods for image enhance on the enhanced grayscale gray
     using Gaussian background subtraction.

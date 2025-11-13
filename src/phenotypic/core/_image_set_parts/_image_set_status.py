@@ -57,7 +57,7 @@ class ImageSetStatus(ImageSetCore):
             if isinstance(image_names, str):
                 image_names = [image_names]
 
-        with self.hdf_.writer() as handle:
+        with self.hdf_.strict_writer() as handle:
             for name in image_names:
                 status_group = self.hdf_.get_status_subgroup(handle=handle, image_name=name)
                 for stat in PIPE_STATUS:
