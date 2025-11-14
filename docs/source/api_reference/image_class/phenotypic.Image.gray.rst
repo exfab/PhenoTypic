@@ -12,16 +12,16 @@ phenotypic.Image.gray
 
 
 
-.. currentmodule:: phenotypic.core.accessors
+.. currentmodule:: phenotypic.core._image_parts.accessors
 
-.. class-members:: phenotypic.core.accessors.ImageMatrix
+.. class-members:: phenotypic.core._image_parts.accessors.Grayscale
    :attributes:
    :properties:
    :methods:
 
-.. rubric:: ImageMatrix API Reference
+.. rubric:: Grayscale API Reference
 
-.. autoclass:: ImageMatrix
+.. autoclass:: Grayscale
    :members:
    :show-inheritance:
    :special-members: __getitem__, __setitem__, __len__, __call__

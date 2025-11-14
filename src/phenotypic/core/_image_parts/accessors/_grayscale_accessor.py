@@ -6,7 +6,7 @@ from phenotypic.core._image_parts.accessor_abstracts import SingleChannelAccesso
 from phenotypic.tools.exceptions_ import ArrayKeyValueShapeMismatchError, EmptyImageError
 
 
-class ImageMatrix(SingleChannelAccessor):
+class Grayscale(SingleChannelAccessor):
     """An accessor for managing and visualizing image gray data. This is the greyscale representation converted using weighted luminance
 
     This class provides a set of tools to access image data, analyze it through

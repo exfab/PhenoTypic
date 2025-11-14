@@ -81,7 +81,7 @@ class TestImageArrayAccessor:
 
 
 class TestImageMatrixAccessor:
-    """Tests for ImageMatrix accessor (grayscale representation)."""
+    """Tests for Grayscale accessor (grayscale representation)."""
 
     def test_numpy_sum(self, sample_rgb_image):
         """Test np.sum on gray accessor."""
@@ -105,7 +105,7 @@ class TestImageMatrixAccessor:
 
 
 class TestEnhancedMatrixAccessor:
-    """Tests for ImageEnhancedMatrix accessor."""
+    """Tests for EnhancedGrayscale accessor."""
 
     def test_numpy_sum(self, sample_rgb_image):
         """Test np.sum on enhanced gray accessor."""

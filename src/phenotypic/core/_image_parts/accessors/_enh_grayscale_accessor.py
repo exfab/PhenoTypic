@@ -9,10 +9,11 @@ from phenotypic.core._image_parts.accessor_abstracts import SingleChannelAccesso
 from phenotypic.tools.exceptions_ import ArrayKeyValueShapeMismatchError, EmptyImageError
 
 
-class ImageEnhancedMatrix(SingleChannelAccessor):
-    """An accessor class to an image's enhanced gray which is a copy of the original image gray that is preprocessed for enhanced detection.
+class EnhancedGrayscale(SingleChannelAccessor):
+    """The enhanced grayscale is a copy of the grayscale matrix used for enhancement that don't maintain data integrity
+    and detection.
 
-    Provides functionalities to manipulate and visualize the image enhanced gray. This includes
+    Provides functionalities to manipulate and visualize the enhanced grayscale image. This includes
     retrieving and setting data, resetting the gray, visualizing histograms, viewing the gray
     with overlays, and accessing gray properties. The class relies on a handler for gray operations
     and object mapping.
@@ -29,28 +30,23 @@ class ImageEnhancedMatrix(SingleChannelAccessor):
 
     def __setitem__(self, key, value):
         """
-        Sets a other_image in the detection gray of the parent image for the provided key.
-
-        The method updates or sets a other_image in the detection gray of the parent image
-        (`image._det_matrix`) at the specified key. It ensures that if the other_image
-        is not of type `int`, `float`, or `bool`, its shape matches the shape of the
-        existing other_image at the specified key. If the shape does not match,
-        `ArrayKeyValueShapeMismatchError` is raised. When the other_image is successfully set,
-        the object map (`objmap`) of the parent image is reset.
-
-        Notes:
-            Objects are reset after setting a other_image in the detection gray
+        Sets an item in the underlying dataset with the specified key and value. The method validates
+        input types and ensures compliance with specified constraints, raising appropriate errors
+        when conditions are not met. Specifically, scalar values or numpy arrays are allowed. If
+        a numpy array is used, its shape must match the predefined dimensions associated with the
+        given key.
 
         Args:
-            key: The key in the detection gray where the other_image will be set.
-            value: The other_image to be assigned to the detection gray. Must be of type
-                int, float, or bool, or must have a shape matching the existing array
-                in the detection gray for the provided key.
+            key: The key representing the identifier in the dataset. It is used to locate the entry to be
+                updated. Must be compatible with self._root_image._data.enh_gray data structure.
+            value: The value to be assigned to the specified key. Can be a scalar (int or float) or a
+                numpy array. If scalar, it directly overwrites the entry. If it's a numpy array, its
+                shape must match the predefined dimensions associated with the given key.
 
         Raises:
-            ArrayKeyValueShapeMismatchError: If the other_image is an array and its shape
-                does not match the shape of the existing other_image in `image._det_matrix`
-                for the specified key.
+            ArrayKeyValueShapeMismatchError: If the provided value is a numpy array and its shape
+                does not match the shape associated with the specified key.
+            TypeError: If the provided value is neither a scalar (int or float) nor a numpy array.
         """
         if isinstance(value, np.ndarray):
             if self._root_image._data.enh_gray[key].shape != value.shape: raise ArrayKeyValueShapeMismatchError

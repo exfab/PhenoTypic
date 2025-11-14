@@ -25,8 +25,8 @@ All accessors now support the numpy array interface:
 #### Regular Accessors (via `ImageAccessorBase`)
 
 - **ImageRGB** (`_array_accessor.py`) - RGB/multichannel images
-- **ImageMatrix** (`_matrix_accessor.py`) - Grayscale representation
-- **ImageEnhancedMatrix** (`_enh_matrix_accessor.py`) - Enhanced gray
+- **Grayscale** (`_matrix_accessor.py`) - Grayscale representation
+- **EnhancedGrayscale** (`_enh_matrix_accessor.py`) - Enhanced gray
 - **HsvAccessor** (`_hsv_accessor.py`) - HSV color space
 - **GridAccessor** (`_grid_accessor.py`) - Grid-based data
 

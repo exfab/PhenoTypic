@@ -7,7 +7,10 @@ This section provides practical examples and tutorials for Phenotypic.
    :maxdepth: 2
    :caption: Example Categories
 
+   basic_examples
+   advanced_examples
    use_cases
+   ../interactive_measurement
    
 Gallery Examples
 ----------------
@@ -24,13 +27,7 @@ Gallery Examples
 Jupyter Notebook Examples
 -------------------------
 
-You can also view and download complete Jupyter notebooks:
-
-.. toctree::
-   :maxdepth: 1
-   :caption: Notebooks
-
-   notebooks/basic_image_processing
+Complete Jupyter notebooks are available in the repository's examples directory.
 
 **Advanced Examples** (Coming Soon)
    More complex examples showcasing advanced features.

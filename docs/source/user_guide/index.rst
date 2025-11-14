@@ -11,6 +11,8 @@ This section contains comprehensive guides for using Phenotypic. It includes ins
    :caption: User Guide Topics
 
    ../installation
+   getting_started
+   tutorial/index
    examples/index
 
 Placeholder Pages

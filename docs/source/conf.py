@@ -190,6 +190,13 @@ python_type_aliases = {
 
 intersphinx_mapping = {
     "python"    : ("https://docs.python.org/3", None),
+    "numpy"     : ("https://numpy.org/doc/stable/", None),
+    "pandas"    : ("https://pandas.pydata.org/docs/", None),
+    "scipy"     : ("https://docs.scipy.org/doc/scipy/", None),
+    "sklearn"   : ("https://scikit-learn.org/stable/", None),
+    "skimage"   : ("https://scikit-image.org/docs/stable/", None),
+    "h5py"      : ("https://docs.h5py.org/en/stable/", None),
+    "plotly"    : ("https://plotly.com/python-api-reference/", None),
     "colour"    : ("https://colour.readthedocs.io/en/latest/", None),
     "matplotlib": ("https://matplotlib.org/stable/", None),
 }

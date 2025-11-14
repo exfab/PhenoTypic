@@ -14,7 +14,7 @@ Phenotypic can be installed using pip:
 
    pip install phenotypic
 
-For more detailed installation instructions, see the :doc:`installation` page.
+For more detailed installation instructions, see the :doc:`../installation` page.
 
 Quick Start Example
 -------------------
@@ -48,7 +48,7 @@ Phenotypic is built around a few key concepts:
 Next Steps
 ----------
 
-- Explore the :doc:`user_guide/index` for more detailed information
+- Explore the :doc:`index` for more detailed information
 - Check out the :doc:`tutorial/index` for step-by-step guides
 - Browse the :doc:`examples/index` for practical applications
-- Refer to the :doc:`api_reference/index` for detailed API documentation
+- Refer to the :doc:`../api_reference/index` for detailed API documentation

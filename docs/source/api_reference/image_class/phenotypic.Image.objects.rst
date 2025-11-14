@@ -12,9 +12,9 @@ phenotypic.Image.objects
 
 
 
-.. currentmodule:: phenotypic.core.accessors
+.. currentmodule:: phenotypic.core._image_parts.accessors
 
-.. class-members:: phenotypic.core.accessors.ObjectsAccessor
+.. class-members:: phenotypic.core._image_parts.accessors.ObjectsAccessor
    :attributes:
    :properties:
    :methods:

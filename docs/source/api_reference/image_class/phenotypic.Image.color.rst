@@ -1,11 +1,11 @@
 ﻿
 
-phenotypic.GridImage.grid
-=========================
+phenotypic.Image.color
+======================
 
 .. currentmodule:: phenotypic
 
-.. autoproperty:: GridImage.grid
+.. autoproperty:: Image.color
 
 
 
@@ -14,14 +14,14 @@ phenotypic.GridImage.grid
 
 .. currentmodule:: phenotypic.core._image_parts.accessors
 
-.. class-members:: phenotypic.core._image_parts.accessors.GridAccessor
+.. class-members:: phenotypic.core._image_parts.accessors.ColorAccessor
    :attributes:
    :properties:
    :methods:
 
-.. rubric:: GridAccessor API Reference
+.. rubric:: ColorAccessor API Reference
 
-.. autoclass:: GridAccessor
+.. autoclass:: ColorAccessor
    :members:
    :show-inheritance:
    :special-members: __getitem__, __setitem__, __len__, __call__
