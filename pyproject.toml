@@ -95,6 +95,7 @@ docs = [
     "nbsphinx",
     "myst-nb",
     "sphinx-togglebutton>=0.3.2",
+    "pandoc>=2.4",
 ]
 
 [tool.pytest.ini_options]

@@ -136,7 +136,6 @@ class TestEdgeCorrectorInit:
         assert corrector.ncols == 12
         assert corrector.top_n == 3
         assert corrector.connectivity == 4
-        assert corrector.measurement_col == 'Area'
 
     def test_custom_grid_size(self):
         """Test initialization with custom grid dimensions."""

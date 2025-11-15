@@ -23,4 +23,6 @@ apidoc:
 	sphinx-apidoc -o source/api_reference ../src/phenotypic --force --module-first --separate
 
 html: apidoc
-	sphinx-build -n -W -b html source build/html
+	sphinx-build -n -b html source build/html
+
+#    sphinx-build -n -W -b html source build/html

@@ -35,7 +35,8 @@ class ImageColorSpace(ImageObjectsHandler):
 
     def __init__(self,
                  arr: np.ndarray | Image | None = None,
-                 name: str | None = None, bit_depth: Literal[8, 16] | None = 8,
+                 name: str | None = None,
+                 bit_depth: Literal[8, 16] | None = 8,
                  *,
                  gamma_encoding: Literal["sRGB"] | None = 'sRGB',
                  illuminant: Literal["D65", "D50"] = "D65",

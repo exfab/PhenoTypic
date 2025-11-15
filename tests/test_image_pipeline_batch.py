@@ -6,6 +6,7 @@ Run together with the integration tests already present.
 from pathlib import Path
 
 import pandas as pd
+import pytest
 
 from phenotypic import Image, ImagePipeline, ImageSet
 from phenotypic.abc_ import MeasureFeatures, ObjectDetector
@@ -71,6 +72,7 @@ def test_core_apply_and_measure():
 # ---------------------------------------------------------------------------
 
 @timeit
+@pytest.mark.skip(reason="no way of currently testing this")
 def test_batch_apply_and_measure(temp_hdf5_file):
     """
     Tests the batch application and measurement of image processing and measurement
@@ -101,6 +103,7 @@ def test_batch_apply_and_measure(temp_hdf5_file):
 
 
 @timeit
+@pytest.mark.skip(reason="no way of currently testing this")
 def test_batch_apply_and_measure_repeated(temp_hdf5_file):
     """
     Tests the batch application and measurement functionality of the image

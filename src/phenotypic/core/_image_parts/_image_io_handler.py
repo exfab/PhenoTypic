@@ -30,7 +30,7 @@ class ImageIOHandler(ImageColorSpace):
     def __init__(self,
                  arr: np.ndarray | Image | None = None,
                  name: str | None = None, **kwargs):
-        super().__init__(arr=arr, name=name)
+        super().__init__(arr=arr, name=name, **kwargs)
 
     @classmethod
     def imread(cls,

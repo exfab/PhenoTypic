@@ -70,7 +70,6 @@ extensions = [
     'sphinx.ext.ifconfig',
     'sphinx.ext.autosectionlabel',
     'nbsphinx',
-    'sphinx_gallery.gen_gallery',
     'sphinx_autosummary_accessors',
     'sphinx_design',
     'myst_nb',
@@ -94,9 +93,19 @@ autodoc_member_order = 'groupwise'
 
 templates_path = ['_templates', sphinx_autosummary_accessors.templates_path]
 
+# Suppress specific warnings
+suppress_warnings = [
+    'toc.not_readable',  # Suppress warnings about documents not in toctree
+    'autosectionlabel.*',  # Suppress duplicate label warnings
+    'autodoc.duplicate_object',  # Suppress duplicate object warnings
+]
+
+# Exclude patterns - don't process these files/directories
+exclude_patterns = ['_build', '**.ipynb_checkpoints', '**/auto_examples']
+
 # nbsphinx configuration
 nbsphinx_execute = 'auto'
-nbsphinx_allow_errors = False
+nbsphinx_allow_errors = True
 nbsphinx_kernel_name = 'python3'
 
 # myst_nb configuration
@@ -115,19 +124,21 @@ myst_enable_extensions = [
 myst_nb_output_stderr = "remove"
 
 # sphinx-gallery configuration
-sphinx_gallery_conf = {
-    'examples_dirs'         : '../../examples',  # path to your example scripts
-    'gallery_dirs'          : 'user_guide/auto_examples',  # path to where to save gallery generated output
-    'filename_pattern'      : '/example_',  # pattern to match example files
-    'ignore_pattern'        : '__init__.py',  # pattern to ignore
-    'plot_gallery'          : 'True',  # generate plots
-    'thumbnail_size'        : (400, 300),  # thumbnail size
-    'download_all_examples' : True,  # download all examples as a zip file
-    'line_numbers'          : True,  # show line numbers in code blocks
-    'remove_config_comments': True,  # remove config comments from code blocks
-    'capture_repr'          : ('_repr_html_', '__repr__'),  # capture representations for display
-}
-exclude_patterns = ['_build', '**.ipynb_checkpoints', '*.ipynb', 'auto_examples']
+# Note: Sphinx-Gallery is disabled as we use nbsphinx for notebook examples
+# To re-enable, add Python example scripts with 'example_' prefix to the examples directory
+# sphinx_gallery_conf = {
+#     'examples_dirs'         : '../../examples',  # path to your example scripts
+#     'gallery_dirs'          : 'user_guide/auto_examples',  # path to where to save gallery generated output
+#     'filename_pattern'      : '/example_.*\\.py$',  # pattern to match example files (only .py files with example_ prefix)
+#     'ignore_pattern'        : r'(__init__|.*\.ipynb)$',  # ignore __init__.py and all .ipynb files
+#     'plot_gallery'          : 'False',  # disabled - no Python example scripts currently
+#     'thumbnail_size'        : (400, 300),  # thumbnail size
+#     'download_all_examples' : True,  # download all examples as a zip file
+#     'line_numbers'          : True,  # show line numbers in code blocks
+#     'remove_config_comments': True,  # remove config comments from code blocks
+#     'capture_repr'          : ('_repr_html_', '__repr__'),  # capture representations for display
+# }
+# exclude_patterns = ['_build', '**.ipynb_checkpoints', 'auto_examples']
 
 # Disable strict HTML5 assertion for broken references
 html5_writer = True

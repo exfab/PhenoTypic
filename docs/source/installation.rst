@@ -2,7 +2,7 @@ Installation
 ============
 
 Prerequisites
-------------
+-------------
 
 Before installing Phenotypic, ensure you have the following prerequisites:
 

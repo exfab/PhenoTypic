@@ -39,7 +39,7 @@ class GridImage(ImageGridHandler):
                  nrows: int = 8, ncols: int = 12,
                  bit_depth: Literal[8, 16] | None = None,
                  illuminant: str | None = 'D65',
-                 color_profile='sRGB',
+                 gamma_encoding='sRGB',
                  observer='CIE 1931 2 Degree Standard Observer',
                  ):
         super().__init__(
@@ -49,6 +49,6 @@ class GridImage(ImageGridHandler):
                 nrows=nrows, ncols=ncols,
                 bit_depth=bit_depth,
                 illuminant=illuminant,
-                color_profile=color_profile,
+                gamma_encoding=gamma_encoding,
                 observer=observer,
         )

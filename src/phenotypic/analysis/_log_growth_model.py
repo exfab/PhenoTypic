@@ -274,15 +274,16 @@ class LogGrowthModel(ModelFitter):
         for deviations in the carrying capacity (K).
 
         :math:`J(K,N_0,r) = \frac{1}{n}\sum_{i=1}^{n}\frac{1}{2}(f_{K,N0,r}(t^{(i)}) - N_t^{(i)})^2)
-            + \lambda(\frac{dN}{dt}^2 + N_0^2)
+            + \lambda(µ_{max}^2 + N_0^2)
             + \alpha \frac{\lvert K-\max({N_t})\rvert}{N_t}`
 
-        :math:`N_t`: population size at time t
-        :math:`N_0`: initial population size at time t
-        :math:`r`: growth rate
+        :math:`N_t`: population size at time t.
+        :math:`N_0`: initial population size at time t.
+        :math:`r`: intrinsic growth rate.
         :math:`K`: Carrying capacity (maximum population size).
-        :math:`\lambda`: regularization term for growth rate and initial population size
-        :math:`\alpha`: penalty term for deviations in the carrying capacity relative to the largest measurement
+        :math:`µ_{max}`: Specific growth rate.
+        :math:`\lambda`: regularization term for the specific growth rate and initial population size.
+        :math:`\alpha`: penalty term for deviations in the carrying capacity relative to the largest measurement.
 
         The function calculates the residuals (difference between actual and predicted
         values), a regularization term based on biological parameters, and applies a
@@ -303,7 +304,7 @@ class LogGrowthModel(ModelFitter):
             y (Union[List[float], np.ndarray, pd.Series]): Observed population size
                 corresponding to the time points t. Can be a list, numpy array, or
                 pandas.Series object.
-            lam (float): Regularization parameter for the biological parameters.
+            lam (float): Regularization parameter for the specific growth rate and initial population size.
             alpha (float): Scaling parameter for the K-based penalty.
 
         Returns:
