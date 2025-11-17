@@ -7,6 +7,7 @@ Prerequisites
 Before installing Phenotypic, ensure you have the following prerequisites:
 
 * Python 3.10 or higher
+* uv (recommended)
 * pip (Python package installer)
 
 Installation Methods
