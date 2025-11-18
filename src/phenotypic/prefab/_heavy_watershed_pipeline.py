@@ -53,7 +53,7 @@ class HeavyWatershedPipeline(PrefabPipeline):
                  watershed_connectivity: int = 1,
                  watershed_relabel: bool = True,
                  watershed_ignore_zeros: bool = True,
-                 border_remover_size: int = 1,
+                 border_remover_size: int = 25,
                  texture_scale: int = 5,
                  texture_warn: bool = False,
                  benchmark: bool = False, **kwargs):
@@ -106,8 +106,8 @@ class HeavyWatershedPipeline(PrefabPipeline):
 
         meas = [
             MeasureShape(),
-            MeasureColor(),
+            MeasureIntensity(),
             MeasureTexture(scale=texture_scale, warn=texture_warn),
-            MeasureIntensity()
+            MeasureColor(),
         ]
         super().__init__(ops=ops, meas=meas, benchmark=benchmark, **kwargs)

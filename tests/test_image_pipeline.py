@@ -1,18 +1,15 @@
-from phenotypic import ImagePipeline
-from phenotypic.enhance import CLAHE, GaussianBlur, MedianEnhancer, ContrastStretching
-from phenotypic.detect import OtsuDetector, WatershedDetector
-from phenotypic.grid import GridApply, MinResidualErrorReducer, GridAlignmentOutlierRemover
-from phenotypic.refine import BorderObjectRemover, SmallObjectRemover, LowCircularityRemover
-from phenotypic.measure import MeasureColor, MeasureShape, MeasureIntensity, MeasureTexture
-from phenotypic.refine import MaskFill
-from phenotypic.correction import GridAligner
-
-from phenotypic import GridImage
-from phenotypic.data import load_plate_12hr
-from .test_fixtures import plate_grid_images
-from .resources.TestHelper import timeit
-
 import logging
+
+from phenotypic import GridImage, ImagePipeline
+from phenotypic.correction import GridAligner
+from phenotypic.data import load_plate_12hr
+from phenotypic.detect import OtsuDetector, WatershedDetector
+from phenotypic.enhance import CLAHE, ContrastStretching, GaussianBlur, MedianEnhancer
+from phenotypic.grid import GridAlignmentOutlierRemover, GridApply, MinResidualErrorReducer
+from phenotypic.measure import MeasureColor, MeasureIntensity, MeasureShape, MeasureTexture
+from phenotypic.refine import BorderObjectRemover, LowCircularityRemover, SmallObjectRemover
+from .resources.TestHelper import timeit
+from .test_fixtures import plate_grid_images
 
 # Configure logging to see all debug information
 logging.basicConfig(
@@ -28,20 +25,12 @@ def test_empty_pipeline():
 
 
 @timeit
-def test_kmarx_pipeline(plate_grid_images):
-    kmarx_pipeline = ImagePipeline(
+def test_pipeline_on_image(plate_grid_images):
+    pipe = ImagePipeline(
             ops={
-                'blur'                            : GaussianBlur(sigma=5),
-                'clahe'                           : CLAHE(),
-                'median filter'                   : MedianEnhancer(),
-                'detection'                       : WatershedDetector(footprint='auto', min_size=50, relabel=True),
-                'border remover'                  : BorderObjectRemover(5),
-                'mask_fill'                       : MaskFill(),
-                'low circularity remover'         : LowCircularityRemover(0.5),
-                'reduce by section residual error': MinResidualErrorReducer(),
-                'outlier removal'                 : GridAlignmentOutlierRemover(),
-                'align'                           : GridAligner(),
-                'grid_reduction'                  : MinResidualErrorReducer(),
+                'blur'     : GaussianBlur(sigma=5),
+                'detection': OtsuDetector(),
+                'remove'   : BorderObjectRemover(50),
             },
             meas={
                 'MeasureColor'    : MeasureColor(),
@@ -50,16 +39,19 @@ def test_kmarx_pipeline(plate_grid_images):
                 'MeasureTexture'  : MeasureTexture(scale=[3, 4], quant_lvl=8),
             }
     )
-    output = kmarx_pipeline.apply(plate_grid_images)
-    output = kmarx_pipeline.measure(output)
+    output = pipe.apply(plate_grid_images)
+    output = pipe.measure(output)
     assert output is not None
+
+    compound_output = pipe.apply_and_measure(plate_grid_images)
+    assert output.equals(compound_output), "apply->measure is different than apply_and_measure"
 
 
 @timeit
 def test_kmarx_pipeline_pickleable(plate_grid_images):
     import pickle
 
-    kmarx_pipeline = ImagePipeline(
+    pipe = ImagePipeline(
             {
                 'blur'                            : GaussianBlur(sigma=2),
                 'clahe'                           : CLAHE(),
@@ -83,7 +75,7 @@ def test_kmarx_pipeline_pickleable(plate_grid_images):
                 'grid_reduction'                  : MinResidualErrorReducer()
             }
     )
-    pickle.dumps(kmarx_pipeline.apply_and_measure)
+    pickle.dumps(pipe.apply_and_measure)
 
 
 @timeit

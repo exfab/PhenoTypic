@@ -63,7 +63,6 @@ class TukeyOutlierDetector(SetAnalyzer):
             self,
             on: str,
             groupby: list[str],
-            measurement_col: str,
             k: float = 1.5,
             agg_func: str = 'mean',
             num_workers: int = 1
@@ -86,7 +85,6 @@ class TukeyOutlierDetector(SetAnalyzer):
         if k <= 0:
             raise ValueError(f"k must be positive, got {k}")
 
-        self.measurement_col = measurement_col
         self.k = k
         self._original_data: pd.DataFrame = pd.DataFrame()
 
@@ -99,7 +97,7 @@ class TukeyOutlierDetector(SetAnalyzer):
         
         Args:
             data: DataFrame containing measurement data. Must include all columns
-                specified in self.groupby and self.measurement_col.
+                specified in self.groupby and self.on.
         
         Returns:
             DataFrame with added columns:
@@ -154,7 +152,7 @@ class TukeyOutlierDetector(SetAnalyzer):
         self._original_data = data.copy()
 
         # Check required columns
-        required_cols = set(self.groupby + [self.measurement_col])
+        required_cols = set(self.groupby + [self.on])
         missing_cols = required_cols - set(data.columns)
 
         if missing_cols:
@@ -163,7 +161,7 @@ class TukeyOutlierDetector(SetAnalyzer):
         # Prepare configuration for _apply2group_func
         config = {
             'k'              : self.k,
-            'measurement_col': self.measurement_col
+            'measurement_col': self.on
         }
 
         # Apply outlier detection to each group
@@ -226,7 +224,7 @@ class TukeyOutlierDetector(SetAnalyzer):
             raise RuntimeError("No data to display. Call analyze() first.")
 
         # Get measurement column
-        meas_col = self.measurement_col
+        meas_col = self.on
 
         # Get outlier information
         is_outlier = self._latest_measurements['is_outlier']
@@ -237,17 +235,17 @@ class TukeyOutlierDetector(SetAnalyzer):
 
         # Panel 1: Box plot with outliers
         ax1 = axes[0]
-        
+
         # Separate inliers and outliers for plotting
         inliers = values[~is_outlier]
         outliers = values[is_outlier]
-        
+
         # Create box plot for inliers
         bp = ax1.boxplot([inliers.dropna()], positions=[1], widths=0.6,
                          patch_artist=True, showfliers=False)
         bp['boxes'][0].set_facecolor('lightblue')
         bp['boxes'][0].set_edgecolor('black')
-        
+
         # Overlay outliers as red points
         if len(outliers) > 0:
             ax1.scatter(
@@ -260,7 +258,7 @@ class TukeyOutlierDetector(SetAnalyzer):
                     label='Outliers',
                     zorder=3
             )
-        
+
         ax1.set_ylabel(meas_col)
         ax1.set_xticks([1])
         ax1.set_xticklabels(['All Groups'])
@@ -287,7 +285,7 @@ class TukeyOutlierDetector(SetAnalyzer):
             # Color by outlier type
             high_outliers = is_outlier & (self._latest_measurements['outlier_type'] == 'high')
             low_outliers = is_outlier & (self._latest_measurements['outlier_type'] == 'low')
-            
+
             if high_outliers.any():
                 ax2.scatter(
                         self._latest_measurements.index[high_outliers],
@@ -298,7 +296,7 @@ class TukeyOutlierDetector(SetAnalyzer):
                         marker='^',
                         label='High outliers'
                 )
-            
+
             if low_outliers.any():
                 ax2.scatter(
                         self._latest_measurements.index[low_outliers],
@@ -320,7 +318,7 @@ class TukeyOutlierDetector(SetAnalyzer):
         n_outliers = is_outlier.sum()
         n_total = len(values)
         pct_outliers = 100*n_outliers/n_total if n_total > 0 else 0
-        
+
         high_count = (self._latest_measurements['outlier_type'] == 'high').sum()
         low_count = (self._latest_measurements['outlier_type'] == 'low').sum()
 
@@ -454,12 +452,11 @@ class TukeyOutlierDetector(SetAnalyzer):
         # Flag outliers (only for valid values)
         is_low_outlier = (values < lower_fence) & valid_mask
         is_high_outlier = (values > upper_fence) & valid_mask
-        
+
         group.loc[is_low_outlier, 'is_outlier'] = True
         group.loc[is_high_outlier, 'is_outlier'] = True
-        
+
         group.loc[is_low_outlier, 'outlier_type'] = 'low'
         group.loc[is_high_outlier, 'outlier_type'] = 'high'
 
         return group
-

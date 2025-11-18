@@ -296,49 +296,52 @@ def make_synthetic_plate(
         return (img*65535.0 + 0.5).astype(np.uint16)
 
 
-def load_plate_12hr() -> np.array:
+def load_plate_12hr(mode: Literal['array', 'Image', 'GridImage'] = 'array') -> Union[np.array, Image, GridImage]:
     """Returns a plate image of a K. Marxianus colony 96 array plate at 12 hrs"""
-    return imread(__current_file_dir/'StandardDay1.jpg')
+    return _image_loader(__current_file_dir/'StandardDay1.jpg', mode)
 
 
-def load_plate_72hr() -> np.array:
+def load_plate_72hr(mode: Literal['array', 'Image', 'GridImage'] = 'array') -> Union[np.array, Image, GridImage]:
     """Return a image of a k. marxianus colony 96 array plate at 72 hrs"""
-    return imread(__current_file_dir/'StandardDay6.jpg')
+    return _image_loader(__current_file_dir/'StandardDay6.jpg', mode)
 
 
-def load_plate_series() -> List[np.array]:
+def load_plate_series(mode: Literal['array', 'Image', 'GridImage'] = 'array') -> List[
+    Union[np.array, Image, GridImage]]:
     """Return a series of plate images across 6 time samples"""
     series = []
     fnames = os.listdir(__current_file_dir/'PlateSeries')
     fnames.sort()
     for fname in fnames:
-        series.append(imread(__current_file_dir/'PlateSeries'/fname))
+        filepath = __current_file_dir/'PlateSeries'/fname
+        series.append(_image_loader(filepath, mode))
     return series
 
 
-def load_early_colony() -> np.array:
+def load_early_colony(mode: Literal['array', 'Image', 'GridImage'] = 'array') -> Union[np.array, Image, GridImage]:
     """Returns a colony image array of K. Marxianus at 12 hrs"""
-    return imread(__current_file_dir/'early_colony.png')
+    return _image_loader(__current_file_dir/'early_colony.png', mode)
 
 
-def load_faint_early_colony():
+def load_faint_early_colony(mode: Literal['array', 'Image', 'GridImage'] = 'array') -> Union[
+    np.array, Image, GridImage]:
     """Returns a faint colony image array of K. Marxianus at 12 hrs"""
-    return imread(__current_file_dir/'early_colony_faint.png')
+    return _image_loader(__current_file_dir/'early_colony_faint.png', mode)
 
 
-def load_colony():
+def load_colony(mode: Literal['array', 'Image', 'GridImage'] = 'array') -> Union[np.array, Image, GridImage]:
     """Returns a colony image array of K. Marxianus at 72 hrs"""
-    return imread(__current_file_dir/'later_colony.png')
+    return _image_loader(__current_file_dir/'later_colony.png', mode)
 
 
-def load_smear_plate_12hr():
+def load_smear_plate_12hr(mode: Literal['array', 'Image', 'GridImage'] = 'array') -> Union[np.array, Image, GridImage]:
     """Returns a plate image array of K. Marxianus that contains noise such as smears"""
-    return imread(__current_file_dir/'difficult/1_1S_16.jpg')
+    return _image_loader(__current_file_dir/'difficult/1_1S_16.jpg', mode)
 
 
-def load_smear_plate_24hr():
+def load_smear_plate_24hr(mode: Literal['array', 'Image', 'GridImage'] = 'array') -> Union[np.array, Image, GridImage]:
     """Returns a plate image array of K. Marxianus that contains noise such as smears"""
-    return imread(__current_file_dir/'difficult/2_2Y_6.jpg')
+    return _image_loader(__current_file_dir/'difficult/2_2Y_6.jpg', mode)
 
 
 def load_lactose_series(mode: Literal['array', 'Image', 'GridImage'] = 'array') -> List[
@@ -371,6 +374,10 @@ def load_meas() -> pd.DataFrame:
         pd.DataFrame: A DataFrame containing the loaded measurement data.
     """
     return pd.read_csv(__current_file_dir/'meas/all_meas.csv', index_col=0)
+
+
+def load_quickstart_meas() -> pd.DataFrame:
+    return pd.read_csv(__current_file_dir/'meas/QuickStartMeas.csv', index_col=0)
 
 
 def load_area_meas() -> pd.DataFrame:

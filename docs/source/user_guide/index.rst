@@ -14,15 +14,3 @@ This section contains comprehensive guides for using Phenotypic. It includes ins
    getting_started
    tutorial/index
    examples/index
-
-Placeholder Pages
------------------
-
-**Getting Started** (Coming Soon)
-   A quick introduction to Phenotypic and its basic functionality.
-
-**Basic Concepts** (Coming Soon)
-   Learn about the core concepts and components of Phenotypic.
-
-**Advanced Usage** (Coming Soon)
-   Explore advanced features and techniques for getting the most out of Phenotypic.

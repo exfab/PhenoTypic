@@ -1,41 +1,54 @@
-./**.ipynb_checkpoints
-**.ipynb_checkpoints
-**/__pycache__/**git
-*.idea
-**.pyc
-**./phenotypic.egg-info/**
-**./phenotypic.egg-info**
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+.pytest_cache/
+*.egg-info/
 phenotypic.egg-info/
-*.DS_Store
-.vscode
-conda-recipe
+
+# Virtual environments
+.venv/
+.junie/
+
+# Jupyter Notebook
+.ipynb_checkpoints/
+docs/source/user_guide/auto_examples/
+
+# IDEs and editors
+.vscode/
+.idea/
+.zed/
+.cursor/
+.windsurf/
+
+# macOS
 .DS_Store
-deprecated/*
-.git.backup/*
-.git.backup
+*.DS_Store
+
+# Build and distribution
+build/
 dist/
-dist/*
-phenotypic.egg-info
-deprecated
-.pytest_cache
-./docs/build/html/*
-docs/build/html/*
-./docs/build/doctrees/*
-docs/build/doctrees/*
-./docs/build/jupyter_execute/*
-docs/build/jupyter_execute/*
-**.$**.bkp
-docs/build
-docs/build/*
-.venv
-.junie
-debug/*.log
+conda-recipe/
+
+# Documentation build artifacts
+docs/build/
+
+# Project-specific
+deprecated/
 _JupyterPrototypes/
-**/.cursor
-**/.windsurf
-build
-.zed
+debug/*.log
+
+# Data files
 *.h5
-.run
-.ropeproject
-docs/source/user_guide/auto_examples
+.run/
+
+# Backup files
+**/*.$*.bkp
+*.backup
+*.bak
+
+# Development tools
+.ropeproject/
+.git.backup/

@@ -16,11 +16,12 @@ Installation Methods
 From PyPI
 ~~~~~~~~~
 
-The simplest way to install Phenotypic is via pip:
+
+The simplest way to install Phenotypic is using uv:
 
 .. code-block:: bash
 
-   pip install phenotypic
+   uv add phenotypic
 
 From Source
 ~~~~~~~~~~~
