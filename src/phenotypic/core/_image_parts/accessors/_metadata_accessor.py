@@ -101,7 +101,7 @@ class MetadataAccessor:
                 working_df.insert(loc=0, column=header, value=value, allow_duplicates=allow_duplicates)
         return working_df
 
-    def view(self) -> pd.Series:
+    def table(self) -> pd.Series:
         return pd.Series(
                 self._combined_metadata,
                 name=self._parent_image.name,

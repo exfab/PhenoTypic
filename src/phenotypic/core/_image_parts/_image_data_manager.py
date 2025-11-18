@@ -14,7 +14,7 @@ from skimage.color import rgb2gray, rgba2rgb
 if TYPE_CHECKING:
     from phenotypic import Image
 
-from phenotypic.tools.constants_ import IMAGE_FORMATS, METADATA, IMAGE_TYPES
+from phenotypic.tools.constants_ import IMAGE_MODE, METADATA, IMAGE_TYPES
 
 
 @dataclass
@@ -25,7 +25,7 @@ class ImageData:
     enh_gray: np.ndarray | None = None
     sparse_object_map: csc_matrix = None
 
-    def reset(self):
+    def clear(self):
         self.rgb = np.empty((0, 3), dtype=np.uint8)
         self.gray = np.empty((0, 2), dtype=np.float32)
         self.enh_gray = np.empty((0, 2), dtype=np.float32)
@@ -33,10 +33,36 @@ class ImageData:
 
 
 @dataclass
-class Metadata:
+class ImageMetadata:
+    """
+    Represents metadata associated with an image.
+
+    This class is used to store and organize metadata related to an image. It
+    categorizes metadata into private, protected, public, and imported categories
+    for better organization and control over data visibility or accessibility.
+
+    Attributes:
+        private (dict[str, Any]): Metadata intended for internal use only and is
+            not shared externally. It may contain any type of data.
+        protected (dict[str, Union[int, str, float, bool]]): Metadata that is
+            partially restricted and can be accessed but not deleted.
+            Limited to primitive data types like integers, strings, floats, and
+            booleans.
+        public (dict[str, Union[int, str, float, bool]]): Metadata that is available
+            for public access. Structured as key-value pairs containing integers,
+            strings, floats, or booleans.
+        imported (dict[str, Union[int, str, float, bool]]): Metadata from the original image if imported from a file
+            instead of from an array.
+    """
     private: dict[str, Any] = field(default_factory=dict)
-    protected: dict[str, Union[int, str, float, bool]] = field(default_factory=dict)
-    public: dict[str, Union[int, str, float, bool]] = field(default_factory=dict)
+    protected: dict[str, Union[int, str, float, bool, np.nan]] = field(default_factory=dict)
+    public: dict[str, Union[int, str, float, bool, np.nan]] = field(default_factory=dict)
+    imported: dict[str, Union[int, str, float, bool, np.nan]] = field(default_factory=dict)
+
+    def clear(self) -> None:
+        self.protected[METADATA.IMAGE_NAME] = np.nan
+        self.protected[METADATA.IMAGE_TYPE] = IMAGE_TYPES.BASE.value
+        self.public.clear()
 
 
 class ImageDataManager:
@@ -74,23 +100,21 @@ class ImageDataManager:
 
         # Initialize image data
         self._data = ImageData()
+        self._data.clear()
 
         # Initialize metadata structure
-        self._metadata = Metadata(
+        self._metadata = ImageMetadata(
                 private={
                     METADATA.UUID: uuid.uuid4()
                 },
                 protected={
-                    METADATA.IMAGE_NAME       : name,
-                    METADATA.PARENT_IMAGE_NAME: b"",
-                    METADATA.IMAGE_TYPE       : IMAGE_TYPES.BASE.value,
-                    METADATA.BIT_DEPTH        : bit_depth,
+                    METADATA.IMAGE_NAME: name,
+                    METADATA.IMAGE_TYPE: IMAGE_TYPES.BASE.value,
+                    METADATA.BIT_DEPTH : bit_depth,
                 },
                 public={},
+                imported={},
         )
-
-        # Set data to empty arrays first
-        self._clear_data()
 
     @property
     def bit_depth(self) -> int:
@@ -101,15 +125,28 @@ class ImageDataManager:
         """
         return self._metadata.protected.get(METADATA.BIT_DEPTH)
 
-    def _clear_data(self):
-        """Reset all image data to empty state."""
-        self._data.reset()
+    def clear(self) -> None:
+        """Reset all image data to empty state.
 
-    def set_image(self, input_image: Image | np.ndarray | None = None) -> None:
-        """Set the image data.
-        
+        Note:
+            - bit_depth is retained. To change the bit depth, make a new Image object.
+        """
+        self._data.clear()
+        self._metadata.clear()
+        return
+
+    def set_image(self, input_image: Image | np.ndarray) -> None:
+        """
+        Sets the image for the object by processing the provided input, which can be either
+        a NumPy array or an instance of the Image class. If the input type is unsupported,
+        an exception is raised to notify the user.
+
         Args:
-            input_image (Image | np.ndarray | None): Image data to set.
+            input_image: A NumPy array or an instance of the Image class representing
+                the image to be set.
+
+        Raises:
+            ValueError: If the input is not a NumPy array or an Image instance.
         """
         match input_image:
             case x if isinstance(x, np.ndarray):
@@ -117,11 +154,9 @@ class ImageDataManager:
 
             case x if self._is_image_handler(x):
                 self._set_from_class_instance(x)
-            case None:
-                self._clear_data()
             case _:
                 raise ValueError(
-                        f'Input must be a NumPy array, Image instance, or None. Got {type(input_image)}'
+                        f'Input must be a NumPy array, Image instance. Got {type(input_image)}'
                 )
 
     def _handle_array_input(self, arr: np.ndarray):
@@ -222,32 +257,32 @@ class ImageDataManager:
 
         # Process based on detected format
         match format_enum:
-            case IMAGE_FORMATS.GRAYSCALE | IMAGE_FORMATS.GRAYSCALE_SINGLE_CHANNEL:
+            case IMAGE_MODE.GRAYSCALE | IMAGE_MODE.GRAYSCALE_SINGLE_CHANNEL:
                 self._set_from_matrix(
                         imarr if imarr.ndim == 2 else imarr[:, :, 0]
                 )
 
-            case IMAGE_FORMATS.RGB | IMAGE_FORMATS.RGB_OR_BGR:
+            case IMAGE_MODE.RGB | IMAGE_MODE.RGB_OR_BGR:
                 self._set_from_rgb(imarr)
 
-            case IMAGE_FORMATS.LINEAR_RGB:
+            case IMAGE_MODE.LINEAR_RGB:
                 self._set_from_rgb(imarr)
 
-            case IMAGE_FORMATS.RGBA | IMAGE_FORMATS.RGBA_OR_BGRA:
+            case IMAGE_MODE.RGBA | IMAGE_MODE.RGBA_OR_BGRA:
                 self._set_from_rgb(rgba2rgb(imarr))
 
             case _:
                 raise ValueError(f'Unsupported image format: {format_enum}')
 
     @staticmethod
-    def _guess_image_format(img: np.ndarray) -> IMAGE_FORMATS:
+    def _guess_image_format(img: np.ndarray) -> IMAGE_MODE:
         """Determine image format from array dimensions and channels.
         
         Args:
             img (np.ndarray): Input image array.
             
         Returns:
-            IMAGE_FORMATS: Detected format of the image.
+            IMAGE_MODE: Detected format of the image.
             
         Raises:
             TypeError: If input is not a numpy array.
@@ -257,16 +292,16 @@ class ImageDataManager:
             raise TypeError("Input must be a numpy array.")
 
         if img.ndim == 2:
-            return IMAGE_FORMATS.GRAYSCALE
+            return IMAGE_MODE.GRAYSCALE
 
         if img.ndim == 3:
             h, w, c = img.shape
             if c == 1:
-                return IMAGE_FORMATS.GRAYSCALE_SINGLE_CHANNEL
+                return IMAGE_MODE.GRAYSCALE_SINGLE_CHANNEL
             elif c == 3:
-                return IMAGE_FORMATS.RGB
+                return IMAGE_MODE.RGB
             elif c == 4:
-                return IMAGE_FORMATS.RGBA
+                return IMAGE_MODE.RGBA
             else:
                 raise ValueError(f"Image with {c} channels (unknown format)")
 

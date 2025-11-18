@@ -23,7 +23,7 @@ import traceback
 import pandas as pd
 
 from .._image_set import ImageSet
-from ._image_pipeline_core import ImagePipelineCore
+from ._serializable_pipeline import SerializablePipeline
 
 # Create module-level logger
 logger = logging.getLogger(__name__)
@@ -35,7 +35,7 @@ class PipelineMode(Enum):
     APPLY_MEASURE = "apply_measure"
 
 
-class ImagePipelineBatch(ImagePipelineCore):
+class ImagePipelineBatch(SerializablePipeline):
     """
     Handles batch processing of images using specified operations and measurement
     features while supporting multi-processing for enhanced performance.

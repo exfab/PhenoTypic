@@ -110,13 +110,6 @@ class LogGrowthModel(ModelFitter):
         data.loc[:, self.time_label] = self._ensure_float_array(data.loc[:, self.time_label])
         self._latest_measurements = data
 
-        # aggregate so that only one sample per timepoint
-        agg_dict = {self.on: self.agg_func}
-        if self.Kmax_label is not None:
-            agg_dict[self.Kmax_label] = 'max'  # Use max for Kmax as it's a carrying capacity
-        agg_data = data.groupby(by=self.groupby + [self.time_label], as_index=False).agg(agg_dict)
-
-        grouped = agg_data.groupby(by=self.groupby, as_index=True)
         apply2group_kwargs = dict(
                 groupby_names=self.groupby,
                 model=self.__class__.model_func,
@@ -128,6 +121,16 @@ class LogGrowthModel(ModelFitter):
                 loss=self.loss,
                 verbose=self.verbose,
         )
+
+        # aggregate so that only one sample per timepoint
+        agg_dict = {self.on: self.agg_func}
+        if self.Kmax_label is not None:
+            agg_dict[self.Kmax_label] = 'max'  # Use max for Kmax as it's a carrying capacity
+
+        agg_data = data.groupby(by=self.groupby + [self.time_label], as_index=False).agg(agg_dict)
+
+        # Create groups
+        grouped = agg_data.groupby(by=self.groupby, as_index=True)
         if self.n_jobs == 1:
 
             model_res = []

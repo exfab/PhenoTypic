@@ -55,6 +55,12 @@ cd PhenoTypic
 uv sync --group dev
 ```  
 
+## Optional Installation
+
+To extract metadata from images, PhenoTypic uses the `PyExifTool` module. This requires an external software called
+ExifTool. You can install ExifTool here: https://exiftool.org/install.html. If you don't use it, some metadata from raw
+files may not be able to be imported. Read more here: https://pypi.org/project/PyExifTool/#pyexiftool-dependencies
+
 # Module Overview
 
 | Module                  | Description                                                                                                                |

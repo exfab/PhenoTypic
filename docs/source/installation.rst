@@ -7,48 +7,52 @@ Prerequisites
 Before installing Phenotypic, ensure you have the following prerequisites:
 
 * Python 3.10 or higher
-* uv (recommended)
 * pip (Python package installer)
+* uv (optional, but recommended)
 
 Installation Methods
 ------------------
 
-From PyPI
-~~~~~~~~~
+From PyPi
++++++++++
 
-
-The simplest way to install Phenotypic is using uv:
-
+Using uv (recommended)
+++++++++
 .. code-block:: bash
 
    uv add phenotypic
 
-From Source
-~~~~~~~~~~~
-
-To install from source:
-
-1. Clone the repository:
-
-   .. code-block:: bash
-
-      git clone https://github.com/exfab/PhenoTypic.git
-      cd phenotypic
-
-2. Install the package:
-
-   .. code-block:: bash
-
-      pip install -e .
-
-Development Installation
-~~~~~~~~~~~~~~~~~~~~~~~~
-
-For development purposes, install additional dependencies:
+Using pip
++++++++++
 
 .. code-block:: bash
 
-   pip install -e ".[dev]"
+    pip install phenotypic
+
+From Source
+-----------
+
+To install from source:
+
+
+.. code-block:: bash
+
+  git clone https://github.com/exfab/PhenoTypic.git
+  cd PhenoTypic && uv pip install -e .
+
+
+Development Installation
+========================
+
+For development of new modules, install additional dependencies:
+
+.. code-block:: bash
+
+    git clone https://github.com/exfab/PhenoTypic.git
+
+    # If on windows, docs may fail to install
+    cd PhenoTypic && uv sync --group dev --group docs
+
 
 Verification
 ------------

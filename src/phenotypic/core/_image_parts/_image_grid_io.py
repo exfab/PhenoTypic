@@ -13,7 +13,7 @@ except ImportError:
 import phenotypic.abc_
 from phenotypic.grid import AutoGridFinder
 from ._image_grid_handler import ImageGridHandler
-from phenotypic.tools.constants_ import IMAGE_FORMATS
+from phenotypic.tools.constants_ import IMAGE_MODE
 
 
 class ImageGridIO(ImageGridHandler):
