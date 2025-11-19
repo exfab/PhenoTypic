@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import inspect
+import re
 import typing
 from typing import TYPE_CHECKING, Any, Optional, get_args, get_origin, Literal
 
@@ -73,6 +74,9 @@ class LazyWidgetMixin:
         sig = inspect.signature(self.__init__)
         hints = typing.get_type_hints(self.__init__)
         
+        # Parse docstring for parameter descriptions
+        doc_params = self._parse_docstring()
+        
         for param_name, param in sig.parameters.items():
             if param_name == 'self' or param_name == 'args' or param_name == 'kwargs':
                 continue
@@ -92,7 +96,19 @@ class LazyWidgetMixin:
             widget = self._create_widget_for_param(param_name, hints.get(param_name, Any), current_val)
             if widget:
                 self._param_widgets[param_name] = widget
-                controls.append(widget)
+                
+                # Check for help text from docstring
+                if param_name in doc_params:
+                    help_text = doc_params[param_name]
+                    # Create help label
+                    help_label = widgets.HTML(
+                        value=f"<span style='color: #666; font-size: 0.85em; font-style: italic; margin-left: 2px;'>{help_text}</span>"
+                    )
+                    # Wrap widget and help in VBox
+                    control_group = widgets.VBox([widget, help_label], layout=widgets.Layout(margin='0px 0px 8px 0px'))
+                    controls.append(control_group)
+                else:
+                    controls.append(widget)
                 
                 # Bind change
                 widget.observe(self._on_param_change, names='value')
@@ -154,6 +170,124 @@ class LazyWidgetMixin:
         # Fallback for known types if value is None but hint exists?
         # For now, skip complex types
         return None
+
+    def _parse_docstring(self) -> dict[str, str]:
+        """Parse the class docstring to extract parameter descriptions.
+        
+        Supports Google, NumPy, and Sphinx/ReST styles.
+        
+        Returns:
+            dict: A dictionary mapping parameter names to their description strings.
+        """
+        doc = self.__doc__
+        if not doc:
+            return {}
+            
+        params = {}
+        lines = doc.split('\n')
+        
+        # State machine variables
+        in_param_section = False
+        current_param = None
+        current_desc = []
+        
+        # Regex patterns
+        # Google: "Args:", "Attributes:", "Parameters:"
+        section_header_re = re.compile(r'^\s*(Args|Attributes|Parameters)\s*:\s*$', re.IGNORECASE)
+        # NumPy: "Parameters\n----------"
+        numpy_header_re = re.compile(r'^\s*Parameters\s*$', re.IGNORECASE)
+        numpy_underline_re = re.compile(r'^\s*-+\s*$')
+        
+        # Param patterns
+        # Google: "name (type): description" or "name: description"
+        google_param_re = re.compile(r'^\s*(\w+)\s*(\(.*?\))?\s*:\s*(.+)$')
+        # NumPy: "name : type"
+        numpy_param_re = re.compile(r'^\s*(\w+)\s*:\s*(.*)$')
+        # Sphinx: ":param name: description" (can appear anywhere)
+        sphinx_param_re = re.compile(r'^\s*:param\s+(\w+)\s*:\s*(.+)$')
+        
+        i = 0
+        while i < len(lines):
+            line = lines[i]
+            stripped_line = line.strip()
+            
+            # Check for Sphinx style (line by line, no section needed)
+            sphinx_match = sphinx_param_re.match(line)
+            if sphinx_match:
+                # Save previous param if exists
+                if current_param:
+                    params[current_param] = ' '.join(current_desc).strip()
+                
+                current_param = sphinx_match.group(1)
+                current_desc = [sphinx_match.group(2)]
+                in_param_section = False # Sphinx doesn't strictly enforce sections
+                i += 1
+                continue
+                
+            # Check for section headers
+            if section_header_re.match(stripped_line):
+                in_param_section = True
+                # If previous param was pending, save it
+                if current_param:
+                    params[current_param] = ' '.join(current_desc).strip()
+                    current_param = None
+                    current_desc = []
+                i += 1
+                continue
+                
+            if numpy_header_re.match(stripped_line):
+                # Check next line for underline
+                if i + 1 < len(lines) and numpy_underline_re.match(lines[i+1]):
+                    in_param_section = True
+                    i += 2
+                    continue
+            
+            if in_param_section:
+                # End of section detection
+                # Heuristic: if line is unindented and not empty, and doesn't match param pattern, section might be over
+                if line and not line[0].isspace() and not google_param_re.match(line) and not numpy_param_re.match(line):
+                     in_param_section = False
+                     if current_param:
+                        params[current_param] = ' '.join(current_desc).strip()
+                        current_param = None
+                        current_desc = []
+                     i += 1
+                     continue
+
+                # Check for new parameter definition
+                # Google style
+                g_match = google_param_re.match(line)
+                if g_match:
+                    if current_param:
+                        params[current_param] = ' '.join(current_desc).strip()
+                    
+                    current_param = g_match.group(1)
+                    current_desc = [g_match.group(3)]
+                    i += 1
+                    continue
+                    
+                # NumPy style
+                n_match = numpy_param_re.match(line)
+                if n_match:
+                    if current_param:
+                        params[current_param] = ' '.join(current_desc).strip()
+                    
+                    current_param = n_match.group(1)
+                    current_desc = [] # NumPy desc starts on next line
+                    i += 1
+                    continue
+                
+                # Continuation of description
+                if current_param and stripped_line:
+                    current_desc.append(stripped_line)
+            
+            i += 1
+            
+        # End of loop, save last param
+        if current_param:
+            params[current_param] = ' '.join(current_desc).strip()
+            
+        return params
 
     def _create_viz_widgets(self) -> list[Widget]:
         import ipywidgets as widgets
