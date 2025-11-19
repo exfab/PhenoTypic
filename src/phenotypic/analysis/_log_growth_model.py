@@ -197,14 +197,15 @@ class LogGrowthModel(ModelFitter):
         meas_groups = {meas_keys: meas_groups for meas_keys, meas_groups in
                        filtered_measurements.groupby(by=self.groupby)}
 
+        filtered_measurements.loc[:, self.time_label] = \
+            self._ensure_float_array(filtered_measurements.loc[:, self.time_label])
         tmax = filtered_measurements.loc[:, self.time_label].max() if tmax is None else tmax
 
         step = 1
         t = np.arange(stop=tmax + step, step=step)
 
         cmap = cm.get_cmap(cmap)
-        color_iter = itertools.cycle(cmap(np.linspace(start=0, stop=len(model_groups))))
-        next(color_iter)
+        color_iter = itertools.cycle(cmap(np.linspace(start=0, stop=1, num=len(model_groups), endpoint=False)))
         for model_key, model_group in model_groups.items():
             curr_meas = meas_groups[model_key]
             curr_color = next(color_iter)
@@ -231,7 +232,21 @@ class LogGrowthModel(ModelFitter):
                     capsize=2,
                     label=f'{model_key[0]}',
             )
-        ax.legend()
+        if legend:
+            # Create legend and check if it fits within the axes
+            legend_obj = ax.legend()
+
+            # Draw to ensure bounding boxes are available
+            fig.canvas.draw()
+
+            # Get bounding boxes in display coordinates
+            legend_bbox = legend_obj.get_window_extent()
+            axes_bbox = ax.get_window_extent()
+
+            # Check if legend is larger than axes (with small tolerance)
+            if legend_bbox.width > axes_bbox.width*0.95 or legend_bbox.height > axes_bbox.height*0.95:
+                legend_obj.remove()
+
         ax.set_title('mean±SE')
         return fig, ax
 

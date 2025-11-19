@@ -2409,6 +2409,7 @@ wheels = [
 name = "phenotypic"
 source = { editable = "." }
 dependencies = [
+    { name = "click" },
     { name = "colour-science" },
     { name = "exifread" },
     { name = "h5py" },
@@ -2464,6 +2465,7 @@ dev = [
 ]
 docs = [
     { name = "myst-nb" },
+    { name = "myst-parser" },
     { name = "nbsphinx" },
     { name = "pandoc" },
     { name = "pydata-sphinx-theme" },
@@ -2481,6 +2483,7 @@ docs = [
 
 [package.metadata]
 requires-dist = [
+    { name = "click", specifier = ">=8.3.0" },
     { name = "colour-science", specifier = ">=0.4.6" },
     { name = "dash", marker = "extra == 'plotly'", specifier = ">=2.0.0" },
     { name = "exifread", specifier = ">=3.5.1" },
@@ -2528,6 +2531,7 @@ dev = [
 ]
 docs = [
     { name = "myst-nb" },
+    { name = "myst-parser", specifier = ">=4.0.1" },
     { name = "nbsphinx" },
     { name = "pandoc", specifier = ">=2.4" },
     { name = "pydata-sphinx-theme" },

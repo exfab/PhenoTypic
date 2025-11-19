@@ -213,13 +213,15 @@ class TestTukeyOutlierRemover:
         )
 
         detector.analyze(sample_data)
-        fig = detector.show()
+        fig, axes = detector.show()
 
         assert isinstance(fig, plt.Figure)
 
         # Check that figure has axes
-        axes = fig.get_axes()
-        assert len(axes) > 0
+        if isinstance(axes, np.ndarray):
+            assert len(axes) > 0
+        else:
+            assert isinstance(axes, plt.Axes)
 
         plt.close('all')
 
@@ -231,7 +233,7 @@ class TestTukeyOutlierRemover:
         )
 
         detector.analyze(sample_data)
-        fig = detector.show(figsize=(10, 6))
+        fig, axes = detector.show(figsize=(10, 6))
 
         assert isinstance(fig, plt.Figure)
         assert fig.get_size_inches()[0] == 10
@@ -247,11 +249,135 @@ class TestTukeyOutlierRemover:
         )
 
         detector.analyze(sample_data_multiple_groups)
-        fig = detector.show(max_groups=2)
+        fig, axes = detector.show(max_groups=2)
 
         assert isinstance(fig, plt.Figure)
 
         plt.close('all')
+    
+    def test_show_method_collapsed(self, sample_data):
+        """Test show() method with collapsed=True."""
+        detector = TukeyOutlierRemover(
+            on='Area',
+            groupby=['ImageName']
+        )
+
+        detector.analyze(sample_data)
+        fig, ax = detector.show(collapsed=True)
+
+        assert isinstance(fig, plt.Figure)
+        assert isinstance(ax, plt.Axes)
+
+        plt.close('all')
+
+    def test_show_method_collapsed_with_multiple_groups(self, sample_data_multiple_groups):
+        """Test collapsed view with multiple groups."""
+        detector = TukeyOutlierRemover(
+            on='Area',
+            groupby=['Plate', 'ImageName']
+        )
+
+        detector.analyze(sample_data_multiple_groups)
+        fig, ax = detector.show(collapsed=True, figsize=(12, 8))
+
+        assert isinstance(fig, plt.Figure)
+        assert isinstance(ax, plt.Axes)
+        
+        # Check that y-axis has correct number of ticks
+        assert len(ax.get_yticks()) > 0
+
+        plt.close('all')
+
+    def test_show_with_criteria_single_filter(self, sample_data_multiple_groups):
+        """Test show() with criteria parameter filtering single column."""
+        detector = TukeyOutlierRemover(
+            on='Area',
+            groupby=['Plate', 'ImageName']
+        )
+
+        detector.analyze(sample_data_multiple_groups)
+        
+        # Filter to show only one plate
+        fig, axes = detector.show(criteria={'Plate': 'P1'})
+
+        assert isinstance(fig, plt.Figure)
+        
+        plt.close('all')
+
+    def test_show_with_criteria_multiple_filters(self, sample_data_multiple_groups):
+        """Test show() with multiple criteria filters."""
+        detector = TukeyOutlierRemover(
+            on='Area',
+            groupby=['Plate', 'ImageName']
+        )
+
+        detector.analyze(sample_data_multiple_groups)
+        
+        # Filter to show specific plate and image
+        fig, axes = detector.show(criteria={'Plate': 'P1', 'ImageName': 'img1'})
+
+        assert isinstance(fig, plt.Figure)
+        
+        plt.close('all')
+
+    def test_show_with_criteria_collapsed_mode(self, sample_data_multiple_groups):
+        """Test criteria parameter with collapsed visualization mode."""
+        detector = TukeyOutlierRemover(
+            on='Area',
+            groupby=['Plate', 'ImageName']
+        )
+
+        detector.analyze(sample_data_multiple_groups)
+        
+        # Filter to show only one image across all plates in collapsed view
+        fig, ax = detector.show(criteria={'ImageName': 'img1'}, collapsed=True)
+
+        assert isinstance(fig, plt.Figure)
+        assert isinstance(ax, plt.Axes)
+        
+        plt.close('all')
+
+    def test_show_with_criteria_list_values(self, sample_data_multiple_groups):
+        """Test criteria parameter with list of values."""
+        detector = TukeyOutlierRemover(
+            on='Area',
+            groupby=['Plate', 'ImageName']
+        )
+
+        detector.analyze(sample_data_multiple_groups)
+        
+        # Filter using list of values
+        fig, axes = detector.show(criteria={'Plate': ['P1', 'P2']})
+
+        assert isinstance(fig, plt.Figure)
+        
+        plt.close('all')
+
+    def test_show_with_criteria_no_matches(self, sample_data_multiple_groups):
+        """Test that appropriate error is raised when criteria matches no data."""
+        detector = TukeyOutlierRemover(
+            on='Area',
+            groupby=['Plate', 'ImageName']
+        )
+
+        detector.analyze(sample_data_multiple_groups)
+        
+        # Use criteria that won't match anything
+        with pytest.raises(ValueError, match="No data matches the specified criteria"):
+            detector.show(criteria={'Plate': 'NonexistentPlate'})
+
+    def test_show_with_criteria_invalid_column(self, sample_data_multiple_groups):
+        """Test that KeyError is raised for invalid column in criteria."""
+        detector = TukeyOutlierRemover(
+            on='Area',
+            groupby=['Plate', 'ImageName']
+        )
+
+        detector.analyze(sample_data_multiple_groups)
+        
+        # Use criteria with non-existent column
+        with pytest.raises(KeyError):
+            detector.show(criteria={'NonexistentColumn': 'value'})
 
     def test_show_before_analyze_raises_error(self):
         """Test that show() raises error if called before analyze()."""
@@ -422,8 +548,13 @@ class TestTukeyOutlierRemover:
         detector.analyze(sample_data)
 
         # Verify through visualization that boundaries are computed correctly
-        fig = detector.show()
+        fig, axes = detector.show()
         assert isinstance(fig, plt.Figure)
+        
+        # Test collapsed view as well
+        fig_collapsed, ax_collapsed = detector.show(collapsed=True)
+        assert isinstance(fig_collapsed, plt.Figure)
+        assert isinstance(ax_collapsed, plt.Axes)
         
         plt.close('all')
 

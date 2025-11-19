@@ -1,9 +1,21 @@
 from __future__ import annotations
 
+from typing import Literal, Tuple
+
 import numpy as np
 import pandas as pd
+from joblib import Parallel, delayed
 
 from .abc_ import SetAnalyzer
+from phenotypic.tools.constants_ import MeasurementInfo
+
+
+class EDGE_CORRECTION(MeasurementInfo):
+    @classmethod
+    def category(cls) -> str:
+        return "EdgeCorrection"
+
+    CORRECTED_CAP = "CorrectedCap", "The carrying capacity for the target measurement"
 
 
 class EdgeCorrector(SetAnalyzer):
@@ -13,80 +25,44 @@ class EdgeCorrector(SetAnalyzer):
     caps their measurement values to prevent edge effects in growth assays. Edge
     colonies often show artificially inflated measurements due to lack of competition
     for resources.
-    
-    Args:
-        on: Column name for grouping/aggregation operations.
-        groupby: List of column names to group by (e.g., ['ImageName', 'Metadata_Plate']).
-        measurement_col: Name of measurement column to correct (e.g., 'Area', 'MeanRadius').
-        nrows: Number of rows in the grid layout. Default is 8.
-        ncols: Number of columns in the grid layout. Default is 12.
-        top_n: Number of top values to average for correction threshold. Default is 3.
-        connectivity: Neighbor pattern - 4 for orthogonal (N/S/E/W) or 8 for all adjacent. Default is 4.
-        agg_func: Aggregation function for parent class. Default is 'mean'.
-        num_workers: Number of parallel workers. Default is 1.
-    
-    Attributes:
-        nrows: Grid row count.
-        ncols: Grid column count.
-        top_n: Number of top values for threshold calculation.
-        connectivity: Neighbor connectivity pattern (4 or 8).
-        measurement_col: Column to apply edge correction to.
-    
-    Examples:
-        >>> import pandas as pd
-        >>> from phenotypic.analysis import EdgeCorrector
-        >>> from phenotypic.tools.constants_ import GRID
-        >>> 
-        >>> # Create sample data with grid info and measurements
-        >>> data = pd.DataFrame({
-        ...     'ImageName': ['img1'] * 96,
-        ...     str(GRID.SECTION_NUM): range(96),
-        ...     'Area': np.random.uniform(100, 500, 96)
-        ... })
-        >>> 
-        >>> # Initialize corrector
-        >>> corrector = EdgeCorrector(
-        ...     on='Area',
-        ...     groupby=['ImageName'],
-        ...     measurement_col='Area',
-        ...     nrows=8,
-        ...     ncols=12,
-        ...     top_n=10,
-        ...     connectivity=4
-        ... )
-        >>> 
-        >>> # Apply edge correction
-        >>> corrected_data = corrector.analyze(data)
+
     """
 
     def __init__(
             self,
             on: str,
             groupby: list[str],
-            measurement_col: str,
+            time_label: str = "Metadata_Time",
             nrows: int = 8,
             ncols: int = 12,
             top_n: int = 3,
+            pvalue: float = 0.05,
             connectivity: int = 4,
             agg_func: str = 'mean',
             num_workers: int = 1
     ):
-        """Initialize EdgeCorrector with grid and correction parameters.
-        
+        """
+        Initializes the class with specified parameters to configure the state of the object.
+        The class is aimed at processing and analyzing connectivity data with multiple grouping
+        and aggregation options, while ensuring input validation.
+
         Args:
-            on: Column name for grouping/aggregation operations.
-            groupby: List of column names to group by.
-            measurement_col: Name of measurement column to correct.
-            nrows: Number of rows in grid. Default is 8.
-            ncols: Number of columns in grid. Default is 12.
-            top_n: Number of top values for averaging threshold. Default is 3.
-            connectivity: Neighbor pattern (4 or 8). Default is 4.
-            agg_func: Aggregation function. Default is 'mean'.
-            num_workers: Number of workers. Default is 1.
-            
+            on (str): The dataset column to analyze or process.
+            groupby (list[str]): List of column names for grouping the data.
+            time_label (str): Specific time reference column, defaulting to "Metadata_Time".
+            nrows (int): Number of rows in the dataset, must be positive.
+            ncols (int): Number of columns in the dataset, must be positive.
+            top_n (int): Number of top results to analyze. Must be a positive integer.
+            pvalue (float): Statistical threshold for significance testing between the surrounded and edge colonies.
+                defaults to 0.05. Set to 0.0 to apply to all plates.
+            connectivity (int): The connectivity mode to use. Must be either 4 or 8.
+            agg_func (str): Aggregation function to apply, defaulting to 'mean'.
+            num_workers (int): Number of workers for parallel processing.
+
         Raises:
-            ValueError: If connectivity is not 4 or 8.
-            ValueError: If nrows, ncols, or top_n are not positive.
+            ValueError: If `connectivity` is not 4 or 8.
+            ValueError: If `nrows` or `ncols` are not positive integers.
+            ValueError: If `top_n` is not a positive integer.
         """
         super().__init__(on=on, groupby=groupby, agg_func=agg_func, num_workers=num_workers)
 
@@ -101,7 +77,9 @@ class EdgeCorrector(SetAnalyzer):
         self.ncols = ncols
         self.top_n = top_n
         self.connectivity = connectivity
-        self.on = measurement_col
+        self.time_label = time_label
+        self.pvalue = pvalue
+
         self._original_data: pd.DataFrame = pd.DataFrame()
 
     @staticmethod
@@ -333,151 +311,32 @@ class EdgeCorrector(SetAnalyzer):
 
         # Prepare configuration for _apply2group_func
         config = {
-            'nrows'          : self.nrows,
-            'ncols'          : self.ncols,
-            'top_n'          : self.top_n,
-            'connectivity'   : self.connectivity,
-            'measurement_col': self.on,
-            'section_col'    : section_col
+            'nrows'       : self.nrows,
+            'ncols'       : self.ncols,
+            'top_n'       : self.top_n,
+            'connectivity': self.connectivity,
+            'on'          : self.on,
+            'pvalue'      : self.pvalue,
         }
 
-        # Apply correction to each group
-        if len(self.groupby) > 0:
-            # Suppress FutureWarning by explicitly including groups
-            import warnings
+        agg_data = data.groupby(by=self.grouby + [self.time_label], as_index=False).agg(
+                {self.on: self.agg_func}
+        )
 
-            with warnings.catch_warnings():
-                warnings.filterwarnings('ignore', category=FutureWarning,
-                                        message='.*grouping columns.*')
-                corrected_data = data.groupby(
-                        self.groupby,
-                        group_keys=False,
-                        observed=True
-                ).apply(
-                        lambda group: self._apply2group_func(group, config)
-                )
-        else:
-            # No grouping - apply to entire dataset
-            corrected_data = self._apply2group_func(data, config)
+        grouped = agg_data.groupby(by=self.groupby, as_index=False)
+        corrected_data = Parallel(n_jobs=self.n_jobs)(
+                delayed(self.__class__._apply2group_func)(
+                        group, **config
+                ) for _, group in grouped
+        )
 
         # Store results
         self._latest_measurements = corrected_data.reset_index(drop=True)
 
         return self._latest_measurements
 
-    def show(self, figsize: tuple[int, int] = (14, 5)):
-        """Display visualization of edge correction results.
-        
-        Creates a multi-panel figure showing:
-        1. Histogram comparing original vs corrected value distributions
-        2. Scatter plot highlighting which colonies were corrected
-        3. Summary statistics
-        
-        Args:
-            figsize: Figure size as (width, height) in inches. Default is (14, 5).
-        
-        Raises:
-            RuntimeError: If analyze() has not been called yet.
-        
-        Examples:
-            >>> corrector = EdgeCorrector(
-            ...     on='Size_Area',
-            ...     groupby=['ImageName'],
-            ...     measurement_col='Size_Area'
-            ... )
-            >>> corrector.analyze(data)
-            >>> corrector.show()  # Display comparison plots
-        
-        Notes:
-            - Requires analyze() to be called first to populate data
-            - Shows original vs corrected distributions
-            - Highlights corrected data points in red
-            - Displays summary statistics in the plot
-        """
-        import matplotlib.pyplot as plt
-        from phenotypic.tools.constants_ import GRID
-
-        # Check if analyze has been called
-        if self._latest_measurements.empty or self._original_data.empty:
-            raise RuntimeError("No data to display. Call analyze() first.")
-
-        # Get measurement column
-        meas_col = self.on
-
-        # Identify which rows were corrected
-        original_values = self._original_data[meas_col]
-        corrected_values = self._latest_measurements[meas_col]
-        was_corrected = ~np.isclose(original_values.values, corrected_values.values)
-
-        # Create figure with subplots
-        fig, axes = plt.subplots(1, 2, figsize=figsize)
-
-        # Panel 1: Histogram comparison
-        ax1 = axes[0]
-        ax1.hist(original_values, bins=30, alpha=0.6, label='Original', color='blue', edgecolor='black')
-        ax1.hist(corrected_values, bins=30, alpha=0.6, label='Corrected', color='green', edgecolor='black')
-        ax1.set_xlabel(meas_col)
-        ax1.set_ylabel('Frequency')
-        ax1.set_title(f'Distribution: {meas_col}')
-        ax1.legend()
-        ax1.grid(True, alpha=0.3)
-
-        # Panel 2: Scatter plot with corrections highlighted
-        ax2 = axes[1]
-
-        # Plot all points
-        ax2.scatter(
-                self._original_data.index[~was_corrected],
-                original_values[~was_corrected],
-                alpha=0.5,
-                s=30,
-                color='blue',
-                label='Unchanged'
-        )
-
-        # Highlight corrected points
-        if was_corrected.any():
-            ax2.scatter(
-                    self._original_data.index[was_corrected],
-                    original_values[was_corrected],
-                    alpha=0.7,
-                    s=50,
-                    color='red',
-                    marker='x',
-                    label='Original (corrected)'
-            )
-            ax2.scatter(
-                    self._original_data.index[was_corrected],
-                    corrected_values[was_corrected],
-                    alpha=0.7,
-                    s=30,
-                    color='green',
-                    marker='o',
-                    label='Corrected value'
-            )
-
-        ax2.set_xlabel('Row Index')
-        ax2.set_ylabel(meas_col)
-        ax2.set_title('Edge Correction Applied')
-        ax2.legend()
-        ax2.grid(True, alpha=0.3)
-
-        # Add summary statistics as text
-        n_corrected = was_corrected.sum()
-        n_total = len(original_values)
-        pct_corrected = 100*n_corrected/n_total if n_total > 0 else 0
-
-        summary_text = (
-            f"Corrected: {n_corrected}/{n_total} ({pct_corrected:.1f}%)\n"
-            f"Original mean: {original_values.mean():.2f}\n"
-            f"Corrected mean: {corrected_values.mean():.2f}"
-        )
-
-        fig.text(0.5, 0.02, summary_text, ha='center', fontsize=10,
-                 bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
-
-        plt.tight_layout(rect=[0, 0.08, 1, 1])
-        plt.show()
+    def show(self):
+        raise NotImplementedError()
 
     def results(self) -> pd.DataFrame:
         """Return the corrected measurement DataFrame.
@@ -507,59 +366,37 @@ class EdgeCorrector(SetAnalyzer):
         return self._latest_measurements
 
     @staticmethod
-    def _apply2group_func(group: pd.DataFrame, config: dict) -> pd.DataFrame:
-        """Apply edge correction to a single group of data.
-        
-        This method identifies grid sections with missing orthogonal neighbors (edge sections),
-        calculates a correction threshold from the top N values, and caps measurements that
-        exceed this threshold.
-        
-        Args:
-            group: DataFrame containing grid and measurement data for a single group.
-            config: Configuration dictionary containing:
-                - 'nrows': Number of grid rows
-                - 'ncols': Number of grid columns  
-                - 'top_n': Number of top values for threshold calculation
-                - 'connectivity': Neighbor pattern (4 or 8)
-                - 'measurement_col': Column name to correct
-                - 'section_col': Column name containing section numbers
-        
-        Returns:
-            DataFrame with corrected measurement values for edge sections.
-        
-        Notes:
-            - Only sections at edges (missing neighbors) are corrected
-            - Only values exceeding the threshold are capped
-            - Values below threshold and interior sections remain unchanged
-            - Handles cases with fewer than top_n values gracefully
-        
-        Examples:
-            >>> config = {
-            ...     'nrows': 8, 'ncols': 12, 'top_n': 10,
-            ...     'connectivity': 4, 'measurement_col': 'Area',
-            ...     'section_col': 'SectionNum'
-            ... }
-            >>> corrected_group = EdgeCorrector._apply2group_func(group, config)
+    def _apply2group_func(group: pd.DataFrame,
+                          on: str,
+                          nrows: int,
+                          ncols: int,
+                          top_n: int,
+                          time_label: str,
+                          connectivity: int,
+                          pvalue: float
+                          ) -> pd.DataFrame:
+        """
+        Note:
+            - assumes "Grid_SectionNum" from a `GridFinder` is in the dataframe groups
+            = applies permutation test on the last time-point to see if theres a statistically significant difference
+            - caps clips all the data to the last time point
         """
         from phenotypic.tools.constants_ import GRID
 
-        # Extract configuration
-        nrows = config['nrows']
-        ncols = config['ncols']
-        top_n = config['top_n']
-        connectivity = config['connectivity']
-        measurement_col = config['measurement_col']
-        section_col = config.get('section_col', str(GRID.SECTION_NUM))
-
-        # Make a copy to avoid modifying the original
-        group = group.copy()
+        section_col = GRID.SECTION_NUM
 
         # Handle empty groups
         if len(group) == 0:
             return group
 
+        # Make a copy to avoid modifying the original
+        group: pd.DataFrame = group.copy()
+        tmax = group.loc[:, time_label].max()
+
+        last_time_group = group.loc[group.loc[:, time_label] == tmax, :]
+
         # Get unique section numbers present in the data
-        present_sections = group[section_col].dropna().unique()
+        present_sections = last_time_group.loc[:, section_col].dropna().unique()
 
         # Handle case where no sections are present
         if len(present_sections) == 0:
@@ -571,7 +408,7 @@ class EdgeCorrector(SetAnalyzer):
 
         # Find fully-surrounded (interior) sections
         try:
-            surrounded_indices = EdgeCorrector._surrounded_positions(
+            surrounded_idx = EdgeCorrector._surrounded_positions(
                     active_idx=active_indices,
                     shape=(nrows, ncols),
                     connectivity=connectivity,
@@ -583,33 +420,139 @@ class EdgeCorrector(SetAnalyzer):
             return group
 
         # Identify edge sections (all sections - surrounded sections)
-        surrounded_set = set(surrounded_indices)
-        edge_sections = [sec for sec in present_sections if sec not in surrounded_set]
+        surrounded_idx = set(surrounded_idx)
+        edge_idx = [sec for sec in present_sections if sec not in surrounded_idx]
 
-        # If no edge sections, return unchanged
-        if len(edge_sections) == 0:
+        # If no inner sections, return unchanged
+        if len(surrounded_idx) == 0:
             return group
 
-        # Calculate threshold from top N values across entire group
-        if measurement_col not in group.columns:
+        # TODO: Add permutation test for statistical significance before correction.
+
+        # Calculate threshold from top N inner values
+        # ===========================================
+        if on not in group.columns:
             return group
+
+        last_inner_values: pd.Series = \
+            last_time_group.loc[last_time_group.loc[:, GRID.SECTION_NUM].isin(surrounded_idx), on]
 
         # Use actual number of values if fewer than top_n available
-        actual_top_n = min(top_n, len(group))
+        actual_top_n = min(top_n, len(last_inner_values))
 
-        if actual_top_n == 0:
+        if actual_top_n == 0:  # If no inner colonies
             return group
 
         # Get top N values and calculate threshold
-        top_values = group.nlargest(actual_top_n, measurement_col)[measurement_col]
+        top_values = last_inner_values.nlargest(actual_top_n)
         threshold = top_values.mean()
 
         # Apply correction: cap edge values that exceed threshold
-        edge_mask = group[section_col].isin(edge_sections)
-        exceeds_threshold = group[measurement_col] > threshold
-        correction_mask = edge_mask & exceeds_threshold
-
-        # Apply the correction
-        group.loc[correction_mask, measurement_col] = threshold
-
+        edge_mask = group.loc[:, GRID.SECTION_NUM].isin(edge_idx)
+        group.loc[edge_mask, on] = np.clip(group.loc[edge_mask, on], a_min=0, a_max=threshold)
         return group
+
+    @staticmethod
+    def _permutation_test(
+            group1: np.ndarray,
+            group2: np.ndarray,
+            n_permutations: int = 10000,
+            statistic: Literal["mean", "median"] = "mean",
+            alternative: Literal["two-sided", "less", "greater"] = "two-sided",
+            random_seed: int = None
+    ) -> Tuple[float, float, np.ndarray]:
+        """Perform a permutation test to compare two independent groups.
+
+        This test randomly shuffles group labels to generate a null distribution
+        of the test statistic, then compares the observed statistic to this
+        distribution to calculate a p-value.
+
+        Args:
+            group1: Array of measurements from group 1 (e.g., edge colonies).
+            group2: Array of measurements from group 2 (e.g., inner colonies).
+            n_permutations: Number of random permutations to perform.
+            statistic: Test statistic to use. Options are:
+                - "mean": Difference in means (group1 - group2)
+                - "median": Difference in medians (group1 - group2)
+            alternative: Type of alternative hypothesis:
+                - "two-sided": Test if groups differ in either direction
+                - "less": Test if group1 < group2
+                - "greater": Test if group1 > group2
+            random_seed: Seed for random number generator for reproducibility.
+
+        Returns:
+            p_value: The permutation test p-value.
+            observed_stat: The observed test statistic.
+            null_distribution: Array of test statistics from permutations.
+
+        Raises:
+            ValueError: If groups are empty or statistic/alternative are invalid.
+
+        Examples:
+            >>> edge_sizes = np.array([2.3, 2.5, 2.1, 2.8])
+            >>> inner_sizes = np.array([3.1, 3.3, 3.0, 3.2, 2.9])
+            >>> p_val, obs_stat, null_dist = permutation_test(
+            ...     edge_sizes, inner_sizes, n_permutations=10000
+            ... )
+            >>> print(f"p-value: {p_val:.4f}, observed difference: {obs_stat:.3f}")
+        """
+        if len(group1) == 0 or len(group2) == 0:
+            raise ValueError("Both groups must contain at least one observation")
+
+        if statistic not in ["mean", "median"]:
+            raise ValueError("statistic must be 'mean' or 'median'")
+
+        if alternative not in ["two-sided", "less", "greater"]:
+            raise ValueError("alternative must be 'two-sided', 'less', or 'greater'")
+
+        # Set random seed for reproducibility
+        if random_seed is not None:
+            np.random.seed(random_seed)
+
+        # Convert to numpy arrays
+        group1 = np.asarray(group1)
+        group2 = np.asarray(group2)
+
+        # Choose test statistic function
+        if statistic == "mean":
+            stat_func = np.mean
+        else:  # median
+            stat_func = np.median
+
+        # Calculate observed test statistic
+        observed_stat = stat_func(group1) - stat_func(group2)
+
+        # Pool all observations
+        pooled = np.concatenate([group1, group2])
+        n1 = len(group1)
+        n_total = len(pooled)
+
+        # Generate null distribution through permutation
+        null_distribution = np.zeros(n_permutations)
+
+        for i in range(n_permutations):
+            # Randomly shuffle the pooled data
+            np.random.shuffle(pooled)
+
+            # Split into two groups with original sizes
+            perm_group1 = pooled[:n1]
+            perm_group2 = pooled[n1:]
+
+            # Calculate test statistic for this permutation
+            null_distribution[i] = stat_func(perm_group1) - stat_func(perm_group2)
+
+        # Calculate p-value based on alternative hypothesis
+        if alternative == "two-sided":
+            # Count permutations as or more extreme in either direction
+            p_value = np.mean(np.abs(null_distribution) >= np.abs(observed_stat))
+        elif alternative == "less":
+            # Count permutations as small or smaller
+            p_value = np.mean(null_distribution <= observed_stat)
+        else:  # greater
+            # Count permutations as large or larger
+            p_value = np.mean(null_distribution >= observed_stat)
+
+        return p_value, observed_stat, null_distribution
+
+
+EdgeCorrector.__doc__ = EDGE_CORRECTION.append_rst_to_doc(EdgeCorrector.__doc__)

@@ -123,23 +123,6 @@ myst_enable_extensions = [
 ]
 myst_nb_output_stderr = "remove"
 
-# sphinx-gallery configuration
-# Note: Sphinx-Gallery is disabled as we use nbsphinx for notebook examples
-# To re-enable, add Python example scripts with 'example_' prefix to the examples directory
-# sphinx_gallery_conf = {
-#     'examples_dirs'         : '../../examples',  # path to your example scripts
-#     'gallery_dirs'          : 'user_guide/auto_examples',  # path to where to save gallery generated output
-#     'filename_pattern'      : '/example_.*\\.py$',  # pattern to match example files (only .py files with example_ prefix)
-#     'ignore_pattern'        : r'(__init__|.*\.ipynb)$',  # ignore __init__.py and all .ipynb files
-#     'plot_gallery'          : 'False',  # disabled - no Python example scripts currently
-#     'thumbnail_size'        : (400, 300),  # thumbnail size
-#     'download_all_examples' : True,  # download all examples as a zip file
-#     'line_numbers'          : True,  # show line numbers in code blocks
-#     'remove_config_comments': True,  # remove config comments from code blocks
-#     'capture_repr'          : ('_repr_html_', '__repr__'),  # capture representations for display
-# }
-# exclude_patterns = ['_build', '**.ipynb_checkpoints', 'auto_examples']
-
 # Disable strict HTML5 assertion for broken references
 html5_writer = True
 

@@ -14,10 +14,10 @@
    .. autosummary::
    
       ~GridImage.__init__
+      ~GridImage.clear
       ~GridImage.copy
       ~GridImage.imread
       ~GridImage.info
-      ~GridImage.interactive_measure
       ~GridImage.isempty
       ~GridImage.load_hdf5
       ~GridImage.load_pickle

@@ -177,71 +177,106 @@ class TukeyOutlierRemover(SetAnalyzer):
                     delayed(self.__class__._apply2group_func)(key, group, **config)
                     for key, group in grouped
             )
-        
+
         # Concatenate all group results
         self._latest_measurements = pd.concat(results, ignore_index=True)
 
         return self._latest_measurements
 
-    def show(self, figsize: tuple[int, int] | None = None, max_groups: int = 20) -> Figure:
+    def show(self, 
+            figsize: tuple[int, int] | None = None, 
+            max_groups: int = 20, 
+            collapsed: bool = False,
+            criteria: dict[str, any] | None = None
+            ) -> (plt.Figure, plt.Axes):
         """Visualize outlier detection results.
         
         Creates a visualization showing the distribution of values with outliers highlighted
-        and fence boundaries displayed. Each group gets its own subplot with a box plot
-        and scatter plot overlay showing individual data points. Outlier flags are computed
-        dynamically for visualization only.
+        and fence boundaries displayed. Can display as individual subplots or as a collapsed
+        stacked view with all groups in a single plot. Outlier flags are computed dynamically
+        for visualization only.
         
         Args:
             figsize: Figure size as (width, height). If None, automatically determined
-                based on number of groups.
+                based on number of groups and mode.
             max_groups: Maximum number of groups to display. If there are more groups,
                 only the first max_groups will be shown. Default is 20.
+            collapsed: If True, show all groups stacked vertically in a single plot.
+                If False, show each group in its own subplot. Default is False.
+            criteria: Optional dictionary specifying filtering criteria for data selection.
+                When provided, only groups matching the criteria will be displayed.
+                Format: {'column_name': value} or {'column_name': [value1, value2]}.
+                Default is None (show all groups).
         
         Returns:
-            matplotlib Figure object containing the visualization.
+            Tuple of (Figure, Axes) containing the visualization.
         
         Raises:
             ValueError: If analyze() has not been called yet (no results to display).
+            KeyError: If criteria references columns not present in the data.
         
         Examples:
             >>> import pandas as pd
             >>> import numpy as np
             >>> from phenotypic.analysis import TukeyOutlierRemover
             >>> 
-            >>> # Create sample data
+            >>> # Create sample data with multiple grouping columns
             >>> np.random.seed(42)
             >>> data = pd.DataFrame({
-            ...     'ImageName': ['img1'] * 50 + ['img2'] * 50,
+            ...     'ImageName': ['img1', 'img2'] * 50,
+            ...     'Plate': ['P1'] * 50 + ['P2'] * 50,
             ...     'Area': np.concatenate([
-            ...         np.random.normal(200, 30, 48),
-            ...         [500, 550],  # outliers in img1
-            ...         np.random.normal(180, 25, 48),
-            ...         [50, 600]  # outliers in img2
+            ...         np.random.normal(200, 30, 48), [500, 550],
+            ...         np.random.normal(180, 25, 48), [50, 600]
             ...     ])
             ... })
             >>> 
-            >>> # Remove outliers and visualize
+            >>> # Remove outliers and visualize all groups
             >>> detector = TukeyOutlierRemover(
             ...     on='Area',
-            ...     groupby=['ImageName'],
+            ...     groupby=['Plate', 'ImageName'],
             ...     k=1.5
             ... )
             >>> results = detector.analyze(data)
-            >>> fig = detector.show(figsize=(12, 5))
+            >>> fig, axes = detector.show(figsize=(12, 5))
+            >>> 
+            >>> # Visualize only specific plate
+            >>> fig, axes = detector.show(criteria={'Plate': 'P1'})
+            >>> 
+            >>> # Visualize specific images across plates using collapsed view
+            >>> fig, ax = detector.show(criteria={'ImageName': 'img1'}, collapsed=True)
         
         Notes:
-            - Outliers are shown in red, normal values in blue
-            - Horizontal lines show the fence boundaries (Q1 - k*IQR and Q3 + k*IQR)
-            - Box plots show the quartile distribution
-            - Only the first max_groups groups are displayed if there are many groups
-            - Uses original data for visualization, dynamically computing outlier flags
+            Individual mode (collapsed=False):
+            - Each group gets its own subplot with box plot
+            - Outliers shown in red, normal values in blue
+            - Horizontal lines show fence boundaries
+            
+            Collapsed mode (collapsed=True):
+            - All groups stacked vertically in single plot
+            - Each group shown as horizontal line with median marker
+            - Vertical bars show fence boundaries
+            - Normal points as circles, outliers as diamonds
+            - More compact for comparing many groups
+            
+            Filtering with criteria:
+            - Only groups matching all criteria are displayed
+            - Useful for focusing on specific plates, conditions, or subsets
+            - Can be combined with both individual and collapsed modes
         """
         if self._original_data.empty:
             raise ValueError("No results to display. Call analyze() first.")
-        
+
         # Use original data for visualization and dynamically compute outlier flags
         data = self._original_data.copy()
-        
+
+        # Apply filtering if criteria provided
+        if criteria is not None:
+            data = self._filter_by(df=data, criteria=criteria, copy=False)
+            
+            if data.empty:
+                raise ValueError("No data matches the specified criteria")
+
         # Get unique groups
         if len(self.groupby) == 1:
             groups = data[self.groupby[0]].unique()
@@ -251,108 +286,220 @@ class TukeyOutlierRemover(SetAnalyzer):
             data['_group_key'] = data[self.groupby].astype(str).agg(' | '.join, axis=1)
             groups = data['_group_key'].unique()
             group_col = '_group_key'
-        
+
         # Limit number of groups if needed
         if len(groups) > max_groups:
             groups = groups[:max_groups]
             print(f"Warning: Displaying only first {max_groups} of {len(data[group_col].unique())} groups")
-        
+
+        # Branch based on visualization mode
+        if collapsed:
+            return self._show_collapsed(data, groups, group_col, figsize)
+        else:
+            return self._show_individual(data, groups, group_col, figsize)
+
+    def _show_individual(self, data: pd.DataFrame, groups, group_col: str, 
+                        figsize: tuple[int, int] | None) -> (plt.Figure, plt.Axes):
+        """Create individual subplots for each group."""
         # Calculate layout
         n_groups = len(groups)
         n_cols = min(3, n_groups)
-        n_rows = (n_groups + n_cols - 1) // n_cols
-        
+        n_rows = (n_groups + n_cols - 1)//n_cols
+
         # Set figure size
         if figsize is None:
-            figsize = (5 * n_cols, 4 * n_rows)
-        
+            figsize = (5*n_cols, 4*n_rows)
+
         fig, axes = plt.subplots(n_rows, n_cols, figsize=figsize, squeeze=False)
         axes = axes.flatten()
-        
+
         total_outliers = 0
         total_count = 0
-        
+
         # Plot each group
         for idx, group_name in enumerate(groups):
             ax = axes[idx]
             group_data = data[data[group_col] == group_name].copy()
-            
+
             # Dynamically compute outlier flags for this group
             values = group_data[self.on].values
             q1 = np.percentile(values, 25)
             q3 = np.percentile(values, 75)
             iqr = q3 - q1
-            lower_fence = q1 - (iqr * self.k)
-            upper_fence = q3 + (iqr * self.k)
-            
+            lower_fence = q1 - (iqr*self.k)
+            upper_fence = q3 + (iqr*self.k)
+
             is_outlier = (values < lower_fence) | (values > upper_fence)
             group_data['_is_outlier'] = is_outlier
-            
+
             # Separate inliers and outliers
             inliers = group_data[~group_data['_is_outlier']]
             outliers = group_data[group_data['_is_outlier']]
-            
+
             total_outliers += len(outliers)
             total_count += len(group_data)
-            
+
             # Create x-coordinates for scatter plot
             x_inliers = np.random.normal(1, 0.04, len(inliers))
             x_outliers = np.random.normal(1, 0.04, len(outliers))
-            
+
             # Plot inliers
             if len(inliers) > 0:
                 ax.scatter(x_inliers, inliers[self.on].values,
-                          alpha=0.6, s=40, c='#2E86AB', label='Normal', zorder=3)
-            
+                           alpha=0.6, s=40, c='#2E86AB', label='Normal', zorder=3)
+
             # Plot outliers
             if len(outliers) > 0:
                 ax.scatter(x_outliers, outliers[self.on].values,
-                          alpha=0.8, s=50, c='#E63946', marker='D', 
-                          label='Outlier', zorder=4)
-            
+                           alpha=0.8, s=50, c='#E63946', marker='D',
+                           label='Outlier', zorder=4)
+
             # Create box plot
             bp = ax.boxplot([values], positions=[1], widths=0.3,
-                           patch_artist=True, showfliers=False,
-                           boxprops=dict(facecolor='lightgray', alpha=0.3),
-                           medianprops=dict(color='black', linewidth=2))
-            
+                            patch_artist=True, showfliers=False,
+                            boxprops=dict(facecolor='lightgray', alpha=0.3),
+                            medianprops=dict(color='black', linewidth=2))
+
             # Add fence lines
-            ax.axhline(y=lower_fence, color='#F4A261', linestyle='--', 
-                      linewidth=1.5, label='Lower Fence', zorder=2)
-            ax.axhline(y=upper_fence, color='#F4A261', linestyle='--', 
-                      linewidth=1.5, label='Upper Fence', zorder=2)
-            
+            ax.axhline(y=lower_fence, color='#F4A261', linestyle='--',
+                       linewidth=1.5, label='Lower Fence', zorder=2)
+            ax.axhline(y=upper_fence, color='#F4A261', linestyle='--',
+                       linewidth=1.5, label='Upper Fence', zorder=2)
+
             # Formatting
             ax.set_title(f'{group_name}\n({len(outliers)} outliers / {len(group_data)} total)',
-                        fontsize=10, fontweight='bold')
+                         fontsize=10, fontweight='bold')
             ax.set_ylabel(self.on, fontsize=9)
             ax.set_xticks([])
             ax.grid(True, alpha=0.3, axis='y')
-            
+
             # Add legend only to first subplot
             if idx == 0:
                 handles, labels = ax.get_legend_handles_labels()
                 # Remove duplicate labels
                 by_label = dict(zip(labels, handles))
-                ax.legend(by_label.values(), by_label.keys(), 
-                         loc='best', fontsize=8, framealpha=0.9)
-        
+                ax.legend(by_label.values(), by_label.keys(),
+                          loc='best', fontsize=8, framealpha=0.9)
+
         # Hide unused subplots
         for idx in range(n_groups, len(axes)):
             axes[idx].set_visible(False)
-        
+
         # Overall title
-        outlier_pct = 100 * total_outliers / total_count if total_count > 0 else 0
-        
+        outlier_pct = 100*total_outliers/total_count if total_count > 0 else 0
+
         fig.suptitle(
-            f'Tukey Outlier Detection (k={self.k})\n'
-            f'{total_outliers} outliers detected ({outlier_pct:.1f}% of {total_count} measurements)',
-            fontsize=14, fontweight='bold', y=0.995
+                f'Tukey Outlier Detection (k={self.k})\n'
+                f'{total_outliers} outliers detected ({outlier_pct:.1f}% of {total_count} measurements)',
+                fontsize=14, fontweight='bold', y=0.995
         )
-        
+
         plt.tight_layout()
+
+        return fig, axes
+
+    def _show_collapsed(self, data: pd.DataFrame, groups, group_col: str,
+                       figsize: tuple[int, int] | None) -> (plt.Figure, plt.Axes):
+        """Create collapsed stacked view with all groups in single plot."""
+        n_groups = len(groups)
         
-        return fig
+        # Set figure size
+        if figsize is None:
+            figsize = (10, max(6, 0.5*n_groups + 2))
+
+        fig, ax = plt.subplots(1, 1, figsize=figsize)
+
+        total_outliers = 0
+        total_count = 0
+        
+        # Process each group and plot stacked vertically
+        for idx, group_name in enumerate(groups):
+            y_pos = n_groups - idx  # Stack from top to bottom
+            group_data = data[data[group_col] == group_name].copy()
+
+            # Dynamically compute outlier flags for this group
+            values = group_data[self.on].values
+            q1 = np.percentile(values, 25)
+            q3 = np.percentile(values, 75)
+            iqr = q3 - q1
+            median = np.percentile(values, 50)
+            lower_fence = q1 - (iqr*self.k)
+            upper_fence = q3 + (iqr*self.k)
+
+            is_outlier = (values < lower_fence) | (values > upper_fence)
+            group_data['_is_outlier'] = is_outlier
+
+            # Separate inliers and outliers
+            inliers = group_data[~group_data['_is_outlier']]
+            outliers = group_data[group_data['_is_outlier']]
+
+            total_outliers += len(outliers)
+            total_count += len(group_data)
+
+            # Draw horizontal line for full data range
+            data_min = values.min()
+            data_max = values.max()
+            ax.hlines(y_pos, data_min, data_max, colors='lightgray', 
+                     linewidth=1.5, alpha=0.6, zorder=1)
+
+            # Add vertical tick marks for fences and mean
+            tick_height = 0.15  # Height of tick marks
+            
+            # Lower fence tick
+            fence_label = 'Fences' if idx == 0 else None
+            ax.plot([lower_fence, lower_fence], [y_pos - tick_height, y_pos + tick_height],
+                   color='#F4A261', linewidth=2.5, linestyle='-', 
+                   label=fence_label, zorder=3)
+            
+            # Upper fence tick
+            ax.plot([upper_fence, upper_fence], [y_pos - tick_height, y_pos + tick_height],
+                   color='#F4A261', linewidth=2.5, linestyle='-', zorder=3)
+            
+            # Median marker
+            median_label = 'Median' if idx == 0 else None
+            ax.plot([median, median], [y_pos - tick_height, y_pos + tick_height],
+                   color='black', linewidth=2.5, linestyle='-',
+                   label=median_label, zorder=3)
+
+            # Create y-coordinates with jitter for scatter plot
+            y_inliers = np.random.normal(y_pos, 0.06, len(inliers))
+            y_outliers = np.random.normal(y_pos, 0.06, len(outliers))
+
+            # Plot inliers
+            if len(inliers) > 0:
+                label = 'Normal' if idx == 0 else None
+                ax.scatter(inliers[self.on].values, y_inliers,
+                          alpha=0.6, s=30, c='#2E86AB', label=label, zorder=4)
+
+            # Plot outliers
+            if len(outliers) > 0:
+                label = 'Outlier' if idx == 0 else None
+                ax.scatter(outliers[self.on].values, y_outliers,
+                          alpha=0.8, s=35, c='#E63946', marker='D',
+                          label=label, zorder=5)
+
+        # Formatting
+        ax.set_yticks(range(1, n_groups + 1))
+        ax.set_yticklabels(groups[::-1])  # Reverse to match top-to-bottom order
+        ax.set_xlabel(self.on, fontsize=11, fontweight='bold')
+        ax.set_ylabel('Group', fontsize=11, fontweight='bold')
+        ax.grid(True, alpha=0.2, axis='x')
+        ax.set_ylim(0.5, n_groups + 0.5)
+
+        # Add legend
+        ax.legend(loc='best', fontsize=9, framealpha=0.9)
+
+        # Overall title
+        outlier_pct = 100*total_outliers/total_count if total_count > 0 else 0
+        fig.suptitle(
+                f'Tukey Outlier Detection (k={self.k})\n'
+                f'{total_outliers} outliers detected ({outlier_pct:.1f}% of {total_count} measurements)',
+                fontsize=13, fontweight='bold'
+        )
+
+        plt.tight_layout()
+
+        return fig, ax
 
     def results(self) -> pd.DataFrame:
         """Return the filtered results (outliers removed).
@@ -409,7 +556,7 @@ class TukeyOutlierRemover(SetAnalyzer):
         q3 = np.percentile(values, 75)
         iqr = q3 - q1
 
-        lower_fence = q1 - (iqr * k)
-        upper_fence = q3 + (iqr * k)
+        lower_fence = q1 - (iqr*k)
+        upper_fence = q3 + (iqr*k)
 
         return group[(values >= lower_fence) & (values <= upper_fence)]
