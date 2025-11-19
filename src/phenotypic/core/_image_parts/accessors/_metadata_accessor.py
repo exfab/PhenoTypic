@@ -13,7 +13,10 @@ class MetadataAccessor:
 
     def __init__(self, image: Image) -> None:
         self._parent_image = image
-        self._combined_metadata = ChainMap(self._private_metadata, self._protected_metadata, self._public_metadata)
+
+    @property
+    def _combined_metadata(self):
+        return ChainMap(self._private_metadata, self._protected_metadata, self._public_metadata)
 
     @property
     def _private_metadata(self):

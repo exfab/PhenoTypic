@@ -67,9 +67,10 @@ dev = [
     "ipykernel;sys_platform!='win32'",
     "notebook;sys_platform!='win32'",
 ]
-plotly = [
-    "dash>=2.0.0",
-    "jupyter-dash>=0.4.0",
+
+jupyter = [
+    "ipywidgets>=8.1.7",
+    "jupyter>=1.1.1",
 ]
 
 [dependency-groups]
@@ -83,6 +84,7 @@ dev = [
     "jupyter;sys_platform!='win32'",
     "ipykernel;sys_platform!='win32'",
     "notebook;sys_platform!='win32'",
+    "ipywidgets",
 ]
 docs = [
     "sphinx",
