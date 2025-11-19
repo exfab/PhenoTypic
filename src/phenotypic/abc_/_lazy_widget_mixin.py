@@ -23,12 +23,13 @@ class LazyWidgetMixin:
     _output_widget: Optional[Widget] = None
     _image_ref: Optional[Image] = None
 
-    def widget(self, image: Optional[Image] = None) -> Widget:
+    def widget(self, image: Optional[Image] = None, show: bool = False) -> Widget:
         """Return (and optionally display) the root widget.
 
         Args:
             image (Image | None): Optional image to visualize. If provided,
                 visualization controls will be added to the widget.
+            show (bool): Whether to display the widget immediately. Defaults to False.
 
         Returns:
             ipywidgets.Widget: The root widget.
@@ -53,19 +54,12 @@ class LazyWidgetMixin:
         if self._ui is None:
             self._create_widgets()
 
-        # If we have an image and the visualization parts weren't created (e.g. widget() called before without image),
-        # we might need to recreate or append?
-        # For simplicity, if _ui exists, we assume it's good. 
-        # But if image was added later, we might want to add viz widgets.
-        # Let's just recreate if image is new and we don't have viz widgets yet?
-        # Or simpler: if _image_ref is set, _create_widgets will include viz widgets.
-        # If _ui exists but no output widget and now we have image, we should probably rebuild.
-        
         has_viz = getattr(self, '_output_widget', None) is not None
         if image is not None and not has_viz:
             self._create_widgets() # Re-create to include viz
             
-        display(self._ui)
+        if show:
+            display(self._ui)
         return self._ui
 
     def _create_widgets(self) -> None:
@@ -102,8 +96,29 @@ class LazyWidgetMixin:
                 
                 # Bind change
                 widget.observe(self._on_param_change, names='value')
+        
+        # 2. Recursive Inspection for _ops (Pipelines)
+        if hasattr(self, '_ops') and isinstance(self._ops, dict):
+            op_accordions = []
+            for op_name, op in self._ops.items():
+                # Check if the operation supports widgets (inherits LazyWidgetMixin or similar)
+                if hasattr(op, 'widget'):
+                    # Recursively create widget tree for the child op
+                    # We don't pass image down recursively for viz yet, main pipeline handles viz
+                    # We also don't show it immediately
+                    child_widget = op.widget(image=None, show=False)
+                    
+                    # Create accordion/group
+                    acc = widgets.Accordion(children=[child_widget])
+                    acc.set_title(0, f"Operation: {op_name}")
+                    op_accordions.append(acc)
+            
+            if op_accordions:
+                # Add operations section to controls
+                ops_container = widgets.VBox(op_accordions, layout=widgets.Layout(margin='10px 0px 0px 0px'))
+                controls.append(ops_container)
 
-        # 2. Visualization controls (if image provided)
+        # 3. Visualization controls (if image provided)
         if self._image_ref is not None:
             viz_controls = self._create_viz_widgets()
             # Combine
@@ -194,6 +209,9 @@ class LazyWidgetMixin:
                 
                 # Check if we are in an ImageOperation
                 if hasattr(self, 'apply'):
+                     # Use inplace=True for efficiency on the copy
+                     # Check signature of apply to be safe (some might not support inplace?)
+                     # Standard ImageOperation.apply supports inplace.
                      self.apply(img_copy, inplace=True)
                 else:
                      print("Error: Mixin used on class without apply()")
@@ -201,9 +219,6 @@ class LazyWidgetMixin:
                 
                 # Show
                 view = self._view_dropdown.value
-                
-                # Handle closing previous figures to save memory?
-                # plt.close('all') # Too aggressive?
                 
                 if view == 'overlay':
                     img_copy.show_overlay()
@@ -245,4 +260,3 @@ class LazyWidgetMixin:
         self._view_dropdown = None
         self._update_button = None
         self._output_widget = None
-

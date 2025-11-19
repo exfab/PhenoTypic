@@ -15,9 +15,10 @@ import time
 import sys
 
 from phenotypic.abc_ import MeasureFeatures, BaseOperation, ImageOperation
+from phenotypic.abc_._lazy_widget_mixin import LazyWidgetMixin
 
 
-class ImagePipelineCore(BaseOperation):
+class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
     """
     Represents a handler for processing and measurement queues used in Image operations
     and feature extraction tasks.
@@ -92,7 +93,7 @@ class ImagePipelineCore(BaseOperation):
         """
         # If ops is a list of ImageOperation
         if isinstance(ops, list):
-            op_names = [x.__class__.__name__ for x in ops if isinstance(x, ImageOperation)]
+            op_names = [x.__class__.__name__ for x in ops]
             op_names = self.__make_unique(op_names)
             self._ops = {op_names[i]: ops[i] for i in range(len(ops))}
         # If ops is a dictionary
