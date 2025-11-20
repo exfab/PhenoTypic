@@ -392,9 +392,11 @@ class EdgeCorrector(SetAnalyzer):
                         figsize: tuple[int, int] | None) -> tuple[Figure, plt.Axes]:
         n_groups = len(groups)
         if figsize is None:
-            figsize = (10, max(6, 0.5*n_groups + 2))
+            figsize = (10, max(6, 0.5 * n_groups + 2))
 
         fig, ax = plt.subplots(figsize=figsize)
+
+        added_labels = set()
 
         for idx, group_name in enumerate(groups):
             y_pos = n_groups - idx
@@ -416,38 +418,86 @@ class EdgeCorrector(SetAnalyzer):
 
             # Threshold
             if not np.isinf(threshold):
+                lbl = 'Threshold'
+                if lbl not in added_labels:
+                    added_labels.add(lbl)
+                else:
+                    lbl = None
                 ax.plot([threshold, threshold], [y_pos - 0.2, y_pos + 0.2],
-                        color='#F4A261', lw=2.5, label='Threshold' if idx == 0 else None, zorder=2)
+                        color='#F4A261', lw=2.5, label=lbl, zorder=2)
 
             # Jitter
             y_jitter = np.random.normal(y_pos, 0.05, len(lt_df))
 
             is_clipped = lt_df[self.on] > threshold
 
+            # Helper for scatter plots
+            def add_scatter(mask, color, marker, label_key):
+                if mask.any():
+                    lbl = label_key
+                    if lbl not in added_labels:
+                        added_labels.add(lbl)
+                    else:
+                        lbl = None
+                    ax.scatter(lt_df.loc[mask, self.on], y_jitter[mask],
+                               c=color, marker=marker, s=30 if marker == 'o' else 40,
+                               alpha=0.6 if marker == 'o' else 0.8,
+                               label=lbl, zorder=3)
+
             # Inner Pass
-            mask_ip = surrounded_mask & (~is_clipped)
-            if mask_ip.any():
-                ax.scatter(lt_df.loc[mask_ip, self.on], y_jitter[mask_ip],
-                           c='#2E86AB', marker='o', s=30, alpha=0.6,
-                           label='Inner (Pass)' if idx == 0 else None, zorder=3)
+            add_scatter(surrounded_mask & (~is_clipped), '#2E86AB', 'o', 'Inner (Pass)')
             # Inner Clipped
-            mask_ic = surrounded_mask & is_clipped
-            if mask_ic.any():
-                ax.scatter(lt_df.loc[mask_ic, self.on], y_jitter[mask_ic],
-                           c='#2E86AB', marker='x', s=40, alpha=0.8,
-                           label='Inner (Clipped)' if idx == 0 else None, zorder=3)
+            add_scatter(surrounded_mask & is_clipped, '#2E86AB', 'x', 'Inner (Clipped)')
             # Edge Pass
-            mask_ep = edge_mask & (~is_clipped)
-            if mask_ep.any():
-                ax.scatter(lt_df.loc[mask_ep, self.on], y_jitter[mask_ep],
-                           c='#E63946', marker='o', s=30, alpha=0.6,
-                           label='Edge (Pass)' if idx == 0 else None, zorder=3)
+            add_scatter(edge_mask & (~is_clipped), '#E63946', 'o', 'Edge (Pass)')
             # Edge Clipped
-            mask_ec = edge_mask & is_clipped
-            if mask_ec.any():
-                ax.scatter(lt_df.loc[mask_ec, self.on], y_jitter[mask_ec],
-                           c='#E63946', marker='x', s=40, alpha=0.8,
-                           label='Edge (Clipped)' if idx == 0 else None, zorder=3)
+            add_scatter(edge_mask & is_clipped, '#E63946', 'x', 'Edge (Clipped)')
+
+            # Means
+            inner_vals = lt_df.loc[surrounded_mask, self.on]
+            edge_vals = lt_df.loc[edge_mask, self.on]
+
+            if len(inner_vals) > 0:
+                lbl = 'Inner Mean'
+                if lbl not in added_labels:
+                    added_labels.add(lbl)
+                else:
+                    lbl = None
+                mean_val = inner_vals.mean()
+                ax.plot([mean_val, mean_val], [y_pos - 0.25, y_pos + 0.25],
+                        color='#2E86AB', linewidth=2.5, label=lbl, zorder=4, 
+                        linestyle="--")
+
+            if len(edge_vals) > 0:
+                lbl = 'Edge Mean'
+                if lbl not in added_labels:
+                    added_labels.add(lbl)
+                else:
+                    lbl = None
+                mean_val = edge_vals.mean()
+                ax.plot([mean_val, mean_val], [y_pos - 0.25, y_pos + 0.25],
+                        color='#E63946', linewidth=2.5, label=lbl, zorder=4,
+                        linestyle="--")
+
+            # P-value
+            if self.pvalue != 0 and len(inner_vals) > 0 and len(edge_vals) > 0:
+                pval = self._perm_test(inner_vals, edge_vals)
+                mean_inner = inner_vals.mean()
+                mean_edge = edge_vals.mean()
+                
+                # Bracket parameters
+                bracket_y = y_pos + 0.3
+                bracket_h = 0.05
+                
+                # Draw bracket
+                ax.plot([mean_inner, mean_inner, mean_edge, mean_edge], 
+                        [bracket_y, bracket_y + bracket_h, bracket_y + bracket_h, bracket_y], 
+                        color='black', linewidth=1, zorder=5)
+                
+                # Add p-value text
+                mid_x = (mean_inner + mean_edge) / 2
+                ax.text(mid_x, bracket_y + bracket_h + 0.05, f"p={pval:.3f}", 
+                        ha='center', va='bottom', fontsize=8)
 
         ax.set_yticks(range(1, n_groups + 1))
         ax.set_yticklabels(groups[::-1])
@@ -705,14 +755,8 @@ class EdgeCorrector(SetAnalyzer):
             last_edge_values: pd.Series = \
                 last_time_group.loc[last_time_group.loc[:, GRID.SECTION_NUM].isin(edge_idx), on]
 
-            perm_results = permutation_test(
-                    data=(last_inner_values, last_edge_values),
-                    statistic=lambda x, y: np.mean(x) - np.mean(y),
-                    permutation_type="independent",
-                    n_resamples=1000,
-                    alternative="two-sided",
-            )
-            if perm_results.pvalue > pvalue:  # If difference is not significant, don't apply correction
+            # If difference is not statistically significant, don't apply correction
+            if pvalue < EdgeCorrector._perm_test(last_inner_values, last_edge_values):  
                 return group
 
         # Use actual number of values if fewer than top_n available
@@ -729,5 +773,15 @@ class EdgeCorrector(SetAnalyzer):
         group.loc[:, on] = np.clip(group.loc[:, on], a_min=0, a_max=threshold)
         return group
 
+    @staticmethod
+    def _perm_test(surrounded, edge):
+        return permutation_test(
+                    data=(surrounded, edge),
+                    statistic=lambda x, y: np.mean(x) - np.mean(y),
+                    permutation_type="independent",
+                    n_resamples=1000,
+                    alternative="two-sided",
+            ).pvalue
 
 EdgeCorrector.__doc__ = EDGE_CORRECTION.append_rst_to_doc(EdgeCorrector.__doc__)
+

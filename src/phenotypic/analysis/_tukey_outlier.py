@@ -183,12 +183,12 @@ class TukeyOutlierRemover(SetAnalyzer):
 
         return self._latest_measurements
 
-    def show(self, 
-            figsize: tuple[int, int] | None = None, 
-            max_groups: int = 20, 
-            collapsed: bool = False,
-            criteria: dict[str, any] | None = None
-            ) -> (plt.Figure, plt.Axes):
+    def show(self,
+             figsize: tuple[int, int] | None = None,
+             max_groups: int = 20,
+             collapsed: bool = True,
+             criteria: dict[str, any] | None = None
+             ) -> (plt.Figure, plt.Axes):
         """Visualize outlier detection results.
         
         Creates a visualization showing the distribution of values with outliers highlighted
@@ -273,7 +273,7 @@ class TukeyOutlierRemover(SetAnalyzer):
         # Apply filtering if criteria provided
         if criteria is not None:
             data = self._filter_by(df=data, criteria=criteria, copy=False)
-            
+
             if data.empty:
                 raise ValueError("No data matches the specified criteria")
 
@@ -298,8 +298,8 @@ class TukeyOutlierRemover(SetAnalyzer):
         else:
             return self._show_individual(data, groups, group_col, figsize)
 
-    def _show_individual(self, data: pd.DataFrame, groups, group_col: str, 
-                        figsize: tuple[int, int] | None) -> (plt.Figure, plt.Axes):
+    def _show_individual(self, data: pd.DataFrame, groups, group_col: str,
+                         figsize: tuple[int, int] | None) -> (plt.Figure, plt.Axes):
         """Create individual subplots for each group."""
         # Calculate layout
         n_groups = len(groups)
@@ -399,10 +399,10 @@ class TukeyOutlierRemover(SetAnalyzer):
         return fig, axes
 
     def _show_collapsed(self, data: pd.DataFrame, groups, group_col: str,
-                       figsize: tuple[int, int] | None) -> (plt.Figure, plt.Axes):
+                        figsize: tuple[int, int] | None) -> (plt.Figure, plt.Axes):
         """Create collapsed stacked view with all groups in single plot."""
         n_groups = len(groups)
-        
+
         # Set figure size
         if figsize is None:
             figsize = (10, max(6, 0.5*n_groups + 2))
@@ -411,7 +411,7 @@ class TukeyOutlierRemover(SetAnalyzer):
 
         total_outliers = 0
         total_count = 0
-        
+
         # Process each group and plot stacked vertically
         for idx, group_name in enumerate(groups):
             y_pos = n_groups - idx  # Stack from top to bottom
@@ -439,27 +439,27 @@ class TukeyOutlierRemover(SetAnalyzer):
             # Draw horizontal line for full data range
             data_min = values.min()
             data_max = values.max()
-            ax.hlines(y_pos, data_min, data_max, colors='lightgray', 
-                     linewidth=1.5, alpha=0.6, zorder=1)
+            ax.hlines(y_pos, data_min, data_max, colors='lightgray',
+                      linewidth=1.5, alpha=0.6, zorder=1)
 
             # Add vertical tick marks for fences and mean
             tick_height = 0.15  # Height of tick marks
-            
+
             # Lower fence tick
             fence_label = 'Fences' if idx == 0 else None
             ax.plot([lower_fence, lower_fence], [y_pos - tick_height, y_pos + tick_height],
-                   color='#F4A261', linewidth=2.5, linestyle='-', 
-                   label=fence_label, zorder=3)
-            
+                    color='#F4A261', linewidth=2.5, linestyle='-',
+                    label=fence_label, zorder=3)
+
             # Upper fence tick
             ax.plot([upper_fence, upper_fence], [y_pos - tick_height, y_pos + tick_height],
-                   color='#F4A261', linewidth=2.5, linestyle='-', zorder=3)
-            
+                    color='#F4A261', linewidth=2.5, linestyle='-', zorder=3)
+
             # Median marker
             median_label = 'Median' if idx == 0 else None
             ax.plot([median, median], [y_pos - tick_height, y_pos + tick_height],
-                   color='black', linewidth=2.5, linestyle='-',
-                   label=median_label, zorder=3)
+                    color='black', linewidth=2.5, linestyle='-',
+                    label=median_label, zorder=3)
 
             # Create y-coordinates with jitter for scatter plot
             y_inliers = np.random.normal(y_pos, 0.06, len(inliers))
@@ -469,14 +469,14 @@ class TukeyOutlierRemover(SetAnalyzer):
             if len(inliers) > 0:
                 label = 'Normal' if idx == 0 else None
                 ax.scatter(inliers[self.on].values, y_inliers,
-                          alpha=0.6, s=30, c='#2E86AB', label=label, zorder=4)
+                           alpha=0.6, s=30, c='#2E86AB', label=label, zorder=4)
 
             # Plot outliers
             if len(outliers) > 0:
                 label = 'Outlier' if idx == 0 else None
                 ax.scatter(outliers[self.on].values, y_outliers,
-                          alpha=0.8, s=35, c='#E63946', marker='D',
-                          label=label, zorder=5)
+                           alpha=0.8, s=35, c='#E63946', marker='D',
+                           label=label, zorder=5)
 
         # Formatting
         ax.set_yticks(range(1, n_groups + 1))

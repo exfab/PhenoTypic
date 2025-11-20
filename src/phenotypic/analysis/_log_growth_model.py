@@ -189,8 +189,13 @@ class LogGrowthModel(ModelFitter):
             filtered_model_scores = self._filter_by(df=self._latest_model_scores, criteria=criteria, copy=True)
             filtered_measurements = self._filter_by(df=self._latest_measurements, criteria=criteria, copy=True)
         else:
-            filtered_model_scores = self._latest_model_scores
-            filtered_measurements = self._latest_measurements
+            filtered_model_scores = self._latest_model_scores.copy()
+            filtered_measurements = self._latest_measurements.copy()
+
+        if filtered_measurements.empty:
+            import warnings
+            warnings.warn("No data found matching the criteria. Returning empty plot.")
+            return fig, ax
 
         model_groups = {model_keys: model_groups for model_keys, model_groups in
                         filtered_model_scores.groupby(by=self.groupby)}
@@ -199,9 +204,21 @@ class LogGrowthModel(ModelFitter):
 
         filtered_measurements.loc[:, self.time_label] = \
             self._ensure_float_array(filtered_measurements.loc[:, self.time_label])
-        tmax = filtered_measurements.loc[:, self.time_label].max() if tmax is None else tmax
 
-        step = 1
+        timepoints = pd.Series(filtered_measurements.loc[:, self.time_label].unique())
+
+        step = np.mean(
+                timepoints
+                .sort_values()
+                .diff()
+                .dropna()
+        )
+
+        if np.isnan(step) or step <= 0:
+            step = 1.0
+
+        tmax = timepoints.max() if tmax is None else tmax
+
         t = np.arange(stop=tmax + step, step=step)
 
         cmap = cm.get_cmap(cmap)

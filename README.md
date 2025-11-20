@@ -27,8 +27,16 @@ to integrate new tools.
 
 ## uv (recommended)
 
-```
+To download the base package (recommended if running on a cluster)
+
+```bash
 uv add phenotypic
+```
+
+To download the base package plus prototyping environment (recommended for pipeline development)
+
+```bash
+uv add phenotypic --groups jupyter
 ```
 
 ## Pip
