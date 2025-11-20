@@ -13,8 +13,8 @@ class TestLogGrowthModel:
     @pytest.fixture(scope="class")
     def measurement_data(self):
         """Load measurement data for testing."""
-        data_path = Path(__file__).parent.parent/"src"/"phenotypic"/"data"/"meas"/"meas.csv"
-        df = pd.read_csv(data_path, nrows=10000)  # Load first 10k nrows for testing
+        data_path = Path(__file__).parent.parent/"src"/"phenotypic"/"data"/"meas"/"area_meas.csv"
+        df = pd.read_csv(data_path)  # Load all rows from area_meas.csv
         return df
 
     @pytest.fixture(scope="class")
@@ -65,8 +65,8 @@ class TestLogGrowthModel:
         assert model.groupby == ['Metadata_Dataset', 'Metadata_Strain']
         assert model.time_label == 'Metadata_Time'
         assert model.Kmax_label is None
-        assert model.reg_factor == 1.2
-        assert model.kmax_penalty == 2
+        assert model.lam == 1.2
+        assert model.alpha == 2
         assert model.loss == "linear"
         assert not model.verbose
         assert model.n_jobs == 1
@@ -77,8 +77,8 @@ class TestLogGrowthModel:
                 groupby=['Dataset', 'Strain'],
                 time_label='Time',
                 Kmax_label='Max_Capacity',
-                growth_rate_penalty=2.0,
-                Kmax_penalty=10,
+                lam=2.0,
+                alpha=10,
                 loss="linear",
                 verbose=True,
                 n_jobs=2
@@ -88,8 +88,8 @@ class TestLogGrowthModel:
         assert model_custom.groupby == ['Dataset', 'Strain']
         assert model_custom.time_label == 'Time'
         assert model_custom.Kmax_label == 'Max_Capacity'
-        assert model_custom.reg_factor == 2.0
-        assert model_custom.kmax_penalty == 10
+        assert model_custom.lam == 2.0
+        assert model_custom.alpha == 10
         assert model_custom.verbose
         assert model_custom.n_jobs == 2
 
@@ -251,7 +251,7 @@ class TestLogGrowthModel:
         t = np.array([0, 1, 2, 5])
         r, K, N0 = 0.5, 1000, 50
 
-        result = LogGrowthModel._model_func(t, r, K, N0)
+        result = LogGrowthModel.model_func(t, r, K, N0)
 
         # Check initial condition
         assert abs(result[0] - N0) < 1e-10
@@ -261,7 +261,7 @@ class TestLogGrowthModel:
         assert result[-1] > result[0]  # Should increase
 
         # Test with scalar input
-        scalar_result = LogGrowthModel._model_func(1.0, r, K, N0)
+        scalar_result = LogGrowthModel.model_func(1.0, r, K, N0)
         assert isinstance(scalar_result, (float, np.floating))
 
     def test_loss_function(self):
@@ -270,7 +270,7 @@ class TestLogGrowthModel:
         params = [r, K, N0]
 
         t = np.array([0, 1, 2])
-        y = LogGrowthModel._model_func(t, r, K, N0)
+        y = LogGrowthModel.model_func(t, r, K, N0)
         lam, alpha = 1.0, 1.0
 
         loss = LogGrowthModel._loss_func(params, t, y, lam, alpha)

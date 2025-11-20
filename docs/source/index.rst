@@ -1,14 +1,9 @@
-.. Phenotypic documentation master file, created by
-   sphinx-quickstart on Sat Mar  8 14:29:44 2025.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
-
 :notoc:
 
 .. module:: phenotypic
 
 PhenoTypic
-==========================================
+==========
 
 .. container:: subtitle
 
@@ -141,4 +136,4 @@ Welcome to Phenotypic's documentation. Here you'll find comprehensive guides and
    user_guide/index
    api_reference/index
    contrib_guide/index
-
+   downloadables

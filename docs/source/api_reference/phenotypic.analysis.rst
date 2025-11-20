@@ -1,5 +1,5 @@
-phenotypic.analysis
-===================
+phenotypic.analysis package
+===========================
 
 .. automodule:: phenotypic.analysis
    :members:
@@ -12,4 +12,4 @@ Subpackages
 .. toctree::
    :maxdepth: 4
 
-   phenotypic.analysis.abstract
+   phenotypic.analysis.abc_

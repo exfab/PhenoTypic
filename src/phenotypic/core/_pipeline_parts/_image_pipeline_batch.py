@@ -23,7 +23,7 @@ import traceback
 import pandas as pd
 
 from .._image_set import ImageSet
-from ._image_pipeline_core import ImagePipelineCore
+from ._serializable_pipeline import SerializablePipeline
 
 # Create module-level logger
 logger = logging.getLogger(__name__)
@@ -35,7 +35,7 @@ class PipelineMode(Enum):
     APPLY_MEASURE = "apply_measure"
 
 
-class ImagePipelineBatch(ImagePipelineCore):
+class ImagePipelineBatch(SerializablePipeline):
     """
     Handles batch processing of images using specified operations and measurement
     features while supporting multi-processing for enhanced performance.
@@ -278,12 +278,17 @@ class ImagePipelineBatch(ImagePipelineCore):
         with imageset.hdf_.safe_writer() as writer:
             for image_name in image_names:
                 status_group = imageset.hdf_.get_status_subgroup(handle=writer, image_name=image_name)
+
                 status_group.attrs.modify(name=PIPE_STATUS.PROCESSED.label, value=False)
-                status_group.attrs.modify(name=PIPE_STATUS.MEASURED.label, value=False)
                 assert PIPE_STATUS.PROCESSED.label in status_group.attrs, "processed flag missing from status group attrs"
+
+                status_group.attrs.modify(name=PIPE_STATUS.MEASURED.label, value=False)
                 assert PIPE_STATUS.MEASURED.label in status_group.attrs, "measured flag missing from status group attrs"
+
                 logger.debug(
-                        f'Allocating statuses for {image_name}: {status_group.attrs.keys()} -> {status_group.attrs.values()}')
+                        f'Allocating statuses for {image_name}: '
+                        f'{status_group.attrs.keys()} -> {status_group.attrs.values()}'
+                )
                 meas_group = imageset.hdf_.get_image_measurement_subgroup(handle=writer, image_name=image_name)
 
                 imageset.hdf_.preallocate_frame_layout(
@@ -365,7 +370,7 @@ class ImagePipelineBatch(ImagePipelineCore):
 
     def _writer(self, image_set: ImageSet, results_q: _mp.Queue[Tuple[str, bytes, bytes]],
                 writer_access_event: threading.Event, stop_event: threading.Event):
-        import phenotypic as pt
+        import phenotypic as pht
 
         logger = logging.getLogger(f'ImagePipeline.writer')
         logger.info(f'Accessing hdf file')
@@ -391,7 +396,7 @@ class ImagePipelineBatch(ImagePipelineCore):
                     logger.info(f'Saving image: {image_name}')
                     try:  # Save processed image if pipeline successfully executed
                         image = pickle.loads(image_bytes)
-                        if isinstance(image, pt.Image) or isinstance(image, pt.GridImage):
+                        if isinstance(image, pht.Image) or isinstance(image, pht.GridImage):
                             logger.info('Got valid image from queue')
                             image_group = image_set.hdf_.get_data_group(handle=writer)
                             image._save_image2hdfgroup(grp=image_group, overwrite=False)
@@ -408,14 +413,17 @@ class ImagePipelineBatch(ImagePipelineCore):
                         meas = pickle.loads(meas_bytes)
                         if isinstance(meas, pd.DataFrame):
                             logger.debug('Got valid DataFrame')
-                            meas_group = image_set.hdf_.get_image_measurement_subgroup(handle=writer,
-                                                                                       image_name=image_name)
+                            meas_group = image_set.hdf_.get_image_measurement_subgroup(
+                                    handle=writer,
+                                    image_name=image_name
+                            )
                             image_set.hdf_.save_frame_update(meas_group, meas, start=0, require_swmr=True)
                             status_group.attrs.modify(PIPE_STATUS.MEASURED.label, True)
                     except KeyboardInterrupt:
                         raise KeyboardInterrupt
                     except Exception as e:
-                        logger.error(f'Error saving measurements for {image_name}: {e}')
+                        tb_str = ''.join(traceback.format_exception(type(e), e, e.__traceback__))
+                        logger.error(f'Error saving measurements for {image_name}: {tb_str}')
 
                 except queue.Empty:  # release GIL if queue is empty
                     continue
@@ -433,7 +441,7 @@ class ImagePipelineBatch(ImagePipelineCore):
 
         pipe = cls(benchmark=False, verbose=False)
         pipe.set_ops(ops)
-        pipe.set_measurements(meas_ops)
+        pipe.set_meas(meas_ops)
         # pipe._ops = ops
         # pipe._meas = meas_ops
         while True:

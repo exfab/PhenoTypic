@@ -439,7 +439,7 @@ class ImageAccessorBase(ABC):
                         warnings.warn(
                                 'Saving a float array as a jpeg will result in information loss if the max value is higher than 255')
                         arr2save = ski.util.img_as_ubyte(arr2save)
-                PIL_Image.fromarray(arr2save).save(filepath, format=filepath.suffix.lower(), quality=100)
+                PIL_Image.fromarray(arr2save).save(filepath, quality=100)
             case x if x in IO.PNG_FILE_EXTENSIONS:
                 match arr2save.dtype:
                     case np.uint8 | np.uint16:
@@ -451,8 +451,8 @@ class ImageAccessorBase(ABC):
                         arr2save = ski.util.img_as_ubyte(arr2save) \
                             if self._root_image.bit_depth == 8 \
                             else ski.util.img_as_uint(arr2save)
-                PIL_Image.fromarray(arr2save).save(filepath, format=filepath.suffix.lower(), optimize=True)
+                PIL_Image.fromarray(arr2save).save(filepath, optimize=True)
             case x if x in IO.TIFF_EXTENSIONS:
-                PIL_Image.fromarray(arr2save).save(filepath, format=filepath.suffix.lower())
+                PIL_Image.fromarray(arr2save).save(filepath)
             case _:
                 raise ValueError(f'unknown file extension for saving:{filepath.suffix}')

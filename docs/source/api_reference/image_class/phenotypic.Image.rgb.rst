@@ -12,9 +12,9 @@ phenotypic.Image.rgb
 
 
 
-.. currentmodule:: phenotypic.core.accessors
+.. currentmodule:: phenotypic.core._image_parts.accessors
 
-.. class-members:: phenotypic.core.accessors.ImageRGB
+.. class-members:: phenotypic.core._image_parts.accessors.ImageRGB
    :attributes:
    :properties:
    :methods:

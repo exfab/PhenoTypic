@@ -24,7 +24,7 @@ Image
     Image.objmask
     Image.objmap
     Image.objects
-    Image.hsb
+    Image.color
 
 
 
@@ -49,18 +49,15 @@ Modules
    :maxdepth: 1
    :caption: Modules
    
-   image_class.phenotypic.Image
-   grid_image.phenotypic.GridImage
-   phenotypic.ImageSet
-   phenotypic.ImagePipeline
-   phenotypic.abstract
+   phenotypic.abc_
+   phenotypic.analysis
+   phenotypic.core
+   phenotypic.correction
    phenotypic.data
-   phenotypic.detection
+   phenotypic.detect
+   phenotypic.enhance
    phenotypic.grid
    phenotypic.measure
-   phenotypic.morphology
-   phenotypic.objects
-   phenotypic.pipeline
-   phenotypic.preprocessing
-   phenotypic.transform
-   phenotypic.util
+   phenotypic.prefab
+   phenotypic.refine
+   phenotypic.tools

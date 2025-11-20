@@ -1,5 +1,5 @@
-phenotypic.tools.constants\_
-============================
+phenotypic.tools.constants\_ module
+===================================
 
 .. automodule:: phenotypic.tools.constants_
    :members:

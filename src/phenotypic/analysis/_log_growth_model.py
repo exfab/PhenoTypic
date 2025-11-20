@@ -22,7 +22,7 @@ class LOG_GROWTH_MODEL(MeasurementInfo):
     R_FIT = 'r', 'The intrinsic growth rate'
     K_FIT = 'K', "The carrying capacity"
     N0_FIT = "N0", "The initial number of the colony size metric being fitted"
-    GROWTH_RATE = "d(N)/dt", "The growth rate of the colony calculated as (K*r)/4"
+    GROWTH_RATE = "µmax", "The growth rate of the colony calculated as (K*r)/4"
     K_MAX = "Kmax", "The upper bound of the carrying capacity for model fitting"
     NUM_SAMPLES = "NumSamples", "The number of samples used for model fitting"
     LOSS = "OptimizerLoss", "The loss of model fitting"
@@ -34,26 +34,36 @@ class LOG_GROWTH_MODEL(MeasurementInfo):
 
 class LogGrowthModel(ModelFitter):
     """
-    A class for analyzing and fitting logarithmic growth data.
+    Represents a log growth model fitter.
 
-    This class provides tools for fitting a logarithmic growth model to data,
-    analyzing grouped data, visualizing model results, and accessing summarized
-    results. It extends the functionalities of the `ModelFitter` base class,
-    offering parameter optimization, aggregation methods, and flexibility in
-    penalty and loss functions to fine-tune model behavior.
+    This class defines methods and attributes to configure and fit logarithmic
+    growth models to grouped data. It provides functionality for analyzing and
+    visualizing the fitted models as well as exposing the results for further
+    processing.
+
+    Loss Function Calculation:
+         :math:`J(K,N_0,r) = \frac{1}{n}\sum_{i=1}^{n}\frac{1}{2}(f_{K,N0,r}(t^{(i)}) - N_t^{(i)})^2)
+            + \lambda(\frac{dN}{dt}^2 + N_0^2)
+            + \alpha \frac{\lvert K-\max({N_t})\rvert}{N_t}`
+
+        :math:`N_t`: population size at time t
+        :math:`N_0`: initial population size at time t
+        :math:`r`: growth rate
+        :math:`K`: Carrying capacity (maximum population size).
+        :math:`\lambda`: regularization term for growth rate and initial population size
+        :math:`\alpha`: penalty term for deviations in the carrying capacity relative to the largest measurement
+
 
     Attributes:
-        reg_factor (float): Regularization factor applied to growth rate during
-            optimization.
-        kmax_penalty (float): Penalty factor influencing the carrying capacity
-            during optimization.
-        loss (str): Specifies the loss function to be used. Currently supports
-            "linear" as the default option.
-        verbose (bool): Indicates whether detailed information should be displayed
-            during fitting and optimization.
-        time_label (str): Column name in the data representing time measurements.
-        Kmax_label (str | None): Column name for the carrying capacity if provided.
-            Defaults to None.
+        lam (float): The penalty factor applied to growth rates.
+        alpha (float): The maximum penalty factor applied to the carrying
+            capacity.
+        loss (Literal["linear"]): The loss calculation method used for fitting.
+        verbose (bool): A flag to enable or disable detailed logging.
+        time_label (str): The column name representing the time dimension
+            in the input data.
+        Kmax_label (str | None): The column name for the maximum carrying capacity
+            values, if provided.
     """
 
     def __init__(self,
@@ -61,9 +71,9 @@ class LogGrowthModel(ModelFitter):
                  groupby: List[str],
                  time_label: str = 'Metadata_Time',
                  agg_func: Callable | str | list | dict | None = 'mean',
+                 lam=1.2,
+                 alpha=2,
                  Kmax_label: str | None = None,
-                 growth_rate_penalty=1.2,
-                 Kmax_penalty=2,
                  loss: Literal["linear"] = "linear",
                  verbose: bool = False,
                  n_jobs: int = 1):
@@ -79,16 +89,16 @@ class LogGrowthModel(ModelFitter):
             agg_func (Callable | str | list | dict | None): Aggregation function(s) to
                 apply to grouped data. Parameter is fed to `pandas.DataFrame.groupby.agg()`.
                 Defaults to 'mean'.
+            lam: The penalty factor applied to growth rates. Defaults to 1.2.
+            alpha: The maximum penalty factor applied to the carrying capacity. Defaults to 2.
             Kmax_label (str | None): Column name that provides maximum K value for processing. Defaults to None.
-            growth_rate_penalty: The penalty factor applied to growth rates. Defaults to 1.2.
-            Kmax_penalty: The maximum penalty factor applied to the carrying capacity. Defaults to 2.
             loss (Literal["linear"]): Loss calculation method to apply. Defaults to "linear".
             verbose (bool): If True, enables detailed logging for process execution. Defaults to False.
             n_jobs (int): Number of parallel jobs to execute. Defaults to 1.
         """
         super().__init__(on=on, groupby=groupby, agg_func=agg_func, num_workers=n_jobs)
-        self.reg_factor = growth_rate_penalty
-        self.kmax_penalty = Kmax_penalty
+        self.lam = lam
+        self.alpha = alpha
         self.loss = loss
         self.verbose = verbose
 
@@ -96,26 +106,31 @@ class LogGrowthModel(ModelFitter):
         self.Kmax_label = Kmax_label
 
     def analyze(self, data: pd.DataFrame) -> pd.DataFrame:
+        data: pd.DataFrame = data.copy(deep=True)
+        data.loc[:, self.time_label] = self._ensure_float_array(data.loc[:, self.time_label])
         self._latest_measurements = data
+
+        apply2group_kwargs = dict(
+                groupby_names=self.groupby,
+                model=self.__class__.model_func,
+                time_label=self.time_label,
+                size_label=self.on,
+                Kmax_label=self.Kmax_label,
+                lam=self.lam,
+                alpha=self.alpha,
+                loss=self.loss,
+                verbose=self.verbose,
+        )
 
         # aggregate so that only one sample per timepoint
         agg_dict = {self.on: self.agg_func}
         if self.Kmax_label is not None:
             agg_dict[self.Kmax_label] = 'max'  # Use max for Kmax as it's a carrying capacity
+
         agg_data = data.groupby(by=self.groupby + [self.time_label], as_index=False).agg(agg_dict)
 
+        # Create groups
         grouped = agg_data.groupby(by=self.groupby, as_index=True)
-        apply2group_kwargs = dict(
-                groupby_names=self.groupby,
-                model=self.__class__._model_func,
-                time_label=self.time_label,
-                size_label=self.on,
-                Kmax_label=self.Kmax_label,
-                lam=self.reg_factor,
-                alpha=self.kmax_penalty,
-                loss=self.loss,
-                verbose=self.verbose,
-        )
         if self.n_jobs == 1:
 
             model_res = []
@@ -130,49 +145,135 @@ class LogGrowthModel(ModelFitter):
         return self._latest_model_scores
 
     def show(self,
+             tmax: int | float | None = None,
              criteria: Dict[str, Union[Any, List[Any]]] | None = None,
-             figsize=(6, 4), cmap: str = 'tab20',
-             legend=True, ax: plt.Axes = None) -> Tuple[plt.Figure, plt.Axes]:
+             figsize=(6, 4),
+             cmap: str = 'tab20',
+             legend=True,
+             ax: plt.Axes = None) -> Tuple[plt.Figure, plt.Axes]:
+        """
+        Visualizes model predictions alongside measurements, allowing optional
+        filtering by specified criteria and plotting configuration.
+
+        Args:
+            tmax (int | float | None, optional): The maximum time value for plotting. If
+                set to None, the maximum time value will be determined from the data
+                automatically.
+            criteria (Dict[str, Union[Any, List[Any]]] | None, optional): A dictionary
+                specifying filtering criteria for data selection. When provided, only
+                data matching the criteria will be used for plotting.
+            figsize (tuple, optional): A tuple specifying the size of the figure.
+                Defaults to (6, 4).
+            cmap (str, optional): A string representing the colormap to be used for
+                plotting model predictions. Defaults to 'tab20'.
+            legend (bool, optional): A boolean that controls whether a legend is
+                displayed on the plot. Defaults to True.
+            ax (plt.Axes, optional): A matplotlib Axes object on which to plot. If not
+                provided, a new figure and axes object will be created.
+
+        Returns:
+            Tuple[plt.Figure, plt.Axes]: A tuple containing the matplotlib Figure and
+                Axes objects used for plotting.
+
+        Raises:
+            KeyError: If the group keys for model results and measurements do not
+                align, or if specified columns are missing from the input data.
+        """
         if ax is None:
             fig, ax = plt.subplots(figsize=figsize)
         else:
             fig = ax.get_figure()
+
+        # apply filtering of data table
         if criteria is not None:
             filtered_model_scores = self._filter_by(df=self._latest_model_scores, criteria=criteria, copy=True)
             filtered_measurements = self._filter_by(df=self._latest_measurements, criteria=criteria, copy=True)
         else:
-            filtered_model_scores = self._latest_model_scores
-            filtered_measurements = self._latest_measurements
+            filtered_model_scores = self._latest_model_scores.copy()
+            filtered_measurements = self._latest_measurements.copy()
+
+        if filtered_measurements.empty:
+            import warnings
+
+            warnings.warn("No data found matching the criteria. Returning empty plot.")
+            return fig, ax
+
         model_groups = {model_keys: model_groups for model_keys, model_groups in
                         filtered_model_scores.groupby(by=self.groupby)}
         meas_groups = {meas_keys: meas_groups for meas_keys, meas_groups in
                        filtered_measurements.groupby(by=self.groupby)}
-        tmax = filtered_measurements.loc[:, self.time_label].max()
-        t = np.arange(stop=tmax, step=1)
+
+        filtered_measurements.loc[:, self.time_label] = \
+            self._ensure_float_array(filtered_measurements.loc[:, self.time_label])
+
+        timepoints = pd.Series(filtered_measurements.loc[:, self.time_label].unique())
+
+        step = np.abs(np.mean(
+                timepoints
+                .sort_values()
+                .diff()
+                .dropna()
+        ))
+
+        if np.isnan(step) or step <= 0:
+            step = 1.0
+
+        tmax = timepoints.max() if tmax is None else tmax
+
+        t = np.arange(stop=tmax + step, step=step)
+
         cmap = cm.get_cmap(cmap)
-        color_iter = itertools.cycle(cmap(np.linspace(0, 1, 256)))
-        next(color_iter)
+        color_iter = itertools.cycle(cmap(np.linspace(start=0, stop=1, num=len(model_groups), endpoint=False)))
         for model_key, model_group in model_groups.items():
             curr_meas = meas_groups[model_key]
             curr_color = next(color_iter)
-            y_pred = self._model_func(t=t,
-                                      r=model_group[LOG_GROWTH_MODEL.R_FIT].iloc[0],
-                                      K=model_group[LOG_GROWTH_MODEL.K_FIT].iloc[0],
-                                      N0=model_group[LOG_GROWTH_MODEL.N0_FIT].iloc[0],
-                                      )
-            ax.plot(t, y_pred, label=model_key, color=curr_color)
-            ax.scatter(
-                    x=curr_meas.loc[:, self.time_label],
-                    y=curr_meas.loc[:, self.on],
-                    color=curr_color, label=model_key,
+            y_pred = self.model_func(t=t,
+                                     r=model_group[LOG_GROWTH_MODEL.R_FIT].iloc[0],
+                                     K=model_group[LOG_GROWTH_MODEL.K_FIT].iloc[0],
+                                     N0=model_group[LOG_GROWTH_MODEL.N0_FIT].iloc[0],
+                                     )
+            ax.plot(t, y_pred, color=curr_color)
+
+            curr_time_groups = curr_meas.groupby(by=self.time_label)
+            curr_mean = curr_time_groups[self.on].mean()
+            curr_stddev = curr_time_groups[self.on].std()
+            curr_stderr = curr_stddev/np.sqrt(curr_time_groups[self.on].count())
+
+            # noinspection PyUnresolvedReferences
+            ax.errorbar(
+                    x=curr_mean.index.values,
+                    y=curr_mean.values,
+                    yerr=curr_stderr,
+                    fmt='o',
+                    color=curr_color,
+                    ecolor=curr_color,
+                    elinewidth=1,
+                    capsize=2,
+                    label=f'{model_key[0]}',
             )
+        if legend:
+            # Create legend and check if it fits within the axes
+            legend_obj = ax.legend()
+
+            # Draw to ensure bounding boxes are available
+            fig.canvas.draw()
+
+            # Get bounding boxes in display coordinates
+            legend_bbox = legend_obj.get_window_extent()
+            axes_bbox = ax.get_window_extent()
+
+            # Check if legend is larger than axes (with small tolerance)
+            if legend_bbox.width > axes_bbox.width*0.95 or legend_bbox.height > axes_bbox.height*0.95:
+                legend_obj.remove()
+
+        ax.set_title('mean±SE')
         return fig, ax
 
     def results(self) -> pd.DataFrame:
         return self._latest_model_scores
 
     @staticmethod
-    def _model_func(t: np.ndarray[float] | float, r: float, K: float, N0: float):
+    def model_func(t: np.ndarray[float] | float, r: float, K: float, N0: float):
         """
         Computes the value of the logistic growth model for a given time point or array
         of time points and parameters. The logistic model describes growth that
@@ -209,7 +310,17 @@ class LogGrowthModel(ModelFitter):
         values using a logarithmic growth model, a regularization term, and a penalty
         for deviations in the carrying capacity (K).
 
-        :math:`J(K,N_0,r) = \frac{1}{m}\sum_{i=1}^{m}\frac{1}{2}(f_{K,N0,r}(t^{(i)} - N_t^{(i)})^2)+ \lambda(\frac{dN}{dt}^2 + N_0^2) + \alphaK`
+        :math:`J(K,N_0,r) = \frac{1}{n}\sum_{i=1}^{n}\frac{1}{2}(f_{K,N0,r}(t^{(i)}) - N_t^{(i)})^2)
+            + \lambda(µ_{max}^2 + N_0^2)
+            + \alpha \frac{\lvert K-\max({N_t})\rvert}{N_t}`
+
+        :math:`N_t`: population size at time t.
+        :math:`N_0`: initial population size at time t.
+        :math:`r`: intrinsic growth rate.
+        :math:`K`: Carrying capacity (maximum population size).
+        :math:`µ_{max}`: Specific growth rate.
+        :math:`\lambda`: regularization term for the specific growth rate and initial population size.
+        :math:`\alpha`: penalty term for deviations in the carrying capacity relative to the largest measurement.
 
         The function calculates the residuals (difference between actual and predicted
         values), a regularization term based on biological parameters, and applies a
@@ -218,7 +329,8 @@ class LogGrowthModel(ModelFitter):
         penalty calculation.
 
         Note:
-            This function is meant to be used in conjunction with the scipy least squares optimization method
+            This function is used in conjunction with the `scipy.optimize.least_squares` solver to
+            find the parameters
 
         Args:
             params (List[float]): A list containing the parameters [r, K, N0], where:
@@ -229,7 +341,7 @@ class LogGrowthModel(ModelFitter):
             y (Union[List[float], np.ndarray, pd.Series]): Observed population size
                 corresponding to the time points t. Can be a list, numpy array, or
                 pandas.Series object.
-            lam (float): Regularization parameter for the biological parameters.
+            lam (float): Regularization parameter for the specific growth rate and initial population size.
             alpha (float): Scaling parameter for the K-based penalty.
 
         Returns:
@@ -241,10 +353,10 @@ class LogGrowthModel(ModelFitter):
         """
         r, K, N0 = params
 
-        # Original cost function (residuals)
-        cost_func = y - LogGrowthModel._model_func(t=t, r=r, K=K, N0=N0)
+        # cost function (residuals)
+        cost_func = y - LogGrowthModel.model_func(t=t, r=r, K=K, N0=N0)
 
-        # Original regularization term
+        # regularization term
         dN_dt = r*K/4
         reg_term = np.sqrt(lam)*np.array([dN_dt, N0])
 
@@ -254,7 +366,9 @@ class LogGrowthModel(ModelFitter):
         else:
             y_array = np.array(y)
 
-        y_max_observed = np.max(y_array)
+        # Get the value of the last time point
+        # assumes thats the best indicator for carrying capacity
+        y_max_observed = y_array[np.argmax(t)]
 
         # Numerical stability epsilon
         epsilon = 1e-8*np.median(np.abs(y_array[y_array > 0]))
@@ -263,22 +377,24 @@ class LogGrowthModel(ModelFitter):
 
         # Relative K penalty
         K_penalty_weight = np.sqrt(lam*alpha)
-        K_penalty = K_penalty_weight*(K - y_max_observed)/(y_max_observed + epsilon)
+        K_penalty = K_penalty_weight*np.abs(K - y_max_observed)/(y_max_observed + epsilon)
 
         return np.hstack([cost_func, reg_term, [K_penalty]])
 
     @staticmethod
-    def _apply2group_func(group_key: tuple,
-                          group: pd.DataFrame,
-                          groupby_names: tuple,
-                          model: Callable,
-                          time_label: str,
-                          size_label: str,
-                          Kmax_label: str | None,
-                          lam: float,
-                          alpha: float,
-                          loss: Literal['linear'],
-                          verbose: bool):
+    def _apply2group_func(
+            group_key: tuple,
+            group: pd.DataFrame,
+            groupby_names: tuple,
+            model: Callable,
+            time_label: str,
+            size_label: str,
+            Kmax_label: str | None,
+            lam: float,
+            alpha: float,
+            loss: Literal['linear'],
+            verbose: bool
+    ):
         t_data = group[time_label]
         size_data = group[size_label]
 
@@ -325,7 +441,7 @@ class LogGrowthModel(ModelFitter):
                 LOG_GROWTH_MODEL.GROWTH_RATE: (x[0]*x[1])/4,
             }
 
-            y_pred = LogGrowthModel._model_func(t=t_data, r=x[0], K=x[1], N0=x[2])
+            y_pred = LogGrowthModel.model_func(t=t_data, r=x[0], K=x[1], N0=x[2])
             model_stats = {
                 LOG_GROWTH_MODEL.K_MAX      : K_max,
                 LOG_GROWTH_MODEL.NUM_SAMPLES: n_samples,

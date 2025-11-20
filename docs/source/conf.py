@@ -45,7 +45,7 @@ author = 'Alexander Nguyen'
 # Variables
 github_url = 'https://github.com/Wheeldon-Lab/PhenoScope#'
 LIGHT_LOGO_PATH = './_static/assets/200x150/light_logo_sponsor.svg'
-DARK_LOGO_PATH = './_static/assets/200x150/dark_logo_sponsor.svg'
+DARK_LOGO_PATH = './_static/assets/200x150/light_logo_sponsor.svg'
 
 # Try to get the version from PhenoTypic, but use a default if not available
 try:
@@ -70,7 +70,6 @@ extensions = [
     'sphinx.ext.ifconfig',
     'sphinx.ext.autosectionlabel',
     'nbsphinx',
-    'sphinx_gallery.gen_gallery',
     'sphinx_autosummary_accessors',
     'sphinx_design',
     'myst_nb',
@@ -94,9 +93,19 @@ autodoc_member_order = 'groupwise'
 
 templates_path = ['_templates', sphinx_autosummary_accessors.templates_path]
 
+# Suppress specific warnings
+suppress_warnings = [
+    'toc.not_readable',  # Suppress warnings about documents not in toctree
+    'autosectionlabel.*',  # Suppress duplicate label warnings
+    'autodoc.duplicate_object',  # Suppress duplicate object warnings
+]
+
+# Exclude patterns - don't process these files/directories
+exclude_patterns = ['_build', '**.ipynb_checkpoints', '**/auto_examples']
+
 # nbsphinx configuration
 nbsphinx_execute = 'auto'
-nbsphinx_allow_errors = False
+nbsphinx_allow_errors = True
 nbsphinx_kernel_name = 'python3'
 
 # myst_nb configuration
@@ -113,21 +122,6 @@ myst_enable_extensions = [
     "tasklist",
 ]
 myst_nb_output_stderr = "remove"
-
-# sphinx-gallery configuration
-sphinx_gallery_conf = {
-    'examples_dirs'         : '../../examples',  # path to your example scripts
-    'gallery_dirs'          : 'auto_examples',  # path to where to save gallery generated output
-    'filename_pattern'      : '/example_',  # pattern to match example files
-    'ignore_pattern'        : '__init__.py',  # pattern to ignore
-    'plot_gallery'          : 'True',  # generate plots
-    'thumbnail_size'        : (400, 300),  # thumbnail size
-    'download_all_examples' : True,  # download all examples as a zip file
-    'line_numbers'          : True,  # show line numbers in code blocks
-    'remove_config_comments': True,  # remove config comments from code blocks
-    'capture_repr'          : ('_repr_html_', '__repr__'),  # capture representations for display
-}
-exclude_patterns = ['_build', '**.ipynb_checkpoints', '*.ipynb', 'auto_examples']
 
 # Disable strict HTML5 assertion for broken references
 html5_writer = True
@@ -189,7 +183,108 @@ python_type_aliases = {
 }
 
 intersphinx_mapping = {
-    "python"    : ("https://docs.python.org/3", {}),
-    "colour"    : ("https://colour.readthedocs.io/en/latest/", {}),
-    "matplotlib": ("https://matplotlib.org/stable/api/index.html", {}),
+    "python"    : ("https://docs.python.org/3", None),
+    "numpy"     : ("https://numpy.org/doc/stable/", None),
+    "pandas"    : ("https://pandas.pydata.org/docs/", None),
+    "scipy"     : ("https://docs.scipy.org/doc/scipy/", None),
+    "sklearn"   : ("https://scikit-learn.org/stable/", None),
+    "skimage"   : ("https://scikit-image.org/docs/stable/", None),
+    "h5py"      : ("https://docs.h5py.org/en/stable/", None),
+    "plotly"    : ("https://plotly.com/python-api-reference/", None),
+    "colour"    : ("https://colour.readthedocs.io/en/latest/", None),
+    "matplotlib": ("https://matplotlib.org/stable/", None),
 }
+
+# Auto-generate downloadables documentation
+def generate_downloadables_rst(app):
+    import ast
+    import os
+
+    # Get directories relative to conf.py
+    source_dir = os.path.abspath(os.path.dirname(__file__))
+    downloadables_dir = os.path.join(source_dir, '_downloadables')
+    output_file = os.path.join(source_dir, 'downloadables.rst')
+
+    # Check if directory exists
+    if not os.path.exists(downloadables_dir):
+        print(f"Warning: {downloadables_dir} does not exist. Skipping downloadables generation.")
+        return
+
+    content = []
+    content.append("Downloadable Scripts")
+    content.append("====================")
+    content.append("")
+    content.append("This page contains downloadable scripts and utilities for PhenoTypic.")
+    content.append("")
+    content.append(".. grid:: 1 1 2 2")
+    content.append("    :gutter: 3")
+    content.append("")
+
+    for filename in sorted(os.listdir(downloadables_dir)):
+        if not filename.endswith('.py'):
+            continue
+
+        filepath = os.path.join(downloadables_dir, filename)
+
+        try:
+            with open(filepath, 'r', encoding='utf-8') as f:
+                tree = ast.parse(f.read())
+                docstring = ast.get_docstring(tree)
+        except Exception as e:
+            print(f"Error parsing {filename}: {e}")
+            docstring = None
+
+        title = filename
+        description = "No description available."
+
+        if docstring:
+            lines = docstring.strip().split('\n')
+            # Try to extract a title from the first line or ReST header
+            first_line = lines[0].strip()
+            
+            # Check for Title underline style
+            # Title
+            # =====
+            if len(lines) > 1 and len(lines[1].strip()) >= len(first_line) and set(lines[1].strip()) == {'='}:
+                title = first_line
+                # Description starts after the header
+                desc_lines_raw = lines[2:]
+            else:
+                # Just use filename as title if no clear header
+                # Or use the first line if it looks like a title
+                desc_lines_raw = lines
+
+            # Extract description (first paragraph)
+            desc_lines = []
+            started = False
+            for line in desc_lines_raw:
+                stripped = line.strip()
+                if not started:
+                    if stripped:
+                        started = True
+                        desc_lines.append(stripped)
+                else:
+                    if not stripped:
+                        # Empty line indicates end of paragraph
+                        break
+                    desc_lines.append(stripped)
+
+            if desc_lines:
+                description = ' '.join(desc_lines)
+
+        # Add card
+        content.append(f"    .. grid-item-card:: {title}")
+        content.append(f"        :shadow: md")
+        content.append("")
+        content.append(f"        {description}")
+        content.append("")
+        content.append("        +++")
+        content.append(f"        :download:`Download script <_downloadables/{filename}>`")
+        content.append("")
+
+    with open(output_file, 'w', encoding='utf-8') as f:
+        f.write('\\n'.join(content))
+    print(f"Generated {output_file}")
+
+def setup(app):
+    app.connect('builder-inited', generate_downloadables_rst)

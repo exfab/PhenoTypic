@@ -27,30 +27,22 @@ class Image(ImageIOHandler):
                  arr: np.ndarray | Image | None = None,
                  name: str | None = None,
                  bit_depth: Literal[8, 16] | None = None,
-                 color_profile='sRGB',
                  gamma_encoding: str | None = 'sRGB',
                  illuminant: str | None = 'D65',
                  observer='CIE 1931 2 Degree Standard Observer'
 
                  ):
         """
-        Initializes an instance of the class with optional attributes for array data,
-        name, bit depth, illuminant, color profile, and observer. The class is constructed to handle
-        data related to image processing and its various configurations.
+        Initializes the object attributes related to image processing and colorimetry.
 
         Args:
-            arr (np.ndarray | Image | None): An optional array or image object. It
-                represents the pixel data or image source.
-            name (str | None): An optional name or identifier for the image instance.
-            bit_depth (Literal[8, 16] | None): An optional bit depth of the image.
-                Either 8 or 16 bits for pixel representation. If None is specified, the bit depth
-                will be guessed from the arr dtype. If the arr is a float, the bit_depth will default to 8.
-            illuminant (str | None): A string specifying the illuminant standard for
-                the image, defaulting to 'D65'.
-            color_profile (str): The color profile for the image, defaulting to 'sRGB'.
-            observer (str): Observer type in CIE standards, defaulting to 'CIE 1931
-                2 Degree Standard Observer'.
-
+            arr (np.ndarray | Image | None): The array or image data. Defaults to None.
+            name (str | None): The name associated with the object or image. Defaults to None.
+            bit_depth (Literal[8, 16] | None): The bit depth for the image (8 or 16). Defaults to None.
+            gamma_encoding (str | None): The gamma encoding type, e.g., 'sRGB'. Defaults to 'sRGB'.
+            illuminant (str | None): The reference illuminant, e.g., 'D65'. Defaults to 'D65'.
+            observer (str): The observer standard, typically 'CIE 1931 2 Degree Standard Observer'.
+                Defaults to 'CIE 1931 2 Degree Standard Observer'.
         """
         super().__init__(
                 arr=arr,

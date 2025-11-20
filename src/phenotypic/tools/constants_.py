@@ -6,7 +6,7 @@ Constants are organized by module and functionality.
 
 Note: Class names are defined in ALL_CAPS to avoid namespace conflicts with actual classes 
     in the codebase (e.g., GRID_DEP vs an actual Grid class). When importing, use the format:
-        from PhenoTypic.tools.constants import IMAGE_FORMATS, OBJECT
+        from PhenoTypic.tools.constants import IMAGE_MODE, OBJECT
 """
 
 from phenotypic._shared_modules._measurement_info import MeasurementInfo
@@ -26,7 +26,7 @@ class MPL:
 
 
 # Image format constants
-class IMAGE_FORMATS(Enum):
+class IMAGE_MODE(Enum):
     """Constants for supported image formats."""
     NONE = None
     GRAYSCALE = 'GRAYSCALE'
@@ -44,20 +44,20 @@ class IMAGE_FORMATS(Enum):
     AMBIGUOUS_FORMATS = (RGB_OR_BGR, RGBA_OR_BGRA)
 
     def is_matrix(self):
-        return self in {IMAGE_FORMATS.GRAYSCALE, IMAGE_FORMATS.GRAYSCALE_SINGLE_CHANNEL}
+        return self in {IMAGE_MODE.GRAYSCALE, IMAGE_MODE.GRAYSCALE_SINGLE_CHANNEL}
 
     def is_array(self):
-        return self in {IMAGE_FORMATS.RGB,
-                        IMAGE_FORMATS.RGBA,
-                        IMAGE_FORMATS.BGR,
-                        IMAGE_FORMATS.BGRA,
-                        IMAGE_FORMATS.LINEAR_RGB}
+        return self in {IMAGE_MODE.RGB,
+                        IMAGE_MODE.RGBA,
+                        IMAGE_MODE.BGR,
+                        IMAGE_MODE.BGRA,
+                        IMAGE_MODE.LINEAR_RGB}
 
     def is_ambiguous(self):
-        return self in {IMAGE_FORMATS.RGB_OR_BGR, IMAGE_FORMATS.RGBA_OR_BGRA}
+        return self in {IMAGE_MODE.RGB_OR_BGR, IMAGE_MODE.RGBA_OR_BGRA}
 
     def is_none(self):
-        return self is IMAGE_FORMATS.NONE
+        return self is IMAGE_MODE.NONE
 
     CHANNELS_DEFAULT = 3
     DEFAULT_SCHEMA = RGB
@@ -170,11 +170,12 @@ class METADATA(MeasurementInfo):
     IMFORMAT = 'ImageFormat', 'The format of the image.'
     IMAGE_TYPE = 'ImageType', 'The type of the image.'
     BIT_DEPTH = 'BitDepth', 'The bit depth of the image.'
+    SUFFIX = "FileSuffix", "The file suffix of the original file the image was imported from"
 
 
 class IMAGE_TYPES(Enum):
     """The string labels for different types of images generated when accessing subimages of a parent image."""
-    BASE = 'Base'
+    BASE = "Image"
     CROP = 'Crop'
     OBJECT = 'Object'
     GRID = 'GridImage'

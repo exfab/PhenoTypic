@@ -14,6 +14,7 @@
    .. autosummary::
    
       ~GridImage.__init__
+      ~GridImage.clear
       ~GridImage.copy
       ~GridImage.imread
       ~GridImage.info

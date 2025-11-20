@@ -12,9 +12,9 @@ phenotypic.GridImage.grid
 
 
 
-.. currentmodule:: phenotypic.core.accessors
+.. currentmodule:: phenotypic.core._image_parts.accessors
 
-.. class-members:: phenotypic.core.accessors.GridAccessor
+.. class-members:: phenotypic.core._image_parts.accessors.GridAccessor
    :attributes:
    :properties:
    :methods:

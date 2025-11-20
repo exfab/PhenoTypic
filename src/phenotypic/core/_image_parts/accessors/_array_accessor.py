@@ -6,7 +6,7 @@ import pandas as pd
 import skimage
 
 from phenotypic.core._image_parts.accessor_abstracts import MultiChannelAccessor
-from phenotypic.tools.constants_ import IMAGE_FORMATS
+from phenotypic.tools.constants_ import IMAGE_MODE
 from phenotypic.tools.exceptions_ import ArrayKeyValueShapeMismatchError, NoArrayError, EmptyImageError
 
 

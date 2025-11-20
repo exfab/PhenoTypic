@@ -12,9 +12,9 @@ phenotypic.Image.objmap
 
 
 
-.. currentmodule:: phenotypic.core.accessors
+.. currentmodule:: phenotypic.core._image_parts.accessors
 
-.. class-members:: phenotypic.core.accessors.ObjectMap
+.. class-members:: phenotypic.core._image_parts.accessors.ObjectMap
    :attributes:
    :properties:
    :methods:

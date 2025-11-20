@@ -62,6 +62,34 @@ class HDF:
     EXT = {'.h5', '.hdf5', '.hdf', '.he5'}
 
     def __init__(self, filepath, name: str, mode: Literal['single', 'set']):
+        """
+        Initializes a class instance to manage HDF5 file structures for single or set image
+        data based on the given filepath, name of the resource, and operational mode.
+
+        Attributes:
+            filepath (Path): Path to the HDF5 file.
+            name (str): Identifier for the resource within the HDF5 file.
+            mode (Literal['single', 'set']): Operational mode determining the structure
+                and organization within the HDF5 file. Must be either 'single' or 'set'.
+            root_posix (str): Posix path representing the root directory within the
+                HDF5 file based on the mode.
+            home_posix (str): Posix path representing the home directory for the resource
+                within the HDF5 file based on the mode.
+            set_data_posix (Optional[str]): Posix path for the data subdirectory within
+                the resource home directory. Only initialized in 'set' mode.
+
+        Args:
+            filepath: Path to the target HDF5 file. Must have an HDF5-compatible extension,
+                or a ValueError is raised.
+            name: Name of the resource to be managed in the file. Used to construct the
+                home directory for the resource within the HDF5 file.
+            mode: Operational mode. Specifies whether the resource represents a 'single'
+                or 'set' image data. If the mode is invalid, a ValueError is raised.
+
+        Raises:
+            ValueError: If the filepath does not have an HDF5-compatible extension.
+            ValueError: If the mode is neither 'single' nor 'set'.
+        """
         self.filepath = Path(filepath)
         if self.filepath.suffix not in self.EXT: raise ValueError('filepath is not an hdf5 file')
         if not self.filepath.exists():
@@ -240,7 +268,7 @@ class HDF:
         # This should not be reached due to the raise in the loop
         raise OSError(f"Unexpected error opening HDF5 file in SWMR mode {self.filepath}")
 
-    def writer(self) -> h5py.File:
+    def strict_writer(self) -> h5py.File:
         """
         Provides access to an HDF5 file in read/write mode using the `h5py` library. This
         property is used to obtain an `h5py.File` object configured with the latest library version.
@@ -439,7 +467,7 @@ class HDF:
           excluded because they are not SWMR-write friendly and their uncompressed size
           cannot be determined from metadata alone.
         - The operation is safe under SWMR: it only reads object metadata, creates no
-          new objedit, and does not modify the file.
+          new refine, and does not modify the file.
 
         Args:
             group: The root h5py.Group to traverse.
@@ -474,7 +502,7 @@ class HDF:
 
         sizes: dict[str, int] = {}
 
-        def _visitor(name: str, obj: _h5py.Dataset | _h5py.Group) -> None:
+        def _visitor(obj: _h5py.Dataset | _h5py.Group) -> None:
             if isinstance(obj, _h5py.Dataset):
                 # SWMR-write compatibility: chunked layout required
                 if obj.chunks is None:
@@ -793,7 +821,7 @@ class HDF:
                         np.asarray(str_array), np.asarray(mask), string_fixed_length
                 )
                 encoded_arrays = str_array.astype(
-                    HDF._get_string_dtype(string_fixed_length))  # type: ignore[assignment]
+                        HDF._get_string_dtype(string_fixed_length))  # type: ignore[assignment]
             else:
                 encoded_arrays = str_array.astype(HDF._get_string_dtype())  # type: ignore[assignment]
             mask_arrays = mask  # type: ignore[assignment]
@@ -983,7 +1011,7 @@ class HDF:
         if group.file.swmr_mode and dataset not in group:
             raise RuntimeError(
                     "Cannot create new datasets while SWMR mode is enabled. "
-                    "Create all objedit before starting SWMR mode."
+                    "Create all refine before starting SWMR mode."
             )
 
         # Encode series for schema information using fixed-length strings
@@ -1470,7 +1498,7 @@ class HDF:
         """
         # Convert categorical columns to their base dtypes
         dataframe = HDF._convert_categorical_columns(dataframe)
-        
+
         if require_swmr:
             HDF.assert_swmr_on(group)
 
@@ -1478,7 +1506,7 @@ class HDF:
         if group.file.swmr_mode and "index" not in group:
             raise RuntimeError(
                     "Cannot create new groups/datasets while SWMR mode is enabled. "
-                    "Create all objedit before starting SWMR mode."
+                    "Create all refine before starting SWMR mode."
             )
 
         if len(dataframe.columns) == 0:
@@ -1563,7 +1591,7 @@ class HDF:
         """
         # Convert categorical columns to their base dtypes
         dataframe = HDF._convert_categorical_columns(dataframe)
-        
+
         if len(dataframe) == 0:
             raise ValueError("Cannot save empty DataFrame")
 
@@ -1621,7 +1649,7 @@ class HDF:
         """
         # Convert categorical columns to their base dtypes
         dataframe = HDF._convert_categorical_columns(dataframe)
-        
+
         if require_swmr:
             HDF.assert_swmr_on(group)
 
@@ -1702,7 +1730,7 @@ class HDF:
         """
         # Convert categorical columns to their base dtypes
         dataframe = HDF._convert_categorical_columns(dataframe)
-        
+
         if require_swmr:
             HDF.assert_swmr_on(group)
 

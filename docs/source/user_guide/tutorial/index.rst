@@ -9,5 +9,8 @@ Welcome to the Phenotypic tutorial section! These tutorials provide in-depth exa
    :maxdepth: 2
    :caption: Tutorial Topics
 
-   tutorial
-
+   notebooks/GettingStarted
+   notebooks/Images
+   notebooks/GridImages
+   notebooks/ImagePipelines
+   notebooks/GrowthCurves

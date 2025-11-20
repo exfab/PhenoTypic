@@ -27,7 +27,7 @@ class CLAHE(ImageEnhancer):
             smaller value decreases the contrast amplification. Defaults to 0.01.
     """
 
-    def __init__(self, kernel_size: int = None, clip_limit: float = 0.01, ):
+    def __init__(self, kernel_size: int | None = None, clip_limit: float = 0.01, ):
         self.kernel_size: int = kernel_size
         self.clip_limit: float = clip_limit
 

@@ -14,10 +14,10 @@ Image Data Containers
 1. :class:`ImageRGB`
     Represents the multichannel pixel data of an image when provided. Useful for direct manipulation and pixel-wise operations.
 
-2. :class:`ImageMatrix`
+2. :class:`Grayscale`
     Provides structured access to the image in its gray form, offering methods suited for mathematical or analytical operations on image data. Automatically converted from RGB using weighted luminance conversion.
 
-3. :class:`ImageEnhancedMatrix`
+3. :class:`EnhancedGrayscale`
     An enhanceable copy of the image gray to improve detection while maintaining the original image data integrity.
 
 Objects and Object Mapping
@@ -110,8 +110,8 @@ The ``accessors`` submodule is designed for developers and researchers working o
 
 """
 from ._array_accessor import ImageRGB
-from ._matrix_accessor import ImageMatrix
-from ._enh_matrix_accessor import ImageEnhancedMatrix
+from ._grayscale_accessor import Grayscale
+from ._enh_grayscale_accessor import EnhancedGrayscale
 from ._objmap_accessor import ObjectMap
 from ._objmask_accessor import ObjectMask
 
@@ -132,8 +132,8 @@ from ..color_space_accessors._chromaticity_xy_accessor import xyChromaticityAcce
 # Define __all__ to include all imported objects
 __all__ = [
     "ImageRGB",
-    "ImageMatrix",
-    "ImageEnhancedMatrix",
+    "Grayscale",
+    "EnhancedGrayscale",
     "ObjectMap",
     "ObjectMask",
     "ObjectsAccessor",

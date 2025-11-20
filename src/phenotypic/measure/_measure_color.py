@@ -228,36 +228,36 @@ class MeasureColor(MeasureFeatures):
         data = {}
         if self.include_XYZ:
             cieXYZ_foreground = image.color.XYZ.foreground()
-            X_meas = MeasureColor._compute_color_metrics(foreground=cieXYZ_foreground[..., 0], labels=image.objmap[:])
+            X_meas = MeasureColor._compute_color_metrics(foreground=cieXYZ_foreground[..., 0], objmap=image.objmap[:])
             X_meas = {key: value for key, value in zip(ColorXYZ.cieX_headers(), X_meas)}
 
-            Y_meas = MeasureColor._compute_color_metrics(foreground=cieXYZ_foreground[..., 1], labels=image.objmap[:])
+            Y_meas = MeasureColor._compute_color_metrics(foreground=cieXYZ_foreground[..., 1], objmap=image.objmap[:])
             Y_meas = {key: value for key, value in zip(ColorXYZ.cieY_headers(), Y_meas)}
 
-            Z_meas = MeasureColor._compute_color_metrics(foreground=cieXYZ_foreground[..., 2], labels=image.objmap[:])
+            Z_meas = MeasureColor._compute_color_metrics(foreground=cieXYZ_foreground[..., 2], objmap=image.objmap[:])
             Z_meas = {key: value for key, value in zip(ColorXYZ.cieZ_headers(), Z_meas)}
 
             del cieXYZ_foreground
             data = {**data, **X_meas, **Y_meas, **Z_meas}
 
         xy_foreground = image.color.xy.foreground()
-        x_meas = MeasureColor._compute_color_metrics(foreground=xy_foreground[..., 0], labels=image.objmap[:])
+        x_meas = MeasureColor._compute_color_metrics(foreground=xy_foreground[..., 0], objmap=image.objmap[:])
         x_meas = {key: value for key, value in zip(Colorxy.x_headers(), x_meas)}
 
-        y_meas = MeasureColor._compute_color_metrics(foreground=xy_foreground[..., 1], labels=image.objmap[:])
+        y_meas = MeasureColor._compute_color_metrics(foreground=xy_foreground[..., 1], objmap=image.objmap[:])
         y_meas = {key: value for key, value in zip(Colorxy.y_headers(), y_meas)}
 
         del xy_foreground
         data = {**data, **x_meas, **y_meas}
 
         Lab_foreground = image.color.Lab.foreground()
-        lstar_meas = MeasureColor._compute_color_metrics(foreground=Lab_foreground[..., 0], labels=image.objmap[:])
+        lstar_meas = MeasureColor._compute_color_metrics(foreground=Lab_foreground[..., 0], objmap=image.objmap[:])
         lstar_meas = {key: value for key, value in zip(ColorLab.l_star_headers(), lstar_meas)}
 
-        astar_meas = MeasureColor._compute_color_metrics(foreground=Lab_foreground[..., 1], labels=image.objmap[:])
+        astar_meas = MeasureColor._compute_color_metrics(foreground=Lab_foreground[..., 1], objmap=image.objmap[:])
         astar_meas = {key: value for key, value in zip(ColorLab.a_star_headers(), astar_meas)}
 
-        bstar_meas = MeasureColor._compute_color_metrics(foreground=Lab_foreground[..., 2], labels=image.objmap[:])
+        bstar_meas = MeasureColor._compute_color_metrics(foreground=Lab_foreground[..., 2], objmap=image.objmap[:])
         bstar_meas = {key: value for key, value in zip(ColorLab.b_star_headers(), bstar_meas)}
 
         del Lab_foreground
@@ -266,17 +266,17 @@ class MeasureColor(MeasureFeatures):
         # HSB Measurements
         hsb_foreground = image.color.hsv.foreground()
         logger.info("Computing color metrics for hue array")
-        hue_meas = MeasureColor._compute_color_metrics(foreground=hsb_foreground[..., 0], labels=image.objmap[:],
+        hue_meas = MeasureColor._compute_color_metrics(foreground=hsb_foreground[..., 0], objmap=image.objmap[:],
                                                        )
         hue_meas = {key: value for key, value in zip(ColorHSV.hue_headers(), hue_meas)}
 
         logger.info("Computing color metrics for saturation array")
-        saturation_meas = MeasureColor._compute_color_metrics(foreground=hsb_foreground[..., 1], labels=image.objmap[:],
+        saturation_meas = MeasureColor._compute_color_metrics(foreground=hsb_foreground[..., 1], objmap=image.objmap[:],
                                                               )
         saturation_meas = {key: value for key, value in zip(ColorHSV.saturation_headers(), saturation_meas)}
 
         logger.info("Computing color metrics for brightness array")
-        brightness_meas = MeasureColor._compute_color_metrics(foreground=hsb_foreground[..., 2], labels=image.objmap[:],
+        brightness_meas = MeasureColor._compute_color_metrics(foreground=hsb_foreground[..., 2], objmap=image.objmap[:],
                                                               )
         brightness_meas = {key: value for key, value in zip(ColorHSV.brightness_headers(), brightness_meas)}
 
@@ -294,7 +294,7 @@ class MeasureColor(MeasureFeatures):
         return meas
 
     @staticmethod
-    def _compute_color_metrics(foreground: np.ndarray, labels: np.ndarray):
+    def _compute_color_metrics(foreground: np.ndarray, objmap: np.ndarray):
         """
           Computes texture metrics from arr image data and a binary foreground mask.
 
@@ -307,6 +307,7 @@ class MeasureColor(MeasureFeatures):
               image (Image): The PhenoTypic Image object containing the image data and objects information
               foreground (numpy.ndarray): A matrix array with all background pixels set
                   to 0, defining the binary mask.
+              objmap (numpy.ndarray): Array of labels of the same shape as the foreground array.
 
           Returns:
               dict: A dictionary containing calculated measurements, including object
@@ -315,14 +316,14 @@ class MeasureColor(MeasureFeatures):
           """
 
         measurements = [
-            MeasureFeatures._calculate_minimum(array=foreground, labels=labels),
-            MeasureFeatures._calculate_q1(array=foreground, labels=labels),
-            MeasureFeatures._calculate_mean(array=foreground, labels=labels),
-            MeasureFeatures._calculate_median(array=foreground, labels=labels),
-            MeasureFeatures._calculate_q3(array=foreground, labels=labels),
-            MeasureFeatures._calculate_max(array=foreground, labels=labels),
-            MeasureFeatures._calculate_stddev(array=foreground, labels=labels),
-            MeasureFeatures._calculate_coeff_variation(array=foreground, labels=labels),
+            MeasureFeatures._calculate_minimum(array=foreground, objmap=objmap),
+            MeasureFeatures._calculate_q1(array=foreground, objmap=objmap),
+            MeasureFeatures._calculate_mean(array=foreground, objmap=objmap),
+            MeasureFeatures._calculate_median(array=foreground, objmap=objmap),
+            MeasureFeatures._calculate_q3(array=foreground, objmap=objmap),
+            MeasureFeatures._calculate_max(array=foreground, objmap=objmap),
+            MeasureFeatures._calculate_stddev(array=foreground, objmap=objmap),
+            MeasureFeatures._calculate_coeff_variation(array=foreground, objmap=objmap),
         ]
         return measurements
 

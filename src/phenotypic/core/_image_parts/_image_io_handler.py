@@ -20,7 +20,7 @@ import skimage as ski
 
 import phenotypic
 from phenotypic.tools.exceptions_ import UnsupportedFileTypeError
-from phenotypic.tools.constants_ import IMAGE_FORMATS, IO
+from phenotypic.tools.constants_ import IMAGE_MODE, IO, METADATA
 from phenotypic.tools.hdf_ import HDF
 from ._image_color_handler import ImageColorSpace
 
@@ -30,7 +30,7 @@ class ImageIOHandler(ImageColorSpace):
     def __init__(self,
                  arr: np.ndarray | Image | None = None,
                  name: str | None = None, **kwargs):
-        super().__init__(arr=arr, name=name)
+        super().__init__(arr=arr, name=name, **kwargs)
 
     @classmethod
     def imread(cls,
@@ -68,10 +68,12 @@ class ImageIOHandler(ImageColorSpace):
         filepath = Path(filepath)
         rawpy_params = rawpy_params or {}
 
-        if filepath.suffix.lower() in IO.ACCEPTED_FILE_EXTENSIONS:  # normal images
+        suffix = filepath.suffix.lower()
+        if suffix in IO.ACCEPTED_FILE_EXTENSIONS:  # normal images
+
             arr = ski.io.imread(fname=filepath)
 
-        elif filepath.suffix.lower() in IO.RAW_FILE_EXTENSIONS and rawpy is not None:  # raw sensor data handling
+        elif suffix in IO.RAW_FILE_EXTENSIONS and rawpy is not None:  # raw sensor data handling
             use_auto_wb = rawpy_params.pop('use_auto_wb', False)
             use_camera_wb = rawpy_params.pop('use_camera_wb', False)
 
@@ -81,7 +83,7 @@ class ImageIOHandler(ImageColorSpace):
             if rawpy.DemosaicAlgorithm.AMAZE.isSupported:
                 default_demosaic = rawpy.DemosaicAlgorithm.AMAZE
             else:
-                default_demosaic = rawpy.DemosaicAlgorithm.AHD
+                default_demosaic = rawpy.DemosaicAlgorithm.LINEAR
 
             demosaic_algorithm = rawpy_params.pop('demosaic_algorithm', default_demosaic)
             gamma = rawpy_params.pop('gamma', (1, 1))
@@ -103,8 +105,13 @@ class ImageIOHandler(ImageColorSpace):
         else:
             raise UnsupportedFileTypeError(filepath.suffix)
 
-        image = cls(arr=arr, **kwargs)
+        bit_depth = kwargs.pop('bit_depth', None)
+        if suffix in IO.JPEG_FILE_EXTENSIONS:
+            bit_depth = 8
+
+        image = cls(arr=arr, name=filepath.stem, bit_depth=bit_depth, **kwargs)
         image.name = filepath.stem
+        image.metadata[METADATA.SUFFIX] = suffix
         return image
 
     @staticmethod

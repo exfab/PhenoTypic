@@ -1,5 +1,5 @@
-phenotypic
-==========
+phenotypic package
+==================
 
 .. automodule:: phenotypic
    :members:
@@ -12,7 +12,7 @@ Subpackages
 .. toctree::
    :maxdepth: 4
 
-   phenotypic.ABC_
+   phenotypic.abc_
    phenotypic.analysis
    phenotypic.core
    phenotypic.correction
@@ -21,6 +21,6 @@ Subpackages
    phenotypic.enhance
    phenotypic.grid
    phenotypic.measure
-   phenotypic.objedit
    phenotypic.prefab
+   phenotypic.refine
    phenotypic.tools

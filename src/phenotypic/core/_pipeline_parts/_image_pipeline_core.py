@@ -15,9 +15,10 @@ import time
 import sys
 
 from phenotypic.abc_ import MeasureFeatures, BaseOperation, ImageOperation
+from phenotypic.abc_._lazy_widget_mixin import LazyWidgetMixin
 
 
-class ImagePipelineCore(BaseOperation):
+class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
     """
     Represents a handler for processing and measurement queues used in Image operations
     and feature extraction tasks.
@@ -66,7 +67,7 @@ class ImagePipelineCore(BaseOperation):
         if ops is not None: self.set_ops(ops)
 
         self._meas: Dict[str, MeasureFeatures] = {}
-        if meas is not None: self.set_measurements(meas)
+        if meas is not None: self.set_meas(meas)
 
         # Store benchmark and verbose flags
         self._benchmark = benchmark
@@ -92,7 +93,7 @@ class ImagePipelineCore(BaseOperation):
         """
         # If ops is a list of ImageOperation
         if isinstance(ops, list):
-            op_names = [x.__class__.__name__ for x in ops if isinstance(x, ImageOperation)]
+            op_names = [x.__class__.__name__ for x in ops]
             op_names = self.__make_unique(op_names)
             self._ops = {op_names[i]: ops[i] for i in range(len(ops))}
         # If ops is a dictionary
@@ -101,7 +102,7 @@ class ImagePipelineCore(BaseOperation):
         else:
             raise TypeError(f'ops must be a list or a dictionary, got {type(ops)}')
 
-    def set_measurements(self, measurements: List[MeasureFeatures] | Dict[str, MeasureFeatures]):
+    def set_meas(self, measurements: List[MeasureFeatures] | Dict[str, MeasureFeatures]):
         """
         Sets the measurements to be used for further computation. The input can be either
         a list of `MeasureFeatures` objects or a dictionary with string keys and `MeasureFeatures`
@@ -214,10 +215,15 @@ class ImagePipelineCore(BaseOperation):
                 if self._benchmark: start_time = time.time()
 
                 sig = inspect.signature(operation.apply)
+
+                apply_params = {}
                 if 'inplace' in sig.parameters:
-                    operation.apply(img, inplace=True)
-                else:
-                    img = operation.apply(img)
+                    apply_params['inplace'] = True
+
+                if 'reset' in sig.parameters:
+                    apply_params['reset'] = False  # Prevents intermediate pipelines from resetting progress
+
+                operation.apply(img, **apply_params)
 
                 # Store execution time if benchmarking is enabled
                 if self._benchmark:
@@ -282,9 +288,9 @@ class ImagePipelineCore(BaseOperation):
                 print(f"  Image info: {self._measurement_times['image_info']:.4f} seconds")
         else:
             measurements = [
-                image.grid.info(include_metadata=False)
+                image.grid.info(include_metadata=include_metadata)
                 if hasattr(image, 'grid')
-                else image.objects.info(include_metadata=False)
+                else image.objects.info(include_metadata=include_metadata)
             ]
 
         # Create progress bar if verbose and benchmark are enabled
@@ -316,6 +322,8 @@ class ImagePipelineCore(BaseOperation):
                 # Measure execution time for each measurement if benchmarking is enabled
                 if self._benchmark:
                     start_time = time.time()
+
+                    # Measurement is taken here
                     measurements.append(measurement.measure(image))
                     self._measurement_times[key] = time.time() - start_time
 

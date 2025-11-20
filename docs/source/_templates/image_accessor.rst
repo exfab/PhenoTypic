@@ -9,11 +9,11 @@
 .. autoproperty:: {{ objname }}
 
 {% set accessor_class = objname.split('.')[-1] %}
-{% set accessor_module = "phenotypic.core.accessors" %}
+{% set accessor_module = "phenotypic.core._image_parts.accessors" %}
 {% set class_map = {
     "rgb": "ImageRGB",
-    "gray": "ImageMatrix",
-    "enh_gray": "ImageEnhancedMatrix",
+    "gray": "Grayscale",
+    "enh_gray": "EnhancedGrayscale",
     "objmap": "ObjectMap",
     "objmask": "ObjectMask",
     "objects": "ObjectsAccessor",

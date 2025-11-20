@@ -1,5 +1,5 @@
-phenotypic.correction
-=====================
+phenotypic.correction package
+=============================
 
 .. automodule:: phenotypic.correction
    :members:

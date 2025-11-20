@@ -34,7 +34,7 @@ classDiagram
         +- foreground(bg_color)
     }
 
-    class ImageMatrix {
+    class Grayscale {
         note "An accessor for handling image matrices"
         +- __getitem__(key)
         +- __setitem__(key, value)
@@ -45,7 +45,7 @@ classDiagram
         +- show_overlay(object_label, figsize, title, annotate, annotation_params, ax, overlay_params, imshow_params)
     }
 
-    class ImageEnhancedMatrix {
+    class EnhancedGrayscale {
         note "An enhanced gray accessor for images"
         +- __getitem__(key)
         +- __setitem__(key, value)
@@ -123,7 +123,7 @@ classDiagram
     }
 
     class ObjectsAccessor {
-        note "An accessor for image objedit"
+        note "An accessor for image refine"
         +- __len__()
         +- __iter__()
         +- __getitem__(index)
@@ -186,7 +186,7 @@ classDiagram
     ImageAccessorBase <|-- HsvAccessor
     ImageAccessorBase <|-- ObjectsAccessor
     MultiChannelAccessor <|-- ImageRGB
-    MultiChannelAccessor <|-- ImageMatrix
-    MultiChannelAccessor <|-- ImageEnhancedMatrix
+    MultiChannelAccessor <|-- Grayscale
+    MultiChannelAccessor <|-- EnhancedGrayscale
     MultiChannelAccessor <|-- ObjectMap
     MultiChannelAccessor <|-- ObjectMask

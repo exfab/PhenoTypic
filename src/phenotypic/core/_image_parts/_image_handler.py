@@ -15,14 +15,14 @@ from types import SimpleNamespace
 from phenotypic.core._image_parts._image_data_manager import ImageDataManager
 from phenotypic.core._image_parts.accessors import (
     ImageRGB,
-    ImageMatrix,
-    ImageEnhancedMatrix,
+    Grayscale,
+    EnhancedGrayscale,
     ObjectMask,
     ObjectMap,
     MetadataAccessor,
 )
 
-from phenotypic.tools.constants_ import IMAGE_FORMATS, METADATA, IMAGE_TYPES
+from phenotypic.tools.constants_ import METADATA, IMAGE_TYPES
 from phenotypic.tools.exceptions_ import (
     EmptyImageError, IllegalAssignmentError
 )
@@ -61,8 +61,8 @@ class ImageHandler(ImageDataManager):
         # Initialize image accessors
         self._accessors = SimpleNamespace()
         self._accessors.rgb = ImageRGB(self)
-        self._accessors.gray = ImageMatrix(self)
-        self._accessors.enh_gray = ImageEnhancedMatrix(self)
+        self._accessors.gray = Grayscale(self)
+        self._accessors.enh_gray = EnhancedGrayscale(self)
         self._accessors.objmask = ObjectMask(self)
         self._accessors.objmap = ObjectMap(self)
         self._accessors.metadata = MetadataAccessor(self)
@@ -158,8 +158,8 @@ class ImageHandler(ImageDataManager):
         other_has_rgb = not other.rgb.isempty()
 
         rgb_check = (
-            (self_has_rgb == other_has_rgb) and
-            (not self_has_rgb or np.array_equal(self.rgb[:], other.rgb[:]))
+                (self_has_rgb == other_has_rgb) and
+                (not self_has_rgb or np.array_equal(self.rgb[:], other.rgb[:]))
         )
 
         return format_match and rgb_check and np.array_equal(self.gray[:], other.gray[:]) and np.array_equal(
@@ -262,21 +262,20 @@ class ImageHandler(ImageDataManager):
             raise IllegalAssignmentError('rgb')
 
     @property
-    def gray(self) -> ImageMatrix:
-        """The image's gray representation. The array form is converted into a gray form since some algorithm's only handle 2-D
+    def gray(self) -> Grayscale:
+        """The image's grayscale representation. The array form is converted into a gray form since some algorithm's only handle 2-D
 
         Note:
             - gray elements are not directly mutable in order to preserve image information integrity
             - Change gray elements by changing the image being represented with Image.set_image()
 
         Returns:
-            ImageMatrix: An immutable container for the image gray that can be accessed like a numpy array, but has extra methods to streamline development.
+            Grayscale: An immutable container for the image gray that can be accessed like a numpy array, but has extra methods to streamline development.
 
         .. code-block:: python
             from phenotypic import Image
-            from phenotypic.data import load_colony
 
-            image = Image(load_colony())
+            image = Image(arr)
 
             # get the gray data
             arr = image.gray[:]
@@ -304,14 +303,15 @@ class ImageHandler(ImageDataManager):
             raise IllegalAssignmentError('gray')
 
     @property
-    def enh_gray(self) -> ImageEnhancedMatrix:
-        """Returns the image's enhanced gray accessor (See: :class:`ImageEnhancedMatrix`. Preprocessing steps can be applied to this component to improve detection performance.
+    def enh_gray(self) -> EnhancedGrayscale:
+        """Returns the image's enhanced grayscale accessor. Preprocessing steps
+        can be applied to this component to improve detection performance.
 
         The enhanceable gray is a copy of the image's gray form that can be modified and used to improve detection performance.
         The original gray data should be left intact in order to preserve image information integrity for measurements.'
 
         Returns:
-            ImageEnhancedMatrix: A mutable container that stores a copy of the image's gray form
+            EnhancedGrayscale: A mutable container that stores a copy of the image's gray form
 
         .. code-block:: python
             from phenotypic import Image
@@ -330,7 +330,6 @@ class ImageHandler(ImageDataManager):
             # without the bracket indexing the accessor is returned instead
             print(image.enh_gray[:])
 
-        See Also: :class:`ImageEnhancedMatrix`
         """
         if self._data.enh_gray is None:
             raise EmptyImageError
