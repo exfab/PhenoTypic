@@ -4,7 +4,7 @@
 
 # PhenoTypic: A Python Framework for Bio-Image Analysis
 
-![Development Status](https://img.shields.io/badge/status-beta-orange)
+![Development Status](https://img.shields.io/badge/dev_status-beta-orange)
 
 A modular image processing framework developed at the NSF Ex-FAB BioFoundry, focused on
 arrayed colony phenotyping on solid media.
@@ -80,7 +80,7 @@ files may not be able to be imported. Read more here: https://pypi.org/project/P
 | `phenotypic.enhance`    | Preprocessing tools that alter a copy of your image and can improve the results of the detection algorithms                |
 | `phenotypic.grid`       | Modules that rely on grid and object information to function                                                               |
 | `phenotypic.measure`    | The various measurements PhenoTypic is capable of extracting from objects                                                  |
-| `phenotypic.objedit`    | Different tools to edit the detected objects such as morphology, relabeling, joining, or removing                          |
+| `phenotypic.refine`     | Different tools to edit the detected objects such as morphology, relabeling, joining, or removing                          |
 | `phenotypic.prefab`     | Various premade image processing pipelines that are in use at ExFAB                                                        |
 
 # Sponsors
