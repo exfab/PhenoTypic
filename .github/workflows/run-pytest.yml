@@ -35,7 +35,7 @@ jobs:
             const { data: runs } = await github.rest.actions.listWorkflowRuns({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              workflow_id: context.workflow,
+              workflow_id: '.github/workflows/run-pytest.yml',
               event: 'workflow_dispatch',
               head_sha: headSha,
               status: 'success',
