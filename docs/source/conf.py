@@ -72,7 +72,6 @@ extensions = [
     'nbsphinx',
     'sphinx_autosummary_accessors',
     'sphinx_design',
-    'myst_nb',
     'class_members',
     "sphinx_togglebutton"
 ]
@@ -195,6 +194,7 @@ intersphinx_mapping = {
     "matplotlib": ("https://matplotlib.org/stable/", None),
 }
 
+
 # Auto-generate downloadables documentation
 def generate_downloadables_rst(app):
     import ast
@@ -241,7 +241,7 @@ def generate_downloadables_rst(app):
             lines = docstring.strip().split('\n')
             # Try to extract a title from the first line or ReST header
             first_line = lines[0].strip()
-            
+
             # Check for Title underline style
             # Title
             # =====
@@ -285,6 +285,7 @@ def generate_downloadables_rst(app):
     with open(output_file, 'w', encoding='utf-8') as f:
         f.write('\\n'.join(content))
     print(f"Generated {output_file}")
+
 
 def setup(app):
     app.connect('builder-inited', generate_downloadables_rst)
