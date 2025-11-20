@@ -278,7 +278,6 @@ class EdgeCorrector(SetAnalyzer):
             >>> corrector = EdgeCorrector(
             ...     on='Area',
             ...     groupby=['ImageName'],
-            ...     measurement_col='Area',
             ...     nrows=8,
             ...     ncols=12,
             ...     top_n=10
@@ -321,16 +320,34 @@ class EdgeCorrector(SetAnalyzer):
             'time_label'  : self.time_label,
         }
 
-        agg_data = data.groupby(by=self.groupby + [section_col, self.time_label], as_index=False).agg(
-                {self.on: self.agg_func}
-        )
+        # Build aggregation dictionary to preserve all columns
+        groupby_cols = self.groupby + [section_col]
+        if self.time_label in data:
+            groupby_cols = groupby_cols + [self.time_label]
+        
+        # Determine which columns to aggregate
+        agg_dict = {}
+        for col in data.columns:
+            if col not in groupby_cols:
+                # Use specified agg_func for measurement column, 'first' for others
+                if col == self.on:
+                    agg_dict[col] = self.agg_func
+                else:
+                    agg_dict[col] = 'first'
+        
+        agg_data = data.groupby(by=groupby_cols, as_index=False).agg(agg_dict)
 
-        grouped = agg_data.groupby(by=self.groupby, as_index=False)
-        corrected_data = Parallel(n_jobs=self.n_jobs)(
-                delayed(self.__class__._apply2group_func)(
-                        group, **config
-                ) for _, group in grouped
-        )
+        # Handle empty groupby case
+        if len(self.groupby) == 0:
+            # Process entire dataset as single group
+            corrected_data = [self.__class__._apply2group_func(agg_data, **config)]
+        else:
+            grouped = agg_data.groupby(by=self.groupby, as_index=False)
+            corrected_data = Parallel(n_jobs=self.n_jobs)(
+                    delayed(self.__class__._apply2group_func)(
+                            group, **config
+                    ) for _, group in grouped
+            )
 
         # Store results
         if corrected_data:
@@ -361,7 +378,7 @@ class EdgeCorrector(SetAnalyzer):
             Tuple of (Figure, Axes).
         """
         if self._original_data.empty:
-            raise ValueError("No results to display. Call analyze() first.")
+            raise RuntimeError("No results to display. Call analyze() first.")
 
         data = self._original_data.copy()
 
@@ -392,7 +409,7 @@ class EdgeCorrector(SetAnalyzer):
                         figsize: tuple[int, int] | None) -> tuple[Figure, plt.Axes]:
         n_groups = len(groups)
         if figsize is None:
-            figsize = (10, max(6, 0.5 * n_groups + 2))
+            figsize = (10, max(6, 0.5*n_groups + 2))
 
         fig, ax = plt.subplots(figsize=figsize)
 
@@ -465,7 +482,7 @@ class EdgeCorrector(SetAnalyzer):
                     lbl = None
                 mean_val = inner_vals.mean()
                 ax.plot([mean_val, mean_val], [y_pos - 0.25, y_pos + 0.25],
-                        color='#2E86AB', linewidth=2.5, label=lbl, zorder=4, 
+                        color='#2E86AB', linewidth=2.5, label=lbl, zorder=4,
                         linestyle="--")
 
             if len(edge_vals) > 0:
@@ -484,19 +501,19 @@ class EdgeCorrector(SetAnalyzer):
                 pval = self._perm_test(inner_vals, edge_vals)
                 mean_inner = inner_vals.mean()
                 mean_edge = edge_vals.mean()
-                
+
                 # Bracket parameters
                 bracket_y = y_pos + 0.3
                 bracket_h = 0.05
-                
+
                 # Draw bracket
-                ax.plot([mean_inner, mean_inner, mean_edge, mean_edge], 
-                        [bracket_y, bracket_y + bracket_h, bracket_y + bracket_h, bracket_y], 
+                ax.plot([mean_inner, mean_inner, mean_edge, mean_edge],
+                        [bracket_y, bracket_y + bracket_h, bracket_y + bracket_h, bracket_y],
                         color='black', linewidth=1, zorder=5)
-                
+
                 # Add p-value text
-                mid_x = (mean_inner + mean_edge) / 2
-                ax.text(mid_x, bracket_y + bracket_h + 0.05, f"p={pval:.3f}", 
+                mid_x = (mean_inner + mean_edge)/2
+                ax.text(mid_x, bracket_y + bracket_h + 0.05, f"p={pval:.3f}",
                         ha='center', va='bottom', fontsize=8)
 
         ax.set_yticks(range(1, n_groups + 1))
@@ -666,8 +683,7 @@ class EdgeCorrector(SetAnalyzer):
         Examples:
             >>> corrector = EdgeCorrector(
             ...     on='Area',
-            ...     groupby=['ImageName'],
-            ...     measurement_col='Area'
+            ...     groupby=['ImageName']
             ... )
             >>> corrected = corrector.analyze(data)
             >>> results = corrector.results()  # Same as corrected
@@ -706,9 +722,12 @@ class EdgeCorrector(SetAnalyzer):
 
         # Make a copy to avoid modifying the original
         group: pd.DataFrame = group.copy()
-        tmax = group.loc[:, time_label].max()
+        if time_label in group.columns:
+            tmax = group.loc[:, time_label].max()
 
-        last_time_group = group.loc[group.loc[:, time_label] == tmax, :]
+            last_time_group = group.loc[group.loc[:, time_label] == tmax, :]
+        else:
+            last_time_group = group
 
         # Get unique section numbers present in the data
         present_sections = last_time_group.loc[:, section_col].dropna().unique()
@@ -756,7 +775,7 @@ class EdgeCorrector(SetAnalyzer):
                 last_time_group.loc[last_time_group.loc[:, GRID.SECTION_NUM].isin(edge_idx), on]
 
             # If difference is not statistically significant, don't apply correction
-            if pvalue < EdgeCorrector._perm_test(last_inner_values, last_edge_values):  
+            if EdgeCorrector._perm_test(last_inner_values, last_edge_values) > pvalue:
                 return group
 
         # Use actual number of values if fewer than top_n available
@@ -776,12 +795,12 @@ class EdgeCorrector(SetAnalyzer):
     @staticmethod
     def _perm_test(surrounded, edge):
         return permutation_test(
-                    data=(surrounded, edge),
-                    statistic=lambda x, y: np.mean(x) - np.mean(y),
-                    permutation_type="independent",
-                    n_resamples=1000,
-                    alternative="two-sided",
-            ).pvalue
+                data=(surrounded, edge),
+                statistic=lambda x, y: np.mean(x) - np.mean(y),
+                permutation_type="independent",
+                n_resamples=1000,
+                alternative="two-sided",
+        ).pvalue
+
 
 EdgeCorrector.__doc__ = EDGE_CORRECTION.append_rst_to_doc(EdgeCorrector.__doc__)
-

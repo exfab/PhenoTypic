@@ -54,7 +54,7 @@ jobs:
             }
             
             core.setOutput('skip', 'false');
-      
+
       - name: Set output
         id: set-output
         run: |
@@ -64,11 +64,10 @@ jobs:
             echo "skip=false" >> $GITHUB_OUTPUT
           fi
 
-  tests:
+  tests-non-macos:
     needs: check-manual-run
-    # Run tests unless a successful manual run exists. Additionally, only run macOS
-    # tests when the repository is public.
-    if: needs.check-manual-run.outputs.skip != 'true' && (matrix.os != 'macos-14' || github.repository_visibility == 'public')
+    # Run tests unless a successful manual run exists
+    if: needs.check-manual-run.outputs.skip != 'true'
     strategy:
       fail-fast: false
       matrix:
@@ -79,9 +78,6 @@ jobs:
           - os: ubuntu-latest
             python-version: "3.11"
           - os: ubuntu-latest
-            python-version: "3.12"
-          # macOS: only Python 3.12 (will be skipped if repo is not public)
-          - os: macos-14
             python-version: "3.12"
           # Windows: only Python 3.12
           - os: windows-latest
@@ -104,7 +100,51 @@ jobs:
       - name: Install dependencies
         run: |
           uv lock
-          uv sync --group dev 
+          uv sync --group dev --all-extras
+
+      - name: Activate venv and run tests (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: |
+          source .venv/bin/activate
+          pytest -n auto
+
+      - name: Activate venv and run tests (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          .venv\Scripts\activate
+          pytest -n auto
+        shell: pwsh
+
+  tests-macos:
+    needs: check-manual-run
+    # Run macOS tests only when the repository is public and no successful manual run exists
+    if: needs.check-manual-run.outputs.skip != 'true' && github.event.repository.visibility == 'public'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # macOS: only Python 3.12
+          - os: macos-14
+            python-version: "3.12"
+
+    runs-on: ${{matrix.os}}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "latest"
+
+      - name: Install dependencies
+        run: |
+          uv lock
+          uv sync --group dev --all-extras
 
       - name: Activate venv and run tests (Linux/macOS)
         if: runner.os != 'Windows'
