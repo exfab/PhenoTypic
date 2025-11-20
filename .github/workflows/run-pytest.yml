@@ -64,9 +64,9 @@ jobs:
             echo "skip=false" >> $GITHUB_OUTPUT
           fi
 
-  tests-non-macos:
+  tests-linux:
     needs: check-manual-run
-    # Run tests unless a successful manual run exists
+    # Run Linux tests unless a successful manual run exists
     if: needs.check-manual-run.outputs.skip != 'true'
     strategy:
       fail-fast: false
@@ -79,11 +79,8 @@ jobs:
             python-version: "3.11"
           - os: ubuntu-latest
             python-version: "3.12"
-          # Windows: only Python 3.12
-          - os: windows-latest
-            python-version: "3.12"
 
-    runs-on: ${{matrix.os}}
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
 
@@ -102,14 +99,43 @@ jobs:
           uv lock
           uv sync --group dev --all-extras
 
-      - name: Activate venv and run tests (Linux/macOS)
-        if: runner.os != 'Windows'
+      - name: Activate venv and run tests (Linux)
         run: |
           source .venv/bin/activate
           pytest -n auto
 
+  tests-windows:
+    needs: check-manual-run
+    # Run Windows tests unless a successful manual run exists
+    if: needs.check-manual-run.outputs.skip != 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Windows: only Python 3.12
+          - os: windows-latest
+            python-version: "3.12"
+
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "latest"
+
+      - name: Install dependencies
+        run: |
+          uv lock
+          uv sync --group dev --all-extras
+
       - name: Activate venv and run tests (Windows)
-        if: runner.os == 'Windows'
         run: |
           .venv\Scripts\activate
           pytest -n auto
