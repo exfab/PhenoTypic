@@ -1,0 +1,1378 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>phenotypic.refine package &#8212; PhenoTypic</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../_static/mystnb.8ecb98da25f57f5357bf6f572d296f466b2cfe2517ffebfabe82451661e28f02.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=800a184d" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../_static/documentation_options.js?v=21db0d57"></script>
+    <script src="../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="../_static/design-tabs.js?v=f930bc37"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+    <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'api_reference/phenotypic.refine';</script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="phenotypic.tools package" href="phenotypic.tools.html" />
+    <link rel="prev" title="phenotypic.prefab package" href="phenotypic.prefab.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.9.2" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+     
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../_static/light_logo_sponsor.svg" class="logo__image only-light" alt="PhenoTypic"/>
+    <img src="../_static/light_logo_sponsor.svg" class="logo__image only-dark pst-js-only" alt="PhenoTypic"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../installation.html">
+    Installation
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../user_guide/index.html">
+    User Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="index.html">
+    API Reference
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../contrib_guide/index.html">
+    Developer Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../downloadables.html">
+    <no title>
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/Wheeldon-Lab/PhenoScope#" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../installation.html">
+    Installation
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../user_guide/index.html">
+    User Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="index.html">
+    API Reference
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../contrib_guide/index.html">
+    Developer Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../downloadables.html">
+    <no title>
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/Wheeldon-Lab/PhenoScope#" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="phenotypic.abc_.html">phenotypic.abc_ package</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="phenotypic.analysis.html">phenotypic.analysis package</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.abc_.html">phenotypic.analysis.abc_ package</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1"><a class="reference internal" href="phenotypic.core.html">phenotypic.core package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="phenotypic.correction.html">phenotypic.correction package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="phenotypic.data.html">phenotypic.data package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="phenotypic.detect.html">phenotypic.detect package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="phenotypic.enhance.html">phenotypic.enhance package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="phenotypic.grid.html">phenotypic.grid package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="phenotypic.measure.html">phenotypic.measure package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="phenotypic.prefab.html">phenotypic.prefab package</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">phenotypic.refine package</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="phenotypic.tools.html">phenotypic.tools package</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tools.colourspaces_.html">phenotypic.tools.colourspaces_ module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tools.constants_.html">phenotypic.tools.constants_ module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tools.exceptions_.html">phenotypic.tools.exceptions_ module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tools.funcs_.html">phenotypic.tools.funcs_ module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tools.hdf_.html">phenotypic.tools.hdf_ module</a></li>
+</ul>
+</details></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="index.html" class="nav-link">API Reference</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">phenotypic.refine package</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="module-phenotypic.refine">
+<span id="phenotypic-refine-package"></span><h1>phenotypic.refine package<a class="headerlink" href="#module-phenotypic.refine" title="Link to this heading">#</a></h1>
+<p>This module provides tools for modifying objects in image processing
+tasks, including removing objects with low circularity, small objects, objects
+at the borders, and reducing the number of objects in a location such as a grid</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="phenotypic.refine.BorderObjectRemover">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.refine.</span></span><span class="sig-name descname"><span class="pre">BorderObjectRemover</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">border_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.enhance.html#phenotypic.enhance.SobelFilter.None" title="phenotypic.enhance.SobelFilter.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/refine/_border_object_modifier.html#BorderObjectRemover"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.refine.BorderObjectRemover" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.MapModifier" title="phenotypic.abc_._map_modifier.MapModifier"><code class="xref py py-class docutils literal notranslate"><span class="pre">MapModifier</span></code></a></p>
+<p>Removes objects at the border of the image within a certain distance.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>border_size</strong> (<em>Optional</em><em>[</em><em>Union</em><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>]</em><em>]</em>)</p>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.refine.BorderObjectRemover.__del__">
+<span class="sig-name descname"><span class="pre">__del__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.refine.BorderObjectRemover.__del__" title="Link to this definition">#</a></dt>
+<dd><p>Automatically stop tracemalloc when the object is deleted.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.refine.BorderObjectRemover.__getstate__">
+<span class="sig-name descname"><span class="pre">__getstate__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.refine.BorderObjectRemover.__getstate__" title="Link to this definition">#</a></dt>
+<dd><p>Prepare the object for pickling by disposing of any widgets.</p>
+<p>This ensures that UI components (which may contain unpickleable objects like
+input functions or thread locks) are cleaned up before serialization.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>This method modifies the object state by calling dispose_widgets().
+Any active widgets will be detached from the object.</p>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.refine.BorderObjectRemover.apply">
+<span class="sig-name descname"><span class="pre">apply</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">inplace</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.refine.BorderObjectRemover.apply" title="Link to this definition">#</a></dt>
+<dd><p>Applies the operation to an image, either in-place or on a copy.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>image</strong> (<a class="reference internal" href="phenotypic.html#phenotypic.Image" title="phenotypic.Image"><em>Image</em></a>) – The arr image to apply the operation on.</p></li>
+<li><p><strong>inplace</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>) – If True, modifies the image in place; otherwise,
+operates on a copy of the image.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The modified image after applying the operation.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="phenotypic.html#phenotypic.Image" title="phenotypic.Image">Image</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.refine.BorderObjectRemover.dispose_widgets">
+<span class="sig-name descname"><span class="pre">dispose_widgets</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="phenotypic.enhance.html#phenotypic.enhance.SobelFilter.None" title="phenotypic.enhance.SobelFilter.None"><span class="pre">None</span></a></span></span><a class="headerlink" href="#phenotypic.refine.BorderObjectRemover.dispose_widgets" title="Link to this definition">#</a></dt>
+<dd><p>Drop references to the UI widgets.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.refine.BorderObjectRemover.sync_widgets_from_state">
+<span class="sig-name descname"><span class="pre">sync_widgets_from_state</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="phenotypic.enhance.html#phenotypic.enhance.SobelFilter.None" title="phenotypic.enhance.SobelFilter.None"><span class="pre">None</span></a></span></span><a class="headerlink" href="#phenotypic.refine.BorderObjectRemover.sync_widgets_from_state" title="Link to this definition">#</a></dt>
+<dd><p>Push internal state into widgets.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.refine.BorderObjectRemover.widget">
+<span class="sig-name descname"><span class="pre">widget</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="phenotypic.html#phenotypic.Image" title="phenotypic.Image"><span class="pre">Image</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.enhance.html#phenotypic.enhance.SobelFilter.None" title="phenotypic.enhance.SobelFilter.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Widget</span></span></span><a class="headerlink" href="#phenotypic.refine.BorderObjectRemover.widget" title="Link to this definition">#</a></dt>
+<dd><p>Return (and optionally display) the root widget.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>image</strong> (<a class="reference internal" href="phenotypic.html#phenotypic.Image" title="phenotypic.Image"><em>Image</em></a><em> | </em><em>None</em>) – Optional image to visualize. If provided,
+visualization controls will be added to the widget.</p></li>
+<li><p><strong>show</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>) – Whether to display the widget immediately. Defaults to False.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The root widget.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>ipywidgets.Widget</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ImportError" title="(in Python v3.14)"><strong>ImportError</strong></a> – If ipywidgets or IPython are not installed.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="phenotypic.refine.CenterDeviationReducer">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.refine.</span></span><span class="sig-name descname"><span class="pre">CenterDeviationReducer</span></span><a class="reference internal" href="../_modules/phenotypic/refine/_center_deviation_reducer.html#CenterDeviationReducer"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.refine.CenterDeviationReducer" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.MapModifier" title="phenotypic.abc_._map_modifier.MapModifier"><code class="xref py py-class docutils literal notranslate"><span class="pre">MapModifier</span></code></a></p>
+<p>Removes objects based on how far away they are from the center of the image.</p>
+<p>Useful for isolated colony images. Use with <cite>phenotypic.grid.GridApply</cite> to remove objects from how far
+they are from the center of the grid position.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.refine.CenterDeviationReducer.__del__">
+<span class="sig-name descname"><span class="pre">__del__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.refine.CenterDeviationReducer.__del__" title="Link to this definition">#</a></dt>
+<dd><p>Automatically stop tracemalloc when the object is deleted.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.refine.CenterDeviationReducer.__getstate__">
+<span class="sig-name descname"><span class="pre">__getstate__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.refine.CenterDeviationReducer.__getstate__" title="Link to this definition">#</a></dt>
+<dd><p>Prepare the object for pickling by disposing of any widgets.</p>
+<p>This ensures that UI components (which may contain unpickleable objects like
+input functions or thread locks) are cleaned up before serialization.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>This method modifies the object state by calling dispose_widgets().
+Any active widgets will be detached from the object.</p>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.refine.CenterDeviationReducer.apply">
+<span class="sig-name descname"><span class="pre">apply</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">inplace</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.refine.CenterDeviationReducer.apply" title="Link to this definition">#</a></dt>
+<dd><p>Applies the operation to an image, either in-place or on a copy.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>image</strong> (<a class="reference internal" href="phenotypic.html#phenotypic.Image" title="phenotypic.Image"><em>Image</em></a>) – The arr image to apply the operation on.</p></li>
+<li><p><strong>inplace</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>) – If True, modifies the image in place; otherwise,
+operates on a copy of the image.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The modified image after applying the operation.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="phenotypic.html#phenotypic.Image" title="phenotypic.Image">Image</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.refine.CenterDeviationReducer.dispose_widgets">
+<span class="sig-name descname"><span class="pre">dispose_widgets</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="phenotypic.enhance.html#phenotypic.enhance.SobelFilter.None" title="phenotypic.enhance.SobelFilter.None"><span class="pre">None</span></a></span></span><a class="headerlink" href="#phenotypic.refine.CenterDeviationReducer.dispose_widgets" title="Link to this definition">#</a></dt>
+<dd><p>Drop references to the UI widgets.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.refine.CenterDeviationReducer.sync_widgets_from_state">
+<span class="sig-name descname"><span class="pre">sync_widgets_from_state</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="phenotypic.enhance.html#phenotypic.enhance.SobelFilter.None" title="phenotypic.enhance.SobelFilter.None"><span class="pre">None</span></a></span></span><a class="headerlink" href="#phenotypic.refine.CenterDeviationReducer.sync_widgets_from_state" title="Link to this definition">#</a></dt>
+<dd><p>Push internal state into widgets.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.refine.CenterDeviationReducer.widget">
+<span class="sig-name descname"><span class="pre">widget</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="phenotypic.html#phenotypic.Image" title="phenotypic.Image"><span class="pre">Image</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.enhance.html#phenotypic.enhance.SobelFilter.None" title="phenotypic.enhance.SobelFilter.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Widget</span></span></span><a class="headerlink" href="#phenotypic.refine.CenterDeviationReducer.widget" title="Link to this definition">#</a></dt>
+<dd><p>Return (and optionally display) the root widget.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>image</strong> (<a class="reference internal" href="phenotypic.html#phenotypic.Image" title="phenotypic.Image"><em>Image</em></a><em> | </em><em>None</em>) – Optional image to visualize. If provided,
+visualization controls will be added to the widget.</p></li>
+<li><p><strong>show</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>) – Whether to display the widget immediately. Defaults to False.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The root widget.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>ipywidgets.Widget</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ImportError" title="(in Python v3.14)"><strong>ImportError</strong></a> – If ipywidgets or IPython are not installed.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="phenotypic.refine.LowCircularityRemover">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.refine.</span></span><span class="sig-name descname"><span class="pre">LowCircularityRemover</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cutoff</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.785</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/refine/_circularity_modifier.html#LowCircularityRemover"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.refine.LowCircularityRemover" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.MapModifier" title="phenotypic.abc_._map_modifier.MapModifier"><code class="xref py py-class docutils literal notranslate"><span class="pre">MapModifier</span></code></a></p>
+<p>LowCircularityRemover is a map modifier that removes objects in an image
+based on their circularity measurement.</p>
+<p>This class evaluates objects in an image using the Polsby-Popper score to
+calculate circularity. Objects with a circularity score below the specified
+cutoff other_image are removed from the image. The user can specify a <cite>cutoff</cite> other_image
+to determine the minimum acceptable circularity for objects to remain in the
+image. Objects meeting the cutoff criteria are preserved, while others are
+filtered out.</p>
+<p>The Polsby-Popper circularity score is calculated using the following formula:</p>
+<div class="math notranslate nohighlight">
+\[SHAPE = \frac{4\pi A}{P^2}\]</div>
+<dl class="simple">
+<dt>where:</dt><dd><ul class="simple">
+<li><p>SHAPE is the circularity score (ranging from 0 to 1)</p></li>
+<li><p>A is the area of the object</p></li>
+<li><p>P is the perimeter of the object</p></li>
+<li><p>π (pi) is the mathematical constant</p></li>
+</ul>
+</dd>
+</dl>
+<p>A perfect circle has a score of 1, while more complex or elongated shapes have
+lower scores approaching 0.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>cutoff</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>)</p>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="phenotypic.refine.LowCircularityRemover.cutoff">
+<span class="sig-name descname"><span class="pre">cutoff</span></span><a class="headerlink" href="#phenotypic.refine.LowCircularityRemover.cutoff" title="Link to this definition">#</a></dt>
+<dd><p>The minimum threshold for the circularity score of
+objects. Must be a other_image between 0 and 1.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.refine.LowCircularityRemover.__del__">
+<span class="sig-name descname"><span class="pre">__del__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.refine.LowCircularityRemover.__del__" title="Link to this definition">#</a></dt>
+<dd><p>Automatically stop tracemalloc when the object is deleted.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.refine.LowCircularityRemover.__getstate__">
+<span class="sig-name descname"><span class="pre">__getstate__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.refine.LowCircularityRemover.__getstate__" title="Link to this definition">#</a></dt>
+<dd><p>Prepare the object for pickling by disposing of any widgets.</p>
+<p>This ensures that UI components (which may contain unpickleable objects like
+input functions or thread locks) are cleaned up before serialization.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>This method modifies the object state by calling dispose_widgets().
+Any active widgets will be detached from the object.</p>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.refine.LowCircularityRemover.apply">
+<span class="sig-name descname"><span class="pre">apply</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">inplace</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.refine.LowCircularityRemover.apply" title="Link to this definition">#</a></dt>
+<dd><p>Applies the operation to an image, either in-place or on a copy.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>image</strong> (<a class="reference internal" href="phenotypic.html#phenotypic.Image" title="phenotypic.Image"><em>Image</em></a>) – The arr image to apply the operation on.</p></li>
+<li><p><strong>inplace</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>) – If True, modifies the image in place; otherwise,
+operates on a copy of the image.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The modified image after applying the operation.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="phenotypic.html#phenotypic.Image" title="phenotypic.Image">Image</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.refine.LowCircularityRemover.dispose_widgets">
+<span class="sig-name descname"><span class="pre">dispose_widgets</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="phenotypic.enhance.html#phenotypic.enhance.SobelFilter.None" title="phenotypic.enhance.SobelFilter.None"><span class="pre">None</span></a></span></span><a class="headerlink" href="#phenotypic.refine.LowCircularityRemover.dispose_widgets" title="Link to this definition">#</a></dt>
+<dd><p>Drop references to the UI widgets.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.refine.LowCircularityRemover.sync_widgets_from_state">
+<span class="sig-name descname"><span class="pre">sync_widgets_from_state</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="phenotypic.enhance.html#phenotypic.enhance.SobelFilter.None" title="phenotypic.enhance.SobelFilter.None"><span class="pre">None</span></a></span></span><a class="headerlink" href="#phenotypic.refine.LowCircularityRemover.sync_widgets_from_state" title="Link to this definition">#</a></dt>
+<dd><p>Push internal state into widgets.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.refine.LowCircularityRemover.widget">
+<span class="sig-name descname"><span class="pre">widget</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="phenotypic.html#phenotypic.Image" title="phenotypic.Image"><span class="pre">Image</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.enhance.html#phenotypic.enhance.SobelFilter.None" title="phenotypic.enhance.SobelFilter.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Widget</span></span></span><a class="headerlink" href="#phenotypic.refine.LowCircularityRemover.widget" title="Link to this definition">#</a></dt>
+<dd><p>Return (and optionally display) the root widget.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>image</strong> (<a class="reference internal" href="phenotypic.html#phenotypic.Image" title="phenotypic.Image"><em>Image</em></a><em> | </em><em>None</em>) – Optional image to visualize. If provided,
+visualization controls will be added to the widget.</p></li>
+<li><p><strong>show</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>) – Whether to display the widget immediately. Defaults to False.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The root widget.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>ipywidgets.Widget</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ImportError" title="(in Python v3.14)"><strong>ImportError</strong></a> – If ipywidgets or IPython are not installed.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="phenotypic.refine.MaskFill">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.refine.</span></span><span class="sig-name descname"><span class="pre">MaskFill</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">structure</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.3)"><span class="pre">ndarray</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.enhance.html#phenotypic.enhance.SobelFilter.None" title="phenotypic.enhance.SobelFilter.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">origin</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/refine/_mask_fill.html#MaskFill"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.refine.MaskFill" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.MapModifier" title="phenotypic.abc_._map_modifier.MapModifier"><code class="xref py py-class docutils literal notranslate"><span class="pre">MapModifier</span></code></a></p>
+<p>A class for filling holes in binary masks within an image.</p>
+<p>This class provides functionality to process an input binary mask
+in an image, filling any holes using the specified structuring element
+and origin.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>structure</strong> (<em>Optional</em><em>[</em><em>np.ndarray</em><em>]</em>)</p></li>
+<li><p><strong>origin</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="phenotypic.refine.MaskFill.structure">
+<span class="sig-name descname"><span class="pre">structure</span></span><a class="headerlink" href="#phenotypic.refine.MaskFill.structure" title="Link to this definition">#</a></dt>
+<dd><p>Structuring element to define the neighborhood
+for filling holes. If None, a default cross-shaped structure is used.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Optional[np.ndarray]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="phenotypic.refine.MaskFill.origin">
+<span class="sig-name descname"><span class="pre">origin</span></span><a class="headerlink" href="#phenotypic.refine.MaskFill.origin" title="Link to this definition">#</a></dt>
+<dd><p>Origin point to define the center of the structuring element,
+influencing how the neighborhood is considered.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)">int</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.refine.MaskFill.__del__">
+<span class="sig-name descname"><span class="pre">__del__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.refine.MaskFill.__del__" title="Link to this definition">#</a></dt>
+<dd><p>Automatically stop tracemalloc when the object is deleted.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.refine.MaskFill.__getstate__">
+<span class="sig-name descname"><span class="pre">__getstate__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.refine.MaskFill.__getstate__" title="Link to this definition">#</a></dt>
+<dd><p>Prepare the object for pickling by disposing of any widgets.</p>
+<p>This ensures that UI components (which may contain unpickleable objects like
+input functions or thread locks) are cleaned up before serialization.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>This method modifies the object state by calling dispose_widgets().
+Any active widgets will be detached from the object.</p>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.refine.MaskFill.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">structure</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.3)"><span class="pre">ndarray</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.enhance.html#phenotypic.enhance.SobelFilter.None" title="phenotypic.enhance.SobelFilter.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">origin</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/refine/_mask_fill.html#MaskFill.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.refine.MaskFill.__init__" title="Link to this definition">#</a></dt>
+<dd><p>Initializes an instance of the class and validates input parameters.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>structure</strong> (<em>Optional</em><em>[</em><em>np.ndarray</em><em>]</em>) – A binary mask array. This parameter must
+be a binary array. If provided and not valid, a ValueError is raised.
+Defaults to None.</p></li>
+<li><p><strong>origin</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – An integer value representing the origin or offset. Defaults
+to 0.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.14)"><strong>ValueError</strong></a> – If the <cite>structure</cite> parameter is provided and is not a binary
+    mask array.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.refine.MaskFill.apply">
+<span class="sig-name descname"><span class="pre">apply</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">inplace</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.refine.MaskFill.apply" title="Link to this definition">#</a></dt>
+<dd><p>Applies the operation to an image, either in-place or on a copy.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>image</strong> (<a class="reference internal" href="phenotypic.html#phenotypic.Image" title="phenotypic.Image"><em>Image</em></a>) – The arr image to apply the operation on.</p></li>
+<li><p><strong>inplace</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>) – If True, modifies the image in place; otherwise,
+operates on a copy of the image.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The modified image after applying the operation.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="phenotypic.html#phenotypic.Image" title="phenotypic.Image">Image</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.refine.MaskFill.dispose_widgets">
+<span class="sig-name descname"><span class="pre">dispose_widgets</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="phenotypic.enhance.html#phenotypic.enhance.SobelFilter.None" title="phenotypic.enhance.SobelFilter.None"><span class="pre">None</span></a></span></span><a class="headerlink" href="#phenotypic.refine.MaskFill.dispose_widgets" title="Link to this definition">#</a></dt>
+<dd><p>Drop references to the UI widgets.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.refine.MaskFill.sync_widgets_from_state">
+<span class="sig-name descname"><span class="pre">sync_widgets_from_state</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="phenotypic.enhance.html#phenotypic.enhance.SobelFilter.None" title="phenotypic.enhance.SobelFilter.None"><span class="pre">None</span></a></span></span><a class="headerlink" href="#phenotypic.refine.MaskFill.sync_widgets_from_state" title="Link to this definition">#</a></dt>
+<dd><p>Push internal state into widgets.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.refine.MaskFill.widget">
+<span class="sig-name descname"><span class="pre">widget</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="phenotypic.html#phenotypic.Image" title="phenotypic.Image"><span class="pre">Image</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.enhance.html#phenotypic.enhance.SobelFilter.None" title="phenotypic.enhance.SobelFilter.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Widget</span></span></span><a class="headerlink" href="#phenotypic.refine.MaskFill.widget" title="Link to this definition">#</a></dt>
+<dd><p>Return (and optionally display) the root widget.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>image</strong> (<a class="reference internal" href="phenotypic.html#phenotypic.Image" title="phenotypic.Image"><em>Image</em></a><em> | </em><em>None</em>) – Optional image to visualize. If provided,
+visualization controls will be added to the widget.</p></li>
+<li><p><strong>show</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>) – Whether to display the widget immediately. Defaults to False.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The root widget.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>ipywidgets.Widget</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ImportError" title="(in Python v3.14)"><strong>ImportError</strong></a> – If ipywidgets or IPython are not installed.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="phenotypic.refine.MaskOpener">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.refine.</span></span><span class="sig-name descname"><span class="pre">MaskOpener</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">footprint</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Literal" title="(in Python v3.14)"><span class="pre">Literal</span></a><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'auto'</span></span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.3)"><span class="pre">ndarray</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.enhance.html#phenotypic.enhance.SobelFilter.None" title="phenotypic.enhance.SobelFilter.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/refine/_mask_opener.html#MaskOpener"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.refine.MaskOpener" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.MapModifier" title="phenotypic.abc_._map_modifier.MapModifier"><code class="xref py py-class docutils literal notranslate"><span class="pre">MapModifier</span></code></a></p>
+<p>Perform morphological binary opening operation on an image’s object mask.</p>
+<p>MaskOpener class is a specialized MapModifier that applies a morphological
+binary opening operation to an image’s object mask. The operation utilizes
+a structuring element, referred to as the footprint, which can be customized
+or automatically determined based on the input image’s shape. This class
+is designed to enhance object detection by refining and smoothing binary
+masks in an image.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>footprint</strong> (<em>Literal</em><em>[</em><em>'auto'</em><em>] </em><em>| </em><em>np.ndarray</em><em> | </em><em>int</em><em> | </em><em>None</em>)</p>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="phenotypic.refine.MaskOpener.footprint">
+<span class="sig-name descname"><span class="pre">footprint</span></span><a class="headerlink" href="#phenotypic.refine.MaskOpener.footprint" title="Link to this definition">#</a></dt>
+<dd><p>The structuring element for the
+binary opening operation. Can be a custom numpy array, an integer
+specifying the radius for a diamond-shaped footprint, or None to
+auto-generate the footprint based on the size of the input image.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>np.ndarray | <a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)">int</a> | None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.refine.MaskOpener.__del__">
+<span class="sig-name descname"><span class="pre">__del__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.refine.MaskOpener.__del__" title="Link to this definition">#</a></dt>
+<dd><p>Automatically stop tracemalloc when the object is deleted.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.refine.MaskOpener.__getstate__">
+<span class="sig-name descname"><span class="pre">__getstate__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.refine.MaskOpener.__getstate__" title="Link to this definition">#</a></dt>
+<dd><p>Prepare the object for pickling by disposing of any widgets.</p>
+<p>This ensures that UI components (which may contain unpickleable objects like
+input functions or thread locks) are cleaned up before serialization.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>This method modifies the object state by calling dispose_widgets().
+Any active widgets will be detached from the object.</p>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.refine.MaskOpener.apply">
+<span class="sig-name descname"><span class="pre">apply</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">inplace</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.refine.MaskOpener.apply" title="Link to this definition">#</a></dt>
+<dd><p>Applies the operation to an image, either in-place or on a copy.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>image</strong> (<a class="reference internal" href="phenotypic.html#phenotypic.Image" title="phenotypic.Image"><em>Image</em></a>) – The arr image to apply the operation on.</p></li>
+<li><p><strong>inplace</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>) – If True, modifies the image in place; otherwise,
+operates on a copy of the image.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The modified image after applying the operation.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="phenotypic.html#phenotypic.Image" title="phenotypic.Image">Image</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.refine.MaskOpener.dispose_widgets">
+<span class="sig-name descname"><span class="pre">dispose_widgets</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="phenotypic.enhance.html#phenotypic.enhance.SobelFilter.None" title="phenotypic.enhance.SobelFilter.None"><span class="pre">None</span></a></span></span><a class="headerlink" href="#phenotypic.refine.MaskOpener.dispose_widgets" title="Link to this definition">#</a></dt>
+<dd><p>Drop references to the UI widgets.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.refine.MaskOpener.sync_widgets_from_state">
+<span class="sig-name descname"><span class="pre">sync_widgets_from_state</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="phenotypic.enhance.html#phenotypic.enhance.SobelFilter.None" title="phenotypic.enhance.SobelFilter.None"><span class="pre">None</span></a></span></span><a class="headerlink" href="#phenotypic.refine.MaskOpener.sync_widgets_from_state" title="Link to this definition">#</a></dt>
+<dd><p>Push internal state into widgets.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.refine.MaskOpener.widget">
+<span class="sig-name descname"><span class="pre">widget</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="phenotypic.html#phenotypic.Image" title="phenotypic.Image"><span class="pre">Image</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.enhance.html#phenotypic.enhance.SobelFilter.None" title="phenotypic.enhance.SobelFilter.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Widget</span></span></span><a class="headerlink" href="#phenotypic.refine.MaskOpener.widget" title="Link to this definition">#</a></dt>
+<dd><p>Return (and optionally display) the root widget.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>image</strong> (<a class="reference internal" href="phenotypic.html#phenotypic.Image" title="phenotypic.Image"><em>Image</em></a><em> | </em><em>None</em>) – Optional image to visualize. If provided,
+visualization controls will be added to the widget.</p></li>
+<li><p><strong>show</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>) – Whether to display the widget immediately. Defaults to False.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The root widget.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>ipywidgets.Widget</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ImportError" title="(in Python v3.14)"><strong>ImportError</strong></a> – If ipywidgets or IPython are not installed.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="phenotypic.refine.SmallObjectRemover">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.refine.</span></span><span class="sig-name descname"><span class="pre">SmallObjectRemover</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">min_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">64</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/refine/_small_object_modifier.html#SmallObjectRemover"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.refine.SmallObjectRemover" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.MapModifier" title="phenotypic.abc_._map_modifier.MapModifier"><code class="xref py py-class docutils literal notranslate"><span class="pre">MapModifier</span></code></a></p>
+<p>Removes small objects from an image</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.refine.SmallObjectRemover.__del__">
+<span class="sig-name descname"><span class="pre">__del__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.refine.SmallObjectRemover.__del__" title="Link to this definition">#</a></dt>
+<dd><p>Automatically stop tracemalloc when the object is deleted.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.refine.SmallObjectRemover.__getstate__">
+<span class="sig-name descname"><span class="pre">__getstate__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.refine.SmallObjectRemover.__getstate__" title="Link to this definition">#</a></dt>
+<dd><p>Prepare the object for pickling by disposing of any widgets.</p>
+<p>This ensures that UI components (which may contain unpickleable objects like
+input functions or thread locks) are cleaned up before serialization.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>This method modifies the object state by calling dispose_widgets().
+Any active widgets will be detached from the object.</p>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.refine.SmallObjectRemover.apply">
+<span class="sig-name descname"><span class="pre">apply</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">inplace</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.refine.SmallObjectRemover.apply" title="Link to this definition">#</a></dt>
+<dd><p>Applies the operation to an image, either in-place or on a copy.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>image</strong> (<a class="reference internal" href="phenotypic.html#phenotypic.Image" title="phenotypic.Image"><em>Image</em></a>) – The arr image to apply the operation on.</p></li>
+<li><p><strong>inplace</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>) – If True, modifies the image in place; otherwise,
+operates on a copy of the image.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The modified image after applying the operation.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="phenotypic.html#phenotypic.Image" title="phenotypic.Image">Image</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.refine.SmallObjectRemover.dispose_widgets">
+<span class="sig-name descname"><span class="pre">dispose_widgets</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="phenotypic.enhance.html#phenotypic.enhance.SobelFilter.None" title="phenotypic.enhance.SobelFilter.None"><span class="pre">None</span></a></span></span><a class="headerlink" href="#phenotypic.refine.SmallObjectRemover.dispose_widgets" title="Link to this definition">#</a></dt>
+<dd><p>Drop references to the UI widgets.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.refine.SmallObjectRemover.sync_widgets_from_state">
+<span class="sig-name descname"><span class="pre">sync_widgets_from_state</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="phenotypic.enhance.html#phenotypic.enhance.SobelFilter.None" title="phenotypic.enhance.SobelFilter.None"><span class="pre">None</span></a></span></span><a class="headerlink" href="#phenotypic.refine.SmallObjectRemover.sync_widgets_from_state" title="Link to this definition">#</a></dt>
+<dd><p>Push internal state into widgets.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.refine.SmallObjectRemover.widget">
+<span class="sig-name descname"><span class="pre">widget</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="phenotypic.html#phenotypic.Image" title="phenotypic.Image"><span class="pre">Image</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.enhance.html#phenotypic.enhance.SobelFilter.None" title="phenotypic.enhance.SobelFilter.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Widget</span></span></span><a class="headerlink" href="#phenotypic.refine.SmallObjectRemover.widget" title="Link to this definition">#</a></dt>
+<dd><p>Return (and optionally display) the root widget.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>image</strong> (<a class="reference internal" href="phenotypic.html#phenotypic.Image" title="phenotypic.Image"><em>Image</em></a><em> | </em><em>None</em>) – Optional image to visualize. If provided,
+visualization controls will be added to the widget.</p></li>
+<li><p><strong>show</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>) – Whether to display the widget immediately. Defaults to False.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The root widget.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>ipywidgets.Widget</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ImportError" title="(in Python v3.14)"><strong>ImportError</strong></a> – If ipywidgets or IPython are not installed.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="phenotypic.refine.WhiteTophatModifier">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.refine.</span></span><span class="sig-name descname"><span class="pre">WhiteTophatModifier</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">footprint_shape</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'disk'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">footprint_radius</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.enhance.html#phenotypic.enhance.SobelFilter.None" title="phenotypic.enhance.SobelFilter.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/refine/_white_tophat_modifier.html#WhiteTophatModifier"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.refine.WhiteTophatModifier" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.MapModifier" title="phenotypic.abc_._map_modifier.MapModifier"><code class="xref py py-class docutils literal notranslate"><span class="pre">MapModifier</span></code></a></p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>footprint_radius</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.refine.WhiteTophatModifier.__del__">
+<span class="sig-name descname"><span class="pre">__del__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.refine.WhiteTophatModifier.__del__" title="Link to this definition">#</a></dt>
+<dd><p>Automatically stop tracemalloc when the object is deleted.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.refine.WhiteTophatModifier.__getstate__">
+<span class="sig-name descname"><span class="pre">__getstate__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.refine.WhiteTophatModifier.__getstate__" title="Link to this definition">#</a></dt>
+<dd><p>Prepare the object for pickling by disposing of any widgets.</p>
+<p>This ensures that UI components (which may contain unpickleable objects like
+input functions or thread locks) are cleaned up before serialization.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>This method modifies the object state by calling dispose_widgets().
+Any active widgets will be detached from the object.</p>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.refine.WhiteTophatModifier.apply">
+<span class="sig-name descname"><span class="pre">apply</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">inplace</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.refine.WhiteTophatModifier.apply" title="Link to this definition">#</a></dt>
+<dd><p>Applies the operation to an image, either in-place or on a copy.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>image</strong> (<a class="reference internal" href="phenotypic.html#phenotypic.Image" title="phenotypic.Image"><em>Image</em></a>) – The arr image to apply the operation on.</p></li>
+<li><p><strong>inplace</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>) – If True, modifies the image in place; otherwise,
+operates on a copy of the image.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The modified image after applying the operation.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="phenotypic.html#phenotypic.Image" title="phenotypic.Image">Image</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.refine.WhiteTophatModifier.dispose_widgets">
+<span class="sig-name descname"><span class="pre">dispose_widgets</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="phenotypic.enhance.html#phenotypic.enhance.SobelFilter.None" title="phenotypic.enhance.SobelFilter.None"><span class="pre">None</span></a></span></span><a class="headerlink" href="#phenotypic.refine.WhiteTophatModifier.dispose_widgets" title="Link to this definition">#</a></dt>
+<dd><p>Drop references to the UI widgets.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.refine.WhiteTophatModifier.sync_widgets_from_state">
+<span class="sig-name descname"><span class="pre">sync_widgets_from_state</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="phenotypic.enhance.html#phenotypic.enhance.SobelFilter.None" title="phenotypic.enhance.SobelFilter.None"><span class="pre">None</span></a></span></span><a class="headerlink" href="#phenotypic.refine.WhiteTophatModifier.sync_widgets_from_state" title="Link to this definition">#</a></dt>
+<dd><p>Push internal state into widgets.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.refine.WhiteTophatModifier.widget">
+<span class="sig-name descname"><span class="pre">widget</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="phenotypic.html#phenotypic.Image" title="phenotypic.Image"><span class="pre">Image</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.enhance.html#phenotypic.enhance.SobelFilter.None" title="phenotypic.enhance.SobelFilter.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Widget</span></span></span><a class="headerlink" href="#phenotypic.refine.WhiteTophatModifier.widget" title="Link to this definition">#</a></dt>
+<dd><p>Return (and optionally display) the root widget.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>image</strong> (<a class="reference internal" href="phenotypic.html#phenotypic.Image" title="phenotypic.Image"><em>Image</em></a><em> | </em><em>None</em>) – Optional image to visualize. If provided,
+visualization controls will be added to the widget.</p></li>
+<li><p><strong>show</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>) – Whether to display the widget immediately. Defaults to False.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The root widget.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>ipywidgets.Widget</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ImportError" title="(in Python v3.14)"><strong>ImportError</strong></a> – If ipywidgets or IPython are not installed.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.refine.BorderObjectRemover"><code class="docutils literal notranslate"><span class="pre">BorderObjectRemover</span></code></a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.refine.BorderObjectRemover.__del__"><code class="docutils literal notranslate"><span class="pre">BorderObjectRemover.__del__()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.refine.BorderObjectRemover.__getstate__"><code class="docutils literal notranslate"><span class="pre">BorderObjectRemover.__getstate__()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.refine.BorderObjectRemover.apply"><code class="docutils literal notranslate"><span class="pre">BorderObjectRemover.apply()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.refine.BorderObjectRemover.dispose_widgets"><code class="docutils literal notranslate"><span class="pre">BorderObjectRemover.dispose_widgets()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.refine.BorderObjectRemover.sync_widgets_from_state"><code class="docutils literal notranslate"><span class="pre">BorderObjectRemover.sync_widgets_from_state()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.refine.BorderObjectRemover.widget"><code class="docutils literal notranslate"><span class="pre">BorderObjectRemover.widget()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.refine.CenterDeviationReducer"><code class="docutils literal notranslate"><span class="pre">CenterDeviationReducer</span></code></a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.refine.CenterDeviationReducer.__del__"><code class="docutils literal notranslate"><span class="pre">CenterDeviationReducer.__del__()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.refine.CenterDeviationReducer.__getstate__"><code class="docutils literal notranslate"><span class="pre">CenterDeviationReducer.__getstate__()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.refine.CenterDeviationReducer.apply"><code class="docutils literal notranslate"><span class="pre">CenterDeviationReducer.apply()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.refine.CenterDeviationReducer.dispose_widgets"><code class="docutils literal notranslate"><span class="pre">CenterDeviationReducer.dispose_widgets()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.refine.CenterDeviationReducer.sync_widgets_from_state"><code class="docutils literal notranslate"><span class="pre">CenterDeviationReducer.sync_widgets_from_state()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.refine.CenterDeviationReducer.widget"><code class="docutils literal notranslate"><span class="pre">CenterDeviationReducer.widget()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.refine.LowCircularityRemover"><code class="docutils literal notranslate"><span class="pre">LowCircularityRemover</span></code></a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.refine.LowCircularityRemover.cutoff"><code class="docutils literal notranslate"><span class="pre">LowCircularityRemover.cutoff</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.refine.LowCircularityRemover.__del__"><code class="docutils literal notranslate"><span class="pre">LowCircularityRemover.__del__()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.refine.LowCircularityRemover.__getstate__"><code class="docutils literal notranslate"><span class="pre">LowCircularityRemover.__getstate__()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.refine.LowCircularityRemover.apply"><code class="docutils literal notranslate"><span class="pre">LowCircularityRemover.apply()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.refine.LowCircularityRemover.dispose_widgets"><code class="docutils literal notranslate"><span class="pre">LowCircularityRemover.dispose_widgets()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.refine.LowCircularityRemover.sync_widgets_from_state"><code class="docutils literal notranslate"><span class="pre">LowCircularityRemover.sync_widgets_from_state()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.refine.LowCircularityRemover.widget"><code class="docutils literal notranslate"><span class="pre">LowCircularityRemover.widget()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.refine.MaskFill"><code class="docutils literal notranslate"><span class="pre">MaskFill</span></code></a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.refine.MaskFill.structure"><code class="docutils literal notranslate"><span class="pre">MaskFill.structure</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.refine.MaskFill.origin"><code class="docutils literal notranslate"><span class="pre">MaskFill.origin</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.refine.MaskFill.__del__"><code class="docutils literal notranslate"><span class="pre">MaskFill.__del__()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.refine.MaskFill.__getstate__"><code class="docutils literal notranslate"><span class="pre">MaskFill.__getstate__()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.refine.MaskFill.__init__"><code class="docutils literal notranslate"><span class="pre">MaskFill.__init__()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.refine.MaskFill.apply"><code class="docutils literal notranslate"><span class="pre">MaskFill.apply()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.refine.MaskFill.dispose_widgets"><code class="docutils literal notranslate"><span class="pre">MaskFill.dispose_widgets()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.refine.MaskFill.sync_widgets_from_state"><code class="docutils literal notranslate"><span class="pre">MaskFill.sync_widgets_from_state()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.refine.MaskFill.widget"><code class="docutils literal notranslate"><span class="pre">MaskFill.widget()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.refine.MaskOpener"><code class="docutils literal notranslate"><span class="pre">MaskOpener</span></code></a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.refine.MaskOpener.footprint"><code class="docutils literal notranslate"><span class="pre">MaskOpener.footprint</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.refine.MaskOpener.__del__"><code class="docutils literal notranslate"><span class="pre">MaskOpener.__del__()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.refine.MaskOpener.__getstate__"><code class="docutils literal notranslate"><span class="pre">MaskOpener.__getstate__()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.refine.MaskOpener.apply"><code class="docutils literal notranslate"><span class="pre">MaskOpener.apply()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.refine.MaskOpener.dispose_widgets"><code class="docutils literal notranslate"><span class="pre">MaskOpener.dispose_widgets()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.refine.MaskOpener.sync_widgets_from_state"><code class="docutils literal notranslate"><span class="pre">MaskOpener.sync_widgets_from_state()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.refine.MaskOpener.widget"><code class="docutils literal notranslate"><span class="pre">MaskOpener.widget()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.refine.SmallObjectRemover"><code class="docutils literal notranslate"><span class="pre">SmallObjectRemover</span></code></a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.refine.SmallObjectRemover.__del__"><code class="docutils literal notranslate"><span class="pre">SmallObjectRemover.__del__()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.refine.SmallObjectRemover.__getstate__"><code class="docutils literal notranslate"><span class="pre">SmallObjectRemover.__getstate__()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.refine.SmallObjectRemover.apply"><code class="docutils literal notranslate"><span class="pre">SmallObjectRemover.apply()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.refine.SmallObjectRemover.dispose_widgets"><code class="docutils literal notranslate"><span class="pre">SmallObjectRemover.dispose_widgets()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.refine.SmallObjectRemover.sync_widgets_from_state"><code class="docutils literal notranslate"><span class="pre">SmallObjectRemover.sync_widgets_from_state()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.refine.SmallObjectRemover.widget"><code class="docutils literal notranslate"><span class="pre">SmallObjectRemover.widget()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.refine.WhiteTophatModifier"><code class="docutils literal notranslate"><span class="pre">WhiteTophatModifier</span></code></a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.refine.WhiteTophatModifier.__del__"><code class="docutils literal notranslate"><span class="pre">WhiteTophatModifier.__del__()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.refine.WhiteTophatModifier.__getstate__"><code class="docutils literal notranslate"><span class="pre">WhiteTophatModifier.__getstate__()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.refine.WhiteTophatModifier.apply"><code class="docutils literal notranslate"><span class="pre">WhiteTophatModifier.apply()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.refine.WhiteTophatModifier.dispose_widgets"><code class="docutils literal notranslate"><span class="pre">WhiteTophatModifier.dispose_widgets()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.refine.WhiteTophatModifier.sync_widgets_from_state"><code class="docutils literal notranslate"><span class="pre">WhiteTophatModifier.sync_widgets_from_state()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.refine.WhiteTophatModifier.widget"><code class="docutils literal notranslate"><span class="pre">WhiteTophatModifier.widget()</span></code></a></li>
+</ul>
+</li>
+</ul>
+  </nav></div>
+
+  <div class="sidebar-secondary-item">
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../_sources/api_reference/phenotypic.refine.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, ExFAB BioFoundry.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.1.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

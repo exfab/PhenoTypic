@@ -1,0 +1,1617 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Getting Started &#8212; PhenoTypic</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/mystnb.8ecb98da25f57f5357bf6f572d296f466b2cfe2517ffebfabe82451661e28f02.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/custom.css?v=800a184d" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../../../_static/documentation_options.js?v=21db0d57"></script>
+    <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../../../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="../../../_static/design-tabs.js?v=f930bc37"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'user_guide/tutorial/notebooks/GettingStarted';</script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+    <link rel="next" title="Understanding the Image Class: Data Components and Accessors" href="Images.html" />
+    <link rel="prev" title="Tutorials" href="../index.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.9.2" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+     
+  
+
+<a class="navbar-brand logo" href="../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../../_static/light_logo_sponsor.svg" class="logo__image only-light" alt="PhenoTypic"/>
+    <img src="../../../_static/light_logo_sponsor.svg" class="logo__image only-dark pst-js-only" alt="PhenoTypic"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../installation.html">
+    Installation
+  </a>
+</li>
+
+
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="../../index.html">
+    User Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../api_reference/index.html">
+    API Reference
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../contrib_guide/index.html">
+    Developer Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../downloadables.html">
+    <no title>
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/Wheeldon-Lab/PhenoScope#" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../installation.html">
+    Installation
+  </a>
+</li>
+
+
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="../../index.html">
+    User Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../api_reference/index.html">
+    API Reference
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../contrib_guide/index.html">
+    Developer Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../downloadables.html">
+    <no title>
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/Wheeldon-Lab/PhenoScope#" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">User Guide Topics</span></p>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../../../installation.html">Installation</a></li>
+
+<li class="toctree-l1"><a class="reference internal" href="../../overview.html">Overview</a></li>
+<li class="toctree-l1 current active has-children"><a class="reference internal" href="../index.html">Tutorials</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul class="current">
+<li class="toctree-l2 current active"><a class="current reference internal" href="#">Getting Started</a></li>
+
+<li class="toctree-l2"><a class="reference internal" href="Images.html">Understanding the Image Class: Data Components and Accessors</a></li>
+<li class="toctree-l2"><a class="reference internal" href="GridImages.html">Working with GridImage: Grid-Specific Features</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ImagePipelines.html">Make your own <code class="docutils literal notranslate"><span class="pre">ImagePipeline</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="GrowthCurves.html">Fitting Logistic Growth Curves</a></li>
+</ul>
+</details></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../index.html" class="nav-link">User Guide</a></li>
+    
+    
+    <li class="breadcrumb-item"><a href="../index.html" class="nav-link">Tutorials</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">Getting Started</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section class="tex2jax_ignore mathjax_ignore" id="getting-started">
+<h1>Getting Started<a class="headerlink" href="#getting-started" title="Link to this heading">#</a></h1>
+<hr class="docutils" />
+<p>Getting started with image processing is straightforward. There’s three classes of operations in <code class="docutils literal notranslate"><span class="pre">phenotypic</span></code>: <code class="docutils literal notranslate"><span class="pre">ImageOperation</span></code>, <code class="docutils literal notranslate"><span class="pre">MeasureFeature</span></code>, and <code class="docutils literal notranslate"><span class="pre">ImagePipeline</span></code>.</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">ImageOperation</span></code>(s): processes that operate on the data of an image in preparation for feature extraction with <code class="docutils literal notranslate"><span class="pre">MeasureFeature</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">MeasureFeature</span></code>(s) extract measurements from the objects within the image based on the pixel values.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ImagePipeline</span></code>(s) are a collection of operations and measurements compiled into a single class for convenience.</p></li>
+</ul>
+<p>To get started with <code class="docutils literal notranslate"><span class="pre">phenotypic</span></code>, it’s fastest to start by using one of the pipelines in <code class="docutils literal notranslate"><span class="pre">phenotypic.prefab</span></code>. Below we use <code class="docutils literal notranslate"><span class="pre">phenotypic.prefab.HeavyWatershedPipeline</span></code>, which was used with hand scanner images of <em>Kluveromyces Marxianus</em>.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">phenotypic</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pht</span>
+
+<span class="n">filepaths</span> <span class="o">=</span> <span class="p">[</span><span class="n">x</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span>
+             <span class="n">pht</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">yield_sample_dataset</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s1">&#39;filepath&#39;</span><span class="p">)]</span>
+<span class="c1"># This returns the relative filepaths for this sample data</span>
+<span class="c1"># While unconventional for a loader, this is done to demonstrate importing an directory of images.</span>
+<span class="n">filepaths</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>[PosixPath(&#39;../../../../../src/phenotypic/data/PhenoTypicSampleSubset/2_1S_5.jpg&#39;),
+ PosixPath(&#39;../../../../../src/phenotypic/data/PhenoTypicSampleSubset/2_1S_6.jpg&#39;),
+ PosixPath(&#39;../../../../../src/phenotypic/data/PhenoTypicSampleSubset/2_1S_7.jpg&#39;),
+ PosixPath(&#39;../../../../../src/phenotypic/data/PhenoTypicSampleSubset/2_1S_8.jpg&#39;),
+ PosixPath(&#39;../../../../../src/phenotypic/data/PhenoTypicSampleSubset/3_1S_5.jpg&#39;),
+ PosixPath(&#39;../../../../../src/phenotypic/data/PhenoTypicSampleSubset/3_1S_6.jpg&#39;),
+ PosixPath(&#39;../../../../../src/phenotypic/data/PhenoTypicSampleSubset/3_1S_7.jpg&#39;),
+ PosixPath(&#39;../../../../../src/phenotypic/data/PhenoTypicSampleSubset/3_1S_8.jpg&#39;),
+ PosixPath(&#39;../../../../../src/phenotypic/data/PhenoTypicSampleSubset/4_1S_5.jpg&#39;),
+ PosixPath(&#39;../../../../../src/phenotypic/data/PhenoTypicSampleSubset/4_1S_6.jpg&#39;),
+ PosixPath(&#39;../../../../../src/phenotypic/data/PhenoTypicSampleSubset/4_1S_7.jpg&#39;),
+ PosixPath(&#39;../../../../../src/phenotypic/data/PhenoTypicSampleSubset/4_1S_8.jpg&#39;),
+ PosixPath(&#39;../../../../../src/phenotypic/data/PhenoTypicSampleSubset/5_1S_5.jpg&#39;),
+ PosixPath(&#39;../../../../../src/phenotypic/data/PhenoTypicSampleSubset/5_1S_6.jpg&#39;),
+ PosixPath(&#39;../../../../../src/phenotypic/data/PhenoTypicSampleSubset/5_1S_7.jpg&#39;),
+ PosixPath(&#39;../../../../../src/phenotypic/data/PhenoTypicSampleSubset/5_1S_8.jpg&#39;),
+ PosixPath(&#39;../../../../../src/phenotypic/data/PhenoTypicSampleSubset/6_1S_5.jpg&#39;),
+ PosixPath(&#39;../../../../../src/phenotypic/data/PhenoTypicSampleSubset/6_1S_6.jpg&#39;),
+ PosixPath(&#39;../../../../../src/phenotypic/data/PhenoTypicSampleSubset/6_1S_7.jpg&#39;),
+ PosixPath(&#39;../../../../../src/phenotypic/data/PhenoTypicSampleSubset/6_1S_8.jpg&#39;)]
+</pre></div>
+</div>
+</div>
+</div>
+<section id="processing-your-first-image">
+<h2>Processing your first image<a class="headerlink" href="#processing-your-first-image" title="Link to this heading">#</a></h2>
+<hr class="docutils" />
+<p>Here we’re gonna import the last image in the dataset, since its from the last timepoint and should have reasonable growth. Accepted file formats are jpegs, tiffs, pngs, and RAW files.</p>
+<p><strong>Important things to note:</strong></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">bit_depth</span></code> will have an important role in memory usage and accuracy. For jpegs, this will always be 8. For other image formats, consult your camera documentation for information. You may also find this information in your image metadata, depending on the format. PhenoTypic supports bit depths of 8 and 16. If not provided, PhenoTypic will try to guess this information from the imported image data.</p></li>
+</ul>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># We&#39;re gonna import the last image in the dataset, lets make an image with a grid in 96 array format</span>
+<span class="c1"># Accepted filepaths are jpegs, tiffs, pngs, and RAW format files</span>
+<span class="c1"># These images are jpegs so we set a bit depth of 8.</span>
+<span class="n">image</span> <span class="o">=</span> <span class="n">pht</span><span class="o">.</span><span class="n">GridImage</span><span class="o">.</span><span class="n">imread</span><span class="p">(</span><span class="n">filepaths</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">nrows</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">ncols</span><span class="o">=</span><span class="mi">12</span><span class="p">,</span> <span class="n">bit_depth</span><span class="o">=</span><span class="mi">8</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p>Let’s then view the image. PhenoTypic uses matplotlib as the backend for compatibility, which allows for streamlined prototyping in Jupyter. All plotting methods return (plt.Figure, plt.Axes) for easy post plotting editing. You can also plot directly to an axes. There’s a few different ways to view your image and its internal states.</p>
+<ol class="arabic simple">
+<li><p>View the input image</p></li>
+</ol>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">Image</span><span class="o">.</span><span class="n">show</span><span class="p">()</span> <span class="c1"># Shows the input image</span>
+<span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">Image</span><span class="o">.</span><span class="n">show</span><span class="p">()</span> <span class="c1"># If you need the figure or axes for further processing</span>
+<span class="n">fig</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+<ol class="arabic simple" start="2">
+<li><p>Viewing specific components</p></li>
+</ol>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">rgb_fig</span><span class="p">,</span> <span class="n">rgb_ax</span> <span class="o">=</span> <span class="n">Image</span><span class="o">.</span><span class="n">rgb</span><span class="o">.</span><span class="n">show</span><span class="p">()</span> <span class="c1"># Shows the rgb array if its available</span>
+<span class="n">gray_fig</span><span class="p">,</span> <span class="n">gray_ax</span> <span class="o">=</span> <span class="n">Image</span><span class="o">.</span><span class="n">gray</span><span class="o">.</span><span class="n">show</span><span class="p">()</span> <span class="c1"># Shows the grayscale array.</span>
+</pre></div>
+</div>
+<p>Also available for other image components such as <code class="docutils literal notranslate"><span class="pre">enh_gray</span></code>, <code class="docutils literal notranslate"><span class="pre">objmask</span></code>, <code class="docutils literal notranslate"><span class="pre">objmap</span></code>, …</p>
+<ol class="arabic simple" start="3">
+<li><p>Viewing overlay information</p></li>
+</ol>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">overlay_fig</span><span class="p">,</span> <span class="n">overlay_ax</span> <span class="o">=</span> <span class="n">Image</span><span class="o">.</span><span class="n">show_overlay</span><span class="p">()</span>
+<span class="n">overlay_fig</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+<span class="n">fig</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>  <span class="c1"># Only needed if the plot doesn&#39;t automatically show</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<img alt="../../../_images/3ab8934eb2c89e9018a595ddf35a77ed57ddbc4d9cac2509e615252f7bc78a7d.png" src="../../../_images/3ab8934eb2c89e9018a595ddf35a77ed57ddbc4d9cac2509e615252f7bc78a7d.png" />
+</div>
+</div>
+<p>You can always visualize your image with <code class="docutils literal notranslate"><span class="pre">Image.show()</span></code>. This returns a matplotlib figure and axes object, but should plot the figures inside a jupyter notebook. The axis labels are the pixel rows and columns that show the size of your photo. If your original input is rgb or grayscale, <code class="docutils literal notranslate"><span class="pre">Image.show()</span></code> will return the original image. To show the grayscale converted version of your image, use <code class="docutils literal notranslate"><span class="pre">Image.gray.show()</span></code>.</p>
+</section>
+<section id="image-operations">
+<h2>Image Operations<a class="headerlink" href="#image-operations" title="Link to this heading">#</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">ImageOperations</span></code> transform the internal image data for different types of operations.</p>
+<p>The different types of operatiosn are as follows</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">ImageCorrecter</span></code>: Transformations that improve the quality of the data, such as aligning the plate</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ImageEnhacer</span></code>: Preprocesses the <code class="docutils literal notranslate"><span class="pre">enh_gray</span></code> property of the image, to improve detection</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ObjectDetector</span></code>: Creates the <code class="docutils literal notranslate"><span class="pre">objmask</span></code> and <code class="docutils literal notranslate"><span class="pre">objmap</span></code> array of the image to mark where objects in the image are</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">MapModifier</span></code>: Refines the <code class="docutils literal notranslate"><span class="pre">objmask</span></code> and <code class="docutils literal notranslate"><span class="pre">objmap</span></code> of the image to make sure only the targets you want are measured</p></li>
+</ul>
+<p>You set the parameters these operations use in the initial creation of these objects, but phenotypic now includes a useful widget to finetune these parameters.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">image</span><span class="o">.</span><span class="n">enh_gray</span><span class="o">.</span><span class="n">histogram</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>(&lt;Figure size 1000x500 with 2 Axes&gt;,
+ array([(&lt;Figure size 1000x500 with 2 Axes&gt;, &lt;Axes: title={&#39;center&#39;: &#39;6_1S_8&#39;}&gt;),
+        &lt;Axes: &gt;], dtype=object))
+</pre></div>
+</div>
+<img alt="../../../_images/ab956d2385d7e6aa933a349ba3a79919cead6553c1891120baf8b0134bd2abee.png" src="../../../_images/ab956d2385d7e6aa933a349ba3a79919cead6553c1891120baf8b0134bd2abee.png" />
+</div>
+</div>
+<p>This is a copy of the grayscale matrix that has not been modified yet, but will be used for detection. From the histogram, we can see the contrast is not maximized, so lets apply CLAHE (Contrast-limited adaptive histogram equalization).</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.enhance</span><span class="w"> </span><span class="kn">import</span> <span class="n">CLAHE</span>
+
+<span class="n">enhance</span> <span class="o">=</span> <span class="n">CLAHE</span><span class="p">()</span>
+<span class="n">new_image</span> <span class="o">=</span> <span class="n">enhance</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
+<span class="n">new_image</span><span class="o">.</span><span class="n">enh_gray</span><span class="o">.</span><span class="n">histogram</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>(&lt;Figure size 1000x500 with 2 Axes&gt;,
+ array([(&lt;Figure size 1000x500 with 2 Axes&gt;, &lt;Axes: title={&#39;center&#39;: &#39;6_1S_8&#39;}&gt;),
+        &lt;Axes: &gt;], dtype=object))
+</pre></div>
+</div>
+<img alt="../../../_images/9ad0b8b52d77c15e49566d124d63a3ba5c51dc45fe3780f616f50192f6926624.png" src="../../../_images/9ad0b8b52d77c15e49566d124d63a3ba5c51dc45fe3780f616f50192f6926624.png" />
+</div>
+</div>
+<p>Here we can see that the contrast was maximized. We can manually tune the parameters further to get different, results, but that can be somewhat cumbersome. PhenoTypic provides a widget feature when used with jupyter notebook like below to tune parameters. All <code class="docutils literal notranslate"><span class="pre">ImageOperations</span></code> and <code class="docutils literal notranslate"><span class="pre">ImagePipeline</span></code> objects have access to this. This allows us to preview parameter changes to the pipeline before we execute it.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">enhance</span><span class="o">.</span><span class="n">widget</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<script type="application/vnd.jupyter.widget-view+json">{"version_major": 2, "version_minor": 0, "model_id": "7a3fb2554d9440929680219c094d02a9"}</script></div>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="n">enhance</span><span class="o">.</span><span class="n">kernel_size</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>None
+</pre></div>
+</div>
+</div>
+</div>
+<p>When we press “update view” the <code class="docutils literal notranslate"><span class="pre">CLAHE</span></code> object’s internal settings change, and we can see the new results of the operation before we apply it. View the <code class="docutils literal notranslate"><span class="pre">enh_gray</span></code> image to see the changes.</p>
+</section>
+<section id="heavywatershedpipeline">
+<h2>HeavyWatershedPipeline<a class="headerlink" href="#heavywatershedpipeline" title="Link to this heading">#</a></h2>
+<p>For ease of use, PhenoTypic supplies built-in pipelines that we have curated for different projects we use internally. Here’s a demo of the <code class="docutils literal notranslate"><span class="pre">HeavyWatershedPipeline</span></code>.</p>
+<p>The HeavyWatershedPipeline consists of the following operations:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">GaussianBlur</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">CLAHE</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">MedianEnhancer</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">WatershedDetector</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">BorderObjectRemover</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">MinResidualErrorReducer</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">GridAligner</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">WatershedDetector</span></code> Note: this is applied twice since the alignment may improve the refinement results</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">MinResidualErrorReducer</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">BorderObjectRemover</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">MaskFill</span></code></p></li>
+</ul>
+<p>It also has the following measurements:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">MeasureShape</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">MeasureIntensity</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">MeasureTexture</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">MeasureColor</span></code></p></li>
+</ul>
+<p>You can apply <code class="docutils literal notranslate"><span class="pre">ImagePipeline</span></code> and <code class="docutils literal notranslate"><span class="pre">ImageOperation</span></code> in place or make a new copy for comparison.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># return a copy</span>
+<span class="n">new_image</span> <span class="o">=</span> <span class="n">pipe</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
+
+<span class="c1"># in place</span>
+<span class="n">pipe</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.prefab</span><span class="w"> </span><span class="kn">import</span> <span class="n">HeavyWatershedPipeline</span>
+
+<span class="n">pipe</span> <span class="o">=</span> <span class="n">HeavyWatershedPipeline</span><span class="p">(</span><span class="n">border_remover_size</span><span class="o">=</span><span class="mi">80</span><span class="p">)</span>
+<span class="n">pipe</span><span class="o">.</span><span class="n">widget</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<script type="application/vnd.jupyter.widget-view+json">{"version_major": 2, "version_minor": 0, "model_id": "c96b9879ffd443c2b2c64c36a7c7dd44"}</script></div>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">pipe</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">show_overlay</span><span class="p">()</span>  <span class="c1"># All operations that are plots, return a figure and axes</span>
+<span class="n">fig</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output traceback highlight-ipythontb notranslate"><div class="highlight"><pre><span></span><span class="gt">---------------------------------------------------------------------------</span>
+<span class="ne">KeyboardInterrupt</span><span class="g g-Whitespace">                         </span>Traceback (most recent call last)
+<span class="nn">File ~/work/PhenoTypic/PhenoTypic/src/phenotypic/abc_/_image_operation.py:79,</span> in <span class="ni">ImageOperation._apply_to_single_image</span><span class="nt">(cls_name, image, operation, inplace, matched_args)</span>
+<span class="g g-Whitespace">     </span><span class="mi">78</span> <span class="k">try</span><span class="p">:</span>
+<span class="ne">---&gt; </span><span class="mi">79</span>     <span class="k">return</span> <span class="n">operation</span><span class="p">(</span><span class="n">image</span><span class="o">=</span><span class="n">image</span> <span class="k">if</span> <span class="n">inplace</span> <span class="k">else</span> <span class="n">image</span><span class="o">.</span><span class="n">copy</span><span class="p">(),</span> <span class="o">**</span><span class="n">matched_args</span><span class="p">)</span>
+<span class="g g-Whitespace">     </span><span class="mi">80</span> <span class="k">except</span> <span class="ne">KeyboardInterrupt</span><span class="p">:</span>
+
+<span class="nn">File ~/work/PhenoTypic/PhenoTypic/src/phenotypic/grid/_min_residual_error_reducer.py:46,</span> in <span class="ni">MinResidualErrorReducer._operate</span><span class="nt">(image)</span>
+<span class="g g-Whitespace">     </span><span class="mi">45</span> <span class="c1"># Get the section info</span>
+<span class="ne">---&gt; </span><span class="mi">46</span> <span class="n">section_info</span> <span class="o">=</span> <span class="n">linreg_stat_extractor</span><span class="o">.</span><span class="n">measure</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
+<span class="g g-Whitespace">     </span><span class="mi">48</span> <span class="c1"># Isolate the object id with the smallest residual error</span>
+
+<span class="nn">File ~/work/PhenoTypic/PhenoTypic/src/phenotypic/tools/funcs_.py:234,</span> in <span class="ni">validate_measure_integrity.&lt;locals&gt;.decorator.&lt;locals&gt;.wrapper</span><span class="nt">(*args, **kwargs)</span>
+<span class="g g-Whitespace">    </span><span class="mi">233</span> <span class="c1"># execute the original method</span>
+<span class="ne">--&gt; </span><span class="mi">234</span> <span class="n">result</span> <span class="o">=</span> <span class="n">func</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+<span class="g g-Whitespace">    </span><span class="mi">236</span> <span class="c1"># re-hash and compare</span>
+
+<span class="nn">File ~/work/PhenoTypic/PhenoTypic/src/phenotypic/abc_/_grid_measure.py:22,</span> in <span class="ni">GridMeasureFeatures.measure</span><span class="nt">(self, image)</span>
+<span class="g g-Whitespace">     </span><span class="mi">21</span> <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">GridImage</span><span class="p">):</span> <span class="k">raise</span> <span class="n">GridImageInputError</span><span class="p">()</span>
+<span class="ne">---&gt; </span><span class="mi">22</span> <span class="n">output</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">measure</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
+<span class="g g-Whitespace">     </span><span class="mi">23</span> <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">output</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">):</span> <span class="k">raise</span> <span class="n">OutputValueError</span><span class="p">(</span><span class="s2">&quot;pandas.DataFrame&quot;</span><span class="p">)</span>
+
+<span class="nn">File ~/work/PhenoTypic/PhenoTypic/src/phenotypic/tools/funcs_.py:234,</span> in <span class="ni">validate_measure_integrity.&lt;locals&gt;.decorator.&lt;locals&gt;.wrapper</span><span class="nt">(*args, **kwargs)</span>
+<span class="g g-Whitespace">    </span><span class="mi">233</span> <span class="c1"># execute the original method</span>
+<span class="ne">--&gt; </span><span class="mi">234</span> <span class="n">result</span> <span class="o">=</span> <span class="n">func</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+<span class="g g-Whitespace">    </span><span class="mi">236</span> <span class="c1"># re-hash and compare</span>
+
+<span class="nn">File ~/work/PhenoTypic/PhenoTypic/src/phenotypic/abc_/_measure_features.py:86,</span> in <span class="ni">MeasureFeatures.measure</span><span class="nt">(self, image, include_meta)</span>
+<span class="g g-Whitespace">     </span><span class="mi">84</span> <span class="n">matched_args</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_matched_operation_args</span><span class="p">()</span>
+<span class="ne">---&gt; </span><span class="mi">86</span> <span class="n">meas</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_operate</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="o">**</span><span class="n">matched_args</span><span class="p">)</span>
+<span class="g g-Whitespace">     </span><span class="mi">87</span> <span class="k">if</span> <span class="n">include_meta</span><span class="p">:</span>
+
+<span class="nn">File ~/work/PhenoTypic/PhenoTypic/src/phenotypic/grid/_grid_linreg_stats_extractor.py:63,</span> in <span class="ni">MeasureGridLinRegStats._operate</span><span class="nt">(self, image)</span>
+<span class="g g-Whitespace">     </span><span class="mi">62</span> <span class="c1"># Get the current column linreg info</span>
+<span class="ne">---&gt; </span><span class="mi">63</span> <span class="n">col_m</span><span class="p">,</span> <span class="n">col_b</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">grid</span><span class="o">.</span><span class="n">get_centroid_alignment_info</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="g g-Whitespace">     </span><span class="mi">65</span> <span class="c1"># convert array to dataframe for join operation</span>
+
+<span class="nn">File ~/work/PhenoTypic/PhenoTypic/src/phenotypic/core/_image_parts/accessors/_grid_accessor.py:131,</span> in <span class="ni">GridAccessor.get_centroid_alignment_info</span><span class="nt">(self, axis)</span>
+<span class="g g-Whitespace">    </span><span class="mi">130</span> <span class="c1"># create persistent grid_info</span>
+<span class="ne">--&gt; </span><span class="mi">131</span> <span class="n">grid_info</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">info</span><span class="p">()</span>
+<span class="g g-Whitespace">    </span><span class="mi">133</span> <span class="c1"># allocate empty vectors to store m &amp; b for all values</span>
+
+<span class="nn">File ~/work/PhenoTypic/PhenoTypic/src/phenotypic/core/_image_parts/accessors/_grid_accessor.py:63,</span> in <span class="ni">GridAccessor.info</span><span class="nt">(self, include_metadata)</span>
+<span class="g g-Whitespace">     </span><span class="mi">56</span><span class="w"> </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="g g-Whitespace">     </span><span class="mi">57</span><span class="sd"> Returns a DataFrame containing basic bounding box measurement data plus any object&#39;s grid membership.</span>
+<span class="g g-Whitespace">     </span><span class="mi">58</span><span class="sd"> </span>
+<span class="sd">   (...)</span>
+<span class="g g-Whitespace">     </span><span class="mi">61</span><span class="sd">     parent&#39;s image grid settings.</span>
+<span class="g g-Whitespace">     </span><span class="mi">62</span><span class="sd"> &quot;&quot;&quot;</span>
+<span class="ne">---&gt; </span><span class="mi">63</span> <span class="n">info</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_root_image</span><span class="o">.</span><span class="n">grid_finder</span><span class="o">.</span><span class="n">measure</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_root_image</span><span class="p">)</span>
+<span class="g g-Whitespace">     </span><span class="mi">64</span> <span class="k">if</span> <span class="n">include_metadata</span><span class="p">:</span>
+
+<span class="nn">File ~/work/PhenoTypic/PhenoTypic/src/phenotypic/tools/funcs_.py:234,</span> in <span class="ni">validate_measure_integrity.&lt;locals&gt;.decorator.&lt;locals&gt;.wrapper</span><span class="nt">(*args, **kwargs)</span>
+<span class="g g-Whitespace">    </span><span class="mi">233</span> <span class="c1"># execute the original method</span>
+<span class="ne">--&gt; </span><span class="mi">234</span> <span class="n">result</span> <span class="o">=</span> <span class="n">func</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+<span class="g g-Whitespace">    </span><span class="mi">236</span> <span class="c1"># re-hash and compare</span>
+
+<span class="nn">File ~/work/PhenoTypic/PhenoTypic/src/phenotypic/abc_/_grid_measure.py:22,</span> in <span class="ni">GridMeasureFeatures.measure</span><span class="nt">(self, image)</span>
+<span class="g g-Whitespace">     </span><span class="mi">21</span> <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">GridImage</span><span class="p">):</span> <span class="k">raise</span> <span class="n">GridImageInputError</span><span class="p">()</span>
+<span class="ne">---&gt; </span><span class="mi">22</span> <span class="n">output</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">measure</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
+<span class="g g-Whitespace">     </span><span class="mi">23</span> <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">output</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">):</span> <span class="k">raise</span> <span class="n">OutputValueError</span><span class="p">(</span><span class="s2">&quot;pandas.DataFrame&quot;</span><span class="p">)</span>
+
+<span class="nn">File ~/work/PhenoTypic/PhenoTypic/src/phenotypic/tools/funcs_.py:234,</span> in <span class="ni">validate_measure_integrity.&lt;locals&gt;.decorator.&lt;locals&gt;.wrapper</span><span class="nt">(*args, **kwargs)</span>
+<span class="g g-Whitespace">    </span><span class="mi">233</span> <span class="c1"># execute the original method</span>
+<span class="ne">--&gt; </span><span class="mi">234</span> <span class="n">result</span> <span class="o">=</span> <span class="n">func</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+<span class="g g-Whitespace">    </span><span class="mi">236</span> <span class="c1"># re-hash and compare</span>
+
+<span class="nn">File ~/work/PhenoTypic/PhenoTypic/src/phenotypic/abc_/_measure_features.py:86,</span> in <span class="ni">MeasureFeatures.measure</span><span class="nt">(self, image, include_meta)</span>
+<span class="g g-Whitespace">     </span><span class="mi">84</span> <span class="n">matched_args</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_matched_operation_args</span><span class="p">()</span>
+<span class="ne">---&gt; </span><span class="mi">86</span> <span class="n">meas</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_operate</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="o">**</span><span class="n">matched_args</span><span class="p">)</span>
+<span class="g g-Whitespace">     </span><span class="mi">87</span> <span class="k">if</span> <span class="n">include_meta</span><span class="p">:</span>
+
+<span class="nn">File ~/work/PhenoTypic/PhenoTypic/src/phenotypic/grid/_auto_grid_finder.py:71,</span> in <span class="ni">AutoGridFinder._operate</span><span class="nt">(self, image)</span>
+<span class="g g-Whitespace">     </span><span class="mi">70</span> <span class="c1"># Calculate optimal edges using optimization</span>
+<span class="ne">---&gt; </span><span class="mi">71</span> <span class="n">row_edges</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_row_edges</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
+<span class="g g-Whitespace">     </span><span class="mi">72</span> <span class="n">col_edges</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_col_edges</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
+
+<span class="nn">File ~/work/PhenoTypic/PhenoTypic/src/phenotypic/grid/_auto_grid_finder.py:221,</span> in <span class="ni">AutoGridFinder.get_row_edges</span><span class="nt">(self, image)</span>
+<span class="g g-Whitespace">    </span><span class="mi">207</span><span class="w"> </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="g g-Whitespace">    </span><span class="mi">208</span><span class="sd"> Extracts and returns the edges of nrows from the given image.</span>
+<span class="g g-Whitespace">    </span><span class="mi">209</span><span class="sd"> </span>
+<span class="sd">   (...)</span>
+<span class="g g-Whitespace">    </span><span class="mi">219</span><span class="sd">     list: A list representing the edges of the nrows in the image.</span>
+<span class="g g-Whitespace">    </span><span class="mi">220</span><span class="sd"> &quot;&quot;&quot;</span>
+<span class="ne">--&gt; </span><span class="mi">221</span> <span class="n">optimal_row_padding</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_optimal_row_pad</span><span class="p">(</span><span class="n">image</span><span class="o">=</span><span class="n">image</span><span class="p">)</span>
+<span class="g g-Whitespace">    </span><span class="mi">222</span> <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_row_edges</span><span class="p">(</span>
+<span class="g g-Whitespace">    </span><span class="mi">223</span>         <span class="n">image</span><span class="o">=</span><span class="n">image</span><span class="p">,</span>
+<span class="g g-Whitespace">    </span><span class="mi">224</span>         <span class="n">row_padding</span><span class="o">=</span><span class="n">optimal_row_padding</span><span class="p">,</span>
+<span class="g g-Whitespace">    </span><span class="mi">225</span>         <span class="n">info_table</span><span class="o">=</span><span class="n">image</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">include_metadata</span><span class="o">=</span><span class="kc">False</span><span class="p">),</span>
+<span class="g g-Whitespace">    </span><span class="mi">226</span> <span class="p">)</span>
+
+<span class="nn">File ~/work/PhenoTypic/PhenoTypic/src/phenotypic/grid/_auto_grid_finder.py:167,</span> in <span class="ni">AutoGridFinder._get_optimal_row_pad</span><span class="nt">(self, image)</span>
+<span class="g g-Whitespace">    </span><span class="mi">166</span> <span class="n">partial_row_pad_finder</span> <span class="o">=</span> <span class="n">partial</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_find_padding_midpoint_error</span><span class="p">,</span> <span class="n">image</span><span class="o">=</span><span class="n">image</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">row_pad</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">col_pad</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+<span class="ne">--&gt; </span><span class="mi">167</span> <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_apply_solver</span><span class="p">(</span><span class="n">partial_row_pad_finder</span><span class="p">,</span> <span class="n">max_value</span><span class="o">=</span><span class="n">max_row_pad_size</span><span class="p">,</span> <span class="n">min_value</span><span class="o">=</span><span class="mi">0</span><span class="p">))</span>
+
+<span class="nn">File ~/work/PhenoTypic/PhenoTypic/src/phenotypic/grid/_auto_grid_finder.py:269,</span> in <span class="ni">AutoGridFinder._apply_solver</span><span class="nt">(self, partial_cost_func, max_value, min_value)</span>
+<span class="g g-Whitespace">    </span><span class="mi">267</span> <span class="k">else</span><span class="p">:</span>
+<span class="g g-Whitespace">    </span><span class="mi">268</span>     <span class="k">return</span> <span class="nb">round</span><span class="p">(</span>
+<span class="ne">--&gt; </span><span class="mi">269</span>             <span class="n">minimize_scalar</span><span class="p">(</span><span class="n">partial_cost_func</span><span class="p">,</span> <span class="n">bounds</span><span class="o">=</span><span class="p">(</span><span class="n">min_value</span><span class="p">,</span> <span class="n">max_value</span><span class="p">),</span>
+<span class="g g-Whitespace">    </span><span class="mi">270</span>                             <span class="n">options</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;maxiter&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_iter</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_iter</span> <span class="k">else</span> <span class="mi">1000</span><span class="p">,</span>
+<span class="g g-Whitespace">    </span><span class="mi">271</span>                                      <span class="s1">&#39;xatol&#39;</span>  <span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">tol</span><span class="p">},</span>
+<span class="g g-Whitespace">    </span><span class="mi">272</span>                             <span class="p">)</span><span class="o">.</span><span class="n">x</span><span class="p">,</span>
+<span class="g g-Whitespace">    </span><span class="mi">273</span>     <span class="p">)</span>
+
+<span class="nn">File ~/work/PhenoTypic/PhenoTypic/.venv/lib/python3.10/site-packages/scipy/optimize/_minimize.py:981,</span> in <span class="ni">minimize_scalar</span><span class="nt">(fun, bracket, bounds, args, method, tol, options)</span>
+<span class="g g-Whitespace">    </span><span class="mi">979</span>         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;The `bounds` parameter is mandatory for &#39;</span>
+<span class="g g-Whitespace">    </span><span class="mi">980</span>                          <span class="s1">&#39;method `bounded`.&#39;</span><span class="p">)</span>
+<span class="ne">--&gt; </span><span class="mi">981</span>     <span class="n">res</span> <span class="o">=</span> <span class="n">_minimize_scalar_bounded</span><span class="p">(</span><span class="n">fun</span><span class="p">,</span> <span class="n">bounds</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">)</span>
+<span class="g g-Whitespace">    </span><span class="mi">982</span> <span class="k">elif</span> <span class="n">meth</span> <span class="o">==</span> <span class="s1">&#39;golden&#39;</span><span class="p">:</span>
+
+<span class="nn">File ~/work/PhenoTypic/PhenoTypic/.venv/lib/python3.10/site-packages/scipy/optimize/_optimize.py:2351,</span> in <span class="ni">_minimize_scalar_bounded</span><span class="nt">(func, bounds, args, xatol, maxiter, disp, **unknown_options)</span>
+<span class="g g-Whitespace">   </span><span class="mi">2350</span> <span class="n">x</span> <span class="o">=</span> <span class="n">xf</span> <span class="o">+</span> <span class="n">si</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">rat</span><span class="p">),</span> <span class="n">tol1</span><span class="p">)</span>
+<span class="ne">-&gt; </span><span class="mi">2351</span> <span class="n">fu</span> <span class="o">=</span> <span class="n">func</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">)</span>
+<span class="g g-Whitespace">   </span><span class="mi">2352</span> <span class="n">num</span> <span class="o">+=</span> <span class="mi">1</span>
+
+<span class="nn">File ~/work/PhenoTypic/PhenoTypic/src/phenotypic/grid/_auto_grid_finder.py:99,</span> in <span class="ni">AutoGridFinder._find_padding_midpoint_error</span><span class="nt">(self, pad_sz, image, axis, row_pad, col_pad)</span>
+<span class="g g-Whitespace">     </span><span class="mi">98</span> <span class="c1"># Get grid info with these edges</span>
+<span class="ne">---&gt; </span><span class="mi">99</span> <span class="n">current_grid_info</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">_get_grid_info</span><span class="p">(</span><span class="n">image</span><span class="o">=</span><span class="n">image</span><span class="p">,</span> <span class="n">row_edges</span><span class="o">=</span><span class="n">row_edges</span><span class="p">,</span> <span class="n">col_edges</span><span class="o">=</span><span class="n">col_edges</span><span class="p">)</span>
+<span class="g g-Whitespace">    </span><span class="mi">100</span> <span class="n">current_obj_midpoints</span> <span class="o">=</span> <span class="p">(</span><span class="n">current_grid_info</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">BBOX</span><span class="o">.</span><span class="n">CENTER_RR</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="n">GRID</span><span class="o">.</span><span class="n">ROW_NUM</span><span class="p">)]]</span>
+<span class="g g-Whitespace">    </span><span class="mi">101</span>                          <span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">GRID</span><span class="o">.</span><span class="n">ROW_NUM</span><span class="p">),</span> <span class="n">observed</span><span class="o">=</span><span class="kc">False</span><span class="p">)[</span><span class="nb">str</span><span class="p">(</span><span class="n">BBOX</span><span class="o">.</span><span class="n">CENTER_RR</span><span class="p">)]</span>
+<span class="g g-Whitespace">    </span><span class="mi">102</span>                          <span class="o">.</span><span class="n">mean</span><span class="p">()</span><span class="o">.</span><span class="n">values</span><span class="p">)</span>
+
+<span class="nn">File ~/work/PhenoTypic/PhenoTypic/src/phenotypic/abc_/_grid_finder.py:140,</span> in <span class="ni">GridFinder._get_grid_info</span><span class="nt">(self, image, row_edges, col_edges)</span>
+<span class="g g-Whitespace">    </span><span class="mi">125</span><span class="w"> </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="g g-Whitespace">    </span><span class="mi">126</span><span class="sd"> Assembles complete grid information from row and column edges.</span>
+<span class="g g-Whitespace">    </span><span class="mi">127</span><span class="sd"> </span>
+<span class="sd">   (...)</span>
+<span class="g g-Whitespace">    </span><span class="mi">138</span><span class="sd">     pd.DataFrame: Complete grid information table with ROW_NUM, COL_NUM, and SECTION_NUM columns.</span>
+<span class="g g-Whitespace">    </span><span class="mi">139</span><span class="sd"> &quot;&quot;&quot;</span>
+<span class="ne">--&gt; </span><span class="mi">140</span> <span class="n">info_table</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">include_metadata</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="g g-Whitespace">    </span><span class="mi">142</span> <span class="c1"># Add row information</span>
+
+<span class="nn">File ~/work/PhenoTypic/PhenoTypic/src/phenotypic/core/_image_parts/accessors/_objects_accessor.py:108,</span> in <span class="ni">ObjectsAccessor.info</span><span class="nt">(self, include_metadata)</span>
+<span class="g g-Whitespace">    </span><span class="mi">103</span><span class="w"> </span><span class="sd">&quot;&quot;&quot;Returns a panda.DataFrame containing basic information about each object&#39;s label, bounds, and centroid in the image.</span>
+<span class="g g-Whitespace">    </span><span class="mi">104</span><span class="sd"> </span>
+<span class="g g-Whitespace">    </span><span class="mi">105</span><span class="sd"> This is useful for joining measurements across different tables.</span>
+<span class="g g-Whitespace">    </span><span class="mi">106</span><span class="sd"> &quot;&quot;&quot;</span>
+<span class="g g-Whitespace">    </span><span class="mi">107</span> <span class="n">info</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span>
+<span class="ne">--&gt; </span><span class="mi">108</span>         <span class="n">data</span><span class="o">=</span><span class="n">regionprops_table</span><span class="p">(</span>
+<span class="g g-Whitespace">    </span><span class="mi">109</span>                 <span class="n">label_image</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_root_image</span><span class="o">.</span><span class="n">objmap</span><span class="p">[:],</span>
+<span class="g g-Whitespace">    </span><span class="mi">110</span>                 <span class="n">properties</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;label&#39;</span><span class="p">,</span> <span class="s1">&#39;centroid&#39;</span><span class="p">,</span> <span class="s1">&#39;bbox&#39;</span><span class="p">],</span>
+<span class="g g-Whitespace">    </span><span class="mi">111</span>         <span class="p">),</span>
+<span class="g g-Whitespace">    </span><span class="mi">112</span> <span class="p">)</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">{</span>
+<span class="g g-Whitespace">    </span><span class="mi">113</span>     <span class="s1">&#39;label&#39;</span>     <span class="p">:</span> <span class="n">OBJECT</span><span class="o">.</span><span class="n">LABEL</span><span class="p">,</span>
+<span class="g g-Whitespace">    </span><span class="mi">114</span>     <span class="s1">&#39;centroid-0&#39;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">BBOX</span><span class="o">.</span><span class="n">CENTER_RR</span><span class="p">),</span>
+<span class="g g-Whitespace">    </span><span class="mi">115</span>     <span class="s1">&#39;centroid-1&#39;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">BBOX</span><span class="o">.</span><span class="n">CENTER_CC</span><span class="p">),</span>
+<span class="g g-Whitespace">    </span><span class="mi">116</span>     <span class="s1">&#39;bbox-0&#39;</span>    <span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">BBOX</span><span class="o">.</span><span class="n">MIN_RR</span><span class="p">),</span>
+<span class="g g-Whitespace">    </span><span class="mi">117</span>     <span class="s1">&#39;bbox-1&#39;</span>    <span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">BBOX</span><span class="o">.</span><span class="n">MIN_CC</span><span class="p">),</span>
+<span class="g g-Whitespace">    </span><span class="mi">118</span>     <span class="s1">&#39;bbox-2&#39;</span>    <span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">BBOX</span><span class="o">.</span><span class="n">MAX_RR</span><span class="p">),</span>
+<span class="g g-Whitespace">    </span><span class="mi">119</span>     <span class="s1">&#39;bbox-3&#39;</span>    <span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">BBOX</span><span class="o">.</span><span class="n">MAX_CC</span><span class="p">),</span>
+<span class="g g-Whitespace">    </span><span class="mi">120</span> <span class="p">},</span>
+<span class="g g-Whitespace">    </span><span class="mi">121</span> <span class="p">)</span>
+<span class="g g-Whitespace">    </span><span class="mi">122</span> <span class="k">if</span> <span class="n">include_metadata</span><span class="p">:</span>
+
+<span class="nn">File ~/work/PhenoTypic/PhenoTypic/.venv/lib/python3.10/site-packages/skimage/measure/_regionprops.py:1106,</span> in <span class="ni">regionprops_table</span><span class="nt">(label_image, intensity_image, properties, cache, separator, extra_properties, spacing)</span>
+<span class="g g-Whitespace">   </span><span class="mi">1104</span>     <span class="k">return</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">v</span><span class="p">[:</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">out_d</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
+<span class="ne">-&gt; </span><span class="mi">1106</span> <span class="k">return</span> <span class="n">_props_to_dict</span><span class="p">(</span><span class="n">regions</span><span class="p">,</span> <span class="n">properties</span><span class="o">=</span><span class="n">properties</span><span class="p">,</span> <span class="n">separator</span><span class="o">=</span><span class="n">separator</span><span class="p">)</span>
+
+<span class="nn">File ~/work/PhenoTypic/PhenoTypic/.venv/lib/python3.10/site-packages/skimage/measure/_regionprops.py:924,</span> in <span class="ni">_props_to_dict</span><span class="nt">(regions, properties, separator)</span>
+<span class="g g-Whitespace">    </span><span class="mi">921</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>
+<span class="g g-Whitespace">    </span><span class="mi">922</span>     <span class="c1"># we coerce to a numpy array to ensure structures like</span>
+<span class="g g-Whitespace">    </span><span class="mi">923</span>     <span class="c1"># tuple-of-arrays expand correctly into columns</span>
+<span class="ne">--&gt; </span><span class="mi">924</span>     <span class="n">rp</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">regions</span><span class="p">[</span><span class="n">k</span><span class="p">][</span><span class="n">prop</span><span class="p">])</span>
+<span class="g g-Whitespace">    </span><span class="mi">925</span>     <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">loc</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">locs</span><span class="p">):</span>
+
+<span class="nn">File ~/work/PhenoTypic/PhenoTypic/.venv/lib/python3.10/site-packages/skimage/measure/_regionprops.py:775,</span> in <span class="ni">RegionProperties.__getitem__</span><span class="nt">(self, key)</span>
+<span class="g g-Whitespace">    </span><span class="mi">774</span> <span class="k">def</span><span class="w"> </span><span class="fm">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">):</span>
+<span class="ne">--&gt; </span><span class="mi">775</span>     <span class="n">value</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+<span class="g g-Whitespace">    </span><span class="mi">776</span>     <span class="k">if</span> <span class="n">value</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+
+<span class="nn">File ~/work/PhenoTypic/PhenoTypic/.venv/lib/python3.10/site-packages/skimage/measure/_regionprops.py:456,</span> in <span class="ni">RegionProperties.centroid</span><span class="nt">(self)</span>
+<span class="g g-Whitespace">    </span><span class="mi">454</span> <span class="nd">@property</span>
+<span class="g g-Whitespace">    </span><span class="mi">455</span> <span class="k">def</span><span class="w"> </span><span class="nf">centroid</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="ne">--&gt; </span><span class="mi">456</span>     <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">coords_scaled</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">))</span>
+
+<span class="nn">File ~/work/PhenoTypic/PhenoTypic/.venv/lib/python3.10/site-packages/numpy/_core/_methods.py:135,</span> in <span class="ni">_mean</span><span class="nt">(a, axis, dtype, out, keepdims, where)</span>
+<span class="g g-Whitespace">    </span><span class="mi">133</span>         <span class="n">is_float16_result</span> <span class="o">=</span> <span class="kc">True</span>
+<span class="ne">--&gt; </span><span class="mi">135</span> <span class="n">ret</span> <span class="o">=</span> <span class="n">umr_sum</span><span class="p">(</span><span class="n">arr</span><span class="p">,</span> <span class="n">axis</span><span class="p">,</span> <span class="n">dtype</span><span class="p">,</span> <span class="n">out</span><span class="p">,</span> <span class="n">keepdims</span><span class="p">,</span> <span class="n">where</span><span class="o">=</span><span class="n">where</span><span class="p">)</span>
+<span class="g g-Whitespace">    </span><span class="mi">136</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">ret</span><span class="p">,</span> <span class="n">mu</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+
+<span class="ne">KeyboardInterrupt</span>: 
+
+<span class="n">During</span> <span class="n">handling</span> <span class="n">of</span> <span class="n">the</span> <span class="n">above</span> <span class="n">exception</span><span class="p">,</span> <span class="n">another</span> <span class="n">exception</span> <span class="n">occurred</span><span class="p">:</span>
+
+<span class="ne">KeyboardInterrupt</span><span class="g g-Whitespace">                         </span>Traceback (most recent call last)
+<span class="nn">File ~/work/PhenoTypic/PhenoTypic/src/phenotypic/abc_/_image_operation.py:46,</span> in <span class="ni">ImageOperation.apply</span><span class="nt">(self, image, inplace)</span>
+<span class="g g-Whitespace">     </span><span class="mi">45</span> <span class="n">matched_args</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_matched_operation_args</span><span class="p">()</span>
+<span class="ne">---&gt; </span><span class="mi">46</span> <span class="n">image</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_apply_to_single_image</span><span class="p">(</span>
+<span class="g g-Whitespace">     </span><span class="mi">47</span>         <span class="n">cls_name</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span>
+<span class="g g-Whitespace">     </span><span class="mi">48</span>         <span class="n">image</span><span class="o">=</span><span class="n">image</span><span class="p">,</span>
+<span class="g g-Whitespace">     </span><span class="mi">49</span>         <span class="n">operation</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_operate</span><span class="p">,</span>
+<span class="g g-Whitespace">     </span><span class="mi">50</span>         <span class="n">inplace</span><span class="o">=</span><span class="n">inplace</span><span class="p">,</span>
+<span class="g g-Whitespace">     </span><span class="mi">51</span>         <span class="n">matched_args</span><span class="o">=</span><span class="n">matched_args</span><span class="p">,</span>
+<span class="g g-Whitespace">     </span><span class="mi">52</span> <span class="p">)</span>
+<span class="g g-Whitespace">     </span><span class="mi">53</span> <span class="k">return</span> <span class="n">image</span>
+
+<span class="nn">File ~/work/PhenoTypic/PhenoTypic/src/phenotypic/abc_/_image_operation.py:81,</span> in <span class="ni">ImageOperation._apply_to_single_image</span><span class="nt">(cls_name, image, operation, inplace, matched_args)</span>
+<span class="g g-Whitespace">     </span><span class="mi">80</span> <span class="k">except</span> <span class="ne">KeyboardInterrupt</span><span class="p">:</span>
+<span class="ne">---&gt; </span><span class="mi">81</span>     <span class="k">raise</span> <span class="ne">KeyboardInterrupt</span>
+<span class="g g-Whitespace">     </span><span class="mi">82</span> <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+
+<span class="ne">KeyboardInterrupt</span>: 
+
+<span class="n">During</span> <span class="n">handling</span> <span class="n">of</span> <span class="n">the</span> <span class="n">above</span> <span class="n">exception</span><span class="p">,</span> <span class="n">another</span> <span class="n">exception</span> <span class="n">occurred</span><span class="p">:</span>
+
+<span class="ne">KeyboardInterrupt</span><span class="g g-Whitespace">                         </span>Traceback (most recent call last)
+<span class="n">Cell</span> <span class="n">In</span><span class="p">[</span><span class="mi">9</span><span class="p">],</span> <span class="n">line</span> <span class="mi">1</span>
+<span class="ne">----&gt; </span><span class="mi">1</span> <span class="n">pipe</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="g g-Whitespace">      </span><span class="mi">3</span> <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">show_overlay</span><span class="p">()</span>  <span class="c1"># All operations that are plots, return a figure and axes</span>
+<span class="g g-Whitespace">      </span><span class="mi">4</span> <span class="n">fig</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+
+<span class="nn">File ~/work/PhenoTypic/PhenoTypic/src/phenotypic/core/_pipeline_parts/_image_pipeline_core.py:226,</span> in <span class="ni">ImagePipelineCore.apply</span><span class="nt">(self, image, inplace, reset)</span>
+<span class="g g-Whitespace">    </span><span class="mi">223</span> <span class="k">if</span> <span class="s1">&#39;reset&#39;</span> <span class="ow">in</span> <span class="n">sig</span><span class="o">.</span><span class="n">parameters</span><span class="p">:</span>
+<span class="g g-Whitespace">    </span><span class="mi">224</span>     <span class="n">apply_params</span><span class="p">[</span><span class="s1">&#39;reset&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>  <span class="c1"># Prevents intermediate pipelines from resetting progress</span>
+<span class="ne">--&gt; </span><span class="mi">226</span> <span class="n">operation</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="o">**</span><span class="n">apply_params</span><span class="p">)</span>
+<span class="g g-Whitespace">    </span><span class="mi">228</span> <span class="c1"># Store execution time if benchmarking is enabled</span>
+<span class="g g-Whitespace">    </span><span class="mi">229</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_benchmark</span><span class="p">:</span>
+
+<span class="nn">File ~/work/PhenoTypic/PhenoTypic/src/phenotypic/tools/funcs_.py:139,</span> in <span class="ni">validate_operation_integrity.&lt;locals&gt;.decorator.&lt;locals&gt;.wrapper</span><span class="nt">(*args, **kwargs)</span>
+<span class="g g-Whitespace">    </span><span class="mi">134</span>     <span class="n">pre_hashes</span> <span class="o">=</span> <span class="p">{</span><span class="n">tgt</span><span class="p">:</span> <span class="n">murmur3_array_signature</span><span class="p">(</span><span class="n">_get_array</span><span class="p">(</span><span class="n">bound</span><span class="p">,</span> <span class="n">tgt</span><span class="p">))</span>
+<span class="g g-Whitespace">    </span><span class="mi">135</span>                   <span class="k">for</span> <span class="n">tgt</span> <span class="ow">in</span> <span class="n">eff_targets</span>
+<span class="g g-Whitespace">    </span><span class="mi">136</span>                   <span class="p">}</span>
+<span class="g g-Whitespace">    </span><span class="mi">138</span> <span class="c1"># Step 5: Execute the original function</span>
+<span class="ne">--&gt; </span><span class="mi">139</span> <span class="n">result</span> <span class="o">=</span> <span class="n">func</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+<span class="g g-Whitespace">    </span><span class="mi">141</span> <span class="c1"># Step 6: Verify integrity by comparing hash values after function execution</span>
+<span class="g g-Whitespace">    </span><span class="mi">142</span> <span class="c1"># For each target, calculate a new hash and compare with the original</span>
+<span class="g g-Whitespace">    </span><span class="mi">143</span> <span class="k">if</span> <span class="n">VALIDATE_OPS</span><span class="p">:</span>
+
+<span class="nn">File ~/work/PhenoTypic/PhenoTypic/src/phenotypic/abc_/_grid_map_modifier.py:20,</span> in <span class="ni">GridMapModifier.apply</span><span class="nt">(self, image, inplace)</span>
+<span class="g g-Whitespace">     </span><span class="mi">17</span> <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic</span><span class="w"> </span><span class="kn">import</span> <span class="n">GridImage</span>
+<span class="g g-Whitespace">     </span><span class="mi">19</span> <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">GridImage</span><span class="p">):</span> <span class="k">raise</span> <span class="n">GridImageInputError</span><span class="p">()</span>
+<span class="ne">---&gt; </span><span class="mi">20</span> <span class="n">output</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">image</span><span class="o">=</span><span class="n">image</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="n">inplace</span><span class="p">)</span>
+<span class="g g-Whitespace">     </span><span class="mi">21</span> <span class="k">return</span> <span class="n">output</span>
+
+<span class="nn">File ~/work/PhenoTypic/PhenoTypic/src/phenotypic/tools/funcs_.py:139,</span> in <span class="ni">validate_operation_integrity.&lt;locals&gt;.decorator.&lt;locals&gt;.wrapper</span><span class="nt">(*args, **kwargs)</span>
+<span class="g g-Whitespace">    </span><span class="mi">134</span>     <span class="n">pre_hashes</span> <span class="o">=</span> <span class="p">{</span><span class="n">tgt</span><span class="p">:</span> <span class="n">murmur3_array_signature</span><span class="p">(</span><span class="n">_get_array</span><span class="p">(</span><span class="n">bound</span><span class="p">,</span> <span class="n">tgt</span><span class="p">))</span>
+<span class="g g-Whitespace">    </span><span class="mi">135</span>                   <span class="k">for</span> <span class="n">tgt</span> <span class="ow">in</span> <span class="n">eff_targets</span>
+<span class="g g-Whitespace">    </span><span class="mi">136</span>                   <span class="p">}</span>
+<span class="g g-Whitespace">    </span><span class="mi">138</span> <span class="c1"># Step 5: Execute the original function</span>
+<span class="ne">--&gt; </span><span class="mi">139</span> <span class="n">result</span> <span class="o">=</span> <span class="n">func</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+<span class="g g-Whitespace">    </span><span class="mi">141</span> <span class="c1"># Step 6: Verify integrity by comparing hash values after function execution</span>
+<span class="g g-Whitespace">    </span><span class="mi">142</span> <span class="c1"># For each target, calculate a new hash and compare with the original</span>
+<span class="g g-Whitespace">    </span><span class="mi">143</span> <span class="k">if</span> <span class="n">VALIDATE_OPS</span><span class="p">:</span>
+
+<span class="nn">File ~/work/PhenoTypic/PhenoTypic/src/phenotypic/abc_/_map_modifier.py:20,</span> in <span class="ni">MapModifier.apply</span><span class="nt">(self, image, inplace)</span>
+<span class="g g-Whitespace">     </span><span class="mi">18</span> <span class="nd">@validate_operation_integrity</span><span class="p">(</span><span class="s1">&#39;image.rgb&#39;</span><span class="p">,</span> <span class="s1">&#39;image.gray&#39;</span><span class="p">,</span> <span class="s1">&#39;image.enh_gray&#39;</span><span class="p">)</span>
+<span class="g g-Whitespace">     </span><span class="mi">19</span> <span class="k">def</span><span class="w"> </span><span class="nf">apply</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">,</span> <span class="n">inplace</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span><span class="p">:</span>
+<span class="ne">---&gt; </span><span class="mi">20</span>     <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">image</span><span class="o">=</span><span class="n">image</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="n">inplace</span><span class="p">)</span>
+
+<span class="nn">File ~/work/PhenoTypic/PhenoTypic/src/phenotypic/abc_/_grid_operation.py:15,</span> in <span class="ni">GridOperation.apply</span><span class="nt">(self, image, inplace)</span>
+<span class="g g-Whitespace">     </span><span class="mi">14</span> <span class="k">def</span><span class="w"> </span><span class="nf">apply</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">GridImage</span><span class="p">,</span> <span class="n">inplace</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">GridImage</span><span class="p">:</span>
+<span class="ne">---&gt; </span><span class="mi">15</span>     <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">image</span><span class="o">=</span><span class="n">image</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="n">inplace</span><span class="p">)</span>
+
+<span class="nn">File ~/work/PhenoTypic/PhenoTypic/src/phenotypic/abc_/_image_operation.py:55,</span> in <span class="ni">ImageOperation.apply</span><span class="nt">(self, image, inplace)</span>
+<span class="g g-Whitespace">     </span><span class="mi">53</span>     <span class="k">return</span> <span class="n">image</span>
+<span class="g g-Whitespace">     </span><span class="mi">54</span> <span class="k">except</span> <span class="ne">KeyboardInterrupt</span><span class="p">:</span>
+<span class="ne">---&gt; </span><span class="mi">55</span>     <span class="k">raise</span> <span class="ne">KeyboardInterrupt</span>
+<span class="g g-Whitespace">     </span><span class="mi">56</span> <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+<span class="g g-Whitespace">     </span><span class="mi">57</span>     <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s1"> failed on image </span><span class="si">{</span><span class="n">image</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s1">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">e</span>
+
+<span class="ne">KeyboardInterrupt</span>: 
+</pre></div>
+</div>
+</div>
+</div>
+<p>Here the objects with a colored overlay over them represent the different objects detected in your image. The boxes show the objects belonging to a specific grid section. The <code class="docutils literal notranslate"><span class="pre">HeavyWatershedPipeline</span></code> takes steps to ensure only one object in each section remains for downstream analysis. In reality, more objects were probably detected, but the refinement steps removed them according tos trict filters</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">meas</span> <span class="o">=</span> <span class="n">pipe</span><span class="o">.</span><span class="n">measure</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
+<span class="n">meas</span><span class="o">.</span><span class="n">head</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output text_html"><div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Metadata_FileSuffix</th>
+      <th>Metadata_BitDepth</th>
+      <th>Metadata_ImageType</th>
+      <th>Metadata_ImageName</th>
+      <th>ObjectLabel</th>
+      <th>Bbox_CenterRR</th>
+      <th>Bbox_CenterCC</th>
+      <th>Bbox_MinRR</th>
+      <th>Bbox_MinCC</th>
+      <th>Bbox_MaxRR</th>
+      <th>...</th>
+      <th>ColorHSV_BrightnessMin</th>
+      <th>ColorHSV_BrightnessQ1</th>
+      <th>ColorHSV_BrightnessMean</th>
+      <th>ColorHSV_BrightnessMedian</th>
+      <th>ColorHSV_BrightnessQ3</th>
+      <th>ColorHSV_BrightnessMax</th>
+      <th>ColorHSV_BrightnessStdDev</th>
+      <th>ColorHSV_BrightnessCoeffVar</th>
+      <th>ColorLab_ChromaEstimatedMean</th>
+      <th>ColorLab_ChromaEstimatedMedian</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>.jpg</td>
+      <td>8</td>
+      <td>GridImage</td>
+      <td>6_1S_8</td>
+      <td>1</td>
+      <td>210.476174</td>
+      <td>659.168300</td>
+      <td>179</td>
+      <td>629</td>
+      <td>244</td>
+      <td>...</td>
+      <td>0.313725</td>
+      <td>0.443137</td>
+      <td>0.453724</td>
+      <td>0.466667</td>
+      <td>0.478431</td>
+      <td>0.607843</td>
+      <td>0.040415</td>
+      <td>0.089103</td>
+      <td>6.153240</td>
+      <td>6.242224</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>.jpg</td>
+      <td>8</td>
+      <td>GridImage</td>
+      <td>6_1S_8</td>
+      <td>2</td>
+      <td>217.124467</td>
+      <td>336.335607</td>
+      <td>183</td>
+      <td>305</td>
+      <td>253</td>
+      <td>...</td>
+      <td>0.325490</td>
+      <td>0.454902</td>
+      <td>0.478613</td>
+      <td>0.498039</td>
+      <td>0.517647</td>
+      <td>0.552941</td>
+      <td>0.052437</td>
+      <td>0.109591</td>
+      <td>6.451354</td>
+      <td>6.766552</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>.jpg</td>
+      <td>8</td>
+      <td>GridImage</td>
+      <td>6_1S_8</td>
+      <td>3</td>
+      <td>221.093354</td>
+      <td>981.827532</td>
+      <td>184</td>
+      <td>949</td>
+      <td>258</td>
+      <td>...</td>
+      <td>0.317647</td>
+      <td>0.458824</td>
+      <td>0.479963</td>
+      <td>0.498039</td>
+      <td>0.513725</td>
+      <td>0.533333</td>
+      <td>0.045643</td>
+      <td>0.095121</td>
+      <td>5.947327</td>
+      <td>5.956704</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>.jpg</td>
+      <td>8</td>
+      <td>GridImage</td>
+      <td>6_1S_8</td>
+      <td>4</td>
+      <td>217.560426</td>
+      <td>509.190044</td>
+      <td>185</td>
+      <td>479</td>
+      <td>251</td>
+      <td>...</td>
+      <td>0.313725</td>
+      <td>0.447059</td>
+      <td>0.480094</td>
+      <td>0.501961</td>
+      <td>0.525490</td>
+      <td>0.552941</td>
+      <td>0.056082</td>
+      <td>0.116852</td>
+      <td>7.394963</td>
+      <td>7.724411</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>.jpg</td>
+      <td>8</td>
+      <td>GridImage</td>
+      <td>6_1S_8</td>
+      <td>5</td>
+      <td>218.448008</td>
+      <td>1626.370462</td>
+      <td>187</td>
+      <td>1599</td>
+      <td>251</td>
+      <td>...</td>
+      <td>0.313725</td>
+      <td>0.427451</td>
+      <td>0.452017</td>
+      <td>0.462745</td>
+      <td>0.482353</td>
+      <td>0.756863</td>
+      <td>0.040493</td>
+      <td>0.089615</td>
+      <td>7.288657</td>
+      <td>7.626104</td>
+    </tr>
+  </tbody>
+</table>
+<p>5 rows × 172 columns</p>
+</div></div></div>
+</div>
+</section>
+<section id="processing-lots-of-images">
+<h2>Processing lots of images<a class="headerlink" href="#processing-lots-of-images" title="Link to this heading">#</a></h2>
+<section id="method-1-looping-through-images">
+<h3>Method 1. Looping through images<a class="headerlink" href="#method-1-looping-through-images" title="Link to this heading">#</a></h3>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">tqdm</span><span class="w"> </span><span class="kn">import</span> <span class="n">tqdm</span>
+
+<span class="n">batch_meas</span> <span class="o">=</span> <span class="p">[]</span>
+
+<span class="c1"># We use tqdm as a counter</span>
+<span class="c1"># We only process 3 images for this demo</span>
+<span class="k">for</span> <span class="n">image_path</span> <span class="ow">in</span> <span class="n">tqdm</span><span class="p">(</span><span class="n">filepaths</span><span class="p">[:</span><span class="mi">2</span><span class="p">],</span> <span class="n">desc</span><span class="o">=</span><span class="s2">&quot;Images&quot;</span><span class="p">,</span> <span class="n">total</span><span class="o">=</span><span class="mi">2</span><span class="p">):</span>
+    <span class="n">curr_image</span> <span class="o">=</span> <span class="n">pht</span><span class="o">.</span><span class="n">GridImage</span><span class="o">.</span><span class="n">imread</span><span class="p">(</span><span class="n">image_path</span><span class="p">,</span> <span class="n">nrows</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">ncols</span><span class="o">=</span><span class="mi">12</span><span class="p">)</span>
+
+    <span class="c1"># This applies the operations and measurements at the same time</span>
+    <span class="n">curr_meas</span> <span class="o">=</span> <span class="n">pipe</span><span class="o">.</span><span class="n">apply_and_measure</span><span class="p">(</span><span class="n">curr_image</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">batch_meas</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">curr_meas</span><span class="p">)</span>
+
+<span class="n">batch_meas</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">batch_meas</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+<span class="n">batch_meas</span><span class="o">.</span><span class="n">head</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Images: 100%|██████████| 2/2 [01:21&lt;00:00, 40.88s/it]
+</pre></div>
+</div>
+<div class="output text_html"><div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Metadata_FileSuffix</th>
+      <th>Metadata_BitDepth</th>
+      <th>Metadata_ImageType</th>
+      <th>Metadata_ImageName</th>
+      <th>ObjectLabel</th>
+      <th>Bbox_CenterRR</th>
+      <th>Bbox_CenterCC</th>
+      <th>Bbox_MinRR</th>
+      <th>Bbox_MinCC</th>
+      <th>Bbox_MaxRR</th>
+      <th>...</th>
+      <th>ColorHSV_BrightnessMin</th>
+      <th>ColorHSV_BrightnessQ1</th>
+      <th>ColorHSV_BrightnessMean</th>
+      <th>ColorHSV_BrightnessMedian</th>
+      <th>ColorHSV_BrightnessQ3</th>
+      <th>ColorHSV_BrightnessMax</th>
+      <th>ColorHSV_BrightnessStdDev</th>
+      <th>ColorHSV_BrightnessCoeffVar</th>
+      <th>ColorLab_ChromaEstimatedMean</th>
+      <th>ColorLab_ChromaEstimatedMedian</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>.jpg</td>
+      <td>8</td>
+      <td>GridImage</td>
+      <td>2_1S_5</td>
+      <td>1</td>
+      <td>143.066954</td>
+      <td>638.928742</td>
+      <td>116</td>
+      <td>616</td>
+      <td>171</td>
+      <td>...</td>
+      <td>0.258824</td>
+      <td>0.290196</td>
+      <td>0.308133</td>
+      <td>0.309804</td>
+      <td>0.325490</td>
+      <td>0.360784</td>
+      <td>0.020981</td>
+      <td>0.068122</td>
+      <td>2.324505</td>
+      <td>2.412023</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>.jpg</td>
+      <td>8</td>
+      <td>GridImage</td>
+      <td>2_1S_5</td>
+      <td>2</td>
+      <td>150.888348</td>
+      <td>489.121803</td>
+      <td>122</td>
+      <td>464</td>
+      <td>182</td>
+      <td>...</td>
+      <td>0.219608</td>
+      <td>0.352941</td>
+      <td>0.377916</td>
+      <td>0.392157</td>
+      <td>0.415686</td>
+      <td>0.450980</td>
+      <td>0.049686</td>
+      <td>0.131528</td>
+      <td>2.861581</td>
+      <td>3.057672</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>.jpg</td>
+      <td>8</td>
+      <td>GridImage</td>
+      <td>2_1S_5</td>
+      <td>3</td>
+      <td>152.518557</td>
+      <td>962.014356</td>
+      <td>122</td>
+      <td>934</td>
+      <td>185</td>
+      <td>...</td>
+      <td>0.262745</td>
+      <td>0.388235</td>
+      <td>0.404412</td>
+      <td>0.419608</td>
+      <td>0.439216</td>
+      <td>0.470588</td>
+      <td>0.046833</td>
+      <td>0.115846</td>
+      <td>3.028543</td>
+      <td>3.214427</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>.jpg</td>
+      <td>8</td>
+      <td>GridImage</td>
+      <td>2_1S_5</td>
+      <td>4</td>
+      <td>152.439723</td>
+      <td>1610.904644</td>
+      <td>125</td>
+      <td>1589</td>
+      <td>182</td>
+      <td>...</td>
+      <td>0.258824</td>
+      <td>0.360784</td>
+      <td>0.389423</td>
+      <td>0.400000</td>
+      <td>0.427451</td>
+      <td>0.466667</td>
+      <td>0.045290</td>
+      <td>0.116357</td>
+      <td>4.114455</td>
+      <td>4.538226</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>.jpg</td>
+      <td>8</td>
+      <td>GridImage</td>
+      <td>2_1S_5</td>
+      <td>5</td>
+      <td>156.673430</td>
+      <td>802.163285</td>
+      <td>129</td>
+      <td>779</td>
+      <td>185</td>
+      <td>...</td>
+      <td>0.254902</td>
+      <td>0.360784</td>
+      <td>0.381709</td>
+      <td>0.396078</td>
+      <td>0.415686</td>
+      <td>0.439216</td>
+      <td>0.043493</td>
+      <td>0.113999</td>
+      <td>2.941698</td>
+      <td>3.139710</td>
+    </tr>
+  </tbody>
+</table>
+<p>5 rows × 172 columns</p>
+</div></div></div>
+</div>
+</section>
+<section id="method-2-joblib-parallel-execution">
+<h3>Method 2: Joblib parallel execution<a class="headerlink" href="#method-2-joblib-parallel-execution" title="Link to this heading">#</a></h3>
+<p><strong>Roadmap Update:</strong> PhenoTypic has plans to incorporate native parallelization and processing to make this more intuitive in the future!</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Iterator</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">joblib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Parallel</span><span class="p">,</span> <span class="n">delayed</span>
+
+<span class="n">pipe</span><span class="o">.</span><span class="n">dispose_widgets</span><span class="p">()</span>  <span class="c1"># Run this before executing in parallel</span>
+
+
+<span class="c1"># We use a generator function to prevent loading too many images into memory</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">image_iterator</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Iterator</span><span class="p">[</span><span class="n">pht</span><span class="o">.</span><span class="n">GridImage</span><span class="p">]:</span>
+    <span class="k">for</span> <span class="n">image_path</span> <span class="ow">in</span> <span class="n">tqdm</span><span class="p">(</span><span class="n">filepaths</span><span class="p">[:],</span> <span class="n">desc</span><span class="o">=</span><span class="s2">&quot;Processing Images&quot;</span><span class="p">,</span> <span class="n">total</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">filepaths</span><span class="p">)):</span>
+        <span class="k">yield</span> <span class="n">pht</span><span class="o">.</span><span class="n">GridImage</span><span class="o">.</span><span class="n">imread</span><span class="p">(</span><span class="n">image_path</span><span class="p">,</span> <span class="n">nrows</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">ncols</span><span class="o">=</span><span class="mi">12</span><span class="p">)</span>
+
+
+<span class="n">batch_meas</span> <span class="o">=</span> <span class="n">Parallel</span><span class="p">(</span><span class="n">n_jobs</span><span class="o">=-</span><span class="mi">1</span><span class="p">)(</span>
+        <span class="n">delayed</span><span class="p">(</span><span class="n">pipe</span><span class="o">.</span><span class="n">apply_and_measure</span><span class="p">)(</span><span class="n">image</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">reset</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">image</span> <span class="ow">in</span> <span class="n">image_iterator</span><span class="p">()</span>
+<span class="p">)</span>
+
+<span class="n">batch_meas</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">batch_meas</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+<span class="n">batch_meas</span><span class="o">.</span><span class="n">head</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Processing Images: 100%|██████████| 20/20 [00:00&lt;00:00, 21.06it/s]
+</pre></div>
+</div>
+<div class="output text_html"><div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Metadata_FileSuffix</th>
+      <th>Metadata_BitDepth</th>
+      <th>Metadata_ImageType</th>
+      <th>Metadata_ImageName</th>
+      <th>ObjectLabel</th>
+      <th>Bbox_CenterRR</th>
+      <th>Bbox_CenterCC</th>
+      <th>Bbox_MinRR</th>
+      <th>Bbox_MinCC</th>
+      <th>Bbox_MaxRR</th>
+      <th>...</th>
+      <th>ColorHSV_BrightnessMin</th>
+      <th>ColorHSV_BrightnessQ1</th>
+      <th>ColorHSV_BrightnessMean</th>
+      <th>ColorHSV_BrightnessMedian</th>
+      <th>ColorHSV_BrightnessQ3</th>
+      <th>ColorHSV_BrightnessMax</th>
+      <th>ColorHSV_BrightnessStdDev</th>
+      <th>ColorHSV_BrightnessCoeffVar</th>
+      <th>ColorLab_ChromaEstimatedMean</th>
+      <th>ColorLab_ChromaEstimatedMedian</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>.jpg</td>
+      <td>8</td>
+      <td>GridImage</td>
+      <td>2_1S_5</td>
+      <td>1</td>
+      <td>143.066954</td>
+      <td>638.928742</td>
+      <td>116</td>
+      <td>616</td>
+      <td>171</td>
+      <td>...</td>
+      <td>0.258824</td>
+      <td>0.290196</td>
+      <td>0.308133</td>
+      <td>0.309804</td>
+      <td>0.325490</td>
+      <td>0.360784</td>
+      <td>0.020981</td>
+      <td>0.068122</td>
+      <td>2.324505</td>
+      <td>2.412023</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>.jpg</td>
+      <td>8</td>
+      <td>GridImage</td>
+      <td>2_1S_5</td>
+      <td>2</td>
+      <td>150.888348</td>
+      <td>489.121803</td>
+      <td>122</td>
+      <td>464</td>
+      <td>182</td>
+      <td>...</td>
+      <td>0.219608</td>
+      <td>0.352941</td>
+      <td>0.377916</td>
+      <td>0.392157</td>
+      <td>0.415686</td>
+      <td>0.450980</td>
+      <td>0.049686</td>
+      <td>0.131528</td>
+      <td>2.861581</td>
+      <td>3.057672</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>.jpg</td>
+      <td>8</td>
+      <td>GridImage</td>
+      <td>2_1S_5</td>
+      <td>3</td>
+      <td>152.518557</td>
+      <td>962.014356</td>
+      <td>122</td>
+      <td>934</td>
+      <td>185</td>
+      <td>...</td>
+      <td>0.262745</td>
+      <td>0.388235</td>
+      <td>0.404412</td>
+      <td>0.419608</td>
+      <td>0.439216</td>
+      <td>0.470588</td>
+      <td>0.046833</td>
+      <td>0.115846</td>
+      <td>3.028543</td>
+      <td>3.214427</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>.jpg</td>
+      <td>8</td>
+      <td>GridImage</td>
+      <td>2_1S_5</td>
+      <td>4</td>
+      <td>152.439723</td>
+      <td>1610.904644</td>
+      <td>125</td>
+      <td>1589</td>
+      <td>182</td>
+      <td>...</td>
+      <td>0.258824</td>
+      <td>0.360784</td>
+      <td>0.389423</td>
+      <td>0.400000</td>
+      <td>0.427451</td>
+      <td>0.466667</td>
+      <td>0.045290</td>
+      <td>0.116357</td>
+      <td>4.114455</td>
+      <td>4.538226</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>.jpg</td>
+      <td>8</td>
+      <td>GridImage</td>
+      <td>2_1S_5</td>
+      <td>5</td>
+      <td>156.673430</td>
+      <td>802.163285</td>
+      <td>129</td>
+      <td>779</td>
+      <td>185</td>
+      <td>...</td>
+      <td>0.254902</td>
+      <td>0.360784</td>
+      <td>0.381709</td>
+      <td>0.396078</td>
+      <td>0.415686</td>
+      <td>0.439216</td>
+      <td>0.043493</td>
+      <td>0.113999</td>
+      <td>2.941698</td>
+      <td>3.139710</td>
+    </tr>
+  </tbody>
+</table>
+<p>5 rows × 172 columns</p>
+</div></div></div>
+</div>
+</section>
+</section>
+</section>
+<section class="tex2jax_ignore mathjax_ignore" id="method-3-using-the-cli-script">
+<h1>Method 3: Using the CLI script<a class="headerlink" href="#method-3-using-the-cli-script" title="Link to this heading">#</a></h1>
+<p>Once we’re happy with the pipeline you can export it for reuse:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">pipe</span><span class="o">.</span><span class="n">to_json</span><span class="p">(</span><span class="s2">&quot;my_pipeline.json&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Then, you can download the phenotypic-cli.py script from the downloadables and run it in parallel with the following command:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>uv<span class="w"> </span>run<span class="w"> </span>phenotypic-cli.py<span class="w"> </span>my_pipeline.json<span class="w"> </span>./raw_images<span class="w"> </span>./results<span class="w"> </span>--n-jobs<span class="w"> </span><span class="m">4</span>
+</pre></div>
+</div>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>uv<span class="w"> </span>run<span class="w"> </span>phenotypic-cli.py<span class="w"> </span>&lt;pipeline_file&gt;<span class="w"> </span>&lt;image_directory&gt;<span class="w"> </span>&lt;output_dir&gt;<span class="w"> </span>--n-jobs<span class="w"> </span>&lt;number<span class="w"> </span>cores&gt;
+</pre></div>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">batch_meas</span><span class="o">.</span><span class="n">to_csv</span><span class="p">(</span><span class="s2">&quot;../../../../../src/phenotypic/data/meas/GettingStartedMeas.csv&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p>We’ll also use this data in the <a class="reference internal" href="GrowthCurves.html"><span class="doc">Fitting Logistic Growth Curves</span></a>.</p>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h1 nav-item toc-entry"><a class="reference internal nav-link" href="#">Getting Started</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#processing-your-first-image">Processing your first image</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#image-operations">Image Operations</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#heavywatershedpipeline">HeavyWatershedPipeline</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#processing-lots-of-images">Processing lots of images</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#method-1-looping-through-images">Method 1. Looping through images</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#method-2-joblib-parallel-execution">Method 2: Joblib parallel execution</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toc-h1 nav-item toc-entry"><a class="reference internal nav-link" href="#method-3-using-the-cli-script">Method 3: Using the CLI script</a></li>
+</ul>
+
+  </nav></div>
+
+  <div class="sidebar-secondary-item">
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../../../_sources/user_guide/tutorial/notebooks/GettingStarted.ipynb.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, ExFAB BioFoundry.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.1.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

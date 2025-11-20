@@ -1,0 +1,1938 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>phenotypic.enhance package &#8212; PhenoTypic</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../_static/mystnb.8ecb98da25f57f5357bf6f572d296f466b2cfe2517ffebfabe82451661e28f02.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=800a184d" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../_static/documentation_options.js?v=21db0d57"></script>
+    <script src="../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="../_static/design-tabs.js?v=f930bc37"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'api_reference/phenotypic.enhance';</script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="phenotypic.grid package" href="phenotypic.grid.html" />
+    <link rel="prev" title="phenotypic.detect package" href="phenotypic.detect.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.9.2" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+     
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../_static/light_logo_sponsor.svg" class="logo__image only-light" alt="PhenoTypic"/>
+    <img src="../_static/light_logo_sponsor.svg" class="logo__image only-dark pst-js-only" alt="PhenoTypic"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../installation.html">
+    Installation
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../user_guide/index.html">
+    User Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="index.html">
+    API Reference
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../contrib_guide/index.html">
+    Developer Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../downloadables.html">
+    <no title>
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/Wheeldon-Lab/PhenoScope#" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../installation.html">
+    Installation
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../user_guide/index.html">
+    User Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="index.html">
+    API Reference
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../contrib_guide/index.html">
+    Developer Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../downloadables.html">
+    <no title>
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/Wheeldon-Lab/PhenoScope#" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="phenotypic.abc_.html">phenotypic.abc_ package</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="phenotypic.analysis.html">phenotypic.analysis package</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.abc_.html">phenotypic.analysis.abc_ package</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1"><a class="reference internal" href="phenotypic.core.html">phenotypic.core package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="phenotypic.correction.html">phenotypic.correction package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="phenotypic.data.html">phenotypic.data package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="phenotypic.detect.html">phenotypic.detect package</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">phenotypic.enhance package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="phenotypic.grid.html">phenotypic.grid package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="phenotypic.measure.html">phenotypic.measure package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="phenotypic.prefab.html">phenotypic.prefab package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="phenotypic.refine.html">phenotypic.refine package</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="phenotypic.tools.html">phenotypic.tools package</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tools.colourspaces_.html">phenotypic.tools.colourspaces_ module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tools.constants_.html">phenotypic.tools.constants_ module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tools.exceptions_.html">phenotypic.tools.exceptions_ module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tools.funcs_.html">phenotypic.tools.funcs_ module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tools.hdf_.html">phenotypic.tools.hdf_ module</a></li>
+</ul>
+</details></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="index.html" class="nav-link">API Reference</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">phenotypic.enhance package</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="module-phenotypic.enhance">
+<span id="phenotypic-enhance-package"></span><h1>phenotypic.enhance package<a class="headerlink" href="#module-phenotypic.enhance" title="Link to this heading">#</a></h1>
+<p>The enhance module provides a collection of image enhance operations designed to improve
+detection and segmentation results by modifying the image’s enhance gray.</p>
+<dl class="simple">
+<dt>Available enhancers:</dt><dd><ul class="simple">
+<li><p>CLAHE: Contrast Limited Adaptive Histogram Equalization for local contrast enhance</p></li>
+<li><p>GaussianBlur: Applies Gaussian blur to reduce noise while preserving edges</p></li>
+<li><p>MedianEnhancer: Uses median filtering for noise reduction</p></li>
+<li><p>RankMedianEnhancer: Applies rank-based median filtering for enhanced noise removal</p></li>
+<li><p>RollingBallEnhancer: Implements rolling ball algorithm for background subtraction</p></li>
+<li><p>GaussianSubtract: Uses Gaussian blur for background estimation and subtraction</p></li>
+<li><p>WhiteTophatEnhancer: Performs white tophat transformation for feature extraction</p></li>
+<li><p>LaplaceEnhancer: Applies Laplacian operator for edge detection</p></li>
+<li><p>ContrastStretching: Enhances image contrast through intensity stretching</p></li>
+</ul>
+</dd>
+</dl>
+<p>Each enhancer operates on a copy of the original image gray to preserve the source data
+while allowing for multiple enhance operations to be applied sequentially.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="phenotypic.enhance.CLAHE">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.enhance.</span></span><span class="sig-name descname"><span class="pre">CLAHE</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">Contrast</span> <span class="pre">Limited</span> <span class="pre">Adaptive</span> <span class="pre">Histogram</span> <span class="pre">Equalization</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/enhance/_clahe.html#CLAHE"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.enhance.CLAHE" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.ImageEnhancer" title="phenotypic.abc_._image_enhancer.ImageEnhancer"><code class="xref py py-class docutils literal notranslate"><span class="pre">ImageEnhancer</span></code></a></p>
+<p>This class is a specific implementation of the ImageEnhancer, designed to
+apply the CLAHE algorithm to enhance the contrast of an image. CLAHE is a
+variant of adaptive histogram equalization that limits the amplification of
+noise by clipping the histogram before equalization. It is useful for improving
+the contrast of images with poor lighting conditions or high dynamic range.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>kernel_size</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em> | </em><em>None</em>)</p></li>
+<li><p><strong>clip_limit</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>)</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="phenotypic.enhance.CLAHE.kernel_size">
+<span class="sig-name descname"><span class="pre">kernel_size</span></span><a class="headerlink" href="#phenotypic.enhance.CLAHE.kernel_size" title="Link to this definition">#</a></dt>
+<dd><p>The size of the kernel to use for the histogram
+equalization. If not provided, it will be automatically calculated
+using the dimensions of the image.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)">int</a> or None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="phenotypic.enhance.CLAHE.clip_limit">
+<span class="sig-name descname"><span class="pre">clip_limit</span></span><a class="headerlink" href="#phenotypic.enhance.CLAHE.clip_limit" title="Link to this definition">#</a></dt>
+<dd><p>The contrast limit for local areas (normalized). A
+smaller value decreases the contrast amplification. Defaults to 0.01.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.enhance.CLAHE.__del__">
+<span class="sig-name descname"><span class="pre">__del__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.enhance.CLAHE.__del__" title="Link to this definition">#</a></dt>
+<dd><p>Automatically stop tracemalloc when the object is deleted.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.enhance.CLAHE.__getstate__">
+<span class="sig-name descname"><span class="pre">__getstate__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.enhance.CLAHE.__getstate__" title="Link to this definition">#</a></dt>
+<dd><p>Prepare the object for pickling by disposing of any widgets.</p>
+<p>This ensures that UI components (which may contain unpickleable objects like
+input functions or thread locks) are cleaned up before serialization.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>This method modifies the object state by calling dispose_widgets().
+Any active widgets will be detached from the object.</p>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.enhance.CLAHE.apply">
+<span class="sig-name descname"><span class="pre">apply</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">inplace</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.enhance.CLAHE.apply" title="Link to this definition">#</a></dt>
+<dd><p>Applies the operation to an image, either in-place or on a copy.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>image</strong> (<a class="reference internal" href="phenotypic.html#phenotypic.Image" title="phenotypic.Image"><em>Image</em></a>) – The arr image to apply the operation on.</p></li>
+<li><p><strong>inplace</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>) – If True, modifies the image in place; otherwise,
+operates on a copy of the image.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The modified image after applying the operation.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="phenotypic.html#phenotypic.Image" title="phenotypic.Image">Image</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.enhance.CLAHE.dispose_widgets">
+<span class="sig-name descname"><span class="pre">dispose_widgets</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#phenotypic.enhance.SobelFilter.None" title="phenotypic.enhance.SobelFilter.None"><span class="pre">None</span></a></span></span><a class="headerlink" href="#phenotypic.enhance.CLAHE.dispose_widgets" title="Link to this definition">#</a></dt>
+<dd><p>Drop references to the UI widgets.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.enhance.CLAHE.sync_widgets_from_state">
+<span class="sig-name descname"><span class="pre">sync_widgets_from_state</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#phenotypic.enhance.SobelFilter.None" title="phenotypic.enhance.SobelFilter.None"><span class="pre">None</span></a></span></span><a class="headerlink" href="#phenotypic.enhance.CLAHE.sync_widgets_from_state" title="Link to this definition">#</a></dt>
+<dd><p>Push internal state into widgets.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.enhance.CLAHE.widget">
+<span class="sig-name descname"><span class="pre">widget</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="phenotypic.html#phenotypic.Image" title="phenotypic.Image"><span class="pre">Image</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="#phenotypic.enhance.SobelFilter.None" title="phenotypic.enhance.SobelFilter.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Widget</span></span></span><a class="headerlink" href="#phenotypic.enhance.CLAHE.widget" title="Link to this definition">#</a></dt>
+<dd><p>Return (and optionally display) the root widget.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>image</strong> (<a class="reference internal" href="phenotypic.html#phenotypic.Image" title="phenotypic.Image"><em>Image</em></a><em> | </em><em>None</em>) – Optional image to visualize. If provided,
+visualization controls will be added to the widget.</p></li>
+<li><p><strong>show</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>) – Whether to display the widget immediately. Defaults to False.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The root widget.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>ipywidgets.Widget</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ImportError" title="(in Python v3.14)"><strong>ImportError</strong></a> – If ipywidgets or IPython are not installed.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="phenotypic.enhance.ContrastStretching">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.enhance.</span></span><span class="sig-name descname"><span class="pre">ContrastStretching</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">lower_percentile</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">upper_percentile</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">98</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/enhance/_contrast_streching.html#ContrastStretching"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.enhance.ContrastStretching" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.ImageEnhancer" title="phenotypic.abc_._image_enhancer.ImageEnhancer"><code class="xref py py-class docutils literal notranslate"><span class="pre">ImageEnhancer</span></code></a></p>
+<p>Performs contrast stretching on an image to enhance its visual quality.</p>
+<p>Contrast stretching is a technique used to improve the contrast in the image by
+redistributing the range of pixel intensity values. This class allows adjustment
+of the intensity range using lower and upper percentiles of pixel values, enabling
+fine-tuning of contrast enhance for different types of images.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>lower_percentile</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – The lower percentile other_image used for intensity rescaling.
+Pixel values below this percentile will be adjusted to the lower bound of the
+intensity range.</p></li>
+<li><p><strong>upper_percentile</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – The upper percentile other_image used for intensity rescaling.
+Pixel values above this percentile will be adjusted to the upper bound of the
+intensity range.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.enhance.ContrastStretching.__del__">
+<span class="sig-name descname"><span class="pre">__del__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.enhance.ContrastStretching.__del__" title="Link to this definition">#</a></dt>
+<dd><p>Automatically stop tracemalloc when the object is deleted.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.enhance.ContrastStretching.__getstate__">
+<span class="sig-name descname"><span class="pre">__getstate__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.enhance.ContrastStretching.__getstate__" title="Link to this definition">#</a></dt>
+<dd><p>Prepare the object for pickling by disposing of any widgets.</p>
+<p>This ensures that UI components (which may contain unpickleable objects like
+input functions or thread locks) are cleaned up before serialization.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>This method modifies the object state by calling dispose_widgets().
+Any active widgets will be detached from the object.</p>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.enhance.ContrastStretching.apply">
+<span class="sig-name descname"><span class="pre">apply</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">inplace</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.enhance.ContrastStretching.apply" title="Link to this definition">#</a></dt>
+<dd><p>Applies the operation to an image, either in-place or on a copy.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>image</strong> (<a class="reference internal" href="phenotypic.html#phenotypic.Image" title="phenotypic.Image"><em>Image</em></a>) – The arr image to apply the operation on.</p></li>
+<li><p><strong>inplace</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>) – If True, modifies the image in place; otherwise,
+operates on a copy of the image.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The modified image after applying the operation.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="phenotypic.html#phenotypic.Image" title="phenotypic.Image">Image</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.enhance.ContrastStretching.dispose_widgets">
+<span class="sig-name descname"><span class="pre">dispose_widgets</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#phenotypic.enhance.SobelFilter.None" title="phenotypic.enhance.SobelFilter.None"><span class="pre">None</span></a></span></span><a class="headerlink" href="#phenotypic.enhance.ContrastStretching.dispose_widgets" title="Link to this definition">#</a></dt>
+<dd><p>Drop references to the UI widgets.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.enhance.ContrastStretching.sync_widgets_from_state">
+<span class="sig-name descname"><span class="pre">sync_widgets_from_state</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#phenotypic.enhance.SobelFilter.None" title="phenotypic.enhance.SobelFilter.None"><span class="pre">None</span></a></span></span><a class="headerlink" href="#phenotypic.enhance.ContrastStretching.sync_widgets_from_state" title="Link to this definition">#</a></dt>
+<dd><p>Push internal state into widgets.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.enhance.ContrastStretching.widget">
+<span class="sig-name descname"><span class="pre">widget</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="phenotypic.html#phenotypic.Image" title="phenotypic.Image"><span class="pre">Image</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="#phenotypic.enhance.SobelFilter.None" title="phenotypic.enhance.SobelFilter.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Widget</span></span></span><a class="headerlink" href="#phenotypic.enhance.ContrastStretching.widget" title="Link to this definition">#</a></dt>
+<dd><p>Return (and optionally display) the root widget.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>image</strong> (<a class="reference internal" href="phenotypic.html#phenotypic.Image" title="phenotypic.Image"><em>Image</em></a><em> | </em><em>None</em>) – Optional image to visualize. If provided,
+visualization controls will be added to the widget.</p></li>
+<li><p><strong>show</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>) – Whether to display the widget immediately. Defaults to False.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The root widget.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>ipywidgets.Widget</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ImportError" title="(in Python v3.14)"><strong>ImportError</strong></a> – If ipywidgets or IPython are not installed.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="phenotypic.enhance.GaussianBlur">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.enhance.</span></span><span class="sig-name descname"><span class="pre">GaussianBlur</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sigma</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">2</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mode</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'reflect'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cval</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">truncate</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">4.0</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/enhance/_gaussian_preprocessor.html#GaussianBlur"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.enhance.GaussianBlur" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.ImageEnhancer" title="phenotypic.abc_._image_enhancer.ImageEnhancer"><code class="xref py py-class docutils literal notranslate"><span class="pre">ImageEnhancer</span></code></a></p>
+<p>Applies a Gaussian blur filter to an image.</p>
+<p>The GaussianBlur class inherits from ImageEnhancer and provides the functionality
+to apply Gaussian blurring to an image. It allows customization of the Gaussian
+kernel using parameters such as sigma, mode, cval, and truncate. This class is
+designed for enhancing images through controlled blurring.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>sigma</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p></li>
+<li><p><strong>mode</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>)</p></li>
+<li><p><strong>truncate</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>)</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="phenotypic.enhance.GaussianBlur.sigma">
+<span class="sig-name descname"><span class="pre">sigma</span></span><a class="headerlink" href="#phenotypic.enhance.GaussianBlur.sigma" title="Link to this definition">#</a></dt>
+<dd><p>Standard deviation for Gaussian kernel. Determines the amount
+of blurring. Must be an integer.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)">int</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="phenotypic.enhance.GaussianBlur.mode">
+<span class="sig-name descname"><span class="pre">mode</span></span><a class="headerlink" href="#phenotypic.enhance.GaussianBlur.mode" title="Link to this definition">#</a></dt>
+<dd><p>Boundary mode to handle edges. Supported modes are ‘reflect’,
+‘constant’, and ‘nearest’.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="phenotypic.enhance.GaussianBlur.cval">
+<span class="sig-name descname"><span class="pre">cval</span></span><a class="headerlink" href="#phenotypic.enhance.GaussianBlur.cval" title="Link to this definition">#</a></dt>
+<dd><p>Value to set constant boundaries when mode is ‘constant’.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="phenotypic.enhance.GaussianBlur.truncate">
+<span class="sig-name descname"><span class="pre">truncate</span></span><a class="headerlink" href="#phenotypic.enhance.GaussianBlur.truncate" title="Link to this definition">#</a></dt>
+<dd><p>Radius of the Gaussian kernel in terms of standard
+deviations. Truncates the kernel beyond this value.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.enhance.GaussianBlur.__del__">
+<span class="sig-name descname"><span class="pre">__del__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.enhance.GaussianBlur.__del__" title="Link to this definition">#</a></dt>
+<dd><p>Automatically stop tracemalloc when the object is deleted.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.enhance.GaussianBlur.__getstate__">
+<span class="sig-name descname"><span class="pre">__getstate__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.enhance.GaussianBlur.__getstate__" title="Link to this definition">#</a></dt>
+<dd><p>Prepare the object for pickling by disposing of any widgets.</p>
+<p>This ensures that UI components (which may contain unpickleable objects like
+input functions or thread locks) are cleaned up before serialization.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>This method modifies the object state by calling dispose_widgets().
+Any active widgets will be detached from the object.</p>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.enhance.GaussianBlur.apply">
+<span class="sig-name descname"><span class="pre">apply</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">inplace</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.enhance.GaussianBlur.apply" title="Link to this definition">#</a></dt>
+<dd><p>Applies the operation to an image, either in-place or on a copy.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>image</strong> (<a class="reference internal" href="phenotypic.html#phenotypic.Image" title="phenotypic.Image"><em>Image</em></a>) – The arr image to apply the operation on.</p></li>
+<li><p><strong>inplace</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>) – If True, modifies the image in place; otherwise,
+operates on a copy of the image.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The modified image after applying the operation.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="phenotypic.html#phenotypic.Image" title="phenotypic.Image">Image</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.enhance.GaussianBlur.dispose_widgets">
+<span class="sig-name descname"><span class="pre">dispose_widgets</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#phenotypic.enhance.SobelFilter.None" title="phenotypic.enhance.SobelFilter.None"><span class="pre">None</span></a></span></span><a class="headerlink" href="#phenotypic.enhance.GaussianBlur.dispose_widgets" title="Link to this definition">#</a></dt>
+<dd><p>Drop references to the UI widgets.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.enhance.GaussianBlur.sync_widgets_from_state">
+<span class="sig-name descname"><span class="pre">sync_widgets_from_state</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#phenotypic.enhance.SobelFilter.None" title="phenotypic.enhance.SobelFilter.None"><span class="pre">None</span></a></span></span><a class="headerlink" href="#phenotypic.enhance.GaussianBlur.sync_widgets_from_state" title="Link to this definition">#</a></dt>
+<dd><p>Push internal state into widgets.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.enhance.GaussianBlur.widget">
+<span class="sig-name descname"><span class="pre">widget</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="phenotypic.html#phenotypic.Image" title="phenotypic.Image"><span class="pre">Image</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="#phenotypic.enhance.SobelFilter.None" title="phenotypic.enhance.SobelFilter.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Widget</span></span></span><a class="headerlink" href="#phenotypic.enhance.GaussianBlur.widget" title="Link to this definition">#</a></dt>
+<dd><p>Return (and optionally display) the root widget.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>image</strong> (<a class="reference internal" href="phenotypic.html#phenotypic.Image" title="phenotypic.Image"><em>Image</em></a><em> | </em><em>None</em>) – Optional image to visualize. If provided,
+visualization controls will be added to the widget.</p></li>
+<li><p><strong>show</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>) – Whether to display the widget immediately. Defaults to False.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The root widget.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>ipywidgets.Widget</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ImportError" title="(in Python v3.14)"><strong>ImportError</strong></a> – If ipywidgets or IPython are not installed.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="phenotypic.enhance.GaussianSubtract">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.enhance.</span></span><span class="sig-name descname"><span class="pre">GaussianSubtract</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sigma</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">50.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mode</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'reflect'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cval</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">truncate</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">4.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">preserve_range</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/enhance/_gaussian_subtract.html#GaussianSubtract"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.enhance.GaussianSubtract" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.ImageEnhancer" title="phenotypic.abc_._image_enhancer.ImageEnhancer"><code class="xref py py-class docutils literal notranslate"><span class="pre">ImageEnhancer</span></code></a></p>
+<p>Provides methods for image enhance on the enhanced grayscale gray
+using Gaussian background subtraction.</p>
+<p>The class implements an algorithm that estimates the background using a
+Gaussian blur and subtracts it from the original image. This technique is
+useful for removing slowly varying background illumination while preserving
+sharp features and edges in the foreground.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>sigma</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>)</p></li>
+<li><p><strong>mode</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>)</p></li>
+<li><p><strong>cval</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>)</p></li>
+<li><p><strong>truncate</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>)</p></li>
+<li><p><strong>preserve_range</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>)</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="phenotypic.enhance.GaussianSubtract.sigma">
+<span class="sig-name descname"><span class="pre">sigma</span></span><a class="headerlink" href="#phenotypic.enhance.GaussianSubtract.sigma" title="Link to this definition">#</a></dt>
+<dd><p>Standard deviation for Gaussian kernel. Larger values
+create a smoother background estimate.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="phenotypic.enhance.GaussianSubtract.mode">
+<span class="sig-name descname"><span class="pre">mode</span></span><a class="headerlink" href="#phenotypic.enhance.GaussianSubtract.mode" title="Link to this definition">#</a></dt>
+<dd><p>How to handle values outside the image borders. Options
+include ‘reflect’, ‘constant’, ‘nearest’, ‘mirror’, ‘wrap’.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="phenotypic.enhance.GaussianSubtract.cval">
+<span class="sig-name descname"><span class="pre">cval</span></span><a class="headerlink" href="#phenotypic.enhance.GaussianSubtract.cval" title="Link to this definition">#</a></dt>
+<dd><p>Value to fill past edges when mode is ‘constant’.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="phenotypic.enhance.GaussianSubtract.truncate">
+<span class="sig-name descname"><span class="pre">truncate</span></span><a class="headerlink" href="#phenotypic.enhance.GaussianSubtract.truncate" title="Link to this definition">#</a></dt>
+<dd><p>Truncate the filter at this many standard deviations.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="phenotypic.enhance.GaussianSubtract.preserve_range">
+<span class="sig-name descname"><span class="pre">preserve_range</span></span><a class="headerlink" href="#phenotypic.enhance.GaussianSubtract.preserve_range" title="Link to this definition">#</a></dt>
+<dd><p>Whether to keep the original range of values.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)">bool</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.enhance.GaussianSubtract.__del__">
+<span class="sig-name descname"><span class="pre">__del__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.enhance.GaussianSubtract.__del__" title="Link to this definition">#</a></dt>
+<dd><p>Automatically stop tracemalloc when the object is deleted.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.enhance.GaussianSubtract.__getstate__">
+<span class="sig-name descname"><span class="pre">__getstate__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.enhance.GaussianSubtract.__getstate__" title="Link to this definition">#</a></dt>
+<dd><p>Prepare the object for pickling by disposing of any widgets.</p>
+<p>This ensures that UI components (which may contain unpickleable objects like
+input functions or thread locks) are cleaned up before serialization.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>This method modifies the object state by calling dispose_widgets().
+Any active widgets will be detached from the object.</p>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.enhance.GaussianSubtract.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sigma</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">50.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mode</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'reflect'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cval</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">truncate</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">4.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">preserve_range</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/enhance/_gaussian_subtract.html#GaussianSubtract.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.enhance.GaussianSubtract.__init__" title="Link to this definition">#</a></dt>
+<dd><p>Initializes an instance of the class with parameters to configure Gaussian
+background subtraction behavior.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>sigma</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Standard deviation for Gaussian kernel. Larger values
+result in more aggressive background smoothing. Default is 50.0.</p></li>
+<li><p><strong>mode</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – The mode parameter determines how the array borders are
+handled. Default is ‘reflect’.</p></li>
+<li><p><strong>cval</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Value to fill past edges of the input if mode is ‘constant’.
+Default is 0.0.</p></li>
+<li><p><strong>truncate</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Truncate the filter at this many standard deviations.
+Default is 4.0.</p></li>
+<li><p><strong>preserve_range</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>) – Whether to keep the original range of values in
+the output. Default is True.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.enhance.GaussianSubtract.apply">
+<span class="sig-name descname"><span class="pre">apply</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">inplace</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.enhance.GaussianSubtract.apply" title="Link to this definition">#</a></dt>
+<dd><p>Applies the operation to an image, either in-place or on a copy.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>image</strong> (<a class="reference internal" href="phenotypic.html#phenotypic.Image" title="phenotypic.Image"><em>Image</em></a>) – The arr image to apply the operation on.</p></li>
+<li><p><strong>inplace</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>) – If True, modifies the image in place; otherwise,
+operates on a copy of the image.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The modified image after applying the operation.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="phenotypic.html#phenotypic.Image" title="phenotypic.Image">Image</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.enhance.GaussianSubtract.dispose_widgets">
+<span class="sig-name descname"><span class="pre">dispose_widgets</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#phenotypic.enhance.SobelFilter.None" title="phenotypic.enhance.SobelFilter.None"><span class="pre">None</span></a></span></span><a class="headerlink" href="#phenotypic.enhance.GaussianSubtract.dispose_widgets" title="Link to this definition">#</a></dt>
+<dd><p>Drop references to the UI widgets.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.enhance.GaussianSubtract.sync_widgets_from_state">
+<span class="sig-name descname"><span class="pre">sync_widgets_from_state</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#phenotypic.enhance.SobelFilter.None" title="phenotypic.enhance.SobelFilter.None"><span class="pre">None</span></a></span></span><a class="headerlink" href="#phenotypic.enhance.GaussianSubtract.sync_widgets_from_state" title="Link to this definition">#</a></dt>
+<dd><p>Push internal state into widgets.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.enhance.GaussianSubtract.widget">
+<span class="sig-name descname"><span class="pre">widget</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="phenotypic.html#phenotypic.Image" title="phenotypic.Image"><span class="pre">Image</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="#phenotypic.enhance.SobelFilter.None" title="phenotypic.enhance.SobelFilter.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Widget</span></span></span><a class="headerlink" href="#phenotypic.enhance.GaussianSubtract.widget" title="Link to this definition">#</a></dt>
+<dd><p>Return (and optionally display) the root widget.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>image</strong> (<a class="reference internal" href="phenotypic.html#phenotypic.Image" title="phenotypic.Image"><em>Image</em></a><em> | </em><em>None</em>) – Optional image to visualize. If provided,
+visualization controls will be added to the widget.</p></li>
+<li><p><strong>show</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>) – Whether to display the widget immediately. Defaults to False.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The root widget.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>ipywidgets.Widget</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ImportError" title="(in Python v3.14)"><strong>ImportError</strong></a> – If ipywidgets or IPython are not installed.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="phenotypic.enhance.LaplaceEnhancer">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.enhance.</span></span><span class="sig-name descname"><span class="pre">LaplaceEnhancer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">kernel_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="#phenotypic.enhance.SobelFilter.None" title="phenotypic.enhance.SobelFilter.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">3</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mask</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.3)"><span class="pre">ndarray</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="#phenotypic.enhance.SobelFilter.None" title="phenotypic.enhance.SobelFilter.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/enhance/_laplace_preprocessor.html#LaplaceEnhancer"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.enhance.LaplaceEnhancer" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.ImageEnhancer" title="phenotypic.abc_._image_enhancer.ImageEnhancer"><code class="xref py py-class docutils literal notranslate"><span class="pre">ImageEnhancer</span></code></a></p>
+<p>The LaplaceEnhancer class applies a Laplacian filter to an image’s enhanced gray.</p>
+<p>This class is designed to preprocess images by enhancing their features using
+a Laplacian operation. The filter applies edge detection, which emphasizes
+areas of rapid intensity change. Users can specify the kernel size and an
+optional mask for the operation.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>kernel_size</strong> (<em>Optional</em><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>]</em>) – The size of the kernel used for the Laplacian filter.</p></li>
+<li><p><strong>mask</strong> (<em>Optional</em><em>[</em><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.3)"><em>numpy.ndarray</em></a><em>]</em>) – An optional mask to limit the operation to
+specified regions of the image.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.enhance.LaplaceEnhancer.__del__">
+<span class="sig-name descname"><span class="pre">__del__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.enhance.LaplaceEnhancer.__del__" title="Link to this definition">#</a></dt>
+<dd><p>Automatically stop tracemalloc when the object is deleted.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.enhance.LaplaceEnhancer.__getstate__">
+<span class="sig-name descname"><span class="pre">__getstate__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.enhance.LaplaceEnhancer.__getstate__" title="Link to this definition">#</a></dt>
+<dd><p>Prepare the object for pickling by disposing of any widgets.</p>
+<p>This ensures that UI components (which may contain unpickleable objects like
+input functions or thread locks) are cleaned up before serialization.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>This method modifies the object state by calling dispose_widgets().
+Any active widgets will be detached from the object.</p>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.enhance.LaplaceEnhancer.apply">
+<span class="sig-name descname"><span class="pre">apply</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">inplace</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.enhance.LaplaceEnhancer.apply" title="Link to this definition">#</a></dt>
+<dd><p>Applies the operation to an image, either in-place or on a copy.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>image</strong> (<a class="reference internal" href="phenotypic.html#phenotypic.Image" title="phenotypic.Image"><em>Image</em></a>) – The arr image to apply the operation on.</p></li>
+<li><p><strong>inplace</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>) – If True, modifies the image in place; otherwise,
+operates on a copy of the image.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The modified image after applying the operation.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="phenotypic.html#phenotypic.Image" title="phenotypic.Image">Image</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.enhance.LaplaceEnhancer.dispose_widgets">
+<span class="sig-name descname"><span class="pre">dispose_widgets</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#phenotypic.enhance.SobelFilter.None" title="phenotypic.enhance.SobelFilter.None"><span class="pre">None</span></a></span></span><a class="headerlink" href="#phenotypic.enhance.LaplaceEnhancer.dispose_widgets" title="Link to this definition">#</a></dt>
+<dd><p>Drop references to the UI widgets.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.enhance.LaplaceEnhancer.sync_widgets_from_state">
+<span class="sig-name descname"><span class="pre">sync_widgets_from_state</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#phenotypic.enhance.SobelFilter.None" title="phenotypic.enhance.SobelFilter.None"><span class="pre">None</span></a></span></span><a class="headerlink" href="#phenotypic.enhance.LaplaceEnhancer.sync_widgets_from_state" title="Link to this definition">#</a></dt>
+<dd><p>Push internal state into widgets.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.enhance.LaplaceEnhancer.widget">
+<span class="sig-name descname"><span class="pre">widget</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="phenotypic.html#phenotypic.Image" title="phenotypic.Image"><span class="pre">Image</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="#phenotypic.enhance.SobelFilter.None" title="phenotypic.enhance.SobelFilter.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Widget</span></span></span><a class="headerlink" href="#phenotypic.enhance.LaplaceEnhancer.widget" title="Link to this definition">#</a></dt>
+<dd><p>Return (and optionally display) the root widget.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>image</strong> (<a class="reference internal" href="phenotypic.html#phenotypic.Image" title="phenotypic.Image"><em>Image</em></a><em> | </em><em>None</em>) – Optional image to visualize. If provided,
+visualization controls will be added to the widget.</p></li>
+<li><p><strong>show</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>) – Whether to display the widget immediately. Defaults to False.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The root widget.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>ipywidgets.Widget</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ImportError" title="(in Python v3.14)"><strong>ImportError</strong></a> – If ipywidgets or IPython are not installed.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="phenotypic.enhance.MedianEnhancer">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.enhance.</span></span><span class="sig-name descname"><span class="pre">MedianEnhancer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mode</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'nearest'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cval</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/enhance/_median_enhancer.html#MedianEnhancer"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.enhance.MedianEnhancer" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.ImageEnhancer" title="phenotypic.abc_._image_enhancer.ImageEnhancer"><code class="xref py py-class docutils literal notranslate"><span class="pre">ImageEnhancer</span></code></a></p>
+<p>The MedianEnhancer class applies a median filter operation to an image’s enhanced gray using
+specified boundary conditions and a constant fill other_image if required.</p>
+<p>This preprocessor enhances image data by replacing each pixel other_image with the median of
+the neighboring pixels, where boundary behavior is determined by the <cite>mode</cite> parameter and
+<cite>cval</cite> as a constant fill other_image when applicable.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>cval</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>)</p>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="phenotypic.enhance.MedianEnhancer.mode">
+<span class="sig-name descname"><span class="pre">mode</span></span><a class="headerlink" href="#phenotypic.enhance.MedianEnhancer.mode" title="Link to this definition">#</a></dt>
+<dd><p>Defines the behavior at image boundaries, where valid options are
+‘nearest’, ‘reflect’, ‘constant’, ‘mirror’, and ‘wrap’.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="phenotypic.enhance.MedianEnhancer.cval">
+<span class="sig-name descname"><span class="pre">cval</span></span><a class="headerlink" href="#phenotypic.enhance.MedianEnhancer.cval" title="Link to this definition">#</a></dt>
+<dd><p>The constant other_image filled in cells beyond the image boundary when
+‘constant’ mode is set.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.enhance.MedianEnhancer.__del__">
+<span class="sig-name descname"><span class="pre">__del__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.enhance.MedianEnhancer.__del__" title="Link to this definition">#</a></dt>
+<dd><p>Automatically stop tracemalloc when the object is deleted.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.enhance.MedianEnhancer.__getstate__">
+<span class="sig-name descname"><span class="pre">__getstate__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.enhance.MedianEnhancer.__getstate__" title="Link to this definition">#</a></dt>
+<dd><p>Prepare the object for pickling by disposing of any widgets.</p>
+<p>This ensures that UI components (which may contain unpickleable objects like
+input functions or thread locks) are cleaned up before serialization.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>This method modifies the object state by calling dispose_widgets().
+Any active widgets will be detached from the object.</p>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.enhance.MedianEnhancer.apply">
+<span class="sig-name descname"><span class="pre">apply</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">inplace</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.enhance.MedianEnhancer.apply" title="Link to this definition">#</a></dt>
+<dd><p>Applies the operation to an image, either in-place or on a copy.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>image</strong> (<a class="reference internal" href="phenotypic.html#phenotypic.Image" title="phenotypic.Image"><em>Image</em></a>) – The arr image to apply the operation on.</p></li>
+<li><p><strong>inplace</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>) – If True, modifies the image in place; otherwise,
+operates on a copy of the image.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The modified image after applying the operation.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="phenotypic.html#phenotypic.Image" title="phenotypic.Image">Image</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.enhance.MedianEnhancer.dispose_widgets">
+<span class="sig-name descname"><span class="pre">dispose_widgets</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#phenotypic.enhance.SobelFilter.None" title="phenotypic.enhance.SobelFilter.None"><span class="pre">None</span></a></span></span><a class="headerlink" href="#phenotypic.enhance.MedianEnhancer.dispose_widgets" title="Link to this definition">#</a></dt>
+<dd><p>Drop references to the UI widgets.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.enhance.MedianEnhancer.sync_widgets_from_state">
+<span class="sig-name descname"><span class="pre">sync_widgets_from_state</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#phenotypic.enhance.SobelFilter.None" title="phenotypic.enhance.SobelFilter.None"><span class="pre">None</span></a></span></span><a class="headerlink" href="#phenotypic.enhance.MedianEnhancer.sync_widgets_from_state" title="Link to this definition">#</a></dt>
+<dd><p>Push internal state into widgets.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.enhance.MedianEnhancer.widget">
+<span class="sig-name descname"><span class="pre">widget</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="phenotypic.html#phenotypic.Image" title="phenotypic.Image"><span class="pre">Image</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="#phenotypic.enhance.SobelFilter.None" title="phenotypic.enhance.SobelFilter.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Widget</span></span></span><a class="headerlink" href="#phenotypic.enhance.MedianEnhancer.widget" title="Link to this definition">#</a></dt>
+<dd><p>Return (and optionally display) the root widget.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>image</strong> (<a class="reference internal" href="phenotypic.html#phenotypic.Image" title="phenotypic.Image"><em>Image</em></a><em> | </em><em>None</em>) – Optional image to visualize. If provided,
+visualization controls will be added to the widget.</p></li>
+<li><p><strong>show</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>) – Whether to display the widget immediately. Defaults to False.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The root widget.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>ipywidgets.Widget</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ImportError" title="(in Python v3.14)"><strong>ImportError</strong></a> – If ipywidgets or IPython are not installed.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="phenotypic.enhance.RankMedianEnhancer">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.enhance.</span></span><span class="sig-name descname"><span class="pre">RankMedianEnhancer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">footprint_shape</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'square'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">footprint_radius</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="#phenotypic.enhance.SobelFilter.None" title="phenotypic.enhance.SobelFilter.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">shift_x</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">shift_y</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/enhance/_rank_median_preprocessor.html#RankMedianEnhancer"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.enhance.RankMedianEnhancer" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.ImageEnhancer" title="phenotypic.abc_._image_enhancer.ImageEnhancer"><code class="xref py py-class docutils literal notranslate"><span class="pre">ImageEnhancer</span></code></a></p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>footprint_shape</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>)</p></li>
+<li><p><strong>footprint_radius</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.enhance.RankMedianEnhancer.__del__">
+<span class="sig-name descname"><span class="pre">__del__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.enhance.RankMedianEnhancer.__del__" title="Link to this definition">#</a></dt>
+<dd><p>Automatically stop tracemalloc when the object is deleted.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.enhance.RankMedianEnhancer.__getstate__">
+<span class="sig-name descname"><span class="pre">__getstate__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.enhance.RankMedianEnhancer.__getstate__" title="Link to this definition">#</a></dt>
+<dd><p>Prepare the object for pickling by disposing of any widgets.</p>
+<p>This ensures that UI components (which may contain unpickleable objects like
+input functions or thread locks) are cleaned up before serialization.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>This method modifies the object state by calling dispose_widgets().
+Any active widgets will be detached from the object.</p>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.enhance.RankMedianEnhancer.apply">
+<span class="sig-name descname"><span class="pre">apply</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">inplace</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.enhance.RankMedianEnhancer.apply" title="Link to this definition">#</a></dt>
+<dd><p>Applies the operation to an image, either in-place or on a copy.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>image</strong> (<a class="reference internal" href="phenotypic.html#phenotypic.Image" title="phenotypic.Image"><em>Image</em></a>) – The arr image to apply the operation on.</p></li>
+<li><p><strong>inplace</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>) – If True, modifies the image in place; otherwise,
+operates on a copy of the image.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The modified image after applying the operation.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="phenotypic.html#phenotypic.Image" title="phenotypic.Image">Image</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.enhance.RankMedianEnhancer.dispose_widgets">
+<span class="sig-name descname"><span class="pre">dispose_widgets</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#phenotypic.enhance.SobelFilter.None" title="phenotypic.enhance.SobelFilter.None"><span class="pre">None</span></a></span></span><a class="headerlink" href="#phenotypic.enhance.RankMedianEnhancer.dispose_widgets" title="Link to this definition">#</a></dt>
+<dd><p>Drop references to the UI widgets.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.enhance.RankMedianEnhancer.sync_widgets_from_state">
+<span class="sig-name descname"><span class="pre">sync_widgets_from_state</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#phenotypic.enhance.SobelFilter.None" title="phenotypic.enhance.SobelFilter.None"><span class="pre">None</span></a></span></span><a class="headerlink" href="#phenotypic.enhance.RankMedianEnhancer.sync_widgets_from_state" title="Link to this definition">#</a></dt>
+<dd><p>Push internal state into widgets.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.enhance.RankMedianEnhancer.widget">
+<span class="sig-name descname"><span class="pre">widget</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="phenotypic.html#phenotypic.Image" title="phenotypic.Image"><span class="pre">Image</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="#phenotypic.enhance.SobelFilter.None" title="phenotypic.enhance.SobelFilter.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Widget</span></span></span><a class="headerlink" href="#phenotypic.enhance.RankMedianEnhancer.widget" title="Link to this definition">#</a></dt>
+<dd><p>Return (and optionally display) the root widget.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>image</strong> (<a class="reference internal" href="phenotypic.html#phenotypic.Image" title="phenotypic.Image"><em>Image</em></a><em> | </em><em>None</em>) – Optional image to visualize. If provided,
+visualization controls will be added to the widget.</p></li>
+<li><p><strong>show</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>) – Whether to display the widget immediately. Defaults to False.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The root widget.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>ipywidgets.Widget</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ImportError" title="(in Python v3.14)"><strong>ImportError</strong></a> – If ipywidgets or IPython are not installed.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="phenotypic.enhance.RollingBallRemoveBG">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.enhance.</span></span><span class="sig-name descname"><span class="pre">RollingBallRemoveBG</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">radius</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">100</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kernel</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.3)"><span class="pre">ndarray</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="#phenotypic.enhance.SobelFilter.None" title="phenotypic.enhance.SobelFilter.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nansafe</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/enhance/_rolling_ball_remove_bg.html#RollingBallRemoveBG"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.enhance.RollingBallRemoveBG" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.ImageEnhancer" title="phenotypic.abc_._image_enhancer.ImageEnhancer"><code class="xref py py-class docutils literal notranslate"><span class="pre">ImageEnhancer</span></code></a></p>
+<p>Provides methods for image enhance on the enhanced grayscale gray
+using a rolling ball subtraction technique.</p>
+<p>The class implements an algorithm that uses a rolling ball approach to subtract
+background or smooth out variations in image brightness. It is configurable with
+parameters such as kernel size, radius for operations, and threading options.
+This is particularly used in preprocessing steps for image analysis where uniform
+lighting is desired.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>radius</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p></li>
+<li><p><strong>kernel</strong> (<em>np.ndarray</em>)</p></li>
+<li><p><strong>nansafe</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>)</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="phenotypic.enhance.RollingBallRemoveBG.radius">
+<span class="sig-name descname"><span class="pre">radius</span></span><a class="headerlink" href="#phenotypic.enhance.RollingBallRemoveBG.radius" title="Link to this definition">#</a></dt>
+<dd><p>The radius for the rolling ball operation defining the extent of
+influence or smoothing.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)">int</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="phenotypic.enhance.RollingBallRemoveBG.kernel">
+<span class="sig-name descname"><span class="pre">kernel</span></span><a class="headerlink" href="#phenotypic.enhance.RollingBallRemoveBG.kernel" title="Link to this definition">#</a></dt>
+<dd><p>An optional kernel gray used for computational purposes
+during the enhance operation.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>np.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="phenotypic.enhance.RollingBallRemoveBG.nansafe">
+<span class="sig-name descname"><span class="pre">nansafe</span></span><a class="headerlink" href="#phenotypic.enhance.RollingBallRemoveBG.nansafe" title="Link to this definition">#</a></dt>
+<dd><p>A boolean flag indicating whether computations should handle
+NaN (Not a Number) values safely.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)">bool</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="phenotypic.enhance.RollingBallRemoveBG.num_threads">
+<span class="sig-name descname"><span class="pre">num_threads</span></span><a class="headerlink" href="#phenotypic.enhance.RollingBallRemoveBG.num_threads" title="Link to this definition">#</a></dt>
+<dd><p>The number of threads allocated for computations to enable
+parallel processing, if supported.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)">int</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.enhance.RollingBallRemoveBG.__del__">
+<span class="sig-name descname"><span class="pre">__del__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.enhance.RollingBallRemoveBG.__del__" title="Link to this definition">#</a></dt>
+<dd><p>Automatically stop tracemalloc when the object is deleted.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.enhance.RollingBallRemoveBG.__getstate__">
+<span class="sig-name descname"><span class="pre">__getstate__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.enhance.RollingBallRemoveBG.__getstate__" title="Link to this definition">#</a></dt>
+<dd><p>Prepare the object for pickling by disposing of any widgets.</p>
+<p>This ensures that UI components (which may contain unpickleable objects like
+input functions or thread locks) are cleaned up before serialization.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>This method modifies the object state by calling dispose_widgets().
+Any active widgets will be detached from the object.</p>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.enhance.RollingBallRemoveBG.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">radius</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">100</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kernel</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.3)"><span class="pre">ndarray</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="#phenotypic.enhance.SobelFilter.None" title="phenotypic.enhance.SobelFilter.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nansafe</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/enhance/_rolling_ball_remove_bg.html#RollingBallRemoveBG.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.enhance.RollingBallRemoveBG.__init__" title="Link to this definition">#</a></dt>
+<dd><p>Initializes an instance of the class with parameters to configure its behavior.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>radius</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – The radius defining the extent of an operation or calculation. Default
+is 100.</p></li>
+<li><p><strong>kernel</strong> (<em>np.ndarray</em>) – an alternative way to express the rolling ball operation</p></li>
+<li><p><strong>nansafe</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>) – A flag to enable or disable operations that handle NaN (Not a Number)
+values gracefully. Default is False.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.enhance.RollingBallRemoveBG.apply">
+<span class="sig-name descname"><span class="pre">apply</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">inplace</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.enhance.RollingBallRemoveBG.apply" title="Link to this definition">#</a></dt>
+<dd><p>Applies the operation to an image, either in-place or on a copy.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>image</strong> (<a class="reference internal" href="phenotypic.html#phenotypic.Image" title="phenotypic.Image"><em>Image</em></a>) – The arr image to apply the operation on.</p></li>
+<li><p><strong>inplace</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>) – If True, modifies the image in place; otherwise,
+operates on a copy of the image.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The modified image after applying the operation.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="phenotypic.html#phenotypic.Image" title="phenotypic.Image">Image</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.enhance.RollingBallRemoveBG.dispose_widgets">
+<span class="sig-name descname"><span class="pre">dispose_widgets</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#phenotypic.enhance.SobelFilter.None" title="phenotypic.enhance.SobelFilter.None"><span class="pre">None</span></a></span></span><a class="headerlink" href="#phenotypic.enhance.RollingBallRemoveBG.dispose_widgets" title="Link to this definition">#</a></dt>
+<dd><p>Drop references to the UI widgets.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.enhance.RollingBallRemoveBG.sync_widgets_from_state">
+<span class="sig-name descname"><span class="pre">sync_widgets_from_state</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#phenotypic.enhance.SobelFilter.None" title="phenotypic.enhance.SobelFilter.None"><span class="pre">None</span></a></span></span><a class="headerlink" href="#phenotypic.enhance.RollingBallRemoveBG.sync_widgets_from_state" title="Link to this definition">#</a></dt>
+<dd><p>Push internal state into widgets.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.enhance.RollingBallRemoveBG.widget">
+<span class="sig-name descname"><span class="pre">widget</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="phenotypic.html#phenotypic.Image" title="phenotypic.Image"><span class="pre">Image</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="#phenotypic.enhance.SobelFilter.None" title="phenotypic.enhance.SobelFilter.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Widget</span></span></span><a class="headerlink" href="#phenotypic.enhance.RollingBallRemoveBG.widget" title="Link to this definition">#</a></dt>
+<dd><p>Return (and optionally display) the root widget.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>image</strong> (<a class="reference internal" href="phenotypic.html#phenotypic.Image" title="phenotypic.Image"><em>Image</em></a><em> | </em><em>None</em>) – Optional image to visualize. If provided,
+visualization controls will be added to the widget.</p></li>
+<li><p><strong>show</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>) – Whether to display the widget immediately. Defaults to False.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The root widget.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>ipywidgets.Widget</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ImportError" title="(in Python v3.14)"><strong>ImportError</strong></a> – If ipywidgets or IPython are not installed.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="phenotypic.enhance.SobelFilter">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.enhance.</span></span><span class="sig-name descname"><span class="pre">SobelFilter</span></span><a class="reference internal" href="../_modules/phenotypic/enhance/_sobel_filter.html#SobelFilter"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.enhance.SobelFilter" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.ImageEnhancer" title="phenotypic.abc_._image_enhancer.ImageEnhancer"><code class="xref py py-class docutils literal notranslate"><span class="pre">ImageEnhancer</span></code></a></p>
+<p>Applies the Sobel filter to enhance images.</p>
+<p>This class provides functionality for applying the Sobel filter to
+images. This class highlights edges within the image. Consider combining with <cite>GaussianBlur</cite>.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="phenotypic.enhance.SobelFilter.None">
+<span class="sig-name descname"><span class="pre">None</span></span><a class="headerlink" href="#phenotypic.enhance.SobelFilter.None" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.enhance.SobelFilter.__del__">
+<span class="sig-name descname"><span class="pre">__del__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.enhance.SobelFilter.__del__" title="Link to this definition">#</a></dt>
+<dd><p>Automatically stop tracemalloc when the object is deleted.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.enhance.SobelFilter.__getstate__">
+<span class="sig-name descname"><span class="pre">__getstate__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.enhance.SobelFilter.__getstate__" title="Link to this definition">#</a></dt>
+<dd><p>Prepare the object for pickling by disposing of any widgets.</p>
+<p>This ensures that UI components (which may contain unpickleable objects like
+input functions or thread locks) are cleaned up before serialization.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>This method modifies the object state by calling dispose_widgets().
+Any active widgets will be detached from the object.</p>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.enhance.SobelFilter.apply">
+<span class="sig-name descname"><span class="pre">apply</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">inplace</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.enhance.SobelFilter.apply" title="Link to this definition">#</a></dt>
+<dd><p>Applies the operation to an image, either in-place or on a copy.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>image</strong> (<a class="reference internal" href="phenotypic.html#phenotypic.Image" title="phenotypic.Image"><em>Image</em></a>) – The arr image to apply the operation on.</p></li>
+<li><p><strong>inplace</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>) – If True, modifies the image in place; otherwise,
+operates on a copy of the image.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The modified image after applying the operation.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="phenotypic.html#phenotypic.Image" title="phenotypic.Image">Image</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.enhance.SobelFilter.dispose_widgets">
+<span class="sig-name descname"><span class="pre">dispose_widgets</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#phenotypic.enhance.SobelFilter.None" title="phenotypic.enhance.SobelFilter.None"><span class="pre">None</span></a></span></span><a class="headerlink" href="#phenotypic.enhance.SobelFilter.dispose_widgets" title="Link to this definition">#</a></dt>
+<dd><p>Drop references to the UI widgets.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.enhance.SobelFilter.sync_widgets_from_state">
+<span class="sig-name descname"><span class="pre">sync_widgets_from_state</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#phenotypic.enhance.SobelFilter.None" title="phenotypic.enhance.SobelFilter.None"><span class="pre">None</span></a></span></span><a class="headerlink" href="#phenotypic.enhance.SobelFilter.sync_widgets_from_state" title="Link to this definition">#</a></dt>
+<dd><p>Push internal state into widgets.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.enhance.SobelFilter.widget">
+<span class="sig-name descname"><span class="pre">widget</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="phenotypic.html#phenotypic.Image" title="phenotypic.Image"><span class="pre">Image</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="#phenotypic.enhance.SobelFilter.None" title="phenotypic.enhance.SobelFilter.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Widget</span></span></span><a class="headerlink" href="#phenotypic.enhance.SobelFilter.widget" title="Link to this definition">#</a></dt>
+<dd><p>Return (and optionally display) the root widget.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>image</strong> (<a class="reference internal" href="phenotypic.html#phenotypic.Image" title="phenotypic.Image"><em>Image</em></a><em> | </em><em>None</em>) – Optional image to visualize. If provided,
+visualization controls will be added to the widget.</p></li>
+<li><p><strong>show</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>) – Whether to display the widget immediately. Defaults to False.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The root widget.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>ipywidgets.Widget</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ImportError" title="(in Python v3.14)"><strong>ImportError</strong></a> – If ipywidgets or IPython are not installed.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="phenotypic.enhance.WhiteTophatEnhancer">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.enhance.</span></span><span class="sig-name descname"><span class="pre">WhiteTophatEnhancer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">shape</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'diamond'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">radius</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="#phenotypic.enhance.SobelFilter.None" title="phenotypic.enhance.SobelFilter.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/enhance/_white_tophat_preprocessor.html#WhiteTophatEnhancer"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.enhance.WhiteTophatEnhancer" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.ImageEnhancer" title="phenotypic.abc_._image_enhancer.ImageEnhancer"><code class="xref py py-class docutils literal notranslate"><span class="pre">ImageEnhancer</span></code></a></p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>shape</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>)</p></li>
+<li><p><strong>radius</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.enhance.WhiteTophatEnhancer.__del__">
+<span class="sig-name descname"><span class="pre">__del__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.enhance.WhiteTophatEnhancer.__del__" title="Link to this definition">#</a></dt>
+<dd><p>Automatically stop tracemalloc when the object is deleted.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.enhance.WhiteTophatEnhancer.__getstate__">
+<span class="sig-name descname"><span class="pre">__getstate__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.enhance.WhiteTophatEnhancer.__getstate__" title="Link to this definition">#</a></dt>
+<dd><p>Prepare the object for pickling by disposing of any widgets.</p>
+<p>This ensures that UI components (which may contain unpickleable objects like
+input functions or thread locks) are cleaned up before serialization.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>This method modifies the object state by calling dispose_widgets().
+Any active widgets will be detached from the object.</p>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.enhance.WhiteTophatEnhancer.apply">
+<span class="sig-name descname"><span class="pre">apply</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">inplace</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.enhance.WhiteTophatEnhancer.apply" title="Link to this definition">#</a></dt>
+<dd><p>Applies the operation to an image, either in-place or on a copy.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>image</strong> (<a class="reference internal" href="phenotypic.html#phenotypic.Image" title="phenotypic.Image"><em>Image</em></a>) – The arr image to apply the operation on.</p></li>
+<li><p><strong>inplace</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>) – If True, modifies the image in place; otherwise,
+operates on a copy of the image.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The modified image after applying the operation.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="phenotypic.html#phenotypic.Image" title="phenotypic.Image">Image</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.enhance.WhiteTophatEnhancer.dispose_widgets">
+<span class="sig-name descname"><span class="pre">dispose_widgets</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#phenotypic.enhance.SobelFilter.None" title="phenotypic.enhance.SobelFilter.None"><span class="pre">None</span></a></span></span><a class="headerlink" href="#phenotypic.enhance.WhiteTophatEnhancer.dispose_widgets" title="Link to this definition">#</a></dt>
+<dd><p>Drop references to the UI widgets.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.enhance.WhiteTophatEnhancer.sync_widgets_from_state">
+<span class="sig-name descname"><span class="pre">sync_widgets_from_state</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#phenotypic.enhance.SobelFilter.None" title="phenotypic.enhance.SobelFilter.None"><span class="pre">None</span></a></span></span><a class="headerlink" href="#phenotypic.enhance.WhiteTophatEnhancer.sync_widgets_from_state" title="Link to this definition">#</a></dt>
+<dd><p>Push internal state into widgets.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.enhance.WhiteTophatEnhancer.widget">
+<span class="sig-name descname"><span class="pre">widget</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="phenotypic.html#phenotypic.Image" title="phenotypic.Image"><span class="pre">Image</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="#phenotypic.enhance.SobelFilter.None" title="phenotypic.enhance.SobelFilter.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Widget</span></span></span><a class="headerlink" href="#phenotypic.enhance.WhiteTophatEnhancer.widget" title="Link to this definition">#</a></dt>
+<dd><p>Return (and optionally display) the root widget.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>image</strong> (<a class="reference internal" href="phenotypic.html#phenotypic.Image" title="phenotypic.Image"><em>Image</em></a><em> | </em><em>None</em>) – Optional image to visualize. If provided,
+visualization controls will be added to the widget.</p></li>
+<li><p><strong>show</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>) – Whether to display the widget immediately. Defaults to False.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The root widget.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>ipywidgets.Widget</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ImportError" title="(in Python v3.14)"><strong>ImportError</strong></a> – If ipywidgets or IPython are not installed.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.enhance.CLAHE"><code class="docutils literal notranslate"><span class="pre">CLAHE</span></code></a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.enhance.CLAHE.kernel_size"><code class="docutils literal notranslate"><span class="pre">CLAHE.kernel_size</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.enhance.CLAHE.clip_limit"><code class="docutils literal notranslate"><span class="pre">CLAHE.clip_limit</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.enhance.CLAHE.__del__"><code class="docutils literal notranslate"><span class="pre">CLAHE.__del__()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.enhance.CLAHE.__getstate__"><code class="docutils literal notranslate"><span class="pre">CLAHE.__getstate__()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.enhance.CLAHE.apply"><code class="docutils literal notranslate"><span class="pre">CLAHE.apply()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.enhance.CLAHE.dispose_widgets"><code class="docutils literal notranslate"><span class="pre">CLAHE.dispose_widgets()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.enhance.CLAHE.sync_widgets_from_state"><code class="docutils literal notranslate"><span class="pre">CLAHE.sync_widgets_from_state()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.enhance.CLAHE.widget"><code class="docutils literal notranslate"><span class="pre">CLAHE.widget()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.enhance.ContrastStretching"><code class="docutils literal notranslate"><span class="pre">ContrastStretching</span></code></a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.enhance.ContrastStretching.__del__"><code class="docutils literal notranslate"><span class="pre">ContrastStretching.__del__()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.enhance.ContrastStretching.__getstate__"><code class="docutils literal notranslate"><span class="pre">ContrastStretching.__getstate__()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.enhance.ContrastStretching.apply"><code class="docutils literal notranslate"><span class="pre">ContrastStretching.apply()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.enhance.ContrastStretching.dispose_widgets"><code class="docutils literal notranslate"><span class="pre">ContrastStretching.dispose_widgets()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.enhance.ContrastStretching.sync_widgets_from_state"><code class="docutils literal notranslate"><span class="pre">ContrastStretching.sync_widgets_from_state()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.enhance.ContrastStretching.widget"><code class="docutils literal notranslate"><span class="pre">ContrastStretching.widget()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.enhance.GaussianBlur"><code class="docutils literal notranslate"><span class="pre">GaussianBlur</span></code></a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.enhance.GaussianBlur.sigma"><code class="docutils literal notranslate"><span class="pre">GaussianBlur.sigma</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.enhance.GaussianBlur.mode"><code class="docutils literal notranslate"><span class="pre">GaussianBlur.mode</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.enhance.GaussianBlur.cval"><code class="docutils literal notranslate"><span class="pre">GaussianBlur.cval</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.enhance.GaussianBlur.truncate"><code class="docutils literal notranslate"><span class="pre">GaussianBlur.truncate</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.enhance.GaussianBlur.__del__"><code class="docutils literal notranslate"><span class="pre">GaussianBlur.__del__()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.enhance.GaussianBlur.__getstate__"><code class="docutils literal notranslate"><span class="pre">GaussianBlur.__getstate__()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.enhance.GaussianBlur.apply"><code class="docutils literal notranslate"><span class="pre">GaussianBlur.apply()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.enhance.GaussianBlur.dispose_widgets"><code class="docutils literal notranslate"><span class="pre">GaussianBlur.dispose_widgets()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.enhance.GaussianBlur.sync_widgets_from_state"><code class="docutils literal notranslate"><span class="pre">GaussianBlur.sync_widgets_from_state()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.enhance.GaussianBlur.widget"><code class="docutils literal notranslate"><span class="pre">GaussianBlur.widget()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.enhance.GaussianSubtract"><code class="docutils literal notranslate"><span class="pre">GaussianSubtract</span></code></a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.enhance.GaussianSubtract.sigma"><code class="docutils literal notranslate"><span class="pre">GaussianSubtract.sigma</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.enhance.GaussianSubtract.mode"><code class="docutils literal notranslate"><span class="pre">GaussianSubtract.mode</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.enhance.GaussianSubtract.cval"><code class="docutils literal notranslate"><span class="pre">GaussianSubtract.cval</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.enhance.GaussianSubtract.truncate"><code class="docutils literal notranslate"><span class="pre">GaussianSubtract.truncate</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.enhance.GaussianSubtract.preserve_range"><code class="docutils literal notranslate"><span class="pre">GaussianSubtract.preserve_range</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.enhance.GaussianSubtract.__del__"><code class="docutils literal notranslate"><span class="pre">GaussianSubtract.__del__()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.enhance.GaussianSubtract.__getstate__"><code class="docutils literal notranslate"><span class="pre">GaussianSubtract.__getstate__()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.enhance.GaussianSubtract.__init__"><code class="docutils literal notranslate"><span class="pre">GaussianSubtract.__init__()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.enhance.GaussianSubtract.apply"><code class="docutils literal notranslate"><span class="pre">GaussianSubtract.apply()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.enhance.GaussianSubtract.dispose_widgets"><code class="docutils literal notranslate"><span class="pre">GaussianSubtract.dispose_widgets()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.enhance.GaussianSubtract.sync_widgets_from_state"><code class="docutils literal notranslate"><span class="pre">GaussianSubtract.sync_widgets_from_state()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.enhance.GaussianSubtract.widget"><code class="docutils literal notranslate"><span class="pre">GaussianSubtract.widget()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.enhance.LaplaceEnhancer"><code class="docutils literal notranslate"><span class="pre">LaplaceEnhancer</span></code></a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.enhance.LaplaceEnhancer.__del__"><code class="docutils literal notranslate"><span class="pre">LaplaceEnhancer.__del__()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.enhance.LaplaceEnhancer.__getstate__"><code class="docutils literal notranslate"><span class="pre">LaplaceEnhancer.__getstate__()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.enhance.LaplaceEnhancer.apply"><code class="docutils literal notranslate"><span class="pre">LaplaceEnhancer.apply()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.enhance.LaplaceEnhancer.dispose_widgets"><code class="docutils literal notranslate"><span class="pre">LaplaceEnhancer.dispose_widgets()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.enhance.LaplaceEnhancer.sync_widgets_from_state"><code class="docutils literal notranslate"><span class="pre">LaplaceEnhancer.sync_widgets_from_state()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.enhance.LaplaceEnhancer.widget"><code class="docutils literal notranslate"><span class="pre">LaplaceEnhancer.widget()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.enhance.MedianEnhancer"><code class="docutils literal notranslate"><span class="pre">MedianEnhancer</span></code></a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.enhance.MedianEnhancer.mode"><code class="docutils literal notranslate"><span class="pre">MedianEnhancer.mode</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.enhance.MedianEnhancer.cval"><code class="docutils literal notranslate"><span class="pre">MedianEnhancer.cval</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.enhance.MedianEnhancer.__del__"><code class="docutils literal notranslate"><span class="pre">MedianEnhancer.__del__()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.enhance.MedianEnhancer.__getstate__"><code class="docutils literal notranslate"><span class="pre">MedianEnhancer.__getstate__()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.enhance.MedianEnhancer.apply"><code class="docutils literal notranslate"><span class="pre">MedianEnhancer.apply()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.enhance.MedianEnhancer.dispose_widgets"><code class="docutils literal notranslate"><span class="pre">MedianEnhancer.dispose_widgets()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.enhance.MedianEnhancer.sync_widgets_from_state"><code class="docutils literal notranslate"><span class="pre">MedianEnhancer.sync_widgets_from_state()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.enhance.MedianEnhancer.widget"><code class="docutils literal notranslate"><span class="pre">MedianEnhancer.widget()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.enhance.RankMedianEnhancer"><code class="docutils literal notranslate"><span class="pre">RankMedianEnhancer</span></code></a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.enhance.RankMedianEnhancer.__del__"><code class="docutils literal notranslate"><span class="pre">RankMedianEnhancer.__del__()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.enhance.RankMedianEnhancer.__getstate__"><code class="docutils literal notranslate"><span class="pre">RankMedianEnhancer.__getstate__()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.enhance.RankMedianEnhancer.apply"><code class="docutils literal notranslate"><span class="pre">RankMedianEnhancer.apply()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.enhance.RankMedianEnhancer.dispose_widgets"><code class="docutils literal notranslate"><span class="pre">RankMedianEnhancer.dispose_widgets()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.enhance.RankMedianEnhancer.sync_widgets_from_state"><code class="docutils literal notranslate"><span class="pre">RankMedianEnhancer.sync_widgets_from_state()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.enhance.RankMedianEnhancer.widget"><code class="docutils literal notranslate"><span class="pre">RankMedianEnhancer.widget()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.enhance.RollingBallRemoveBG"><code class="docutils literal notranslate"><span class="pre">RollingBallRemoveBG</span></code></a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.enhance.RollingBallRemoveBG.radius"><code class="docutils literal notranslate"><span class="pre">RollingBallRemoveBG.radius</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.enhance.RollingBallRemoveBG.kernel"><code class="docutils literal notranslate"><span class="pre">RollingBallRemoveBG.kernel</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.enhance.RollingBallRemoveBG.nansafe"><code class="docutils literal notranslate"><span class="pre">RollingBallRemoveBG.nansafe</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.enhance.RollingBallRemoveBG.num_threads"><code class="docutils literal notranslate"><span class="pre">RollingBallRemoveBG.num_threads</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.enhance.RollingBallRemoveBG.__del__"><code class="docutils literal notranslate"><span class="pre">RollingBallRemoveBG.__del__()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.enhance.RollingBallRemoveBG.__getstate__"><code class="docutils literal notranslate"><span class="pre">RollingBallRemoveBG.__getstate__()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.enhance.RollingBallRemoveBG.__init__"><code class="docutils literal notranslate"><span class="pre">RollingBallRemoveBG.__init__()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.enhance.RollingBallRemoveBG.apply"><code class="docutils literal notranslate"><span class="pre">RollingBallRemoveBG.apply()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.enhance.RollingBallRemoveBG.dispose_widgets"><code class="docutils literal notranslate"><span class="pre">RollingBallRemoveBG.dispose_widgets()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.enhance.RollingBallRemoveBG.sync_widgets_from_state"><code class="docutils literal notranslate"><span class="pre">RollingBallRemoveBG.sync_widgets_from_state()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.enhance.RollingBallRemoveBG.widget"><code class="docutils literal notranslate"><span class="pre">RollingBallRemoveBG.widget()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.enhance.SobelFilter"><code class="docutils literal notranslate"><span class="pre">SobelFilter</span></code></a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.enhance.SobelFilter.None"><code class="docutils literal notranslate"><span class="pre">SobelFilter.None</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.enhance.SobelFilter.__del__"><code class="docutils literal notranslate"><span class="pre">SobelFilter.__del__()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.enhance.SobelFilter.__getstate__"><code class="docutils literal notranslate"><span class="pre">SobelFilter.__getstate__()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.enhance.SobelFilter.apply"><code class="docutils literal notranslate"><span class="pre">SobelFilter.apply()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.enhance.SobelFilter.dispose_widgets"><code class="docutils literal notranslate"><span class="pre">SobelFilter.dispose_widgets()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.enhance.SobelFilter.sync_widgets_from_state"><code class="docutils literal notranslate"><span class="pre">SobelFilter.sync_widgets_from_state()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.enhance.SobelFilter.widget"><code class="docutils literal notranslate"><span class="pre">SobelFilter.widget()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.enhance.WhiteTophatEnhancer"><code class="docutils literal notranslate"><span class="pre">WhiteTophatEnhancer</span></code></a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.enhance.WhiteTophatEnhancer.__del__"><code class="docutils literal notranslate"><span class="pre">WhiteTophatEnhancer.__del__()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.enhance.WhiteTophatEnhancer.__getstate__"><code class="docutils literal notranslate"><span class="pre">WhiteTophatEnhancer.__getstate__()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.enhance.WhiteTophatEnhancer.apply"><code class="docutils literal notranslate"><span class="pre">WhiteTophatEnhancer.apply()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.enhance.WhiteTophatEnhancer.dispose_widgets"><code class="docutils literal notranslate"><span class="pre">WhiteTophatEnhancer.dispose_widgets()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.enhance.WhiteTophatEnhancer.sync_widgets_from_state"><code class="docutils literal notranslate"><span class="pre">WhiteTophatEnhancer.sync_widgets_from_state()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.enhance.WhiteTophatEnhancer.widget"><code class="docutils literal notranslate"><span class="pre">WhiteTophatEnhancer.widget()</span></code></a></li>
+</ul>
+</li>
+</ul>
+  </nav></div>
+
+  <div class="sidebar-secondary-item">
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../_sources/api_reference/phenotypic.enhance.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, ExFAB BioFoundry.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.1.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>
