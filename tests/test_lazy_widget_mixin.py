@@ -112,3 +112,121 @@ def test_visualization_update(op, image):
             # Check that the copy was actually processed
             assert passed_image.metadata.get('processed') == True
 
+def test_union_widget_creation():
+    """Test that Union types (e.g. int | None) are handled correctly."""
+    from typing import Union
+    try:
+        import ipywidgets
+    except ImportError:
+        pytest.skip("ipywidgets not installed")
+    
+    # Define a local class using the mixin
+    class UnionOp(ImageOperation):
+        def __init__(self, param: Union[int, None] = None):
+            self.param = param
+        def _operate(self, image): return image
+
+    op = UnionOp()
+
+    op.widget()
+    
+    assert 'param' in op._param_widgets
+    w = op._param_widgets['param']
+    
+    # It should be our custom UnionWidget (VBox subclass)
+    assert isinstance(w, ipywidgets.VBox)
+    # Since the class is local, we check by name or attribute
+    assert type(w).__name__ == 'UnionWidget'
+    assert hasattr(w, 'selector')
+    
+    # Initial state (None)
+    assert w.selector.value == 'None'
+    assert w.value is None
+    
+    # Change to int
+    w.selector.value = 'int'
+    # Should default to 0 for int
+    assert w.value == 0
+    assert isinstance(w.inner_widget, ipywidgets.IntText)
+    
+    # Update inner value
+    w.inner_widget.value = 42
+    assert w.value == 42
+    assert op.param == 42
+    
+    # Switch back to None
+    w.selector.value = 'None'
+    assert w.value is None
+    assert op.param is None
+
+def test_union_widget_init_with_value():
+    """Test initializing UnionWidget where the value matches the first option."""
+    from typing import Union
+    try:
+        import ipywidgets
+    except ImportError:
+        pytest.skip("ipywidgets not installed")
+        
+    class UnionOp(ImageOperation):
+        def __init__(self, param: Union[int, None] = None):
+            self.param = param
+        def _operate(self, image): return image
+
+    # This was crashing because 'int' might be first option and value=5 matches it,
+    # triggering logic that assumed inner_widget existed.
+    op = UnionOp(param=5)
+    op.widget()
+    
+    w = op._param_widgets['param']
+    assert w.selector.value == 'int'
+    assert w.value == 5
+    assert isinstance(w.inner_widget, ipywidgets.IntText)
+    assert w.inner_widget.value == 5
+
+def test_union_widget_with_generics():
+    """Test that Union types containing generics (e.g. List[int]) do not crash."""
+    from typing import Union, List
+    try:
+        import ipywidgets
+    except ImportError:
+        pytest.skip("ipywidgets not installed")
+        
+    class GenericUnionOp(ImageOperation):
+        def __init__(self, param: Union[int, List[int], None] = None):
+            self.param = param
+        def _operate(self, image): return image
+        
+    # Initialize with a list value
+    op = GenericUnionOp(param=[1, 2, 3])
+    
+    # This should not raise TypeError
+    op.widget()
+    
+    w = op._param_widgets['param']
+    
+    assert w.value == [1, 2, 3]
+
+def test_union_widget_with_literal():
+    """Test that Union types containing Literals (e.g. Union[int, Literal['auto'], None]) do not crash."""
+    from typing import Union, Literal
+    try:
+        import ipywidgets
+    except ImportError:
+        pytest.skip("ipywidgets not installed")
+        
+    class LiteralUnionOp(ImageOperation):
+        def __init__(self, param: Union[int, Literal['auto'], None] = None):
+            self.param = param
+        def _operate(self, image): return image
+        
+    # Initialize with the literal value
+    op = LiteralUnionOp(param='auto')
+    
+    # This should not raise TypeError: typing.Literal cannot be used with isinstance()
+    op.widget()
+    
+    w = op._param_widgets['param']
+    
+    # It should select the literal type option (which probably has a messy name like 'Literal' or similar, depending on mapping)
+    # We just verify it holds the value correctly and didn't crash
+    assert w.value == 'auto'

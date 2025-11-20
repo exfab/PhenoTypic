@@ -145,6 +145,174 @@ class LazyWidgetMixin:
             self._ui = widgets.VBox(controls)
 
     def _create_widget_for_param(self, name: str, type_hint: Any, value: Any) -> Optional[Widget]:
+        import types
+        from typing import Union
+        
+        origin = get_origin(type_hint)
+        if origin is Union or (hasattr(types, "UnionType") and origin is types.UnionType):
+             return self._create_union_widget(name, type_hint, value)
+
+        return self._create_simple_widget(name, type_hint, value)
+
+    def _create_union_widget(self, name: str, type_hint: Any, value: Any) -> Optional[Widget]:
+        import ipywidgets as widgets
+        import traitlets
+        
+        args = get_args(type_hint)
+        type_map = {}
+        
+        for t in args:
+            if t is type(None):
+                type_map['None'] = t
+            else:
+                if hasattr(t, '__name__'):
+                    t_name = t.__name__
+                else:
+                    t_name = str(t)
+                type_map[t_name] = t
+        
+        if not type_map:
+            return None
+            
+        class UnionWidget(widgets.VBox):
+            value = traitlets.Any()
+
+            def __init__(self, name, type_map, initial_value, mixin_ref):
+                self.type_map = type_map
+                self.mixin_ref = mixin_ref
+                self.name = name
+                self._ignore_updates = False
+                
+                self.selector = widgets.Dropdown(
+                    options=list(type_map.keys()),
+                    description=f'{name} type:',
+                    style={'description_width': 'initial'}
+                )
+                
+                self.inner_container = widgets.VBox()
+                self.inner_widget = None
+                
+                super().__init__([self.selector, self.inner_container])
+                
+                self.value = initial_value
+                self._set_ui_from_value(initial_value)
+                
+                self.selector.observe(self._on_type_change, names='value')
+                
+            def _on_type_change(self, change):
+                if self._ignore_updates: return
+                
+                selected_type_name = change['new']
+                selected_type = self.type_map[selected_type_name]
+                
+                self._create_inner_widget(selected_type)
+                self._update_value_from_inner()
+                
+            def _create_inner_widget(self, type_cls, value=None):
+                self.inner_container.children = []
+                
+                if type_cls is type(None):
+                    self.inner_widget = None
+                    self.inner_container.children = [widgets.Label(value="Value: None")]
+                    return
+
+                if value is None:
+                    if type_cls is int: value = 0
+                    elif type_cls is float: value = 0.0
+                    elif type_cls is str: value = ""
+                    elif type_cls is bool: value = False
+                    elif get_origin(type_cls) is Literal:
+                        opts = get_args(type_cls)
+                        value = opts[0] if opts else None
+
+                self.inner_widget = self.mixin_ref._create_simple_widget(self.name, type_cls, value)
+                
+                if self.inner_widget:
+                    self.inner_container.children = [self.inner_widget]
+                    self.inner_widget.observe(self._on_inner_change, names='value')
+                else:
+                    self.inner_container.children = [widgets.Label(f"No widget for {type_cls}")]
+                    self.inner_widget = None
+                    
+            def _on_inner_change(self, change):
+                 if self._ignore_updates: return
+                 self.value = change['new']
+                 
+            def _update_value_from_inner(self):
+                if self.inner_widget:
+                    self.value = self.inner_widget.value
+                else:
+                    selected_type = self.type_map[self.selector.value]
+                    if selected_type is type(None):
+                        self.value = None
+
+            @traitlets.observe('value')
+            def _on_value_change(self, change):
+                new_val = change['new']
+                self._set_ui_from_value(new_val)
+                
+            def _set_ui_from_value(self, val):
+                self._ignore_updates = True
+                try:
+                    target_type_name = None
+                    target_type = None
+                    
+                    if val is None:
+                        if 'None' in self.type_map:
+                            target_type_name = 'None'
+                            target_type = type(None)
+                    else:
+                        for name, t in self.type_map.items():
+                            if t is type(None): continue
+                            if type(val) == t:
+                                target_type_name = name
+                                target_type = t
+                                break
+                        
+                        if not target_type_name:
+                             for name, t in self.type_map.items():
+                                 if t is type(None): continue
+                                 
+                                 # Handle generics for isinstance check
+                                 check_type = t
+                                 origin = get_origin(t)
+                                 
+                                 if origin is Literal:
+                                     # For Literal, we check if the value is one of the args
+                                     lit_args = get_args(t)
+                                     if val in lit_args:
+                                         target_type_name = name
+                                         target_type = t
+                                         break
+                                     continue
+                                     
+                                 if origin is not None:
+                                     check_type = origin
+                                     
+                                 if isinstance(val, check_type): 
+                                     target_type_name = name
+                                     target_type = t
+                                     break
+                    
+                    if target_type_name:
+                        if self.selector.value != target_type_name:
+                             self.selector.value = target_type_name
+                             self._create_inner_widget(target_type, val)
+                        else:
+                             if self.inner_widget is None and target_type is not type(None):
+                                 self._create_inner_widget(target_type, val)
+                                 
+                             if self.inner_widget:
+                                 if self.inner_widget.value != val:
+                                     self.inner_widget.value = val
+                             elif target_type is type(None):
+                                 pass 
+                finally:
+                    self._ignore_updates = False
+        
+        return UnionWidget(name, type_map, value, self)
+
+    def _create_simple_widget(self, name: str, type_hint: Any, value: Any) -> Optional[Widget]:
         import ipywidgets as widgets
         
         # Handle Literal
@@ -394,3 +562,24 @@ class LazyWidgetMixin:
         self._view_dropdown = None
         self._update_button = None
         self._output_widget = None
+        self._image_ref = None
+
+        # Propagate to children in _ops if they exist (e.g. for ImagePipeline)
+        if hasattr(self, '_ops') and isinstance(self._ops, dict):
+            for op in self._ops.values():
+                if hasattr(op, 'dispose_widgets') and callable(op.dispose_widgets):
+                    op.dispose_widgets()
+
+    def __getstate__(self):
+        """
+        Prepare the object for pickling by disposing of any widgets.
+        
+        This ensures that UI components (which may contain unpickleable objects like
+        input functions or thread locks) are cleaned up before serialization.
+        
+        Note:
+            This method modifies the object state by calling dispose_widgets().
+            Any active widgets will be detached from the object.
+        """
+        self.dispose_widgets()
+        return self.__dict__

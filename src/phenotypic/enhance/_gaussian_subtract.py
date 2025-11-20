@@ -65,5 +65,5 @@ class GaussianSubtract(ImageEnhancer):
                               cval=self.cval,
                               truncate=self.truncate,
                               preserve_range=self.preserve_range)
-        image.enh_gray[:] = image.enh_gray[:] - background
+        image.enh_gray[:] = image.enh_gray[:].copy() - background
         return image

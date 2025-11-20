@@ -126,7 +126,7 @@ class ObjectMap(SingleChannelAccessor):
         """Returns a copy of the object map in COOrdinate format or ijv matrix"""
         return self._backend.tocoo()
 
-    def show(self, figsize=None, title=None, cmap: str = 'tab20', ax: None | plt.Axes = None,
+    def show(self, figsize=None, title=None, cmap: str = 'nipy_spectral', ax: None | plt.Axes = None,
              mpl_params: None | dict = None) -> (
             plt.Figure, plt.Axes
     ):

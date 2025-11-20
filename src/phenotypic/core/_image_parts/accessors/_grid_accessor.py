@@ -165,7 +165,7 @@ class GridAccessor(ImageAccessorBase):
     def get_col_map(self) -> np.ndarray:
         """Returns a version of the object map with each object numbered according to their grid column number"""
         grid_info = self.info()
-        col_map = self._root_image.objmap[:]
+        col_map = self._root_image.objmap[:].copy()
         for n, col_bidx in enumerate(np.sort(grid_info.loc[:, str(GRID.COL_NUM)].unique())):
             subtable = grid_info.loc[grid_info.loc[:, str(GRID.COL_NUM)] == col_bidx, :]
 
@@ -209,15 +209,15 @@ class GridAccessor(ImageAccessorBase):
     def get_row_map(self) -> np.ndarray:
         """Returns a version of the object map with each object numbered according to their grid row number"""
         grid_info = self.info()
-        row_map = self._root_image.objmap[:]
+        row_map = self._root_image.objmap[:].copy()
         for n, col_bidx in enumerate(np.sort(grid_info.loc[:, str(GRID.ROW_NUM)].unique())):
             subtable = grid_info.loc[grid_info.loc[:, str(GRID.ROW_NUM)] == col_bidx, :]
 
             # Edit the new map's objects to equal the column number
             row_map[np.isin(
                     element=self._root_image.objmap[:],
-                    test_elements=subtable.index.to_numpy(),
-            )] = n + 1
+                    test_elements=subtable.index.to_numpy(), )
+            ] = n + 1
         return row_map
 
     def show_row_overlay(self, use_enhanced=False, show_gridlines=True, ax=None,
@@ -237,7 +237,7 @@ class GridAccessor(ImageAccessorBase):
         if show_gridlines:
             col_edges = self.get_col_edges()
             row_edges = self.get_row_edges()
-            func_ax.vlines(x=col_edges, ymin=row_edges.min(), ymax=row_edges.max(), colors='c', linestyles='--')
+            func_ax.hlines(x=col_edges, ymin=row_edges.min(), ymax=row_edges.max(), colors='c', linestyles='--')
 
         if ax is None:
             return fig, func_ax

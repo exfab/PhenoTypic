@@ -15,7 +15,7 @@ class ImagePipeline(SerializablePipeline):
         benchmark (bool): Whether to enable execution time tracking for operations and measurements.
         verbose (bool): Whether to enable verbose logging during pipeline execution.
 
-    ** Example **
+    Example:
 
     .. code-block:: python
        >>> import phenotypic as pt

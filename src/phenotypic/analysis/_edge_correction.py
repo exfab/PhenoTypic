@@ -1,13 +1,14 @@
 from __future__ import annotations
 
-from typing import Literal, Tuple
-
 import numpy as np
 import pandas as pd
-from joblib import Parallel, delayed
+from joblib import delayed, Parallel
+from scipy.stats import permutation_test
+import matplotlib.pyplot as plt
+from matplotlib.figure import Figure
 
-from .abc_ import SetAnalyzer
 from phenotypic.tools.constants_ import MeasurementInfo
+from .abc_ import SetAnalyzer
 
 
 class EDGE_CORRECTION(MeasurementInfo):
@@ -20,7 +21,7 @@ class EDGE_CORRECTION(MeasurementInfo):
 
 class EdgeCorrector(SetAnalyzer):
     """Analyzer for detecting and correcting edge effects in colony detection.
-    
+
     This class identifies colonies at grid edges (missing orthogonal neighbors) and
     caps their measurement values to prevent edge effects in growth assays. Edge
     colonies often show artificially inflated measurements due to lack of competition
@@ -92,11 +93,11 @@ class EdgeCorrector(SetAnalyzer):
             dtype: np.dtype = np.int64,
     ) -> np.ndarray | tuple[np.ndarray, np.ndarray]:
         """Find grid cells that are surrounded by active neighbors.
-        
+
         This function identifies cells in a 2D grid that have a sufficient number
         of active neighbors based on the specified connectivity pattern. Input uses
         flattened indices in C-order (row-major).
-        
+
         Args:
             active_idx: Flattened indices of active cells. Will be deduplicated.
             shape: Grid dimensions as (rows, cols).
@@ -106,35 +107,35 @@ class EdgeCorrector(SetAnalyzer):
                 (fully surrounded). Border cells cannot qualify when None.
             return_counts: If True, also return the neighbor counts for selected indices.
             dtype: Data type for output arrays.
-        
+
         Returns:
             If return_counts is False:
                 Sorted array of flattened indices meeting the neighbor criterion.
             If return_counts is True:
                 Tuple of (indices, counts) where counts[i] is the number of active
                 neighbors for indices[i].
-        
+
         Raises:
             ValueError: If connectivity is not 4 or 8, if any active_idx is out of
                 bounds, if min_neighbors is invalid, or if shape is invalid.
-        
+
         Notes:
             - Flattening uses C-order: idx = row * cols + col
             - When min_neighbors=None, border cells are geometrically excluded since
               they cannot have all neighbors active
             - Results are always sorted for deterministic output
-        
+
         Examples:
             >>> import numpy as np
             >>> # 8×12 plate; 3×3 active block centered at (4,6)
             >>> rows, cols = 8, 12
             >>> block_rc = [(r, c) for r in range(3, 6) for c in range(5, 8)]
             >>> active = np.array([r*cols + c for r, c in block_rc], dtype=np.int64)
-            >>> 
+            >>>
             >>> # Fully surrounded (default, since min_neighbors=None → all)
             >>> res_all = EdgeCorrector._surrounded_positions(active, (rows, cols), connectivity=4)
             >>> assert np.array_equal(res_all, np.array([4*cols + 6], dtype=np.int64))
-            >>> 
+            >>>
             >>> # Threshold: at least 3 of 4 neighbors
             >>> idxs, counts = EdgeCorrector._surrounded_positions(
             ...     active, (rows, cols), connectivity=4, min_neighbors=3, return_counts=True
@@ -240,31 +241,31 @@ class EdgeCorrector(SetAnalyzer):
 
     def analyze(self, data: pd.DataFrame) -> pd.DataFrame:
         """Analyze and apply edge correction to grid-based colony measurements.
-        
+
         This method processes the input DataFrame by grouping according to specified
         columns and applying edge correction to each group independently. Edge colonies
         (those missing orthogonal neighbors) have their measurements capped to prevent
         artificially inflated values.
-        
+
         Args:
             data: DataFrame containing grid section numbers (GRID.SECTION_NUM) and
                 measurement data. Must include all columns specified in self.groupby
                 and self.on.
-        
+
         Returns:
             DataFrame with corrected measurement values. Original structure is preserved
             with only the measurement column modified for edge-affected rows.
-        
+
         Raises:
             KeyError: If required columns are missing from input DataFrame.
             ValueError: If data is empty or malformed.
-        
+
         Examples:
             >>> import pandas as pd
             >>> import numpy as np
             >>> from phenotypic.analysis import EdgeCorrector
             >>> from phenotypic.tools.constants_ import GRID
-            >>> 
+            >>>
             >>> # Create sample grid data with measurements
             >>> np.random.seed(42)
             >>> data = pd.DataFrame({
@@ -272,7 +273,7 @@ class EdgeCorrector(SetAnalyzer):
             ...     GRID.SECTION_NUM: range(96),
             ...     'Area': np.random.uniform(100, 500, 96)
             ... })
-            >>> 
+            >>>
             >>> # Apply edge correction
             >>> corrector = EdgeCorrector(
             ...     on='Area',
@@ -283,10 +284,10 @@ class EdgeCorrector(SetAnalyzer):
             ...     top_n=10
             ... )
             >>> corrected = corrector.analyze(data)
-            >>> 
+            >>>
             >>> # Check results
             >>> results = corrector.results()
-        
+
         Notes:
             - Stores original data in self._original_data for comparison
             - Stores corrected data in self._latest_measurements for retrieval
@@ -317,9 +318,10 @@ class EdgeCorrector(SetAnalyzer):
             'connectivity': self.connectivity,
             'on'          : self.on,
             'pvalue'      : self.pvalue,
+            'time_label'  : self.time_label,
         }
 
-        agg_data = data.groupby(by=self.grouby + [self.time_label], as_index=False).agg(
+        agg_data = data.groupby(by=self.groupby + [section_col, self.time_label], as_index=False).agg(
                 {self.on: self.agg_func}
         )
 
@@ -331,23 +333,286 @@ class EdgeCorrector(SetAnalyzer):
         )
 
         # Store results
-        self._latest_measurements = corrected_data.reset_index(drop=True)
+        if corrected_data:
+            self._latest_measurements = pd.concat(corrected_data, ignore_index=True)
+        else:
+            self._latest_measurements = pd.DataFrame()
 
         return self._latest_measurements
 
-    def show(self):
-        raise NotImplementedError()
+    def show(self,
+             figsize: tuple[int, int] | None = None,
+             max_groups: int = 20,
+             collapsed: bool = True,
+             criteria: dict[str, any] | None = None
+             ) -> tuple[Figure, plt.Axes]:
+        """Visualize edge correction results.
+
+        Displays the distribution of measurements for the last time point, highlighting
+        surrounded vs. edge colonies and the calculated correction threshold.
+
+        Args:
+            figsize: Figure size (width, height).
+            max_groups: Maximum number of groups to display.
+            collapsed: If True, show groups stacked vertically.
+            criteria: Filtering criteria.
+
+        Returns:
+            Tuple of (Figure, Axes).
+        """
+        if self._original_data.empty:
+            raise ValueError("No results to display. Call analyze() first.")
+
+        data = self._original_data.copy()
+
+        if criteria is not None:
+            data = self._filter_by(df=data, criteria=criteria, copy=False)
+            if data.empty:
+                raise ValueError("No data matches the specified criteria")
+
+        # Determine groups
+        if len(self.groupby) == 1:
+            groups = data[self.groupby[0]].unique()
+            group_col = self.groupby[0]
+        else:
+            data['_group_key'] = data[self.groupby].astype(str).agg(' | '.join, axis=1)
+            groups = data['_group_key'].unique()
+            group_col = '_group_key'
+
+        if len(groups) > max_groups:
+            print(f"Warning: Displaying first {max_groups} groups out of {len(groups)}")
+            groups = groups[:max_groups]
+
+        if collapsed:
+            return self._show_collapsed(data, groups, group_col, figsize)
+        else:
+            return self._show_individual(data, groups, group_col, figsize)
+
+    def _show_collapsed(self, data: pd.DataFrame, groups, group_col: str,
+                        figsize: tuple[int, int] | None) -> tuple[Figure, plt.Axes]:
+        n_groups = len(groups)
+        if figsize is None:
+            figsize = (10, max(6, 0.5*n_groups + 2))
+
+        fig, ax = plt.subplots(figsize=figsize)
+
+        for idx, group_name in enumerate(groups):
+            y_pos = n_groups - idx
+            group_data = data[data[group_col] == group_name]
+
+            stats = self._calculate_group_stats(group_data)
+            if stats is None:
+                continue
+
+            lt_df = stats['last_time_df']
+            threshold = stats['threshold']
+            surrounded_mask = stats['surrounded_mask']
+            edge_mask = stats['edge_mask']
+
+            # Range line
+            vals = lt_df[self.on].values
+            if len(vals) > 0:
+                ax.hlines(y_pos, vals.min(), vals.max(), colors='lightgray', lw=1.5, zorder=1)
+
+            # Threshold
+            if not np.isinf(threshold):
+                ax.plot([threshold, threshold], [y_pos - 0.2, y_pos + 0.2],
+                        color='#F4A261', lw=2.5, label='Threshold' if idx == 0 else None, zorder=2)
+
+            # Jitter
+            y_jitter = np.random.normal(y_pos, 0.05, len(lt_df))
+
+            is_clipped = lt_df[self.on] > threshold
+
+            # Inner Pass
+            mask_ip = surrounded_mask & (~is_clipped)
+            if mask_ip.any():
+                ax.scatter(lt_df.loc[mask_ip, self.on], y_jitter[mask_ip],
+                           c='#2E86AB', marker='o', s=30, alpha=0.6,
+                           label='Inner (Pass)' if idx == 0 else None, zorder=3)
+            # Inner Clipped
+            mask_ic = surrounded_mask & is_clipped
+            if mask_ic.any():
+                ax.scatter(lt_df.loc[mask_ic, self.on], y_jitter[mask_ic],
+                           c='#2E86AB', marker='x', s=40, alpha=0.8,
+                           label='Inner (Clipped)' if idx == 0 else None, zorder=3)
+            # Edge Pass
+            mask_ep = edge_mask & (~is_clipped)
+            if mask_ep.any():
+                ax.scatter(lt_df.loc[mask_ep, self.on], y_jitter[mask_ep],
+                           c='#E63946', marker='o', s=30, alpha=0.6,
+                           label='Edge (Pass)' if idx == 0 else None, zorder=3)
+            # Edge Clipped
+            mask_ec = edge_mask & is_clipped
+            if mask_ec.any():
+                ax.scatter(lt_df.loc[mask_ec, self.on], y_jitter[mask_ec],
+                           c='#E63946', marker='x', s=40, alpha=0.8,
+                           label='Edge (Clipped)' if idx == 0 else None, zorder=3)
+
+        ax.set_yticks(range(1, n_groups + 1))
+        ax.set_yticklabels(groups[::-1])
+        ax.set_xlabel(self.on)
+        ax.set_title(f"Edge Correction (Top N={self.top_n}, p={self.pvalue})")
+        ax.legend(loc='best')
+        plt.tight_layout()
+        return fig, ax
+
+    def _show_individual(self, data: pd.DataFrame, groups, group_col: str,
+                         figsize: tuple[int, int] | None) -> tuple[Figure, plt.Axes]:
+        n_groups = len(groups)
+        n_cols = min(3, n_groups)
+        n_rows = (n_groups + n_cols - 1)//n_cols
+
+        if figsize is None:
+            figsize = (5*n_cols, 4*n_rows)
+
+        fig, axes = plt.subplots(n_rows, n_cols, figsize=figsize, squeeze=False)
+        axes = axes.flatten()
+
+        for idx, group_name in enumerate(groups):
+            ax = axes[idx]
+            group_data = data[data[group_col] == group_name]
+
+            stats = self._calculate_group_stats(group_data)
+            if stats is None:
+                ax.text(0.5, 0.5, "Insufficient Data", ha='center')
+                continue
+
+            lt_df = stats['last_time_df']
+            threshold = stats['threshold']
+            surrounded_mask = stats['surrounded_mask']
+            edge_mask = stats['edge_mask']
+
+            vals = lt_df[self.on].values
+            is_clipped = lt_df[self.on] > threshold
+
+            ax.boxplot([vals], positions=[1], widths=0.3,
+                       patch_artist=True, showfliers=False,
+                       boxprops=dict(facecolor='lightgray', alpha=0.3))
+
+            x_jitter = np.random.normal(1, 0.04, len(lt_df))
+
+            # Inner Pass
+            mask_ip = surrounded_mask & (~is_clipped)
+            if mask_ip.any():
+                ax.scatter(x_jitter[mask_ip], lt_df.loc[mask_ip, self.on],
+                           c='#2E86AB', marker='o', s=30, alpha=0.6, label='Inner (Pass)')
+            # Inner Clipped
+            mask_ic = surrounded_mask & is_clipped
+            if mask_ic.any():
+                ax.scatter(x_jitter[mask_ic], lt_df.loc[mask_ic, self.on],
+                           c='#2E86AB', marker='x', s=40, alpha=0.8, label='Inner (Clipped)')
+            # Edge Pass
+            mask_ep = edge_mask & (~is_clipped)
+            if mask_ep.any():
+                ax.scatter(x_jitter[mask_ep], lt_df.loc[mask_ep, self.on],
+                           c='#E63946', marker='o', s=30, alpha=0.6, label='Edge (Pass)')
+            # Edge Clipped
+            mask_ec = edge_mask & is_clipped
+            if mask_ec.any():
+                ax.scatter(x_jitter[mask_ec], lt_df.loc[mask_ec, self.on],
+                           c='#E63946', marker='x', s=40, alpha=0.8, label='Edge (Clipped)')
+
+            if not np.isinf(threshold):
+                ax.axhline(y=threshold, color='#F4A261', linestyle='--', label='Threshold')
+
+            ax.set_title(group_name)
+            ax.set_ylabel(self.on)
+            ax.set_xticks([])
+
+            if idx == 0:
+                handles, labels = ax.get_legend_handles_labels()
+                by_label = dict(zip(labels, handles))
+                ax.legend(by_label.values(), by_label.keys(), loc='best', fontsize=8)
+
+        for idx in range(n_groups, len(axes)):
+            axes[idx].set_visible(False)
+
+        plt.tight_layout()
+        return fig, axes
+
+    def _calculate_group_stats(self, group: pd.DataFrame):
+        from phenotypic.tools.constants_ import GRID
+
+        if len(group) == 0:
+            return None
+
+        tmax = group[self.time_label].max()
+        last_time_group = group[group[self.time_label] == tmax].copy()
+
+        present_sections = last_time_group[GRID.SECTION_NUM].dropna().unique()
+        if len(present_sections) == 0:
+            return None
+
+        active_indices = present_sections.astype(int)
+
+        try:
+            surrounded_idx = self._surrounded_positions(
+                    active_idx=active_indices,
+                    shape=(self.nrows, self.ncols),
+                    connectivity=self.connectivity,
+                    min_neighbors=None,
+                    return_counts=False
+            )
+        except ValueError:
+            return None
+
+        surrounded_idx_set = set(surrounded_idx)
+
+        if len(surrounded_idx_set) == 0:
+            return {
+                'last_time_df'   : last_time_group,
+                'threshold'      : np.inf,
+                'surrounded_mask': pd.Series(False, index=last_time_group.index),
+                'edge_mask'      : pd.Series(True, index=last_time_group.index)
+            }
+
+        surrounded_mask = last_time_group[GRID.SECTION_NUM].isin(surrounded_idx_set)
+        edge_mask = ~surrounded_mask & last_time_group[GRID.SECTION_NUM].isin(present_sections)
+
+        if self.on not in group.columns:
+            return None
+
+        last_inner_values = last_time_group.loc[surrounded_mask, self.on]
+        threshold = np.inf
+        should_correct = True
+
+        if self.pvalue != 0:
+            last_edge_values = last_time_group.loc[edge_mask, self.on]
+            if len(last_edge_values) > 0 and len(last_inner_values) > 0:
+                perm_results = permutation_test(
+                        data=(last_inner_values, last_edge_values),
+                        statistic=lambda x, y: np.mean(x) - np.mean(y),
+                        permutation_type="independent",
+                        n_resamples=1000,
+                        alternative="two-sided",
+                )
+                if perm_results.pvalue > self.pvalue:
+                    should_correct = False
+
+        if should_correct:
+            actual_top_n = min(self.top_n, len(last_inner_values))
+            if actual_top_n > 0:
+                top_values = last_inner_values.nlargest(actual_top_n)
+                threshold = top_values.mean()
+
+        return {
+            'last_time_df'   : last_time_group,
+            'threshold'      : threshold,
+            'surrounded_mask': surrounded_mask,
+            'edge_mask'      : edge_mask
+        }
 
     def results(self) -> pd.DataFrame:
         """Return the corrected measurement DataFrame.
-        
+
         Returns the DataFrame with edge-corrected measurements from the most recent
         call to analyze(). This allows retrieval of results after processing.
-        
+
         Returns:
             DataFrame with corrected measurements. If analyze() has not been called,
             returns an empty DataFrame.
-        
+
         Examples:
             >>> corrector = EdgeCorrector(
             ...     on='Area',
@@ -357,7 +622,7 @@ class EdgeCorrector(SetAnalyzer):
             >>> corrected = corrector.analyze(data)
             >>> results = corrector.results()  # Same as corrected
             >>> assert results.equals(corrected)
-        
+
         Notes:
             - Returns the DataFrame stored in self._latest_measurements
             - Contains the same structure as input but with corrected values
@@ -427,8 +692,6 @@ class EdgeCorrector(SetAnalyzer):
         if len(surrounded_idx) == 0:
             return group
 
-        # TODO: Add permutation test for statistical significance before correction.
-
         # Calculate threshold from top N inner values
         # ===========================================
         if on not in group.columns:
@@ -436,6 +699,21 @@ class EdgeCorrector(SetAnalyzer):
 
         last_inner_values: pd.Series = \
             last_time_group.loc[last_time_group.loc[:, GRID.SECTION_NUM].isin(surrounded_idx), on]
+
+        # TODO: Add permutation test for statistical significance before correction.
+        if pvalue != 0:
+            last_edge_values: pd.Series = \
+                last_time_group.loc[last_time_group.loc[:, GRID.SECTION_NUM].isin(edge_idx), on]
+
+            perm_results = permutation_test(
+                    data=(last_inner_values, last_edge_values),
+                    statistic=lambda x, y: np.mean(x) - np.mean(y),
+                    permutation_type="independent",
+                    n_resamples=1000,
+                    alternative="two-sided",
+            )
+            if perm_results.pvalue > pvalue:  # If difference is not significant, don't apply correction
+                return group
 
         # Use actual number of values if fewer than top_n available
         actual_top_n = min(top_n, len(last_inner_values))
@@ -447,112 +725,9 @@ class EdgeCorrector(SetAnalyzer):
         top_values = last_inner_values.nlargest(actual_top_n)
         threshold = top_values.mean()
 
-        # Apply correction: cap edge values that exceed threshold
-        edge_mask = group.loc[:, GRID.SECTION_NUM].isin(edge_idx)
-        group.loc[edge_mask, on] = np.clip(group.loc[edge_mask, on], a_min=0, a_max=threshold)
+        # Apply correction: cap ALL values that exceed for fairness
+        group.loc[:, on] = np.clip(group.loc[:, on], a_min=0, a_max=threshold)
         return group
-
-    @staticmethod
-    def _permutation_test(
-            group1: np.ndarray,
-            group2: np.ndarray,
-            n_permutations: int = 10000,
-            statistic: Literal["mean", "median"] = "mean",
-            alternative: Literal["two-sided", "less", "greater"] = "two-sided",
-            random_seed: int = None
-    ) -> Tuple[float, float, np.ndarray]:
-        """Perform a permutation test to compare two independent groups.
-
-        This test randomly shuffles group labels to generate a null distribution
-        of the test statistic, then compares the observed statistic to this
-        distribution to calculate a p-value.
-
-        Args:
-            group1: Array of measurements from group 1 (e.g., edge colonies).
-            group2: Array of measurements from group 2 (e.g., inner colonies).
-            n_permutations: Number of random permutations to perform.
-            statistic: Test statistic to use. Options are:
-                - "mean": Difference in means (group1 - group2)
-                - "median": Difference in medians (group1 - group2)
-            alternative: Type of alternative hypothesis:
-                - "two-sided": Test if groups differ in either direction
-                - "less": Test if group1 < group2
-                - "greater": Test if group1 > group2
-            random_seed: Seed for random number generator for reproducibility.
-
-        Returns:
-            p_value: The permutation test p-value.
-            observed_stat: The observed test statistic.
-            null_distribution: Array of test statistics from permutations.
-
-        Raises:
-            ValueError: If groups are empty or statistic/alternative are invalid.
-
-        Examples:
-            >>> edge_sizes = np.array([2.3, 2.5, 2.1, 2.8])
-            >>> inner_sizes = np.array([3.1, 3.3, 3.0, 3.2, 2.9])
-            >>> p_val, obs_stat, null_dist = permutation_test(
-            ...     edge_sizes, inner_sizes, n_permutations=10000
-            ... )
-            >>> print(f"p-value: {p_val:.4f}, observed difference: {obs_stat:.3f}")
-        """
-        if len(group1) == 0 or len(group2) == 0:
-            raise ValueError("Both groups must contain at least one observation")
-
-        if statistic not in ["mean", "median"]:
-            raise ValueError("statistic must be 'mean' or 'median'")
-
-        if alternative not in ["two-sided", "less", "greater"]:
-            raise ValueError("alternative must be 'two-sided', 'less', or 'greater'")
-
-        # Set random seed for reproducibility
-        if random_seed is not None:
-            np.random.seed(random_seed)
-
-        # Convert to numpy arrays
-        group1 = np.asarray(group1)
-        group2 = np.asarray(group2)
-
-        # Choose test statistic function
-        if statistic == "mean":
-            stat_func = np.mean
-        else:  # median
-            stat_func = np.median
-
-        # Calculate observed test statistic
-        observed_stat = stat_func(group1) - stat_func(group2)
-
-        # Pool all observations
-        pooled = np.concatenate([group1, group2])
-        n1 = len(group1)
-        n_total = len(pooled)
-
-        # Generate null distribution through permutation
-        null_distribution = np.zeros(n_permutations)
-
-        for i in range(n_permutations):
-            # Randomly shuffle the pooled data
-            np.random.shuffle(pooled)
-
-            # Split into two groups with original sizes
-            perm_group1 = pooled[:n1]
-            perm_group2 = pooled[n1:]
-
-            # Calculate test statistic for this permutation
-            null_distribution[i] = stat_func(perm_group1) - stat_func(perm_group2)
-
-        # Calculate p-value based on alternative hypothesis
-        if alternative == "two-sided":
-            # Count permutations as or more extreme in either direction
-            p_value = np.mean(np.abs(null_distribution) >= np.abs(observed_stat))
-        elif alternative == "less":
-            # Count permutations as small or smaller
-            p_value = np.mean(null_distribution <= observed_stat)
-        else:  # greater
-            # Count permutations as large or larger
-            p_value = np.mean(null_distribution >= observed_stat)
-
-        return p_value, observed_stat, null_distribution
 
 
 EdgeCorrector.__doc__ = EDGE_CORRECTION.append_rst_to_doc(EdgeCorrector.__doc__)

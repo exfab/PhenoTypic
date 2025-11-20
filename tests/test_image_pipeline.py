@@ -43,7 +43,7 @@ def test_pipeline_on_image(plate_grid_images):
     output = pipe.measure(output)
     assert output is not None
 
-    compound_output = pipe.apply_and_measure(plate_grid_images)
+    compound_output = pipe.apply_and_measure(plate_grid_images, reset=True)
     assert output.equals(compound_output), "apply->measure is different than apply_and_measure"
 
 

@@ -45,7 +45,7 @@ author = 'Alexander Nguyen'
 # Variables
 github_url = 'https://github.com/Wheeldon-Lab/PhenoScope#'
 LIGHT_LOGO_PATH = './_static/assets/200x150/light_logo_sponsor.svg'
-DARK_LOGO_PATH = './_static/assets/200x150/dark_logo_sponsor.svg'
+DARK_LOGO_PATH = './_static/assets/200x150/light_logo_sponsor.svg'
 
 # Try to get the version from PhenoTypic, but use a default if not available
 try:
@@ -194,3 +194,97 @@ intersphinx_mapping = {
     "colour"    : ("https://colour.readthedocs.io/en/latest/", None),
     "matplotlib": ("https://matplotlib.org/stable/", None),
 }
+
+# Auto-generate downloadables documentation
+def generate_downloadables_rst(app):
+    import ast
+    import os
+
+    # Get directories relative to conf.py
+    source_dir = os.path.abspath(os.path.dirname(__file__))
+    downloadables_dir = os.path.join(source_dir, '_downloadables')
+    output_file = os.path.join(source_dir, 'downloadables.rst')
+
+    # Check if directory exists
+    if not os.path.exists(downloadables_dir):
+        print(f"Warning: {downloadables_dir} does not exist. Skipping downloadables generation.")
+        return
+
+    content = []
+    content.append("Downloadable Scripts")
+    content.append("====================")
+    content.append("")
+    content.append("This page contains downloadable scripts and utilities for PhenoTypic.")
+    content.append("")
+    content.append(".. grid:: 1 1 2 2")
+    content.append("    :gutter: 3")
+    content.append("")
+
+    for filename in sorted(os.listdir(downloadables_dir)):
+        if not filename.endswith('.py'):
+            continue
+
+        filepath = os.path.join(downloadables_dir, filename)
+
+        try:
+            with open(filepath, 'r', encoding='utf-8') as f:
+                tree = ast.parse(f.read())
+                docstring = ast.get_docstring(tree)
+        except Exception as e:
+            print(f"Error parsing {filename}: {e}")
+            docstring = None
+
+        title = filename
+        description = "No description available."
+
+        if docstring:
+            lines = docstring.strip().split('\n')
+            # Try to extract a title from the first line or ReST header
+            first_line = lines[0].strip()
+            
+            # Check for Title underline style
+            # Title
+            # =====
+            if len(lines) > 1 and len(lines[1].strip()) >= len(first_line) and set(lines[1].strip()) == {'='}:
+                title = first_line
+                # Description starts after the header
+                desc_lines_raw = lines[2:]
+            else:
+                # Just use filename as title if no clear header
+                # Or use the first line if it looks like a title
+                desc_lines_raw = lines
+
+            # Extract description (first paragraph)
+            desc_lines = []
+            started = False
+            for line in desc_lines_raw:
+                stripped = line.strip()
+                if not started:
+                    if stripped:
+                        started = True
+                        desc_lines.append(stripped)
+                else:
+                    if not stripped:
+                        # Empty line indicates end of paragraph
+                        break
+                    desc_lines.append(stripped)
+
+            if desc_lines:
+                description = ' '.join(desc_lines)
+
+        # Add card
+        content.append(f"    .. grid-item-card:: {title}")
+        content.append(f"        :shadow: md")
+        content.append("")
+        content.append(f"        {description}")
+        content.append("")
+        content.append("        +++")
+        content.append(f"        :download:`Download script <_downloadables/{filename}>`")
+        content.append("")
+
+    with open(output_file, 'w', encoding='utf-8') as f:
+        f.write('\\n'.join(content))
+    print(f"Generated {output_file}")
+
+def setup(app):
+    app.connect('builder-inited', generate_downloadables_rst)

@@ -130,7 +130,7 @@ class TestEdgeCorrectorInit:
         corrector = EdgeCorrector(
                 on='Area',
                 groupby=['ImageName'],
-                measurement_col='Area'
+
         )
         assert corrector.nrows == 8
         assert corrector.ncols == 12
@@ -142,7 +142,7 @@ class TestEdgeCorrectorInit:
         corrector = EdgeCorrector(
                 on='Area',
                 groupby=['ImageName'],
-                measurement_col='Area',
+
                 nrows=4,
                 ncols=6
         )
@@ -154,7 +154,7 @@ class TestEdgeCorrectorInit:
         corrector = EdgeCorrector(
                 on='Area',
                 groupby=['ImageName'],
-                measurement_col='Area',
+
                 top_n=20
         )
         assert corrector.top_n == 20
@@ -164,7 +164,7 @@ class TestEdgeCorrectorInit:
         corrector = EdgeCorrector(
                 on='Area',
                 groupby=['ImageName'],
-                measurement_col='Area',
+
                 connectivity=8
         )
         assert corrector.connectivity == 8
@@ -175,7 +175,7 @@ class TestEdgeCorrectorInit:
             EdgeCorrector(
                     on='Area',
                     groupby=['ImageName'],
-                    measurement_col='Area',
+
                     connectivity=6
             )
 
@@ -185,7 +185,7 @@ class TestEdgeCorrectorInit:
             EdgeCorrector(
                     on='Area',
                     groupby=['ImageName'],
-                    measurement_col='Area',
+
                     nrows=0,
                     ncols=12
             )
@@ -196,7 +196,7 @@ class TestEdgeCorrectorInit:
             EdgeCorrector(
                     on='Area',
                     groupby=['ImageName'],
-                    measurement_col='Area',
+
                     top_n=-5
             )
 
@@ -216,7 +216,7 @@ class TestThresholdCalculation:
         corrector = EdgeCorrector(
                 on='Area',
                 groupby=['ImageName'],
-                measurement_col='Area',
+
                 top_n=10,
                 nrows=8,
                 ncols=12
@@ -244,7 +244,7 @@ class TestThresholdCalculation:
         corrector = EdgeCorrector(
                 on='Area',
                 groupby=['ImageName'],
-                measurement_col='Area',
+
                 top_n=10,  # More than available
                 nrows=2,
                 ncols=3
@@ -286,7 +286,7 @@ class TestValueCapping:
         corrector = EdgeCorrector(
                 on='Area',
                 groupby=['ImageName'],
-                measurement_col='Area',
+
                 top_n=8,  # Use interior + some edge values for threshold
                 nrows=nrows,
                 ncols=ncols,
@@ -317,7 +317,7 @@ class TestValueCapping:
         corrector = EdgeCorrector(
                 on='Area',
                 groupby=['ImageName'],
-                measurement_col='Area',
+
                 top_n=10,
                 nrows=8,
                 ncols=12
@@ -355,7 +355,7 @@ class TestValueCapping:
         corrector = EdgeCorrector(
                 on='Area',
                 groupby=['ImageName'],
-                measurement_col='Area',
+
                 top_n=5,
                 nrows=nrows,
                 ncols=ncols
@@ -393,7 +393,7 @@ class TestGroupbyBehavior:
         corrector = EdgeCorrector(
                 on='Area',
                 groupby=['ImageName'],
-                measurement_col='Area',
+
                 top_n=10,
                 nrows=8,
                 ncols=12
@@ -425,7 +425,7 @@ class TestGroupbyBehavior:
         corrector = EdgeCorrector(
                 on='Area',
                 groupby=['ImageName'],
-                measurement_col='Area',
+
                 top_n=5,
                 nrows=6,
                 ncols=8
@@ -446,7 +446,7 @@ class TestGroupbyBehavior:
         corrector = EdgeCorrector(
                 on='Area',
                 groupby=[],  # No grouping
-                measurement_col='Area',
+
                 top_n=10,
                 nrows=8,
                 ncols=12
@@ -472,7 +472,7 @@ class TestAnalyzeMethod:
         corrector = EdgeCorrector(
                 on='Area',
                 groupby=['ImageName'],
-                measurement_col='Area'
+
         )
 
         corrected = corrector.analyze(data)
@@ -496,7 +496,7 @@ class TestAnalyzeMethod:
         corrector = EdgeCorrector(
                 on='Area',
                 groupby=['ImageName'],
-                measurement_col='Area'
+
         )
 
         with pytest.raises(KeyError, match="Missing required columns"):
@@ -507,7 +507,7 @@ class TestAnalyzeMethod:
         corrector = EdgeCorrector(
                 on='Area',
                 groupby=['ImageName'],
-                measurement_col='Area'
+
         )
 
         with pytest.raises(ValueError, match="cannot be empty"):
@@ -530,7 +530,7 @@ class TestResultsMethod:
         corrector = EdgeCorrector(
                 on='Area',
                 groupby=['ImageName'],
-                measurement_col='Area'
+
         )
 
         corrected = corrector.analyze(data)
@@ -543,7 +543,7 @@ class TestResultsMethod:
         corrector = EdgeCorrector(
                 on='Area',
                 groupby=['ImageName'],
-                measurement_col='Area'
+
         )
 
         results = corrector.results()
@@ -558,7 +558,7 @@ class TestShowMethod:
         corrector = EdgeCorrector(
                 on='Area',
                 groupby=['ImageName'],
-                measurement_col='Area'
+
         )
 
         with pytest.raises(RuntimeError, match="Call analyze\\(\\) first"):
@@ -580,7 +580,7 @@ class TestShowMethod:
         corrector = EdgeCorrector(
                 on='Area',
                 groupby=['ImageName'],
-                measurement_col='Area'
+
         )
 
         corrector.analyze(data)
@@ -623,7 +623,7 @@ class TestIntegration:
         corrector = EdgeCorrector(
                 on='Area',
                 groupby=['ImageName'],
-                measurement_col='Area',
+
                 top_n=10,
                 nrows=nrows,
                 ncols=ncols,
@@ -660,7 +660,7 @@ class TestIntegration:
         corrector = EdgeCorrector(
                 on='Area',
                 groupby=['ImageName'],
-                measurement_col='Area',
+
                 top_n=10,
                 nrows=8,
                 ncols=12
@@ -686,7 +686,7 @@ class TestIntegration:
         corrector_area = EdgeCorrector(
                 on='Area',
                 groupby=['ImageName'],
-                measurement_col='Area',
+
                 top_n=10
         )
 
