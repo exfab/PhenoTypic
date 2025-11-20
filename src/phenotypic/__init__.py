@@ -1,4 +1,6 @@
-__version__ = "0.9.2"
+__version__ = "0.10.0"
+__author__ = "Alexander Nguyen"
+__email__ = "anguy344@ucr.edu"
 
 from .core._grid_image import GridImage
 from .core._image import Image
