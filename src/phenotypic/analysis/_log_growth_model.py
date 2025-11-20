@@ -22,7 +22,7 @@ class LOG_GROWTH_MODEL(MeasurementInfo):
     R_FIT = 'r', 'The intrinsic growth rate'
     K_FIT = 'K', "The carrying capacity"
     N0_FIT = "N0", "The initial number of the colony size metric being fitted"
-    GROWTH_RATE = "d(N)/dt", "The growth rate of the colony calculated as (K*r)/4"
+    GROWTH_RATE = "µmax", "The growth rate of the colony calculated as (K*r)/4"
     K_MAX = "Kmax", "The upper bound of the carrying capacity for model fitting"
     NUM_SAMPLES = "NumSamples", "The number of samples used for model fitting"
     LOSS = "OptimizerLoss", "The loss of model fitting"
@@ -194,6 +194,7 @@ class LogGrowthModel(ModelFitter):
 
         if filtered_measurements.empty:
             import warnings
+
             warnings.warn("No data found matching the criteria. Returning empty plot.")
             return fig, ax
 
@@ -207,12 +208,12 @@ class LogGrowthModel(ModelFitter):
 
         timepoints = pd.Series(filtered_measurements.loc[:, self.time_label].unique())
 
-        step = np.mean(
+        step = np.abs(np.mean(
                 timepoints
                 .sort_values()
                 .diff()
                 .dropna()
-        )
+        ))
 
         if np.isnan(step) or step <= 0:
             step = 1.0
@@ -238,6 +239,7 @@ class LogGrowthModel(ModelFitter):
             curr_stddev = curr_time_groups[self.on].std()
             curr_stderr = curr_stddev/np.sqrt(curr_time_groups[self.on].count())
 
+            # noinspection PyUnresolvedReferences
             ax.errorbar(
                     x=curr_mean.index.values,
                     y=curr_mean.values,

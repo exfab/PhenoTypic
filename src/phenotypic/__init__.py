@@ -1,4 +1,4 @@
-__version__ = "0.9.1"
+__version__ = "0.9.2"
 
 from .core._grid_image import GridImage
 from .core._image import Image

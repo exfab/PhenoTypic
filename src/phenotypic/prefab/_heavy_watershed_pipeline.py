@@ -8,7 +8,7 @@ from phenotypic.detect import WatershedDetector
 from phenotypic.enhance import CLAHE, GaussianBlur, MedianEnhancer
 from phenotypic.grid import (GridOversizedObjectRemover, MinResidualErrorReducer)
 from phenotypic.measure import MeasureColor, MeasureIntensity, MeasureShape, MeasureTexture
-from phenotypic.refine import BorderObjectRemover, MaskFill
+from phenotypic.refine import BorderObjectRemover, MaskFill, LowCircularityRemover
 
 
 class HeavyWatershedPipeline(PrefabPipeline):
@@ -24,23 +24,6 @@ class HeavyWatershedPipeline(PrefabPipeline):
     Note:
         This pipeline uses computationally intensive operations aimed at cases where there is heavy background noise
 
-    Attributes:
-        gaussian_sigma (int): Standard deviation for Gaussian kernel in smoothing.
-        gaussian_mode (str): Mode for handling image boundaries during Gaussian smoothing.
-        gaussian_truncate (float): Truncate the Gaussian kernel at this many standard deviations.
-        watershed_footprint (Literal['auto'] | np.ndarray | int | None): Structuring element for
-            identifying watershed peaks or 'auto' for adaptive detection.
-        watershed_min_size (int): Minimum size of regions in watershed segmentation.
-        watershed_compactness (float): Compactness parameter for controlling watershed region shapes.
-        watershed_connectivity (int): Pixel connectivity parameter for watershed segmentation.
-        watershed_relabel (bool): Indicates whether the regions should be relabeled post watershed.
-        watershed_ignore_zeros (bool): Indicates whether pixels with zero value should be excluded
-            from watershed processing.
-        border_remover_size (int): Size of the border region where detected objects are removed.
-        texture_scale (int): Scale parameter controlling Haralick texture computation.
-        texture_warn (bool): Indicates whether warnings are raised for texture computation errors.
-        benchmark (bool): Indicates whether benchmarking is enabled across the pipeline
-            for performance evaluation.
     """
 
     def __init__(self,
@@ -54,33 +37,44 @@ class HeavyWatershedPipeline(PrefabPipeline):
                  watershed_relabel: bool = True,
                  watershed_ignore_zeros: bool = True,
                  border_remover_size: int = 25,
+                 circularity_cutoff: float = 0.5,
                  texture_scale: int = 5,
                  texture_warn: bool = False,
                  benchmark: bool = False, **kwargs):
         """
-        Initializes the object with a sequence of operations and measurements for image
-        processing. The sequence includes smoothing, enhance, segmentation, border
-        object removal, and various measurement steps for analyzing images. Customizable
-        parameters allow for adjusting the processing pipeline for specific use cases such
-        as image segmentation and feature extraction.
+        Initializes an image processing pipeline for various image analysis tasks such as object detection,
+        segmentation, and measurement. This pipeline uses a combination of operations, including filtering,
+        segmentation, and morphological processing, followed by shape, intensity, texture, and color
+        measurements.
 
         Args:
-            gaussian_sigma (int): Standard deviation for Gaussian kernel in smoothing.
-            gaussian_mode (str): Mode for handling image boundaries in Gaussian smoothing.
-            gaussian_truncate (float): Truncate filter at this many standard deviations.
-            watershed_footprint: Structuring element for watershed peak detection.
-            watershed_min_size (int): Minimum size for watershed segmentation.
-            watershed_compactness (float): Compactness parameter for watershed.
-            watershed_connectivity (int): Connectivity for watershed.
-            watershed_relabel (bool): Whether to relabel after watershed.
-            watershed_ignore_zeros (bool): Whether to ignore zeros in watershed thresholding.
-            border_remover_size (int): Size of border to remove objects from.
-            texture_scale (int): Scale parameter for Haralick texture features.
-            texture_warn (bool): Whether to warn on texture computation errors.
-            footprint: Deprecated, use watershed_footprint.
-            min_size: Deprecated, use watershed_min_size.
-            compactness: Deprecated, use watershed_compactness.
-            border_size: Deprecated, use border_remover_size.
+            gaussian_sigma (int, optional): Standard deviation for Gaussian blur filter. Defaults to 5.
+            gaussian_mode (str, optional): Mode parameter for Gaussian blur filter (e.g., 'reflect').
+                Defaults to 'reflect'.
+            gaussian_truncate (float, optional): Truncate value for Gaussian kernel to limit its size.
+                Defaults to 4.0.
+            watershed_footprint (Literal['auto'] | np.ndarray | int | None, optional): Footprint size or
+                structure for the watershed algorithm. Defaults to None.
+            watershed_min_size (int, optional): Minimum size of the objects to be retained after watershed
+                segmentation. Defaults to 50.
+            watershed_compactness (float, optional): Compactness parameter for the watershed algorithm to
+                control how tightly regions are formed. Defaults to 0.001.
+            watershed_connectivity (int, optional): Connectivity parameter for region connectivity in
+                watershed segmentation. Defaults to 1.
+            watershed_relabel (bool, optional): Whether to relabel the regions after watershed segmentation.
+                Defaults to True.
+            watershed_ignore_zeros (bool, optional): Whether to ignore zero-valued regions in the watershed
+                algorithm. Defaults to True.
+            border_remover_size (int, optional): Size of the border in pixels to be removed during border
+                object removal. Defaults to 25.
+            circularity_cutoff (float, optional): Threshold for object circularity below which objects will
+                be removed. Defaults to 0.5.
+            texture_scale (int, optional): Scale parameter for texture measurement. Defaults to 5.
+            texture_warn (bool, optional): Whether to issue warnings for invalid texture measurements.
+                Defaults to False.
+            benchmark (bool, optional): Whether to enable benchmarking of pipeline performance.
+                Defaults to False.
+            **kwargs: Additional keyword arguments for parent class initialization.
         """
 
         watershed_detector = WatershedDetector(footprint=watershed_footprint, min_size=watershed_min_size,
@@ -96,11 +90,13 @@ class HeavyWatershedPipeline(PrefabPipeline):
             watershed_detector,
             border_remover,
             GridOversizedObjectRemover(),
+            LowCircularityRemover(cutoff=circularity_cutoff),
             min_residual_reducer,
             GridAligner(),
             watershed_detector,
             min_residual_reducer,
             border_remover,
+            LowCircularityRemover(cutoff=circularity_cutoff),
             MaskFill()
         ]
 

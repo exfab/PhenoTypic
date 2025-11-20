@@ -411,6 +411,8 @@ class TukeyOutlierRemover(SetAnalyzer):
 
         total_outliers = 0
         total_count = 0
+        
+        added_labels = set()
 
         # Process each group and plot stacked vertically
         for idx, group_name in enumerate(groups):
@@ -446,20 +448,30 @@ class TukeyOutlierRemover(SetAnalyzer):
             tick_height = 0.15  # Height of tick marks
 
             # Lower fence tick
-            fence_label = 'Fences' if idx == 0 else None
+            lbl = 'Fences'
+            if lbl not in added_labels:
+                added_labels.add(lbl)
+            else:
+                lbl = None
+                
             ax.plot([lower_fence, lower_fence], [y_pos - tick_height, y_pos + tick_height],
                     color='#F4A261', linewidth=2.5, linestyle='-',
-                    label=fence_label, zorder=3)
+                    label=lbl, zorder=3)
 
             # Upper fence tick
             ax.plot([upper_fence, upper_fence], [y_pos - tick_height, y_pos + tick_height],
                     color='#F4A261', linewidth=2.5, linestyle='-', zorder=3)
 
             # Median marker
-            median_label = 'Median' if idx == 0 else None
+            lbl = 'Median'
+            if lbl not in added_labels:
+                added_labels.add(lbl)
+            else:
+                lbl = None
+            
             ax.plot([median, median], [y_pos - tick_height, y_pos + tick_height],
                     color='black', linewidth=2.5, linestyle='-',
-                    label=median_label, zorder=3)
+                    label=lbl, zorder=3)
 
             # Create y-coordinates with jitter for scatter plot
             y_inliers = np.random.normal(y_pos, 0.06, len(inliers))
@@ -467,16 +479,24 @@ class TukeyOutlierRemover(SetAnalyzer):
 
             # Plot inliers
             if len(inliers) > 0:
-                label = 'Normal' if idx == 0 else None
+                lbl = 'Normal'
+                if lbl not in added_labels:
+                    added_labels.add(lbl)
+                else:
+                    lbl = None
                 ax.scatter(inliers[self.on].values, y_inliers,
-                           alpha=0.6, s=30, c='#2E86AB', label=label, zorder=4)
+                           alpha=0.6, s=30, c='#2E86AB', label=lbl, zorder=4)
 
             # Plot outliers
             if len(outliers) > 0:
-                label = 'Outlier' if idx == 0 else None
+                lbl = 'Outlier'
+                if lbl not in added_labels:
+                    added_labels.add(lbl)
+                else:
+                    lbl = None
                 ax.scatter(outliers[self.on].values, y_outliers,
                            alpha=0.8, s=35, c='#E63946', marker='D',
-                           label=label, zorder=5)
+                           label=lbl, zorder=5)
 
         # Formatting
         ax.set_yticks(range(1, n_groups + 1))

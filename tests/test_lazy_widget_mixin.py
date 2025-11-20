@@ -230,3 +230,28 @@ def test_union_widget_with_literal():
     # It should select the literal type option (which probably has a messy name like 'Literal' or similar, depending on mapping)
     # We just verify it holds the value correctly and didn't crash
     assert w.value == 'auto'
+
+def test_pipeline_param_introspection_skipped():
+    """Test that ImagePipeline does not generate widgets for its constructor parameters."""
+    # Mock ImagePipeline because importing the real one pulls in too many dependencies for this unit test
+    class ImagePipeline(ImageOperation):
+        def __init__(self, ops=None, meas=None, benchmark=False, verbose=False):
+            self.ops = ops
+            self.meas = meas
+            self.benchmark = benchmark
+            self.verbose = verbose
+        def _operate(self, image): return image
+    
+    try:
+        import ipywidgets
+    except ImportError:
+        pytest.skip("ipywidgets not installed")
+        
+    # Instantiate
+    pipeline = ImagePipeline()
+    
+    # Call widget
+    pipeline.widget()
+    
+    # Verify _param_widgets is empty (ops/meas/etc ignored)
+    assert len(pipeline._param_widgets) == 0

@@ -66,52 +66,56 @@ class LazyWidgetMixin:
     def _create_widgets(self) -> None:
         """Create and assign the root widget to self._ui."""
         import ipywidgets as widgets
+        import phenotypic as pht
         
         self._param_widgets = {}
         controls = []
 
         # 1. Introspect __init__ parameters
-        sig = inspect.signature(self.__init__)
-        hints = typing.get_type_hints(self.__init__)
+        # Skip for ImagePipeline 
         
-        # Parse docstring for parameter descriptions
-        doc_params = self._parse_docstring()
-        
-        for param_name, param in sig.parameters.items():
-            if param_name == 'self' or param_name == 'args' or param_name == 'kwargs':
-                continue
-                
-            # Get current value from instance
-            if hasattr(self, param_name):
-                current_val = getattr(self, param_name)
-            else:
-                # Fallback to default if attribute missing (shouldn't happen for well-behaved ops)
-                current_val = param.default if param.default is not inspect.Parameter.empty else None
-
-            # Skip if we can't determine value or it's private
-            if current_val is None and param.default is inspect.Parameter.empty:
-                continue
-
-            # Determine widget type
-            widget = self._create_widget_for_param(param_name, hints.get(param_name, Any), current_val)
-            if widget:
-                self._param_widgets[param_name] = widget
-                
-                # Check for help text from docstring
-                if param_name in doc_params:
-                    help_text = doc_params[param_name]
-                    # Create help label
-                    help_label = widgets.HTML(
-                        value=f"<span style='color: #666; font-size: 0.85em; font-style: italic; margin-left: 2px;'>{help_text}</span>"
-                    )
-                    # Wrap widget and help in VBox
-                    control_group = widgets.VBox([widget, help_label], layout=widgets.Layout(margin='0px 0px 8px 0px'))
-                    controls.append(control_group)
+        if not isinstance(self, pht.ImagePipeline):
+            sig = inspect.signature(self.__init__)
+            hints = typing.get_type_hints(self.__init__)
+            
+            # Parse docstring for parameter descriptions
+            doc_params = self._parse_docstring()
+            
+            for param_name, param in sig.parameters.items():
+                if param_name == 'self' or param_name == 'args' or param_name == 'kwargs':
+                    continue
+                    
+                # Get current value from instance
+                if hasattr(self, param_name):
+                    current_val = getattr(self, param_name)
                 else:
-                    controls.append(widget)
-                
-                # Bind change
-                widget.observe(self._on_param_change, names='value')
+                    # Fallback to default if attribute missing (shouldn't happen for well-behaved ops)
+                    current_val = param.default if param.default is not inspect.Parameter.empty else None
+    
+                # Skip if we can't determine value or it's private
+                if current_val is None and param.default is inspect.Parameter.empty:
+                    continue
+    
+                # Determine widget type
+                widget = self._create_widget_for_param(param_name, hints.get(param_name, Any), current_val)
+                if widget:
+                    self._param_widgets[param_name] = widget
+                    
+                    # Check for help text from docstring
+                    if param_name in doc_params:
+                        help_text = doc_params[param_name]
+                        # Create help label
+                        help_label = widgets.HTML(
+                            value=f"<span style='color: #666; font-size: 0.85em; font-style: italic; margin-left: 2px;'>{help_text}</span>"
+                        )
+                        # Wrap widget and help in VBox
+                        control_group = widgets.VBox([widget, help_label], layout=widgets.Layout(margin='0px 0px 8px 0px'))
+                        controls.append(control_group)
+                    else:
+                        controls.append(widget)
+                    
+                    # Bind change
+                    widget.observe(self._on_param_change, names='value')
         
         # 2. Recursive Inspection for _ops (Pipelines)
         if hasattr(self, '_ops') and isinstance(self._ops, dict):
@@ -190,6 +194,7 @@ class LazyWidgetMixin:
                 )
                 
                 self.inner_container = widgets.VBox()
+                self.inner_container.layout = widgets.Layout(margin='0px 0px 0px 20px')
                 self.inner_widget = None
                 
                 super().__init__([self.selector, self.inner_container])
