@@ -11,6 +11,10 @@ from ._center_deviation_reducer import CenterDeviationReducer
 from ._mask_fill import MaskFill
 from ._mask_opener import MaskOpener
 from ._white_tophat_modifier import WhiteTophatModifier
+from ._border_object_modifier import BorderObjectRemover
+from ._grid_oversized_object_remover import GridOversizedObjectRemover
+from ._min_residual_error_reducer import MinResidualErrorReducer
+from ._residual_outlier_remover import ResidualOutlierRemover
 
 __all__ = [
     "LowCircularityRemover",
@@ -20,4 +24,8 @@ __all__ = [
     "MaskFill",
     "MaskOpener",
     "WhiteTophatModifier",
+    "BorderObjectRemover",
+    "GridOversizedObjectRemover",
+    "MinResidualErrorReducer",
+    "ResidualOutlierRemover",
 ]

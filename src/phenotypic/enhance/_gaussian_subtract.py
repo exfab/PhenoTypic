@@ -12,22 +12,41 @@ from phenotypic.abc_ import ImageEnhancer
 
 class GaussianSubtract(ImageEnhancer):
     """
-    Provides methods for image enhance on the enhanced grayscale gray
-    using Gaussian background subtraction.
+    Background correction by Gaussian subtraction.
 
-    The class implements an algorithm that estimates the background using a
-    Gaussian blur and subtracts it from the original image. This technique is
-    useful for removing slowly varying background illumination while preserving
-    sharp features and edges in the foreground.
+    Estimates a smooth background via Gaussian blur and subtracts it from the
+    image. For agar plate colony analysis, this removes gradual illumination
+    gradients (vignetting, agar thickness, scanner shading) while retaining sharp
+    colony features, improving downstream thresholding and edge detection.
+
+    Use cases (agar plates):
+    - Correct uneven lighting across plates or across scan beds.
+    - Enhance visibility of dark colonies on bright agar by flattening the
+      background.
+    - Normalize batches captured with varying exposure/illumination profiles.
+
+    Tuning and effects:
+    - sigma: Sets the spatial scale of the background. Choose a value larger than
+      the typical colony diameter so colonies are not treated as background. Too
+      small will subtract colony signal and can invert contrast around edges.
+    - mode/cval: Controls border handling; 'reflect' often avoids rim artifacts
+      on circular plates. 'constant' may require matching `cval` to background.
+    - truncate: Extent of the Gaussian in standard deviations; rarely needs change.
+    - preserve_range: Keep original intensity range after filtering; useful when
+      subsequent steps assume the same data range/bit depth.
+
+    Caveats:
+    - If sigma is too low, colonies can be attenuated or produce halos.
+    - Very large sigma can oversmooth and retain large shadows or plate rim effects.
+    - Background subtraction may re-center intensities around zero; ensure later
+      steps handle negative values or re-normalize if needed.
 
     Attributes:
-        sigma (float): Standard deviation for Gaussian kernel. Larger values
-            create a smoother background estimate.
-        mode (str): How to handle values outside the image borders. Options
-            include 'reflect', 'constant', 'nearest', 'mirror', 'wrap'.
-        cval (float): Value to fill past edges when mode is 'constant'.
-        truncate (float): Truncate the filter at this many standard deviations.
-        preserve_range (bool): Whether to keep the original range of values.
+        sigma (float): Gaussian std for background scale; use > colony diameter.
+        mode (str): Border handling: 'reflect', 'constant', 'nearest', 'mirror', 'wrap'.
+        cval (float): Fill value if `mode='constant'`.
+        truncate (float): Gaussian support in standard deviations.
+        preserve_range (bool): Preserve input value range during filtering.
     """
 
     def __init__(self,
@@ -37,20 +56,14 @@ class GaussianSubtract(ImageEnhancer):
                  truncate: float = 4.0,
                  preserve_range: bool = True):
         """
-        Initializes an instance of the class with parameters to configure Gaussian
-        background subtraction behavior.
-
-        Args:
-            sigma (float): Standard deviation for Gaussian kernel. Larger values
-                result in more aggressive background smoothing. Default is 50.0.
-            mode (str): The mode parameter determines how the array borders are
-                handled. Default is 'reflect'.
-            cval (float): Value to fill past edges of the input if mode is 'constant'.
-                Default is 0.0.
-            truncate (float): Truncate the filter at this many standard deviations.
-                Default is 4.0.
-            preserve_range (bool): Whether to keep the original range of values in
-                the output. Default is True.
+        Parameters:
+            sigma (float): Background scale. Set larger than colony diameter so
+                colonies are preserved while slow illumination is removed.
+            mode (str): Border handling; 'reflect' reduces artificial rims on plates.
+            cval (float): Fill value when `mode='constant'`.
+            truncate (float): Gaussian support in standard deviations (advanced).
+            preserve_range (bool): Keep the original intensity range; useful if
+                subsequent steps or measurements assume a specific scaling.
         """
         self.sigma: float = sigma
         self.mode: str = mode

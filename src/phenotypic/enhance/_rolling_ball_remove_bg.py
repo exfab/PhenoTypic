@@ -12,24 +12,38 @@ from phenotypic.abc_ import ImageEnhancer
 
 class RollingBallRemoveBG(ImageEnhancer):
     """
-    Provides methods for image enhance on the enhanced grayscale gray
-    using a rolling ball subtraction technique.
+    Rolling-ball background removal (ImageJ-style) for agar plates.
 
-    The class implements an algorithm that uses a rolling ball approach to subtract
-    background or smooth out variations in image brightness. It is configurable with
-    parameters such as kernel size, radius for operations, and threading options.
-    This is particularly used in preprocessing steps for image analysis where uniform
-    lighting is desired.
+    Models the background as the surface traced by rolling a ball under the
+    image intensity landscape, then subtracts it. For colony images, this
+    effectively removes slow illumination gradients and agar shading while
+    preserving colony structures.
+
+    Use cases (agar plates):
+    - Correct uneven backgrounds from scanner vignetting, lid glare, or agar
+      thickness variations.
+    - Improve segmentation of dark colonies on bright agar by flattening the
+      background.
+
+    Tuning and effects:
+    - radius: Core scale of the rolling ball. Set larger than typical colony
+      diameter so colonies are not smoothed into the background. Too small
+      a radius will erode colonies and create halos.
+    - kernel: Custom structuring element defining the ball shape. Providing a
+      kernel overrides `radius` and allows non-spherical shapes if needed.
+    - nansafe: Enable if your images contain masked/NaN regions (e.g., plate
+      outside masked to NaN). When False, NaNs may propagate or cause artifacts.
+
+    Caveats:
+    - Overly small radius removes real features and can bias size/area metrics.
+    - May introduce edge effects near the plate boundary; consider masking the
+      plate region or using `nansafe` with an appropriate mask.
 
     Attributes:
-        radius (int): The radius for the rolling ball operation defining the extent of
-            influence or smoothing.
-        kernel (np.ndarray): An optional kernel gray used for computational purposes
-            during the enhance operation.
-        nansafe (bool): A boolean flag indicating whether computations should handle
-            NaN (Not a Number) values safely.
-        num_threads (int): The number of threads allocated for computations to enable
-            parallel processing, if supported.
+        radius (int): Ball radius (in pixels) controlling the background scale;
+            choose > colony diameter.
+        kernel (np.ndarray): Optional custom kernel; overrides `radius` when set.
+        nansafe (bool): Handle NaNs during computation to respect masked regions.
     """
 
     def __init__(self,
@@ -37,14 +51,13 @@ class RollingBallRemoveBG(ImageEnhancer):
                  kernel: np.ndarray = None,
                  nansafe: bool = False):
         """
-        Initializes an instance of the class with parameters to configure its behavior.
-
-        Args:
-            radius (int): The radius defining the extent of an operation or calculation. Default
-                is 100.
-            kernel (np.ndarray): an alternative way to express the rolling ball operation
-            nansafe (bool): A flag to enable or disable operations that handle NaN (Not a Number)
-                values gracefully. Default is False.
+        Parameters:
+            radius (int): Rolling-ball radius (pixels). Use a value larger than
+                colony diameter to avoid removing colony signal. Default 100.
+            kernel (np.ndarray): Optional custom ball/footprint; when provided it
+                overrides `radius`.
+            nansafe (bool): If True, treat NaNs as missing data to avoid artifacts
+                when using masked images (e.g., outside the plate).
         """
         self.radius: int = radius
         self.kernel: np.ndarray = kernel

@@ -4,11 +4,11 @@ from ._image_operation import ImageOperation
 from ._image_enhancer import ImageEnhancer
 from ._image_corrector import ImageCorrector
 from ._object_detector import ObjectDetector
-from ._map_modifier import MapModifier
+from ._map_modifier import ObjectRefiner
 from ._threshold_detector import ThresholdDetector
 from ._grid_operation import GridOperation
 from ._grid_corrector import GridCorrector
-from ._grid_map_modifier import GridMapModifier
+from ._grid_map_modifier import GridRefiner
 from ._grid_measure import GridMeasureFeatures
 from ._grid_finder import GridFinder
 from ._base_operation import BaseOperation
@@ -21,12 +21,12 @@ __all__ = [
     "ImageEnhancer",
     "ImageCorrector",
     "ObjectDetector",
-    "MapModifier",
+    "ObjectRefiner",
     "ThresholdDetector",
     "GridOperation",
     "GridFinder",
     "GridCorrector",
-    "GridMapModifier",
+    "GridRefiner",
     "GridMeasureFeatures",
     'BaseOperation',
     "MeasurementInfo",

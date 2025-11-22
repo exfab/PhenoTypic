@@ -32,7 +32,6 @@ matplotlib.use('Agg')
 
 def process_single_image(
         image_path: Path,
-        output_dir: Path,
         meas_dir: Path,
         overlay_dir: Path,
         pipeline: ImagePipeline,
@@ -40,17 +39,47 @@ def process_single_image(
         read_kwargs: Dict[str, Any]
 ) -> Optional[pd.DataFrame]:
     """
-    Process a single image: load, execute pipeline, save results, and create overlay.
-    
+    Processes a single image of a microbe colony on solid media agar by applying an
+    image processing pipeline, generating measurements, and creating a graphical
+    overlay output. This function is highly versatile, allowing the user to control
+    how images are read, analyzed, and stored based on provided arguments.
+
     Args:
-        image_path: Path to the input image file.
-        output_dir: Directory to save outputs.
-        pipeline: The ImagePipeline to execute.
-        image_cls: Class to use for loading the image (Image or GridImage).
-        read_kwargs: Arguments to pass to the image loader (e.g. nrows, ncols).
-        
+        image_path (Path):
+            Path to the image file representing the microbe colony on agar.
+            Adjusting this variable changes which colony image is analyzed.
+        meas_dir (Path):
+            Directory where the measurement results (CSV) will be saved.
+            The choice of directory affects the organization of analysis
+            results and resultant data pipeline workflows.
+        overlay_dir (Path):
+            Directory for saving visual overlays. This allows inspection of
+            how the overlay corresponds to the processed regions in the image.
+            Choose a directory accessible to tools used for review.
+        pipeline (ImagePipeline):
+            A sequence of image processing steps applied to the input image.
+            The pipeline heavily influences the analysis' sensitivity and accuracy
+            in extracting colony features like size, shape, or density.
+        image_cls (Type[Image]):
+            Class responsible for reading and processing the input image. Changing
+            this affects how the image format is handled (e.g., handling raw images
+            produced in specific microscopy settings).
+        read_kwargs (Dict[str, Any]):
+            Parameters passed when reading the image (e.g., color modes, compression).
+            Modifying these parameters tailors how images are interpreted and may
+            change the fidelity of image data used in downstream analyses.
+
     Returns:
-        pd.DataFrame containing measurements if successful, None otherwise.
+        Optional[pd.DataFrame]:
+            A DataFrame containing microbiological measurements for the processed
+            image, such as colony area, perimeter, and optical density. If processing
+            fails, returns None. Adjustments in inputs or pipeline steps directly
+            affect the resulting metrics.
+
+    Raises:
+        This function handles all internal exceptions and reports processing failures
+        with user-friendly messages, allowing review of errors without interrupting a
+        batch process.
     """
     try:
         # Create specific output path for this image's results

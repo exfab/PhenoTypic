@@ -7,15 +7,69 @@ if TYPE_CHECKING: from phenotypic import Image
 import numpy as np
 from typing import Optional, Union
 
-from phenotypic.abc_ import MapModifier
+from phenotypic.abc_ import ObjectRefiner
 
 
-class BorderObjectRemover(MapModifier):
-    """Removes objects at the border of the image within a certain distance.
+class BorderObjectRemover(ObjectRefiner):
+    """Remove objects that touch the image border within a configurable margin.
 
+    Intuition:
+        Colonies that intersect the plate boundary or image crop edge are often
+        partial, poorly segmented, and bias size/shape measurements. This
+        operation zeroes any labeled objects in ``image.objmap`` whose pixels
+        fall within a user-defined border band, ensuring only fully contained
+        colonies are analyzed.
+
+    Why this is useful for agar-plate imaging:
+        Plate crops or grid layouts frequently clip edge colonies. Removing
+        border-touching objects stabilizes downstream phenotyping (area,
+        circularity, intensity) and prevents partial colonies from contaminating
+        statistics or training data.
+
+    Use cases:
+        - Single-plate captures where the plate rim truncates colonies.
+        - Grid assays where wells or positions near the frame boundary are
+          partially visible.
+        - Automated crops that shift slightly between frames, cutting off
+          colonies at the margins.
+
+    Caveats:
+        - A large border may remove valid edge colonies (lower recall). Too
+          small a border may retain partial objects.
+        - With very tight crops (little background), even modest margins can
+          eliminate many colonies.
+
+    Attributes:
+        (No public attributes)
+
+    Examples:
+        >>> from phenotypic.refine import BorderObjectRemover
+        >>> op = BorderObjectRemover(border_size=15)
+        >>> image = op.apply(image, inplace=True)  # doctest: +SKIP
+        >>> # All colonies intersecting a 15-pixel frame margin are removed
+
+    Raises:
+        TypeError: If an invalid ``border_size`` type is provided (raised during
+            operation when parameters are validated).
     """
 
     def __init__(self, border_size: Optional[Union[int, float]] = 1):
+        """Initialize the remover.
+
+        Args:
+            border_size: Width of the exclusion border around the image.
+                - ``None``: Use a default margin equal to 1% of the smaller
+                  image dimension.
+                - ``float`` in (0, 1): Interpret as a fraction of the minimum
+                  image dimension, producing a resolution-adaptive margin.
+                - ``int`` or ``float`` ≥ 1: Interpret as an absolute number of
+                  pixels.
+
+        Notes:
+            Larger margins remove more edge-touching colonies and are useful
+            when crops are loose or the plate rim intrudes. Smaller margins
+            preserve edge colonies but risk including partial objects.
+        """
         self.__edge_size = border_size
 
     def _operate(self, image: Image) -> Image:
