@@ -10,21 +10,40 @@ from ..abc_ import ImageEnhancer
 
 class GaussianBlur(ImageEnhancer):
     """
-    Applies a Gaussian blur filter to an image.
+    Gaussian blur smoothing for plate images.
 
-    The GaussianBlur class inherits from ImageEnhancer and provides the functionality
-    to apply Gaussian blurring to an image. It allows customization of the Gaussian
-    kernel using parameters such as sigma, mode, cval, and truncate. This class is
-    designed for enhancing images through controlled blurring.
+    Applies Gaussian smoothing to reduce high-frequency noise and minor texture
+    on agar plates (e.g., scanner noise, agar granularity, condensation speckle).
+    This can make colony boundaries more coherent and reduce false edges before
+    edge detection or thresholding.
+
+    Use cases (agar plates):
+    - Suppress “salt-and-pepper” noise and minor agar texture so thresholding is
+      driven by colony signal rather than noise.
+    - Pre-filter before `SobelFilter` or Laplacian to avoid amplifying noise.
+    - Slightly smooth within colonies to make segmentation more compact.
+
+    Tuning and effects:
+    - sigma: Controls blur strength. Choose below the typical colony radius to
+      avoid merging close colonies. Too large sigma will wash out small colonies
+      and narrow gaps between neighbors.
+    - mode/cval: Define how edges are handled. For plates, 'reflect' usually
+      avoids artificial dark/bright rims. 'constant' with a neutral `cval` may
+      be useful for cropped regions.
+    - truncate: Larger values include more of the Gaussian tail (slightly slower)
+      with subtle effect on smoothness near edges.
+
+    Caveats:
+    - Excessive blur merges adjacent colonies and reduces edge sharpness.
+    - Do not rely on blur to fix illumination gradients; prefer background
+      subtraction (e.g., `GaussianSubtract` or `RollingBallRemoveBG`).
 
     Attributes:
-        sigma (int): Standard deviation for Gaussian kernel. Determines the amount
-            of blurring. Must be an integer.
-        mode (str): Boundary mode to handle edges. Supported modes are 'reflect',
-            'constant', and 'nearest'.
-        cval (float): Value to set constant boundaries when mode is 'constant'.
-        truncate (float): Radius of the Gaussian kernel in terms of standard
-            deviations. Truncates the kernel beyond this value.
+        sigma (int): Standard deviation of the Gaussian kernel (blur strength).
+        mode (str): Edge handling: 'reflect', 'constant', or 'nearest'.
+        cval (float): Fill value when `mode='constant'`.
+        truncate (float): Radius of kernel in standard deviations; kernel is
+            truncated beyond this distance.
     """
 
     def __init__(self, sigma: int = 2,
@@ -32,6 +51,16 @@ class GaussianBlur(ImageEnhancer):
                  mode: str = 'reflect',
                  cval=0.0,
                  truncate: float = 4.0):
+        """
+        Parameters:
+            sigma (int): Blur strength; start near 1–3 for high-resolution scans.
+                Keep below the colony radius to avoid merging colonies.
+            mode (str): Boundary handling. 'reflect' is a safe default for plates;
+                'constant' may require setting `cval` close to background.
+            cval (float): Constant fill value when `mode='constant'`.
+            truncate (float): Kernel extent in standard deviations. Rarely needs
+                adjustment; larger values slightly widen the effective kernel.
+        """
         if isinstance(sigma, int):
             self.sigma = sigma
         else:

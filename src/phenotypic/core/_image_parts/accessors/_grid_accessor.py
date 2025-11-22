@@ -237,7 +237,7 @@ class GridAccessor(ImageAccessorBase):
         if show_gridlines:
             col_edges = self.get_col_edges()
             row_edges = self.get_row_edges()
-            func_ax.hlines(y=col_edges, xmin=row_edges.min(), xmax=row_edges.max(), colors='c', linestyles='--')
+            func_ax.hlines(y=row_edges, xmin=col_edges.min(), xmax=col_edges.max(), colors='c', linestyles='--')
 
         if ax is None:
             return fig, func_ax

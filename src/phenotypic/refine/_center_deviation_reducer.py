@@ -6,16 +6,43 @@ if TYPE_CHECKING: from phenotypic import Image
 
 from scipy.spatial.distance import euclidean
 
-from phenotypic.abc_ import MapModifier
+from phenotypic.abc_ import ObjectRefiner
 from phenotypic.tools.constants_ import OBJECT, BBOX
 
 
-class CenterDeviationReducer(MapModifier):
-    """Removes objects based on how far away they are from the center of the image.
+class CenterDeviationReducer(ObjectRefiner):
+    """Keep the object closest to center and remove off-center detections.
 
-    Useful for isolated colony images. Use with `phenotypic.grid.GridApply` to remove objects from how far
-    they are from the center of the grid position.
+    Intuition:
+        For isolated-colony images (e.g., single-spot captures or per-grid-cell
+        crops), the true colony is typically near the center. Spurious blobs from
+        glare, dust, or agar texture may appear off-center. This operation keeps
+        only the object whose centroid is closest to the image center, removing
+        all others.
 
+    Why this is useful for agar plates:
+        When imaging a grid of pinned colonies, per-cell crops may contain extra
+        detections (ringing, condensation, halo). Selecting the most centered
+        object stabilizes downstream phenotyping by focusing on the intended
+        colony in each crop.
+
+    Use cases:
+        - Single-colony crops from a grid plate where occasional debris is picked
+          up near edges.
+        - Automated pipelines that assume one colony per field-of-view.
+
+    Caveats:
+        - If the true colony is notably off-center (misalignment, drift), this
+          method can remove it and keep a distractor.
+        - Not suitable for multi-colony fields; it will drop all but one object.
+
+    Attributes:
+        (No public attributes)
+
+    Examples:
+        >>> from phenotypic.refine import CenterDeviationReducer
+        >>> op = CenterDeviationReducer()
+        >>> image = op.apply(image, inplace=True)  # doctest: +SKIP
     """
 
     def _operate(self, image: Image):

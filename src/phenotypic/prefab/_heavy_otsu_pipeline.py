@@ -6,7 +6,7 @@ from phenotypic.abc_ import PrefabPipeline
 from phenotypic.enhance import CLAHE, GaussianBlur, MedianEnhancer, ContrastStretching, SobelFilter
 from phenotypic.detect import OtsuDetector, WatershedDetector
 from phenotypic.correction import GridAligner
-from phenotypic.grid import (MinResidualErrorReducer, GridOversizedObjectRemover)
+from phenotypic.refine import MinResidualErrorReducer, GridOversizedObjectRemover
 from phenotypic.refine import BorderObjectRemover, SmallObjectRemover, LowCircularityRemover
 from phenotypic.refine import MaskFill, MaskOpener
 from phenotypic.measure import MeasureIntensity, MeasureShape, MeasureTexture, MeasureColor

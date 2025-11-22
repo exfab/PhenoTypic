@@ -20,12 +20,16 @@ def test_empty_image():
 @timeit
 def test_set_image_from_array(sample_image_array_with_imformat):
     """
-    Tests the functionality of setting an image from an array and verifies the
-    image properties such as shape, non-emptiness, and proper initialization.
+    Tests the functionality to set an image from an array into the `phenotypic.Image` object and ensures
+    that the image attributes are assigned correctly. This is particularly relevant for processing
+    images of microbe colonies on solid media agar, as correct initialization ensures subsequent
+    processing will reflect the colony morphology accurately.
 
     Args:
-        sample_images: A tuple containing the arr image array, arr image
-            format, and the expected true image format.
+        sample_image_array_with_imformat: A tuple containing the input image as a NumPy array, the
+            expected image format of the input, and the true image format. The input image determines
+            the initial representation of the microbial colony image. Accurate representation of
+            microbial colonies depends on the dimensionality and format of the input image.
     """
     input_image, input_imformat, true_imformat = sample_image_array_with_imformat
     phenotypic_image = phenotypic.Image()
@@ -43,7 +47,7 @@ def test_set_image_from_image(sample_image_array_with_imformat):
     properties and states intact.
 
     Args:
-        sample_image_inputs: A tuple containing the following:
+        sample_image_array_with_imformat: A tuple containing the following:
             arr: The arr image as a NumPy array.
             input_imformat: The format of the arr image as a string.
             true_imformat: The expected image format as a string.
@@ -218,3 +222,76 @@ def test_image_object_label_consistency_with_skimage(sample_image_array_with_imf
     assert ps_image.objects.labels2series().equals(
             pd.Series(skimage.measure.regionprops_table(ps_image.objmap[:], properties=['label'])['label']),
     )
+
+
+@timeit
+def test_rgb_imsave_jpg(tmp_path):
+    out = tmp_path/"out.jpg"
+
+    image = phenotypic.data.load_colony(mode='Image')
+    image.rgb.imsave(out)
+    assert out.exists(), f"RGB JPEG file was not created at {out}"
+
+
+@timeit
+def test_rgb_imsave_png(tmp_path):
+    out = tmp_path/"out.png"
+    image = phenotypic.data.load_colony(mode='Image')
+    image.rgb.imsave(out)
+    assert out.exists(), f"RGB PNG file was not created at {out}"
+
+
+@timeit
+def test_rgb_imsave_tiff(tmp_path):
+    out = tmp_path/"out.tiff"
+    image = phenotypic.data.load_colony(mode='Image')
+    image.rgb.imsave(out)
+    assert out.exists(), f"RGB TIFF file was not created at {out}"
+
+
+@timeit
+def test_gray_imsave_jpg(tmp_path):
+    out = tmp_path/"out_gray.jpg"
+    image = phenotypic.data.load_colony(mode='Image')
+    image.gray.imsave(out)
+    assert out.exists(), f"Gray JPEG file was not created at {out}"
+
+
+@timeit
+def test_gray_imsave_png(tmp_path):
+    out = tmp_path/"out_gray.png"
+    image = phenotypic.data.load_colony(mode='Image')
+    image.gray.imsave(out)
+    assert out.exists(), f"Gray PNG file was not created at {out}"
+
+
+@timeit
+def test_gray_imsave_tiff(tmp_path):
+    out = tmp_path/"out_gray.tiff"
+    image = phenotypic.data.load_colony(mode='Image')
+    image.gray.imsave(out)
+    assert out.exists(), f"Gray TIFF file was not created at {out}"
+
+
+@timeit
+def test_enh_gray_imsave_jpg(tmp_path):
+    out = tmp_path/"out_enh_gray.jpg"
+    image = phenotypic.data.load_colony(mode='Image')
+    image.enh_gray.imsave(out)
+    assert out.exists(), f"Enhanced Gray JPEG file was not created at {out}"
+
+
+@timeit
+def test_enh_gray_imsave_png(tmp_path):
+    out = tmp_path/"out_enh_gray.png"
+    image = phenotypic.data.load_colony(mode='Image')
+    image.enh_gray.imsave(out)
+    assert out.exists(), f"Enhanced Gray PNG file was not created at {out}"
+
+
+@timeit
+def test_enh_gray_imsave_tiff(tmp_path):
+    out = tmp_path/"out_enh_gray.tiff"
+    image = phenotypic.data.load_colony(mode='Image')
+    image.enh_gray.imsave(out)
+    assert out.exists(), f"Enhanced Gray TIFF file was not created at {out}"

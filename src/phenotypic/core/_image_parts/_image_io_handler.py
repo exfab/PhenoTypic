@@ -83,7 +83,7 @@ class ImageIOHandler(ImageColorSpace):
             if rawpy.DemosaicAlgorithm.AMAZE.isSupported:
                 default_demosaic = rawpy.DemosaicAlgorithm.AMAZE
             else:
-                default_demosaic = rawpy.DemosaicAlgorithm.LINEAR
+                default_demosaic = rawpy.DemosaicAlgorithm.AHD
 
             demosaic_algorithm = rawpy_params.pop('demosaic_algorithm', default_demosaic)
             gamma = rawpy_params.pop('gamma', (1, 1))

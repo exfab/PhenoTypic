@@ -4,8 +4,9 @@ from phenotypic.abc_ import PrefabPipeline
 from phenotypic import ImagePipeline
 from phenotypic.enhance import CLAHE, GaussianBlur, MedianEnhancer, ContrastStretching
 from phenotypic.detect import OtsuDetector
-from phenotypic.grid import GridApply, MinResidualErrorReducer, GridAlignmentOutlierRemover
-from phenotypic.refine import BorderObjectRemover, SmallObjectRemover, LowCircularityRemover
+from phenotypic.util import GridApply
+from phenotypic.refine import BorderObjectRemover, SmallObjectRemover, LowCircularityRemover, MinResidualErrorReducer, \
+    ResidualOutlierRemover
 from phenotypic.correction import GridAligner
 
 from phenotypic.measure import MeasureColor, MeasureShape, MeasureIntensity, MeasureTexture
@@ -149,7 +150,7 @@ class GridSectionPipeline(PrefabPipeline):
             'low circularity remover'         : LowCircularityRemover(cutoff=circularity_cutoff),
             'small object remover'            : SmallObjectRemover(min_size=small_object_min_size),
             'Reduce by section residual error': MinResidualErrorReducer(),
-            'outlier removal'                 : GridAlignmentOutlierRemover(
+            'outlier removal'                 : ResidualOutlierRemover(
                     axis=outlier_axis,
                     stddev_multiplier=outlier_stddev_multiplier,
                     max_coeff_variance=outlier_max_coeff_variance

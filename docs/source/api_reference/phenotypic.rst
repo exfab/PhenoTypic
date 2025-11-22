@@ -24,3 +24,4 @@ Subpackages
    phenotypic.prefab
    phenotypic.refine
    phenotypic.tools
+   phenotypic.util

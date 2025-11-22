@@ -199,6 +199,7 @@ intersphinx_mapping = {
 def generate_downloadables_rst(app):
     import ast
     import os
+    import re
 
     # Get directories relative to conf.py
     source_dir = os.path.abspath(os.path.dirname(__file__))
@@ -220,57 +221,122 @@ def generate_downloadables_rst(app):
     content.append("    :gutter: 3")
     content.append("")
 
+    def extract_bash_description(filepath):
+        """Extract title and description from bash script comments."""
+        try:
+            with open(filepath, 'r', encoding='utf-8') as f:
+                lines = f.readlines()
+        except Exception as e:
+            print(f"Error reading {filepath}: {e}")
+            return None, None
+
+        title = None
+        description_lines = []
+        
+        # Look for comment blocks (skip shebang and empty lines)
+        in_comment_block = False
+        for i, line in enumerate(lines):
+            stripped = line.strip()
+            
+            # Skip shebang and empty lines at start
+            if i == 0 and stripped.startswith('#!'):
+                continue
+            if not stripped:
+                continue
+            
+            # Check if it's a comment line
+            if stripped.startswith('#'):
+                # Skip separator lines (===, ---, etc.)
+                comment_content = stripped[1:].strip()
+                if not comment_content or re.match(r'^[=\-]+$', comment_content):
+                    continue
+                
+                # Extract title from first meaningful comment
+                if title is None and comment_content:
+                    # Check if it looks like a title (short, no period, capitalized)
+                    if len(comment_content) < 100 and not comment_content.endswith('.'):
+                        title = comment_content
+                    else:
+                        description_lines.append(comment_content)
+                else:
+                    # Collect description lines
+                    if comment_content:
+                        description_lines.append(comment_content)
+                        # Stop at first empty line after collecting some content
+                        if len(description_lines) >= 2:
+                            # Check if next non-empty line is not a comment
+                            for j in range(i + 1, min(i + 3, len(lines))):
+                                next_stripped = lines[j].strip()
+                                if next_stripped and not next_stripped.startswith('#'):
+                                    break
+                            else:
+                                continue
+                            break
+        
+        description = ' '.join(description_lines) if description_lines else None
+        return title, description
+
     for filename in sorted(os.listdir(downloadables_dir)):
-        if not filename.endswith('.py'):
+        if not (filename.endswith('.py') or filename.endswith('.sh')):
             continue
 
         filepath = os.path.join(downloadables_dir, filename)
 
-        try:
-            with open(filepath, 'r', encoding='utf-8') as f:
-                tree = ast.parse(f.read())
-                docstring = ast.get_docstring(tree)
-        except Exception as e:
-            print(f"Error parsing {filename}: {e}")
-            docstring = None
-
         title = filename
         description = "No description available."
 
-        if docstring:
-            lines = docstring.strip().split('\n')
-            # Try to extract a title from the first line or ReST header
-            first_line = lines[0].strip()
+        if filename.endswith('.py'):
+            # Handle Python files
+            try:
+                with open(filepath, 'r', encoding='utf-8') as f:
+                    tree = ast.parse(f.read())
+                    docstring = ast.get_docstring(tree)
+            except Exception as e:
+                print(f"Error parsing {filename}: {e}")
+                docstring = None
 
-            # Check for Title underline style
-            # Title
-            # =====
-            if len(lines) > 1 and len(lines[1].strip()) >= len(first_line) and set(lines[1].strip()) == {'='}:
-                title = first_line
-                # Description starts after the header
-                desc_lines_raw = lines[2:]
-            else:
-                # Just use filename as title if no clear header
-                # Or use the first line if it looks like a title
-                desc_lines_raw = lines
+            if docstring:
+                lines = docstring.strip().split('\n')
+                # Try to extract a title from the first line or ReST header
+                first_line = lines[0].strip()
 
-            # Extract description (first paragraph)
-            desc_lines = []
-            started = False
-            for line in desc_lines_raw:
-                stripped = line.strip()
-                if not started:
-                    if stripped:
-                        started = True
-                        desc_lines.append(stripped)
+                # Check for Title underline style
+                # Title
+                # =====
+                if len(lines) > 1 and len(lines[1].strip()) >= len(first_line) and set(lines[1].strip()) == {'='}:
+                    title = first_line
+                    # Description starts after the header
+                    desc_lines_raw = lines[2:]
                 else:
-                    if not stripped:
-                        # Empty line indicates end of paragraph
-                        break
-                    desc_lines.append(stripped)
+                    # Just use filename as title if no clear header
+                    # Or use the first line if it looks like a title
+                    desc_lines_raw = lines
 
-            if desc_lines:
-                description = ' '.join(desc_lines)
+                # Extract description (first paragraph)
+                desc_lines = []
+                started = False
+                for line in desc_lines_raw:
+                    stripped = line.strip()
+                    if not started:
+                        if stripped:
+                            started = True
+                            desc_lines.append(stripped)
+                    else:
+                        if not stripped:
+                            # Empty line indicates end of paragraph
+                            break
+                        desc_lines.append(stripped)
+
+                if desc_lines:
+                    description = ' '.join(desc_lines)
+        
+        elif filename.endswith('.sh'):
+            # Handle bash files
+            bash_title, bash_description = extract_bash_description(filepath)
+            if bash_title:
+                title = bash_title
+            if bash_description:
+                description = bash_description
 
         # Add card
         content.append(f"    .. grid-item-card:: {title}")
@@ -283,7 +349,7 @@ def generate_downloadables_rst(app):
         content.append("")
 
     with open(output_file, 'w', encoding='utf-8') as f:
-        f.write('\\n'.join(content))
+        f.write('\n'.join(content))
     print(f"Generated {output_file}")
 
 
