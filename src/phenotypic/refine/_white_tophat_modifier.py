@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING: from phenotypic import Image
 
 import numpy as np
-from skimage.morphology import disk, square, white_tophat
+from skimage.morphology import white_tophat
 
 from phenotypic.abc_ import ObjectRefiner
 
@@ -72,8 +72,9 @@ class WhiteTophatModifier(ObjectRefiner):
     def _operate(self, image: Image) -> Image:
         white_tophat_results = white_tophat(
                 image.objmask[:],
-                footprint=self._get_footprint(
-                        self._get_footprint_radius(array=image.objmask[:])
+                footprint=self._make_footprint(
+                        shape=self.footprint_shape,
+                        radius=self._get_footprint_radius(array=image.objmask[:])
                 )
         )
         image.objmask[:] = image.objmask[:] & ~white_tophat_results
@@ -84,12 +85,3 @@ class WhiteTophatModifier(ObjectRefiner):
             return int(np.min(array.shape)*0.004)
         else:
             return self.footprint_radius
-
-    def _get_footprint(self, radius: int) -> np.ndarray:
-        match self.footprint_shape:
-            case 'disk':
-                return disk(radius=radius)
-            case 'square':
-                return square(radius*2)
-            case _:
-                raise ValueError('invalid footprint shape. White tophat transform only supports two dimensional shapes')

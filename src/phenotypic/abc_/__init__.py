@@ -4,7 +4,7 @@ from ._image_operation import ImageOperation
 from ._image_enhancer import ImageEnhancer
 from ._image_corrector import ImageCorrector
 from ._object_detector import ObjectDetector
-from ._map_modifier import ObjectRefiner
+from ._object_refiner import ObjectRefiner
 from ._threshold_detector import ThresholdDetector
 from ._grid_operation import GridOperation
 from ._grid_corrector import GridCorrector

@@ -51,7 +51,6 @@ dependencies = [
     "exifread>=3.5.1",
     "click>=8.3.0",
     "bm3d>=4.0.3",
-    "basicpy;sys_platform!='win32'"
 ]
 
 [project.urls]

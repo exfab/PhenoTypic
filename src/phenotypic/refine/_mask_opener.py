@@ -7,7 +7,7 @@ if TYPE_CHECKING: from phenotypic import Image
 from phenotypic.abc_ import ObjectRefiner
 
 import numpy as np
-from skimage.morphology import binary_opening, diamond
+from skimage.morphology import binary_opening
 
 
 class MaskOpener(ObjectRefiner):
@@ -69,11 +69,11 @@ class MaskOpener(ObjectRefiner):
 
     def _operate(self, image: Image) -> Image:
         if self.footprint == 'auto':
-            footprint = diamond(radius=max(3, round(np.min(image.shape)*0.005)))
+            footprint = self._make_footprint("diamond", radius=max(3, round(np.min(image.shape)*0.005)))
         elif isinstance(self.footprint, np.ndarray):
             footprint = self.footprint
         elif isinstance(self.footprint, (int, float)):
-            footprint = diamond(radius=int(self.footprint))
+            footprint = self._make_footprint("diamond", radius=int(self.footprint))
         elif not self.footprint:
             footprint = self.footprint
         else:
