@@ -1,5 +1,5 @@
-phenotypic.tools.funcs\_ module
-===============================
+phenotypic.tools.funcs\_
+========================
 
 .. automodule:: phenotypic.tools.funcs_
    :members:

@@ -1,5 +1,5 @@
-phenotypic.util package
-=======================
+phenotypic.util
+===============
 
 .. automodule:: phenotypic.util
    :members:

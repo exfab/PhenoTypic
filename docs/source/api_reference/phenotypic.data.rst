@@ -1,5 +1,5 @@
-phenotypic.data package
-=======================
+phenotypic.data
+===============
 
 .. automodule:: phenotypic.data
    :members:

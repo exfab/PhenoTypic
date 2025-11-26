@@ -73,7 +73,7 @@ Welcome to Phenotypic's documentation. Here you'll find comprehensive guides and
          To the examples
 
    .. grid-item-card::  Downloadables
-      :img-top: ./_static/assets/200x150/tutorial.svg
+      :img-top: ./_static/assets/200x150/downloads.svg
       :class-card: intro-card
       :shadow: md
 
@@ -87,7 +87,7 @@ Welcome to Phenotypic's documentation. Here you'll find comprehensive guides and
          :color: secondary
          :expand:
 
-         command-line interface, slurm examples, etc
+         To downloads!
 
    .. grid-item-card::  API reference
       :img-top: ./_static/assets/200x150/api_ref_sign.svg

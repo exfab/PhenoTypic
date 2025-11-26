@@ -1,5 +1,9 @@
-"""
-This module contains premade, tested prefab that we use in ExFAB workflows
+"""Prefab pipelines for fungal colony plate processing.
+
+Ready-to-run chains of enhancement, detection, refinement, and measurement steps
+tuned for common agar plate scenarios. Includes watershed-heavy pipelines for
+clustered colonies, Otsu-based pipelines for clean backgrounds, grid-section pipelines
+for tiled inputs, and grid-aware Gitter-style processing for dense arrays.
 """
 
 from ._heavy_watershed_pipeline import HeavyWatershedPipeline

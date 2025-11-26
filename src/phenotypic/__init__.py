@@ -1,3 +1,13 @@
+"""Phenotypic toolkit for plate-based fungal colony imaging and analysis.
+
+This package bundles image I/O, enhancement, detection, refinement, and measurement
+utilities tuned for agar plate assays. Use it to load multi-channel captures,
+align plates to grids, extract per-colony masks, and quantify morphology and growth.
+Core interfaces are provided via `Image`, `GridImage`, `ImagePipeline`, `ImageSet`,
+and `imread`, while subpackages cover enhancement, detection, refinement, measurement,
+analytics, prefab pipelines, and supporting utilities for agar-plate workflows.
+"""
+
 __version__ = "0.10.0"
 __author__ = "Alexander Nguyen"
 __email__ = "anguy344@ucr.edu"

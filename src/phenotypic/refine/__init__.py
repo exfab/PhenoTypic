@@ -1,7 +1,9 @@
-"""
-This module provides tools for modifying objects in image processing
-tasks, including removing objects with low circularity, small objects, objects
-at the borders, and reducing the number of objects in a location such as a grid
+"""Mask refinement for detected fungal colonies.
+
+Post-detection operations that clean up binary masks by removing artifacts, fixing gaps,
+and normalizing colony footprints across grid cells. Tools cover circularity checks,
+size filtering, border exclusion, center deviation reduction, hole filling, morphological
+opening, tophat-based brightening, oversized-object capping, and residual-based outlier removal.
 """
 
 from ._circularity_modifier import LowCircularityRemover

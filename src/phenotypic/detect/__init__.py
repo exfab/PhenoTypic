@@ -1,6 +1,10 @@
-"""
-The detection module contains classes for detecting objects in images.
+"""Colony/object detectors for agar plate images.
 
+Implements thresholding- and edge-based approaches to turn enhanced grayscale images
+into binary colony masks, with options suited to faint growth, uneven agar, or dense plates.
+Includes global histogram methods (Otsu, Li, Yen, Isodata, Triangle, Mean, Minimum),
+edge-aware variants (Canny), grid-aware detection (Gitter), and watershed-based
+segmentation for clustered colonies.
 """
 
 from ._canny_detector import CannyDetector

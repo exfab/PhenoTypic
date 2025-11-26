@@ -1,3 +1,11 @@
+"""Abstract interfaces for fungal colony image operations.
+
+Defines the base contracts that power the processing pipeline: enhancers, detectors,
+refiners, grid operations, and measurement classes. Implement these to add new steps
+tailored to agar plate imaging, building on `MeasurementInfo`, `MeasureFeatures`,
+`ImageOperation`, `GridOperation`, and the prefab pipeline foundation.
+"""
+
 from phenotypic._shared_modules._measurement_info import MeasurementInfo
 from ._measure_features import MeasureFeatures
 from ._image_operation import ImageOperation

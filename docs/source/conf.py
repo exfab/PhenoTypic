@@ -44,8 +44,8 @@ author = 'Alexander Nguyen'
 
 # Variables
 github_url = 'https://github.com/Wheeldon-Lab/PhenoScope#'
-LIGHT_LOGO_PATH = './_static/assets/200x150/light_logo_sponsor.svg'
-DARK_LOGO_PATH = './_static/assets/200x150/light_logo_sponsor.svg'
+LIGHT_LOGO_PATH = './_static/assets/400x150/gradient_logo_exfab.svg'
+DARK_LOGO_PATH = './_static/assets/400x150/gradient_logo_exfab.svg'
 
 # Try to get the version from PhenoTypic, but use a default if not available
 try:
@@ -77,6 +77,7 @@ extensions = [
 ]
 
 autosummary_generate = True
+# autosummary_imported_members = True
 
 autodoc_default_options = {
     'members'          : True,  # Document class members
@@ -84,6 +85,7 @@ autodoc_default_options = {
     'private-members'  : False,  # Include private members (e.g., `_method`)
     'show-inheritance' : True,  # Show class inheritance in docs
     'inherited-members': True,  # Include inherited members
+    # 'member-order'     : 'bysource',
 }
 
 autodoc_typehints = 'both'
@@ -232,25 +234,25 @@ def generate_downloadables_rst(app):
 
         title = None
         description_lines = []
-        
+
         # Look for comment blocks (skip shebang and empty lines)
         in_comment_block = False
         for i, line in enumerate(lines):
             stripped = line.strip()
-            
+
             # Skip shebang and empty lines at start
             if i == 0 and stripped.startswith('#!'):
                 continue
             if not stripped:
                 continue
-            
+
             # Check if it's a comment line
             if stripped.startswith('#'):
                 # Skip separator lines (===, ---, etc.)
                 comment_content = stripped[1:].strip()
                 if not comment_content or re.match(r'^[=\-]+$', comment_content):
                     continue
-                
+
                 # Extract title from first meaningful comment
                 if title is None and comment_content:
                     # Check if it looks like a title (short, no period, capitalized)
@@ -272,7 +274,7 @@ def generate_downloadables_rst(app):
                             else:
                                 continue
                             break
-        
+
         description = ' '.join(description_lines) if description_lines else None
         return title, description
 
@@ -329,7 +331,7 @@ def generate_downloadables_rst(app):
 
                 if desc_lines:
                     description = ' '.join(desc_lines)
-        
+
         elif filename.endswith('.sh'):
             # Handle bash files
             bash_title, bash_description = extract_bash_description(filepath)

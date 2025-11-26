@@ -1,21 +1,10 @@
-"""
-The enhance module provides a collection of image enhance operations designed to improve
-detection and segmentation results by modifying the image's enhance gray.
+"""Image enhancers to boost fungal colonies on agar backgrounds.
 
-Available enhancers:
-    - CLAHE: Contrast Limited Adaptive Histogram Equalization for local contrast enhance
-    - GaussianBlur: Applies Gaussian blur to reduce noise while preserving edges
-    - MedianFilter: Uses median filtering for noise reduction
-    - RankMedianEnhancer: Applies rank-based median filtering for enhanced noise removal
-    - RollingBallEnhancer: Implements rolling ball algorithm for background subtraction
-    - GaussianSubtract: Uses Gaussian blur for background estimation and subtraction
-    - WhiteTophatEnhancer: Performs white tophat transformation for feature extraction
-    - LaplaceEnhancer: Applies Laplacian operator for edge detection
-    - ContrastStretching: Enhances image contrast through intensity stretching
-    - BM3DDenoiser: Block-matching and 3D filtering for advanced noise removal
-
-Each enhancer operates on a copy of the original image gray to preserve the source data
-while allowing for multiple enhance operations to be applied sequentially.
+Preprocessing steps that denoise, normalize, and emphasize colony structure before
+detection. The module covers local contrast equalization (CLAHE), Gaussian/median/rank
+denoising, rolling-ball and Gaussian background subtraction, tophat and Laplacian edge
+accentuation, Sobel gradients, contrast stretching, and BM3D denoising for clean plates.
+All operate on copies of the grayscale view to keep raw data intact.
 """
 
 from ._clahe import CLAHE
