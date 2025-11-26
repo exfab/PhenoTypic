@@ -1,0 +1,89 @@
+phenotypic.tools.constants\_.BBOX
+=================================
+
+.. currentmodule:: phenotypic.tools.constants_
+
+.. autoclass:: BBOX
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~BBOX.category
+      ~BBOX.get_labels
+      ~BBOX.get_headers
+      ~BBOX.rst_table
+      ~BBOX.append_rst_to_doc
+      ~BBOX.encode
+      ~BBOX.replace
+      ~BBOX.split
+      ~BBOX.rsplit
+      ~BBOX.join
+      ~BBOX.capitalize
+      ~BBOX.casefold
+      ~BBOX.title
+      ~BBOX.center
+      ~BBOX.count
+      ~BBOX.expandtabs
+      ~BBOX.find
+      ~BBOX.partition
+      ~BBOX.index
+      ~BBOX.ljust
+      ~BBOX.lower
+      ~BBOX.lstrip
+      ~BBOX.rfind
+      ~BBOX.rindex
+      ~BBOX.rjust
+      ~BBOX.rstrip
+      ~BBOX.rpartition
+      ~BBOX.splitlines
+      ~BBOX.strip
+      ~BBOX.swapcase
+      ~BBOX.translate
+      ~BBOX.upper
+      ~BBOX.startswith
+      ~BBOX.endswith
+      ~BBOX.removeprefix
+      ~BBOX.removesuffix
+      ~BBOX.isascii
+      ~BBOX.islower
+      ~BBOX.isupper
+      ~BBOX.istitle
+      ~BBOX.isspace
+      ~BBOX.isdecimal
+      ~BBOX.isdigit
+      ~BBOX.isnumeric
+      ~BBOX.isalpha
+      ~BBOX.isalnum
+      ~BBOX.isidentifier
+      ~BBOX.isprintable
+      ~BBOX.zfill
+      ~BBOX.format
+      ~BBOX.format_map
+      ~BBOX.maketrans
+      ~BBOX.__init__
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~BBOX.CATEGORY
+      ~BBOX.CENTER_RR
+      ~BBOX.MIN_RR
+      ~BBOX.MAX_RR
+      ~BBOX.CENTER_CC
+      ~BBOX.MIN_CC
+      ~BBOX.MAX_CC
+   
+   
