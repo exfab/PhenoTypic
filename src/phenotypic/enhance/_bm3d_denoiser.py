@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, Literal
 
 if TYPE_CHECKING: from phenotypic import Image
 import bm3d
+from bm3d.profiles import BM3DStages
 
 from ..abc_ import ImageEnhancer
 
@@ -59,14 +60,14 @@ class BM3DDenoiser(ImageEnhancer):
     """
 
     def __init__(
-        self,
-        sigma_psd: float | None = None,
-        *,
-        stage_arg: Literal["all_stages", "hard_thresholding"] = "all_stages",
+            self,
+            sigma_psd: float = 0.02,
+            *,
+            stage_arg: Literal["all_stages", "hard_thresholding"] = "all_stages",
     ):
         """
         Parameters:
-            sigma_psd (float | None): Noise level estimate in [0, 1] normalized
+            sigma_psd (float): Noise level estimate in [0, 1] normalized
                 scale. None for auto-estimation; otherwise specify as standard
                 deviation matching the normalized image range. Start with 0.02-0.05
                 for typical scanner noise on plates (equivalent to σ=5-12 on 8-bit).
@@ -76,29 +77,35 @@ class BM3DDenoiser(ImageEnhancer):
                 speed; 'hard_thresholding' is faster and adequate for routine
                 plate analysis.
         """
-        if sigma_psd is not None:
-            if not isinstance(sigma_psd, (int, float)):
-                raise TypeError("sigma_psd must be a number or None")
-            if sigma_psd < 0:
-                raise ValueError("sigma_psd must be non-negative")
-            self.sigma_psd = float(sigma_psd)
-        else:
-            self.sigma_psd = None
+        if not isinstance(sigma_psd, (int, float)):
+            raise TypeError("sigma_psd must be a number or None")
+        if sigma_psd < 0:
+            raise ValueError("sigma_psd must be non-negative")
+        self.sigma_psd = float(sigma_psd)
 
         if stage_arg not in ["all_stages", "hard_thresholding"]:
-            raise ValueError(
-                'stage_arg must be "all_stages" or "hard_thresholding"'
-            )
-        self.stage_arg = stage_arg
+            raise ValueError("stage_arg must be 'all_stages' or 'hard_thresholding'")
+        else:
+            self.stage_arg = stage_arg
 
     def _operate(self, image: Image) -> Image:
         # enh_gray is guaranteed to be in [0, 1] range, which BM3D expects
+
         denoised = bm3d.bm3d(
-            image.enh_gray[:],
-            sigma_psd=self.sigma_psd,
-            stage_arg=self.stage_arg,
+                image.enh_gray[:],
+                sigma_psd=self.sigma_psd,
+                stage_arg=self._convert_stage_arg(self.stage_arg),
         )
-        
+
         image.enh_gray[:] = denoised
         return image
 
+    def _convert_stage_arg(self, stage_arg: Literal["all_stages", "hard_thresholding"]):
+
+        match stage_arg:
+            case "hard_thresholding":
+                return BM3DStages.HARD_THRESHOLDING
+            case "all_stages":
+                return BM3DStages.ALL_STAGES
+            case _:
+                raise ValueError(f"Unknown stage arg: {stage_arg}")

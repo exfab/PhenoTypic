@@ -4,7 +4,7 @@ from phenotypic import GridImage, ImagePipeline
 from phenotypic.correction import GridAligner
 from phenotypic.data import load_plate_12hr
 from phenotypic.detect import OtsuDetector, WatershedDetector
-from phenotypic.enhance import CLAHE, ContrastStretching, GaussianBlur, MedianEnhancer
+from phenotypic.enhance import CLAHE, ContrastStretching, GaussianBlur, MedianFilter
 from phenotypic.measure import MeasureColor, MeasureIntensity, MeasureShape, MeasureTexture
 from phenotypic.refine import (BorderObjectRemover, LowCircularityRemover, SmallObjectRemover,
                                ResidualOutlierRemover, MinResidualErrorReducer)
@@ -90,7 +90,7 @@ def test_kmarx_pipeline_pickleable(plate_grid_images):
             {
                 'blur'                            : GaussianBlur(sigma=2),
                 'clahe'                           : CLAHE(),
-                'median filter'                   : MedianEnhancer(),
+                'median filter'                   : MedianFilter(),
                 'detection'                       : OtsuDetector(),
                 'border_removal'                  : BorderObjectRemover(50),
                 'low circularity remover'         : LowCircularityRemover(0.6),
@@ -100,7 +100,7 @@ def test_kmarx_pipeline_pickleable(plate_grid_images):
                 'align'                           : GridAligner(),
                 'section-level detect'            : GridApply(ImagePipeline({
                     'blur'               : GaussianBlur(sigma=5),
-                    'median filter'      : MedianEnhancer(),
+                    'median filter'      : MedianFilter(),
                     'contrast stretching': ContrastStretching(),
                     'detection'          : OtsuDetector(),
                 }
@@ -121,7 +121,7 @@ def test_watershed_kmarx_pipeline_pickleable(plate_grid_images):
             ops={
                 'blur'                            : GaussianBlur(sigma=5),
                 'clahe'                           : CLAHE(),
-                'median filter'                   : MedianEnhancer(),
+                'median filter'                   : MedianFilter(),
                 'detection'                       : WatershedDetector(footprint='auto', min_size=100, relabel=True),
                 'low circularity remover'         : LowCircularityRemover(0.5),
                 'reduce by section residual error': MinResidualErrorReducer(),
@@ -147,7 +147,7 @@ def test_watershed_kmarx_pipeline_with_measurements_pickleable(plate_grid_images
             ops={
                 'blur'                            : GaussianBlur(sigma=5),
                 'clahe'                           : CLAHE(),
-                'median filter'                   : MedianEnhancer(),
+                'median filter'                   : MedianFilter(),
                 'detection'                       : WatershedDetector(footprint='auto', min_size=100, relabel=True),
                 'low circularity remover'         : LowCircularityRemover(0.5),
                 'reduce by section residual error': MinResidualErrorReducer(),

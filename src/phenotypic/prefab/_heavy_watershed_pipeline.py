@@ -5,7 +5,7 @@ import numpy as np
 from phenotypic.abc_ import PrefabPipeline
 from phenotypic.correction import GridAligner
 from phenotypic.detect import WatershedDetector
-from phenotypic.enhance import CLAHE, GaussianBlur, MedianEnhancer
+from phenotypic.enhance import CLAHE, GaussianBlur, MedianFilter
 from phenotypic.measure import MeasureColor, MeasureIntensity, MeasureShape, MeasureTexture
 from phenotypic.refine import (BorderObjectRemover,
                                MaskFill,
@@ -89,7 +89,7 @@ class HeavyWatershedPipeline(PrefabPipeline):
         ops = [
             GaussianBlur(sigma=gaussian_sigma, mode=gaussian_mode, truncate=gaussian_truncate),
             CLAHE(),
-            MedianEnhancer(),
+            MedianFilter(),
             watershed_detector,
             border_remover,
             GridOversizedObjectRemover(),

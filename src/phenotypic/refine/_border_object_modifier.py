@@ -40,7 +40,7 @@ class BorderObjectRemover(ObjectRefiner):
           eliminate many colonies.
 
     Attributes:
-        (No public attributes)
+        border_size (int): Width of the exclusion border around the image.
 
     Examples:
         >>> from phenotypic.refine import BorderObjectRemover
@@ -70,15 +70,15 @@ class BorderObjectRemover(ObjectRefiner):
             when crops are loose or the plate rim intrudes. Smaller margins
             preserve edge colonies but risk including partial objects.
         """
-        self.__edge_size = border_size
+        self.border_size = border_size
 
     def _operate(self, image: Image) -> Image:
-        if self.__edge_size is None:
+        if self.border_size is None:
             edge_size = int(np.min(image.shape[[1, 2]])*0.01)
-        elif type(self.__edge_size) == float and 0.0 < self.__edge_size < 1.0:
-            edge_size = int(np.min(image.shape)*self.__edge_size)
-        elif isinstance(self.__edge_size, (int, float)):
-            edge_size = self.__edge_size
+        elif type(self.border_size) == float and 0.0 < self.border_size < 1.0:
+            edge_size = int(np.min(image.shape)*self.border_size)
+        elif isinstance(self.border_size, (int, float)):
+            edge_size = self.border_size
         else:
             raise TypeError('Invalid edge size. Should be int, float, or None to use default edge size.')
 

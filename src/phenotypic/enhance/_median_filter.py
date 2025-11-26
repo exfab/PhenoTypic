@@ -8,7 +8,7 @@ from phenotypic.abc_ import ImageEnhancer
 from skimage.filters import median
 
 
-class MedianEnhancer(ImageEnhancer):
+class MedianFilter(ImageEnhancer):
     """
     Median filtering to reduce impulsive noise while preserving edges.
 

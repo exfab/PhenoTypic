@@ -39,6 +39,11 @@ class GitterDetector(ObjectDetector):
         enhancement techniques before detection. The detector works best with
         images where colonies are clearly visible against the background.
 
+        This detector works best for yeast-like growth where the colonies are circular and
+        less likely to work on filamentous fungi.
+
+
+
     Warning:
         Grid inference from the binary mask alone (when not using GridImage)
         may be less accurate than providing explicit grid information. For
@@ -230,7 +235,7 @@ class GitterDetector(ObjectDetector):
         Raises:
             ValueError: If an invalid thresholding method is specified.
         """
-        kernel = morphology.footprint_rectangle((self.footprint_radius * 2, self.footprint_radius * 2))
+        kernel = morphology.footprint_rectangle((self.footprint_radius*2, self.footprint_radius*2))
         enh_matrix = matrix.copy()  # Work on a copy to avoid modifying input
 
         # Subtract background using white tophat to handle uneven illumination
@@ -245,7 +250,7 @@ class GitterDetector(ObjectDetector):
             case 'mean':
                 thresh = filters.threshold_mean(enh_matrix)
             case 'local':
-                block_size = max(self.footprint_radius * 2 + 1, 3)  # Ensure odd block size
+                block_size = max(self.footprint_radius*2 + 1, 3)  # Ensure odd block size
                 thresh = filters.threshold_local(enh_matrix, block_size=block_size)
             case 'triangle':
                 thresh = filters.threshold_triangle(enh_matrix)
@@ -287,10 +292,10 @@ class GitterDetector(ObjectDetector):
         # For axis=0: we're summing columns, so check for long runs across columns
         # For axis=1: we're summing rows, so check for long runs across rows
         if axis == 0:
-            c = p * binary_image.shape[1]  # Threshold based on number of columns
+            c = p*binary_image.shape[1]  # Threshold based on number of columns
             n_slices = binary_image.shape[0]  # Number of rows to iterate through
         else:
-            c = p * binary_image.shape[0]  # Threshold based on number of rows
+            c = p*binary_image.shape[0]  # Threshold based on number of rows
             n_slices = binary_image.shape[1]  # Number of columns to iterate through
 
         # Identify problematic rows/columns with long stretches of 1s
@@ -316,7 +321,7 @@ class GitterDetector(ObjectDetector):
         sums = np.sum(binary_image, axis=axis, dtype=np.float64)
 
         # Split problematic array in half and zero out problematic regions at edges
-        mid = len(problematic) // 2
+        mid = len(problematic)//2
         left_prob = problematic[:mid]
         right_prob = problematic[mid:]
 
@@ -362,17 +367,18 @@ class GitterDetector(ObjectDetector):
 
         # Calculate expected spacing between colonies
         image_size = binary_image.shape[1 - axis]  # Size along the summed dimension
-        expected_spacing = max(image_size // max(n_bins, 1), 1)
+        expected_spacing = max(image_size//max(n_bins, 1), 1)
 
         # Determine peak detection parameters
-        min_distance = self.min_peak_distance if self.min_peak_distance is not None else max(expected_spacing // 2, 1)
+        min_distance = self.min_peak_distance if self.min_peak_distance is not None else max(expected_spacing//2, 1)
 
         # Calculate prominence if not provided
         if self.peak_prominence is not None:
             prominence = self.peak_prominence
         else:
+            # noinspection PyUnresolvedReferences
             signal_range = np.max(sums) - np.min(sums)
-            prominence = 0.1 * signal_range if signal_range > 0 else None
+            prominence = 0.1*signal_range if signal_range > 0 else None
 
         # Detect peaks with prominence and distance constraints
         peaks, properties = find_peaks(sums, distance=min_distance, prominence=prominence)
@@ -380,10 +386,10 @@ class GitterDetector(ObjectDetector):
         if peaks.size < n_bins:
             # Fallback: enforce evenly spaced peaks if auto detection under-fits
             peaks = np.linspace(
-                start=expected_spacing // 2,
-                stop=image_size - expected_spacing // 2,
-                num=n_bins,
-                dtype=int
+                    start=expected_spacing//2,
+                    stop=image_size - expected_spacing//2,
+                    num=n_bins,
+                    dtype=int
             )
         elif peaks.size > n_bins:
             # Keep the strongest n_bins peaks by height
@@ -394,7 +400,7 @@ class GitterDetector(ObjectDetector):
         # Derive edges midway between peaks
         if len(peaks) > 1:
             # Calculate midpoints between consecutive peaks
-            midpoints = ((peaks[:-1] + peaks[1:]) / 2).astype(int)
+            midpoints = ((peaks[:-1] + peaks[1:])/2).astype(int)
             # Prepend/append image borders
             edges = np.concatenate(([0], midpoints, [image_size]))
         else:
@@ -437,7 +443,7 @@ class GitterDetector(ObjectDetector):
         for i in range(1, len(edges) - 1):
             edge_pos = edges[i]
             # Define search window around current edge
-            search_radius = min(10, (edges[i+1] - edges[i-1]) // 4)
+            search_radius = min(10, (edges[i + 1] - edges[i - 1])//4)
             search_start = max(0, edge_pos - search_radius)
             search_end = min(len(sums), edge_pos + search_radius + 1)
 
@@ -473,7 +479,7 @@ class GitterDetector(ObjectDetector):
             return 8, 12
 
         # Estimate based on aspect ratio and colony count
-        aspect_ratio = binary_image.shape[1] / binary_image.shape[0]
+        aspect_ratio = binary_image.shape[1]/binary_image.shape[0]
 
         if aspect_ratio > 1.3:  # Wide plate (likely 8x12 or similar)
             # Try 8x12 (96 wells), 16x24 (384 wells), etc.
@@ -482,11 +488,10 @@ class GitterDetector(ObjectDetector):
             elif num <= 400:
                 return 16, 24
             else:
-                approx_rows = int(np.ceil(np.sqrt(num / aspect_ratio)))
-                approx_cols = int(np.ceil(np.sqrt(num * aspect_ratio)))
+                approx_rows = int(np.ceil(np.sqrt(num/aspect_ratio)))
+                approx_cols = int(np.ceil(np.sqrt(num*aspect_ratio)))
                 return approx_rows, approx_cols
         else:
             # Square-ish layout
             approx_side = int(np.ceil(np.sqrt(num)))
             return approx_side, max(approx_side, 1)
-

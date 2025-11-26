@@ -5,7 +5,7 @@ detection and segmentation results by modifying the image's enhance gray.
 Available enhancers:
     - CLAHE: Contrast Limited Adaptive Histogram Equalization for local contrast enhance
     - GaussianBlur: Applies Gaussian blur to reduce noise while preserving edges
-    - MedianEnhancer: Uses median filtering for noise reduction
+    - MedianFilter: Uses median filtering for noise reduction
     - RankMedianEnhancer: Applies rank-based median filtering for enhanced noise removal
     - RollingBallEnhancer: Implements rolling ball algorithm for background subtraction
     - GaussianSubtract: Uses Gaussian blur for background estimation and subtraction
@@ -20,7 +20,7 @@ while allowing for multiple enhance operations to be applied sequentially.
 
 from ._clahe import CLAHE
 from ._gaussian_blur import GaussianBlur
-from ._median_enhancer import MedianEnhancer
+from ._median_filter import MedianFilter
 from ._rank_median_enhancer import RankMedianEnhancer
 from ._rolling_ball_remove_bg import RollingBallRemoveBG
 from ._gaussian_subtract import GaussianSubtract
@@ -33,7 +33,7 @@ from ._bm3d_denoiser import BM3DDenoiser
 __all__ = [
     "CLAHE",
     "GaussianBlur",
-    "MedianEnhancer",
+    "MedianFilter",
     "RankMedianEnhancer",
     "RollingBallRemoveBG",
     "GaussianSubtract",
