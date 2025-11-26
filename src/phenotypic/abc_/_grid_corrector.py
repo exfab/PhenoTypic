@@ -13,6 +13,7 @@ from abc import ABC
 
 class GridCorrector(ImageCorrector, GridOperation, ABC):
 
+    # Do not modify this method in inherited functions
     def apply(self, image: GridImage, inplace=False) -> GridImage:
         from phenotypic import GridImage
 

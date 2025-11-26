@@ -28,7 +28,7 @@ class ImageOperation(BaseOperation, LazyWidgetMixin, ABC):
     # Can be set to validate_array_integrity, validate_matrix_integrity, validate_enh_matrix_integrity, validate_objmap_integrity, validate_objmap_integrity_consistency, validate_objmap_integrity_consistency_with_matrix
     # or a custom function that takes two images and returns None if the integrity is valid, otherwise raises OperationIntegrityError
     # If not set, no integrity validation checks are performed.
-
+    # Do not modify the apply method in actual ImageOperations
     def apply(self, image: Image, inplace=False) -> Image:
         """
         Applies the operation to an image, either in-place or on a copy.
