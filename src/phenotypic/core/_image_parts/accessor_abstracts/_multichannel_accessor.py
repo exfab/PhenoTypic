@@ -1,12 +1,18 @@
+import json
+import shutil
+import subprocess
 import warnings
 from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
 import skimage as ski
+from PIL import Image as PIL_Image
+from PIL import PngImagePlugin
 
+import phenotypic
 from phenotypic.core._image_parts.accessor_abstracts import ImageAccessorBase
-from phenotypic.tools.constants_ import METADATA
+from phenotypic.tools.constants_ import METADATA, IO
 
 
 class MultiChannelAccessor(ImageAccessorBase):
@@ -24,10 +30,25 @@ class MultiChannelAccessor(ImageAccessorBase):
         _dtype (Any): Data type of the Image data stored in the target array.
     """
 
-    def imsave(self, fname: str | Path):
+    def imsave(self, fname: str | Path) -> None:
+        """Save the multichannel image array to a file with PhenoTypic metadata embedded.
+
+        Metadata is embedded in format-specific locations:
+        - JPEG: EXIF UserComment tag
+        - PNG: tEXt chunk with key 'phenotypic'
+        - TIFF: ImageDescription tag (270)
+
+        Args:
+            fname: Path to save the image file. Extension determines format.
+
+        Raises:
+            AttributeError: If bit depth is not 8 or 16.
+        """
         fname = Path(fname)
         arr = self._subject_arr.copy()
-        if (arr.dtype != np.uint8) or (arr.dtype != np.uint16):
+
+        # Convert to appropriate bit depth
+        if arr.dtype not in (np.uint8, np.uint16):
             match self._root_image.metadata[METADATA.BIT_DEPTH]:
                 case 8:
                     arr = ski.util.img_as_ubyte(arr)
@@ -35,7 +56,32 @@ class MultiChannelAccessor(ImageAccessorBase):
                     arr = ski.util.img_as_uint(arr)
                 case _:
                     raise AttributeError(f"Unsupported bit depth: {self._root_image.metadata[METADATA.BIT_DEPTH]}")
-        ski.io.imsave(fname=fname, arr=arr, check_contrast=False)
+
+        # Build metadata JSON
+        phenotypic_metadata = self._build_phenotypic_metadata()
+        metadata_json = json.dumps(phenotypic_metadata, ensure_ascii=False)
+
+        suffix = fname.suffix.lower()
+
+        if suffix in IO.JPEG_FILE_EXTENSIONS:
+            # Convert 16-bit to 8-bit for JPEG
+            if arr.dtype == np.uint16:
+                warnings.warn('Saving 16-bit RGB as JPEG will result in information loss')
+                arr = ski.util.img_as_ubyte(arr)
+            pil_img = PIL_Image.fromarray(arr)
+            self._write_jpeg_metadata(fname, pil_img, metadata_json)
+
+        elif suffix in IO.PNG_FILE_EXTENSIONS:
+            pil_img = PIL_Image.fromarray(arr)
+            self._write_png_metadata(fname, pil_img, metadata_json)
+
+        elif suffix in IO.TIFF_EXTENSIONS:
+            pil_img = PIL_Image.fromarray(arr)
+            self._write_tiff_metadata(fname, pil_img, metadata_json)
+
+        else:
+            # Fallback to skimage without metadata
+            ski.io.imsave(fname=fname, arr=arr, check_contrast=False)
 
     def show(self,
              figsize: tuple[int, int] | None = None,

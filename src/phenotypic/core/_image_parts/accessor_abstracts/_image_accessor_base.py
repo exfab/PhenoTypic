@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import json
+import shutil
+import subprocess
 from pathlib import Path
 from typing import Tuple, TYPE_CHECKING
 
@@ -11,7 +14,9 @@ import skimage as ski
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MultipleLocator
 import numpy as np
+from PIL import Image as PIL_Image
 
+import phenotypic
 from phenotypic.tools.constants_ import MPL, METADATA, IO
 import warnings
 from phenotypic.tools.funcs_ import normalize_rgb_bitdepth
@@ -29,10 +34,114 @@ class ImageAccessorBase(ABC):
     Attributes:
         image (Image): The parent image object that this accessor interacts
             with.
+        _accessor_property_name (str): Name of the property on Image that returns this accessor.
+            Override in subclasses (e.g., "gray", "rgb", "enh_gray").
     """
+
+    _accessor_property_name: str = "unknown"
 
     def __init__(self, root_image: Image):
         self._root_image = root_image
+
+    @classmethod
+    def load(cls, filepath: str | Path) -> np.ndarray:
+        """Load an image array from file and verify it was saved from this accessor type.
+
+        Checks if the image contains PhenoTypic metadata indicating it was saved
+        from the same accessor type (e.g., Image.gray, Image.rgb). If metadata
+        doesn't match or is missing, a warning is raised but the array is still loaded.
+
+        Args:
+            filepath: Path to the image file to load.
+
+        Returns:
+            np.ndarray: The loaded image array.
+
+        Warns:
+            UserWarning: If metadata is missing or indicates the image was saved
+                from a different accessor type.
+
+        Example:
+            >>> from phenotypic.core._image_parts.accessors import Grayscale
+            >>> arr = Grayscale.load("my_gray_image.png")
+        """
+        filepath = Path(filepath)
+        expected_property = f"Image.{cls._accessor_property_name}"
+
+        # Load the array
+        arr = ski.io.imread(str(filepath))
+
+        # Try to extract and verify PhenoTypic metadata
+        phenotypic_data = cls._extract_phenotypic_metadata(filepath)
+
+        if phenotypic_data is None:
+            warnings.warn(
+                f"No PhenoTypic metadata found in '{filepath.name}'. "
+                f"Cannot verify this image was saved from {expected_property}. "
+                "Loading anyway, but this may lead to undefined behavior.",
+                UserWarning
+            )
+        else:
+            saved_property = phenotypic_data.get('phenotypic_image_property', 'unknown')
+            if saved_property != expected_property:
+                warnings.warn(
+                    f"Metadata mismatch: Image was saved from '{saved_property}' "
+                    f"but being loaded as '{expected_property}'. "
+                    "This may lead to undefined behavior.",
+                    UserWarning
+                )
+
+        return arr
+
+    @classmethod
+    def _extract_phenotypic_metadata(cls, filepath: Path) -> dict | None:
+        """Extract PhenoTypic metadata from an image file.
+
+        Args:
+            filepath: Path to the image file.
+
+        Returns:
+            dict or None: The PhenoTypic metadata dict if found, None otherwise.
+        """
+        suffix = filepath.suffix.lower()
+
+        try:
+            if suffix in IO.PNG_FILE_EXTENSIONS:
+                with PIL_Image.open(filepath) as img:
+                    phenotypic_json = img.info.get(IO.PHENOTYPIC_METADATA_KEY)
+                    if phenotypic_json:
+                        return json.loads(phenotypic_json)
+
+            elif suffix in IO.JPEG_FILE_EXTENSIONS:
+                # Try exiftool for JPEG UserComment
+                if shutil.which('exiftool'):
+                    result = subprocess.run(
+                        ['exiftool', '-json', '-UserComment', str(filepath)],
+                        capture_output=True, text=True, timeout=30
+                    )
+                    if result.returncode == 0:
+                        exif_data = json.loads(result.stdout)
+                        user_comment = exif_data[0].get('UserComment') if exif_data else None
+                        if user_comment:
+                            data = json.loads(user_comment)
+                            if 'phenotypic_version' in data:
+                                return data
+
+            elif suffix in IO.TIFF_EXTENSIONS:
+                with PIL_Image.open(filepath) as img:
+                    desc = img.tag_v2.get(270) if hasattr(img, 'tag_v2') else None
+                    if desc:
+                        try:
+                            data = json.loads(desc)
+                            if 'phenotypic_version' in data:
+                                return data
+                        except json.JSONDecodeError:
+                            pass
+
+        except Exception:
+            pass
+
+        return None
 
     @property
     def _subject_arr(self) -> np.ndarray:
@@ -421,11 +530,114 @@ class ImageAccessorBase(ABC):
             )
         return fig, ax
 
-    def imsave(self, filepath: str | Path | None = None, ):
+    def _build_phenotypic_metadata(self) -> dict:
+        """Build PhenoTypic metadata dictionary for embedding in saved images.
+
+        Returns:
+            Dictionary containing phenotypic version, source property, and metadata.
+        """
+        # Filter out None values and convert to JSON-serializable types
+        protected = {}
+        for key, value in self._root_image._metadata.protected.items():
+            if value is not None and not (isinstance(value, float) and np.isnan(value)):
+                protected[str(key)] = value
+
+        public = {}
+        for key, value in self._root_image._metadata.public.items():
+            if value is not None and not (isinstance(value, float) and np.isnan(value)):
+                public[str(key)] = value
+
+        return {
+            "phenotypic_version": phenotypic.__version__,
+            "phenotypic_image_property": f"Image.{self._accessor_property_name}",
+            "protected": protected,
+            "public": public,
+        }
+
+    @staticmethod
+    def _write_jpeg_metadata(filepath: Path, pil_image, metadata_json: str) -> None:
+        """Write metadata to JPEG file using EXIF UserComment tag via exiftool.
+
+        Args:
+            filepath: Path to save the JPEG file.
+            pil_image: PIL Image object to save.
+            metadata_json: JSON string of PhenoTypic metadata.
+        """
+        # First save the image
+        pil_image.save(filepath, quality=100)
+
+        # Then add metadata using exiftool if available
+        if shutil.which('exiftool'):
+            try:
+                subprocess.run(
+                    [
+                        'exiftool',
+                        '-overwrite_original',
+                        f'-UserComment={metadata_json}',
+                        str(filepath)
+                    ],
+                    capture_output=True,
+                    text=True,
+                    timeout=30,
+                    check=True
+                )
+            except (subprocess.TimeoutExpired, subprocess.CalledProcessError) as e:
+                warnings.warn(f'Failed to write EXIF metadata to JPEG: {e}')
+        else:
+            warnings.warn(
+                'exiftool not found. JPEG metadata will not be saved. '
+                'Install exiftool for full metadata support.'
+            )
+
+    @staticmethod
+    def _write_png_metadata(filepath: Path, pil_image, metadata_json: str) -> None:
+        """Write metadata to PNG file using tEXt chunk.
+
+        Args:
+            filepath: Path to save the PNG file.
+            pil_image: PIL Image object to save.
+            metadata_json: JSON string of PhenoTypic metadata.
+        """
+        from PIL import PngImagePlugin
+        pnginfo = PngImagePlugin.PngInfo()
+        pnginfo.add_text(IO.PHENOTYPIC_METADATA_KEY, metadata_json)
+        pil_image.save(filepath, optimize=True, pnginfo=pnginfo)
+
+    @staticmethod
+    def _write_tiff_metadata(filepath: Path, pil_image, metadata_json: str) -> None:
+        """Write metadata to TIFF file using ImageDescription tag.
+
+        Args:
+            filepath: Path to save the TIFF file.
+            pil_image: PIL Image object to save.
+            metadata_json: JSON string of PhenoTypic metadata.
+        """
+        # TIFF ImageDescription tag is 270
+        pil_image.save(filepath, tiffinfo={270: metadata_json})
+
+    def imsave(self, filepath: str | Path | None = None) -> None:
+        """Save the image array to a file with PhenoTypic metadata embedded.
+
+        Metadata is embedded in format-specific locations:
+        - JPEG: EXIF UserComment tag
+        - PNG: tEXt chunk with key 'phenotypic'
+        - TIFF: ImageDescription tag (270)
+
+        Args:
+            filepath: Path to save the image file. Extension determines format.
+
+        Raises:
+            ValueError: If file extension is not supported.
+        """
         filepath = Path(filepath)
         from PIL import Image as PIL_Image
 
         arr2save = self._subject_arr
+
+        # Build metadata JSON
+        phenotypic_metadata = self._build_phenotypic_metadata()
+        metadata_json = json.dumps(phenotypic_metadata, ensure_ascii=False)
+
         match filepath.suffix.lower():
             case x if x in IO.JPEG_FILE_EXTENSIONS:
                 match arr2save.dtype:
@@ -439,7 +651,9 @@ class ImageAccessorBase(ABC):
                         warnings.warn(
                                 'Saving a float array as a jpeg will result in information loss if the max value is higher than 255')
                         arr2save = ski.util.img_as_ubyte(arr2save)
-                PIL_Image.fromarray(arr2save).save(filepath, quality=100)
+                pil_img = PIL_Image.fromarray(arr2save)
+                self._write_jpeg_metadata(filepath, pil_img, metadata_json)
+
             case x if x in IO.PNG_FILE_EXTENSIONS:
                 match arr2save.dtype:
                     case np.uint8 | np.uint16:
@@ -451,8 +665,12 @@ class ImageAccessorBase(ABC):
                         arr2save = ski.util.img_as_ubyte(arr2save) \
                             if self._root_image.bit_depth == 8 \
                             else ski.util.img_as_uint(arr2save)
-                PIL_Image.fromarray(arr2save).save(filepath, optimize=True)
+                pil_img = PIL_Image.fromarray(arr2save)
+                self._write_png_metadata(filepath, pil_img, metadata_json)
+
             case x if x in IO.TIFF_EXTENSIONS:
-                PIL_Image.fromarray(arr2save).save(filepath)
+                pil_img = PIL_Image.fromarray(arr2save)
+                self._write_tiff_metadata(filepath, pil_img, metadata_json)
+
             case _:
                 raise ValueError(f'unknown file extension for saving:{filepath.suffix}')

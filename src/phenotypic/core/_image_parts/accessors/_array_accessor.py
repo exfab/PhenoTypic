@@ -28,6 +28,8 @@ class ImageRGB(MultiChannelAccessor):
 
     """
 
+    _accessor_property_name: str = "rgb"
+
     def __getitem__(self, key) -> np.ndarray:
         """
         Returns a copy of the elements at the subregion specified by the given key.

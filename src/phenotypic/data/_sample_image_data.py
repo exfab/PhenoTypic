@@ -17,8 +17,6 @@ import numpy as np
 if TYPE_CHECKING: from phenotypic import Image, GridImage
 
 
-# TODO: Update filepaths for this file
-
 def _image_loader(filepath,
                   mode: Literal['array', 'Image', 'GridImage', 'filepath']) -> Union[np.ndarray, Image, GridImage]:
     from phenotypic import Image, GridImage

@@ -19,6 +19,8 @@ class EnhancedGrayscale(SingleChannelAccessor):
     and object mapping.
     """
 
+    _accessor_property_name: str = "enh_gray"
+
     def __getitem__(self, key) -> np.ndarray:
         """Return a non-writeable view of the enhanced gray for the given index."""
         if self.isempty():

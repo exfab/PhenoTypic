@@ -24,6 +24,8 @@ class XyzAccessor(ColorSpaceAccessor):
             information, including color profile, illuminant, and array data.
     """
 
+    _accessor_property_name: str = "color.XYZ"
+
     @property
     def _subject_arr(self) -> np.ndarray:
         if self._root_image.rgb.isempty():

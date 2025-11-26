@@ -324,7 +324,7 @@ class EdgeCorrector(SetAnalyzer):
         groupby_cols = self.groupby + [section_col]
         if self.time_label in data:
             groupby_cols = groupby_cols + [self.time_label]
-        
+
         # Determine which columns to aggregate
         agg_dict = {}
         for col in data.columns:
@@ -334,7 +334,7 @@ class EdgeCorrector(SetAnalyzer):
                     agg_dict[col] = self.agg_func
                 else:
                     agg_dict[col] = 'first'
-        
+
         agg_data = data.groupby(by=groupby_cols, as_index=False).agg(agg_dict)
 
         # Handle empty groupby case
@@ -769,7 +769,6 @@ class EdgeCorrector(SetAnalyzer):
         last_inner_values: pd.Series = \
             last_time_group.loc[last_time_group.loc[:, GRID.SECTION_NUM].isin(surrounded_idx), on]
 
-        # TODO: Add permutation test for statistical significance before correction.
         if pvalue != 0:
             last_edge_values: pd.Series = \
                 last_time_group.loc[last_time_group.loc[:, GRID.SECTION_NUM].isin(edge_idx), on]

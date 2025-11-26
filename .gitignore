@@ -22,6 +22,7 @@ docs/source/user_guide/auto_examples/
 .zed/
 .cursor/
 .windsurf/
+.claude
 
 # macOS
 .DS_Store

@@ -1,15 +1,24 @@
 from __future__ import annotations
 
+import json
+import shutil
+import subprocess
 import warnings
+from datetime import datetime
+from fractions import Fraction
 from typing import Tuple, TYPE_CHECKING
 
 if TYPE_CHECKING: from phenotypic import Image
 
+import exifread
 import h5py
 import numpy as np
 import pickle
 from os import PathLike
 from pathlib import Path
+from PIL import Image as PIL_Image
+from PIL.ExifTags import TAGS as EXIF_TAGS
+from PIL.TiffTags import TAGS as TIFF_TAGS
 
 try:
     import rawpy
@@ -31,6 +40,239 @@ class ImageIOHandler(ImageColorSpace):
                  arr: np.ndarray | Image | None = None,
                  name: str | None = None, **kwargs):
         super().__init__(arr=arr, name=name, **kwargs)
+
+    # -------------------------------------------------------------------------
+    # Metadata Extraction Helpers
+    # -------------------------------------------------------------------------
+
+    @staticmethod
+    def _normalize_metadata_value(value) -> int | float | bool | str | None:
+        """Convert metadata value to allowed scalar type (int, float, bool, str, or None).
+
+        Args:
+            value: Any metadata value to normalize.
+
+        Returns:
+            Normalized value as int, float, bool, str, or None.
+        """
+        if value is None:
+            return None
+        if isinstance(value, bool):
+            return value
+        if isinstance(value, (int, np.integer)):
+            return int(value)
+        if isinstance(value, (float, np.floating)):
+            return float(value)
+        if isinstance(value, str):
+            return value
+        if isinstance(value, bytes):
+            try:
+                return value.decode('utf-8', errors='replace')
+            except Exception:
+                return str(value)
+        if isinstance(value, Fraction):
+            return float(value)
+        if isinstance(value, datetime):
+            return value.isoformat()
+        if isinstance(value, (list, tuple)):
+            if len(value) == 1:
+                return ImageIOHandler._normalize_metadata_value(value[0])
+            # Convert list/tuple to string representation
+            return str(value)
+        if isinstance(value, np.ndarray):
+            if value.size == 1:
+                return ImageIOHandler._normalize_metadata_value(value.item())
+            return str(value.tolist())
+        # For exifread IfdTag objects
+        if hasattr(value, 'values'):
+            vals = value.values
+            if isinstance(vals, (list, tuple)) and len(vals) == 1:
+                return ImageIOHandler._normalize_metadata_value(vals[0])
+            if hasattr(value, 'printable'):
+                return str(value.printable)
+            return str(vals)
+        # Fallback to string
+        return str(value)
+
+    @staticmethod
+    def _extract_jpeg_png_metadata(filepath: Path) -> dict:
+        """Extract EXIF metadata from JPEG/PNG files and parse PhenoTypic JSON if present.
+
+        Args:
+            filepath: Path to the image file.
+
+        Returns:
+            Dictionary containing extracted metadata with normalized values.
+        """
+        metadata = {}
+
+        # Use exifread for comprehensive EXIF parsing
+        try:
+            with open(filepath, 'rb') as f:
+                tags = exifread.process_file(f, details=True)
+                for tag, value in tags.items():
+                    if tag.startswith('Thumbnail'):
+                        continue  # Skip thumbnail data
+                    normalized = ImageIOHandler._normalize_metadata_value(value)
+                    if normalized is not None:
+                        metadata[tag] = normalized
+
+                        # Check for PhenoTypic data in EXIF UserComment
+                        if tag == 'EXIF UserComment' and isinstance(normalized, str):
+                            try:
+                                phenotypic_data = json.loads(normalized)
+                                if isinstance(phenotypic_data, dict) and 'phenotypic_version' in phenotypic_data:
+                                    metadata['_phenotypic_data'] = phenotypic_data
+                            except json.JSONDecodeError:
+                                pass
+        except Exception:
+            pass  # File may not have EXIF data
+
+        # Also try PIL for additional info
+        try:
+            with PIL_Image.open(filepath) as img:
+                # Get basic image info
+                if hasattr(img, 'info') and img.info:
+                    for key, value in img.info.items():
+                        if key == 'exif':
+                            continue  # Already handled by exifread
+                        # Check for PhenoTypic PNG tEXt chunk
+                        if key == IO.PHENOTYPIC_METADATA_KEY:
+                            try:
+                                phenotypic_data = json.loads(value)
+                                if isinstance(phenotypic_data, dict) and 'phenotypic_version' in phenotypic_data:
+                                    metadata['_phenotypic_data'] = phenotypic_data
+                            except json.JSONDecodeError:
+                                pass
+                            continue
+                        normalized = ImageIOHandler._normalize_metadata_value(value)
+                        if normalized is not None:
+                            metadata[f'PIL:{key}'] = normalized
+
+                # Try to get EXIF UserComment for PhenoTypic data (JPEG)
+                exif_data = img.getexif()
+                if exif_data:
+                    # UserComment tag is 37510
+                    user_comment = exif_data.get(37510)
+                    if user_comment:
+                        try:
+                            # UserComment may have encoding prefix
+                            if isinstance(user_comment, bytes):
+                                # Skip encoding prefix if present (first 8 bytes)
+                                if user_comment.startswith(b'ASCII\x00\x00\x00'):
+                                    user_comment = user_comment[8:]
+                                elif user_comment.startswith(b'UNICODE\x00'):
+                                    user_comment = user_comment[8:].decode('utf-16')
+                                else:
+                                    user_comment = user_comment.decode('utf-8', errors='replace')
+                            phenotypic_data = json.loads(user_comment)
+                            if isinstance(phenotypic_data, dict) and 'phenotypic_version' in phenotypic_data:
+                                metadata['_phenotypic_data'] = phenotypic_data
+                        except (json.JSONDecodeError, UnicodeDecodeError):
+                            pass
+        except Exception:
+            pass
+
+        return metadata
+
+    @staticmethod
+    def _extract_tiff_metadata(filepath: Path) -> dict:
+        """Extract TIFF tag metadata and parse PhenoTypic JSON from ImageDescription.
+
+        Args:
+            filepath: Path to the TIFF file.
+
+        Returns:
+            Dictionary containing extracted metadata with normalized values.
+        """
+        metadata = {}
+
+        try:
+            with PIL_Image.open(filepath) as img:
+                # Get TIFF tags
+                if hasattr(img, 'tag_v2') and img.tag_v2:
+                    for tag_id, value in img.tag_v2.items():
+                        tag_name = TIFF_TAGS.get(tag_id, f'Tag_{tag_id}')
+                        normalized = ImageIOHandler._normalize_metadata_value(value)
+                        if normalized is not None:
+                            metadata[f'TIFF:{tag_name}'] = normalized
+
+                # Check ImageDescription (tag 270) for PhenoTypic JSON
+                if hasattr(img, 'tag_v2') and 270 in img.tag_v2:
+                    desc = img.tag_v2[270]
+                    if isinstance(desc, bytes):
+                        desc = desc.decode('utf-8', errors='replace')
+                    try:
+                        phenotypic_data = json.loads(desc)
+                        if isinstance(phenotypic_data, dict) and 'phenotypic_version' in phenotypic_data:
+                            metadata['_phenotypic_data'] = phenotypic_data
+                    except json.JSONDecodeError:
+                        pass  # Not JSON, keep as regular metadata
+        except Exception:
+            pass
+
+        return metadata
+
+    @staticmethod
+    def _extract_raw_metadata(filepath: Path) -> dict:
+        """Extract metadata from RAW files using exiftool (if available) or rawpy fallback.
+
+        Args:
+            filepath: Path to the RAW file.
+
+        Returns:
+            Dictionary containing extracted metadata with normalized values.
+        """
+        metadata = {}
+
+        # Try exiftool first (more comprehensive)
+        if shutil.which('exiftool'):
+            try:
+                result = subprocess.run(
+                    ['exiftool', '-json', '-n', str(filepath)],
+                    capture_output=True,
+                    text=True,
+                    timeout=30
+                )
+                if result.returncode == 0:
+                    exif_data = json.loads(result.stdout)
+                    if exif_data and isinstance(exif_data, list):
+                        for key, value in exif_data[0].items():
+                            if key == 'SourceFile':
+                                continue
+                            normalized = ImageIOHandler._normalize_metadata_value(value)
+                            if normalized is not None:
+                                metadata[f'EXIF:{key}'] = normalized
+                    return metadata
+            except (subprocess.TimeoutExpired, json.JSONDecodeError, Exception):
+                pass  # Fall through to rawpy
+
+        # Fallback to rawpy if exiftool not available
+        if rawpy is not None:
+            try:
+                with rawpy.imread(str(filepath)) as raw:
+                    # Extract available rawpy metadata attributes
+                    metadata['rawpy:camera_whitebalance'] = str(list(raw.camera_whitebalance))
+                    metadata['rawpy:daylight_whitebalance'] = str(list(raw.daylight_whitebalance))
+                    metadata['rawpy:num_colors'] = int(raw.num_colors)
+                    metadata['rawpy:color_desc'] = raw.color_desc.decode('utf-8') if raw.color_desc else None
+                    metadata['rawpy:raw_type'] = str(raw.raw_type)
+
+                    if raw.sizes:
+                        metadata['rawpy:raw_height'] = int(raw.sizes.raw_height)
+                        metadata['rawpy:raw_width'] = int(raw.sizes.raw_width)
+                        metadata['rawpy:height'] = int(raw.sizes.height)
+                        metadata['rawpy:width'] = int(raw.sizes.width)
+
+                    # Black and white levels
+                    if hasattr(raw, 'black_level_per_channel') and raw.black_level_per_channel is not None:
+                        metadata['rawpy:black_level_per_channel'] = str(list(raw.black_level_per_channel))
+                    if hasattr(raw, 'white_level') and raw.white_level is not None:
+                        metadata['rawpy:white_level'] = int(raw.white_level)
+            except Exception:
+                pass
+
+        return metadata
 
     @classmethod
     def imread(cls,
@@ -112,6 +354,35 @@ class ImageIOHandler(ImageColorSpace):
         image = cls(arr=arr, name=filepath.stem, bit_depth=bit_depth, **kwargs)
         image.name = filepath.stem
         image.metadata[METADATA.SUFFIX] = suffix
+
+        # Extract and store metadata based on file type
+        if suffix in IO.JPEG_FILE_EXTENSIONS or suffix in IO.PNG_FILE_EXTENSIONS:
+            imported_metadata = cls._extract_jpeg_png_metadata(filepath)
+        elif suffix in IO.TIFF_EXTENSIONS:
+            imported_metadata = cls._extract_tiff_metadata(filepath)
+        elif suffix in IO.RAW_FILE_EXTENSIONS:
+            imported_metadata = cls._extract_raw_metadata(filepath)
+        else:
+            imported_metadata = {}
+
+        # Handle PhenoTypic round-trip data if present
+        if '_phenotypic_data' in imported_metadata:
+            phenotypic_data = imported_metadata.pop('_phenotypic_data')
+            # Only restore protected/public metadata if saved from rgb or gray property
+            # (not from color space accessors or enh_gray which are derived views)
+            source_property = phenotypic_data.get('phenotypic_image_property', '')
+            if source_property in ('Image.rgb', 'Image.gray'):
+                if 'protected' in phenotypic_data:
+                    for key, value in phenotypic_data['protected'].items():
+                        # Don't overwrite critical protected fields
+                        if key not in (METADATA.UUID, METADATA.IMAGE_NAME):
+                            image._metadata.protected[key] = value
+                if 'public' in phenotypic_data:
+                    image._metadata.public.update(phenotypic_data['public'])
+
+        # Store remaining imported metadata
+        image._metadata.imported.update(imported_metadata)
+
         return image
 
     @staticmethod
