@@ -4,55 +4,6 @@
 .. currentmodule:: phenotypic
 
 .. autoclass:: GridImage
-
-   
-   .. automethod:: __init__
-
-   
-   .. rubric:: Methods
-
-   .. autosummary::
-   
-      ~GridImage.__init__
-      ~GridImage.clear
-      ~GridImage.copy
-      ~GridImage.imread
-      ~GridImage.info
-      ~GridImage.isempty
-      ~GridImage.load_hdf5
-      ~GridImage.load_pickle
-      ~GridImage.reset
-      ~GridImage.rotate
-      ~GridImage.save2hdf5
-      ~GridImage.save2pickle
-      ~GridImage.set_image
-      ~GridImage.show
-      ~GridImage.show_overlay
-   
-   
-
-   
-   
-   .. rubric:: Attributes
-
-   .. autosummary::
-   
-      ~GridImage.bit_depth
-      ~GridImage.color
-      ~GridImage.enh_gray
-      ~GridImage.gray
-      ~GridImage.grid
-      ~GridImage.metadata
-      ~GridImage.name
-      ~GridImage.ncols
-      ~GridImage.nrows
-      ~GridImage.num_objects
-      ~GridImage.objects
-      ~GridImage.objmap
-      ~GridImage.objmask
-      ~GridImage.props
-      ~GridImage.rgb
-      ~GridImage.shape
-      ~GridImage.uuid
-   
-   
+   :members:
+   :show-inheritance:
+   :member-order: bysource

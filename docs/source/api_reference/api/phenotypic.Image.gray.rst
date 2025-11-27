@@ -14,8 +14,8 @@ phenotypic.Image.gray
 
 .. currentmodule:: phenotypic.core._image_parts.accessors
 
-Grayscale API Reference
-=============================================
+Grayscale API
+===================================
 
 .. autoclass:: Grayscale
    :members:

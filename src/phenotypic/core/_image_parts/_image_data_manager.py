@@ -67,16 +67,22 @@ class ImageMetadata:
 
 class ImageDataManager:
     """Manages image data initialization, storage, and format handling.
-    
-    This class is responsible for:
-    - Initializing core data structures (rgb, gray, enh_gray, object maps)
-    - Managing image format detection and conversion
-    - Handling metadata storage
-    - Setting images from various input types (arrays, class instances)
-    
+
+    This class is the foundational layer for image data management, responsible for:
+    - Initializing and managing core data structures (RGB, grayscale, enhanced grayscale, object maps)
+    - Detecting and converting between different image formats (grayscale, RGB, RGBA)
+    - Handling metadata storage with private, protected, public, and imported categories
+    - Setting images from various input types (NumPy arrays, Image class instances)
+    - Managing bit depth inference and conversion
+
+    The class provides a separation of concerns by focusing purely on data management,
+    leaving presentation and format-specific operations to subclasses.
+
     Attributes:
-        _data (ImageData): Container for image data in different representations.
-        _metadata (SimpleNamespace): Container for private, protected, and public metadata.
+        _data (ImageData): Container for image arrays in different representations
+            (rgb, gray, enh_gray, and sparse object map).
+        _metadata (ImageMetadata): Container for categorized metadata (private, protected,
+            public, and imported).
     """
 
     _ARRAY8_DTYPE = np.uint8
@@ -118,10 +124,14 @@ class ImageDataManager:
 
     @property
     def bit_depth(self) -> int:
-        """Get the bit depth from metadata.
-        
+        """Get the bit depth of the image.
+
+        The bit depth determines the number of bits used to represent each pixel
+        value. Common values are 8 (0-255 range) and 16 (0-65535 range).
+
         Returns:
-            int: The bit depth value stored in metadata.
+            int | None: The bit depth value (8 or 16) stored in protected metadata,
+                or None if not yet set.
         """
         return self._metadata.protected.get(METADATA.BIT_DEPTH)
 

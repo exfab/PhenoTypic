@@ -106,7 +106,8 @@ class ColorAccessor:
         
         Provides access to device-dependent HSV color space, which is intuitive
         for color selection and manipulation. Includes methods for extracting
-        individual components and object-specific color analysis.
+        individual components and object-specific color analysis. All values are in normalized
+        range between (0, 1).
         
         Returns:
             HsvAccessor: Accessor providing numpy-like interface to HSV data.

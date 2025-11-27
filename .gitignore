@@ -35,6 +35,7 @@ conda-recipe/
 
 # Documentation build artifacts
 docs/build/
+docs/_build/
 
 # Project-specific
 deprecated/

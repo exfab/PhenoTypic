@@ -28,7 +28,7 @@ Welcome to Phenotypic's documentation. Here you'll find comprehensive guides and
 
       +++
 
-      .. button-ref:: user_guide/getting_started
+      .. button-ref:: user_guide/tutorial/overview
          :ref-type: doc
          :click-parent:
          :color: secondary

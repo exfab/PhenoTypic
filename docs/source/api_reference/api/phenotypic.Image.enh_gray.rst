@@ -14,8 +14,8 @@ phenotypic.Image.enh\_gray
 
 .. currentmodule:: phenotypic.core._image_parts.accessors
 
-EnhancedGrayscale API Reference
-=============================================
+EnhancedGrayscale API
+===================================
 
 .. autoclass:: EnhancedGrayscale
    :members:

@@ -35,10 +35,36 @@ from ._image_color_handler import ImageColorSpace
 
 
 class ImageIOHandler(ImageColorSpace):
+    """Handles input/output operations and metadata for images.
+
+    This class extends ImageColorSpace to provide comprehensive file I/O capabilities,
+    including:
+    - Reading images from various file formats (JPEG, PNG, TIFF, RAW)
+    - Writing images to HDF5 and pickle formats
+    - Extracting and parsing metadata from image files
+    - Managing EXIF, TIFF tags, and custom PhenoTypic metadata
+    - Support for raw sensor data processing via rawpy
+
+    The class abstracts file format details, providing a unified interface for loading
+    and saving images while preserving metadata and calibration information. Metadata
+    extraction supports round-trip storage and recovery of PhenoTypic-specific data.
+
+    Examples:
+        >>> img = ImageIOHandler.imread('photo.jpg')
+        >>> img.save2hdf5('output.h5')
+        >>> loaded = ImageIOHandler.load_hdf5('output.h5', 'photo')
+    """
 
     def __init__(self,
                  arr: np.ndarray | Image | None = None,
                  name: str | None = None, **kwargs):
+        """Initialize ImageIOHandler with I/O capabilities.
+
+        Args:
+            arr (np.ndarray | Image | None): Optional initial image data. Defaults to None.
+            name (str | None): Optional image name. Defaults to None.
+            **kwargs: Additional keyword arguments passed to parent class (ImageColorSpace).
+        """
         super().__init__(arr=arr, name=name, **kwargs)
 
     # -------------------------------------------------------------------------
@@ -47,13 +73,28 @@ class ImageIOHandler(ImageColorSpace):
 
     @staticmethod
     def _normalize_metadata_value(value) -> int | float | bool | str | None:
-        """Convert metadata value to allowed scalar type (int, float, bool, str, or None).
+        """Convert metadata value to a normalized scalar type.
+
+        Normalizes various metadata value types to scalar values that can be safely
+        stored and retrieved from metadata dictionaries. Handles special cases like
+        exifread IfdTag objects, NumPy types, fractions, and datetime objects.
 
         Args:
-            value: Any metadata value to normalize.
+            value: Any metadata value to normalize. Supports: int, float, bool, str,
+                bytes, Fraction, datetime, list, tuple, np.ndarray, exifread IfdTag.
 
         Returns:
-            Normalized value as int, float, bool, str, or None.
+            int | float | bool | str | None: Normalized scalar value. Converts complex
+                types to appropriate scalar representations:
+                - bytes: decoded to str (UTF-8)
+                - Fraction: converted to float
+                - datetime: converted to ISO format string
+                - list/tuple: single items unwrapped, multiple items converted to string
+                - np.ndarray: single items unwrapped, multiple items converted to list string
+                - exifread IfdTag: unwrapped or converted to printable string
+
+        Note:
+            Unrecognized types are converted to string representation as fallback.
         """
         if value is None:
             return None
@@ -493,18 +534,44 @@ class ImageIOHandler(ImageColorSpace):
         for key, val in self._metadata.public.items():
             pub.attrs.modify(key, str(val))
 
-    def save2hdf5(self, filename, compression="gzip", compression_opts=4, overwrite=False, ):
-        """
-        Save an ImageHandler instance to an HDF5 file under /phenotypic/images<self.name>/.
+    def save2hdf5(self, filename, compression="gzip", compression_opts=4, overwrite=False):
+        """Save the image to an HDF5 file with all data and metadata.
 
-        Parameters:
-          self: your ImageHandler instance
-          filename: path to .h5 file (will be created or appended)
-          compression: compression filter (e.g., "gzip", "szip", or None)
-          compression_opts: level for gzip (1–9)
+        Stores the complete image data (RGB, gray, enhanced gray, object map) and
+        metadata (protected and public) to an HDF5 file. Images are organized under
+        /phenotypic/images/{image_name}/ structure. If the file does not exist, it
+        is created. If it exists, the image is appended or overwritten based on the
+        overwrite flag.
+
+        Args:
+            filename (str | PathLike): Path to the HDF5 file (.h5 extension recommended).
+                Will be created if it doesn't exist.
+            compression (str, optional): Compression filter to apply to datasets.
+                Options: 'gzip' (recommended), 'szip', or None for no compression.
+                Defaults to 'gzip'.
+            compression_opts (int, optional): Compression level for 'gzip' (1-9, where
+                1=fastest, 9=best compression). For 'szip' and None, this parameter is
+                ignored. Defaults to 4 (balanced compression/speed).
+            overwrite (bool, optional): If True, overwrites existing image with the same
+                name in the file. If False, raises an error if image already exists.
+                Defaults to False.
 
         Raises:
-            Warnings: If the phenotypic version does not match the version used when saving to the HDF5 file.
+            UserWarning: If the PhenoTypic version in the file does not match the
+                current package version, indicating potential compatibility issues.
+            ValueError: If file is in SWMR (single-write multiple-read) mode and a
+                new group needs to be created (cannot create in SWMR mode).
+
+        Notes:
+            - Large image arrays are stored as chunked datasets for memory efficiency.
+            - Protected and public metadata are stored in separate HDF5 groups.
+            - Version information is recorded to track HDF5 file compatibility.
+            - All numeric data types are preserved when storing.
+
+        Examples:
+            >>> img = Image.imread('photo.jpg')
+            >>> img.save2hdf5('output.h5')
+            >>> img.save2hdf5('output.h5', compression='szip')
         """
         with h5py.File(filename, mode="a") as filehandler:
             # 1) Create image group if it doesnt already exist & sets grp obj
@@ -565,11 +632,27 @@ class ImageIOHandler(ImageColorSpace):
         return img
 
     def save2pickle(self, filename: str) -> None:
-        """
-        Saves the current ImageIOHandler instance's data and metadata to a pickle file.
+        """Save the image to a pickle file for fast serialization and deserialization.
+
+        Stores all image data components and metadata in Python's pickle format, which
+        preserves data types and structure exactly. This is the fastest serialization
+        method but produces larger files than HDF5 and is not suitable for inter-language
+        data exchange.
 
         Args:
-            filename: Path to the pickle file to write.
+            filename (str | PathLike): Path to the pickle file to write (.pkl or .pickle
+                extension recommended).
+
+        Notes:
+            - Pickle format is Python-specific and cannot be read by other languages.
+            - File size is typically larger than HDF5 compressed files.
+            - Load/save is faster than HDF5 for small to medium images.
+            - Pickle files may not be compatible across Python versions.
+
+        Examples:
+            >>> img = Image.imread('photo.jpg')
+            >>> img.save2pickle('image.pkl')
+            >>> loaded = Image.load_pickle('image.pkl')
         """
         with open(filename, 'wb') as filehandler:
             pickle.dump({
@@ -584,14 +667,30 @@ class ImageIOHandler(ImageColorSpace):
 
     @classmethod
     def load_pickle(cls, filename: str) -> Image:
-        """
-        Loads ImageIOHandler data and metadata from a pickle file and returns a new instance.
+        """Load an image from a pickle file.
+
+        Deserializes image data and metadata that were previously saved with save2pickle().
+        Restores all image components including RGB, grayscale, enhanced grayscale, object map,
+        and metadata.
 
         Args:
-            filename: Path to the pickle file to read.
+            filename (str | PathLike): Path to the pickle file to read.
 
         Returns:
-            A new Image instance with data and metadata restored.
+            Image: A new Image instance with all data and metadata restored from the pickle file.
+
+        Raises:
+            FileNotFoundError: If the specified pickle file does not exist.
+            pickle.UnpicklingError: If the file is not a valid pickle file or is corrupted.
+
+        Notes:
+            - Pickle files must be created with save2pickle() to ensure compatibility.
+            - Enhanced gray and object map are reset and reconstructed from saved data.
+            - Metadata (protected and public) is fully restored.
+
+        Examples:
+            >>> loaded = Image.load_pickle('image.pkl')
+            >>> print(loaded.shape)
         """
         with open(filename, 'rb') as f:
             loaded = pickle.load(f)

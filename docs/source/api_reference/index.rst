@@ -34,11 +34,12 @@ GridImage
 .. autosummary::
     :toctree: api/
     :caption: GridImage
+    :template: image_class.rst
 
     GridImage
 
 .. autosummary::
-    :toctree: api.
+    :toctree: api/
     :template: image_accessor_alt.rst
 
     GridImage.grid
@@ -52,9 +53,9 @@ Modules
    :template: module.rst
    :recursive:
 
+   phenotypic
    phenotypic.abc_
    phenotypic.analysis
-   phenotypic.core
    phenotypic.correction
    phenotypic.data
    phenotypic.detect

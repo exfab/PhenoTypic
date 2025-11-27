@@ -38,7 +38,7 @@ To install from source:
 .. code-block:: bash
 
   git clone https://github.com/exfab/PhenoTypic.git
-  cd PhenoTypic && uv pip install -e .
+  uv pip install -e ./PhenoTypic # Replace with the path to the module
 
 
 Development Installation

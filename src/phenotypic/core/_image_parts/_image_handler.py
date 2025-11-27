@@ -30,18 +30,22 @@ from phenotypic.tools.exceptions_ import (
 
 class ImageHandler(ImageDataManager):
     """Provides accessor functions and operations for image manipulation.
-    
-    This class extends ImageDataManager to add:
-    - Property-based accessors for rgb, gray, enh_gray, objmask, objmap
-    - Image manipulation operations (slicing, rotation, copying)
+
+    This class extends ImageDataManager to provide user-friendly interface for
+    image operations through:
+    - Property-based accessors for RGB, grayscale, enhanced grayscale, object masks, and object maps
+    - Image manipulation operations (slicing, rotation, copying, resetting)
     - Visualization methods (show, show_overlay)
     - Comparison and equality operations
-    
-    The accessor pattern allows intuitive access to image data while maintaining
-    internal consistency and supporting various image formats.
-    
+
+    The accessor pattern allows intuitive access to image data components while
+    maintaining internal consistency and supporting various image formats. This class
+    serves as the primary interface for image data access and manipulation, bridging
+    between low-level data management and high-level image operations.
+
     Attributes:
-        _accessors (SimpleNamespace): Property-based accessors for image components.
+        _accessors (SimpleNamespace): Container for property-based accessors providing
+            read/write access to image components (rgb, gray, enh_gray, objmask, objmap, metadata).
     """
 
     def __init__(self,
@@ -50,10 +54,18 @@ class ImageHandler(ImageDataManager):
                  bit_depth: Literal[8, 16] | None = None
                  ):
         """Initialize ImageHandler with accessors and optional image data.
-        
+
+        Initializes all image accessors (rgb, gray, enh_gray, objmask, objmap, metadata)
+        and optionally loads image data from a NumPy array or another Image instance.
+
         Args:
-            arr (np.ndarray | Image | None): Optional initial image input.
-            name (str | None): Optional name for the image.
+            arr (np.ndarray | Image | None): Optional initial image data. Can be a NumPy array
+                of shape (height, width) for grayscale or (height, width, channels) for RGB/RGBA,
+                or an existing Image instance to copy from. Defaults to None.
+            name (str | None): Optional name for the image. If None, the image UUID will be used
+                as the name. Defaults to None.
+            bit_depth (Literal[8, 16] | None): The bit depth of the image (8 or 16 bits).
+                If None and arr is provided, bit depth is automatically inferred. Defaults to None.
         """
         # Initialize parent class (data management)
         super().__init__(name=name, bit_depth=bit_depth)

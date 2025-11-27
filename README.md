@@ -36,7 +36,7 @@ uv add phenotypic
 To download the base package plus prototyping environment (recommended for pipeline development)
 
 ```bash
-uv add phenotypic --groups jupyter
+uv add phenotypic --extras jupyter
 ```
 
 ## Pip

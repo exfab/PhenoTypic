@@ -14,8 +14,8 @@ phenotypic.Image.rgb
 
 .. currentmodule:: phenotypic.core._image_parts.accessors
 
-ImageRGB API Reference
-=============================================
+ImageRGB API
+===================================
 
 .. autoclass:: ImageRGB
    :members:

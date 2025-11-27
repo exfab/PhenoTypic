@@ -13,6 +13,17 @@
 
    
    
+   .. rubric:: Classes
+
+   .. autosummary::
+      :toctree:
+      :template: class.rst
+      :nosignatures:
+   
+      EdgeCorrector
+      LogGrowthModel
+      TukeyOutlierRemover
+   
    
 
    
@@ -20,13 +31,4 @@
    
 
 
-
-.. rubric:: Modules
-
-.. autosummary::
-   :toctree:
-   :template: module.rst
-   :recursive:
-
-   abc_
 

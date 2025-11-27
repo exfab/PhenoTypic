@@ -14,8 +14,8 @@ phenotypic.GridImage.grid
 
 .. currentmodule:: phenotypic.core._image_parts.accessors
 
-GridAccessor API Reference
-=============================================
+GridAccessor API
+===================================
 
 .. autoclass:: GridAccessor
    :members:

@@ -14,8 +14,8 @@ phenotypic.Image.objmap
 
 .. currentmodule:: phenotypic.core._image_parts.accessors
 
-ObjectMap API Reference
-=============================================
+ObjectMap API
+===================================
 
 .. autoclass:: ObjectMap
    :members:

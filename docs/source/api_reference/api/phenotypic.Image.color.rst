@@ -14,8 +14,8 @@ phenotypic.Image.color
 
 .. currentmodule:: phenotypic.core._image_parts.accessors
 
-ColorAccessor API Reference
-=============================================
+ColorAccessor API
+===================================
 
 .. autoclass:: ColorAccessor
    :members:

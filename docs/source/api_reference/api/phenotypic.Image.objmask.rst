@@ -14,8 +14,8 @@ phenotypic.Image.objmask
 
 .. currentmodule:: phenotypic.core._image_parts.accessors
 
-ObjectMask API Reference
-=============================================
+ObjectMask API
+===================================
 
 .. autoclass:: ObjectMask
    :members:

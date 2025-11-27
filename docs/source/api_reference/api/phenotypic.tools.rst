@@ -9,9 +9,27 @@
 
    
    
+   .. rubric:: Functions
+
+   .. autosummary::
+      :toctree:
+      :nosignatures:
+   
+      timed_execution
+      is_binary_mask
+   
    
 
    
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+      :toctree:
+      :template: class.rst
+      :nosignatures:
+   
+      HDF
    
    
 
@@ -28,9 +46,7 @@
    :template: module.rst
    :recursive:
 
-   colourspaces_
    constants_
    exceptions_
-   funcs_
-   hdf_
+   colourspaces_
 

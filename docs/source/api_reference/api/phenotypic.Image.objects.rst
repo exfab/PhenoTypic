@@ -14,8 +14,8 @@ phenotypic.Image.objects
 
 .. currentmodule:: phenotypic.core._image_parts.accessors
 
-ObjectsAccessor API Reference
-=============================================
+ObjectsAccessor API
+===================================
 
 .. autoclass:: ObjectsAccessor
    :members:

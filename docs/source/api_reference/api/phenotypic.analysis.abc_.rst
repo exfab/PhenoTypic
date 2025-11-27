@@ -1,4 +1,4 @@
-phenotypic.analysis.abc\_
+﻿phenotypic.analysis.abc\_
 =========================
 
 .. automodule:: phenotypic.analysis.abc_
@@ -12,6 +12,16 @@ phenotypic.analysis.abc\_
    
 
    
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+      :toctree:
+      :template: class.rst
+      :nosignatures:
+   
+      SetAnalyzer
+      ModelFitter
    
    
 

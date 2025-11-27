@@ -79,6 +79,11 @@ extensions = [
 autosummary_generate = True
 # autosummary_imported_members = True
 
+# Tell Sphinx that autosummary-generated pages are the canonical documentation
+# This prevents duplicate object warnings and ensures cross-references point to
+# the autosummary pages (with toctree) instead of automodule anchors (without toctree)
+autosummary_ignore_module_all = False
+
 autodoc_default_options = {
     'members'          : True,  # Document class members
     'undoc-members'    : True,  # Include undocumented members
@@ -202,6 +207,7 @@ def generate_downloadables_rst(app):
     import ast
     import os
     import re
+    import json
 
     # Get directories relative to conf.py
     source_dir = os.path.abspath(os.path.dirname(__file__))
@@ -214,10 +220,10 @@ def generate_downloadables_rst(app):
         return
 
     content = []
-    content.append("Downloadable Scripts")
-    content.append("====================")
+    content.append("Downloads")
+    content.append("=========")
     content.append("")
-    content.append("This page contains downloadable scripts and utilities for PhenoTypic.")
+    content.append("This page contains downloadable scripts, notebooks, and utilities for PhenoTypic.")
     content.append("")
     content.append(".. grid:: 1 1 2 2")
     content.append("    :gutter: 3")
@@ -277,6 +283,67 @@ def generate_downloadables_rst(app):
 
         description = ' '.join(description_lines) if description_lines else None
         return title, description
+
+    def extract_notebook_metadata(filepath):
+        """Extract title and short description from a Jupyter notebook.
+
+        Tries to use the first markdown cell with a heading as the title and the
+        rest of that cell (first paragraph) as a short description.
+        """
+
+        try:
+            with open(filepath, 'r', encoding='utf-8') as f:
+                nb = json.load(f)
+        except Exception as e:
+            print(f"Error reading notebook {filepath}: {e}")
+            return None, None
+
+        cells = nb.get("cells", [])
+
+        for cell in cells:
+            if cell.get("cell_type") != "markdown":
+                continue
+
+            source = cell.get("source", [])
+            if isinstance(source, str):
+                lines = source.splitlines()
+            else:
+                # `source` is typically a list of lines
+                lines = []
+                for line in source:
+                    lines.extend(str(line).splitlines())
+
+            if not lines:
+                continue
+
+            # Look for a heading line
+            title = None
+            for idx, line in enumerate(lines):
+                stripped = line.strip()
+                if stripped.startswith('#'):
+                    heading = stripped.lstrip('#').strip()
+                    if heading:
+                        title = heading
+                        title_line_index = idx
+                        break
+
+            if title is None:
+                continue
+
+            # Build a short description from the remaining lines in the same cell
+            desc_lines = []
+            for line in lines[title_line_index + 1:]:
+                stripped = line.strip()
+                if not stripped:
+                    if desc_lines:
+                        break
+                    continue
+                desc_lines.append(stripped)
+
+            description = ' '.join(desc_lines) if desc_lines else None
+            return title, description
+
+        return None, None
 
     for filename in sorted(os.listdir(downloadables_dir)):
         if not (filename.endswith('.py') or filename.endswith('.sh')):
@@ -349,6 +416,58 @@ def generate_downloadables_rst(app):
         content.append("        +++")
         content.append(f"        :download:`Download script <_downloadables/{filename}>`")
         content.append("")
+
+    # Collect Jupyter notebooks from examples and tutorials so they can also be
+    # offered as downloads on this page.
+    notebook_dirs = [
+        # Current locations under user_guide
+        os.path.join(source_dir, 'user_guide', 'examples', 'notebooks'),
+        os.path.join(source_dir, 'user_guide', 'tutorial', 'notebooks'),
+        # Fallback legacy-style locations if they exist
+        os.path.join(source_dir, 'examples', 'notebooks'),
+        os.path.join(source_dir, 'tutorial', 'notebooks'),
+    ]
+
+    # Insert a separate grid for notebooks if we find any
+    notebook_entries = []
+    for nb_dir in notebook_dirs:
+        if not os.path.isdir(nb_dir):
+            continue
+
+        rel_dir = os.path.relpath(nb_dir, source_dir)
+        for filename in sorted(os.listdir(nb_dir)):
+            if not filename.endswith('.ipynb'):
+                continue
+            notebook_entries.append((rel_dir, filename))
+
+    if notebook_entries:
+        content.append("")
+        content.append("Downloadable Notebooks")
+        content.append("======================")
+        content.append("")
+        content.append(".. grid:: 1 1 2 2")
+        content.append("    :gutter: 3")
+        content.append("")
+
+        for rel_dir, filename in notebook_entries:
+            nb_path = os.path.join(source_dir, rel_dir, filename)
+
+            nb_title, nb_description = extract_notebook_metadata(nb_path)
+            if not nb_title:
+                nb_title = os.path.splitext(filename)[0]
+            if not nb_description:
+                nb_description = "No description available."
+
+            rel_path = os.path.join(rel_dir, filename).replace(os.sep, '/')
+
+            content.append(f"    .. grid-item-card:: {nb_title}")
+            content.append("        :shadow: md")
+            content.append("")
+            content.append(f"        {nb_description}")
+            content.append("")
+            content.append("        +++")
+            content.append(f"        :download:`Download notebook <{rel_path}>`")
+            content.append("")
 
     with open(output_file, 'w', encoding='utf-8') as f:
         f.write('\n'.join(content))

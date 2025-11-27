@@ -27,9 +27,12 @@ class SIZE(MeasurementInfo):
 
 
 class MeasureSize(MeasureFeatures):
-    """Calculates basic size measurements of the objects in the image. The measurements are
-    equivalent to their counterparts in `phenotypic.measure.MeasureShape` and `phenotypic.measure.MeasureIntensity`,
-    but are provided in this class for convenience.
+    """Calculates basic size measurements of the objects in the image.
+
+    The measurements are equivalent to their counterparts in
+    :class:`~phenotypic.measure.MeasureShape` and
+    :class:`~phenotypic.measure.MeasureIntensity`, but are provided in this
+    class for convenience.
 
     Returns:
         pd.DataFrame: A dataframe containing the size measurements of the objects in the image.
