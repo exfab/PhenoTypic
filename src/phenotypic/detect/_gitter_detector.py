@@ -21,7 +21,7 @@ class GitterDetector(ObjectDetector):
     """
     Class for detecting colonies in gridded plate images using the gitter algorithm.
 
-    The GitterDetector implements a Python version of the gitter colony detection
+    The GitterDetector implements an improved Python version of the gitter colony detection
     algorithm originally developed for R. This method is specifically designed for
     quantifying pinned microbial cultures arranged in a regular grid pattern on
     agar plates. The algorithm works by:

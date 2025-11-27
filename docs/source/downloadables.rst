@@ -1,5 +1,5 @@
 Downloads
-=================================
+=========
 
 This page contains downloadable scripts, notebooks, and utilities for PhenoTypic.
 
@@ -32,7 +32,7 @@ Downloadable Notebooks
     .. grid-item-card:: 1. Getting Started
         :shadow: md
 
-        ---
+        Get started with image processing in PhenoTypic.
 
         +++
         :download:`Download notebook <user_guide/tutorial/notebooks/GettingStarted.ipynb>`
@@ -72,7 +72,7 @@ Downloadable Notebooks
     .. grid-item-card:: 2. Using `ImagePipeline`s to process batches
         :shadow: md
 
-        ---
+        Learn to tune and use prefabricated image processing pipelines, then deploy them at scale.
 
         +++
         :download:`Download notebook <user_guide/tutorial/notebooks/LongerStart.ipynb>`
