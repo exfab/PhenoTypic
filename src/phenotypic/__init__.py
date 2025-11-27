@@ -1,20 +1,28 @@
-"""Phenotypic toolkit for plate-based fungal colony imaging and analysis.
+"""
+A library for processing and analyzing images of microbe colonies on solid media agar.
 
-This package bundles image I/O, enhancement, detection, refinement, and measurement
-utilities tuned for agar plate assays. Use it to load multi-channel captures,
-align plates to grids, extract per-colony masks, and quantify morphology and growth.
-Core interfaces are provided via `Image`, `GridImage`, `ImagePipeline`, `ImageSet`,
-and `imread`, while subpackages cover enhancement, detection, refinement, measurement,
-analytics, prefab pipelines, and supporting utilities for agar-plate workflows.
+This module provides tools and classes for the manipulation, analysis, and
+enhancement of images, specifically tailored for biological applications,
+including detecting features of colonies, quantifying growth, and refining image
+qualities. Classes such as `Image` and `GridImage` enable flexibility in managing
+varied image formats, while the `ImagePipeline` class provides a structured
+workflow for image processing. Additionally, submodules offer utilities for
+analysis, grid alignment, detection of colonies, enhancement of image clarity,
+and correction of artifacts in captured images. This module is designed
+primarily for researchers working with images acquired from solid media plates
+to study microbial growth patterns.
+
 """
 
-__version__ = "0.10.0"
+__version__ = "0.11.0"
 __author__ = "Alexander Nguyen"
 __email__ = "anguy344@ucr.edu"
 
 from .core._grid_image import GridImage
 from .core._image import Image
 from .core._image_pipeline import ImagePipeline
+
+# commented out until complete
 # from .core._image_set import ImageSet
 
 from . import (abc_,
