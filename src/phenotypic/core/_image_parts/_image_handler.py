@@ -244,22 +244,26 @@ class ImageHandler(ImageDataManager):
         Raises:
             NoArrayError: If no multichannel image data is set as arr.
 
-        .. code-block:: python
-            from phenotypic import Image
-            from phenotypic.data import load_colony
+        .. admonition:: Example
+            :class: dropdown
 
-            image = Image(load_colony())
+            .. code-block:: python
 
-            # get the rgb data
-            arr = image.rgb[:]
-            print(type(arr))
+                from phenotypic import Image
+                from phenotypic.data import load_colony
 
-            # set the rgb data
-            # the shape of the new rgb must be the same shape as the original rgb
-            image.rgb[:] = arr
+                image = Image(load_colony())
 
-            # without the bracket indexing the accessor is returned instead
-            print(image.rgb[:])
+                # get the rgb data
+                arr = image.rgb[:]
+                print(type(arr))
+
+                # set the rgb data
+                # the shape of the new rgb must be the same shape as the original rgb
+                image.rgb[:] = arr
+
+                # without the bracket indexing the accessor is returned instead
+                sprint(image.rgb[:])
 
 
         See Also: :class:`ImageArray`
@@ -449,7 +453,7 @@ class ImageHandler(ImageDataManager):
             list[skimage.measure._regionprops.RegionProperties]: A list of properties for the entire provided image.
 
 
-        .. admonition:: property details
+        .. admonition:: Property Details
             :class: dropdown
 
             (Excerpt from skimage.measure.regionprops documentation on available properties.):
