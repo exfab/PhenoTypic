@@ -1,0 +1,783 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>phenotypic.measure._measure_texture &#8212; PhenoTypic</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/custom.css?v=800a184d" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../../../_static/documentation_options.js?v=b3db6a4d"></script>
+    <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../../../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="../../../_static/design-tabs.js?v=f930bc37"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/phenotypic/measure/_measure_texture';</script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.11.1" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+     
+  
+
+<a class="navbar-brand logo" href="../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../../_static/gradient_logo_exfab.svg" class="logo__image only-light" alt="PhenoTypic"/>
+    <img src="../../../_static/gradient_logo_exfab.svg" class="logo__image only-dark pst-js-only" alt="PhenoTypic"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../user_guide/index.html">
+    User Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../api_reference/index.html">
+    API Reference
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../contrib_guide/index.html">
+    Developer Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../downloadables.html">
+    Downloads
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/Wheeldon-Lab/PhenoScope#" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../user_guide/index.html">
+    User Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../api_reference/index.html">
+    API Reference
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../contrib_guide/index.html">
+    Developer Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../downloadables.html">
+    Downloads
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/Wheeldon-Lab/PhenoScope#" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">phenotypic.measure._measure_texture</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for phenotypic.measure._measure_texture</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">functools</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">List</span><span class="p">,</span> <span class="n">Literal</span><span class="p">,</span> <span class="n">TYPE_CHECKING</span>
+
+<span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span> <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">mahotas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">mh</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">skimage</span><span class="w"> </span><span class="kn">import</span> <span class="n">exposure</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">MeasureFeatures</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools.constants_</span><span class="w"> </span><span class="kn">import</span> <span class="n">OBJECT</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">MeasurementInfo</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">TEXTURE</span><span class="p">(</span><span class="n">MeasurementInfo</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Second-order texture features derived from the gray-level co-occurrence matrix (GLCM).</span>
+
+<span class="sd">    All features assume normalized GLCMs computed at one or more pixel offsets and averaged</span>
+<span class="sd">    across directions unless otherwise noted. Values depend on quantization, window size,</span>
+<span class="sd">    and scale; interpret ranges comparatively within the same imaging setup.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">category</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s2">&quot;Texture&quot;</span>
+
+    <span class="n">ANGULAR_SECOND_MOMENT</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;AngularSecondMoment&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Angular second moment (energy / uniformity). Measures the degree of local homogeneity</span>
+<span class="sd">        (Σ p(i,j)²). High values → uniform texture (e.g., smooth, yeast-like colonies with consistent</span>
+<span class="sd">        mycelial density). Low values → heterogeneous surfaces (e.g., sectored, wrinkled, or mixed</span>
+<span class="sd">        sporulation zones). Reflects colony surface regularity rather than brightness.&quot;&quot;&quot;</span>
+    <span class="p">)</span>
+
+    <span class="n">CONTRAST</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;Contrast&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Contrast (local intensity variation; Σ (i–j)² p(i,j)). High values indicate strong gray-level</span>
+<span class="sd">        differences (e.g., sharply defined rings, radial sectors, raised or folded regions). Low values</span>
+<span class="sd">        indicate gradual tonal changes or uniformly pigmented colonies. Quantifies visual roughness</span>
+<span class="sd">        and zonation amplitude.&quot;&quot;&quot;</span>
+    <span class="p">)</span>
+
+    <span class="n">CORRELATION</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;Correlation&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Linear gray-level correlation between neighboring pixels. Positive, high values suggest</span>
+<span class="sd">        structured spatial dependence (e.g., oriented radial hyphae or concentric patterns); near-zero</span>
+<span class="sd">        values indicate uncorrelated, disordered growth (e.g., diffuse cottony mycelium). Sensitive to</span>
+<span class="sd">        illumination gradients and directional GLCM computation.&quot;&quot;&quot;</span>
+    <span class="p">)</span>
+
+    <span class="n">VARIANCE</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;HaralickVariance&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;GLCM variance (Σ (i–μ)² p(i,j)). Captures spread of co-occurring gray-level pairs, distinct</span>
+<span class="sd">        from raw intensity variance. High values → complex, multi-zone textures with variable</span>
+<span class="sd">        hyphal/spore densities. Low values → consistent gray-level relationships and simpler colony</span>
+<span class="sd">        surfaces.&quot;&quot;&quot;</span>
+    <span class="p">)</span>
+
+    <span class="n">INVERSE_DIFFERENCE_MOMENT</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;InverseDifferenceMoment&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Homogeneity (Σ p(i,j) / (1 + (i–j)²)). High values → smooth, locally uniform textures</span>
+<span class="sd">        (e.g., glabrous colonies, uniform aerial mycelium). Low values → abrupt gray-level changes</span>
+<span class="sd">        (e.g., granular sporulation, wrinkled surfaces). Typically inversely correlated with Contrast.&quot;&quot;&quot;</span>
+    <span class="p">)</span>
+
+    <span class="n">SUM_AVERAGE</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;SumAverage&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Mean of gray-level sums (Σ k·p_{x+y}(k)). Reflects the average intensity combination of</span>
+<span class="sd">        neighboring pixels. In fungal colonies, can loosely parallel mean colony brightness when</span>
+<span class="sd">        illumination and exposure are controlled, but remains a second-order rather than first-order</span>
+<span class="sd">        intensity metric.&quot;&quot;&quot;</span>
+    <span class="p">)</span>
+
+    <span class="n">SUM_VARIANCE</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;SumVariance&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Variance of gray-level sum distribution. High values → heterogeneous brightness zones</span>
+<span class="sd">        (e.g., alternating dense/sparse or pigmented/non-pigmented regions). Low values → uniform</span>
+<span class="sd">        tone across the colony. Often correlated with Contrast; use comparatively within one setup.&quot;&quot;&quot;</span>
+    <span class="p">)</span>
+
+    <span class="n">SUM_ENTROPY</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;SumEntropy&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Entropy of the gray-level sum distribution. High values → diverse brightness combinations</span>
+<span class="sd">        and irregular zonation. Low values → repetitive or periodic brightness patterns (e.g., evenly</span>
+<span class="sd">        spaced rings). Indicates spatial unpredictability of summed intensities.&quot;&quot;&quot;</span>
+    <span class="p">)</span>
+
+    <span class="n">ENTROPY</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;Entropy&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Global GLCM entropy (–Σ p(i,j)·log p(i,j)). Measures total texture disorder and information</span>
+<span class="sd">        content. High values → complex, irregular colony surfaces (powdery, fuzzy, or sectored growth).</span>
+<span class="sd">        Low values → simple, smooth, predictable patterns (glabrous or uniform colonies). Sensitive to</span>
+<span class="sd">        gray-level quantization and image dynamic range.&quot;&quot;&quot;</span>
+    <span class="p">)</span>
+
+    <span class="n">DIFFERENCE_VARIANCE</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;DiffVariance&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Variance of gray-level difference distribution. High values → mixture of smooth and textured</span>
+<span class="sd">        regions (e.g., smooth margins with wrinkled centers). Low values → consistent edge content.</span>
+<span class="sd">        Highlights heterogeneity in edge magnitude across the colony.&quot;&quot;&quot;</span>
+    <span class="p">)</span>
+
+    <span class="n">DIFFERENCE_ENTROPY</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;DiffEntropy&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Entropy of gray-level difference distribution. High values → irregular, unpredictable</span>
+<span class="sd">        intensity transitions (e.g., random sporulation or uneven mycelial networks). Low values →</span>
+<span class="sd">        regular periodic transitions (e.g., concentric zonation). Reflects randomness of local contrast</span>
+<span class="sd">        rather than its magnitude.&quot;&quot;&quot;</span>
+    <span class="p">)</span>
+
+    <span class="n">IMC1</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;InfoCorrelation1&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Information measure of correlation 1. Compares joint vs marginal entropies to quantify</span>
+<span class="sd">        mutual dependence between gray levels. Positive values → structured, predictable textures</span>
+<span class="sd">        (e.g., organized radial growth); near-zero → independence between adjacent regions.</span>
+<span class="sd">        Direction of sign varies with implementation.&quot;&quot;&quot;</span>
+    <span class="p">)</span>
+
+    <span class="n">IMC2</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;InfoCorrelation2&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Information measure of correlation 2 (√[1 – exp(–2 (H_xy2–H_xy))]). Always ≥ 0.</span>
+<span class="sd">        Values approaching 1 → strong spatial dependence and organized architecture (e.g., symmetric</span>
+<span class="sd">        rings, radial structure). Values near 0 → random, independent patterns. Captures nonlinear</span>
+<span class="sd">        organization missed by linear correlation.&quot;&quot;&quot;</span>
+    <span class="p">)</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_headers</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">scale</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">matrix_name</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return full texture labels with angles in order 0, 45, 90, 135 for each feature and the</span>
+<span class="sd">        average across degrees of each feature at the end.&quot;&quot;&quot;</span>
+        <span class="n">angles</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">45</span><span class="p">,</span> <span class="mi">90</span><span class="p">,</span> <span class="mi">135</span><span class="p">]</span>
+        <span class="n">labels</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">member</span> <span class="ow">in</span> <span class="bp">cls</span><span class="o">.</span><span class="n">get_labels</span><span class="p">():</span>
+            <span class="k">for</span> <span class="n">angle</span> <span class="ow">in</span> <span class="n">angles</span><span class="p">:</span>
+                <span class="n">labels</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">cls</span><span class="o">.</span><span class="n">category</span><span class="p">()</span><span class="si">}{</span><span class="n">matrix_name</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">member</span><span class="si">}</span><span class="s2">-deg</span><span class="si">{</span><span class="n">angle</span><span class="si">:</span><span class="s2">03d</span><span class="si">}</span><span class="s2">-scale</span><span class="si">{</span><span class="n">scale</span><span class="si">:</span><span class="s2">02d</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">member</span> <span class="ow">in</span> <span class="bp">cls</span><span class="o">.</span><span class="n">get_labels</span><span class="p">():</span>
+            <span class="n">labels</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="bp">cls</span><span class="o">.</span><span class="n">category</span><span class="p">()</span><span class="si">}{</span><span class="n">matrix_name</span><span class="si">}</span><span class="s1">_</span><span class="si">{</span><span class="n">member</span><span class="si">}</span><span class="s1">-avg-scale</span><span class="si">{</span><span class="n">scale</span><span class="si">:</span><span class="s1">02d</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">labels</span>
+
+
+<div class="viewcode-block" id="MeasureTexture">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.measure.html#phenotypic.measure.MeasureTexture">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">MeasureTexture</span><span class="p">(</span><span class="n">MeasureFeatures</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Provides functionality to measure texture features in an image using Haralick texture analysis.</span>
+
+<span class="sd">    This class offers tools to extract texture features from foreground objects in an image, such</span>
+<span class="sd">    as Angular Second Moment, Contrast, Correlation, Variance, and Inverse Difference Moment.</span>
+<span class="sd">    These features are calculated over different directional orientations to quantify texture patterns</span>
+<span class="sd">    in segmented image objects.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        scale (list[int]): A list of integer values representing the distance parameters used</span>
+<span class="sd">            to calculate Haralick features. Each value in the list corresponds to a scale at</span>
+<span class="sd">            which texture features are computed.</span>
+<span class="sd">        quant_lvl (Literal[8, 16, 32, 64]): The quantization level for processing image intensity.</span>
+<span class="sd">            Acceptable values are 8, 16, 32, or 64.</span>
+<span class="sd">        enhance (bool): A flag indicating whether to enhance the image before computing</span>
+<span class="sd">            texture measurements. Enhancement may improve feature detection but can introduce</span>
+<span class="sd">            bias in low-variance regions.</span>
+<span class="sd">        warn (bool): A flag determining if warnings should be issued during the computation process.</span>
+
+<span class="sd">    References:</span>
+<span class="sd">        [1] https://mahotas.readthedocs.io/en/latest/api.html#mahotas.features.haralick</span>
+<span class="sd">        [2] R. M. Haralick, K. Shanmugam, and I. Dinstein, “Textural Features for Image Classification,”</span>
+<span class="sd">                IEEE Transactions on Systems, Man, and Cybernetics, vol. SMC-3, no. 6, pp. 610–621, Nov. 1973,</span>
+<span class="sd">                doi: 10.1109/TSMC.1973.4309314.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="MeasureTexture.__init__">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.measure.html#phenotypic.measure.MeasureTexture.__init__">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                 <span class="n">scale</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="mi">5</span><span class="p">,</span>
+                 <span class="n">quant_lvl</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="mi">8</span><span class="p">,</span> <span class="mi">16</span><span class="p">,</span> <span class="mi">32</span><span class="p">,</span> <span class="mi">64</span><span class="p">]</span> <span class="o">=</span> <span class="mi">32</span><span class="p">,</span>
+                 <span class="n">enhance</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+                 <span class="n">warn</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Initializes an object with specific configurations for scale, quantization level,</span>
+<span class="sd">        enhance, and warning behaviors. This constructor ensures that the &#39;scale&#39;</span>
+<span class="sd">        parameter is always stored as a list.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            scale (int | List[int]): A single integer or a list of integers representing</span>
+<span class="sd">                the scale configuration. If a single integer is provided, it will be</span>
+<span class="sd">                converted into a list containing that integer.</span>
+<span class="sd">            quant_lvl (Literal[8, 16, 32, 64]): The quantization level. A higher level adds</span>
+<span class="sd">                more computational complexity but captures more discrete texture changes. A higher value is</span>
+<span class="sd">                not always more meaningful. Think of this like sensitivity to texture. Acceptable values are either 8, 16, 32, or 64.</span>
+<span class="sd">            enhance (bool): A flag indicating whether to enhance the image before measuring texture. This can</span>
+<span class="sd">                increase the amount of detail captured but can bias the measurements in cases where the relative</span>
+<span class="sd">                variance between pixel intensities of an object is small.</span>
+<span class="sd">            warn (bool): A flag indicating whether warnings should be issued.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">scale</span><span class="p">,</span> <span class="s2">&quot;__getitem__&quot;</span><span class="p">):</span>  <span class="c1"># coerce iterable input</span>
+            <span class="n">scale</span> <span class="o">=</span> <span class="p">[</span><span class="n">scale</span><span class="p">]</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">scale</span> <span class="o">=</span> <span class="n">scale</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">quant_lvl</span> <span class="o">=</span> <span class="n">quant_lvl</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">enhance</span> <span class="o">=</span> <span class="n">enhance</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">warn</span> <span class="o">=</span> <span class="n">warn</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Performs texture measurements on the image objects.</span>
+
+<span class="sd">        This method extracts texture features from the foreground objects in the image using</span>
+<span class="sd">        Haralick texture features. It processes the image&#39;s foreground array and returns</span>
+<span class="sd">        the measurements as a DataFrame.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            image (Image): The image containing objects to measure.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            pd.DataFrame: A DataFrame containing texture measurements for each object in the image.</span>
+<span class="sd">                The nrows are indexed by object labels, and columns represent different texture features.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">compute_haralick</span> <span class="o">=</span> <span class="n">functools</span><span class="o">.</span><span class="n">partial</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_compute_haralick</span><span class="p">,</span>
+                <span class="n">image</span><span class="o">=</span><span class="n">image</span><span class="p">,</span>
+                <span class="n">foreground_array</span><span class="o">=</span><span class="n">image</span><span class="o">.</span><span class="n">gray</span><span class="o">.</span><span class="n">foreground</span><span class="p">(),</span>
+                <span class="n">foreground_name</span><span class="o">=</span><span class="s1">&#39;Gray&#39;</span><span class="p">,</span>
+                <span class="n">quant_lvl</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">quant_lvl</span><span class="p">,</span>
+                <span class="n">enhance</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">enhance</span><span class="p">,</span>
+                <span class="n">warn</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">warn</span>
+        <span class="p">)</span>
+
+        <span class="n">meas</span> <span class="o">=</span> <span class="n">compute_haralick</span><span class="p">(</span><span class="n">scale</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">scale</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">scale</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">scale</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">scale</span><span class="p">[</span><span class="mi">1</span><span class="p">:]:</span>
+                <span class="n">meas</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">compute_haralick</span><span class="p">(</span><span class="n">scale</span><span class="o">=</span><span class="n">scale</span><span class="p">),</span>
+                           <span class="n">on</span><span class="o">=</span><span class="n">OBJECT</span><span class="o">.</span><span class="n">LABEL</span><span class="p">,</span> <span class="n">how</span><span class="o">=</span><span class="s1">&#39;outer&#39;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">meas</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_compute_haralick</span><span class="p">(</span><span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">,</span> <span class="n">foreground_array</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">foreground_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+                          <span class="n">scale</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+                          <span class="n">quant_lvl</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+                          <span class="n">enhance</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
+                          <span class="n">warn</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
+                          <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Computes texture feature measurements using Haralick features for objects in a given image. The method</span>
+<span class="sd">        calculates various statistical texture features such as Angular Second Moment, Contrast, Correlation,</span>
+<span class="sd">        Variance, Inverse Difference Moment, among others, for different directional orientations. These</span>
+<span class="sd">        features are computed for each segmented object within the foreground array using the specified</span>
+<span class="sd">        scale parameter.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            image (Image): The image containing objects and their associated properties, including</span>
+<span class="sd">                labels and slices used for extracting foreground objects.</span>
+<span class="sd">            foreground_array (np.ndarray): The 2D numpy array representing the foreground objects,</span>
+<span class="sd">                where pixel values indicate the object intensity.</span>
+<span class="sd">            foreground_name (str): The name of the foreground for labeling the resulting features.</span>
+<span class="sd">            scale (int, optional): The distance parameter used in calculating Haralick features.</span>
+<span class="sd">                Defaults to 5.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            dict: A dictionary mapping computed texture feature names (e.g.,</span>
+<span class="sd">                &quot;angular_second_moment&quot;, &quot;contrast&quot;) to their corresponding values</span>
+<span class="sd">                for each object in the foreground array.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            KeyboardInterrupt: If the computation process is interrupted manually.</span>
+<span class="sd">            Warning: If an error occurs during the computation of Haralick features for specific objects, a</span>
+<span class="sd">                warning is issued with details of the error, and NaN values are assigned for the corresponding</span>
+<span class="sd">                measurements.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">foreground_array</span><span class="o">.</span><span class="n">min</span><span class="p">()</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">foreground_array</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span> <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s2">&quot;Foreground array must be normalized between 0 and 1&quot;</span><span class="p">)</span>
+
+        <span class="n">props</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">props</span>
+        <span class="n">objmap</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">objmap</span><span class="p">[:]</span>
+        <span class="n">measurement_names</span> <span class="o">=</span> <span class="n">TEXTURE</span><span class="o">.</span><span class="n">get_headers</span><span class="p">(</span><span class="n">scale</span><span class="p">,</span> <span class="n">foreground_name</span><span class="p">)</span>
+        <span class="n">deg_measurement_names</span> <span class="o">=</span> <span class="n">measurement_names</span><span class="p">[:</span><span class="o">-</span><span class="mi">13</span><span class="p">]</span>  <span class="c1"># there are 13 haralick features so we separate the avgs out</span>
+        <span class="n">avg_measurement_names</span> <span class="o">=</span> <span class="n">measurement_names</span><span class="p">[</span><span class="o">-</span><span class="mi">13</span><span class="p">:]</span>
+        <span class="n">deg_meas</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="n">image</span><span class="o">.</span><span class="n">num_objects</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">deg_measurement_names</span><span class="p">),),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">label</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">image</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">labels</span><span class="p">):</span>
+            <span class="n">slices</span> <span class="o">=</span> <span class="n">props</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span><span class="o">.</span><span class="n">slice</span>
+            <span class="n">obj_fg</span> <span class="o">=</span> <span class="n">foreground_array</span><span class="p">[</span><span class="n">slices</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+            <span class="c1"># In case there&#39;s more than one object in the crop</span>
+            <span class="n">obj_fg</span><span class="p">[</span><span class="n">objmap</span><span class="p">[</span><span class="n">slices</span><span class="p">]</span> <span class="o">!=</span> <span class="n">label</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">obj_fg</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>  <span class="c1"># In case an empty array is given</span>
+                    <span class="n">texture_statistics</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">((</span><span class="mi">4</span><span class="p">,</span> <span class="mi">13</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="c1"># Pad object with zero if its dimensions are smaller than the scale</span>
+
+                    <span class="k">if</span> <span class="n">enhance</span><span class="p">:</span>
+                        <span class="c1"># contrast stretch to normalized range</span>
+                        <span class="c1"># this can improve texture detail, but can</span>
+                        <span class="c1"># add bias when the variance of the original range is small</span>
+                        <span class="n">obj_fg</span> <span class="o">=</span> <span class="n">exposure</span><span class="o">.</span><span class="n">rescale_intensity</span><span class="p">(</span><span class="n">obj_fg</span><span class="p">,</span> <span class="n">in_range</span><span class="o">=</span><span class="s1">&#39;image&#39;</span><span class="p">,</span> <span class="n">out_range</span><span class="o">=</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">))</span>
+
+                    <span class="n">texture_statistics</span> <span class="o">=</span> <span class="n">mh</span><span class="o">.</span><span class="n">features</span><span class="o">.</span><span class="n">haralick</span><span class="p">(</span>
+                            <span class="n">MeasureTexture</span><span class="o">.</span><span class="n">_quantize_arr</span><span class="p">(</span><span class="n">arr</span><span class="o">=</span><span class="n">obj_fg</span><span class="p">,</span> <span class="n">quant_lvl</span><span class="o">=</span><span class="n">quant_lvl</span><span class="p">),</span>
+                            <span class="n">distance</span><span class="o">=</span><span class="n">scale</span><span class="p">,</span>
+                            <span class="n">ignore_zeros</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                            <span class="n">return_mean</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                    <span class="p">)</span>
+            <span class="k">except</span> <span class="ne">KeyboardInterrupt</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">KeyboardInterrupt</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="c1"># 4 for each direction, 13 for each texture feature</span>
+                <span class="k">if</span> <span class="n">warn</span><span class="p">:</span> <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Error in computing Haralick features for object </span><span class="si">{</span><span class="n">label</span><span class="si">}</span><span class="s1">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+                <span class="n">texture_statistics</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">((</span><span class="mi">4</span><span class="p">,</span> <span class="mi">13</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+
+            <span class="n">deg_meas</span><span class="p">[</span><span class="n">idx</span><span class="p">,</span> <span class="p">:]</span> <span class="o">=</span> <span class="n">texture_statistics</span><span class="o">.</span><span class="n">T</span><span class="o">.</span><span class="n">ravel</span><span class="p">()</span>
+
+        <span class="n">avg_meas</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="n">image</span><span class="o">.</span><span class="n">num_objects</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">avg_measurement_names</span><span class="p">),),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+
+        <span class="c1"># step through each feature and avg across degrees</span>
+        <span class="k">for</span> <span class="n">avg_col_idx</span><span class="p">,</span> <span class="n">deg_start_idx</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">deg_meas</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="mi">4</span><span class="p">)):</span>
+            <span class="n">avg_meas</span><span class="p">[:,</span> <span class="n">avg_col_idx</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">average</span><span class="p">(</span><span class="n">deg_meas</span><span class="p">[:,</span> <span class="n">deg_start_idx</span><span class="p">:</span><span class="n">deg_start_idx</span> <span class="o">+</span> <span class="mi">4</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="n">meas</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">hstack</span><span class="p">([</span><span class="n">deg_meas</span><span class="p">,</span> <span class="n">avg_meas</span><span class="p">]),</span> <span class="n">columns</span><span class="o">=</span><span class="n">measurement_names</span><span class="p">)</span>
+
+        <span class="n">meas</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="n">loc</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">column</span><span class="o">=</span><span class="n">OBJECT</span><span class="o">.</span><span class="n">LABEL</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="n">image</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">labels2series</span><span class="p">())</span>
+        <span class="k">return</span> <span class="n">meas</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_quantize_arr</span><span class="p">(</span><span class="n">arr</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">quant_lvl</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;quantizes a normalized array to specific levels&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">arr</span><span class="o">.</span><span class="n">min</span><span class="p">()</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">arr</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span> <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Array is not normalized&#39;</span><span class="p">)</span>
+
+        <span class="n">quant_arr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">floor</span><span class="p">(</span><span class="n">arr</span><span class="o">*</span><span class="n">quant_lvl</span><span class="p">)</span>
+
+        <span class="c1"># handle edge case where a value was 1.0</span>
+        <span class="n">quant_arr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">quant_arr</span><span class="p">,</span> <span class="n">a_min</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">a_max</span><span class="o">=</span><span class="n">quant_lvl</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">quant_arr</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">)</span></div>
+
+
+
+<span class="n">MeasureTexture</span><span class="o">.</span><span class="vm">__doc__</span> <span class="o">=</span> <span class="n">TEXTURE</span><span class="o">.</span><span class="n">append_rst_to_doc</span><span class="p">(</span><span class="n">MeasureTexture</span><span class="p">)</span>
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, ExFAB BioFoundry.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.1.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

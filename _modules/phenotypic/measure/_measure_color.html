@@ -1,0 +1,783 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>phenotypic.measure._measure_color &#8212; PhenoTypic</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/custom.css?v=800a184d" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../../../_static/documentation_options.js?v=b3db6a4d"></script>
+    <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../../../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="../../../_static/design-tabs.js?v=f930bc37"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/phenotypic/measure/_measure_color';</script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.11.1" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+     
+  
+
+<a class="navbar-brand logo" href="../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../../_static/gradient_logo_exfab.svg" class="logo__image only-light" alt="PhenoTypic"/>
+    <img src="../../../_static/gradient_logo_exfab.svg" class="logo__image only-dark pst-js-only" alt="PhenoTypic"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../user_guide/index.html">
+    User Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../api_reference/index.html">
+    API Reference
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../contrib_guide/index.html">
+    Developer Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../downloadables.html">
+    Downloads
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/Wheeldon-Lab/PhenoScope#" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../user_guide/index.html">
+    User Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../api_reference/index.html">
+    API Reference
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../contrib_guide/index.html">
+    Developer Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../downloadables.html">
+    Downloads
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/Wheeldon-Lab/PhenoScope#" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">phenotypic.measure._measure_color</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for phenotypic.measure._measure_color</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span>
+
+<span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span> <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">colour</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">MeasureFeatures</span><span class="p">,</span> <span class="n">MeasurementInfo</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools.constants_</span><span class="w"> </span><span class="kn">import</span> <span class="n">OBJECT</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">ColorXYZ</span><span class="p">(</span><span class="n">MeasurementInfo</span><span class="p">):</span>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">category</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s1">&#39;ColorXYZ&#39;</span>
+
+    <span class="n">X_MINIMUM</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;CieXMin&#39;</span><span class="p">,</span> <span class="s1">&#39;The minimum X value of the object in CIE XYZ color space&#39;</span><span class="p">)</span>
+    <span class="n">X_Q1</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;CieXQ1&#39;</span><span class="p">,</span> <span class="s1">&#39;The lower quartile (Q1) X value of the object in CIE XYZ color space&#39;</span><span class="p">)</span>
+    <span class="n">X_MEAN</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;CieXMean&#39;</span><span class="p">,</span> <span class="s1">&#39;The mean X value of the object in CIE XYZ color space&#39;</span><span class="p">)</span>
+    <span class="n">X_MEDIAN</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;CieXMedian&#39;</span><span class="p">,</span> <span class="s1">&#39;The median X value of the object in CIE XYZ color space&#39;</span><span class="p">)</span>
+    <span class="n">X_Q3</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;CieXQ3&#39;</span><span class="p">,</span> <span class="s1">&#39;The upper quartile (Q3) X value of the object in CIE XYZ color space&#39;</span><span class="p">)</span>
+    <span class="n">X_MAXIMUM</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;CieXMax&#39;</span><span class="p">,</span> <span class="s1">&#39;The maximum X value of the object in CIE XYZ color space&#39;</span><span class="p">)</span>
+    <span class="n">X_STDDEV</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;CieXStdDev&#39;</span><span class="p">,</span> <span class="s1">&#39;The standard deviation of the X value of the object in CIE XYZ color space&#39;</span><span class="p">)</span>
+    <span class="n">X_COEFF_VARIANCE</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;CieXCoeffVar&#39;</span><span class="p">,</span>
+                        <span class="s1">&#39;The coefficient of variation of the X value of the object in CIE XYZ color space&#39;</span><span class="p">)</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">cieX_headers</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">X_MINIMUM</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">X_Q1</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">X_MEAN</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">X_MEDIAN</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">X_Q3</span><span class="p">),</span>
+                <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">X_MAXIMUM</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">X_STDDEV</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">X_COEFF_VARIANCE</span><span class="p">)]</span>
+
+    <span class="n">Y_MINIMUM</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;CieYMin&#39;</span><span class="p">,</span> <span class="s1">&#39;The minimum Y value of the object in CIE XYZ color space&#39;</span><span class="p">)</span>
+    <span class="n">Y_Q1</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;CieYQ1&#39;</span><span class="p">,</span> <span class="s1">&#39;The lower quartile (Q1) Y value of the object in CIE XYZ color space&#39;</span><span class="p">)</span>
+    <span class="n">Y_MEAN</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;CieYMean&#39;</span><span class="p">,</span> <span class="s1">&#39;The mean Y value of the object in CIE XYZ color space&#39;</span><span class="p">)</span>
+    <span class="n">Y_MEDIAN</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;CieYMedian&#39;</span><span class="p">,</span> <span class="s1">&#39;The median Y value of the object in CIE XYZ color space&#39;</span><span class="p">)</span>
+    <span class="n">Y_Q3</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;CieYQ3&#39;</span><span class="p">,</span> <span class="s1">&#39;The upper quartile (Q3) Y value of the object in CIE XYZ color space&#39;</span><span class="p">)</span>
+    <span class="n">Y_MAXIMUM</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;CieYMax&#39;</span><span class="p">,</span> <span class="s1">&#39;The maximum Y value of the object in CIE XYZ color space&#39;</span><span class="p">)</span>
+    <span class="n">Y_STDDEV</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;CieYStdDev&#39;</span><span class="p">,</span> <span class="s1">&#39;The standard deviation of the Y value of the object in CIE XYZ color space&#39;</span><span class="p">)</span>
+    <span class="n">Y_COEFF_VARIANCE</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;CieYCoeffVar&#39;</span><span class="p">,</span>
+                        <span class="s1">&#39;The coefficient of variation of the Y value of the object in CIE XYZ color space&#39;</span><span class="p">)</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">cieY_headers</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">Y_MINIMUM</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">Y_Q1</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">Y_MEAN</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">Y_MEDIAN</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">Y_Q3</span><span class="p">),</span>
+                <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">Y_MAXIMUM</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">Y_STDDEV</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">Y_COEFF_VARIANCE</span><span class="p">)]</span>
+
+    <span class="n">Z_MINIMUM</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;CieZMin&#39;</span><span class="p">,</span> <span class="s1">&#39;The minimum Z value of the object in CIE XYZ color space&#39;</span><span class="p">)</span>
+    <span class="n">Z_Q1</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;CieZQ1&#39;</span><span class="p">,</span> <span class="s1">&#39;The lower quartile (Q1) Z value of the object in CIE XYZ color space&#39;</span><span class="p">)</span>
+    <span class="n">Z_MEAN</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;CieZMean&#39;</span><span class="p">,</span> <span class="s1">&#39;The mean Z value of the object in CIE XYZ color space&#39;</span><span class="p">)</span>
+    <span class="n">Z_MEDIAN</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;CieZMedian&#39;</span><span class="p">,</span> <span class="s1">&#39;The median Z value of the object in CIE XYZ color space&#39;</span><span class="p">)</span>
+    <span class="n">Z_Q3</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;CieZQ3&#39;</span><span class="p">,</span> <span class="s1">&#39;The upper quartile (Q3) Z value of the object in CIE XYZ color space&#39;</span><span class="p">)</span>
+    <span class="n">Z_MAXIMUM</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;CieZMax&#39;</span><span class="p">,</span> <span class="s1">&#39;The maximum Z value of the object in CIE XYZ color space&#39;</span><span class="p">)</span>
+    <span class="n">Z_STDDEV</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;CieZStdDev&#39;</span><span class="p">,</span> <span class="s1">&#39;The standard deviation of the Z value of the object in CIE XYZ color space&#39;</span><span class="p">)</span>
+    <span class="n">Z_COEFF_VARIANCE</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;CieZCoeffVar&#39;</span><span class="p">,</span>
+                        <span class="s1">&#39;The coefficient of variation of the Z value of the object in CIE XYZ color space&#39;</span><span class="p">)</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">cieZ_headers</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">Z_MINIMUM</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">Z_Q1</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">Z_MEAN</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">Z_MEDIAN</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">Z_Q3</span><span class="p">),</span>
+                <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">Z_MAXIMUM</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">Z_STDDEV</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">Z_COEFF_VARIANCE</span><span class="p">)]</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">Colorxy</span><span class="p">(</span><span class="n">MeasurementInfo</span><span class="p">):</span>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">category</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s1">&#39;Colorxy&#39;</span>
+
+    <span class="n">x_MINIMUM</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;xMin&#39;</span><span class="p">,</span> <span class="s1">&#39;The minimum chromaticity x coordinate of the object&#39;</span><span class="p">)</span>
+    <span class="n">x_Q1</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;xQ1&#39;</span><span class="p">,</span> <span class="s1">&#39;The lower quartile (Q1) chromaticity x coordinate of the object&#39;</span><span class="p">)</span>
+    <span class="n">x_MEAN</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;xMean&#39;</span><span class="p">,</span> <span class="s1">&#39;The mean chromaticity x coordinate of the object&#39;</span><span class="p">)</span>
+    <span class="n">x_MEDIAN</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;xMedian&#39;</span><span class="p">,</span> <span class="s1">&#39;The median chromaticity x coordinate of the object&#39;</span><span class="p">)</span>
+    <span class="n">x_Q3</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;xQ3&#39;</span><span class="p">,</span> <span class="s1">&#39;The upper quartile (Q3) chromaticity x coordinate of the object&#39;</span><span class="p">)</span>
+    <span class="n">x_MAXIMUM</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;xMax&#39;</span><span class="p">,</span> <span class="s1">&#39;The maximum chromaticity x coordinate of the object&#39;</span><span class="p">)</span>
+    <span class="n">x_STDDEV</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;xStdDev&#39;</span><span class="p">,</span> <span class="s1">&#39;The standard deviation of the chromaticity x coordinate of the object&#39;</span><span class="p">)</span>
+    <span class="n">x_COEFF_VARIANCE</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;xCoeffVar&#39;</span><span class="p">,</span> <span class="s1">&#39;The coefficient of variation of the chromaticity x coordinate of the object&#39;</span><span class="p">)</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">x_headers</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">x_MINIMUM</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">x_Q1</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">x_MEAN</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">x_MEDIAN</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">x_Q3</span><span class="p">),</span>
+                <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">x_MAXIMUM</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">x_STDDEV</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">x_COEFF_VARIANCE</span><span class="p">)]</span>
+
+    <span class="n">y_MINIMUM</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;yMin&#39;</span><span class="p">,</span> <span class="s1">&#39;The minimum chromaticity y coordinate of the object&#39;</span><span class="p">)</span>
+    <span class="n">y_Q1</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;yQ1&#39;</span><span class="p">,</span> <span class="s1">&#39;The lower quartile (Q1) chromaticity y coordinate of the object&#39;</span><span class="p">)</span>
+    <span class="n">y_MEAN</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;yMean&#39;</span><span class="p">,</span> <span class="s1">&#39;The mean chromaticity y coordinate of the object&#39;</span><span class="p">)</span>
+    <span class="n">y_MEDIAN</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;yMedian&#39;</span><span class="p">,</span> <span class="s1">&#39;The median chromaticity y coordinate of the object&#39;</span><span class="p">)</span>
+    <span class="n">y_Q3</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;yQ3&#39;</span><span class="p">,</span> <span class="s1">&#39;The upper quartile (Q3) chromaticity y coordinate of the object&#39;</span><span class="p">)</span>
+    <span class="n">y_MAXIMUM</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;yMax&#39;</span><span class="p">,</span> <span class="s1">&#39;The maximum chromaticity y coordinate of the object&#39;</span><span class="p">)</span>
+    <span class="n">y_STDDEV</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;yStdDev&#39;</span><span class="p">,</span> <span class="s1">&#39;The standard deviation of the chromaticity y coordinate of the object&#39;</span><span class="p">)</span>
+    <span class="n">y_COEFF_VARIANCE</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;yCoeffVar&#39;</span><span class="p">,</span> <span class="s1">&#39;The coefficient of variation of the chromaticity y coordinate of the object&#39;</span><span class="p">)</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">y_headers</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">y_MINIMUM</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">y_Q1</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">y_MEAN</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">y_MEDIAN</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">y_Q3</span><span class="p">),</span>
+                <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">y_MAXIMUM</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">y_STDDEV</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">y_COEFF_VARIANCE</span><span class="p">)]</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">ColorLab</span><span class="p">(</span><span class="n">MeasurementInfo</span><span class="p">):</span>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">category</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s1">&#39;ColorLab&#39;</span>
+
+    <span class="n">L_STAR_MINIMUM</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;L*Min&#39;</span><span class="p">,</span> <span class="s1">&#39;The minimum L* value of the object&#39;</span><span class="p">)</span>
+    <span class="n">L_STAR_Q1</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;L*Q1&#39;</span><span class="p">,</span> <span class="s1">&#39;The lower quartile (Q1) L* value of the object&#39;</span><span class="p">)</span>
+    <span class="n">L_STAR_MEAN</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;L*Mean&#39;</span><span class="p">,</span> <span class="s1">&#39;The mean L* value of the object&#39;</span><span class="p">)</span>
+    <span class="n">L_STAR_MEDIAN</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;L*Median&#39;</span><span class="p">,</span> <span class="s1">&#39;The median L* value of the object&#39;</span><span class="p">)</span>
+    <span class="n">L_STAR_Q3</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;L*Q3&#39;</span><span class="p">,</span> <span class="s1">&#39;The upper quartile (Q3) L* value of the object&#39;</span><span class="p">)</span>
+    <span class="n">L_STAR_MAXIMUM</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;L*Max&#39;</span><span class="p">,</span> <span class="s1">&#39;The maximum L* value of the object&#39;</span><span class="p">)</span>
+    <span class="n">L_STAR_STDDEV</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;L*StdDev&#39;</span><span class="p">,</span> <span class="s1">&#39;The standard deviation of the L* value of the object&#39;</span><span class="p">)</span>
+    <span class="n">L_STAR_COEFF_VARIANCE</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;L*CoeffVar&#39;</span><span class="p">,</span> <span class="s1">&#39;The coefficient of variation of the L* value of the object&#39;</span><span class="p">)</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">l_star_headers</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">L_STAR_MINIMUM</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">L_STAR_Q1</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">L_STAR_MEAN</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">L_STAR_MEDIAN</span><span class="p">),</span>
+                <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">L_STAR_Q3</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">L_STAR_MAXIMUM</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">L_STAR_STDDEV</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">L_STAR_COEFF_VARIANCE</span><span class="p">)]</span>
+
+    <span class="n">A_STAR_MINIMUM</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;a*Min&#39;</span><span class="p">,</span> <span class="s1">&#39;The minimum a* value of the object&#39;</span><span class="p">)</span>
+    <span class="n">A_STAR_Q1</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;a*Q1&#39;</span><span class="p">,</span> <span class="s1">&#39;The lower quartile (Q1) a* value of the object&#39;</span><span class="p">)</span>
+    <span class="n">A_STAR_MEAN</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;a*Mean&#39;</span><span class="p">,</span> <span class="s1">&#39;The mean a* value of the object&#39;</span><span class="p">)</span>
+    <span class="n">A_STAR_MEDIAN</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;a*Median&#39;</span><span class="p">,</span> <span class="s1">&#39;The median a* value of the object&#39;</span><span class="p">)</span>
+    <span class="n">A_STAR_Q3</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;a*Q3&#39;</span><span class="p">,</span> <span class="s1">&#39;The upper quartile (Q3) a* value of the object&#39;</span><span class="p">)</span>
+    <span class="n">A_STAR_MAXIMUM</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;a*Max&#39;</span><span class="p">,</span> <span class="s1">&#39;The maximum a* value of the object&#39;</span><span class="p">)</span>
+    <span class="n">A_STAR_STDDEV</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;a*StdDev&#39;</span><span class="p">,</span> <span class="s1">&#39;The standard deviation of the a* value of the object&#39;</span><span class="p">)</span>
+    <span class="n">A_STAR_COEFF_VARIANCE</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;a*CoeffVar&#39;</span><span class="p">,</span> <span class="s1">&#39;The coefficient of variation of the a* value of the object&#39;</span><span class="p">)</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">a_star_headers</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">A_STAR_MINIMUM</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">A_STAR_Q1</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">A_STAR_MEAN</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">A_STAR_MEDIAN</span><span class="p">),</span>
+                <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">A_STAR_Q3</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">A_STAR_MAXIMUM</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">A_STAR_STDDEV</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">A_STAR_COEFF_VARIANCE</span><span class="p">)]</span>
+
+    <span class="n">B_STAR_MINIMUM</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;b*Min&#39;</span><span class="p">,</span> <span class="s1">&#39;The minimum b* value of the object&#39;</span><span class="p">)</span>
+    <span class="n">B_STAR_Q1</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;b*Q1&#39;</span><span class="p">,</span> <span class="s1">&#39;The lower quartile (Q1) b* value of the object&#39;</span><span class="p">)</span>
+    <span class="n">B_STAR_MEAN</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;b*Mean&#39;</span><span class="p">,</span> <span class="s1">&#39;The mean b* value of the object&#39;</span><span class="p">)</span>
+    <span class="n">B_STAR_MEDIAN</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;b*Median&#39;</span><span class="p">,</span> <span class="s1">&#39;The median b* value of the object&#39;</span><span class="p">)</span>
+    <span class="n">B_STAR_Q3</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;b*Q3&#39;</span><span class="p">,</span> <span class="s1">&#39;The upper quartile (Q3) b* value of the object&#39;</span><span class="p">)</span>
+    <span class="n">B_STAR_MAXIMUM</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;b*Max&#39;</span><span class="p">,</span> <span class="s1">&#39;The maximum b* value of the object&#39;</span><span class="p">)</span>
+    <span class="n">B_STAR_STDDEV</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;b*StdDev&#39;</span><span class="p">,</span> <span class="s1">&#39;The standard deviation of the b* value of the object&#39;</span><span class="p">)</span>
+    <span class="n">B_STAR_COEFF_VARIANCE</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;b*CoeffVar&#39;</span><span class="p">,</span> <span class="s1">&#39;The coefficient of variation of the b* value of the object&#39;</span><span class="p">)</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">b_star_headers</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">B_STAR_MINIMUM</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">B_STAR_Q1</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">B_STAR_MEAN</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">B_STAR_MEDIAN</span><span class="p">),</span>
+                <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">B_STAR_Q3</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">B_STAR_MAXIMUM</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">B_STAR_STDDEV</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">B_STAR_COEFF_VARIANCE</span><span class="p">)]</span>
+
+    <span class="n">CHROMA_EST_MEAN</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s1">&#39;ChromaEstimatedMean&#39;</span><span class="p">,</span>
+        <span class="sa">r</span><span class="s1">&#39;The mean chroma estimation of the object calculated using :math:`\(sqrt{a^{*}_</span><span class="si">{mean}</span><span class="s1">^2 + b^{*}_</span><span class="si">{mean}</span><span class="s1">)^2}`&#39;</span>
+    <span class="p">)</span>
+    <span class="n">CHROMA_EST_MEDIAN</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s1">&#39;ChromaEstimatedMedian&#39;</span><span class="p">,</span>
+        <span class="sa">r</span><span class="s1">&#39;The median chroma estimation of the object using :math:`\sqrt({a*_</span><span class="si">{median}</span><span class="s1">^2 + b*_</span><span class="si">{median}</span><span class="s1">)^2}`&#39;</span>
+    <span class="p">)</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">ColorHSV</span><span class="p">(</span><span class="n">MeasurementInfo</span><span class="p">):</span>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">category</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s1">&#39;ColorHSV&#39;</span>
+
+    <span class="n">HUE_MINIMUM</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;HueMin&#39;</span><span class="p">,</span> <span class="s1">&#39;The minimum hue of the object&#39;</span><span class="p">)</span>
+    <span class="n">HUE_Q1</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;HueQ1&#39;</span><span class="p">,</span> <span class="s1">&#39;The lower quartile (Q1) hue of the object&#39;</span><span class="p">)</span>
+    <span class="n">HUE_MEAN</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;HueMean&#39;</span><span class="p">,</span> <span class="s1">&#39;The mean hue of the object&#39;</span><span class="p">)</span>
+    <span class="n">HUE_MEDIAN</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;HueMedian&#39;</span><span class="p">,</span> <span class="s1">&#39;The median hue of the object&#39;</span><span class="p">)</span>
+    <span class="n">HUE_Q3</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;HueQ3&#39;</span><span class="p">,</span> <span class="s1">&#39;The upper quartile (Q3) hue of the object&#39;</span><span class="p">)</span>
+    <span class="n">HUE_MAXIMUM</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;HueMax&#39;</span><span class="p">,</span> <span class="s1">&#39;The maximum hue of the object&#39;</span><span class="p">)</span>
+    <span class="n">HUE_STDDEV</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;HueStdDev&#39;</span><span class="p">,</span> <span class="s1">&#39;The standard deviation of the hue of the object&#39;</span><span class="p">)</span>
+    <span class="n">HUE_COEFF_VARIANCE</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;HueCoeffVar&#39;</span><span class="p">,</span> <span class="s1">&#39;The coefficient of variation of the hue of the object&#39;</span><span class="p">)</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">hue_headers</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">HUE_MINIMUM</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">HUE_Q1</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">HUE_MEAN</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">HUE_MEDIAN</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">HUE_Q3</span><span class="p">),</span>
+                <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">HUE_MAXIMUM</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">HUE_STDDEV</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">HUE_COEFF_VARIANCE</span><span class="p">)]</span>
+
+    <span class="n">SATURATION_MINIMUM</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;SaturationMin&#39;</span><span class="p">,</span> <span class="s1">&#39;The minimum saturation of the object&#39;</span><span class="p">)</span>
+    <span class="n">SATURATION_Q1</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;SaturationQ1&#39;</span><span class="p">,</span> <span class="s1">&#39;The lower quartile (Q1) saturation of the object&#39;</span><span class="p">)</span>
+    <span class="n">SATURATION_MEAN</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;SaturationMean&#39;</span><span class="p">,</span> <span class="s1">&#39;The mean saturation of the object&#39;</span><span class="p">)</span>
+    <span class="n">SATURATION_MEDIAN</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;SaturationMedian&#39;</span><span class="p">,</span> <span class="s1">&#39;The median saturation of the object&#39;</span><span class="p">)</span>
+    <span class="n">SATURATION_Q3</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;SaturationQ3&#39;</span><span class="p">,</span> <span class="s1">&#39;The upper quartile (Q3) saturation of the object&#39;</span><span class="p">)</span>
+    <span class="n">SATURATION_MAXIMUM</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;SaturationMax&#39;</span><span class="p">,</span> <span class="s1">&#39;The maximum saturation of the object&#39;</span><span class="p">)</span>
+    <span class="n">SATURATION_STDDEV</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;SaturationStdDev&#39;</span><span class="p">,</span> <span class="s1">&#39;The standard deviation of the saturation of the object&#39;</span><span class="p">)</span>
+    <span class="n">SATURATION_COEFF_VARIANCE</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;SaturationCoeffVar&#39;</span><span class="p">,</span> <span class="s1">&#39;The coefficient of variation of the saturation of the object&#39;</span><span class="p">)</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">saturation_headers</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">SATURATION_MINIMUM</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">SATURATION_Q1</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">SATURATION_MEAN</span><span class="p">),</span>
+                <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">SATURATION_MEDIAN</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">SATURATION_Q3</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">SATURATION_MAXIMUM</span><span class="p">),</span>
+                <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">SATURATION_STDDEV</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">SATURATION_COEFF_VARIANCE</span><span class="p">)]</span>
+
+    <span class="n">BRIGHTNESS_MINIMUM</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;BrightnessMin&#39;</span><span class="p">,</span> <span class="s1">&#39;The minimum brightness of the object&#39;</span><span class="p">)</span>
+    <span class="n">BRIGHTNESS_Q1</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;BrightnessQ1&#39;</span><span class="p">,</span> <span class="s1">&#39;The lower quartile (Q1) brightness of the object&#39;</span><span class="p">)</span>
+    <span class="n">BRIGHTNESS_MEAN</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;BrightnessMean&#39;</span><span class="p">,</span> <span class="s1">&#39;The mean brightness of the object&#39;</span><span class="p">)</span>
+    <span class="n">BRIGHTNESS_MEDIAN</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;BrightnessMedian&#39;</span><span class="p">,</span> <span class="s1">&#39;The median brightness of the object&#39;</span><span class="p">)</span>
+    <span class="n">BRIGHTNESS_Q3</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;BrightnessQ3&#39;</span><span class="p">,</span> <span class="s1">&#39;The upper quartile (Q3) brightness of the object&#39;</span><span class="p">)</span>
+    <span class="n">BRIGHTNESS_MAXIMUM</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;BrightnessMax&#39;</span><span class="p">,</span> <span class="s1">&#39;The maximum brightness of the object&#39;</span><span class="p">)</span>
+    <span class="n">BRIGHTNESS_STDDEV</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;BrightnessStdDev&#39;</span><span class="p">,</span> <span class="s1">&#39;The standard deviation of the brightness of the object&#39;</span><span class="p">)</span>
+    <span class="n">BRIGHTNESS_COEFF_VARIANCE</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;BrightnessCoeffVar&#39;</span><span class="p">,</span> <span class="s1">&#39;The coefficient of variation of the brightness of the object&#39;</span><span class="p">)</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">brightness_headers</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">BRIGHTNESS_MINIMUM</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">BRIGHTNESS_Q1</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">BRIGHTNESS_MEAN</span><span class="p">),</span>
+                <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">BRIGHTNESS_MEDIAN</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">BRIGHTNESS_Q3</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">BRIGHTNESS_MAXIMUM</span><span class="p">),</span>
+                <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">BRIGHTNESS_STDDEV</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">BRIGHTNESS_COEFF_VARIANCE</span><span class="p">)]</span>
+
+
+<div class="viewcode-block" id="MeasureColor">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.measure.html#phenotypic.measure.MeasureColor">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">MeasureColor</span><span class="p">(</span><span class="n">MeasureFeatures</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Performs color-based feature extraction and calculations on segmented image objects.</span>
+
+<span class="sd">    This class extends the MeasureFeatures class to provide additional methods for analyzing</span>
+<span class="sd">    the color properties of segmented objects within images. It computes various color-related</span>
+<span class="sd">    metrics, including those based on the HSB (hue, saturation, brightness) color model. These calculations</span>
+<span class="sd">    can be used in image analysis workflows to extract detailed information about the color</span>
+<span class="sd">    characteristics of objects.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">white_chroma_max</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">4.0</span><span class="p">,</span> <span class="n">chroma_min</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">8.0</span><span class="p">,</span> <span class="n">include_XYZ</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">white_chroma_max</span> <span class="o">=</span> <span class="n">white_chroma_max</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">chroma_min</span> <span class="o">=</span> <span class="n">chroma_min</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">include_XYZ</span> <span class="o">=</span> <span class="n">include_XYZ</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">):</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">include_XYZ</span><span class="p">:</span>
+            <span class="n">cieXYZ_foreground</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">color</span><span class="o">.</span><span class="n">XYZ</span><span class="o">.</span><span class="n">foreground</span><span class="p">()</span>
+            <span class="n">X_meas</span> <span class="o">=</span> <span class="n">MeasureColor</span><span class="o">.</span><span class="n">_compute_color_metrics</span><span class="p">(</span><span class="n">foreground</span><span class="o">=</span><span class="n">cieXYZ_foreground</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">objmap</span><span class="o">=</span><span class="n">image</span><span class="o">.</span><span class="n">objmap</span><span class="p">[:])</span>
+            <span class="n">X_meas</span> <span class="o">=</span> <span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="n">value</span> <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">ColorXYZ</span><span class="o">.</span><span class="n">cieX_headers</span><span class="p">(),</span> <span class="n">X_meas</span><span class="p">)}</span>
+
+            <span class="n">Y_meas</span> <span class="o">=</span> <span class="n">MeasureColor</span><span class="o">.</span><span class="n">_compute_color_metrics</span><span class="p">(</span><span class="n">foreground</span><span class="o">=</span><span class="n">cieXYZ_foreground</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">objmap</span><span class="o">=</span><span class="n">image</span><span class="o">.</span><span class="n">objmap</span><span class="p">[:])</span>
+            <span class="n">Y_meas</span> <span class="o">=</span> <span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="n">value</span> <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">ColorXYZ</span><span class="o">.</span><span class="n">cieY_headers</span><span class="p">(),</span> <span class="n">Y_meas</span><span class="p">)}</span>
+
+            <span class="n">Z_meas</span> <span class="o">=</span> <span class="n">MeasureColor</span><span class="o">.</span><span class="n">_compute_color_metrics</span><span class="p">(</span><span class="n">foreground</span><span class="o">=</span><span class="n">cieXYZ_foreground</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span> <span class="n">objmap</span><span class="o">=</span><span class="n">image</span><span class="o">.</span><span class="n">objmap</span><span class="p">[:])</span>
+            <span class="n">Z_meas</span> <span class="o">=</span> <span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="n">value</span> <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">ColorXYZ</span><span class="o">.</span><span class="n">cieZ_headers</span><span class="p">(),</span> <span class="n">Z_meas</span><span class="p">)}</span>
+
+            <span class="k">del</span> <span class="n">cieXYZ_foreground</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="p">{</span><span class="o">**</span><span class="n">data</span><span class="p">,</span> <span class="o">**</span><span class="n">X_meas</span><span class="p">,</span> <span class="o">**</span><span class="n">Y_meas</span><span class="p">,</span> <span class="o">**</span><span class="n">Z_meas</span><span class="p">}</span>
+
+        <span class="n">xy_foreground</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">color</span><span class="o">.</span><span class="n">xy</span><span class="o">.</span><span class="n">foreground</span><span class="p">()</span>
+        <span class="n">x_meas</span> <span class="o">=</span> <span class="n">MeasureColor</span><span class="o">.</span><span class="n">_compute_color_metrics</span><span class="p">(</span><span class="n">foreground</span><span class="o">=</span><span class="n">xy_foreground</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">objmap</span><span class="o">=</span><span class="n">image</span><span class="o">.</span><span class="n">objmap</span><span class="p">[:])</span>
+        <span class="n">x_meas</span> <span class="o">=</span> <span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="n">value</span> <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">Colorxy</span><span class="o">.</span><span class="n">x_headers</span><span class="p">(),</span> <span class="n">x_meas</span><span class="p">)}</span>
+
+        <span class="n">y_meas</span> <span class="o">=</span> <span class="n">MeasureColor</span><span class="o">.</span><span class="n">_compute_color_metrics</span><span class="p">(</span><span class="n">foreground</span><span class="o">=</span><span class="n">xy_foreground</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">objmap</span><span class="o">=</span><span class="n">image</span><span class="o">.</span><span class="n">objmap</span><span class="p">[:])</span>
+        <span class="n">y_meas</span> <span class="o">=</span> <span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="n">value</span> <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">Colorxy</span><span class="o">.</span><span class="n">y_headers</span><span class="p">(),</span> <span class="n">y_meas</span><span class="p">)}</span>
+
+        <span class="k">del</span> <span class="n">xy_foreground</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="p">{</span><span class="o">**</span><span class="n">data</span><span class="p">,</span> <span class="o">**</span><span class="n">x_meas</span><span class="p">,</span> <span class="o">**</span><span class="n">y_meas</span><span class="p">}</span>
+
+        <span class="n">Lab_foreground</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">color</span><span class="o">.</span><span class="n">Lab</span><span class="o">.</span><span class="n">foreground</span><span class="p">()</span>
+        <span class="n">lstar_meas</span> <span class="o">=</span> <span class="n">MeasureColor</span><span class="o">.</span><span class="n">_compute_color_metrics</span><span class="p">(</span><span class="n">foreground</span><span class="o">=</span><span class="n">Lab_foreground</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">objmap</span><span class="o">=</span><span class="n">image</span><span class="o">.</span><span class="n">objmap</span><span class="p">[:])</span>
+        <span class="n">lstar_meas</span> <span class="o">=</span> <span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="n">value</span> <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">ColorLab</span><span class="o">.</span><span class="n">l_star_headers</span><span class="p">(),</span> <span class="n">lstar_meas</span><span class="p">)}</span>
+
+        <span class="n">astar_meas</span> <span class="o">=</span> <span class="n">MeasureColor</span><span class="o">.</span><span class="n">_compute_color_metrics</span><span class="p">(</span><span class="n">foreground</span><span class="o">=</span><span class="n">Lab_foreground</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">objmap</span><span class="o">=</span><span class="n">image</span><span class="o">.</span><span class="n">objmap</span><span class="p">[:])</span>
+        <span class="n">astar_meas</span> <span class="o">=</span> <span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="n">value</span> <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">ColorLab</span><span class="o">.</span><span class="n">a_star_headers</span><span class="p">(),</span> <span class="n">astar_meas</span><span class="p">)}</span>
+
+        <span class="n">bstar_meas</span> <span class="o">=</span> <span class="n">MeasureColor</span><span class="o">.</span><span class="n">_compute_color_metrics</span><span class="p">(</span><span class="n">foreground</span><span class="o">=</span><span class="n">Lab_foreground</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span> <span class="n">objmap</span><span class="o">=</span><span class="n">image</span><span class="o">.</span><span class="n">objmap</span><span class="p">[:])</span>
+        <span class="n">bstar_meas</span> <span class="o">=</span> <span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="n">value</span> <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">ColorLab</span><span class="o">.</span><span class="n">b_star_headers</span><span class="p">(),</span> <span class="n">bstar_meas</span><span class="p">)}</span>
+
+        <span class="k">del</span> <span class="n">Lab_foreground</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="p">{</span><span class="o">**</span><span class="n">data</span><span class="p">,</span> <span class="o">**</span><span class="n">lstar_meas</span><span class="p">,</span> <span class="o">**</span><span class="n">astar_meas</span><span class="p">,</span> <span class="o">**</span><span class="n">bstar_meas</span><span class="p">}</span>
+
+        <span class="c1"># HSB Measurements</span>
+        <span class="n">hsb_foreground</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">color</span><span class="o">.</span><span class="n">hsv</span><span class="o">.</span><span class="n">foreground</span><span class="p">()</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Computing color metrics for hue array&quot;</span><span class="p">)</span>
+        <span class="n">hue_meas</span> <span class="o">=</span> <span class="n">MeasureColor</span><span class="o">.</span><span class="n">_compute_color_metrics</span><span class="p">(</span><span class="n">foreground</span><span class="o">=</span><span class="n">hsb_foreground</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">objmap</span><span class="o">=</span><span class="n">image</span><span class="o">.</span><span class="n">objmap</span><span class="p">[:],</span>
+                                                       <span class="p">)</span>
+        <span class="n">hue_meas</span> <span class="o">=</span> <span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="n">value</span> <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">ColorHSV</span><span class="o">.</span><span class="n">hue_headers</span><span class="p">(),</span> <span class="n">hue_meas</span><span class="p">)}</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Computing color metrics for saturation array&quot;</span><span class="p">)</span>
+        <span class="n">saturation_meas</span> <span class="o">=</span> <span class="n">MeasureColor</span><span class="o">.</span><span class="n">_compute_color_metrics</span><span class="p">(</span><span class="n">foreground</span><span class="o">=</span><span class="n">hsb_foreground</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">objmap</span><span class="o">=</span><span class="n">image</span><span class="o">.</span><span class="n">objmap</span><span class="p">[:],</span>
+                                                              <span class="p">)</span>
+        <span class="n">saturation_meas</span> <span class="o">=</span> <span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="n">value</span> <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">ColorHSV</span><span class="o">.</span><span class="n">saturation_headers</span><span class="p">(),</span> <span class="n">saturation_meas</span><span class="p">)}</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Computing color metrics for brightness array&quot;</span><span class="p">)</span>
+        <span class="n">brightness_meas</span> <span class="o">=</span> <span class="n">MeasureColor</span><span class="o">.</span><span class="n">_compute_color_metrics</span><span class="p">(</span><span class="n">foreground</span><span class="o">=</span><span class="n">hsb_foreground</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span> <span class="n">objmap</span><span class="o">=</span><span class="n">image</span><span class="o">.</span><span class="n">objmap</span><span class="p">[:],</span>
+                                                              <span class="p">)</span>
+        <span class="n">brightness_meas</span> <span class="o">=</span> <span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="n">value</span> <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">ColorHSV</span><span class="o">.</span><span class="n">brightness_headers</span><span class="p">(),</span> <span class="n">brightness_meas</span><span class="p">)}</span>
+
+        <span class="k">del</span> <span class="n">hsb_foreground</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="p">{</span><span class="o">**</span><span class="n">data</span><span class="p">,</span> <span class="o">**</span><span class="n">hue_meas</span><span class="p">,</span> <span class="o">**</span><span class="n">saturation_meas</span><span class="p">,</span> <span class="o">**</span><span class="n">brightness_meas</span><span class="p">}</span>
+
+        <span class="n">meas</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">data</span><span class="o">=</span><span class="n">data</span><span class="p">)</span>
+
+        <span class="n">meas</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="n">loc</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">column</span><span class="o">=</span><span class="n">OBJECT</span><span class="o">.</span><span class="n">LABEL</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="n">image</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">labels2series</span><span class="p">())</span>
+        <span class="n">meas</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="nb">str</span><span class="p">(</span><span class="n">ColorLab</span><span class="o">.</span><span class="n">CHROMA_EST_MEAN</span><span class="p">)]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span>
+                <span class="p">(</span><span class="n">meas</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="nb">str</span><span class="p">(</span><span class="n">ColorLab</span><span class="o">.</span><span class="n">A_STAR_MEAN</span><span class="p">)]</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span> <span class="o">+</span> <span class="n">meas</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="nb">str</span><span class="p">(</span><span class="n">ColorLab</span><span class="o">.</span><span class="n">B_STAR_MEAN</span><span class="p">)]</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span>
+        <span class="n">meas</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="nb">str</span><span class="p">(</span><span class="n">ColorLab</span><span class="o">.</span><span class="n">CHROMA_EST_MEDIAN</span><span class="p">)]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span>
+                <span class="p">(</span><span class="n">meas</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="nb">str</span><span class="p">(</span><span class="n">ColorLab</span><span class="o">.</span><span class="n">A_STAR_MEDIAN</span><span class="p">)]</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span> <span class="o">+</span> <span class="n">meas</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="nb">str</span><span class="p">(</span><span class="n">ColorLab</span><span class="o">.</span><span class="n">B_STAR_MEDIAN</span><span class="p">)]</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">meas</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_compute_color_metrics</span><span class="p">(</span><span class="n">foreground</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">objmap</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">          Computes texture metrics from arr image data and a binary foreground mask.</span>
+
+<span class="sd">          This function processes gridded image objects and calculates various texture</span>
+<span class="sd">          features using Haralick descriptors across segmented objects. The calculated</span>
+<span class="sd">          texture metrics include statistical data and Haralick texture features, which</span>
+<span class="sd">          are useful in descriptive and diagnostic analyses for image processing applications.</span>
+
+<span class="sd">          Args:</span>
+<span class="sd">              image (Image): The PhenoTypic Image object containing the image data and objects information</span>
+<span class="sd">              foreground (numpy.ndarray): A matrix array with all background pixels set</span>
+<span class="sd">                  to 0, defining the binary mask.</span>
+<span class="sd">              objmap (numpy.ndarray): Array of labels of the same shape as the foreground array.</span>
+
+<span class="sd">          Returns:</span>
+<span class="sd">              dict: A dictionary containing calculated measurements, including object</span>
+<span class="sd">                  labels, statistical data (e.g., area, mean, standard deviation), and</span>
+<span class="sd">                  multiple Haralick texture metrics (e.g., contrast, entropy).</span>
+<span class="sd">          &quot;&quot;&quot;</span>
+
+        <span class="n">measurements</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">MeasureFeatures</span><span class="o">.</span><span class="n">_calculate_minimum</span><span class="p">(</span><span class="n">array</span><span class="o">=</span><span class="n">foreground</span><span class="p">,</span> <span class="n">objmap</span><span class="o">=</span><span class="n">objmap</span><span class="p">),</span>
+            <span class="n">MeasureFeatures</span><span class="o">.</span><span class="n">_calculate_q1</span><span class="p">(</span><span class="n">array</span><span class="o">=</span><span class="n">foreground</span><span class="p">,</span> <span class="n">objmap</span><span class="o">=</span><span class="n">objmap</span><span class="p">),</span>
+            <span class="n">MeasureFeatures</span><span class="o">.</span><span class="n">_calculate_mean</span><span class="p">(</span><span class="n">array</span><span class="o">=</span><span class="n">foreground</span><span class="p">,</span> <span class="n">objmap</span><span class="o">=</span><span class="n">objmap</span><span class="p">),</span>
+            <span class="n">MeasureFeatures</span><span class="o">.</span><span class="n">_calculate_median</span><span class="p">(</span><span class="n">array</span><span class="o">=</span><span class="n">foreground</span><span class="p">,</span> <span class="n">objmap</span><span class="o">=</span><span class="n">objmap</span><span class="p">),</span>
+            <span class="n">MeasureFeatures</span><span class="o">.</span><span class="n">_calculate_q3</span><span class="p">(</span><span class="n">array</span><span class="o">=</span><span class="n">foreground</span><span class="p">,</span> <span class="n">objmap</span><span class="o">=</span><span class="n">objmap</span><span class="p">),</span>
+            <span class="n">MeasureFeatures</span><span class="o">.</span><span class="n">_calculate_max</span><span class="p">(</span><span class="n">array</span><span class="o">=</span><span class="n">foreground</span><span class="p">,</span> <span class="n">objmap</span><span class="o">=</span><span class="n">objmap</span><span class="p">),</span>
+            <span class="n">MeasureFeatures</span><span class="o">.</span><span class="n">_calculate_stddev</span><span class="p">(</span><span class="n">array</span><span class="o">=</span><span class="n">foreground</span><span class="p">,</span> <span class="n">objmap</span><span class="o">=</span><span class="n">objmap</span><span class="p">),</span>
+            <span class="n">MeasureFeatures</span><span class="o">.</span><span class="n">_calculate_coeff_variation</span><span class="p">(</span><span class="n">array</span><span class="o">=</span><span class="n">foreground</span><span class="p">,</span> <span class="n">objmap</span><span class="o">=</span><span class="n">objmap</span><span class="p">),</span>
+        <span class="p">]</span>
+        <span class="k">return</span> <span class="n">measurements</span></div>
+
+
+
+<span class="n">MeasureColor</span><span class="o">.</span><span class="vm">__doc__</span> <span class="o">=</span> <span class="n">ColorHSV</span><span class="o">.</span><span class="n">append_rst_to_doc</span><span class="p">(</span>
+        <span class="n">ColorLab</span><span class="o">.</span><span class="n">append_rst_to_doc</span><span class="p">(</span>
+                <span class="n">Colorxy</span><span class="o">.</span><span class="n">append_rst_to_doc</span><span class="p">(</span>
+                        <span class="n">ColorXYZ</span><span class="o">.</span><span class="n">append_rst_to_doc</span><span class="p">(</span><span class="n">MeasureColor</span><span class="p">)</span>
+                <span class="p">)</span>
+        <span class="p">)</span>
+<span class="p">)</span>
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, ExFAB BioFoundry.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.1.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

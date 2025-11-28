@@ -1,0 +1,946 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>phenotypic.detect._gitter_detector &#8212; PhenoTypic</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/custom.css?v=800a184d" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../../../_static/documentation_options.js?v=b3db6a4d"></script>
+    <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../../../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="../../../_static/design-tabs.js?v=f930bc37"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/phenotypic/detect/_gitter_detector';</script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.11.1" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+     
+  
+
+<a class="navbar-brand logo" href="../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../../_static/gradient_logo_exfab.svg" class="logo__image only-light" alt="PhenoTypic"/>
+    <img src="../../../_static/gradient_logo_exfab.svg" class="logo__image only-dark pst-js-only" alt="PhenoTypic"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../user_guide/index.html">
+    User Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../api_reference/index.html">
+    API Reference
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../contrib_guide/index.html">
+    Developer Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../downloadables.html">
+    Downloads
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/Wheeldon-Lab/PhenoScope#" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../user_guide/index.html">
+    User Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../api_reference/index.html">
+    API Reference
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../contrib_guide/index.html">
+    Developer Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../downloadables.html">
+    Downloads
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/Wheeldon-Lab/PhenoScope#" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">phenotypic.detect._gitter_detector</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for phenotypic.detect._gitter_detector</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span>
+
+<span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span> <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">gc</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Literal</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">scipy.ndimage</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">ndimage</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">scipy.signal</span><span class="w"> </span><span class="kn">import</span> <span class="n">find_peaks</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">scipy.ndimage</span><span class="w"> </span><span class="kn">import</span> <span class="n">gaussian_filter1d</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">functools</span><span class="w"> </span><span class="kn">import</span> <span class="n">partial</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">ObjectDetector</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">skimage.filters</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">filters</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">skimage.morphology</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">morphology</span>
+
+
+<div class="viewcode-block" id="GitterDetector">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.detect.html#phenotypic.detect.GitterDetector">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">GitterDetector</span><span class="p">(</span><span class="n">ObjectDetector</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Class for detecting colonies in gridded plate images using the gitter algorithm.</span>
+
+<span class="sd">    The GitterDetector implements an improved Python version of the gitter colony detection</span>
+<span class="sd">    algorithm originally developed for R. This method is specifically designed for</span>
+<span class="sd">    quantifying pinned microbial cultures arranged in a regular grid pattern on</span>
+<span class="sd">    agar plates. The algorithm works by:</span>
+
+<span class="sd">    1. Thresholding the image to create a binary mask of colonies</span>
+<span class="sd">    2. Analyzing row and column intensity profiles to detect periodic peaks</span>
+<span class="sd">    3. Estimating grid edges based on peak positions</span>
+<span class="sd">    4. Assigning pixels to grid cells and identifying dominant colonies</span>
+
+<span class="sd">    This approach is robust to irregular colonies, noise, variable illumination,</span>
+<span class="sd">    and other common plate imaging artifacts.</span>
+
+<span class="sd">    Note:</span>
+<span class="sd">        For best results, use preprocessing such as `GaussianBlur` or other</span>
+<span class="sd">        enhancement techniques before detection. The detector works best with</span>
+<span class="sd">        images where colonies are clearly visible against the background.</span>
+
+<span class="sd">        This detector works best for yeast-like growth where the colonies are circular and</span>
+<span class="sd">        less likely to work on filamentous fungi.</span>
+
+
+
+<span class="sd">    Warning:</span>
+<span class="sd">        Grid inference from the binary mask alone (when not using GridImage)</span>
+<span class="sd">        may be less accurate than providing explicit grid information. For</span>
+<span class="sd">        optimal results, use with GridImage when grid parameters are known.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        thresh_method (str): Thresholding method to use for binary mask creation.</span>
+<span class="sd">            Options: &#39;otsu&#39;, &#39;mean&#39;, &#39;local&#39;, &#39;triangle&#39;, &#39;minimum&#39;, &#39;isodata&#39;.</span>
+<span class="sd">            Default is &#39;otsu&#39;.</span>
+<span class="sd">        subtract_background (bool): Whether to apply white tophat background</span>
+<span class="sd">            subtraction before thresholding. Helps with uneven illumination.</span>
+<span class="sd">        remove_noise (bool): Whether to apply binary opening to remove small</span>
+<span class="sd">            noise artifacts after thresholding.</span>
+<span class="sd">        footprint_radius (int): Radius for morphological operations (noise removal</span>
+<span class="sd">            and background subtraction kernels).</span>
+<span class="sd">        smoothing_sigma (float): Standard deviation for Gaussian smoothing of</span>
+<span class="sd">            row/column sums before peak detection. Higher values increase</span>
+<span class="sd">            robustness to noise but may merge nearby peaks. Set to 0 to disable.</span>
+<span class="sd">        min_peak_distance (int | None): Minimum distance between peaks in pixels.</span>
+<span class="sd">            If None, automatically estimated from grid dimensions. Prevents</span>
+<span class="sd">            detection of spurious peaks too close together.</span>
+<span class="sd">        peak_prominence (float | None): Minimum prominence of peaks for detection.</span>
+<span class="sd">            If None, automatically estimated from signal statistics. Higher values</span>
+<span class="sd">            are more selective.</span>
+<span class="sd">        edge_refinement (bool): Whether to refine grid edges using local intensity</span>
+<span class="sd">            profiles. Improves accuracy but adds computational cost.</span>
+
+<span class="sd">    References:</span>
+<span class="sd">        Wagih, O. and Parts, L. (2014). gitter: a robust and accurate method for</span>
+<span class="sd">        quantification of colony sizes from plate images. G3 (Bethesda), 4(3), 547-552.</span>
+<span class="sd">        https://omarwagih.github.io/gitter/</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="GitterDetector.__init__">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.detect.html#phenotypic.detect.GitterDetector.__init__">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                 <span class="n">thresh_method</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s1">&#39;otsu&#39;</span><span class="p">,</span> <span class="s1">&#39;mean&#39;</span><span class="p">,</span> <span class="s1">&#39;local&#39;</span><span class="p">,</span> <span class="s1">&#39;triangle&#39;</span><span class="p">,</span> <span class="s1">&#39;minimum&#39;</span><span class="p">,</span> <span class="s1">&#39;isodata&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;otsu&#39;</span><span class="p">,</span>
+                 <span class="n">subtract_background</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+                 <span class="n">remove_noise</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+                 <span class="n">footprint_radius</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span>
+                 <span class="n">smoothing_sigma</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">2.0</span><span class="p">,</span>
+                 <span class="n">min_peak_distance</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                 <span class="n">peak_prominence</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                 <span class="n">edge_refinement</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Initialize the GitterDetector with specified parameters.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            thresh_method: Method for thresholding the image. Options are:</span>
+<span class="sd">                &#39;otsu&#39; (default), &#39;mean&#39;, &#39;local&#39;, &#39;triangle&#39;, &#39;minimum&#39;, &#39;isodata&#39;.</span>
+<span class="sd">            subtract_background: If True, apply white tophat transform to remove</span>
+<span class="sd">                background variations before thresholding.</span>
+<span class="sd">            remove_noise: If True, apply morphological opening to remove small</span>
+<span class="sd">                noise artifacts from the binary mask.</span>
+<span class="sd">            footprint_radius: Radius in pixels for morphological operations.</span>
+<span class="sd">                Larger values remove larger noise but may erode colony edges.</span>
+<span class="sd">            smoothing_sigma: Standard deviation for Gaussian smoothing of intensity</span>
+<span class="sd">                profiles before peak detection. Set to 0 to disable smoothing.</span>
+<span class="sd">            min_peak_distance: Minimum allowed distance between detected peaks.</span>
+<span class="sd">                If None, automatically estimated from grid dimensions.</span>
+<span class="sd">            peak_prominence: Minimum prominence required for peak detection.</span>
+<span class="sd">                If None, automatically calculated as 0.1 * signal range.</span>
+<span class="sd">            edge_refinement: If True, refine grid edges using weighted intensity</span>
+<span class="sd">                profiles for improved accuracy.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">thresh_method</span> <span class="o">=</span> <span class="n">thresh_method</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">subtract_background</span> <span class="o">=</span> <span class="n">subtract_background</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">footprint_radius</span> <span class="o">=</span> <span class="n">footprint_radius</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">remove_noise</span> <span class="o">=</span> <span class="n">remove_noise</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">smoothing_sigma</span> <span class="o">=</span> <span class="n">smoothing_sigma</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">min_peak_distance</span> <span class="o">=</span> <span class="n">min_peak_distance</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">peak_prominence</span> <span class="o">=</span> <span class="n">peak_prominence</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">edge_refinement</span> <span class="o">=</span> <span class="n">edge_refinement</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Detect colonies in the image using the gitter algorithm.</span>
+
+<span class="sd">        This method performs the core detection workflow:</span>
+<span class="sd">        1. Threshold the enhanced grayscale image</span>
+<span class="sd">        2. Remove noise if requested</span>
+<span class="sd">        3. Label connected components</span>
+<span class="sd">        4. Determine or estimate grid edges</span>
+<span class="sd">        5. Assign dominant colonies to grid cells</span>
+<span class="sd">        6. Create final object map</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            image: Image object to process. Can be a regular Image or GridImage.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Image: The processed image with updated objmask and objmap.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic</span><span class="w"> </span><span class="kn">import</span> <span class="n">GridImage</span>
+
+        <span class="n">enh_matrix</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">enh_gray</span><span class="p">[:]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_log_memory_usage</span><span class="p">(</span><span class="s2">&quot;getting enhanced gray&quot;</span><span class="p">)</span>
+
+        <span class="n">objmask</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_thresholding</span><span class="p">(</span><span class="n">enh_matrix</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_log_memory_usage</span><span class="p">(</span><span class="s2">&quot;after thresholding&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">remove_noise</span><span class="p">:</span>
+            <span class="n">objmask</span> <span class="o">=</span> <span class="n">morphology</span><span class="o">.</span><span class="n">binary_opening</span><span class="p">(</span><span class="n">objmask</span><span class="p">,</span> <span class="n">morphology</span><span class="o">.</span><span class="n">diamond</span><span class="p">(</span><span class="n">radius</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">footprint_radius</span><span class="p">))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_log_memory_usage</span><span class="p">(</span><span class="s2">&quot;after noise removal&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Keep a copy of the mask we intend to use for downstream measurements</span>
+        <span class="n">image</span><span class="o">.</span><span class="n">objmask</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">objmask</span>
+
+        <span class="n">labeled</span><span class="p">,</span> <span class="n">num_features</span> <span class="o">=</span> <span class="n">ndimage</span><span class="o">.</span><span class="n">label</span><span class="p">(</span><span class="n">objmask</span><span class="p">,</span> <span class="n">structure</span><span class="o">=</span><span class="n">ndimage</span><span class="o">.</span><span class="n">generate_binary_structure</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_log_memory_usage</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;after labeling (</span><span class="si">{</span><span class="n">num_features</span><span class="si">}</span><span class="s2"> features)&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Determine grid edges either from GridImage or by estimating from the binary mask</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">GridImage</span><span class="p">):</span>
+            <span class="n">row_edges</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">image</span><span class="o">.</span><span class="n">grid</span><span class="o">.</span><span class="n">get_row_edges</span><span class="p">())</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+            <span class="n">col_edges</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">image</span><span class="o">.</span><span class="n">grid</span><span class="o">.</span><span class="n">get_col_edges</span><span class="p">())</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+            <span class="n">nrows</span><span class="p">,</span> <span class="n">ncols</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">nrows</span><span class="p">,</span> <span class="n">image</span><span class="o">.</span><span class="n">ncols</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">nrows</span> <span class="o">=</span> <span class="n">ncols</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="n">row_edges</span> <span class="o">=</span> <span class="n">col_edges</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="k">if</span> <span class="n">row_edges</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">col_edges</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># Estimate edges using peak finding on row/col sums</span>
+            <span class="n">nrows</span><span class="p">,</span> <span class="n">ncols</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_infer_grid_shape</span><span class="p">(</span><span class="n">objmask</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_log_memory_usage</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;inferred grid shape: </span><span class="si">{</span><span class="n">nrows</span><span class="si">}</span><span class="s2">x</span><span class="si">{</span><span class="n">ncols</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+            <span class="n">row_edges</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_estimate_edges</span><span class="p">(</span><span class="n">objmask</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">n_bins</span><span class="o">=</span><span class="n">nrows</span><span class="p">)</span>
+            <span class="n">col_edges</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_estimate_edges</span><span class="p">(</span><span class="n">objmask</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">n_bins</span><span class="o">=</span><span class="n">ncols</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_log_memory_usage</span><span class="p">(</span><span class="s2">&quot;after edge estimation&quot;</span><span class="p">)</span>
+
+            <span class="c1"># Refine edges if requested</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">edge_refinement</span><span class="p">:</span>
+                <span class="n">row_edges</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_refine_edges</span><span class="p">(</span><span class="n">objmask</span><span class="p">,</span> <span class="n">row_edges</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+                <span class="n">col_edges</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_refine_edges</span><span class="p">(</span><span class="n">objmask</span><span class="p">,</span> <span class="n">col_edges</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_log_memory_usage</span><span class="p">(</span><span class="s2">&quot;after edge refinement&quot;</span><span class="p">)</span>
+
+        <span class="n">row_edges</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">row_edges</span><span class="p">),</span> <span class="mi">0</span><span class="p">,</span> <span class="n">objmask</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="n">col_edges</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">col_edges</span><span class="p">),</span> <span class="mi">0</span><span class="p">,</span> <span class="n">objmask</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+
+        <span class="n">objmap</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">labeled</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">image</span><span class="o">.</span><span class="n">_OBJMAP_DTYPE</span><span class="p">)</span>
+        <span class="n">label_counter</span> <span class="o">=</span> <span class="mi">1</span>
+
+        <span class="c1"># Assign dominant colonies to each grid cell</span>
+        <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">row_edges</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">):</span>
+            <span class="n">r0</span><span class="p">,</span> <span class="n">r1</span> <span class="o">=</span> <span class="n">row_edges</span><span class="p">[</span><span class="n">r</span><span class="p">],</span> <span class="n">row_edges</span><span class="p">[</span><span class="n">r</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span>
+            <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">col_edges</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">):</span>
+                <span class="n">c0</span><span class="p">,</span> <span class="n">c1</span> <span class="o">=</span> <span class="n">col_edges</span><span class="p">[</span><span class="n">c</span><span class="p">],</span> <span class="n">col_edges</span><span class="p">[</span><span class="n">c</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span>
+                <span class="n">region</span> <span class="o">=</span> <span class="n">labeled</span><span class="p">[</span><span class="n">r0</span><span class="p">:</span><span class="n">r1</span><span class="p">,</span> <span class="n">c0</span><span class="p">:</span><span class="n">c1</span><span class="p">]</span>
+                <span class="k">if</span> <span class="n">region</span><span class="o">.</span><span class="n">size</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="k">continue</span>
+                <span class="n">uniq</span><span class="p">,</span> <span class="n">counts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">region</span><span class="p">,</span> <span class="n">return_counts</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                <span class="n">valid</span> <span class="o">=</span> <span class="n">uniq</span> <span class="o">!=</span> <span class="mi">0</span>
+                <span class="n">uniq</span> <span class="o">=</span> <span class="n">uniq</span><span class="p">[</span><span class="n">valid</span><span class="p">]</span>
+                <span class="n">counts</span> <span class="o">=</span> <span class="n">counts</span><span class="p">[</span><span class="n">valid</span><span class="p">]</span>
+                <span class="k">if</span> <span class="n">uniq</span><span class="o">.</span><span class="n">size</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="k">continue</span>
+                <span class="n">dominant_label</span> <span class="o">=</span> <span class="n">uniq</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">counts</span><span class="p">)]</span>
+                <span class="n">mask</span> <span class="o">=</span> <span class="n">region</span> <span class="o">==</span> <span class="n">dominant_label</span>
+                <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">mask</span><span class="p">):</span>
+                    <span class="n">objmap</span><span class="p">[</span><span class="n">r0</span><span class="p">:</span><span class="n">r1</span><span class="p">,</span> <span class="n">c0</span><span class="p">:</span><span class="n">c1</span><span class="p">][</span><span class="n">mask</span><span class="p">]</span> <span class="o">=</span> <span class="n">label_counter</span>
+                    <span class="n">label_counter</span> <span class="o">+=</span> <span class="mi">1</span>
+
+        <span class="c1"># Fallback if no regions were labeled (e.g., grid inference failed)</span>
+        <span class="k">if</span> <span class="n">label_counter</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">objmap</span> <span class="o">=</span> <span class="n">labeled</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">image</span><span class="o">.</span><span class="n">_OBJMAP_DTYPE</span><span class="p">,</span> <span class="n">copy</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_log_memory_usage</span><span class="p">(</span><span class="s2">&quot;after grid cell assignment&quot;</span><span class="p">)</span>
+
+        <span class="n">image</span><span class="o">.</span><span class="n">objmap</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">objmap</span>
+        <span class="n">image</span><span class="o">.</span><span class="n">objmap</span><span class="o">.</span><span class="n">relabel</span><span class="p">(</span><span class="n">connectivity</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="n">gc</span><span class="o">.</span><span class="n">collect</span><span class="p">()</span>  <span class="c1"># Force garbage collection</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_log_memory_usage</span><span class="p">(</span><span class="s2">&quot;final cleanup&quot;</span><span class="p">,</span> <span class="n">include_process</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">include_tracemalloc</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">image</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_thresholding</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">matrix</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Threshold the image to create a binary mask of foreground colonies.</span>
+
+<span class="sd">        This method applies optional background subtraction followed by one of</span>
+<span class="sd">        several thresholding algorithms to separate colonies from background.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            matrix: 2D enhanced grayscale array with pixel intensities.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: Binary mask where True/1 indicates colony pixels,</span>
+<span class="sd">                False/0 indicates background.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: If an invalid thresholding method is specified.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">kernel</span> <span class="o">=</span> <span class="n">morphology</span><span class="o">.</span><span class="n">footprint_rectangle</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">footprint_radius</span><span class="o">*</span><span class="mi">2</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">footprint_radius</span><span class="o">*</span><span class="mi">2</span><span class="p">))</span>
+        <span class="n">enh_matrix</span> <span class="o">=</span> <span class="n">matrix</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>  <span class="c1"># Work on a copy to avoid modifying input</span>
+
+        <span class="c1"># Subtract background using white tophat to handle uneven illumination</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">subtract_background</span><span class="p">:</span>
+            <span class="n">tophat_res</span> <span class="o">=</span> <span class="n">morphology</span><span class="o">.</span><span class="n">white_tophat</span><span class="p">(</span><span class="n">enh_matrix</span><span class="p">,</span> <span class="n">kernel</span><span class="p">)</span>
+            <span class="n">enh_matrix</span> <span class="o">=</span> <span class="n">enh_matrix</span> <span class="o">-</span> <span class="n">tophat_res</span>
+
+        <span class="c1"># Apply selected thresholding method</span>
+        <span class="k">match</span> <span class="bp">self</span><span class="o">.</span><span class="n">thresh_method</span><span class="p">:</span>
+            <span class="k">case</span> <span class="s1">&#39;otsu&#39;</span><span class="p">:</span>
+                <span class="n">thresh</span> <span class="o">=</span> <span class="n">filters</span><span class="o">.</span><span class="n">threshold_otsu</span><span class="p">(</span><span class="n">enh_matrix</span><span class="p">)</span>
+            <span class="k">case</span> <span class="s1">&#39;mean&#39;</span><span class="p">:</span>
+                <span class="n">thresh</span> <span class="o">=</span> <span class="n">filters</span><span class="o">.</span><span class="n">threshold_mean</span><span class="p">(</span><span class="n">enh_matrix</span><span class="p">)</span>
+            <span class="k">case</span> <span class="s1">&#39;local&#39;</span><span class="p">:</span>
+                <span class="n">block_size</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">footprint_radius</span><span class="o">*</span><span class="mi">2</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>  <span class="c1"># Ensure odd block size</span>
+                <span class="n">thresh</span> <span class="o">=</span> <span class="n">filters</span><span class="o">.</span><span class="n">threshold_local</span><span class="p">(</span><span class="n">enh_matrix</span><span class="p">,</span> <span class="n">block_size</span><span class="o">=</span><span class="n">block_size</span><span class="p">)</span>
+            <span class="k">case</span> <span class="s1">&#39;triangle&#39;</span><span class="p">:</span>
+                <span class="n">thresh</span> <span class="o">=</span> <span class="n">filters</span><span class="o">.</span><span class="n">threshold_triangle</span><span class="p">(</span><span class="n">enh_matrix</span><span class="p">)</span>
+            <span class="k">case</span> <span class="s1">&#39;minimum&#39;</span><span class="p">:</span>
+                <span class="n">thresh</span> <span class="o">=</span> <span class="n">filters</span><span class="o">.</span><span class="n">threshold_minimum</span><span class="p">(</span><span class="n">enh_matrix</span><span class="p">)</span>
+            <span class="k">case</span> <span class="s1">&#39;isodata&#39;</span><span class="p">:</span>
+                <span class="n">thresh</span> <span class="o">=</span> <span class="n">filters</span><span class="o">.</span><span class="n">threshold_isodata</span><span class="p">(</span><span class="n">enh_matrix</span><span class="p">)</span>
+            <span class="k">case</span><span class="w"> </span><span class="k">_</span><span class="p">:</span>
+                <span class="c1"># Default to Otsu if method not recognized</span>
+                <span class="n">thresh</span> <span class="o">=</span> <span class="n">filters</span><span class="o">.</span><span class="n">threshold_otsu</span><span class="p">(</span><span class="n">enh_matrix</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">enh_matrix</span> <span class="o">&gt;=</span> <span class="n">thresh</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_clean_and_sum_binary</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">binary_image</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">p</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.2</span><span class="p">,</span> <span class="n">axis</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Compute projection sums while removing problematic edge artifacts.</span>
+
+<span class="sd">        This method identifies rows (axis=0) or columns (axis=1) near image edges</span>
+<span class="sd">        that contain abnormally long stretches of foreground pixels (likely artifacts</span>
+<span class="sd">        or plate edges) and excludes them from the sum to avoid spurious peaks.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            binary_image: Binary mask of detected colonies.</span>
+<span class="sd">            p: Proportion of image dimension to use as threshold for</span>
+<span class="sd">                detecting problematic long runs (default: 0.2 = 20%).</span>
+<span class="sd">            axis: Direction to sum along following numpy convention.</span>
+<span class="sd">                - axis=0: Sum along rows (collapse rows → column sums for row edge detection)</span>
+<span class="sd">                - axis=1: Sum along columns (collapse columns → row sums for column edge detection)</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: 1D array of cleaned sums along the specified axis.</span>
+<span class="sd">                Problematic edge regions are set to 0.</span>
+
+<span class="sd">        Note:</span>
+<span class="sd">            This cleaning step helps avoid detecting false peaks from plate</span>
+<span class="sd">            edges or imaging artifacts that span large portions of rows/columns.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Calculate threshold based on image dimensions</span>
+        <span class="c1"># For axis=0: we&#39;re summing columns, so check for long runs across columns</span>
+        <span class="c1"># For axis=1: we&#39;re summing rows, so check for long runs across rows</span>
+        <span class="k">if</span> <span class="n">axis</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">c</span> <span class="o">=</span> <span class="n">p</span><span class="o">*</span><span class="n">binary_image</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>  <span class="c1"># Threshold based on number of columns</span>
+            <span class="n">n_slices</span> <span class="o">=</span> <span class="n">binary_image</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>  <span class="c1"># Number of rows to iterate through</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">c</span> <span class="o">=</span> <span class="n">p</span><span class="o">*</span><span class="n">binary_image</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>  <span class="c1"># Threshold based on number of rows</span>
+            <span class="n">n_slices</span> <span class="o">=</span> <span class="n">binary_image</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>  <span class="c1"># Number of columns to iterate through</span>
+
+        <span class="c1"># Identify problematic rows/columns with long stretches of 1s</span>
+        <span class="n">problematic</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n_slices</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_slices</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">axis</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">slice_data</span> <span class="o">=</span> <span class="n">binary_image</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="p">:]</span>  <span class="c1"># Get row i</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">slice_data</span> <span class="o">=</span> <span class="n">binary_image</span><span class="p">[:,</span> <span class="n">i</span><span class="p">]</span>  <span class="c1"># Get column i</span>
+
+            <span class="c1"># Run-length encoding to find stretches of 1s</span>
+            <span class="n">diff</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(([</span><span class="mi">0</span><span class="p">],</span> <span class="n">slice_data</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">),</span> <span class="p">[</span><span class="mi">0</span><span class="p">])))</span>
+            <span class="n">starts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">diff</span> <span class="o">==</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">ends</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">diff</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">lengths</span> <span class="o">=</span> <span class="n">ends</span> <span class="o">-</span> <span class="n">starts</span>
+
+            <span class="c1"># Check if any stretch of 1s is longer than threshold</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">lengths</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">lengths</span> <span class="o">&gt;</span> <span class="n">c</span><span class="p">):</span>
+                <span class="n">problematic</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+
+        <span class="c1"># Compute sums along the specified axis</span>
+        <span class="n">sums</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">binary_image</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="n">axis</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+
+        <span class="c1"># Split problematic array in half and zero out problematic regions at edges</span>
+        <span class="n">mid</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">problematic</span><span class="p">)</span><span class="o">//</span><span class="mi">2</span>
+        <span class="n">left_prob</span> <span class="o">=</span> <span class="n">problematic</span><span class="p">[:</span><span class="n">mid</span><span class="p">]</span>
+        <span class="n">right_prob</span> <span class="o">=</span> <span class="n">problematic</span><span class="p">[</span><span class="n">mid</span><span class="p">:]</span>
+
+        <span class="c1"># Zero out sums for problematic regions at edges</span>
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">left_prob</span><span class="p">):</span>
+            <span class="n">last_prob</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">left_prob</span><span class="p">)[</span><span class="mi">0</span><span class="p">][</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+            <span class="n">sums</span><span class="p">[:</span><span class="n">last_prob</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">right_prob</span><span class="p">):</span>
+            <span class="n">first_prob</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">right_prob</span><span class="p">)[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">mid</span>
+            <span class="n">sums</span><span class="p">[</span><span class="n">first_prob</span><span class="p">:]</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="k">return</span> <span class="n">sums</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_estimate_edges</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">binary_image</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">axis</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">n_bins</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Estimate grid edges by detecting periodic peaks in row/column intensity sums.</span>
+
+<span class="sd">        This method implements the core of the gitter algorithm by analyzing the</span>
+<span class="sd">        projection of colonies onto rows or columns. It detects peaks corresponding</span>
+<span class="sd">        to colony centers and derives grid edges between them.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            binary_image: Binary mask of detected colonies.</span>
+<span class="sd">            axis: Direction for edge detection (0 for row edges, 1 for column edges).</span>
+<span class="sd">            n_bins: Expected number of grid bins (rows or columns).</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: Array of edge positions including image borders.</span>
+<span class="sd">                Length is n_bins + 1.</span>
+
+<span class="sd">        Note:</span>
+<span class="sd">            The method applies smoothing to the intensity profile before peak</span>
+<span class="sd">            detection to improve robustness. If automatic peak detection fails</span>
+<span class="sd">            to find enough peaks, it falls back to evenly-spaced bins.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Get cleaned sums along the specified axis</span>
+        <span class="n">sums</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_clean_and_sum_binary</span><span class="p">(</span><span class="n">binary_image</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="n">axis</span><span class="p">)</span>
+
+        <span class="c1"># Apply Gaussian smoothing if requested to reduce noise</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">smoothing_sigma</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">sums</span> <span class="o">=</span> <span class="n">gaussian_filter1d</span><span class="p">(</span><span class="n">sums</span><span class="p">,</span> <span class="n">sigma</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">smoothing_sigma</span><span class="p">)</span>
+
+        <span class="c1"># Calculate expected spacing between colonies</span>
+        <span class="n">image_size</span> <span class="o">=</span> <span class="n">binary_image</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span> <span class="o">-</span> <span class="n">axis</span><span class="p">]</span>  <span class="c1"># Size along the summed dimension</span>
+        <span class="n">expected_spacing</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">image_size</span><span class="o">//</span><span class="nb">max</span><span class="p">(</span><span class="n">n_bins</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="mi">1</span><span class="p">)</span>
+
+        <span class="c1"># Determine peak detection parameters</span>
+        <span class="n">min_distance</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">min_peak_distance</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">min_peak_distance</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="nb">max</span><span class="p">(</span><span class="n">expected_spacing</span><span class="o">//</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+
+        <span class="c1"># Calculate prominence if not provided</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">peak_prominence</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">prominence</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">peak_prominence</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># noinspection PyUnresolvedReferences</span>
+            <span class="n">signal_range</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">sums</span><span class="p">)</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">sums</span><span class="p">)</span>
+            <span class="n">prominence</span> <span class="o">=</span> <span class="mf">0.1</span><span class="o">*</span><span class="n">signal_range</span> <span class="k">if</span> <span class="n">signal_range</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="kc">None</span>
+
+        <span class="c1"># Detect peaks with prominence and distance constraints</span>
+        <span class="n">peaks</span><span class="p">,</span> <span class="n">properties</span> <span class="o">=</span> <span class="n">find_peaks</span><span class="p">(</span><span class="n">sums</span><span class="p">,</span> <span class="n">distance</span><span class="o">=</span><span class="n">min_distance</span><span class="p">,</span> <span class="n">prominence</span><span class="o">=</span><span class="n">prominence</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">peaks</span><span class="o">.</span><span class="n">size</span> <span class="o">&lt;</span> <span class="n">n_bins</span><span class="p">:</span>
+            <span class="c1"># Fallback: enforce evenly spaced peaks if auto detection under-fits</span>
+            <span class="n">peaks</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span>
+                    <span class="n">start</span><span class="o">=</span><span class="n">expected_spacing</span><span class="o">//</span><span class="mi">2</span><span class="p">,</span>
+                    <span class="n">stop</span><span class="o">=</span><span class="n">image_size</span> <span class="o">-</span> <span class="n">expected_spacing</span><span class="o">//</span><span class="mi">2</span><span class="p">,</span>
+                    <span class="n">num</span><span class="o">=</span><span class="n">n_bins</span><span class="p">,</span>
+                    <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span>
+            <span class="p">)</span>
+        <span class="k">elif</span> <span class="n">peaks</span><span class="o">.</span><span class="n">size</span> <span class="o">&gt;</span> <span class="n">n_bins</span><span class="p">:</span>
+            <span class="c1"># Keep the strongest n_bins peaks by height</span>
+            <span class="n">peak_heights</span> <span class="o">=</span> <span class="n">sums</span><span class="p">[</span><span class="n">peaks</span><span class="p">]</span>
+            <span class="n">top_indices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argsort</span><span class="p">(</span><span class="n">peak_heights</span><span class="p">)[</span><span class="o">-</span><span class="n">n_bins</span><span class="p">:]</span>
+            <span class="n">peaks</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">peaks</span><span class="p">[</span><span class="n">top_indices</span><span class="p">])</span>
+
+        <span class="c1"># Derive edges midway between peaks</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">peaks</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="c1"># Calculate midpoints between consecutive peaks</span>
+            <span class="n">midpoints</span> <span class="o">=</span> <span class="p">((</span><span class="n">peaks</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">peaks</span><span class="p">[</span><span class="mi">1</span><span class="p">:])</span><span class="o">/</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+            <span class="c1"># Prepend/append image borders</span>
+            <span class="n">edges</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(([</span><span class="mi">0</span><span class="p">],</span> <span class="n">midpoints</span><span class="p">,</span> <span class="p">[</span><span class="n">image_size</span><span class="p">]))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Fallback for single or no peaks: evenly divide the space</span>
+            <span class="n">edges</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">image_size</span><span class="p">,</span> <span class="n">n_bins</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
+
+        <span class="c1"># Ensure we have exactly n_bins + 1 edges</span>
+        <span class="k">if</span> <span class="n">edges</span><span class="o">.</span><span class="n">size</span> <span class="o">&gt;</span> <span class="n">n_bins</span> <span class="o">+</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">edges</span> <span class="o">=</span> <span class="n">edges</span><span class="p">[:</span><span class="n">n_bins</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="n">edges</span><span class="o">.</span><span class="n">size</span> <span class="o">&lt;</span> <span class="n">n_bins</span> <span class="o">+</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">missing</span> <span class="o">=</span> <span class="p">(</span><span class="n">n_bins</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">-</span> <span class="n">edges</span><span class="o">.</span><span class="n">size</span>
+            <span class="n">edges</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">((</span><span class="n">edges</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">missing</span><span class="p">,</span> <span class="n">image_size</span><span class="p">)))</span>
+
+        <span class="k">return</span> <span class="n">edges</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_refine_edges</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">binary_image</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">edges</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">axis</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Refine grid edges using local intensity profiles for improved accuracy.</span>
+
+<span class="sd">        This method adjusts edge positions by analyzing the intensity distribution</span>
+<span class="sd">        near each initial edge estimate. It shifts edges to positions of minimum</span>
+<span class="sd">        intensity (background) between colonies.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            binary_image: Binary mask of detected colonies.</span>
+<span class="sd">            edges: Initial edge estimates from peak detection.</span>
+<span class="sd">            axis: Direction of edges (0 for row edges, 1 for column edges).</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: Refined edge positions.</span>
+
+<span class="sd">        Note:</span>
+<span class="sd">            This refinement step can significantly improve accuracy by placing</span>
+<span class="sd">            edges in the valleys between colonies rather than at fixed positions.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">refined_edges</span> <span class="o">=</span> <span class="n">edges</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">sums</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">binary_image</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="n">axis</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+
+        <span class="c1"># Refine each internal edge (not the borders)</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">edges</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">):</span>
+            <span class="n">edge_pos</span> <span class="o">=</span> <span class="n">edges</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+            <span class="c1"># Define search window around current edge</span>
+            <span class="n">search_radius</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="p">(</span><span class="n">edges</span><span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">edges</span><span class="p">[</span><span class="n">i</span> <span class="o">-</span> <span class="mi">1</span><span class="p">])</span><span class="o">//</span><span class="mi">4</span><span class="p">)</span>
+            <span class="n">search_start</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">edge_pos</span> <span class="o">-</span> <span class="n">search_radius</span><span class="p">)</span>
+            <span class="n">search_end</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">sums</span><span class="p">),</span> <span class="n">edge_pos</span> <span class="o">+</span> <span class="n">search_radius</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+
+            <span class="c1"># Find position of minimum intensity in search window</span>
+            <span class="n">search_window</span> <span class="o">=</span> <span class="n">sums</span><span class="p">[</span><span class="n">search_start</span><span class="p">:</span><span class="n">search_end</span><span class="p">]</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">search_window</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">local_min_idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argmin</span><span class="p">(</span><span class="n">search_window</span><span class="p">)</span>
+                <span class="n">refined_edges</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">search_start</span> <span class="o">+</span> <span class="n">local_min_idx</span>
+
+        <span class="k">return</span> <span class="n">refined_edges</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_infer_grid_shape</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">binary_image</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Infer grid dimensions from the binary mask when not explicitly provided.</span>
+
+<span class="sd">        This method estimates the number of rows and columns in the grid by</span>
+<span class="sd">        counting connected components and assuming a roughly rectangular layout.</span>
+<span class="sd">        Common plate formats (96-well, 384-well) are used as fallbacks.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            binary_image: Binary mask of detected colonies.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            tuple[int, int]: Estimated (n_rows, n_cols) for the grid.</span>
+
+<span class="sd">        Note:</span>
+<span class="sd">            This is a best-effort estimate. For accurate results, provide</span>
+<span class="sd">            grid dimensions explicitly using GridImage.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">labeled</span><span class="p">,</span> <span class="n">num</span> <span class="o">=</span> <span class="n">ndimage</span><span class="o">.</span><span class="n">label</span><span class="p">(</span><span class="n">binary_image</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">num</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="c1"># Default to 96-well plate format (8x12)</span>
+            <span class="k">return</span> <span class="mi">8</span><span class="p">,</span> <span class="mi">12</span>
+
+        <span class="c1"># Estimate based on aspect ratio and colony count</span>
+        <span class="n">aspect_ratio</span> <span class="o">=</span> <span class="n">binary_image</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">/</span><span class="n">binary_image</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="n">aspect_ratio</span> <span class="o">&gt;</span> <span class="mf">1.3</span><span class="p">:</span>  <span class="c1"># Wide plate (likely 8x12 or similar)</span>
+            <span class="c1"># Try 8x12 (96 wells), 16x24 (384 wells), etc.</span>
+            <span class="k">if</span> <span class="n">num</span> <span class="o">&lt;=</span> <span class="mi">100</span><span class="p">:</span>
+                <span class="k">return</span> <span class="mi">8</span><span class="p">,</span> <span class="mi">12</span>
+            <span class="k">elif</span> <span class="n">num</span> <span class="o">&lt;=</span> <span class="mi">400</span><span class="p">:</span>
+                <span class="k">return</span> <span class="mi">16</span><span class="p">,</span> <span class="mi">24</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">approx_rows</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">num</span><span class="o">/</span><span class="n">aspect_ratio</span><span class="p">)))</span>
+                <span class="n">approx_cols</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">num</span><span class="o">*</span><span class="n">aspect_ratio</span><span class="p">)))</span>
+                <span class="k">return</span> <span class="n">approx_rows</span><span class="p">,</span> <span class="n">approx_cols</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Square-ish layout</span>
+            <span class="n">approx_side</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">num</span><span class="p">)))</span>
+            <span class="k">return</span> <span class="n">approx_side</span><span class="p">,</span> <span class="nb">max</span><span class="p">(</span><span class="n">approx_side</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span></div>
+
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, ExFAB BioFoundry.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.1.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

@@ -1,0 +1,1326 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>3. Understanding the Image Class: Data Components and Accessors &#8212; PhenoTypic</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/nbsphinx-code-cells.css?v=2aa19091" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/custom.css?v=800a184d" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../../../_static/documentation_options.js?v=b3db6a4d"></script>
+    <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../../../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="../../../_static/design-tabs.js?v=f930bc37"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+    <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'user_guide/tutorial/notebooks/Images';</script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+    <link rel="next" title="4. Working with GridImage: Grid-Specific Features" href="GridImages.html" />
+    <link rel="prev" title="2. Using ImagePipelines to process batches" href="LongerStart.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.11.1" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+     
+  
+
+<a class="navbar-brand logo" href="../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../../_static/gradient_logo_exfab.svg" class="logo__image only-light" alt="PhenoTypic"/>
+    <img src="../../../_static/gradient_logo_exfab.svg" class="logo__image only-dark pst-js-only" alt="PhenoTypic"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="../../index.html">
+    User Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../api_reference/index.html">
+    API Reference
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../contrib_guide/index.html">
+    Developer Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../downloadables.html">
+    Downloads
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/Wheeldon-Lab/PhenoScope#" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="../../index.html">
+    User Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../api_reference/index.html">
+    API Reference
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../contrib_guide/index.html">
+    Developer Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../downloadables.html">
+    Downloads
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/Wheeldon-Lab/PhenoScope#" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">User Guide Topics</span></p>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../../../installation.html">Installation</a></li>
+
+<li class="toctree-l1"><a class="reference internal" href="../../overview.html">Overview</a></li>
+<li class="toctree-l1 current active has-children"><a class="reference internal" href="../index.html">Tutorials</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="GettingStarted.html">1. Getting Started</a></li>
+<li class="toctree-l2"><a class="reference internal" href="LongerStart.html">2. Using <code class="docutils literal notranslate"><span class="pre">ImagePipeline</span></code>s to process batches</a></li>
+<li class="toctree-l2 current active"><a class="current reference internal" href="#">3. Understanding the Image Class: Data Components and Accessors</a></li>
+<li class="toctree-l2"><a class="reference internal" href="GridImages.html">4. Working with GridImage: Grid-Specific Features</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ImagePipelines.html">5. Make your own <code class="docutils literal notranslate"><span class="pre">ImagePipeline</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="GrowthCurves.html">6. Fitting Logistic Growth Curves</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../examples/index.html">Examples</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul class="simple">
+</ul>
+</details></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../index.html" class="nav-link">User Guide</a></li>
+    
+    
+    <li class="breadcrumb-item"><a href="../index.html" class="nav-link">Tutorials</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">3. Understanding the Image Class: Data Components and Accessors</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="3.-Understanding-the-Image-Class:-Data-Components-and-Accessors">
+<h1>3. Understanding the Image Class: Data Components and Accessors<a class="headerlink" href="#3.-Understanding-the-Image-Class:-Data-Components-and-Accessors" title="Link to this heading">#</a></h1>
+<p>This tutorial provides a comprehensive guide to the PhenoTypic <code class="docutils literal notranslate"><span class="pre">Image</span></code> class architecture, focusing on its main data components and how they interact with detection and analysis modules.</p>
+<hr class="docutils" />
+<section id="Learning-Objectives">
+<h2>Learning Objectives<a class="headerlink" href="#Learning-Objectives" title="Link to this heading">#</a></h2>
+<p>By the end of this tutorial, you will understand:</p>
+<ul class="simple">
+<li><p>The Image class hierarchy and accessor pattern</p></li>
+<li><p>The six main data components: <code class="docutils literal notranslate"><span class="pre">rgb</span></code>, <code class="docutils literal notranslate"><span class="pre">gray</span></code>, <code class="docutils literal notranslate"><span class="pre">enh_gray</span></code>, <code class="docutils literal notranslate"><span class="pre">objmask</span></code>, <code class="docutils literal notranslate"><span class="pre">objmap</span></code>, and <code class="docutils literal notranslate"><span class="pre">metadata</span></code></p></li>
+<li><p>How these components interact during image processing workflows</p></li>
+<li><p>When and how to use each component in your analysis</p></li>
+</ul>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[1]:
+</pre></div>
+</div>
+<div class="input_area highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Import required libraries</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">phenotypic</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pht</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+<br/></pre></div>
+</div>
+</div>
+</section>
+<section id="Loading-an-Image-and-Basic-Properties">
+<h2>Loading an Image and Basic Properties<a class="headerlink" href="#Loading-an-Image-and-Basic-Properties" title="Link to this heading">#</a></h2>
+<p>Let’s start by loading a sample plate image from the built-in dataset. We’ll use an image of bacterial colonies growing on agar media.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
+</pre></div>
+</div>
+<div class="input_area highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Load a sample plate image (12 hours of growth)</span>
+<span class="n">image</span> <span class="o">=</span> <span class="n">pht</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">load_colony</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s1">&#39;Image&#39;</span><span class="p">)</span>
+
+<span class="c1"># Display basic properties</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Image name: </span><span class="si">{</span><span class="n">image</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Image shape: </span><span class="si">{</span><span class="n">image</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Bit depth: </span><span class="si">{</span><span class="n">image</span><span class="o">.</span><span class="n">bit_depth</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Data type: </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">image</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Image name: later_colony
+Image shape: (200, 162, 3)
+Bit depth: 8
+Data type: &lt;class &#39;phenotypic.core._image.Image&#39;&gt;
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
+</pre></div>
+</div>
+<div class="input_area highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Visualize the original image</span>
+<span class="n">image</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+(&lt;Figure size 800x600 with 1 Axes&gt;, &lt;Axes: &gt;)
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../../_images/user_guide_tutorial_notebooks_Images_4_1.png" src="../../../_images/user_guide_tutorial_notebooks_Images_4_1.png" />
+</div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">Image.show()</span></code> will show the original input (either rgb or grayscale)</p>
+</section>
+<section id="RGB-Component:-Multichannel-Color-Data">
+<h2>RGB Component: Multichannel Color Data<a class="headerlink" href="#RGB-Component:-Multichannel-Color-Data" title="Link to this heading">#</a></h2>
+<p>The <strong>``rgb``</strong> accessor provides access to the multichannel RGB representation of the image.</p>
+<section id="Key-Characteristics:">
+<h3>Key Characteristics:<a class="headerlink" href="#Key-Characteristics:" title="Link to this heading">#</a></h3>
+<ul class="simple">
+<li><p><strong>Data type</strong>: uint8 (for 8-bit) or uint16 (for 16-bit images)</p></li>
+<li><p><strong>Shape</strong>: <code class="docutils literal notranslate"><span class="pre">(height,</span> <span class="pre">width,</span> <span class="pre">3)</span></code> - three channels for Red, Green, Blue</p></li>
+<li><p><strong>Access pattern</strong>: Use bracket notation <code class="docutils literal notranslate"><span class="pre">image.rgb[:]</span></code> to get the array</p></li>
+<li><p><strong>Automatically set</strong>: When loading a color image</p></li>
+<li><p><strong>Empty for grayscale</strong>: If you load a 2D array, RGB remains empty</p></li>
+</ul>
+</section>
+<section id="Related-Operations:">
+<h3>Related Operations:<a class="headerlink" href="#Related-Operations:" title="Link to this heading">#</a></h3>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">ImageCorrector</span></code>: Can apply different types of corrections to this layer</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">MeasureFeature</span></code>: Color measurements are extracted from this component</p></li>
+</ul>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
+</pre></div>
+</div>
+<div class="input_area highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Access the RGB data</span>
+<span class="n">rgb_data</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">rgb</span><span class="p">[:]</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;RGB shape: </span><span class="si">{</span><span class="n">rgb_data</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;RGB dtype: </span><span class="si">{</span><span class="n">rgb_data</span><span class="o">.</span><span class="n">dtype</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;RGB value range: [</span><span class="si">{</span><span class="n">rgb_data</span><span class="o">.</span><span class="n">min</span><span class="p">()</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">rgb_data</span><span class="o">.</span><span class="n">max</span><span class="p">()</span><span class="si">}</span><span class="s2">]&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Is RGB empty? </span><span class="si">{</span><span class="n">image</span><span class="o">.</span><span class="n">rgb</span><span class="o">.</span><span class="n">isempty</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+RGB shape: (200, 162, 3)
+RGB dtype: uint8
+RGB value range: [55, 127]
+
+Is RGB empty? False
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
+</pre></div>
+</div>
+<div class="input_area highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">image</span><span class="o">.</span><span class="n">rgb</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+(&lt;Figure size 800x600 with 1 Axes&gt;, &lt;Axes: &gt;)
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../../_images/user_guide_tutorial_notebooks_Images_8_1.png" src="../../../_images/user_guide_tutorial_notebooks_Images_8_1.png" />
+</div>
+</div>
+</section>
+</section>
+<section id="Gray-Component:-Grayscale-Representation">
+<h2>Gray Component: Grayscale Representation<a class="headerlink" href="#Gray-Component:-Grayscale-Representation" title="Link to this heading">#</a></h2>
+<p>The <strong>``gray``</strong> accessor provides the grayscale representation of the image using weighted luminance conversion.</p>
+<section id="id1">
+<h3>Key Characteristics:<a class="headerlink" href="#id1" title="Link to this heading">#</a></h3>
+<ul class="simple">
+<li><p><strong>Data type</strong>: float32 with values in [0, 1] range</p></li>
+<li><p><strong>Shape</strong>: <code class="docutils literal notranslate"><span class="pre">(height,</span> <span class="pre">width)</span></code> - single channel</p></li>
+<li><p><strong>Conversion</strong>: Automatically created from RGB using <code class="docutils literal notranslate"><span class="pre">skimage.color.rgb2gray</span></code></p></li>
+<li><p><strong>Weighted formula</strong>: <code class="docutils literal notranslate"><span class="pre">0.2125*R</span> <span class="pre">+</span> <span class="pre">0.7154*G</span> <span class="pre">+</span> <span class="pre">0.0721*B</span></code> (ITU-R BT.709)</p></li>
+<li><p><strong>Read-only</strong>: Changes to gray won’t modify RGB (use <code class="docutils literal notranslate"><span class="pre">enh_gray</span></code> for modifications)</p></li>
+<li><p><strong>Always present</strong>: Even for grayscale-loaded images</p></li>
+</ul>
+<p>The grayscale information is also the intensity information. Certain corrections like flat-field operate on this layer, but don’t affect the RGB information. Thus, we keep it loaded in memory.</p>
+</section>
+<section id="id2">
+<h3>Related Operations:<a class="headerlink" href="#id2" title="Link to this heading">#</a></h3>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">ImageCorrector</span></code>’s: can apply different corrections to this component</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">MeasureFeature</span></code>’s: measure different object features such as intensity from this layer</p></li>
+</ul>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
+</pre></div>
+</div>
+<div class="input_area highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Access the grayscale data</span>
+<span class="n">gray_data</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">gray</span><span class="p">[:]</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Gray shape: </span><span class="si">{</span><span class="n">image</span><span class="o">.</span><span class="n">gray</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Gray dtype: </span><span class="si">{</span><span class="n">image</span><span class="o">.</span><span class="n">gray</span><span class="o">.</span><span class="n">dtype</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Gray value range: [</span><span class="si">{</span><span class="n">gray_data</span><span class="o">.</span><span class="n">min</span><span class="p">()</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">gray_data</span><span class="o">.</span><span class="n">max</span><span class="p">()</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">]&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Is gray empty? </span><span class="si">{</span><span class="n">image</span><span class="o">.</span><span class="n">gray</span><span class="o">.</span><span class="n">isempty</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Gray shape: (200, 162)
+Gray dtype: float64
+Gray value range: [0.2269, 0.4574]
+
+Is gray empty? False
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
+</pre></div>
+</div>
+<div class="input_area highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Visualize grayscale conversion</span>
+<span class="n">image</span><span class="o">.</span><span class="n">gray</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">💡 Note: The grayscale conversion preserves perceptual brightness better than simple averaging.&quot;</span><span class="p">)</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+
+💡 Note: The grayscale conversion preserves perceptual brightness better than simple averaging.
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../../_images/user_guide_tutorial_notebooks_Images_11_1.png" src="../../../_images/user_guide_tutorial_notebooks_Images_11_1.png" />
+</div>
+</div>
+</section>
+</section>
+<section id="Enhanced-Gray-Component:-Mutable-Processing-Copy">
+<h2>Enhanced Gray Component: Mutable Processing Copy<a class="headerlink" href="#Enhanced-Gray-Component:-Mutable-Processing-Copy" title="Link to this heading">#</a></h2>
+<p>The <strong>``enh_gray``</strong> accessor provides a mutable copy of the grayscale image for preprocessing, enhancement, and detection.</p>
+<section id="id3">
+<h3>Key Characteristics:<a class="headerlink" href="#id3" title="Link to this heading">#</a></h3>
+<ul class="simple">
+<li><p><strong>Data type</strong>: float32 with values in [0, 1] range</p></li>
+<li><p><strong>Shape</strong>: <code class="docutils literal notranslate"><span class="pre">(height,</span> <span class="pre">width)</span></code> - single channel</p></li>
+<li><p><strong>Initialization</strong>: Starts as an exact copy of <code class="docutils literal notranslate"><span class="pre">gray</span></code></p></li>
+<li><p><strong>Mutable</strong>: Can be modified without affecting the original <code class="docutils literal notranslate"><span class="pre">gray</span></code></p></li>
+<li><p><strong>Primary use</strong>: Detection algorithms process <code class="docutils literal notranslate"><span class="pre">enh_gray</span></code> to create targets while, the original grayscale is preserved.</p></li>
+<li><p><strong>Workflow</strong>: Apply enhancement operations → Detector uses <code class="docutils literal notranslate"><span class="pre">enh_gray</span></code> → Original stays intact</p></li>
+</ul>
+<p>Many traditional computer vision operations operate on the grayscale matrix for calculations. Thus, <code class="docutils literal notranslate"><span class="pre">Image.enh_gray.histogram()</span></code> is a powerful tool for deciding what operations our images need to process. PhenoTypic uses a two-path strategy for measurement and detection. Many operations that improve object detection affect the data integrity of the original grayscale, which is used for intensity measurements. Thus, we incorporate the <code class="docutils literal notranslate"><span class="pre">enh_gray</span></code> matrix which is a copy of the original
+grayscale matrix used for operations that enhance detection. Operations for enhancing detection can be found in <code class="docutils literal notranslate"><span class="pre">phenotypic.enhace</span></code>.</p>
+</section>
+<section id="id4">
+<h3>Related Operations:<a class="headerlink" href="#id4" title="Link to this heading">#</a></h3>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">ImageEnhancer</span></code>: Improves different aspects of the image such as contrast to this component</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ObjectDetector</span></code>: Utilizes different algorithms to detect objects in this version of the image</p></li>
+</ul>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
+</pre></div>
+</div>
+<div class="input_area highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Access enhanced grayscale data</span>
+<span class="n">enh_gray_data</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">enh_gray</span><span class="p">[:]</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Enhanced gray shape: </span><span class="si">{</span><span class="n">enh_gray_data</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Enhanced gray dtype: </span><span class="si">{</span><span class="n">enh_gray_data</span><span class="o">.</span><span class="n">dtype</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Enhanced gray value range: [</span><span class="si">{</span><span class="n">enh_gray_data</span><span class="o">.</span><span class="n">min</span><span class="p">()</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">enh_gray_data</span><span class="o">.</span><span class="n">max</span><span class="p">()</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">]&quot;</span><span class="p">)</span>
+
+<span class="c1"># Check if enh_gray starts as a copy of gray</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Are gray and enh_gray initially equal? </span><span class="si">{</span><span class="n">np</span><span class="o">.</span><span class="n">allclose</span><span class="p">(</span><span class="n">gray_data</span><span class="p">,</span><span class="w"> </span><span class="n">enh_gray_data</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Are they the same object? </span><span class="si">{</span><span class="n">np</span><span class="o">.</span><span class="n">shares_memory</span><span class="p">(</span><span class="n">gray_data</span><span class="p">,</span><span class="w"> </span><span class="n">enh_gray_data</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Enhanced gray shape: (200, 162)
+Enhanced gray dtype: float64
+Enhanced gray value range: [0.2269, 0.4574]
+
+Are gray and enh_gray initially equal? True
+Are they the same object? False
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
+</pre></div>
+</div>
+<div class="input_area highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">fig</span><span class="p">,</span> <span class="n">axes</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">ncols</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+<span class="n">image</span><span class="o">.</span><span class="n">gray</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="n">ax</span><span class="o">=</span><span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">title</span><span class="o">=</span><span class="s1">&#39;Grayscale&#39;</span><span class="p">)</span>
+<span class="n">image</span><span class="o">.</span><span class="n">enh_gray</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="n">ax</span><span class="o">=</span><span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">title</span><span class="o">=</span><span class="s1">&#39;Enhanced Grayscale&#39;</span><span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">💡 Note: Enhancement operations can be applied to enh_gray without affecting the original gray data.&quot;</span><span class="p">)</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+
+💡 Note: Enhancement operations can be applied to enh_gray without affecting the original gray data.
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../../_images/user_guide_tutorial_notebooks_Images_14_1.png" src="../../../_images/user_guide_tutorial_notebooks_Images_14_1.png" />
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
+</pre></div>
+</div>
+<div class="input_area highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">pht</span><span class="o">.</span><span class="n">enhance</span><span class="o">.</span><span class="n">CLAHE</span><span class="p">()</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="n">fig</span><span class="p">,</span> <span class="n">axes</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">ncols</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+<span class="n">image</span><span class="o">.</span><span class="n">gray</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="n">ax</span><span class="o">=</span><span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">title</span><span class="o">=</span><span class="s1">&#39;Grayscale&#39;</span><span class="p">)</span>
+<span class="n">image</span><span class="o">.</span><span class="n">enh_gray</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="n">ax</span><span class="o">=</span><span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">title</span><span class="o">=</span><span class="s1">&#39;Enhanced Grayscale&#39;</span><span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">💡 Note: Enhancement operations can be applied to enh_gray without affecting the original gray data.&quot;</span><span class="p">)</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+
+💡 Note: Enhancement operations can be applied to enh_gray without affecting the original gray data.
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../../_images/user_guide_tutorial_notebooks_Images_15_1.png" src="../../../_images/user_guide_tutorial_notebooks_Images_15_1.png" />
+</div>
+</div>
+</section>
+</section>
+<section id="Object-Mask-and-Object-Map:-Detection-Results">
+<h2>Object Mask and Object Map: Detection Results<a class="headerlink" href="#Object-Mask-and-Object-Map:-Detection-Results" title="Link to this heading">#</a></h2>
+<p>The <strong>``objmask``</strong> and <strong>``objmap``</strong> accessors store the results of object detection algorithms. Let’s apply the <code class="docutils literal notranslate"><span class="pre">OtsuDetector</span></code> to see them in action.</p>
+<section id="OtsuDetector-Workflow:">
+<h3>OtsuDetector Workflow:<a class="headerlink" href="#OtsuDetector-Workflow:" title="Link to this heading">#</a></h3>
+<ol class="arabic simple">
+<li><p>Reads <code class="docutils literal notranslate"><span class="pre">enh_gray</span></code> data</p></li>
+<li><p>Calculates optimal threshold using Otsu’s method</p></li>
+<li><p>Creates binary mask and stores in <code class="docutils literal notranslate"><span class="pre">objmask</span></code></p></li>
+<li><p>Labels connected regions and stores in <code class="docutils literal notranslate"><span class="pre">objmap</span></code></p></li>
+</ol>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[11]:
+</pre></div>
+</div>
+<div class="input_area highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Apply OtsuDetector to detect colonies</span>
+<span class="n">detector</span> <span class="o">=</span> <span class="n">pht</span><span class="o">.</span><span class="n">detect</span><span class="o">.</span><span class="n">OtsuDetector</span><span class="p">(</span><span class="n">ignore_zeros</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">ignore_borders</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">detector</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;✅ Detection complete!&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Number of detected objects: </span><span class="si">{</span><span class="n">image</span><span class="o">.</span><span class="n">num_objects</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+✅ Detection complete!
+Number of detected objects: 6
+</pre></div></div>
+</div>
+</section>
+<section id="6.1-Object-Mask:-Binary-Representation">
+<h3>6.1 Object Mask: Binary Representation<a class="headerlink" href="#6.1-Object-Mask:-Binary-Representation" title="Link to this heading">#</a></h3>
+<p>The <strong>``objmask``</strong> is a binary mask showing which pixels belong to detected objects.</p>
+</section>
+<section id="id5">
+<h3>Key Characteristics:<a class="headerlink" href="#id5" title="Link to this heading">#</a></h3>
+<ul class="simple">
+<li><p><strong>Values</strong>: 0 (background) and 1 (object pixels)</p></li>
+<li><p><strong>Shape</strong>: <code class="docutils literal notranslate"><span class="pre">(height,</span> <span class="pre">width)</span></code> - matches image dimensions</p></li>
+<li><p><strong>Storage</strong>: Backed by sparse CSC matrix for memory efficiency</p></li>
+<li><p><strong>Mutable</strong>: Can be modified (triggers automatic objmap relabeling)</p></li>
+<li><p><strong>Set by</strong>: Detection algorithms (Otsu, Watershed, etc.)</p></li>
+</ul>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[12]:
+</pre></div>
+</div>
+<div class="input_area highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Access object mask</span>
+<span class="n">objmask_data</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">objmask</span><span class="p">[:]</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Object mask shape: </span><span class="si">{</span><span class="n">objmask_data</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Object mask dtype: </span><span class="si">{</span><span class="n">objmask_data</span><span class="o">.</span><span class="n">dtype</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unique values: </span><span class="si">{</span><span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">objmask_data</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Number of object pixels: </span><span class="si">{</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">objmask_data</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Number of background pixels: </span><span class="si">{</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">objmask_data</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Percentage of image covered by objects: </span><span class="si">{</span><span class="mi">100</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">objmask_data</span><span class="p">)</span><span class="o">/</span><span class="n">objmask_data</span><span class="o">.</span><span class="n">size</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">%&quot;</span><span class="p">)</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Object mask shape: (200, 162)
+Object mask dtype: int64
+Unique values: [0 1]
+Number of object pixels: 7519
+Number of background pixels: 24881
+Percentage of image covered by objects: 23.21%
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[13]:
+</pre></div>
+</div>
+<div class="input_area highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Visualize the object mask</span>
+<span class="n">image</span><span class="o">.</span><span class="n">objmask</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">💡 Note: The binary mask shows all detected object pixels without distinguishing individual objects.&quot;</span><span class="p">)</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+
+💡 Note: The binary mask shows all detected object pixels without distinguishing individual objects.
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../../_images/user_guide_tutorial_notebooks_Images_20_1.png" src="../../../_images/user_guide_tutorial_notebooks_Images_20_1.png" />
+</div>
+</div>
+</section>
+<section id="6.2-Object-Map:-Labeled-Regions">
+<h3>6.2 Object Map: Labeled Regions<a class="headerlink" href="#6.2-Object-Map:-Labeled-Regions" title="Link to this heading">#</a></h3>
+<p>The <strong>``objmap``</strong> assigns a unique integer ID to each connected region in the object mask.</p>
+</section>
+<section id="id6">
+<h3>Key Characteristics:<a class="headerlink" href="#id6" title="Link to this heading">#</a></h3>
+<ul class="simple">
+<li><p><strong>Values</strong>: 0 (background) and unique integers for each object (1, 2, 3, …)</p></li>
+<li><p><strong>Shape</strong>: <code class="docutils literal notranslate"><span class="pre">(height,</span> <span class="pre">width)</span></code> - matches image dimensions</p></li>
+<li><p><strong>Storage</strong>: Sparse CSC matrix (shared backend with objmask)</p></li>
+<li><p><strong>Automatic labeling</strong>: Created/updated when objmask changes</p></li>
+<li><p><strong>Used for</strong>: Individual object analysis, measurements, slicing</p></li>
+</ul>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[14]:
+</pre></div>
+</div>
+<div class="input_area highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Access object map</span>
+<span class="n">objmap_data</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">objmap</span><span class="p">[:]</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Object map shape: </span><span class="si">{</span><span class="n">objmap_data</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Object map dtype: </span><span class="si">{</span><span class="n">objmap_data</span><span class="o">.</span><span class="n">dtype</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Number of unique objects: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">objmap_data</span><span class="p">))</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Object IDs range: </span><span class="si">{</span><span class="n">objmap_data</span><span class="p">[</span><span class="n">objmap_data</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">min</span><span class="p">()</span><span class="si">}</span><span class="s2"> to </span><span class="si">{</span><span class="n">objmap_data</span><span class="o">.</span><span class="n">max</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">First 10 object IDs: </span><span class="si">{</span><span class="nb">sorted</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">objmap_data</span><span class="p">[</span><span class="n">objmap_data</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">0</span><span class="p">]))[:</span><span class="mi">10</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Object map shape: (200, 162)
+Object map dtype: uint16
+Number of unique objects: 6
+Object IDs range: 1 to 6
+
+First 10 object IDs: [np.uint16(1), np.uint16(2), np.uint16(3), np.uint16(4), np.uint16(5), np.uint16(6)]
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[15]:
+</pre></div>
+</div>
+<div class="input_area highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Visualize the labeled object map</span>
+<span class="n">fig</span><span class="p">,</span> <span class="n">axes</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">16</span><span class="p">,</span> <span class="mi">5</span><span class="p">))</span>
+
+<span class="c1"># Object mask (binary)</span>
+<span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">objmask_data</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="s1">&#39;binary&#39;</span><span class="p">)</span>
+<span class="n">image</span><span class="o">.</span><span class="n">objmask</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="n">ax</span><span class="o">=</span><span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">title</span><span class="o">=</span><span class="sa">f</span><span class="s1">&#39;Object Mask</span><span class="se">\n</span><span class="s1">(Binary: </span><span class="si">{</span><span class="n">image</span><span class="o">.</span><span class="n">num_objects</span><span class="si">}</span><span class="s1"> objects)&#39;</span><span class="p">)</span>
+
+<span class="c1"># Object map (labeled)</span>
+<span class="n">image</span><span class="o">.</span><span class="n">objmap</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="n">ax</span><span class="o">=</span><span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">title</span><span class="o">=</span><span class="sa">f</span><span class="s1">&#39;Object Map</span><span class="se">\n</span><span class="s1">(Binary: </span><span class="si">{</span><span class="n">image</span><span class="o">.</span><span class="n">num_objects</span><span class="si">}</span><span class="s1"> objects)&#39;</span><span class="p">)</span>
+
+<span class="c1"># Overlay on original</span>
+<span class="n">axes</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">rgb_data</span><span class="p">)</span>
+
+<span class="n">image</span><span class="o">.</span><span class="n">show_overlay</span><span class="p">(</span><span class="n">ax</span><span class="o">=</span><span class="n">axes</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span> <span class="n">title</span><span class="o">=</span><span class="s1">&#39;Overlay&#39;</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">💡 Note: Each color in the object map represents a distinct detected colony.&quot;</span><span class="p">)</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../../_images/user_guide_tutorial_notebooks_Images_23_0.png" src="../../../_images/user_guide_tutorial_notebooks_Images_23_0.png" />
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+
+💡 Note: Each color in the object map represents a distinct detected colony.
+</pre></div></div>
+</div>
+</section>
+<section id="Relationship-Between-objmask-and-objmap">
+<h3>Relationship Between objmask and objmap<a class="headerlink" href="#Relationship-Between-objmask-and-objmap" title="Link to this heading">#</a></h3>
+<p>The objmask and objmap are tightly coupled:</p>
+<ul class="simple">
+<li><p><strong>Shared backend</strong>: Both use the same sparse CSC matrix storage</p></li>
+<li><p><strong>objmask → objmap</strong>: Binary mask shows “where objects are”</p></li>
+<li><p><strong>objmap → objmask</strong>: Labeled map shows “which object each pixel belongs to”</p></li>
+<li><p><strong>Automatic sync</strong>: Modifying objmask triggers relabeling of objmap</p></li>
+</ul>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[16]:
+</pre></div>
+</div>
+<div class="input_area highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Demonstrate the relationship</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Relationship verification:&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;objmask non-zero pixels: </span><span class="si">{</span><span class="n">np</span><span class="o">.</span><span class="n">count_nonzero</span><span class="p">(</span><span class="n">objmask_data</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;objmap non-zero pixels: </span><span class="si">{</span><span class="n">np</span><span class="o">.</span><span class="n">count_nonzero</span><span class="p">(</span><span class="n">objmap_data</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Are non-zero locations identical? </span><span class="si">{</span><span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">((</span><span class="n">objmask_data</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="p">(</span><span class="n">objmap_data</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">0</span><span class="p">))</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">objmask values: </span><span class="si">{</span><span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">objmask_data</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;objmap values: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">objmap_data</span><span class="p">))</span><span class="si">}</span><span class="s2"> unique (0 + </span><span class="si">{</span><span class="n">image</span><span class="o">.</span><span class="n">num_objects</span><span class="si">}</span><span class="s2"> objects)&quot;</span><span class="p">)</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Relationship verification:
+objmask non-zero pixels: 7519
+objmap non-zero pixels: 7519
+Are non-zero locations identical? True
+
+objmask values: [0 1]
+objmap values: 7 unique (0 + 6 objects)
+</pre></div></div>
+</div>
+</section>
+</section>
+<section id="Metadata:-Image-Information-Storage">
+<h2>Metadata: Image Information Storage<a class="headerlink" href="#Metadata:-Image-Information-Storage" title="Link to this heading">#</a></h2>
+<p>The <strong>``metadata``</strong> accessor provides a three-tier system for storing image information.</p>
+<section id="Three-Tier-System:">
+<h3>Three-Tier System:<a class="headerlink" href="#Three-Tier-System:" title="Link to this heading">#</a></h3>
+<ol class="arabic simple">
+<li><p><strong>Private</strong>: Internal system use only</p>
+<ul class="simple">
+<li><p>UUID for unique identification</p></li>
+<li><p>Not directly modifiable by users</p></li>
+</ul>
+</li>
+<li><p><strong>Protected</strong>: System-managed metadata</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">image_name</span></code>: Image identifier</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">bit_depth</span></code>: 8 or 16 bit</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">image_type</span></code>: BASE, OBJECT, or GRID</p></li>
+<li><p>Can be read but modification is restricted</p></li>
+</ul>
+</li>
+<li><p><strong>Public</strong>: User-modifiable metadata</p>
+<ul class="simple">
+<li><p>Custom key-value pairs</p></li>
+<li><p>Experimental conditions, timestamps, etc.</p></li>
+<li><p>Fully modifiable by users</p></li>
+</ul>
+</li>
+</ol>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[17]:
+</pre></div>
+</div>
+<div class="input_area highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Access metadata</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span><span class="o">*</span><span class="mi">50</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;METADATA CONTENTS&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span><span class="o">*</span><span class="mi">50</span><span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="s2">&quot;-&quot;</span><span class="o">*</span><span class="mi">50</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Key metadata values:&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;-&quot;</span><span class="o">*</span><span class="mi">50</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Name: </span><span class="si">{</span><span class="n">image</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;ImageName&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Bit depth: </span><span class="si">{</span><span class="n">image</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;BitDepth&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Image type: </span><span class="si">{</span><span class="n">image</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;ImageType&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<span class="n">image</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">table</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+==================================================
+METADATA CONTENTS
+==================================================
+
+--------------------------------------------------
+Key metadata values:
+--------------------------------------------------
+Name: later_colony
+Bit depth: 8
+Image type: Image
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[17]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+FileSuffix                                    .png
+ImageName                             later_colony
+ImageType                                    Image
+BitDepth                                         8
+UUID          635e302d-5501-4b9b-aa50-604281c8493a
+Name: later_colony, dtype: object
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[18]:
+</pre></div>
+</div>
+<div class="input_area highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Add custom metadata (public tier)</span>
+<span class="n">image</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;experiment_id&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;EXP_001&#39;</span>
+<span class="n">image</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;growth_time_hours&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">12</span>
+<span class="n">image</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;strain&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;Kluveromyces Marxianus&#39;</span>
+<span class="n">image</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;temperature_celsius&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mf">37.0</span>
+<span class="n">image</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;media_type&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;LB Agar&#39;</span>
+
+<span class="n">image</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">table</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[18]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+FileSuffix                                             .png
+experiment_id                                       EXP_001
+growth_time_hours                                        12
+strain                               Kluveromyces Marxianus
+temperature_celsius                                    37.0
+media_type                                          LB Agar
+ImageName                                      later_colony
+ImageType                                             Image
+BitDepth                                                  8
+UUID                   635e302d-5501-4b9b-aa50-604281c8493a
+Name: later_colony, dtype: object
+</pre></div></div>
+</div>
+</section>
+</section>
+<section id="Practical-Tips-and-Best-Practices">
+<h2>Practical Tips and Best Practices<a class="headerlink" href="#Practical-Tips-and-Best-Practices" title="Link to this heading">#</a></h2>
+<section id="When-to-Use-Each-Component">
+<h3>When to Use Each Component<a class="headerlink" href="#When-to-Use-Each-Component" title="Link to this heading">#</a></h3>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Component</p></th>
+<th class="head"><p>Use When You Need To…</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><strong>rgb</strong></p></td>
+<td><p>Access color information, display full-color images, analyze individual color channels</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>gray</strong></p></td>
+<td><p>Work with intensity data, maintain original data integrity, perform measurements</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>enh_gray</strong></p></td>
+<td><p>Apply preprocessing, test enhancement algorithms, prepare for detection</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>objmask</strong></p></td>
+<td><p>Work with binary masks, perform morphological operations, modify detection results</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>objmap</strong></p></td>
+<td><p>Analyze individual objects, measure per-object properties, extract specific colonies</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>metadata</strong></p></td>
+<td><p>Store experimental context, track processing parameters, organize datasets</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="Accessor-Pattern-Benefits">
+<h3>Accessor Pattern Benefits<a class="headerlink" href="#Accessor-Pattern-Benefits" title="Link to this heading">#</a></h3>
+<ol class="arabic simple">
+<li><p><strong>Consistent Interface</strong>: All accessors use bracket notation <code class="docutils literal notranslate"><span class="pre">[:]</span></code></p></li>
+<li><p><strong>Data Integrity</strong>: Read-only accessors prevent accidental modifications</p></li>
+<li><p><strong>Automatic Sync</strong>: Changes to objmask automatically update objmap</p></li>
+<li><p><strong>Memory Efficiency</strong>: Sparse storage for object maps saves memory</p></li>
+<li><p><strong>Type Safety</strong>: Accessors enforce correct data types</p></li>
+</ol>
+</section>
+<section id="Read-Only-vs-Mutable-Components">
+<h3>Read-Only vs Mutable Components<a class="headerlink" href="#Read-Only-vs-Mutable-Components" title="Link to this heading">#</a></h3>
+<p><strong>Read-Only</strong> (viewing via <code class="docutils literal notranslate"><span class="pre">[:]</span></code> returns non-writable views):</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">rgb</span></code>: Preserve color data integrity</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">gray</span></code>: Maintain original grayscale reference</p></li>
+</ul>
+<p><strong>Mutable</strong> (can be modified in-place):</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">enh_gray</span></code>: Designed for preprocessing</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">objmask</span></code>: Can be refined post-detection</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">objmap</span></code>: Automatically updates with objmask</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">metadata</span></code>: Fully modifiable for custom data</p></li>
+</ul>
+</section>
+<section id="Integration-with-Other-PhenoTypic-Modules">
+<h3>Integration with Other PhenoTypic Modules<a class="headerlink" href="#Integration-with-Other-PhenoTypic-Modules" title="Link to this heading">#</a></h3>
+<p><strong>Detection</strong> (<code class="docutils literal notranslate"><span class="pre">phenotypic.detect</span></code>):</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.detect</span><span class="w"> </span><span class="kn">import</span> <span class="n">OtsuDetector</span><span class="p">,</span> <span class="n">WatershedDetector</span>
+<span class="n">detector</span> <span class="o">=</span> <span class="n">OtsuDetector</span><span class="p">()</span>
+<span class="n">detector</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>  <span class="c1"># Populates objmask and objmap</span>
+</pre></div>
+</div>
+<p><strong>Enhancement</strong> (<code class="docutils literal notranslate"><span class="pre">phenotypic.enhance</span></code>):</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.enhance</span><span class="w"> </span><span class="kn">import</span> <span class="n">CLAHE</span><span class="p">,</span> <span class="n">GaussianBlur</span>
+<span class="n">enhancer</span> <span class="o">=</span> <span class="n">CLAHE</span><span class="p">()</span>
+<span class="n">enhancer</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>  <span class="c1"># Modifies enh_gray</span>
+</pre></div>
+</div>
+<p><strong>Refine</strong> (<code class="docutils literal notranslate"><span class="pre">phenotypic.refine</span></code>):</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.refine</span><span class="w"> </span><span class="kn">import</span> <span class="n">BorderObjectRemover</span>
+<span class="n">refiner</span> <span class="o">=</span> <span class="n">BorderObjectRemover</span><span class="p">()</span>
+<span class="n">results</span> <span class="o">=</span> <span class="n">refiner</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>  <span class="c1"># uses objmask and objmap and cleans the detection results</span>
+</pre></div>
+</div>
+<p><strong>Measurement</strong> (<code class="docutils literal notranslate"><span class="pre">phenotypic.measure</span></code>):</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.measure</span><span class="w"> </span><span class="kn">import</span> <span class="n">MeasureSize</span>
+<span class="n">measurer</span> <span class="o">=</span> <span class="n">MeasureSize</span><span class="p">()</span>
+<span class="n">results</span> <span class="o">=</span> <span class="n">measurer</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>  <span class="c1"># Uses objmap for per-object analysis</span>
+</pre></div>
+</div>
+<p><strong>Analysis</strong> (<code class="docutils literal notranslate"><span class="pre">phenotypic.analysis</span></code>):</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Access individual objects using objmap labels</span>
+<span class="k">for</span> <span class="n">obj</span> <span class="ow">in</span> <span class="n">image</span><span class="o">.</span><span class="n">objects</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Object </span><span class="si">{</span><span class="n">obj</span><span class="o">.</span><span class="n">label</span><span class="si">}</span><span class="s2">: Area = </span><span class="si">{</span><span class="n">obj</span><span class="o">.</span><span class="n">area</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+</pre></div>
+</div>
+<div class="input_area highlight-python notranslate"><div class="highlight"><pre><span></span>
+</pre></div>
+</div>
+</div>
+</section>
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#Learning-Objectives">Learning Objectives</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#Loading-an-Image-and-Basic-Properties">Loading an Image and Basic Properties</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#RGB-Component:-Multichannel-Color-Data">RGB Component: Multichannel Color Data</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#Key-Characteristics:">Key Characteristics:</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#Related-Operations:">Related Operations:</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#Gray-Component:-Grayscale-Representation">Gray Component: Grayscale Representation</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id1">Key Characteristics:</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id2">Related Operations:</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#Enhanced-Gray-Component:-Mutable-Processing-Copy">Enhanced Gray Component: Mutable Processing Copy</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id3">Key Characteristics:</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id4">Related Operations:</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#Object-Mask-and-Object-Map:-Detection-Results">Object Mask and Object Map: Detection Results</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#OtsuDetector-Workflow:">OtsuDetector Workflow:</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#6.1-Object-Mask:-Binary-Representation">6.1 Object Mask: Binary Representation</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id5">Key Characteristics:</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#6.2-Object-Map:-Labeled-Regions">6.2 Object Map: Labeled Regions</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id6">Key Characteristics:</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#Relationship-Between-objmask-and-objmap">Relationship Between objmask and objmap</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#Metadata:-Image-Information-Storage">Metadata: Image Information Storage</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#Three-Tier-System:">Three-Tier System:</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#Practical-Tips-and-Best-Practices">Practical Tips and Best Practices</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#When-to-Use-Each-Component">When to Use Each Component</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#Accessor-Pattern-Benefits">Accessor Pattern Benefits</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#Read-Only-vs-Mutable-Components">Read-Only vs Mutable Components</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#Integration-with-Other-PhenoTypic-Modules">Integration with Other PhenoTypic Modules</a></li>
+</ul>
+</li>
+</ul>
+  </nav></div>
+
+  <div class="sidebar-secondary-item">
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../../../_sources/user_guide/tutorial/notebooks/Images.ipynb.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, ExFAB BioFoundry.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.1.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

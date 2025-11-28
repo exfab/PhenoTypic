@@ -1,0 +1,2027 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>4. Working with GridImage: Grid-Specific Features &#8212; PhenoTypic</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/nbsphinx-code-cells.css?v=2aa19091" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/custom.css?v=800a184d" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../../../_static/documentation_options.js?v=b3db6a4d"></script>
+    <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../../../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="../../../_static/design-tabs.js?v=f930bc37"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+    <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'user_guide/tutorial/notebooks/GridImages';</script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+    <link rel="next" title="5. Make your own ImagePipeline" href="ImagePipelines.html" />
+    <link rel="prev" title="3. Understanding the Image Class: Data Components and Accessors" href="Images.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.11.1" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+     
+  
+
+<a class="navbar-brand logo" href="../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../../_static/gradient_logo_exfab.svg" class="logo__image only-light" alt="PhenoTypic"/>
+    <img src="../../../_static/gradient_logo_exfab.svg" class="logo__image only-dark pst-js-only" alt="PhenoTypic"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="../../index.html">
+    User Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../api_reference/index.html">
+    API Reference
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../contrib_guide/index.html">
+    Developer Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../downloadables.html">
+    Downloads
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/Wheeldon-Lab/PhenoScope#" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="../../index.html">
+    User Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../api_reference/index.html">
+    API Reference
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../contrib_guide/index.html">
+    Developer Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../downloadables.html">
+    Downloads
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/Wheeldon-Lab/PhenoScope#" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">User Guide Topics</span></p>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../../../installation.html">Installation</a></li>
+
+<li class="toctree-l1"><a class="reference internal" href="../../overview.html">Overview</a></li>
+<li class="toctree-l1 current active has-children"><a class="reference internal" href="../index.html">Tutorials</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="GettingStarted.html">1. Getting Started</a></li>
+<li class="toctree-l2"><a class="reference internal" href="LongerStart.html">2. Using <code class="docutils literal notranslate"><span class="pre">ImagePipeline</span></code>s to process batches</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Images.html">3. Understanding the Image Class: Data Components and Accessors</a></li>
+<li class="toctree-l2 current active"><a class="current reference internal" href="#">4. Working with GridImage: Grid-Specific Features</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ImagePipelines.html">5. Make your own <code class="docutils literal notranslate"><span class="pre">ImagePipeline</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="GrowthCurves.html">6. Fitting Logistic Growth Curves</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../examples/index.html">Examples</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul class="simple">
+</ul>
+</details></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../index.html" class="nav-link">User Guide</a></li>
+    
+    
+    <li class="breadcrumb-item"><a href="../index.html" class="nav-link">Tutorials</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">4. Working with GridImage: Grid-Specific Features</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="4.-Working-with-GridImage:-Grid-Specific-Features">
+<h1>4. Working with GridImage: Grid-Specific Features<a class="headerlink" href="#4.-Working-with-GridImage:-Grid-Specific-Features" title="Link to this heading">#</a></h1>
+<p>This tutorial focuses on <code class="docutils literal notranslate"><span class="pre">GridImage</span></code> - a specialized class for analyzing arrayed microbe colonies on solid media agar plates.</p>
+<hr class="docutils" />
+<section id="Prerequisites">
+<h2>Prerequisites<a class="headerlink" href="#Prerequisites" title="Link to this heading">#</a></h2>
+<p><strong>Before starting this tutorial</strong>, please complete the {doc} <code class="docutils literal notranslate"><span class="pre">Image</span></code> to understand the core <code class="docutils literal notranslate"><span class="pre">Image</span></code> class features (rgb, gray, enh_gray, objmap, objects, etc.).</p>
+</section>
+<section id="What-Makes-GridImage-Special?">
+<h2>What Makes GridImage Special?<a class="headerlink" href="#What-Makes-GridImage-Special?" title="Link to this heading">#</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">GridImage</span></code> extends <code class="docutils literal notranslate"><span class="pre">Image</span></code> with grid-specific functionality:</p>
+<ul class="simple">
+<li><p>Automatic grid alignment to detected colonies</p></li>
+<li><p>Grid position tracking (row, column, section)</p></li>
+<li><p>Grid-based visualization</p></li>
+<li><p>Position information in measurements</p></li>
+</ul>
+</section>
+<section id="When-to-Use-GridImage">
+<h2>When to Use GridImage<a class="headerlink" href="#When-to-Use-GridImage" title="Link to this heading">#</a></h2>
+<p>✅ <strong>Use GridImage</strong> for: 96-well plates, 384-well plates, any arrayed format</p>
+<p>❌ <strong>Use regular Image</strong> for: Single colonies, random arrangements</p>
+<p>Let’s explore the grid-specific features!</p>
+</section>
+<section id="Setup:-Import-Libraries">
+<h2>Setup: Import Libraries<a class="headerlink" href="#Setup:-Import-Libraries" title="Link to this heading">#</a></h2>
+<p>First, let’s import the phenotypic library (commonly abbreviated as <code class="docutils literal notranslate"><span class="pre">pht</span></code>).</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[1]:
+</pre></div>
+</div>
+<div class="input_area highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">phenotypic</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pht</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+</pre></div>
+</div>
+</div>
+</section>
+<section id="Part-2:-Grid-Specific-Components">
+<h2>Part 2: Grid-Specific Components<a class="headerlink" href="#Part-2:-Grid-Specific-Components" title="Link to this heading">#</a></h2>
+<p>Now let’s explore the components that are unique to <code class="docutils literal notranslate"><span class="pre">GridImage</span></code>:</p>
+<section id="Grid-Components">
+<h3>Grid Components<a class="headerlink" href="#Grid-Components" title="Link to this heading">#</a></h3>
+<ol class="arabic simple">
+<li><p><strong>``grid_finder``</strong>: The algorithm that determines where grid lines should be placed</p>
+<ul class="simple">
+<li><p>Default: <code class="docutils literal notranslate"><span class="pre">AutoGridFinder</span></code> - automatically aligns to detected colonies</p></li>
+<li><p>Alternative: <code class="docutils literal notranslate"><span class="pre">ManualGridFinder</span></code> - for manual grid specification</p></li>
+</ul>
+</li>
+<li><p><strong>``grid``</strong>: An accessor object that provides grid-specific operations</p>
+<ul class="simple">
+<li><p>Access grid information</p></li>
+<li><p>Get individual grid sections</p></li>
+<li><p>Visualize rows and columns</p></li>
+</ul>
+</li>
+<li><p><strong>``nrows`` and ``ncols``</strong>: Grid dimensions (can be adjusted)</p></li>
+<li><p><strong>``show_overlay()``</strong>: Enhanced visualization with gridlines and labels</p></li>
+</ol>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
+</pre></div>
+</div>
+<div class="input_area highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">image</span> <span class="o">=</span> <span class="n">pht</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">load_imager_plate</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s2">&quot;GridImage&quot;</span><span class="p">)</span>
+<span class="n">image</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;MyGridImage&quot;</span>
+<span class="n">image</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+(&lt;Figure size 800x600 with 1 Axes&gt;, &lt;Axes: &gt;)
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../../_images/user_guide_tutorial_notebooks_GridImages_4_1.png" src="../../../_images/user_guide_tutorial_notebooks_GridImages_4_1.png" />
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
+</pre></div>
+</div>
+<div class="input_area highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">image</span> <span class="o">=</span> <span class="n">image</span><span class="p">[</span><span class="mi">390</span><span class="p">:</span><span class="mi">3675</span><span class="p">,</span> <span class="mi">425</span><span class="p">:</span><span class="mi">5620</span><span class="p">]</span>  <span class="c1"># Cropping a GridImage returns a regular Image</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Cropped type: </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">image</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<span class="n">image</span> <span class="o">=</span> <span class="n">pht</span><span class="o">.</span><span class="n">GridImage</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Converted back: </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">image</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<span class="n">image</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Cropped type: &lt;class &#39;phenotypic.core._image.Image&#39;&gt;
+Converted back: &lt;class &#39;phenotypic.core._grid_image.GridImage&#39;&gt;
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+(&lt;Figure size 800x600 with 1 Axes&gt;, &lt;Axes: &gt;)
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../../_images/user_guide_tutorial_notebooks_GridImages_5_2.png" src="../../../_images/user_guide_tutorial_notebooks_GridImages_5_2.png" />
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
+</pre></div>
+</div>
+<div class="input_area highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Examine grid properties</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Grid finder type: </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">image</span><span class="o">.</span><span class="n">grid_finder</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Number of rows: </span><span class="si">{</span><span class="n">image</span><span class="o">.</span><span class="n">nrows</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Number of columns: </span><span class="si">{</span><span class="n">image</span><span class="o">.</span><span class="n">ncols</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Total sections: </span><span class="si">{</span><span class="n">image</span><span class="o">.</span><span class="n">nrows</span><span class="o">*</span><span class="n">image</span><span class="o">.</span><span class="n">ncols</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Grid finder type: AutoGridFinder
+Number of rows: 8
+Number of columns: 12
+Total sections: 96
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
+</pre></div>
+</div>
+<div class="input_area highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">pht</span><span class="o">.</span><span class="n">detect</span><span class="o">.</span><span class="n">GitterDetector</span><span class="p">()</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="c1"># The S&amp;P imager uses plates that have a corner cutthing through the image, so we remove it with BorderObjectRemover</span>
+<span class="n">pht</span><span class="o">.</span><span class="n">refine</span><span class="o">.</span><span class="n">BorderObjectRemover</span><span class="p">(</span><span class="mi">100</span><span class="p">)</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">image</span><span class="o">.</span><span class="n">show_overlay</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+(&lt;Figure size 900x1000 with 1 Axes&gt;, &lt;Axes: &gt;)
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../../_images/user_guide_tutorial_notebooks_GridImages_7_1.png" src="../../../_images/user_guide_tutorial_notebooks_GridImages_7_1.png" />
+</div>
+</div>
+<p>Notice how:</p>
+<ul class="simple">
+<li><p><strong>Cyan dashed lines</strong> show the grid boundaries</p></li>
+<li><p><strong>Column numbers</strong> appear at the top (0-11)</p></li>
+<li><p><strong>Row numbers</strong> appear on the right (0-7)</p></li>
+<li><p><strong>Colored boxes</strong> show which colonies belong to which grid section</p></li>
+</ul>
+</section>
+</section>
+<section id="Part-4:-Accessing-Grid-Information">
+<h2>Part 4: Accessing Grid Information<a class="headerlink" href="#Part-4:-Accessing-Grid-Information" title="Link to this heading">#</a></h2>
+<p>After detection, the grid is automatically aligned to the colonies. We can access detailed grid assignment information using <code class="docutils literal notranslate"><span class="pre">grid.info()</span></code>.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
+</pre></div>
+</div>
+<div class="input_area highlight-python notranslate"><div class="highlight"><pre><br/><span></span><span class="c1"># Get grid information for all colonies</span>
+<span class="n">grid_info</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">grid</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">include_metadata</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="c1"># Display first 10 colonies</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Grid Information for Detected Colonies:&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">()</span>
+<span class="n">grid_info</span><span class="o">.</span><span class="n">head</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Grid Information for Detected Colonies:
+
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
+</pre></div>
+</div>
+<div class="output_area rendered_html docutils container">
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Metadata_BitDepth</th>
+      <th>Metadata_ImageType</th>
+      <th>Metadata_ImageName</th>
+      <th>ObjectLabel</th>
+      <th>Bbox_CenterRR</th>
+      <th>Bbox_CenterCC</th>
+      <th>Bbox_MinRR</th>
+      <th>Bbox_MinCC</th>
+      <th>Bbox_MaxRR</th>
+      <th>Bbox_MaxCC</th>
+      <th>Grid_RowNum</th>
+      <th>Grid_ColNum</th>
+      <th>Grid_SectionNum</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>16</td>
+      <td>GridImage</td>
+      <td>6d85b9af-e79b-4acc-ac94-88597c1bef16</td>
+      <td>1</td>
+      <td>203.223483</td>
+      <td>3599.114734</td>
+      <td>133</td>
+      <td>3534</td>
+      <td>277</td>
+      <td>3666</td>
+      <td>0</td>
+      <td>8</td>
+      <td>8</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>16</td>
+      <td>GridImage</td>
+      <td>6d85b9af-e79b-4acc-ac94-88597c1bef16</td>
+      <td>2</td>
+      <td>208.305812</td>
+      <td>2791.626799</td>
+      <td>134</td>
+      <td>2722</td>
+      <td>283</td>
+      <td>2865</td>
+      <td>0</td>
+      <td>6</td>
+      <td>6</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>16</td>
+      <td>GridImage</td>
+      <td>6d85b9af-e79b-4acc-ac94-88597c1bef16</td>
+      <td>3</td>
+      <td>201.547514</td>
+      <td>4404.335588</td>
+      <td>135</td>
+      <td>4345</td>
+      <td>266</td>
+      <td>4467</td>
+      <td>0</td>
+      <td>10</td>
+      <td>10</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>16</td>
+      <td>GridImage</td>
+      <td>6d85b9af-e79b-4acc-ac94-88597c1bef16</td>
+      <td>4</td>
+      <td>205.583136</td>
+      <td>4001.737503</td>
+      <td>138</td>
+      <td>3941</td>
+      <td>274</td>
+      <td>4064</td>
+      <td>0</td>
+      <td>9</td>
+      <td>9</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>16</td>
+      <td>GridImage</td>
+      <td>6d85b9af-e79b-4acc-ac94-88597c1bef16</td>
+      <td>5</td>
+      <td>209.897206</td>
+      <td>2384.582457</td>
+      <td>140</td>
+      <td>2318</td>
+      <td>280</td>
+      <td>2451</td>
+      <td>0</td>
+      <td>5</td>
+      <td>5</td>
+    </tr>
+    <tr>
+      <th>5</th>
+      <td>16</td>
+      <td>GridImage</td>
+      <td>6d85b9af-e79b-4acc-ac94-88597c1bef16</td>
+      <td>6</td>
+      <td>219.215315</td>
+      <td>767.650918</td>
+      <td>147</td>
+      <td>698</td>
+      <td>291</td>
+      <td>838</td>
+      <td>0</td>
+      <td>1</td>
+      <td>1</td>
+    </tr>
+    <tr>
+      <th>6</th>
+      <td>16</td>
+      <td>GridImage</td>
+      <td>6d85b9af-e79b-4acc-ac94-88597c1bef16</td>
+      <td>7</td>
+      <td>209.147074</td>
+      <td>4809.871436</td>
+      <td>148</td>
+      <td>4761</td>
+      <td>268</td>
+      <td>4863</td>
+      <td>0</td>
+      <td>11</td>
+      <td>11</td>
+    </tr>
+    <tr>
+      <th>7</th>
+      <td>16</td>
+      <td>GridImage</td>
+      <td>6d85b9af-e79b-4acc-ac94-88597c1bef16</td>
+      <td>8</td>
+      <td>214.015541</td>
+      <td>1172.998471</td>
+      <td>152</td>
+      <td>1117</td>
+      <td>279</td>
+      <td>1234</td>
+      <td>0</td>
+      <td>2</td>
+      <td>2</td>
+    </tr>
+    <tr>
+      <th>8</th>
+      <td>16</td>
+      <td>GridImage</td>
+      <td>6d85b9af-e79b-4acc-ac94-88597c1bef16</td>
+      <td>9</td>
+      <td>223.262739</td>
+      <td>367.155403</td>
+      <td>161</td>
+      <td>314</td>
+      <td>279</td>
+      <td>424</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <th>9</th>
+      <td>16</td>
+      <td>GridImage</td>
+      <td>6d85b9af-e79b-4acc-ac94-88597c1bef16</td>
+      <td>10</td>
+      <td>614.416882</td>
+      <td>2791.059955</td>
+      <td>539</td>
+      <td>2716</td>
+      <td>689</td>
+      <td>2866</td>
+      <td>1</td>
+      <td>6</td>
+      <td>18</td>
+    </tr>
+  </tbody>
+</table>
+</div></div>
+</div>
+<section id="Understanding-Grid-Columns">
+<h3>Understanding Grid Columns<a class="headerlink" href="#Understanding-Grid-Columns" title="Link to this heading">#</a></h3>
+<p>The grid information includes several important columns:</p>
+<section id="Position-Information:">
+<h4>Position Information:<a class="headerlink" href="#Position-Information:" title="Link to this heading">#</a></h4>
+<ul class="simple">
+<li><p><strong>``RowNum``</strong>: Which row the colony is in (0 to nrows-1)</p></li>
+<li><p><strong>``ColNum``</strong>: Which column the colony is in (0 to ncols-1)</p></li>
+<li><p><strong>``SectionNum``</strong>: Unique section ID (numbered left-to-right, top-to-bottom)</p></li>
+</ul>
+</section>
+<section id="Bounding-Box-Coordinates:">
+<h4>Bounding Box Coordinates:<a class="headerlink" href="#Bounding-Box-Coordinates:" title="Link to this heading">#</a></h4>
+<ul class="simple">
+<li><p><strong>``MinRowCoord``, ``MaxRowCoord``</strong>: Minimum and maximum row coordinates</p></li>
+<li><p><strong>``MinColCoord``, ``MaxColCoord``</strong>: Minimum and maximum column coordinates</p></li>
+<li><p><strong>``CenterRowCoord``, ``CenterColCoord``</strong>: Center coordinates of the colony</p></li>
+</ul>
+</section>
+<section id="Metadata:">
+<h4>Metadata:<a class="headerlink" href="#Metadata:" title="Link to this heading">#</a></h4>
+<ul class="simple">
+<li><p><strong>``Metadata_ImageName``</strong>: Name of the image</p></li>
+<li><p><strong>``Metadata_ImageType``</strong>: Type designation (GridImage)</p></li>
+</ul>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
+</pre></div>
+</div>
+<div class="input_area highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Example: Find all colonies in row 3</span>
+<span class="n">row_3_colonies</span> <span class="o">=</span> <span class="n">grid_info</span><span class="p">[</span><span class="n">grid_info</span><span class="p">[</span><span class="s1">&#39;Grid_RowNum&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">3</span><span class="p">]</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Colonies in row 3: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">row_3_colonies</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">()</span>
+<span class="n">row_3_colonies</span><span class="p">[[</span><span class="s1">&#39;Grid_RowNum&#39;</span><span class="p">,</span> <span class="s1">&#39;Grid_ColNum&#39;</span><span class="p">,</span> <span class="s1">&#39;Grid_SectionNum&#39;</span><span class="p">]]</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Colonies in row 3: 9
+
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
+</pre></div>
+</div>
+<div class="output_area rendered_html docutils container">
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Grid_RowNum</th>
+      <th>Grid_ColNum</th>
+      <th>Grid_SectionNum</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>29</th>
+      <td>3</td>
+      <td>10</td>
+      <td>46</td>
+    </tr>
+    <tr>
+      <th>30</th>
+      <td>3</td>
+      <td>4</td>
+      <td>40</td>
+    </tr>
+    <tr>
+      <th>31</th>
+      <td>3</td>
+      <td>11</td>
+      <td>47</td>
+    </tr>
+    <tr>
+      <th>32</th>
+      <td>3</td>
+      <td>5</td>
+      <td>41</td>
+    </tr>
+    <tr>
+      <th>33</th>
+      <td>3</td>
+      <td>7</td>
+      <td>43</td>
+    </tr>
+    <tr>
+      <th>34</th>
+      <td>3</td>
+      <td>2</td>
+      <td>38</td>
+    </tr>
+    <tr>
+      <th>35</th>
+      <td>3</td>
+      <td>0</td>
+      <td>36</td>
+    </tr>
+    <tr>
+      <th>36</th>
+      <td>3</td>
+      <td>3</td>
+      <td>39</td>
+    </tr>
+    <tr>
+      <th>37</th>
+      <td>3</td>
+      <td>6</td>
+      <td>42</td>
+    </tr>
+  </tbody>
+</table>
+</div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
+</pre></div>
+</div>
+<div class="input_area highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Example: Find colonies in a specific section (e.g., section 25)</span>
+<span class="n">section_25</span> <span class="o">=</span> <span class="n">grid_info</span><span class="p">[</span><span class="n">grid_info</span><span class="p">[</span><span class="s1">&#39;Grid_SectionNum&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">25</span><span class="p">]</span>
+<span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">section_25</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;Section 25 corresponds to row </span><span class="si">{</span><span class="n">section_25</span><span class="p">[</span><span class="s1">&#39;Grid_RowNum&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2">, column </span><span class="si">{</span><span class="n">section_25</span><span class="p">[</span><span class="s1">&#39;Grid_ColNum&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Number of colonies detected: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">section_25</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;No colonies detected in section 25&quot;</span><span class="p">)</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Section 25 corresponds to row 2, column 1
+Number of colonies detected: 1
+</pre></div></div>
+</div>
+</section>
+</section>
+</section>
+<section id="Part-5:-Working-with-Grid-Sections">
+<h2>Part 5: Working with Grid Sections<a class="headerlink" href="#Part-5:-Working-with-Grid-Sections" title="Link to this heading">#</a></h2>
+<p>You can extract individual grid sections (wells) from the plate. Sections are numbered from 0 to (nrows × ncols - 1), going left-to-right, top-to-bottom.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
+</pre></div>
+</div>
+<div class="input_area highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Access the first grid section (top-left)</span>
+<span class="n">section_0</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">grid</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Section 0 shape: </span><span class="si">{</span><span class="n">section_0</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Number of objects in section 0: </span><span class="si">{</span><span class="n">section_0</span><span class="o">.</span><span class="n">num_objects</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Section 0 shape: (404, 404, 3)
+Number of objects in section 0: 0
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
+</pre></div>
+</div>
+<div class="input_area highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Visualize a single section</span>
+<span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">section_0</span><span class="o">.</span><span class="n">show_overlay</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s2">&quot;Grid Section 0 (Top-Left Well)&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../../_images/user_guide_tutorial_notebooks_GridImages_16_0.png" src="../../../_images/user_guide_tutorial_notebooks_GridImages_16_0.png" />
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[11]:
+</pre></div>
+</div>
+<div class="input_area highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Compare multiple sections</span>
+<span class="n">fig</span><span class="p">,</span> <span class="n">axes</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">15</span><span class="p">,</span> <span class="mi">10</span><span class="p">))</span>
+<span class="n">axes</span> <span class="o">=</span> <span class="n">axes</span><span class="o">.</span><span class="n">ravel</span><span class="p">()</span>
+
+<span class="n">sections_to_show</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">12</span><span class="p">,</span> <span class="mi">13</span><span class="p">,</span> <span class="mi">14</span><span class="p">]</span>  <span class="c1"># First two rows, first 3 columns</span>
+
+<span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">section_num</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">sections_to_show</span><span class="p">):</span>
+    <span class="n">section</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">grid</span><span class="p">[</span><span class="n">section_num</span><span class="p">]</span>  <span class="c1"># Access using flat index</span>
+    <span class="n">row</span> <span class="o">=</span> <span class="n">section_num</span><span class="o">//</span><span class="n">image</span><span class="o">.</span><span class="n">ncols</span>
+    <span class="n">col</span> <span class="o">=</span> <span class="n">section_num</span><span class="o">%</span><span class="n">image</span><span class="o">.</span><span class="n">ncols</span>
+
+    <span class="n">section</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="n">ax</span><span class="o">=</span><span class="n">axes</span><span class="p">[</span><span class="n">idx</span><span class="p">])</span>
+    <span class="n">axes</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Section </span><span class="si">{</span><span class="n">section_num</span><span class="si">}</span><span class="se">\n</span><span class="s2">(Row </span><span class="si">{</span><span class="n">row</span><span class="si">}</span><span class="s2">, Col </span><span class="si">{</span><span class="n">col</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+    <span class="n">axes</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span><span class="o">.</span><span class="n">axis</span><span class="p">(</span><span class="s1">&#39;off&#39;</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../../_images/user_guide_tutorial_notebooks_GridImages_17_0.png" src="../../../_images/user_guide_tutorial_notebooks_GridImages_17_0.png" />
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[22]:
+</pre></div>
+</div>
+<div class="input_area highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Compare multiple sections</span>
+<span class="n">fig</span><span class="p">,</span> <span class="n">axes</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">15</span><span class="p">,</span> <span class="mi">10</span><span class="p">))</span>
+<span class="n">axes</span> <span class="o">=</span> <span class="n">axes</span><span class="o">.</span><span class="n">ravel</span><span class="p">()</span>
+
+<span class="c1"># Access using (row, col) tuple</span>
+<span class="n">sections_to_show</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+    <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
+    <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span>
+    <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">11</span><span class="p">),</span>
+    <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">12</span><span class="p">),</span>
+    <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">13</span><span class="p">),</span>
+<span class="p">]</span>
+<span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">section_num</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">sections_to_show</span><span class="p">):</span>
+    <span class="n">section</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">grid</span><span class="p">[</span><span class="n">section_num</span><span class="p">]</span>
+
+    <span class="n">section</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="n">ax</span><span class="o">=</span><span class="n">axes</span><span class="p">[</span><span class="n">idx</span><span class="p">])</span>
+    <span class="n">axes</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Section </span><span class="si">{</span><span class="n">section_num</span><span class="si">}</span><span class="se">\n</span><span class="s2">(Row </span><span class="si">{</span><span class="n">section_num</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2">, Col </span><span class="si">{</span><span class="n">section_num</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+    <span class="n">axes</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span><span class="o">.</span><span class="n">axis</span><span class="p">(</span><span class="s1">&#39;off&#39;</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+<span class="ansi-red-fg">---------------------------------------------------------------------------</span>
+<span class="ansi-red-fg">IndexError</span>                                Traceback (most recent call last)
+<span class="ansi-cyan-fg">Cell</span><span class="ansi-cyan-fg"> </span><span class="ansi-green-fg">In[22]</span><span class="ansi-green-fg">, line 15</span>
+<span class="ansi-green-fg">      6</span> sections_to_show = [
+<span class="ansi-green-fg">      7</span>     (<span class="ansi-green-fg">0</span>, <span class="ansi-green-fg">0</span>),
+<span class="ansi-green-fg">      8</span>     (<span class="ansi-green-fg">0</span>, <span class="ansi-green-fg">1</span>),
+<span class="ansi-green-fg">   (...)</span><span class="ansi-green-fg">     12</span>     (<span class="ansi-green-fg">1</span>, <span class="ansi-green-fg">13</span>),
+<span class="ansi-green-fg">     13</span> ]
+<span class="ansi-green-fg">     14</span> <span class="ansi-bold" style="color: rgb(0,135,0)">for</span> idx, section_num <span class="ansi-bold" style="color: rgb(175,0,255)">in</span> <span style="color: rgb(0,135,0)">enumerate</span>(sections_to_show):
+<span class="ansi-green-fg">---&gt; </span><span class="ansi-green-fg">15</span>     section = <span class="ansi-yellow-bg">image</span><span class="ansi-yellow-bg">.</span><span class="ansi-yellow-bg">grid</span><span class="ansi-yellow-bg">[</span><span class="ansi-yellow-bg">section_num</span><span class="ansi-yellow-bg">]</span>
+<span class="ansi-green-fg">     17</span>     section.show(ax=axes[idx])
+<span class="ansi-green-fg">     18</span>     axes[idx].set_title(<span class="ansi-yellow-fg">f</span><span class="ansi-yellow-fg">&#34;</span><span class="ansi-yellow-fg">Section </span><span class="ansi-bold" style="color: rgb(175,95,135)">{</span>section_num<span class="ansi-bold" style="color: rgb(175,95,135)">}</span><span class="ansi-bold" style="color: rgb(175,95,0)">\n</span><span class="ansi-yellow-fg">(Row </span><span class="ansi-bold" style="color: rgb(175,95,135)">{</span>section_num[<span class="ansi-green-fg">0</span>]<span class="ansi-bold" style="color: rgb(175,95,135)">}</span><span class="ansi-yellow-fg">, Col </span><span class="ansi-bold" style="color: rgb(175,95,135)">{</span>section_num[<span class="ansi-green-fg">1</span>]<span class="ansi-bold" style="color: rgb(175,95,135)">}</span><span class="ansi-yellow-fg">)</span><span class="ansi-yellow-fg">&#34;</span>)
+
+<span class="ansi-cyan-fg">File </span><span class="ansi-green-fg">~/Projects/PhenoTypic/src/phenotypic/core/_image_parts/accessors/_grid_accessor.py:236</span>, in <span class="ansi-cyan-fg">GridAccessor.__getitem__</span><span class="ansi-blue-fg">(self, idx)</span>
+<span class="ansi-green-fg">    234</span>     row_idx, col_idx = idx
+<span class="ansi-green-fg">    235</span>     <span style="color: rgb(95,135,135)"># This will naturally raise IndexError for out-of-range indices</span>
+<span class="ansi-green-fg">--&gt; </span><span class="ansi-green-fg">236</span>     idx = <span style="color: rgb(0,135,0)">int</span>(<span class="ansi-yellow-bg" style="color: rgb(0,135,0)">self</span><span class="ansi-yellow-bg">.</span><span class="ansi-yellow-bg">_idx_ref_matrix</span><span class="ansi-yellow-bg">[</span><span class="ansi-yellow-bg">row_idx</span><span class="ansi-yellow-bg">,</span><span class="ansi-yellow-bg"> </span><span class="ansi-yellow-bg">col_idx</span><span class="ansi-yellow-bg">]</span>)
+<span class="ansi-green-fg">    238</span> <span class="ansi-bold" style="color: rgb(0,135,0)">if</span> <span style="color: rgb(0,135,0)">self</span>._root_image.objects.num_objects != <span class="ansi-green-fg">0</span>:
+<span class="ansi-green-fg">    239</span>     min_coords, max_coords = <span style="color: rgb(0,135,0)">self</span>._adv_get_grid_section_slices(idx)
+
+<span class="ansi-red-fg">IndexError</span>: index 12 is out of bounds for axis 1 with size 12
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../../_images/user_guide_tutorial_notebooks_GridImages_18_1.png" src="../../../_images/user_guide_tutorial_notebooks_GridImages_18_1.png" />
+</div>
+</div>
+</section>
+<section id="Part-6:-Advanced-Grid-Visualization">
+<h2>Part 6: Advanced Grid Visualization<a class="headerlink" href="#Part-6:-Advanced-Grid-Visualization" title="Link to this heading">#</a></h2>
+<p>GridImage provides specialized visualization methods to highlight rows and columns.</p>
+<section id="Visualizing-by-Row">
+<h3>Visualizing by Row<a class="headerlink" href="#Visualizing-by-Row" title="Link to this heading">#</a></h3>
+<p>Color colonies according to which row they belong to:</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[12]:
+</pre></div>
+</div>
+<div class="input_area highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Show colonies colored by row</span>
+<span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">grid</span><span class="o">.</span><span class="n">show_row_overlay</span><span class="p">(</span><span class="n">show_gridlines</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">12</span><span class="p">,</span> <span class="mi">10</span><span class="p">))</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s2">&quot;Colonies Colored by Row&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../../_images/user_guide_tutorial_notebooks_GridImages_21_0.png" src="../../../_images/user_guide_tutorial_notebooks_GridImages_21_0.png" />
+</div>
+</div>
+</section>
+<section id="Visualizing-by-Column">
+<h3>Visualizing by Column<a class="headerlink" href="#Visualizing-by-Column" title="Link to this heading">#</a></h3>
+<p>Color colonies according to which column they belong to:</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[13]:
+</pre></div>
+</div>
+<div class="input_area highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Show colonies colored by column</span>
+<span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">grid</span><span class="o">.</span><span class="n">show_column_overlay</span><span class="p">(</span><span class="n">show_gridlines</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">12</span><span class="p">,</span> <span class="mi">10</span><span class="p">))</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s2">&quot;Colonies Colored by Column&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../../_images/user_guide_tutorial_notebooks_GridImages_23_0.png" src="../../../_images/user_guide_tutorial_notebooks_GridImages_23_0.png" />
+</div>
+</div>
+</section>
+<section id="Accessing-Grid-Edges">
+<h3>Accessing Grid Edges<a class="headerlink" href="#Accessing-Grid-Edges" title="Link to this heading">#</a></h3>
+<p>You can get the exact pixel coordinates where the grid lines are placed:</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[14]:
+</pre></div>
+</div>
+<div class="input_area highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Get row and column edges</span>
+<span class="n">row_edges</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">grid</span><span class="o">.</span><span class="n">get_row_edges</span><span class="p">()</span>
+<span class="n">col_edges</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">grid</span><span class="o">.</span><span class="n">get_col_edges</span><span class="p">()</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Row edges (pixel positions): </span><span class="si">{</span><span class="n">row_edges</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">()</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Column edges (pixel positions): </span><span class="si">{</span><span class="n">col_edges</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">()</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Number of row edges: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">row_edges</span><span class="p">)</span><span class="si">}</span><span class="s2"> (should be nrows + 1 = </span><span class="si">{</span><span class="n">image</span><span class="o">.</span><span class="n">nrows</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Number of column edges: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">col_edges</span><span class="p">)</span><span class="si">}</span><span class="s2"> (should be ncols + 1 = </span><span class="si">{</span><span class="n">image</span><span class="o">.</span><span class="n">ncols</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Row edges (pixel positions): [  10  414  819 1223 1628 2032 2436 2841 3245]
+
+Column edges (pixel positions): [ 165  569  973 1377 1781 2185 2589 2993 3397 3801 4205 4609 5013]
+
+Number of row edges: 9 (should be nrows + 1 = 9)
+Number of column edges: 13 (should be ncols + 1 = 13)
+</pre></div></div>
+</div>
+</section>
+</section>
+<section id="Part-8:-Making-Measurements-with-Grid-Data">
+<h2>Part 8: Making Measurements with Grid Data<a class="headerlink" href="#Part-8:-Making-Measurements-with-Grid-Data" title="Link to this heading">#</a></h2>
+<p>Now let’s measure colony properties. The grid information is automatically included in the measurements!</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[15]:
+</pre></div>
+</div>
+<div class="input_area highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.measure</span><span class="w"> </span><span class="kn">import</span> <span class="n">MeasureSize</span>
+
+<span class="c1"># Create a size measurement module</span>
+<span class="n">size_measurer</span> <span class="o">=</span> <span class="n">MeasureSize</span><span class="p">()</span>
+
+<span class="c1"># Measure all colonies</span>
+<span class="n">measurements</span> <span class="o">=</span> <span class="n">size_measurer</span><span class="o">.</span><span class="n">measure</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">include_meta</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Measured </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">measurements</span><span class="p">)</span><span class="si">}</span><span class="s2"> colonies&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">()</span>
+<span class="n">measurements</span><span class="o">.</span><span class="n">head</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Measured 78 colonies
+
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[15]:
+</pre></div>
+</div>
+<div class="output_area rendered_html docutils container">
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Metadata_BitDepth</th>
+      <th>Metadata_ImageType</th>
+      <th>Metadata_ImageName</th>
+      <th>ObjectLabel</th>
+      <th>Bbox_CenterRR</th>
+      <th>Bbox_CenterCC</th>
+      <th>Bbox_MinRR</th>
+      <th>Bbox_MinCC</th>
+      <th>Bbox_MaxRR</th>
+      <th>Bbox_MaxCC</th>
+      <th>Grid_RowNum</th>
+      <th>Grid_ColNum</th>
+      <th>Grid_SectionNum</th>
+      <th>Size_Area</th>
+      <th>Size_IntegratedIntensity</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>16</td>
+      <td>GridImage</td>
+      <td>6d85b9af-e79b-4acc-ac94-88597c1bef16</td>
+      <td>1</td>
+      <td>203.223483</td>
+      <td>3599.114734</td>
+      <td>133</td>
+      <td>3534</td>
+      <td>277</td>
+      <td>3666</td>
+      <td>0</td>
+      <td>8</td>
+      <td>8</td>
+      <td>14538.0</td>
+      <td>5859.603221</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>16</td>
+      <td>GridImage</td>
+      <td>6d85b9af-e79b-4acc-ac94-88597c1bef16</td>
+      <td>2</td>
+      <td>208.305812</td>
+      <td>2791.626799</td>
+      <td>134</td>
+      <td>2722</td>
+      <td>283</td>
+      <td>2865</td>
+      <td>0</td>
+      <td>6</td>
+      <td>6</td>
+      <td>16605.0</td>
+      <td>7481.397601</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>16</td>
+      <td>GridImage</td>
+      <td>6d85b9af-e79b-4acc-ac94-88597c1bef16</td>
+      <td>3</td>
+      <td>201.547514</td>
+      <td>4404.335588</td>
+      <td>135</td>
+      <td>4345</td>
+      <td>266</td>
+      <td>4467</td>
+      <td>0</td>
+      <td>10</td>
+      <td>10</td>
+      <td>12712.0</td>
+      <td>5459.275299</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>16</td>
+      <td>GridImage</td>
+      <td>6d85b9af-e79b-4acc-ac94-88597c1bef16</td>
+      <td>4</td>
+      <td>205.583136</td>
+      <td>4001.737503</td>
+      <td>138</td>
+      <td>3941</td>
+      <td>274</td>
+      <td>4064</td>
+      <td>0</td>
+      <td>9</td>
+      <td>9</td>
+      <td>12263.0</td>
+      <td>4876.491319</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>16</td>
+      <td>GridImage</td>
+      <td>6d85b9af-e79b-4acc-ac94-88597c1bef16</td>
+      <td>5</td>
+      <td>209.897206</td>
+      <td>2384.582457</td>
+      <td>140</td>
+      <td>2318</td>
+      <td>280</td>
+      <td>2451</td>
+      <td>0</td>
+      <td>5</td>
+      <td>5</td>
+      <td>14923.0</td>
+      <td>6453.527189</td>
+    </tr>
+    <tr>
+      <th>5</th>
+      <td>16</td>
+      <td>GridImage</td>
+      <td>6d85b9af-e79b-4acc-ac94-88597c1bef16</td>
+      <td>6</td>
+      <td>219.215315</td>
+      <td>767.650918</td>
+      <td>147</td>
+      <td>698</td>
+      <td>291</td>
+      <td>838</td>
+      <td>0</td>
+      <td>1</td>
+      <td>1</td>
+      <td>15684.0</td>
+      <td>6666.968775</td>
+    </tr>
+    <tr>
+      <th>6</th>
+      <td>16</td>
+      <td>GridImage</td>
+      <td>6d85b9af-e79b-4acc-ac94-88597c1bef16</td>
+      <td>7</td>
+      <td>209.147074</td>
+      <td>4809.871436</td>
+      <td>148</td>
+      <td>4761</td>
+      <td>268</td>
+      <td>4863</td>
+      <td>0</td>
+      <td>11</td>
+      <td>11</td>
+      <td>9995.0</td>
+      <td>3966.058251</td>
+    </tr>
+    <tr>
+      <th>7</th>
+      <td>16</td>
+      <td>GridImage</td>
+      <td>6d85b9af-e79b-4acc-ac94-88597c1bef16</td>
+      <td>8</td>
+      <td>214.015541</td>
+      <td>1172.998471</td>
+      <td>152</td>
+      <td>1117</td>
+      <td>279</td>
+      <td>1234</td>
+      <td>0</td>
+      <td>2</td>
+      <td>2</td>
+      <td>11775.0</td>
+      <td>4963.391140</td>
+    </tr>
+    <tr>
+      <th>8</th>
+      <td>16</td>
+      <td>GridImage</td>
+      <td>6d85b9af-e79b-4acc-ac94-88597c1bef16</td>
+      <td>9</td>
+      <td>223.262739</td>
+      <td>367.155403</td>
+      <td>161</td>
+      <td>314</td>
+      <td>279</td>
+      <td>424</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>8301.0</td>
+      <td>3091.764911</td>
+    </tr>
+    <tr>
+      <th>9</th>
+      <td>16</td>
+      <td>GridImage</td>
+      <td>6d85b9af-e79b-4acc-ac94-88597c1bef16</td>
+      <td>10</td>
+      <td>614.416882</td>
+      <td>2791.059955</td>
+      <td>539</td>
+      <td>2716</td>
+      <td>689</td>
+      <td>2866</td>
+      <td>1</td>
+      <td>6</td>
+      <td>18</td>
+      <td>17830.0</td>
+      <td>9547.184071</td>
+    </tr>
+  </tbody>
+</table>
+</div></div>
+</div>
+<section id="Understanding-Measurement-Columns">
+<h3>Understanding Measurement Columns<a class="headerlink" href="#Understanding-Measurement-Columns" title="Link to this heading">#</a></h3>
+<p>The measurements include:</p>
+<p><strong>Size Measurements:</strong></p>
+<ul class="simple">
+<li><p><strong>``Shape_Area``</strong>: Colony area in pixels</p></li>
+<li><p><strong>``Shape_EquivalentDiameter``</strong>: Diameter of a circle with the same area</p></li>
+<li><p><strong>``Shape_Perimeter``</strong>: Colony perimeter length</p></li>
+</ul>
+<p><strong>Grid Information</strong> (automatically included!):</p>
+<ul class="simple">
+<li><p><strong>``Grid_RowNum``, ``Grid_ColNum``, ``Grid_SectionNum``</strong>: Position in the grid</p></li>
+</ul>
+<p><strong>Metadata:</strong></p>
+<ul class="simple">
+<li><p><strong>``Metadata_ImageName``</strong>, <strong>``Metadata_ImageType``</strong>: Image information</p></li>
+</ul>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[16]:
+</pre></div>
+</div>
+<div class="input_area highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Analyze measurements by row</span>
+<span class="n">row_summary</span> <span class="o">=</span> <span class="n">measurements</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s1">&#39;Grid_RowNum&#39;</span><span class="p">)[</span><span class="s1">&#39;Size_Area&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">agg</span><span class="p">([</span><span class="s1">&#39;mean&#39;</span><span class="p">,</span> <span class="s1">&#39;std&#39;</span><span class="p">,</span> <span class="s1">&#39;count&#39;</span><span class="p">])</span>
+<span class="n">row_summary</span><span class="o">.</span><span class="n">columns</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;Mean Area&#39;</span><span class="p">,</span> <span class="s1">&#39;Std Area&#39;</span><span class="p">,</span> <span class="s1">&#39;Colony Count&#39;</span><span class="p">]</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Colony Area Summary by Row:&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">()</span>
+<span class="n">row_summary</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Colony Area Summary by Row:
+
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+/var/folders/78/rnctrlmn5kj996kjnq_mmqlh0000gn/T/ipykernel_98842/2810716340.py:2: FutureWarning: The default of observed=False is deprecated and will be changed to True in a future version of pandas. Pass observed=False to retain current behavior or observed=True to adopt the future default and silence this warning.
+  row_summary = measurements.groupby(&#39;Grid_RowNum&#39;)[&#39;Size_Area&#39;].agg([&#39;mean&#39;, &#39;std&#39;, &#39;count&#39;])
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[16]:
+</pre></div>
+</div>
+<div class="output_area rendered_html docutils container">
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Mean Area</th>
+      <th>Std Area</th>
+      <th>Colony Count</th>
+    </tr>
+    <tr>
+      <th>Grid_RowNum</th>
+      <th></th>
+      <th></th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>12977.333333</td>
+      <td>2727.086220</td>
+      <td>9</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>14087.800000</td>
+      <td>1777.789251</td>
+      <td>10</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>15287.500000</td>
+      <td>1942.377652</td>
+      <td>10</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>14422.555556</td>
+      <td>3032.566574</td>
+      <td>9</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>15037.555556</td>
+      <td>2906.213822</td>
+      <td>9</td>
+    </tr>
+    <tr>
+      <th>5</th>
+      <td>14758.900000</td>
+      <td>1228.125894</td>
+      <td>10</td>
+    </tr>
+    <tr>
+      <th>6</th>
+      <td>14557.222222</td>
+      <td>3701.339311</td>
+      <td>9</td>
+    </tr>
+    <tr>
+      <th>7</th>
+      <td>13627.250000</td>
+      <td>4767.139911</td>
+      <td>12</td>
+    </tr>
+  </tbody>
+</table>
+</div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[17]:
+</pre></div>
+</div>
+<div class="input_area highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Visualize area distribution by row</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">12</span><span class="p">,</span> <span class="mi">6</span><span class="p">))</span>
+<span class="n">measurements</span><span class="o">.</span><span class="n">boxplot</span><span class="p">(</span><span class="n">column</span><span class="o">=</span><span class="s1">&#39;Size_Area&#39;</span><span class="p">,</span> <span class="n">by</span><span class="o">=</span><span class="s1">&#39;Grid_RowNum&#39;</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">plt</span><span class="o">.</span><span class="n">gca</span><span class="p">())</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;Row Number&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;Colony Area (pixels)&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s1">&#39;Colony Size Distribution by Row&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">suptitle</span><span class="p">(</span><span class="s1">&#39;&#39;</span><span class="p">)</span>  <span class="c1"># Remove default title</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../../_images/user_guide_tutorial_notebooks_GridImages_30_0.png" src="../../../_images/user_guide_tutorial_notebooks_GridImages_30_0.png" />
+</div>
+</div>
+</section>
+<section id="Exporting-Data-for-Further-Analysis">
+<h3>Exporting Data for Further Analysis<a class="headerlink" href="#Exporting-Data-for-Further-Analysis" title="Link to this heading">#</a></h3>
+<p>You can easily export measurements to CSV for analysis in other programs (Excel, R, etc.)</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[18]:
+</pre></div>
+</div>
+<div class="input_area highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Export to CSV</span>
+<span class="c1"># measurements.to_csv(&#39;colony_measurements_with_grid.csv&#39;)</span>
+
+<span class="c1"># For this tutorial, let&#39;s just show what the export would look like</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Example exported data structure:&quot;</span><span class="p">)</span>
+
+<span class="n">measurements</span><span class="p">[[</span><span class="s1">&#39;Grid_RowNum&#39;</span><span class="p">,</span> <span class="s1">&#39;Grid_ColNum&#39;</span><span class="p">,</span> <span class="s1">&#39;Grid_SectionNum&#39;</span><span class="p">,</span> <span class="s1">&#39;Size_Area&#39;</span><span class="p">]]</span><span class="o">.</span><span class="n">head</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Example exported data structure:
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[18]:
+</pre></div>
+</div>
+<div class="output_area rendered_html docutils container">
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Grid_RowNum</th>
+      <th>Grid_ColNum</th>
+      <th>Grid_SectionNum</th>
+      <th>Size_Area</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>0</td>
+      <td>8</td>
+      <td>8</td>
+      <td>14538.0</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>0</td>
+      <td>6</td>
+      <td>6</td>
+      <td>16605.0</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>0</td>
+      <td>10</td>
+      <td>10</td>
+      <td>12712.0</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>0</td>
+      <td>9</td>
+      <td>9</td>
+      <td>12263.0</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>0</td>
+      <td>5</td>
+      <td>5</td>
+      <td>14923.0</td>
+    </tr>
+  </tbody>
+</table>
+</div></div>
+</div>
+</section>
+</section>
+<section id="Part-9:-Manual-Grid-Control-(Advanced)">
+<h2>Part 9: Manual Grid Control (Advanced)<a class="headerlink" href="#Part-9:-Manual-Grid-Control-(Advanced)" title="Link to this heading">#</a></h2>
+<p>In some cases, automatic grid alignment might not work perfectly. You can manually specify grid edges using <code class="docutils literal notranslate"><span class="pre">ManualGridFinder</span></code>.</p>
+<p>This is useful when:</p>
+<ul class="simple">
+<li><p>Colony detection is poor</p></li>
+<li><p>Grid alignment is consistently off</p></li>
+<li><p>You want precise control over grid placement</p></li>
+</ul>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[19]:
+</pre></div>
+</div>
+<div class="input_area highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.grid</span><span class="w"> </span><span class="kn">import</span> <span class="n">ManualGridFinder</span>
+
+<span class="c1"># Example: Create manual grid edges</span>
+<span class="c1"># You would determine these by looking at your image</span>
+<span class="c1"># Here we&#39;ll use evenly spaced edges as an example</span>
+
+<span class="n">image_height</span><span class="p">,</span> <span class="n">image_width</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">image</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+
+<span class="c1"># Create evenly spaced row edges (9 edges for 8 rows)</span>
+<span class="n">manual_row_edges</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">image_height</span><span class="p">,</span> <span class="n">image</span><span class="o">.</span><span class="n">nrows</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+
+<span class="c1"># Create evenly spaced column edges (13 edges for 12 columns)</span>
+<span class="n">manual_col_edges</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">image_width</span><span class="p">,</span> <span class="n">image</span><span class="o">.</span><span class="n">ncols</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Manual row edges: </span><span class="si">{</span><span class="n">manual_row_edges</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Manual column edges: </span><span class="si">{</span><span class="n">manual_col_edges</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<span class="c1"># Create a manual grid finder</span>
+<span class="n">manual_finder</span> <span class="o">=</span> <span class="n">ManualGridFinder</span><span class="p">(</span><span class="n">row_edges</span><span class="o">=</span><span class="n">manual_row_edges</span><span class="p">,</span> <span class="n">col_edges</span><span class="o">=</span><span class="n">manual_col_edges</span><span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;\Manual grid finder created with </span><span class="si">{</span><span class="n">manual_finder</span><span class="o">.</span><span class="n">nrows</span><span class="si">}</span><span class="s2"> rows and </span><span class="si">{</span><span class="n">manual_finder</span><span class="o">.</span><span class="n">ncols</span><span class="si">}</span><span class="s2"> columns&quot;</span><span class="p">)</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Manual row edges: [   0  410  821 1231 1642 2053 2463 2874 3285]
+Manual column edges: [   0  432  865 1298 1731 2164 2597 3030 3463 3896 4329 4762 5195]
+\Manual grid finder created with 8 rows and 12 columns
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[20]:
+</pre></div>
+</div>
+<div class="input_area highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># To use the manual grid finder, create a new GridImage with it:</span>
+<span class="c1"># manual_image = pht.GridImage(plate_array, grid_finder=manual_finder)</span>
+
+<span class="c1"># For this tutorial, we&#39;ll stick with automatic grid finding</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Note: Manual grid finding is an advanced feature.&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;The automatic AutoGridFinder works well for most cases!&quot;</span><span class="p">)</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Note: Manual grid finding is an advanced feature.
+The automatic AutoGridFinder works well for most cases!
+</pre></div></div>
+</div>
+</section>
+<section id="Part-10:-Alternative-Loading-Method">
+<h2>Part 10: Alternative Loading Method<a class="headerlink" href="#Part-10:-Alternative-Loading-Method" title="Link to this heading">#</a></h2>
+<p>You can also load images directly from files using <code class="docutils literal notranslate"><span class="pre">GridImage.imread()</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Example of loading from a file path:</span>
+<span class="n">image</span> <span class="o">=</span> <span class="n">pht</span><span class="o">.</span><span class="n">GridImage</span><span class="o">.</span><span class="n">imread</span><span class="p">(</span><span class="s1">&#39;path/to/your/plate_image.jpg&#39;</span><span class="p">,</span> <span class="n">nrows</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">ncols</span><span class="o">=</span><span class="mi">12</span><span class="p">)</span>
+
+<span class="c1"># You can also specify other parameters:</span>
+<span class="n">image</span> <span class="o">=</span> <span class="n">pht</span><span class="o">.</span><span class="n">GridImage</span><span class="o">.</span><span class="n">imread</span><span class="p">(</span>
+    <span class="s1">&#39;path/to/plate.jpg&#39;</span><span class="p">,</span>
+    <span class="n">name</span><span class="o">=</span><span class="s1">&#39;my_experiment&#39;</span><span class="p">,</span>
+    <span class="n">nrows</span><span class="o">=</span><span class="mi">16</span><span class="p">,</span>  <span class="c1"># For 384-well plate</span>
+    <span class="n">ncols</span><span class="o">=</span><span class="mi">24</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">GridImage.imread()</span></code> supports common formats: JPEG, PNG, TIFF</p>
+</section>
+<section id="Summary-and-Key-Takeaways">
+<h2>Summary and Key Takeaways<a class="headerlink" href="#Summary-and-Key-Takeaways" title="Link to this heading">#</a></h2>
+<section id="What-We-Learned">
+<h3>What We Learned<a class="headerlink" href="#What-We-Learned" title="Link to this heading">#</a></h3>
+<ol class="arabic simple">
+<li><p><strong>GridImage = Image + Grid Support</strong></p>
+<ul class="simple">
+<li><p>Inherits all regular Image features (rgb, gray, objmap, etc.)</p></li>
+<li><p>Adds grid-specific functionality for arrayed colonies</p></li>
+</ul>
+</li>
+<li><p><strong>Automatic Grid Alignment</strong></p>
+<ul class="simple">
+<li><p>Grid automatically aligns to detected colonies using <code class="docutils literal notranslate"><span class="pre">AutoGridFinder</span></code></p></li>
+<li><p>No manual adjustment needed in most cases</p></li>
+</ul>
+</li>
+<li><p><strong>Grid Information in Measurements</strong></p>
+<ul class="simple">
+<li><p>RowNum, ColNum, and SectionNum automatically included</p></li>
+<li><p>Easy to analyze by position (row, column, or well)</p></li>
+</ul>
+</li>
+<li><p><strong>Flexible Grid Access</strong></p>
+<ul class="simple">
+<li><p>Access entire plate: <code class="docutils literal notranslate"><span class="pre">image</span></code></p></li>
+<li><p>Access grid sections: <code class="docutils literal notranslate"><span class="pre">image.grid[0]</span></code></p></li>
+<li><p>Access individual colonies: <code class="docutils literal notranslate"><span class="pre">image.objects[0]</span></code></p></li>
+</ul>
+</li>
+</ol>
+</section>
+<section id="Typical-Workflow">
+<h3>Typical Workflow<a class="headerlink" href="#Typical-Workflow" title="Link to this heading">#</a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># 1. Load image</span>
+<span class="n">image</span> <span class="o">=</span> <span class="n">pht</span><span class="o">.</span><span class="n">GridImage</span><span class="o">.</span><span class="n">imread</span><span class="p">(</span><span class="s1">&#39;plate.jpg&#39;</span><span class="p">,</span> <span class="n">nrows</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">ncols</span><span class="o">=</span><span class="mi">12</span><span class="p">)</span>
+
+<span class="c1"># 2. Enhance and detect</span>
+<span class="n">image</span> <span class="o">=</span> <span class="n">GaussianBlur</span><span class="p">(</span><span class="n">sigma</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
+<span class="n">image</span> <span class="o">=</span> <span class="n">OtsuDetector</span><span class="p">()</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
+
+<span class="c1"># 3. Visualize</span>
+<span class="n">image</span><span class="o">.</span><span class="n">show_overlay</span><span class="p">(</span><span class="n">show_gridlines</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="c1"># 4. Measure</span>
+<span class="n">measurements</span> <span class="o">=</span> <span class="n">MeasureSize</span><span class="p">()</span><span class="o">.</span><span class="n">measure</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
+
+<span class="c1"># 5. Export</span>
+<span class="n">measurements</span><span class="o">.</span><span class="n">to_csv</span><span class="p">(</span><span class="s1">&#39;results.csv&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="id1">
+<h3>When to Use GridImage<a class="headerlink" href="#id1" title="Link to this heading">#</a></h3>
+<p>✅ <strong>Use GridImage when:</strong></p>
+<ul class="simple">
+<li><p>Colonies are in a regular array (96-well, 384-well, etc.)</p></li>
+<li><p>You need to track position information</p></li>
+<li><p>Analyzing replicate experiments</p></li>
+<li><p>Comparing specific rows/columns/conditions</p></li>
+</ul>
+<p>❌ <strong>Use regular Image when:</strong></p>
+<ul class="simple">
+<li><p>Single colonies or random arrangements</p></li>
+<li><p>Position tracking not needed</p></li>
+<li><p>Non-gridded experiments</p></li>
+</ul>
+</section>
+<section id="Next-Steps">
+<h3>Next Steps<a class="headerlink" href="#Next-Steps" title="Link to this heading">#</a></h3>
+<ul class="simple">
+<li><p>Try with your own plate images</p></li>
+<li><p>Explore other measurement modules (MeasureShape, MeasureIntensity, MeasureColor)</p></li>
+<li><p>Use ImagePipeline for complex workflows</p></li>
+<li><p>Check out the growth curve tutorial for time series analysis</p></li>
+</ul>
+</section>
+</section>
+<section id="Additional-Resources">
+<h2>Additional Resources<a class="headerlink" href="#Additional-Resources" title="Link to this heading">#</a></h2>
+<ul class="simple">
+<li><p><strong>Documentation</strong>: Full API reference in the documentation</p></li>
+<li><p><strong>Other Examples</strong>: Check the <code class="docutils literal notranslate"><span class="pre">examples/</span></code> folder for more notebooks</p></li>
+<li><p><strong>Help</strong>: Open an issue on GitHub for questions or bug reports</p></li>
+</ul>
+<p>Happy analyzing! 🔬</p>
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#Prerequisites">Prerequisites</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#What-Makes-GridImage-Special?">What Makes GridImage Special?</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#When-to-Use-GridImage">When to Use GridImage</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#Setup:-Import-Libraries">Setup: Import Libraries</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#Part-2:-Grid-Specific-Components">Part 2: Grid-Specific Components</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#Grid-Components">Grid Components</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#Part-4:-Accessing-Grid-Information">Part 4: Accessing Grid Information</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#Understanding-Grid-Columns">Understanding Grid Columns</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#Position-Information:">Position Information:</a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#Bounding-Box-Coordinates:">Bounding Box Coordinates:</a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#Metadata:">Metadata:</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#Part-5:-Working-with-Grid-Sections">Part 5: Working with Grid Sections</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#Part-6:-Advanced-Grid-Visualization">Part 6: Advanced Grid Visualization</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#Visualizing-by-Row">Visualizing by Row</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#Visualizing-by-Column">Visualizing by Column</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#Accessing-Grid-Edges">Accessing Grid Edges</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#Part-8:-Making-Measurements-with-Grid-Data">Part 8: Making Measurements with Grid Data</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#Understanding-Measurement-Columns">Understanding Measurement Columns</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#Exporting-Data-for-Further-Analysis">Exporting Data for Further Analysis</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#Part-9:-Manual-Grid-Control-(Advanced)">Part 9: Manual Grid Control (Advanced)</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#Part-10:-Alternative-Loading-Method">Part 10: Alternative Loading Method</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#Summary-and-Key-Takeaways">Summary and Key Takeaways</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#What-We-Learned">What We Learned</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#Typical-Workflow">Typical Workflow</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id1">When to Use GridImage</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#Next-Steps">Next Steps</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#Additional-Resources">Additional Resources</a></li>
+</ul>
+  </nav></div>
+
+  <div class="sidebar-secondary-item">
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../../../_sources/user_guide/tutorial/notebooks/GridImages.ipynb.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, ExFAB BioFoundry.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.1.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

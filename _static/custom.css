@@ -1,0 +1,50 @@
+/* Logo sizing */
+.navbar-brand img {
+    width: auto; /* Allow width to scale proportionally */
+    height: 5rem; /* Reduce height to prevent overlap with menubar. 3.5 is safe */
+    max-height: 5rem !important;
+}
+
+html {
+    --pst-header-height: 5rem;
+}
+
+/* Increase navbar height and adjust padding */
+.navbar-container {
+    padding-top: 1rem;
+    padding-bottom: 1rem;
+}
+
+/* Ensure logo doesn't overlap with navigation items */
+.navbar-nav {
+    margin-left: 1rem; /* Add some space between logo and menu items */
+}
+
+.subtitle {
+    font-size: 1.25em;
+    color: gray;
+    font-weight: 400;
+    margin-bottom: 1em;
+}
+
+/* custom.css */
+
+/* Define custom CSS variables */
+:root {
+    --pst-color-primary: #00AEEF;       /* Primary sky blue */
+    --pst-color-secondary: #0077B6;     /* Secondary deeper blue */
+    --pst-color-link: #219EBC;          /* Link color */
+    --pst-color-text-base: #023047;     /* Base text color */
+    --pst-color-background: #F4FAFD;    /* Background color */
+    --pst-color-surface: #90E0EF;       /* Accent/Surface color */
+    --pst-color-on-primary: #FFFFFF;    /* Contrast text for primary areas */
+  }
+  
+  /* Example: Customize header and sidebar */
+  .bd-header {
+    background-color: var(--pst-color-primary);
+  }
+  
+  .bd-sidebar {
+    background-color: var(--pst-color-surface);
+  }

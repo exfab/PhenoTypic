@@ -1,0 +1,777 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>phenotypic.tools.constants_.GRID_LINREG_STATS_EXTRACTOR &#8212; PhenoTypic</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=800a184d" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../../_static/documentation_options.js?v=b3db6a4d"></script>
+    <script src="../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="../../_static/design-tabs.js?v=f930bc37"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'api_reference/api/phenotypic.tools.constants_.GRID_LINREG_STATS_EXTRACTOR';</script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="phenotypic.tools.constants_.IMAGE_MODE" href="phenotypic.tools.constants_.IMAGE_MODE.html" />
+    <link rel="prev" title="phenotypic.tools.constants_.GRID" href="phenotypic.tools.constants_.GRID.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.11.1" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+     
+  
+
+<a class="navbar-brand logo" href="../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../_static/gradient_logo_exfab.svg" class="logo__image only-light" alt="PhenoTypic"/>
+    <img src="../../_static/gradient_logo_exfab.svg" class="logo__image only-dark pst-js-only" alt="PhenoTypic"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../user_guide/index.html">
+    User Guide
+  </a>
+</li>
+
+
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="../index.html">
+    API Reference
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../contrib_guide/index.html">
+    Developer Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../downloadables.html">
+    Downloads
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/Wheeldon-Lab/PhenoScope#" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../user_guide/index.html">
+    User Guide
+  </a>
+</li>
+
+
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="../index.html">
+    API Reference
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../contrib_guide/index.html">
+    Developer Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../downloadables.html">
+    Downloads
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/Wheeldon-Lab/PhenoScope#" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">Image</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="phenotypic.Image.html">phenotypic.Image</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="phenotypic.Image.rgb.html">phenotypic.Image.rgb</a></li>
+
+<li class="toctree-l1"><a class="reference internal" href="phenotypic.Image.gray.html">phenotypic.Image.gray</a></li>
+
+<li class="toctree-l1"><a class="reference internal" href="phenotypic.Image.enh_gray.html">phenotypic.Image.enh_gray</a></li>
+
+<li class="toctree-l1"><a class="reference internal" href="phenotypic.Image.objmask.html">phenotypic.Image.objmask</a></li>
+
+<li class="toctree-l1"><a class="reference internal" href="phenotypic.Image.objmap.html">phenotypic.Image.objmap</a></li>
+
+<li class="toctree-l1"><a class="reference internal" href="phenotypic.Image.objects.html">phenotypic.Image.objects</a></li>
+
+<li class="toctree-l1"><a class="reference internal" href="phenotypic.Image.color.html">phenotypic.Image.color</a></li>
+
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">GridImage</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="phenotypic.GridImage.html">phenotypic.GridImage</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="phenotypic.GridImage.grid.html">phenotypic.GridImage.grid</a></li>
+
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Modules</span></p>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1 has-children"><a class="reference internal" href="phenotypic.abc_.html">phenotypic.abc_</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.MeasureFeatures.html">phenotypic.abc_.MeasureFeatures</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.ImageOperation.html">phenotypic.abc_.ImageOperation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.ImageEnhancer.html">phenotypic.abc_.ImageEnhancer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.ImageCorrector.html">phenotypic.abc_.ImageCorrector</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.ObjectDetector.html">phenotypic.abc_.ObjectDetector</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.ObjectRefiner.html">phenotypic.abc_.ObjectRefiner</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.ThresholdDetector.html">phenotypic.abc_.ThresholdDetector</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.GridOperation.html">phenotypic.abc_.GridOperation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.GridFinder.html">phenotypic.abc_.GridFinder</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.GridCorrector.html">phenotypic.abc_.GridCorrector</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.GridRefiner.html">phenotypic.abc_.GridRefiner</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.GridMeasureFeatures.html">phenotypic.abc_.GridMeasureFeatures</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.BaseOperation.html">phenotypic.abc_.BaseOperation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.MeasurementInfo.html">phenotypic.abc_.MeasurementInfo</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.GridObjectDetector.html">phenotypic.abc_.GridObjectDetector</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.PrefabPipeline.html">phenotypic.abc_.PrefabPipeline</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="phenotypic.analysis.html">phenotypic.analysis</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.EdgeCorrector.html">phenotypic.analysis.EdgeCorrector</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.LogGrowthModel.html">phenotypic.analysis.LogGrowthModel</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.TukeyOutlierRemover.html">phenotypic.analysis.TukeyOutlierRemover</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="phenotypic.correction.html">phenotypic.correction</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.correction.GridAligner.html">phenotypic.correction.GridAligner</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="phenotypic.data.html">phenotypic.data</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.data.load_synthetic_colony.html">phenotypic.data.load_synthetic_colony</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.data.make_synthetic_colony.html">phenotypic.data.make_synthetic_colony</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.data.make_synthetic_plate.html">phenotypic.data.make_synthetic_plate</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.data.load_plate_12hr.html">phenotypic.data.load_plate_12hr</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.data.load_plate_72hr.html">phenotypic.data.load_plate_72hr</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.data.load_plate_series.html">phenotypic.data.load_plate_series</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.data.load_early_colony.html">phenotypic.data.load_early_colony</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.data.load_faint_early_colony.html">phenotypic.data.load_faint_early_colony</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.data.load_colony.html">phenotypic.data.load_colony</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.data.load_smear_plate_12hr.html">phenotypic.data.load_smear_plate_12hr</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.data.load_smear_plate_24hr.html">phenotypic.data.load_smear_plate_24hr</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="phenotypic.detect.html">phenotypic.detect</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.detect.CannyDetector.html">phenotypic.detect.CannyDetector</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.detect.GitterDetector.html">phenotypic.detect.GitterDetector</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.detect.IsodataDetector.html">phenotypic.detect.IsodataDetector</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.detect.LiDetector.html">phenotypic.detect.LiDetector</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.detect.MeanDetector.html">phenotypic.detect.MeanDetector</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.detect.MinimumDetector.html">phenotypic.detect.MinimumDetector</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.detect.OtsuDetector.html">phenotypic.detect.OtsuDetector</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.detect.TriangleDetector.html">phenotypic.detect.TriangleDetector</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.detect.WatershedDetector.html">phenotypic.detect.WatershedDetector</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.detect.YenDetector.html">phenotypic.detect.YenDetector</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="phenotypic.enhance.html">phenotypic.enhance</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.CLAHE.html">phenotypic.enhance.CLAHE</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.GaussianBlur.html">phenotypic.enhance.GaussianBlur</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.MedianFilter.html">phenotypic.enhance.MedianFilter</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.RankMedianEnhancer.html">phenotypic.enhance.RankMedianEnhancer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.RollingBallRemoveBG.html">phenotypic.enhance.RollingBallRemoveBG</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.GaussianSubtract.html">phenotypic.enhance.GaussianSubtract</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.WhiteTophatEnhancer.html">phenotypic.enhance.WhiteTophatEnhancer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.LaplaceEnhancer.html">phenotypic.enhance.LaplaceEnhancer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.ContrastStretching.html">phenotypic.enhance.ContrastStretching</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.SobelFilter.html">phenotypic.enhance.SobelFilter</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.BM3DDenoiser.html">phenotypic.enhance.BM3DDenoiser</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="phenotypic.grid.html">phenotypic.grid</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.grid.AutoGridFinder.html">phenotypic.grid.AutoGridFinder</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.grid.ManualGridFinder.html">phenotypic.grid.ManualGridFinder</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="phenotypic.measure.html">phenotypic.measure</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.measure.MeasureBounds.html">phenotypic.measure.MeasureBounds</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.measure.MeasureColor.html">phenotypic.measure.MeasureColor</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.measure.MeasureColorComposition.html">phenotypic.measure.MeasureColorComposition</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.measure.MeasureIntensity.html">phenotypic.measure.MeasureIntensity</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.measure.MeasureShape.html">phenotypic.measure.MeasureShape</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.measure.MeasureSize.html">phenotypic.measure.MeasureSize</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.measure.MeasureTexture.html">phenotypic.measure.MeasureTexture</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.measure.MeasureGridSpread.html">phenotypic.measure.MeasureGridSpread</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.measure.MeasureGridLinRegStats.html">phenotypic.measure.MeasureGridLinRegStats</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="phenotypic.prefab.html">phenotypic.prefab</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.prefab.HeavyWatershedPipeline.html">phenotypic.prefab.HeavyWatershedPipeline</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.prefab.HeavyOtsuPipeline.html">phenotypic.prefab.HeavyOtsuPipeline</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.prefab.GridSectionPipeline.html">phenotypic.prefab.GridSectionPipeline</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.prefab.HeavyGitterPipeline.html">phenotypic.prefab.HeavyGitterPipeline</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="phenotypic.refine.html">phenotypic.refine</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.LowCircularityRemover.html">phenotypic.refine.LowCircularityRemover</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.SmallObjectRemover.html">phenotypic.refine.SmallObjectRemover</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.BorderObjectRemover.html">phenotypic.refine.BorderObjectRemover</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.CenterDeviationReducer.html">phenotypic.refine.CenterDeviationReducer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.MaskFill.html">phenotypic.refine.MaskFill</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.MaskOpener.html">phenotypic.refine.MaskOpener</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.WhiteTophatModifier.html">phenotypic.refine.WhiteTophatModifier</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.GridOversizedObjectRemover.html">phenotypic.refine.GridOversizedObjectRemover</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.MinResidualErrorReducer.html">phenotypic.refine.MinResidualErrorReducer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.ResidualOutlierRemover.html">phenotypic.refine.ResidualOutlierRemover</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 current active has-children"><a class="reference internal" href="phenotypic.tools.html">phenotypic.tools</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tools.timed_execution.html">phenotypic.tools.timed_execution</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tools.is_binary_mask.html">phenotypic.tools.is_binary_mask</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tools.HDF.html">phenotypic.tools.HDF</a></li>
+<li class="toctree-l2 current active has-children"><a class="reference internal" href="phenotypic.tools.constants_.html">phenotypic.tools.constants_</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.constants_.BBOX.html">phenotypic.tools.constants_.BBOX</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.constants_.GRID.html">phenotypic.tools.constants_.GRID</a></li>
+<li class="toctree-l3 current active"><a class="current reference internal" href="#">phenotypic.tools.constants_.GRID_LINREG_STATS_EXTRACTOR</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.constants_.IMAGE_MODE.html">phenotypic.tools.constants_.IMAGE_MODE</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.constants_.IMAGE_TYPES.html">phenotypic.tools.constants_.IMAGE_TYPES</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.constants_.IO.html">phenotypic.tools.constants_.IO</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.constants_.METADATA.html">phenotypic.tools.constants_.METADATA</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.constants_.MPL.html">phenotypic.tools.constants_.MPL</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.constants_.OBJECT.html">phenotypic.tools.constants_.OBJECT</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.constants_.PIPE_STATUS.html">phenotypic.tools.constants_.PIPE_STATUS</a></li>
+</ul>
+</details></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="phenotypic.tools.exceptions_.html">phenotypic.tools.exceptions_</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.exceptions_.ArrayKeyValueShapeMismatchError.html">phenotypic.tools.exceptions_.ArrayKeyValueShapeMismatchError</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.exceptions_.DataIntegrityError.html">phenotypic.tools.exceptions_.DataIntegrityError</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.exceptions_.EmptyImageError.html">phenotypic.tools.exceptions_.EmptyImageError</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.exceptions_.GridImageInputError.html">phenotypic.tools.exceptions_.GridImageInputError</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.exceptions_.IllegalAssignmentError.html">phenotypic.tools.exceptions_.IllegalAssignmentError</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.exceptions_.IllegalElementAssignmentError.html">phenotypic.tools.exceptions_.IllegalElementAssignmentError</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.exceptions_.ImageOperationError.html">phenotypic.tools.exceptions_.ImageOperationError</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.exceptions_.ImmutableComponentError.html">phenotypic.tools.exceptions_.ImmutableComponentError</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.exceptions_.InputShapeMismatchError.html">phenotypic.tools.exceptions_.InputShapeMismatchError</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.exceptions_.InterfaceError.html">phenotypic.tools.exceptions_.InterfaceError</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.exceptions_.InvalidHsvSchemaError.html">phenotypic.tools.exceptions_.InvalidHsvSchemaError</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.exceptions_.InvalidMapValueError.html">phenotypic.tools.exceptions_.InvalidMapValueError</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.exceptions_.InvalidMaskScalarValueError.html">phenotypic.tools.exceptions_.InvalidMaskScalarValueError</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.exceptions_.InvalidMaskValueError.html">phenotypic.tools.exceptions_.InvalidMaskValueError</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.exceptions_.InvalidShapeError.html">phenotypic.tools.exceptions_.InvalidShapeError</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.exceptions_.MetadataKeySpacesError.html">phenotypic.tools.exceptions_.MetadataKeySpacesError</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.exceptions_.MetadataKeyValueError.html">phenotypic.tools.exceptions_.MetadataKeyValueError</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.exceptions_.MetadataValueNonScalarError.html">phenotypic.tools.exceptions_.MetadataValueNonScalarError</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.exceptions_.NoArrayError.html">phenotypic.tools.exceptions_.NoArrayError</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.exceptions_.NoComponentError.html">phenotypic.tools.exceptions_.NoComponentError</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.exceptions_.NoImageDataError.html">phenotypic.tools.exceptions_.NoImageDataError</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.exceptions_.NoObjectsError.html">phenotypic.tools.exceptions_.NoObjectsError</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.exceptions_.NoOutputError.html">phenotypic.tools.exceptions_.NoOutputError</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.exceptions_.ObjectNotFoundError.html">phenotypic.tools.exceptions_.ObjectNotFoundError</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.exceptions_.OperationFailedError.html">phenotypic.tools.exceptions_.OperationFailedError</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.exceptions_.OperationIntegrityError.html">phenotypic.tools.exceptions_.OperationIntegrityError</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.exceptions_.OutputValueError.html">phenotypic.tools.exceptions_.OutputValueError</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.exceptions_.PhenoTypicError.html">phenotypic.tools.exceptions_.PhenoTypicError</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.exceptions_.UUIDReassignmentError.html">phenotypic.tools.exceptions_.UUIDReassignmentError</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.exceptions_.UnknownError.html">phenotypic.tools.exceptions_.UnknownError</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.exceptions_.UnsupportedFileTypeError.html">phenotypic.tools.exceptions_.UnsupportedFileTypeError</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.exceptions_.UnsupportedImageFormat.html">phenotypic.tools.exceptions_.UnsupportedImageFormat</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.exceptions_.UuidAssignmentError.html">phenotypic.tools.exceptions_.UuidAssignmentError</a></li>
+</ul>
+</details></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tools.colourspaces_.html">phenotypic.tools.colourspaces_</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="phenotypic.util.html">phenotypic.util</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.util.GridApply.html">phenotypic.util.GridApply</a></li>
+</ul>
+</details></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../index.html" class="nav-link">API Reference</a></li>
+    
+    
+    <li class="breadcrumb-item"><a href="phenotypic.tools.html" class="nav-link">phenotypic.tools</a></li>
+    
+    
+    <li class="breadcrumb-item"><a href="phenotypic.tools.constants_.html" class="nav-link">phenotypic.tools.constants_</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">phenotypic.tools.constants_.GRID_LINREG_STATS_EXTRACTOR</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="phenotypic-tools-constants-grid-linreg-stats-extractor">
+<h1>phenotypic.tools.constants_.GRID_LINREG_STATS_EXTRACTOR<a class="headerlink" href="#phenotypic-tools-constants-grid-linreg-stats-extractor" title="Link to this heading">#</a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="phenotypic.tools.constants_.GRID_LINREG_STATS_EXTRACTOR">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.tools.constants_.</span></span><span class="sig-name descname"><span class="pre">GRID_LINREG_STATS_EXTRACTOR</span></span><a class="reference internal" href="../../_modules/phenotypic/tools/constants_.html#GRID_LINREG_STATS_EXTRACTOR"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tools.constants_.GRID_LINREG_STATS_EXTRACTOR" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Constants for grid linear regression statistics extractor.</p>
+<p class="rubric">Methods</p>
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table autosummary">
+<tbody>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">__init__</span></code></p></td>
+<td><p></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p class="rubric">Attributes</p>
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table autosummary">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.tools.constants_.html#phenotypic.tools.constants_.GRID_LINREG_STATS_EXTRACTOR.COL_LINREG_B" title="phenotypic.tools.constants_.GRID_LINREG_STATS_EXTRACTOR.COL_LINREG_B"><code class="xref py py-obj docutils literal notranslate"><span class="pre">COL_LINREG_B</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.tools.constants_.html#phenotypic.tools.constants_.GRID_LINREG_STATS_EXTRACTOR.COL_LINREG_M" title="phenotypic.tools.constants_.GRID_LINREG_STATS_EXTRACTOR.COL_LINREG_M"><code class="xref py py-obj docutils literal notranslate"><span class="pre">COL_LINREG_M</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.tools.constants_.html#phenotypic.tools.constants_.GRID_LINREG_STATS_EXTRACTOR.PRED_CC" title="phenotypic.tools.constants_.GRID_LINREG_STATS_EXTRACTOR.PRED_CC"><code class="xref py py-obj docutils literal notranslate"><span class="pre">PRED_CC</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.tools.constants_.html#phenotypic.tools.constants_.GRID_LINREG_STATS_EXTRACTOR.PRED_RR" title="phenotypic.tools.constants_.GRID_LINREG_STATS_EXTRACTOR.PRED_RR"><code class="xref py py-obj docutils literal notranslate"><span class="pre">PRED_RR</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.tools.constants_.html#phenotypic.tools.constants_.GRID_LINREG_STATS_EXTRACTOR.RESIDUAL_ERR" title="phenotypic.tools.constants_.GRID_LINREG_STATS_EXTRACTOR.RESIDUAL_ERR"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RESIDUAL_ERR</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.tools.constants_.html#phenotypic.tools.constants_.GRID_LINREG_STATS_EXTRACTOR.ROW_LINREG_B" title="phenotypic.tools.constants_.GRID_LINREG_STATS_EXTRACTOR.ROW_LINREG_B"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ROW_LINREG_B</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.tools.constants_.html#phenotypic.tools.constants_.GRID_LINREG_STATS_EXTRACTOR.ROW_LINREG_M" title="phenotypic.tools.constants_.GRID_LINREG_STATS_EXTRACTOR.ROW_LINREG_M"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ROW_LINREG_M</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="phenotypic.tools.constants_.GRID_LINREG_STATS_EXTRACTOR.ROW_LINREG_M">
+<span class="sig-name descname"><span class="pre">ROW_LINREG_M</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'RowLinReg_M'</span></em><a class="headerlink" href="#phenotypic.tools.constants_.GRID_LINREG_STATS_EXTRACTOR.ROW_LINREG_M" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="phenotypic.tools.constants_.GRID_LINREG_STATS_EXTRACTOR.ROW_LINREG_B">
+<span class="sig-name descname"><span class="pre">ROW_LINREG_B</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'RowLinReg_B'</span></em><a class="headerlink" href="#phenotypic.tools.constants_.GRID_LINREG_STATS_EXTRACTOR.ROW_LINREG_B" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="phenotypic.tools.constants_.GRID_LINREG_STATS_EXTRACTOR.COL_LINREG_M">
+<span class="sig-name descname"><span class="pre">COL_LINREG_M</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'ColLinReg_M'</span></em><a class="headerlink" href="#phenotypic.tools.constants_.GRID_LINREG_STATS_EXTRACTOR.COL_LINREG_M" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="phenotypic.tools.constants_.GRID_LINREG_STATS_EXTRACTOR.COL_LINREG_B">
+<span class="sig-name descname"><span class="pre">COL_LINREG_B</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'ColLinReg_B'</span></em><a class="headerlink" href="#phenotypic.tools.constants_.GRID_LINREG_STATS_EXTRACTOR.COL_LINREG_B" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="phenotypic.tools.constants_.GRID_LINREG_STATS_EXTRACTOR.PRED_RR">
+<span class="sig-name descname"><span class="pre">PRED_RR</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'RowLinReg_PredRR'</span></em><a class="headerlink" href="#phenotypic.tools.constants_.GRID_LINREG_STATS_EXTRACTOR.PRED_RR" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="phenotypic.tools.constants_.GRID_LINREG_STATS_EXTRACTOR.PRED_CC">
+<span class="sig-name descname"><span class="pre">PRED_CC</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'ColLinReg_PredCC'</span></em><a class="headerlink" href="#phenotypic.tools.constants_.GRID_LINREG_STATS_EXTRACTOR.PRED_CC" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="phenotypic.tools.constants_.GRID_LINREG_STATS_EXTRACTOR.RESIDUAL_ERR">
+<span class="sig-name descname"><span class="pre">RESIDUAL_ERR</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'LinReg_ResidualError'</span></em><a class="headerlink" href="#phenotypic.tools.constants_.GRID_LINREG_STATS_EXTRACTOR.RESIDUAL_ERR" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools.constants_.GRID_LINREG_STATS_EXTRACTOR"><code class="docutils literal notranslate"><span class="pre">GRID_LINREG_STATS_EXTRACTOR</span></code></a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools.constants_.GRID_LINREG_STATS_EXTRACTOR.ROW_LINREG_M"><code class="docutils literal notranslate"><span class="pre">GRID_LINREG_STATS_EXTRACTOR.ROW_LINREG_M</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools.constants_.GRID_LINREG_STATS_EXTRACTOR.ROW_LINREG_B"><code class="docutils literal notranslate"><span class="pre">GRID_LINREG_STATS_EXTRACTOR.ROW_LINREG_B</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools.constants_.GRID_LINREG_STATS_EXTRACTOR.COL_LINREG_M"><code class="docutils literal notranslate"><span class="pre">GRID_LINREG_STATS_EXTRACTOR.COL_LINREG_M</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools.constants_.GRID_LINREG_STATS_EXTRACTOR.COL_LINREG_B"><code class="docutils literal notranslate"><span class="pre">GRID_LINREG_STATS_EXTRACTOR.COL_LINREG_B</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools.constants_.GRID_LINREG_STATS_EXTRACTOR.PRED_RR"><code class="docutils literal notranslate"><span class="pre">GRID_LINREG_STATS_EXTRACTOR.PRED_RR</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools.constants_.GRID_LINREG_STATS_EXTRACTOR.PRED_CC"><code class="docutils literal notranslate"><span class="pre">GRID_LINREG_STATS_EXTRACTOR.PRED_CC</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools.constants_.GRID_LINREG_STATS_EXTRACTOR.RESIDUAL_ERR"><code class="docutils literal notranslate"><span class="pre">GRID_LINREG_STATS_EXTRACTOR.RESIDUAL_ERR</span></code></a></li>
+</ul>
+</li>
+</ul>
+  </nav></div>
+
+  <div class="sidebar-secondary-item">
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../../_sources/api_reference/api/phenotypic.tools.constants_.GRID_LINREG_STATS_EXTRACTOR.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, ExFAB BioFoundry.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.1.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

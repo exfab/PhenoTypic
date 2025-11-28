@@ -1,0 +1,89 @@
+phenotypic.tools.constants\_.GRID
+=================================
+
+.. currentmodule:: phenotypic.tools.constants_
+
+.. autoclass:: GRID
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~GRID.category
+      ~GRID.get_labels
+      ~GRID.get_headers
+      ~GRID.rst_table
+      ~GRID.append_rst_to_doc
+      ~GRID.encode
+      ~GRID.replace
+      ~GRID.split
+      ~GRID.rsplit
+      ~GRID.join
+      ~GRID.capitalize
+      ~GRID.casefold
+      ~GRID.title
+      ~GRID.center
+      ~GRID.count
+      ~GRID.expandtabs
+      ~GRID.find
+      ~GRID.partition
+      ~GRID.index
+      ~GRID.ljust
+      ~GRID.lower
+      ~GRID.lstrip
+      ~GRID.rfind
+      ~GRID.rindex
+      ~GRID.rjust
+      ~GRID.rstrip
+      ~GRID.rpartition
+      ~GRID.splitlines
+      ~GRID.strip
+      ~GRID.swapcase
+      ~GRID.translate
+      ~GRID.upper
+      ~GRID.startswith
+      ~GRID.endswith
+      ~GRID.removeprefix
+      ~GRID.removesuffix
+      ~GRID.isascii
+      ~GRID.islower
+      ~GRID.isupper
+      ~GRID.istitle
+      ~GRID.isspace
+      ~GRID.isdecimal
+      ~GRID.isdigit
+      ~GRID.isnumeric
+      ~GRID.isalpha
+      ~GRID.isalnum
+      ~GRID.isidentifier
+      ~GRID.isprintable
+      ~GRID.zfill
+      ~GRID.format
+      ~GRID.format_map
+      ~GRID.maketrans
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~GRID.CATEGORY
+      ~GRID.ROW_NUM
+      ~GRID.ROW_INTERVAL_START
+      ~GRID.ROW_INTERVAL_END
+      ~GRID.COL_NUM
+      ~GRID.COL_INTERVAL_START
+      ~GRID.COL_INTERVAL_END
+      ~GRID.SECTION_NUM
+   
+   

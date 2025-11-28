@@ -1,0 +1,1782 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>phenotypic.Image &#8212; PhenoTypic</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=800a184d" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../../_static/documentation_options.js?v=b3db6a4d"></script>
+    <script src="../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="../../_static/design-tabs.js?v=f930bc37"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'api_reference/api/phenotypic.Image';</script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="phenotypic.Image.rgb" href="phenotypic.Image.rgb.html" />
+    <link rel="prev" title="API Reference" href="../index.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.11.1" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+     
+  
+
+<a class="navbar-brand logo" href="../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../_static/gradient_logo_exfab.svg" class="logo__image only-light" alt="PhenoTypic"/>
+    <img src="../../_static/gradient_logo_exfab.svg" class="logo__image only-dark pst-js-only" alt="PhenoTypic"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../user_guide/index.html">
+    User Guide
+  </a>
+</li>
+
+
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="../index.html">
+    API Reference
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../contrib_guide/index.html">
+    Developer Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../downloadables.html">
+    Downloads
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/Wheeldon-Lab/PhenoScope#" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../user_guide/index.html">
+    User Guide
+  </a>
+</li>
+
+
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="../index.html">
+    API Reference
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../contrib_guide/index.html">
+    Developer Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../downloadables.html">
+    Downloads
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/Wheeldon-Lab/PhenoScope#" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">Image</span></p>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">phenotypic.Image</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="phenotypic.Image.rgb.html">phenotypic.Image.rgb</a></li>
+
+<li class="toctree-l1"><a class="reference internal" href="phenotypic.Image.gray.html">phenotypic.Image.gray</a></li>
+
+<li class="toctree-l1"><a class="reference internal" href="phenotypic.Image.enh_gray.html">phenotypic.Image.enh_gray</a></li>
+
+<li class="toctree-l1"><a class="reference internal" href="phenotypic.Image.objmask.html">phenotypic.Image.objmask</a></li>
+
+<li class="toctree-l1"><a class="reference internal" href="phenotypic.Image.objmap.html">phenotypic.Image.objmap</a></li>
+
+<li class="toctree-l1"><a class="reference internal" href="phenotypic.Image.objects.html">phenotypic.Image.objects</a></li>
+
+<li class="toctree-l1"><a class="reference internal" href="phenotypic.Image.color.html">phenotypic.Image.color</a></li>
+
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">GridImage</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="phenotypic.GridImage.html">phenotypic.GridImage</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="phenotypic.GridImage.grid.html">phenotypic.GridImage.grid</a></li>
+
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Modules</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1 has-children"><a class="reference internal" href="phenotypic.abc_.html">phenotypic.abc_</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.MeasureFeatures.html">phenotypic.abc_.MeasureFeatures</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.ImageOperation.html">phenotypic.abc_.ImageOperation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.ImageEnhancer.html">phenotypic.abc_.ImageEnhancer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.ImageCorrector.html">phenotypic.abc_.ImageCorrector</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.ObjectDetector.html">phenotypic.abc_.ObjectDetector</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.ObjectRefiner.html">phenotypic.abc_.ObjectRefiner</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.ThresholdDetector.html">phenotypic.abc_.ThresholdDetector</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.GridOperation.html">phenotypic.abc_.GridOperation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.GridFinder.html">phenotypic.abc_.GridFinder</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.GridCorrector.html">phenotypic.abc_.GridCorrector</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.GridRefiner.html">phenotypic.abc_.GridRefiner</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.GridMeasureFeatures.html">phenotypic.abc_.GridMeasureFeatures</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.BaseOperation.html">phenotypic.abc_.BaseOperation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.MeasurementInfo.html">phenotypic.abc_.MeasurementInfo</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.GridObjectDetector.html">phenotypic.abc_.GridObjectDetector</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.PrefabPipeline.html">phenotypic.abc_.PrefabPipeline</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="phenotypic.analysis.html">phenotypic.analysis</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.EdgeCorrector.html">phenotypic.analysis.EdgeCorrector</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.LogGrowthModel.html">phenotypic.analysis.LogGrowthModel</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.TukeyOutlierRemover.html">phenotypic.analysis.TukeyOutlierRemover</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="phenotypic.correction.html">phenotypic.correction</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.correction.GridAligner.html">phenotypic.correction.GridAligner</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="phenotypic.data.html">phenotypic.data</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.data.load_synthetic_colony.html">phenotypic.data.load_synthetic_colony</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.data.make_synthetic_colony.html">phenotypic.data.make_synthetic_colony</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.data.make_synthetic_plate.html">phenotypic.data.make_synthetic_plate</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.data.load_plate_12hr.html">phenotypic.data.load_plate_12hr</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.data.load_plate_72hr.html">phenotypic.data.load_plate_72hr</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.data.load_plate_series.html">phenotypic.data.load_plate_series</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.data.load_early_colony.html">phenotypic.data.load_early_colony</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.data.load_faint_early_colony.html">phenotypic.data.load_faint_early_colony</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.data.load_colony.html">phenotypic.data.load_colony</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.data.load_smear_plate_12hr.html">phenotypic.data.load_smear_plate_12hr</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.data.load_smear_plate_24hr.html">phenotypic.data.load_smear_plate_24hr</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="phenotypic.detect.html">phenotypic.detect</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.detect.CannyDetector.html">phenotypic.detect.CannyDetector</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.detect.GitterDetector.html">phenotypic.detect.GitterDetector</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.detect.IsodataDetector.html">phenotypic.detect.IsodataDetector</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.detect.LiDetector.html">phenotypic.detect.LiDetector</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.detect.MeanDetector.html">phenotypic.detect.MeanDetector</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.detect.MinimumDetector.html">phenotypic.detect.MinimumDetector</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.detect.OtsuDetector.html">phenotypic.detect.OtsuDetector</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.detect.TriangleDetector.html">phenotypic.detect.TriangleDetector</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.detect.WatershedDetector.html">phenotypic.detect.WatershedDetector</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.detect.YenDetector.html">phenotypic.detect.YenDetector</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="phenotypic.enhance.html">phenotypic.enhance</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.CLAHE.html">phenotypic.enhance.CLAHE</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.GaussianBlur.html">phenotypic.enhance.GaussianBlur</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.MedianFilter.html">phenotypic.enhance.MedianFilter</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.RankMedianEnhancer.html">phenotypic.enhance.RankMedianEnhancer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.RollingBallRemoveBG.html">phenotypic.enhance.RollingBallRemoveBG</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.GaussianSubtract.html">phenotypic.enhance.GaussianSubtract</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.WhiteTophatEnhancer.html">phenotypic.enhance.WhiteTophatEnhancer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.LaplaceEnhancer.html">phenotypic.enhance.LaplaceEnhancer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.ContrastStretching.html">phenotypic.enhance.ContrastStretching</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.SobelFilter.html">phenotypic.enhance.SobelFilter</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.BM3DDenoiser.html">phenotypic.enhance.BM3DDenoiser</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="phenotypic.grid.html">phenotypic.grid</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.grid.AutoGridFinder.html">phenotypic.grid.AutoGridFinder</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.grid.ManualGridFinder.html">phenotypic.grid.ManualGridFinder</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="phenotypic.measure.html">phenotypic.measure</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.measure.MeasureBounds.html">phenotypic.measure.MeasureBounds</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.measure.MeasureColor.html">phenotypic.measure.MeasureColor</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.measure.MeasureColorComposition.html">phenotypic.measure.MeasureColorComposition</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.measure.MeasureIntensity.html">phenotypic.measure.MeasureIntensity</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.measure.MeasureShape.html">phenotypic.measure.MeasureShape</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.measure.MeasureSize.html">phenotypic.measure.MeasureSize</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.measure.MeasureTexture.html">phenotypic.measure.MeasureTexture</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.measure.MeasureGridSpread.html">phenotypic.measure.MeasureGridSpread</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.measure.MeasureGridLinRegStats.html">phenotypic.measure.MeasureGridLinRegStats</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="phenotypic.prefab.html">phenotypic.prefab</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.prefab.HeavyWatershedPipeline.html">phenotypic.prefab.HeavyWatershedPipeline</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.prefab.HeavyOtsuPipeline.html">phenotypic.prefab.HeavyOtsuPipeline</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.prefab.GridSectionPipeline.html">phenotypic.prefab.GridSectionPipeline</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.prefab.HeavyGitterPipeline.html">phenotypic.prefab.HeavyGitterPipeline</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="phenotypic.refine.html">phenotypic.refine</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.LowCircularityRemover.html">phenotypic.refine.LowCircularityRemover</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.SmallObjectRemover.html">phenotypic.refine.SmallObjectRemover</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.BorderObjectRemover.html">phenotypic.refine.BorderObjectRemover</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.CenterDeviationReducer.html">phenotypic.refine.CenterDeviationReducer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.MaskFill.html">phenotypic.refine.MaskFill</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.MaskOpener.html">phenotypic.refine.MaskOpener</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.WhiteTophatModifier.html">phenotypic.refine.WhiteTophatModifier</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.GridOversizedObjectRemover.html">phenotypic.refine.GridOversizedObjectRemover</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.MinResidualErrorReducer.html">phenotypic.refine.MinResidualErrorReducer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.ResidualOutlierRemover.html">phenotypic.refine.ResidualOutlierRemover</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="phenotypic.tools.html">phenotypic.tools</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tools.timed_execution.html">phenotypic.tools.timed_execution</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tools.is_binary_mask.html">phenotypic.tools.is_binary_mask</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tools.HDF.html">phenotypic.tools.HDF</a></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="phenotypic.tools.constants_.html">phenotypic.tools.constants_</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.constants_.BBOX.html">phenotypic.tools.constants_.BBOX</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.constants_.GRID.html">phenotypic.tools.constants_.GRID</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.constants_.GRID_LINREG_STATS_EXTRACTOR.html">phenotypic.tools.constants_.GRID_LINREG_STATS_EXTRACTOR</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.constants_.IMAGE_MODE.html">phenotypic.tools.constants_.IMAGE_MODE</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.constants_.IMAGE_TYPES.html">phenotypic.tools.constants_.IMAGE_TYPES</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.constants_.IO.html">phenotypic.tools.constants_.IO</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.constants_.METADATA.html">phenotypic.tools.constants_.METADATA</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.constants_.MPL.html">phenotypic.tools.constants_.MPL</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.constants_.OBJECT.html">phenotypic.tools.constants_.OBJECT</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.constants_.PIPE_STATUS.html">phenotypic.tools.constants_.PIPE_STATUS</a></li>
+</ul>
+</details></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="phenotypic.tools.exceptions_.html">phenotypic.tools.exceptions_</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.exceptions_.ArrayKeyValueShapeMismatchError.html">phenotypic.tools.exceptions_.ArrayKeyValueShapeMismatchError</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.exceptions_.DataIntegrityError.html">phenotypic.tools.exceptions_.DataIntegrityError</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.exceptions_.EmptyImageError.html">phenotypic.tools.exceptions_.EmptyImageError</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.exceptions_.GridImageInputError.html">phenotypic.tools.exceptions_.GridImageInputError</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.exceptions_.IllegalAssignmentError.html">phenotypic.tools.exceptions_.IllegalAssignmentError</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.exceptions_.IllegalElementAssignmentError.html">phenotypic.tools.exceptions_.IllegalElementAssignmentError</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.exceptions_.ImageOperationError.html">phenotypic.tools.exceptions_.ImageOperationError</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.exceptions_.ImmutableComponentError.html">phenotypic.tools.exceptions_.ImmutableComponentError</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.exceptions_.InputShapeMismatchError.html">phenotypic.tools.exceptions_.InputShapeMismatchError</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.exceptions_.InterfaceError.html">phenotypic.tools.exceptions_.InterfaceError</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.exceptions_.InvalidHsvSchemaError.html">phenotypic.tools.exceptions_.InvalidHsvSchemaError</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.exceptions_.InvalidMapValueError.html">phenotypic.tools.exceptions_.InvalidMapValueError</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.exceptions_.InvalidMaskScalarValueError.html">phenotypic.tools.exceptions_.InvalidMaskScalarValueError</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.exceptions_.InvalidMaskValueError.html">phenotypic.tools.exceptions_.InvalidMaskValueError</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.exceptions_.InvalidShapeError.html">phenotypic.tools.exceptions_.InvalidShapeError</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.exceptions_.MetadataKeySpacesError.html">phenotypic.tools.exceptions_.MetadataKeySpacesError</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.exceptions_.MetadataKeyValueError.html">phenotypic.tools.exceptions_.MetadataKeyValueError</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.exceptions_.MetadataValueNonScalarError.html">phenotypic.tools.exceptions_.MetadataValueNonScalarError</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.exceptions_.NoArrayError.html">phenotypic.tools.exceptions_.NoArrayError</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.exceptions_.NoComponentError.html">phenotypic.tools.exceptions_.NoComponentError</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.exceptions_.NoImageDataError.html">phenotypic.tools.exceptions_.NoImageDataError</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.exceptions_.NoObjectsError.html">phenotypic.tools.exceptions_.NoObjectsError</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.exceptions_.NoOutputError.html">phenotypic.tools.exceptions_.NoOutputError</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.exceptions_.ObjectNotFoundError.html">phenotypic.tools.exceptions_.ObjectNotFoundError</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.exceptions_.OperationFailedError.html">phenotypic.tools.exceptions_.OperationFailedError</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.exceptions_.OperationIntegrityError.html">phenotypic.tools.exceptions_.OperationIntegrityError</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.exceptions_.OutputValueError.html">phenotypic.tools.exceptions_.OutputValueError</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.exceptions_.PhenoTypicError.html">phenotypic.tools.exceptions_.PhenoTypicError</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.exceptions_.UUIDReassignmentError.html">phenotypic.tools.exceptions_.UUIDReassignmentError</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.exceptions_.UnknownError.html">phenotypic.tools.exceptions_.UnknownError</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.exceptions_.UnsupportedFileTypeError.html">phenotypic.tools.exceptions_.UnsupportedFileTypeError</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.exceptions_.UnsupportedImageFormat.html">phenotypic.tools.exceptions_.UnsupportedImageFormat</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.exceptions_.UuidAssignmentError.html">phenotypic.tools.exceptions_.UuidAssignmentError</a></li>
+</ul>
+</details></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tools.colourspaces_.html">phenotypic.tools.colourspaces_</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="phenotypic.util.html">phenotypic.util</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.util.GridApply.html">phenotypic.util.GridApply</a></li>
+</ul>
+</details></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../index.html" class="nav-link">API Reference</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">phenotypic.Image</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="phenotypic-image">
+<h1>phenotypic.Image<a class="headerlink" href="#phenotypic-image" title="Link to this heading">#</a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="phenotypic.Image">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.</span></span><span class="sig-name descname"><span class="pre">Image</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">arr</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">np.ndarray</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="#phenotypic.Image" title="phenotypic.Image"><span class="pre">Image</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bit_depth</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Literal</span><span class="p"><span class="pre">[</span></span><span class="m"><span class="pre">8</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="m"><span class="pre">16</span></span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gamma_encoding</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'sRGB'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">illuminant</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'D65'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">observer</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'CIE</span> <span class="pre">1931</span> <span class="pre">2</span> <span class="pre">Degree</span> <span class="pre">Standard</span> <span class="pre">Observer'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/phenotypic/core/_image.html#Image"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.Image" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">ImageIOHandler</span></code></p>
+<p>Comprehensive image processing class with integrated data, color, and I/O management.</p>
+<p>The <cite>Image</cite> class is the primary interface for image processing, analysis, and manipulation
+within the PhenoTypic framework. It combines:
+- Data management (image arrays, enhanced versions, object maps)
+- Color space handling (RGB, grayscale, HSV, XYZ, Lab with color corrections)
+- Object detection and analysis (object masks, labels, measurements)
+- File I/O and metadata management (loading, saving, metadata extraction)
+- Image manipulation (rotation, slicing, copying, visualization)</p>
+<p>Image data can be provided as:
+- NumPy arrays (2-D grayscale or 3-D RGB/RGBA)
+- Another Image instance (copies all data)
+- Loaded from file via imread()</p>
+<p>The class automatically manages format conversions and maintains internal consistency
+across multiple data representations. RGB and grayscale forms are kept synchronized,
+and additional representations (enhanced grayscale, object maps) support analysis workflows.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>arr</strong> (<em>np.ndarray</em><em> | </em><a class="reference internal" href="#phenotypic.Image" title="phenotypic.Image"><em>Image</em></a><em> | </em><em>None</em>)</p></li>
+<li><p><strong>name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><em>None</em>)</p></li>
+<li><p><strong>bit_depth</strong> (<em>Literal</em><em>[</em><em>8</em><em>, </em><em>16</em><em>] </em><em>| </em><em>None</em>)</p></li>
+<li><p><strong>gamma_encoding</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><em>None</em>)</p></li>
+<li><p><strong>illuminant</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><em>None</em>)</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="phenotypic.Image.rgb">
+<span class="sig-name descname"><span class="pre">rgb</span></span><a class="headerlink" href="#phenotypic.Image.rgb" title="Link to this definition">#</a></dt>
+<dd><p>RGB image accessor (empty for grayscale-only images).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>ImageRGB</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="phenotypic.Image.gray">
+<span class="sig-name descname"><span class="pre">gray</span></span><a class="headerlink" href="#phenotypic.Image.gray" title="Link to this definition">#</a></dt>
+<dd><p>Grayscale image accessor (always present).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Grayscale</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="phenotypic.Image.enh_gray">
+<span class="sig-name descname"><span class="pre">enh_gray</span></span><a class="headerlink" href="#phenotypic.Image.enh_gray" title="Link to this definition">#</a></dt>
+<dd><p>Enhanced grayscale for preprocessing and detection.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>EnhancedGrayscale</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="phenotypic.Image.objmask">
+<span class="sig-name descname"><span class="pre">objmask</span></span><a class="headerlink" href="#phenotypic.Image.objmask" title="Link to this definition">#</a></dt>
+<dd><p>Binary mask indicating analyzed regions.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>ObjectMask</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="phenotypic.Image.objmap">
+<span class="sig-name descname"><span class="pre">objmap</span></span><a class="headerlink" href="#phenotypic.Image.objmap" title="Link to this definition">#</a></dt>
+<dd><p>Integer labels for detected objects.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>ObjectMap</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="phenotypic.Image.metadata">
+<span class="sig-name descname"><span class="pre">metadata</span></span><a class="headerlink" href="#phenotypic.Image.metadata" title="Link to this definition">#</a></dt>
+<dd><p>Protected, public, and imported metadata access.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>MetadataAccessor</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="phenotypic.Image.color">
+<span class="sig-name descname"><span class="pre">color</span></span><a class="headerlink" href="#phenotypic.Image.color" title="Link to this definition">#</a></dt>
+<dd><p>Color space transformations (XYZ, Lab, HSV, etc.).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>ColorAccessor</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="phenotypic.Image.objects">
+<span class="sig-name descname"><span class="pre">objects</span></span><a class="headerlink" href="#phenotypic.Image.objects" title="Link to this definition">#</a></dt>
+<dd><p>Object-specific measurements and analysis.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>ObjectsAccessor</p>
+</dd>
+</dl>
+</dd></dl>
+
+<div class="admonition-notes admonition">
+<p class="admonition-title">Notes</p>
+<ul class="simple">
+<li><p>2-D input arrays are treated as grayscale; rgb form remains empty.</p></li>
+<li><p>3-D input arrays are treated as RGB; grayscale is computed automatically.</p></li>
+<li><p>Color space properties (gamma_encoding, illuminant, observer) are inherited.</p></li>
+<li><p>Object detection and measurements require an ObjectDetector first.</p></li>
+<li><p>HSV color space support added in v0.5.0.</p></li>
+</ul>
+</div>
+<div class="admonition-examples admonition">
+<p class="admonition-title">Examples</p>
+<p>Create from array:</p>
+<p><a href="#id1"><span class="problematic" id="id2">``</span></a><a href="#id3"><span class="problematic" id="id4">`</span></a>python
+import numpy as np
+from phenotypic import Image</p>
+<p>arr = np.random.randint(0, 256, (480, 640, 3), dtype=np.uint8)
+img = Image(arr, name=’sample’)
+img.show()
+<a href="#id5"><span class="problematic" id="id6">``</span></a><a href="#id7"><span class="problematic" id="id8">`</span></a></p>
+<p>Load from file:</p>
+<p><code class="docutils literal notranslate"><span class="pre">`python</span>
+<span class="pre">img</span> <span class="pre">=</span> <span class="pre">Image.imread('photo.jpg')</span>
+<span class="pre">print(img.shape)</span>&#160; <span class="pre">#</span> <span class="pre">Image</span> <span class="pre">dimensions</span>
+<span class="pre">img.save2pickle('saved.pkl')</span>
+<span class="pre">`</span></code></p>
+</div>
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.Image.__eq__">
+<span class="sig-name descname"><span class="pre">__eq__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">other</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#phenotypic.Image" title="phenotypic.Image"><span class="pre">Image</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span></span><a class="headerlink" href="#phenotypic.Image.__eq__" title="Link to this definition">#</a></dt>
+<dd><p>Compares the current object with another object for equality.</p>
+<p>This method checks if the current object’s attributes are equal to another object’s
+attributes. Equality is determined by verifying that the numerical arrays
+(<cite>rgb</cite>, <cite>gray</cite>, <cite>enh_gray</cite>, <cite>objmap</cite>) are element-wise identical.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<ul class="simple">
+<li><p>Only checks core image data, and not any other attributes such as metadata.</p></li>
+</ul>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>other</strong> (<a class="reference internal" href="#phenotypic.Image" title="phenotypic.Image"><em>Image</em></a>) – The object to compare with the current instance.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>True if all the attributes of the current object are identical to those
+of the <cite>other</cite> object. Returns False otherwise.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)">bool</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.Image.__getitem__">
+<span class="sig-name descname"><span class="pre">__getitem__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#phenotypic.Image" title="phenotypic.Image"><span class="pre">Image</span></a></span></span><a class="headerlink" href="#phenotypic.Image.__getitem__" title="Link to this definition">#</a></dt>
+<dd><p>Returns a new subimage from the current object based on the provided key. The subimage is initialized
+as a new instance of the same class, maintaining the schema and format consistency as the original
+image object. This method supports 2-dimensional slicing and indexing.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<ul class="simple">
+<li><p>The subimage arrays are copied from the original image object. This means that any changes made to the subimage will not affect the original image.</p></li>
+<li><p>We may add this functionality in future updates if there is demand for it.</p></li>
+</ul>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>key</strong> – A slicing key or index used to extract a subset or part of the image object.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>An instance of the Image representing the subimage corresponding to the provided key.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#phenotypic.Image" title="phenotypic.Image">Image</a></p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#KeyError" title="(in Python v3.14)"><strong>KeyError</strong></a> – If the provided key does not match the expected slicing format or dimensions.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.Image.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">arr</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">np.ndarray</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="#phenotypic.Image" title="phenotypic.Image"><span class="pre">Image</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bit_depth</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Literal</span><span class="p"><span class="pre">[</span></span><span class="m"><span class="pre">8</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="m"><span class="pre">16</span></span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gamma_encoding</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'sRGB'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">illuminant</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'D65'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">observer</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'CIE</span> <span class="pre">1931</span> <span class="pre">2</span> <span class="pre">Degree</span> <span class="pre">Standard</span> <span class="pre">Observer'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/phenotypic/core/_image.html#Image.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.Image.__init__" title="Link to this definition">#</a></dt>
+<dd><p>Initialize an Image instance with optional image data and color properties.</p>
+<p>Creates a new Image with complete initialization of all data management, color space,
+I/O, and object handling capabilities. The image can be initialized empty or with
+data from a NumPy array or another Image instance.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>arr</strong> (<em>np.ndarray</em><em> | </em><a class="reference internal" href="#phenotypic.Image" title="phenotypic.Image"><em>Image</em></a><em> | </em><em>None</em>) – <p>Optional image data. Can be:
+- A NumPy array of shape (height, width) for grayscale or</p>
+<blockquote>
+<div><p>(height, width, channels) for RGB/RGBA</p>
+</div></blockquote>
+<ul>
+<li><p>An existing Image instance to copy from</p></li>
+<li><p>None to create an empty image</p></li>
+</ul>
+<p>Defaults to None.</p>
+</p></li>
+<li><p><strong>name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><em>None</em>) – Optional human-readable name for the image. If not provided,
+the image UUID will be used as the name. Defaults to None.</p></li>
+<li><p><strong>bit_depth</strong> (<em>Literal</em><em>[</em><em>8</em><em>, </em><em>16</em><em>] </em><em>| </em><em>None</em>) – The bit depth of the image data (8 or 16 bits).
+If not specified and arr is provided, bit depth is automatically inferred
+from the array dtype. Defaults to None.</p></li>
+<li><p><strong>gamma_encoding</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><em>None</em>) – The gamma encoding used for color correction.
+‘sRGB’: applies sRGB gamma correction (standard display gamma)
+None: assumes linear RGB data
+Only ‘sRGB’ and None are supported. Defaults to ‘sRGB’.</p></li>
+<li><p><strong>illuminant</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><em>None</em>) – The reference illuminant for color calculations.
+‘D65’: standard daylight illuminant (recommended)
+‘D50’: standard illumination for imaging
+Defaults to ‘D65’.</p></li>
+<li><p><strong>observer</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – The CIE standard observer model used in color calculations.
+Common value is ‘CIE 1931 2 Degree Standard Observer’ (standard).
+Defaults to ‘CIE 1931 2 Degree Standard Observer’.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.14)"><strong>ValueError</strong></a> – If gamma_encoding is not ‘sRGB’ or None.</p></li>
+<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.14)"><strong>ValueError</strong></a> – If illuminant is not ‘D65’ or ‘D50’.</p></li>
+<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#TypeError" title="(in Python v3.14)"><strong>TypeError</strong></a> – If arr is provided but is not a NumPy array or Image instance.</p></li>
+</ul>
+</dd>
+</dl>
+<div class="admonition-examples admonition">
+<p class="admonition-title">Examples</p>
+<p>Create empty image:</p>
+<p><code class="docutils literal notranslate"><span class="pre">`python</span>
+<span class="pre">img</span> <span class="pre">=</span> <span class="pre">Image(name='empty_image')</span>
+<span class="pre">`</span></code></p>
+<p>Create from grayscale array:</p>
+<p><code class="docutils literal notranslate"><span class="pre">`python</span>
+<span class="pre">gray_arr</span> <span class="pre">=</span> <span class="pre">np.random.randint(0,</span> <span class="pre">256,</span> <span class="pre">(480,</span> <span class="pre">640),</span> <span class="pre">dtype=np.uint8)</span>
+<span class="pre">img</span> <span class="pre">=</span> <span class="pre">Image(gray_arr,</span> <span class="pre">name='grayscale_photo')</span>
+<span class="pre">`</span></code></p>
+<p>Create from RGB array:</p>
+<p><code class="docutils literal notranslate"><span class="pre">`python</span>
+<span class="pre">rgb_arr</span> <span class="pre">=</span> <span class="pre">np.random.randint(0,</span> <span class="pre">256,</span> <span class="pre">(480,</span> <span class="pre">640,</span> <span class="pre">3),</span> <span class="pre">dtype=np.uint8)</span>
+<span class="pre">img</span> <span class="pre">=</span> <span class="pre">Image(rgb_arr,</span> <span class="pre">name='color_photo',</span> <span class="pre">gamma_encoding='sRGB')</span>
+<span class="pre">`</span></code></p>
+<p>Copy another image:</p>
+<p><code class="docutils literal notranslate"><span class="pre">`python</span>
+<span class="pre">img1</span> <span class="pre">=</span> <span class="pre">Image.imread('original.jpg')</span>
+<span class="pre">img2</span> <span class="pre">=</span> <span class="pre">Image(img1,</span> <span class="pre">name='copy_of_original')</span>
+<span class="pre">`</span></code></p>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.Image.__setitem__">
+<span class="sig-name descname"><span class="pre">__setitem__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">other_image</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.Image.__setitem__" title="Link to this definition">#</a></dt>
+<dd><p>Sets an item in the object with a given key and Image object. Ensures that the Image being set matches the expected shape and type, and updates internal properties accordingly.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>key</strong> (<em>Any</em>) – The array slices for accesssing the elements of the image.</p></li>
+<li><p><strong>other_image</strong> (<em>ImageHandler</em>) – The other image to be set, which must match the shape of the
+existing elements accessed by the key and conform to the expected schema.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.14)"><strong>ValueError</strong></a> – If the shape of the <cite>value</cite> does not match the shape of the existing
+    elements being accessed.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="phenotypic.Image.bit_depth">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">bit_depth</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></em><a class="headerlink" href="#phenotypic.Image.bit_depth" title="Link to this definition">#</a></dt>
+<dd><p>Get the bit depth of the image.</p>
+<p>The bit depth determines the number of bits used to represent each pixel
+value. Common values are 8 (0-255 range) and 16 (0-65535 range).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><dl class="simple">
+<dt>The bit depth value (8 or 16) stored in protected metadata,</dt><dd><p>or None if not yet set.</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)">int</a> | None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.Image.clear">
+<span class="sig-name descname"><span class="pre">clear</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="headerlink" href="#phenotypic.Image.clear" title="Link to this definition">#</a></dt>
+<dd><p>Reset all image data to empty state.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<ul class="simple">
+<li><p>bit_depth is retained. To change the bit depth, make a new Image object.</p></li>
+</ul>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="id0">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">color</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">ColorAccessor</span></em><a class="headerlink" href="#id0" title="Link to this definition">#</a></dt>
+<dd><p>Access all color space representations through a unified interface.</p>
+<p>This property provides access to the ColorAccessor object, which groups
+all color space transformations and representations including:</p>
+<ul class="simple">
+<li><p>XYZ: CIE XYZ color space</p></li>
+<li><p>XYZ_D65: CIE XYZ under D65 illuminant</p></li>
+<li><p>Lab: CIE L*a*b* perceptually uniform color space</p></li>
+<li><p>xy: CIE xy chromaticity coordinates</p></li>
+<li><p>hsv: HSV (Hue, Saturation, Value) color space</p></li>
+</ul>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Unified accessor for all color space representations.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>ColorAccessor</p>
+</dd>
+</dl>
+<div class="admonition-examples admonition">
+<p class="admonition-title">Examples</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">img</span> <span class="o">=</span> <span class="n">Image</span><span class="o">.</span><span class="n">imread</span><span class="p">(</span><span class="s1">&#39;sample.jpg&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">xyz_data</span> <span class="o">=</span> <span class="n">img</span><span class="o">.</span><span class="n">color</span><span class="o">.</span><span class="n">XYZ</span><span class="p">[:]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">lab_data</span> <span class="o">=</span> <span class="n">img</span><span class="o">.</span><span class="n">color</span><span class="o">.</span><span class="n">Lab</span><span class="p">[:]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">hue</span> <span class="o">=</span> <span class="n">img</span><span class="o">.</span><span class="n">color</span><span class="o">.</span><span class="n">hsv</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span> <span class="c1"># hue is the first matrix in the array</span>
+</pre></div>
+</div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.Image.copy">
+<span class="sig-name descname"><span class="pre">copy</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.Image.copy" title="Link to this definition">#</a></dt>
+<dd><p>Creates a copy of the current Image instance, excluding the UUID.
+.. note:: - The new instance is only informationally a copy. The UUID of the new instance is different.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>A copy of the current Image instance.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="#phenotypic.Image" title="phenotypic.Image">Image</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="id9">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">enh_gray</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">EnhancedGrayscale</span></em><a class="headerlink" href="#id9" title="Link to this definition">#</a></dt>
+<dd><p>Returns the image’s enhanced grayscale accessor. Preprocessing steps
+can be applied to this component to improve detection performance.</p>
+<p>The enhanceable gray is a copy of the image’s gray form that can be modified and used to improve detection performance.
+The original gray data should be left intact in order to preserve image information integrity for measurements.’</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>A mutable container that stores a copy of the image’s gray form</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>EnhancedGrayscale</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="id10">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">gray</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Grayscale</span></em><a class="headerlink" href="#id10" title="Link to this definition">#</a></dt>
+<dd><p>The image’s grayscale representation. The array form is converted into a gray form since some algorithm’s only handle 2-D</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<ul class="simple">
+<li><p>gray elements are not directly mutable in order to preserve image information integrity</p></li>
+<li><p>Change gray elements by changing the image being represented with Image.set_image()</p></li>
+</ul>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>An immutable container for the image gray that can be accessed like a numpy array, but has extra methods to streamline development.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>Grayscale</p>
+</dd>
+</dl>
+<p>See Also: <code class="xref py py-class docutils literal notranslate"><span class="pre">ImageMatrix</span></code></p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.Image.imread">
+<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">imread</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filepath</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">PathLike</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rawpy_params</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#phenotypic.Image" title="phenotypic.Image"><span class="pre">Image</span></a></span></span><a class="headerlink" href="#phenotypic.Image.imread" title="Link to this definition">#</a></dt>
+<dd><p>imread is a class method responsible for reading an image file from the specified
+path and performing necessary preprocessing based on the file format and additional
+parameters. The method supports a variety of image file types including common
+formats (e.g., JPEG, PNG) as well as raw sensor data. It uses the scikit-image library
+for loading standard images and rawpy for processing raw image files. This method also
+handles additional configurations for raw image preprocessing via rawpy parameters, such
+as white balance, gamma correction, and demosaic algorithm.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>filepath</strong> (<em>PathLike</em>) – Path to the image file to be read. It can be any valid file
+path-like object (e.g., str, pathlib.Path).</p></li>
+<li><p><strong>rawpy_params</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a><em> | </em><em>None</em>) – Optional dictionary of parameters for processing raw image
+files when using rawpy. Supports options like white balance settings, demosaic
+algorithm, gamma correction, and others. Defaults to None.</p></li>
+<li><p><strong>**kwargs</strong> – Arbitrary keyword arguments to be passed for additional configurations
+specific to the Image instantiation.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>An instance of the Image class containing the processed image array and any</dt><dd><p>additional metadata.</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#phenotypic.Image" title="phenotypic.Image">Image</a></p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="../phenotypic.tools.exceptions_.html#phenotypic.tools.exceptions_.UnsupportedFileTypeError" title="phenotypic.tools.exceptions_.UnsupportedFileTypeError"><strong>UnsupportedFileTypeError</strong></a> – If the file type of the provided filepath is not supported
+    by the method, either due to its extension not being recognized or due to the
+    absence of required libraries like rawpy.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.Image.info">
+<span class="sig-name descname"><span class="pre">info</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">include_metadata</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.Image.info" title="Link to this definition">#</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>include_metadata</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.Image.isempty">
+<span class="sig-name descname"><span class="pre">isempty</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span></span><a class="headerlink" href="#phenotypic.Image.isempty" title="Link to this definition">#</a></dt>
+<dd><p>Check if image data is empty.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>True if no image data is set.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)">bool</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.Image.load_hdf5">
+<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">load_hdf5</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filename</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">image_name</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#phenotypic.Image" title="phenotypic.Image"><span class="pre">Image</span></a></span></span><a class="headerlink" href="#phenotypic.Image.load_hdf5" title="Link to this definition">#</a></dt>
+<dd><p>Load an ImageHandler instance from an HDF5 file at the default hdf5 location</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#phenotypic.Image" title="phenotypic.Image">Image</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.Image.load_pickle">
+<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">load_pickle</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filename</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#phenotypic.Image" title="phenotypic.Image"><span class="pre">Image</span></a></span></span><a class="headerlink" href="#phenotypic.Image.load_pickle" title="Link to this definition">#</a></dt>
+<dd><p>Load an image from a pickle file.</p>
+<p>Deserializes image data and metadata that were previously saved with save2pickle().
+Restores all image components including RGB, grayscale, enhanced grayscale, object map,
+and metadata.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>filename</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><em>PathLike</em>) – Path to the pickle file to read.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A new Image instance with all data and metadata restored from the pickle file.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#phenotypic.Image" title="phenotypic.Image">Image</a></p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#FileNotFoundError" title="(in Python v3.14)"><strong>FileNotFoundError</strong></a> – If the specified pickle file does not exist.</p></li>
+<li><p><a class="reference external" href="https://docs.python.org/3/library/pickle.html#pickle.UnpicklingError" title="(in Python v3.14)"><strong>pickle.UnpicklingError</strong></a> – If the file is not a valid pickle file or is corrupted.</p></li>
+</ul>
+</dd>
+</dl>
+<div class="admonition-notes admonition">
+<p class="admonition-title">Notes</p>
+<ul class="simple">
+<li><p>Pickle files must be created with save2pickle() to ensure compatibility.</p></li>
+<li><p>Enhanced gray and object map are reset and reconstructed from saved data.</p></li>
+<li><p>Metadata (protected and public) is fully restored.</p></li>
+</ul>
+</div>
+<div class="admonition-examples admonition">
+<p class="admonition-title">Examples</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">loaded</span> <span class="o">=</span> <span class="n">Image</span><span class="o">.</span><span class="n">load_pickle</span><span class="p">(</span><span class="s1">&#39;image.pkl&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">loaded</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="id11">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">metadata</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">MetadataAccessor</span></em><a class="headerlink" href="#id11" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="phenotypic.Image.name">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">name</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></em><a class="headerlink" href="#phenotypic.Image.name" title="Link to this definition">#</a></dt>
+<dd><p>Returns the name of the image. If no name is set, the name will be the uuid of the image.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="phenotypic.Image.num_objects">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">num_objects</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></em><a class="headerlink" href="#phenotypic.Image.num_objects" title="Link to this definition">#</a></dt>
+<dd><p>Returns the number of objects in the image
+Note:</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="id12">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">objects</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">ObjectsAccessor</span></em><a class="headerlink" href="#id12" title="Link to this definition">#</a></dt>
+<dd><p>Accessor for performing operations on detected objects in the image.</p>
+<p>Provides access to individual or grouped objects detected in the image,
+enabling measurement calculations, filtering, and object-specific analyses.
+Objects are identified through the object map (objmap) component which stores
+integer labels for each detected object.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><dl class="simple">
+<dt>An accessor instance that manages object-specific operations</dt><dd><p>and measurements.</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>ObjectsAccessor</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="../phenotypic.tools.exceptions_.html#phenotypic.tools.exceptions_.NoObjectsError" title="phenotypic.tools.exceptions_.NoObjectsError"><strong>NoObjectsError</strong></a> – If no objects are present in the image. This occurs when
+    num_objects == 0, indicating that either no object detection has been
+    performed yet, or the detection found no objects. Apply an ObjectDetector
+    first to identify and label objects.</p>
+</dd>
+</dl>
+<div class="admonition-examples admonition">
+<p class="admonition-title">Examples</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">img</span> <span class="o">=</span> <span class="n">Image</span><span class="o">.</span><span class="n">imread</span><span class="p">(</span><span class="s1">&#39;sample.jpg&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">detector</span> <span class="o">=</span> <span class="n">ObjectDetector</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">detector</span><span class="o">.</span><span class="n">detect</span><span class="p">(</span><span class="n">img</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">obj_accessor</span> <span class="o">=</span> <span class="n">img</span><span class="o">.</span><span class="n">objects</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">measurements</span> <span class="o">=</span> <span class="n">img</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">measure</span><span class="o">.</span><span class="n">area</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="id13">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">objmap</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">ObjectMap</span></em><a class="headerlink" href="#id13" title="Link to this definition">#</a></dt>
+<dd><p>Returns the ObjectMap accessor; The object map is a mutable integer gray that identifies the different objects in an image to be analyzed. Changes to elements of the object_map sync to the object_mask.</p>
+<p>The object_map is stored as a compressed sparse column gray in the backend. This is to save on memory consumption at the cost of adding
+increased computational overhead between converting between sparse and dense matrices.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<ul class="simple">
+<li><p>Has accessor methods to get sparse representations of the object map that can streamline measurement calculations.</p></li>
+</ul>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>A mutable integer gray that identifies the different objects in an image to be analyzed.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>ObjectMap</p>
+</dd>
+</dl>
+<p>See Also: <code class="xref py py-class docutils literal notranslate"><span class="pre">ObjectMap</span></code></p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="id14">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">objmask</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">ObjectMask</span></em><a class="headerlink" href="#id14" title="Link to this definition">#</a></dt>
+<dd><p>Returns the ObjectMask Accessor; The object mask is a mutable binary representation of the objects in an image to be analyzed. Changing elements of the mask will reset object_map labeling.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<ul class="simple">
+<li><dl class="simple">
+<dt>If the image has not been processed by a detector, the target for analysis is the entire image itself. Accessing the object_mask in this case</dt><dd><p>will return a 2-D array entirely with other_image 1 that is the same shape as the gray</p>
+</dd>
+</dl>
+</li>
+<li><p>Changing elements of the mask will relabel of objects in the object_map</p></li>
+</ul>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>A mutable binary representation of the objects in an image to be analyzed.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>ObjectMaskErrors</p>
+</dd>
+</dl>
+<p>See Also: <code class="xref py py-class docutils literal notranslate"><span class="pre">ObjectMask</span></code></p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="phenotypic.Image.props">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">props</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><span class="pre">RegionProperties</span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#phenotypic.Image.props" title="Link to this definition">#</a></dt>
+<dd><p>Fetches the properties of the whole image.</p>
+<p>Calculates region properties for the entire image using the gray representation.
+The labeled image is generated as a full array with values of 1, and the
+intensity image corresponds to the <cite>_data.gray</cite> attribute of the object.
+Cache is disabled in this configuration.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>A list of properties for the entire provided image.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)">list</a>[skimage.measure._regionprops.RegionProperties]</p>
+</dd>
+</dl>
+<div class="admonition-notes admonition">
+<p class="admonition-title">Notes</p>
+<p>(Excerpt from skimage.measure.regionprops documentation on available properties.):</p>
+<p>Read more at <code class="xref py py-class docutils literal notranslate"><span class="pre">skimage.measure.regionprops</span></code> or
+<a class="reference external" href="https://scikit-image.org/docs/stable/api/skimage.measure.html#skimage.measure.regionprops">scikit-image documentation</a></p>
+<dl>
+<dt>area: float</dt><dd><p>Area of the region i.e. number of pixels of the region scaled by pixel-area.</p>
+</dd>
+<dt>area_bbox: float</dt><dd><p>Area of the bounding box i.e. number of pixels of bounding box scaled by pixel-area.</p>
+</dd>
+<dt>area_convex: float</dt><dd><p>Area of the convex hull image, which is the smallest convex polygon that encloses the region.</p>
+</dd>
+<dt>area_filled: float</dt><dd><p>Area of the region with all the holes filled in.</p>
+</dd>
+<dt>axis_major_length: float</dt><dd><p>The length of the major axis of the ellipse that has the same normalized second central moments as the region.</p>
+</dd>
+<dt>axis_minor_length: float</dt><dd><p>The length of the minor axis of the ellipse that has the same normalized second central moments as the region.</p>
+</dd>
+<dt>bbox: tuple</dt><dd><p>Bounding box (min_row, min_col, max_row, max_col). Pixels belonging to the bounding box are in the half-open interval [min_row; max_row) and [min_col; max_col).</p>
+</dd>
+<dt>centroid: array</dt><dd><p>Centroid coordinate tuple (row, col).</p>
+</dd>
+<dt>centroid_local: array</dt><dd><p>Centroid coordinate tuple (row, col), relative to region bounding box.</p>
+</dd>
+<dt>centroid_weighted: array</dt><dd><p>Centroid coordinate tuple (row, col) weighted with intensity image.</p>
+</dd>
+<dt>centroid_weighted_local: array</dt><dd><p>Centroid coordinate tuple (row, col), relative to region bounding box, weighted with intensity image.</p>
+</dd>
+<dt>coords_scaled(K, 2): ndarray</dt><dd><p>Coordinate list (row, col) of the region scaled by spacing.</p>
+</dd>
+<dt>coords(K, 2): ndarray</dt><dd><p>Coordinate list (row, col) of the region.</p>
+</dd>
+<dt>eccentricity: float</dt><dd><p>Eccentricity of the ellipse that has the same second-moments as the region. The eccentricity is the ratio of the focal distance (distance between focal points) over the major axis length. The other_image is in the interval [0, 1). When it is 0, the ellipse becomes a circle.</p>
+</dd>
+<dt>equivalent_diameter_area: float</dt><dd><p>The diameter of a circle with the same area as the region.</p>
+</dd>
+<dt>euler_number: int</dt><dd><p>Euler characteristic of the set of non-zero pixels. Computed as number of connected components subtracted by number of holes (arr.ndim connectivity). In 3D, number of connected components plus number of holes subtracted by number of tunnels.</p>
+</dd>
+<dt>extent: float</dt><dd><p>Ratio of pixels in the region to pixels in the total bounding box. Computed as area / (nrows * ncols)</p>
+</dd>
+<dt>feret_diameter_max: float</dt><dd><p>Maximum Feret’s diameter computed as the longest distance between points around a region’s convex hull contour as determined by find_contours. [5]</p>
+</dd>
+<dt>image(H, J): ndarray</dt><dd><p>Sliced binary region image which has the same size as bounding box.</p>
+</dd>
+<dt>image_convex(H, J): ndarray</dt><dd><p>Binary convex hull image which has the same size as bounding box.</p>
+</dd>
+<dt>image_filled(H, J): ndarray</dt><dd><p>Binary region image with filled holes which has the same size as bounding box.</p>
+</dd>
+<dt>image_intensity: ndarray</dt><dd><p>Image inside region bounding box.</p>
+</dd>
+<dt>inertia_tensor: ndarray</dt><dd><p>Inertia tensor of the region for the rotation around its mass.</p>
+</dd>
+<dt>inertia_tensor_eigvals: tuple</dt><dd><p>The eigenvalues of the inertia tensor in decreasing order.</p>
+</dd>
+<dt>intensity_max: float</dt><dd><p>Value with the greatest intensity in the region.</p>
+</dd>
+<dt>intensity_mean: float</dt><dd><p>Value with the mean intensity in the region.</p>
+</dd>
+<dt>intensity_min: float</dt><dd><p>Value with the least intensity in the region.</p>
+</dd>
+<dt>intensity_std: float</dt><dd><p>Standard deviation of the intensity in the region.</p>
+</dd>
+<dt>label: int</dt><dd><p>The label in the labeled arr image.</p>
+</dd>
+<dt>moments(3, 3): ndarray</dt><dd><p>Spatial moments up to 3rd order:</p>
+<div class="highlight-python3 notranslate"><div class="highlight"><pre><span></span><span class="n">m_ij</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">{</span> <span class="n">array</span><span class="p">(</span><span class="n">row</span><span class="p">,</span> <span class="n">col</span><span class="p">)</span> <span class="o">*</span> <span class="n">row</span><span class="o">^</span><span class="n">i</span> <span class="o">*</span> <span class="n">col</span><span class="o">^</span><span class="n">j</span> <span class="p">}</span>
+</pre></div>
+</div>
+</dd>
+</dl>
+<p>where the sum is over the row, col coordinates of the region.</p>
+<dl>
+<dt>moments_central(3, 3): ndarray</dt><dd><p>Central moments (translation invariant) up to 3rd order:</p>
+<div class="highlight-python3 notranslate"><div class="highlight"><pre><span></span><span class="n">mu_ij</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">{</span> <span class="n">array</span><span class="p">(</span><span class="n">row</span><span class="p">,</span> <span class="n">col</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">row</span> <span class="o">-</span> <span class="n">row_c</span><span class="p">)</span><span class="o">^</span><span class="n">i</span> <span class="o">*</span> <span class="p">(</span><span class="n">col</span> <span class="o">-</span> <span class="n">col_c</span><span class="p">)</span><span class="o">^</span><span class="n">j</span> <span class="p">}</span>
+</pre></div>
+</div>
+<p>where the sum is over the row, col coordinates of the region, and row_c and col_c are the coordinates of the region’s centroid.</p>
+</dd>
+<dt>moments_hu: tuple</dt><dd><p>Hu moments (translation, scale, and rotation invariant).</p>
+</dd>
+<dt>moments_normalized(3, 3): ndarray</dt><dd><p>Normalized moments (translation and scale invariant) up to 3rd order:</p>
+<div class="highlight-python3 notranslate"><div class="highlight"><pre><span></span><span class="n">nu_ij</span> <span class="o">=</span> <span class="n">mu_ij</span> <span class="o">/</span> <span class="n">m_00</span><span class="o">^</span><span class="p">[(</span><span class="n">i</span><span class="o">+</span><span class="n">j</span><span class="p">)</span><span class="o">/</span><span class="mi">2</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>where m_00 is the zeroth spatial moment.</p>
+</dd>
+<dt>moments_weighted(3, 3): ndarray</dt><dd><p>Spatial moments of intensity image up to 3rd order:</p>
+<div class="highlight-python3 notranslate"><div class="highlight"><pre><span></span><span class="n">wm_ij</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">{</span> <span class="n">array</span><span class="p">(</span><span class="n">row</span><span class="p">,</span> <span class="n">col</span><span class="p">)</span> <span class="o">*</span> <span class="n">row</span><span class="o">^</span><span class="n">i</span> <span class="o">*</span> <span class="n">col</span><span class="o">^</span><span class="n">j</span> <span class="p">}</span>
+</pre></div>
+</div>
+<p>where the sum is over the row, col coordinates of the region.</p>
+</dd>
+<dt>moments_weighted_central(3, 3): ndarray</dt><dd><p>Central moments (translation invariant) of intensity image up to 3rd order:</p>
+<div class="highlight-python3 notranslate"><div class="highlight"><pre><span></span><span class="n">wmu_ij</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">{</span> <span class="n">array</span><span class="p">(</span><span class="n">row</span><span class="p">,</span> <span class="n">col</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">row</span> <span class="o">-</span> <span class="n">row_c</span><span class="p">)</span><span class="o">^</span><span class="n">i</span> <span class="o">*</span> <span class="p">(</span><span class="n">col</span> <span class="o">-</span> <span class="n">col_c</span><span class="p">)</span><span class="o">^</span><span class="n">j</span> <span class="p">}</span>
+</pre></div>
+</div>
+<p>where the sum is over the row, col coordinates of the region, and row_c and col_c are the coordinates of the region’s weighted centroid.</p>
+</dd>
+<dt>moments_weighted_hu: tuple</dt><dd><p>Hu moments (translation, scale and rotation invariant) of intensity image.</p>
+</dd>
+<dt>moments_weighted_normalized(3, 3): ndarray</dt><dd><p>Normalized moments (translation and scale invariant) of intensity image up to 3rd order:</p>
+<div class="highlight-python3 notranslate"><div class="highlight"><pre><span></span><span class="n">wnu_ij</span> <span class="o">=</span> <span class="n">wmu_ij</span> <span class="o">/</span> <span class="n">wm_00</span><span class="o">^</span><span class="p">[(</span><span class="n">i</span><span class="o">+</span><span class="n">j</span><span class="p">)</span><span class="o">/</span><span class="mi">2</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>where wm_00 is the zeroth spatial moment (intensity-weighted area).</p>
+</dd>
+<dt>num_pixels: int</dt><dd><p>Number of foreground pixels.</p>
+</dd>
+<dt>orientation: float</dt><dd><p>Angle between the 0th axis (nrows) and the major axis of the ellipse that has the same second moments as the region, ranging from -pi/2 to pi/2 counter-clockwise.</p>
+</dd>
+<dt>perimeter: float</dt><dd><p>Perimeter of object which approximates the contour as a line through the centers of border pixels using a 4-connectivity.</p>
+</dd>
+<dt>perimeter_crofton: float</dt><dd><p>Perimeter of object approximated by the Crofton formula in 4 directions.</p>
+</dd>
+<dt>slice: tuple of slices</dt><dd><p>A slice to extract the object from the source image.</p>
+</dd>
+<dt>solidity: float</dt><dd><p>Ratio of pixels in the region to pixels of the convex hull image.</p>
+</dd>
+</dl>
+</div>
+<div class="admonition-references admonition">
+<p class="admonition-title">References</p>
+<p><a class="reference external" href="https://scikit-image.org/docs/stable/api/skimage.measure.html#skimage.measure.regionprops">https://scikit-image.org/docs/stable/api/skimage.measure.html#skimage.measure.regionprops</a></p>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.Image.reset">
+<span class="sig-name descname"><span class="pre">reset</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Type</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#phenotypic.Image" title="phenotypic.Image"><span class="pre">Image</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#phenotypic.Image.reset" title="Link to this definition">#</a></dt>
+<dd><p>Resets the internal state of the object and returns an updated instance.</p>
+<p>This method resets the state of enhanced gray and object map components maintained
+by the object. It ensures that the object is reset to its original state
+while maintaining its type integrity. Upon execution, the instance of the
+calling object itself is returned.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The instance of the object after resetting its internal
+state.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>Type[<a class="reference internal" href="#phenotypic.Image" title="phenotypic.Image">Image</a>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="id15">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">rgb</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">ImageRGB</span></em><a class="headerlink" href="#id15" title="Link to this definition">#</a></dt>
+<dd><p>Returns the ImageArray accessor; An image rgb represents the multichannel information</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<ul class="simple">
+<li><p>rgb/gray element data is synced</p></li>
+<li><p>change image shape by changing the image being represented with Image.set_image()</p></li>
+<li><p>Raises an error if the arr image has no rgb form</p></li>
+</ul>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>A class that can be accessed like a numpy rgb, but has extra methods to streamline development, or None if not set</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>ImageRGB</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="../phenotypic.tools.exceptions_.html#phenotypic.tools.exceptions_.NoArrayError" title="phenotypic.tools.exceptions_.NoArrayError"><strong>NoArrayError</strong></a> – If no multichannel image data is set as arr.</p>
+</dd>
+</dl>
+<p>See Also: <code class="xref py py-class docutils literal notranslate"><span class="pre">ImageArray</span></code></p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.Image.rotate">
+<span class="sig-name descname"><span class="pre">rotate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">angle_of_rotation</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">mode</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'constant'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cval</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">order</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">preserve_range</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="headerlink" href="#phenotypic.Image.rotate" title="Link to this definition">#</a></dt>
+<dd><p>Rotates various data attributes of the object by a specified angle.</p>
+<p>The method applies rotation transformations image data. It data that falls outside the border is clipped.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>angle_of_rotation</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – The angle, in degrees, by which to rotate the data attributes.
+Positive values indicate counterclockwise rotation.</p></li>
+<li><p><strong>mode</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – Mode parameter determining how borders are handled during the rotation.
+Default is ‘constant’.</p></li>
+<li><p><strong>cval</strong> – Constant value to fill edges in ‘constant’ mode. Default is 0.</p></li>
+<li><p><strong>order</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – The order of the spline interpolation for rotating images. Must be an
+integer in the range [0, 5]. Default is 0 for nearest-neighbor interpolation.</p></li>
+<li><p><strong>preserve_range</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>) – Whether to keep the original input range of values after
+performing the rotation. Default is True.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>None</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.Image.save2hdf5">
+<span class="sig-name descname"><span class="pre">save2hdf5</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filename</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">compression</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'gzip'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">compression_opts</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">4</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">overwrite</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.Image.save2hdf5" title="Link to this definition">#</a></dt>
+<dd><p>Save the image to an HDF5 file with all data and metadata.</p>
+<p>Stores the complete image data (RGB, gray, enhanced gray, object map) and
+metadata (protected and public) to an HDF5 file. Images are organized under
+/phenotypic/images/{image_name}/ structure. If the file does not exist, it
+is created. If it exists, the image is appended or overwritten based on the
+overwrite flag.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>filename</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><em>PathLike</em>) – Path to the HDF5 file (.h5 extension recommended).
+Will be created if it doesn’t exist.</p></li>
+<li><p><strong>compression</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><em>optional</em>) – Compression filter to apply to datasets.
+Options: ‘gzip’ (recommended), ‘szip’, or None for no compression.
+Defaults to ‘gzip’.</p></li>
+<li><p><strong>compression_opts</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>, </em><em>optional</em>) – Compression level for ‘gzip’ (1-9, where
+1=fastest, 9=best compression). For ‘szip’ and None, this parameter is
+ignored. Defaults to 4 (balanced compression/speed).</p></li>
+<li><p><strong>overwrite</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a><em>, </em><em>optional</em>) – If True, overwrites existing image with the same
+name in the file. If False, raises an error if image already exists.
+Defaults to False.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#UserWarning" title="(in Python v3.14)"><strong>UserWarning</strong></a> – If the PhenoTypic version in the file does not match the
+    current package version, indicating potential compatibility issues.</p></li>
+<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.14)"><strong>ValueError</strong></a> – If file is in SWMR (single-write multiple-read) mode and a
+    new group needs to be created (cannot create in SWMR mode).</p></li>
+</ul>
+</dd>
+</dl>
+<div class="admonition-notes admonition">
+<p class="admonition-title">Notes</p>
+<ul class="simple">
+<li><p>Large image arrays are stored as chunked datasets for memory efficiency.</p></li>
+<li><p>Protected and public metadata are stored in separate HDF5 groups.</p></li>
+<li><p>Version information is recorded to track HDF5 file compatibility.</p></li>
+<li><p>All numeric data types are preserved when storing.</p></li>
+</ul>
+</div>
+<div class="admonition-examples admonition">
+<p class="admonition-title">Examples</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">img</span> <span class="o">=</span> <span class="n">Image</span><span class="o">.</span><span class="n">imread</span><span class="p">(</span><span class="s1">&#39;photo.jpg&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">img</span><span class="o">.</span><span class="n">save2hdf5</span><span class="p">(</span><span class="s1">&#39;output.h5&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">img</span><span class="o">.</span><span class="n">save2hdf5</span><span class="p">(</span><span class="s1">&#39;output.h5&#39;</span><span class="p">,</span> <span class="n">compression</span><span class="o">=</span><span class="s1">&#39;szip&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.Image.save2pickle">
+<span class="sig-name descname"><span class="pre">save2pickle</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filename</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="headerlink" href="#phenotypic.Image.save2pickle" title="Link to this definition">#</a></dt>
+<dd><p>Save the image to a pickle file for fast serialization and deserialization.</p>
+<p>Stores all image data components and metadata in Python’s pickle format, which
+preserves data types and structure exactly. This is the fastest serialization
+method but produces larger files than HDF5 and is not suitable for inter-language
+data exchange.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>filename</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><em>PathLike</em>) – Path to the pickle file to write (.pkl or .pickle
+extension recommended).</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
+<div class="admonition-notes admonition">
+<p class="admonition-title">Notes</p>
+<ul class="simple">
+<li><p>Pickle format is Python-specific and cannot be read by other languages.</p></li>
+<li><p>File size is typically larger than HDF5 compressed files.</p></li>
+<li><p>Load/save is faster than HDF5 for small to medium images.</p></li>
+<li><p>Pickle files may not be compatible across Python versions.</p></li>
+</ul>
+</div>
+<div class="admonition-examples admonition">
+<p class="admonition-title">Examples</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">img</span> <span class="o">=</span> <span class="n">Image</span><span class="o">.</span><span class="n">imread</span><span class="p">(</span><span class="s1">&#39;photo.jpg&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">img</span><span class="o">.</span><span class="n">save2pickle</span><span class="p">(</span><span class="s1">&#39;image.pkl&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">loaded</span> <span class="o">=</span> <span class="n">Image</span><span class="o">.</span><span class="n">load_pickle</span><span class="p">(</span><span class="s1">&#39;image.pkl&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.Image.set_image">
+<span class="sig-name descname"><span class="pre">set_image</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">input_image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#phenotypic.Image" title="phenotypic.Image"><span class="pre">Image</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">np.ndarray</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="headerlink" href="#phenotypic.Image.set_image" title="Link to this definition">#</a></dt>
+<dd><p>Sets the image for the object by processing the provided input, which can be either
+a NumPy array or an instance of the Image class. If the input type is unsupported,
+an exception is raised to notify the user.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>input_image</strong> (<a class="reference internal" href="#phenotypic.Image" title="phenotypic.Image"><em>Image</em></a><em> | </em><em>np.ndarray</em>) – A NumPy array or an instance of the Image class representing
+the image to be set.</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.14)"><strong>ValueError</strong></a> – If the input is not a NumPy array or an Image instance.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="phenotypic.Image.shape">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">shape</span></span><a class="headerlink" href="#phenotypic.Image.shape" title="Link to this definition">#</a></dt>
+<dd><p>Returns the shape of the image array or gray depending on arr format or none if no image is set.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Returns the shape of the array or gray depending on arr format or none if no image is set.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>Optional[Tuple(<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)">int</a>,<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)">int</a>,…)]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.Image.show">
+<span class="sig-name descname"><span class="pre">show</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ax</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">plt.Axes</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">figsize</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.Image.show" title="Link to this definition">#</a></dt>
+<dd><p>Displays the image data using matplotlib.</p>
+<p>This method renders either the array or gray property of the instance
+depending on the image format. It either shows the content on the
+provided matplotlib axes (<cite>ax</cite>) or creates a
+new figure and axes for the visualization. Additional display-related
+customization can be passed using keyword arguments.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>ax</strong> (<em>plt.Axes</em><em>, </em><em>optional</em>) – The matplotlib Axes object where the image
+will be displayed. If None, a new Axes object is created.</p></li>
+<li><p><strong>figsize</strong> (<em>Tuple</em><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>] </em><em>| </em><em>None</em><em>, </em><em>optional</em>) – The size of the resulting
+figure if no <cite>ax</cite> is provided. Defaults to None.</p></li>
+<li><p><strong>**kwargs</strong> – Additional keyword arguments to customize the rendering
+behavior when showing the image.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>A tuple consisting of the matplotlib</dt><dd><p>Figure and Axes that contain the rendered content.</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Tuple[plt.Figure, plt.Axes]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.Image.show_overlay">
+<span class="sig-name descname"><span class="pre">show_overlay</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">object_label</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">figsize</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">(10,</span> <span class="pre">5)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">title</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show_labels</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ax</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">plt.Axes</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">label_settings</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">overlay_settings</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">imshow_settings</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.Image.show_overlay" title="Link to this definition">#</a></dt>
+<dd><p>Displays an overlay of the provided object label and image using the specified settings.</p>
+<p>This method combines an image and its segmentation or annotation mask overlay
+for visualization. The specific behavior is adjusted based on the instance’s
+underlying image format (e.g., whether it operates on arrays or matrices).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>object_label</strong> (<em>Optional</em><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>]</em>) – The label of the object to overlay. If None,
+overlays all available objects.</p></li>
+<li><p><strong>figsize</strong> (<em>Tuple</em><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>]</em>) – A tuple specifying the figure size in inches.</p></li>
+<li><p><strong>title</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><em>None</em>) – The title of the overlay figure. If None, no title will
+be displayed.</p></li>
+<li><p><strong>show_labels</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>) – Whether to display object labels on the overlay. Defaults
+to False.</p></li>
+<li><p><strong>ax</strong> (<em>plt.Axes</em>) – An optional Matplotlib axes object. If provided, the overlay
+will be plotted on this axes. If None, a new axes object will be created.</p></li>
+<li><p><strong>label_settings</strong> (<em>None</em><em> | </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a>) – A dictionary specifying configurations for
+displaying object labels. If None, default settings will be used.</p></li>
+<li><p><strong>overlay_settings</strong> (<em>None</em><em> | </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a>) – A dictionary specifying configurations for
+the overlay appearance. If None, default settings will be used.</p></li>
+<li><p><strong>imshow_settings</strong> (<em>None</em><em> | </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a>) – A dictionary specifying configurations for
+the image display (e.g., color map or interpolation). If None, default
+settings will be used.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>A tuple containing the Matplotlib figure and</dt><dd><p>axes used for the overlay. This allows further customization or saving
+of the visualization outside this method.</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Tuple[plt.Figure, plt.Axes]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="phenotypic.Image.uuid">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">uuid</span></span><a class="headerlink" href="#phenotypic.Image.uuid" title="Link to this definition">#</a></dt>
+<dd><p>Returns the UUID of the image</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.Image"><code class="docutils literal notranslate"><span class="pre">Image</span></code></a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.Image.rgb"><code class="docutils literal notranslate"><span class="pre">Image.rgb</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.Image.gray"><code class="docutils literal notranslate"><span class="pre">Image.gray</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.Image.enh_gray"><code class="docutils literal notranslate"><span class="pre">Image.enh_gray</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.Image.objmask"><code class="docutils literal notranslate"><span class="pre">Image.objmask</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.Image.objmap"><code class="docutils literal notranslate"><span class="pre">Image.objmap</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.Image.metadata"><code class="docutils literal notranslate"><span class="pre">Image.metadata</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.Image.color"><code class="docutils literal notranslate"><span class="pre">Image.color</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.Image.objects"><code class="docutils literal notranslate"><span class="pre">Image.objects</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.Image.__eq__"><code class="docutils literal notranslate"><span class="pre">Image.__eq__()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.Image.__getitem__"><code class="docutils literal notranslate"><span class="pre">Image.__getitem__()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.Image.__init__"><code class="docutils literal notranslate"><span class="pre">Image.__init__()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.Image.__setitem__"><code class="docutils literal notranslate"><span class="pre">Image.__setitem__()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.Image.bit_depth"><code class="docutils literal notranslate"><span class="pre">Image.bit_depth</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.Image.clear"><code class="docutils literal notranslate"><span class="pre">Image.clear()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id0"><code class="docutils literal notranslate"><span class="pre">Image.color</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.Image.copy"><code class="docutils literal notranslate"><span class="pre">Image.copy()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id9"><code class="docutils literal notranslate"><span class="pre">Image.enh_gray</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id10"><code class="docutils literal notranslate"><span class="pre">Image.gray</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.Image.imread"><code class="docutils literal notranslate"><span class="pre">Image.imread()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.Image.info"><code class="docutils literal notranslate"><span class="pre">Image.info()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.Image.isempty"><code class="docutils literal notranslate"><span class="pre">Image.isempty()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.Image.load_hdf5"><code class="docutils literal notranslate"><span class="pre">Image.load_hdf5()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.Image.load_pickle"><code class="docutils literal notranslate"><span class="pre">Image.load_pickle()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id11"><code class="docutils literal notranslate"><span class="pre">Image.metadata</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.Image.name"><code class="docutils literal notranslate"><span class="pre">Image.name</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.Image.num_objects"><code class="docutils literal notranslate"><span class="pre">Image.num_objects</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id12"><code class="docutils literal notranslate"><span class="pre">Image.objects</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id13"><code class="docutils literal notranslate"><span class="pre">Image.objmap</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id14"><code class="docutils literal notranslate"><span class="pre">Image.objmask</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.Image.props"><code class="docutils literal notranslate"><span class="pre">Image.props</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.Image.reset"><code class="docutils literal notranslate"><span class="pre">Image.reset()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id15"><code class="docutils literal notranslate"><span class="pre">Image.rgb</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.Image.rotate"><code class="docutils literal notranslate"><span class="pre">Image.rotate()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.Image.save2hdf5"><code class="docutils literal notranslate"><span class="pre">Image.save2hdf5()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.Image.save2pickle"><code class="docutils literal notranslate"><span class="pre">Image.save2pickle()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.Image.set_image"><code class="docutils literal notranslate"><span class="pre">Image.set_image()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.Image.shape"><code class="docutils literal notranslate"><span class="pre">Image.shape</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.Image.show"><code class="docutils literal notranslate"><span class="pre">Image.show()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.Image.show_overlay"><code class="docutils literal notranslate"><span class="pre">Image.show_overlay()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.Image.uuid"><code class="docutils literal notranslate"><span class="pre">Image.uuid</span></code></a></li>
+</ul>
+</li>
+</ul>
+  </nav></div>
+
+  <div class="sidebar-secondary-item">
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../../_sources/api_reference/api/phenotypic.Image.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, ExFAB BioFoundry.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.1.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

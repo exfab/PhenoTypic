@@ -1,0 +1,2837 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>5. Make your own ImagePipeline &#8212; PhenoTypic</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/nbsphinx-code-cells.css?v=2aa19091" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/custom.css?v=800a184d" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../../../_static/documentation_options.js?v=b3db6a4d"></script>
+    <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../../../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="../../../_static/design-tabs.js?v=f930bc37"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+    <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'user_guide/tutorial/notebooks/ImagePipelines';</script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+    <link rel="next" title="6. Fitting Logistic Growth Curves" href="GrowthCurves.html" />
+    <link rel="prev" title="4. Working with GridImage: Grid-Specific Features" href="GridImages.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.11.1" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+     
+  
+
+<a class="navbar-brand logo" href="../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../../_static/gradient_logo_exfab.svg" class="logo__image only-light" alt="PhenoTypic"/>
+    <img src="../../../_static/gradient_logo_exfab.svg" class="logo__image only-dark pst-js-only" alt="PhenoTypic"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="../../index.html">
+    User Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../api_reference/index.html">
+    API Reference
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../contrib_guide/index.html">
+    Developer Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../downloadables.html">
+    Downloads
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/Wheeldon-Lab/PhenoScope#" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="../../index.html">
+    User Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../api_reference/index.html">
+    API Reference
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../contrib_guide/index.html">
+    Developer Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../downloadables.html">
+    Downloads
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/Wheeldon-Lab/PhenoScope#" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">User Guide Topics</span></p>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../../../installation.html">Installation</a></li>
+
+<li class="toctree-l1"><a class="reference internal" href="../../overview.html">Overview</a></li>
+<li class="toctree-l1 current active has-children"><a class="reference internal" href="../index.html">Tutorials</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="GettingStarted.html">1. Getting Started</a></li>
+<li class="toctree-l2"><a class="reference internal" href="LongerStart.html">2. Using <code class="docutils literal notranslate"><span class="pre">ImagePipeline</span></code>s to process batches</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Images.html">3. Understanding the Image Class: Data Components and Accessors</a></li>
+<li class="toctree-l2"><a class="reference internal" href="GridImages.html">4. Working with GridImage: Grid-Specific Features</a></li>
+<li class="toctree-l2 current active"><a class="current reference internal" href="#">5. Make your own <code class="docutils literal notranslate"><span class="pre">ImagePipeline</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="GrowthCurves.html">6. Fitting Logistic Growth Curves</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../examples/index.html">Examples</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul class="simple">
+</ul>
+</details></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../index.html" class="nav-link">User Guide</a></li>
+    
+    
+    <li class="breadcrumb-item"><a href="../index.html" class="nav-link">Tutorials</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">5. Make your own <code class="docutils literal notranslate"><span class="pre">ImagePipeline</span></code></span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="5.-Make-your-own-ImagePipeline">
+<h1>5. Make your own <code class="docutils literal notranslate"><span class="pre">ImagePipeline</span></code><a class="headerlink" href="#5.-Make-your-own-ImagePipeline" title="Link to this heading">#</a></h1>
+<p>For a more detailed explanation on the components of <code class="docutils literal notranslate"><span class="pre">phenotypic.Image</span></code> and <code class="docutils literal notranslate"><span class="pre">phenotypic.GridImage</span></code>, see the {doc} <code class="docutils literal notranslate"><span class="pre">Images</span></code> and {doc} <code class="docutils literal notranslate"><span class="pre">GridImages</span></code> tutorial.</p>
+<p>This tutorial demonstrates how to build and use image processing pipelines in PhenoTypic for automated analysis of arrayed microbial colonies on agar plates. It also discusses some of the caveats with the different steps</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[1]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">phenotypic</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pht</span>
+
+<span class="n">plate_image</span> <span class="o">=</span> <span class="n">pht</span><span class="o">.</span><span class="n">GridImage</span><span class="p">(</span><span class="n">pht</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">load_plate_72hr</span><span class="p">())</span>
+<span class="n">plate_image</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[1]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+(&lt;Figure size 800x600 with 1 Axes&gt;, &lt;Axes: &gt;)
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../../_images/user_guide_tutorial_notebooks_ImagePipelines_1_1.png" src="../../../_images/user_guide_tutorial_notebooks_ImagePipelines_1_1.png" />
+</div>
+</div>
+<section id="Introduction-to-ImageOperations">
+<h2>Introduction to <code class="docutils literal notranslate"><span class="pre">ImageOperation</span></code>s<a class="headerlink" href="#Introduction-to-ImageOperations" title="Link to this heading">#</a></h2>
+<p>There are 4 main types of <code class="docutils literal notranslate"><span class="pre">ImageOperations</span></code>s:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">ImageCorrection</span></code>: These are operations that preserve or improve data integrity and analysis results</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ImageEnhancement</span></code>: These don’t preserve data integrity, so they are applied to the <code class="docutils literal notranslate"><span class="pre">enh_gray</span></code> representation of the image because they improve detection results.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ObjectDetection</span></code>: These read the <code class="docutils literal notranslate"><span class="pre">rgb</span></code> (for color based detection) or <code class="docutils literal notranslate"><span class="pre">enh_gray</span></code> property of the Image in order to assign pixels to objects in an image</p></li>
+<li></li>
+</ul>
+<section id="Preprocessing-Layer">
+<h3>Preprocessing Layer<a class="headerlink" href="#Preprocessing-Layer" title="Link to this heading">#</a></h3>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">plate_image</span><span class="o">.</span><span class="n">enh_gray</span><span class="o">.</span><span class="n">histogram</span><span class="p">()</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+(&lt;Figure size 1000x500 with 2 Axes&gt;,
+ array([(&lt;Figure size 1000x500 with 2 Axes&gt;, &lt;Axes: title={&#39;center&#39;: &#39;c44e82a8-ac58-4918-8476-24e7526df7eb&#39;}&gt;),
+        &lt;Axes: &gt;], dtype=object))
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../../_images/user_guide_tutorial_notebooks_ImagePipelines_4_1.png" src="../../../_images/user_guide_tutorial_notebooks_ImagePipelines_4_1.png" />
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.enhance</span><span class="w"> </span><span class="kn">import</span> <span class="n">BM3DDenoiser</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.detect</span><span class="w"> </span><span class="kn">import</span> <span class="n">GitterDetector</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImagePipeline</span>
+
+<span class="n">pipe</span> <span class="o">=</span> <span class="n">ImagePipeline</span><span class="p">(</span>
+        <span class="n">ops</span><span class="o">=</span><span class="p">[</span>
+            <span class="n">BM3DDenoiser</span><span class="p">(),</span>
+            <span class="n">GitterDetector</span><span class="p">(),</span>
+        <span class="p">]</span>
+<span class="p">)</span>
+
+<span class="n">test_image</span> <span class="o">=</span> <span class="n">pipe</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">plate_image</span><span class="p">)</span>
+<span class="n">test_image</span><span class="o">.</span><span class="n">show_overlay</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+(&lt;Figure size 900x1000 with 1 Axes&gt;, &lt;Axes: &gt;)
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../../_images/user_guide_tutorial_notebooks_ImagePipelines_5_1.png" src="../../../_images/user_guide_tutorial_notebooks_ImagePipelines_5_1.png" />
+</div>
+</div>
+<p>From the histogram, we can see that the contrast is not being maximized, since the minimum value is at 0.2 and the highest value is around 6.5. The full range of grayscale values is from 0-1. Many detection algorithms rely on a bimodal distribution of intensity to separate the foreground and background. Thus, we should enhance the contrast to improve detection.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.enhance</span><span class="w"> </span><span class="kn">import</span> <span class="n">GaussianBlur</span>
+
+<span class="n">blur</span> <span class="o">=</span> <span class="n">GaussianBlur</span><span class="p">()</span>
+<span class="n">blur</span><span class="o">.</span><span class="n">widget</span><span class="p">(</span><span class="n">plate_image</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<script type="application/vnd.jupyter.widget-view+json">{"version_major": 2, "version_minor": 0, "model_id": "b4ab04b47c5248e98f1691d9b74f6ffd"}</script></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.prefab</span><span class="w"> </span><span class="kn">import</span> <span class="n">HeavyWatershedPipeline</span>
+
+<span class="n">kmarx_pipeline</span> <span class="o">=</span> <span class="n">HeavyWatershedPipeline</span><span class="p">()</span>
+
+<span class="c1"># Lets use the widget to fine-tune parameters</span>
+<span class="n">kmarx_pipeline</span><span class="o">.</span><span class="n">widget</span><span class="p">()</span>
+<br/><br/></pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<script type="application/vnd.jupyter.widget-view+json">{"version_major": 2, "version_minor": 0, "model_id": "4b9313fde98a44868f9b7d00f3f8af7d"}</script></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">pipeline_output</span> <span class="o">=</span> <span class="n">kmarx_pipeline</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">plate_image</span><span class="p">)</span>
+<span class="n">pipeline_output</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">relabel</span><span class="p">()</span>
+<span class="n">pipeline_output</span><span class="o">.</span><span class="n">show_overlay</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+(&lt;Figure size 900x1000 with 1 Axes&gt;, &lt;Axes: &gt;)
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../../_images/user_guide_tutorial_notebooks_ImagePipelines_9_1.png" src="../../../_images/user_guide_tutorial_notebooks_ImagePipelines_9_1.png" />
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.prefab</span><span class="w"> </span><span class="kn">import</span> <span class="n">HeavyWatershedPipeline</span>
+
+<span class="n">pipeline_output2</span> <span class="o">=</span> <span class="n">HeavyWatershedPipeline</span><span class="p">()</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">plate_image</span><span class="p">)</span>
+<span class="n">pipeline_output2</span><span class="o">.</span><span class="n">show_overlay</span><span class="p">()</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+(&lt;Figure size 900x1000 with 1 Axes&gt;, &lt;Axes: &gt;)
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../../_images/user_guide_tutorial_notebooks_ImagePipelines_10_1.png" src="../../../_images/user_guide_tutorial_notebooks_ImagePipelines_10_1.png" />
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">pipeline_output</span><span class="o">.</span><span class="n">enh_gray</span><span class="o">.</span><span class="n">histogram</span><span class="p">()</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+(&lt;Figure size 1000x500 with 2 Axes&gt;,
+ array([(&lt;Figure size 1000x500 with 2 Axes&gt;, &lt;Axes: title={&#39;center&#39;: &#39;e8a77428-634d-4c07-b09c-c725464d6b32&#39;}&gt;),
+        &lt;Axes: &gt;], dtype=object))
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../../_images/user_guide_tutorial_notebooks_ImagePipelines_11_1.png" src="../../../_images/user_guide_tutorial_notebooks_ImagePipelines_11_1.png" />
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">pipeline_meas</span> <span class="o">=</span> <span class="n">kmarx_pipeline</span><span class="o">.</span><span class="n">measure</span><span class="p">(</span><span class="n">pipeline_output</span><span class="p">,</span> <span class="n">include_metadata</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="n">pipeline_meas</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
+</pre></div>
+</div>
+<div class="output_area rendered_html docutils container">
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>ObjectLabel</th>
+      <th>Bbox_CenterRR</th>
+      <th>Bbox_CenterCC</th>
+      <th>Bbox_MinRR</th>
+      <th>Bbox_MinCC</th>
+      <th>Bbox_MaxRR</th>
+      <th>Bbox_MaxCC</th>
+      <th>Grid_RowNum</th>
+      <th>Grid_ColNum</th>
+      <th>Grid_SectionNum</th>
+      <th>...</th>
+      <th>TextureGray_HaralickVariance-avg-scale04</th>
+      <th>TextureGray_InverseDifferenceMoment-avg-scale04</th>
+      <th>TextureGray_SumAverage-avg-scale04</th>
+      <th>TextureGray_SumVariance-avg-scale04</th>
+      <th>TextureGray_SumEntropy-avg-scale04</th>
+      <th>TextureGray_Entropy-avg-scale04</th>
+      <th>TextureGray_DiffVariance-avg-scale04</th>
+      <th>TextureGray_DiffEntropy-avg-scale04</th>
+      <th>TextureGray_InfoCorrelation1-avg-scale04</th>
+      <th>TextureGray_InfoCorrelation2-avg-scale04</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>1</td>
+      <td>146.506703</td>
+      <td>170.569699</td>
+      <td>91</td>
+      <td>128</td>
+      <td>204</td>
+      <td>216</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>...</td>
+      <td>0.227501</td>
+      <td>0.917104</td>
+      <td>23.561500</td>
+      <td>0.725170</td>
+      <td>1.245760</td>
+      <td>1.447084</td>
+      <td>0.044131</td>
+      <td>0.675382</td>
+      <td>-0.292161</td>
+      <td>0.617447</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>2</td>
+      <td>149.396380</td>
+      <td>340.542659</td>
+      <td>97</td>
+      <td>298</td>
+      <td>204</td>
+      <td>386</td>
+      <td>0</td>
+      <td>1</td>
+      <td>1</td>
+      <td>...</td>
+      <td>0.738942</td>
+      <td>0.779646</td>
+      <td>25.834356</td>
+      <td>2.456797</td>
+      <td>2.475868</td>
+      <td>2.975292</td>
+      <td>0.028841</td>
+      <td>1.102396</td>
+      <td>-0.263979</td>
+      <td>0.763785</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>3</td>
+      <td>160.823387</td>
+      <td>503.184827</td>
+      <td>103</td>
+      <td>456</td>
+      <td>218</td>
+      <td>552</td>
+      <td>0</td>
+      <td>2</td>
+      <td>2</td>
+      <td>...</td>
+      <td>0.491629</td>
+      <td>0.844037</td>
+      <td>24.416443</td>
+      <td>1.642722</td>
+      <td>2.198116</td>
+      <td>2.531479</td>
+      <td>0.035992</td>
+      <td>0.916609</td>
+      <td>-0.294202</td>
+      <td>0.753914</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>4</td>
+      <td>163.507507</td>
+      <td>667.136392</td>
+      <td>105</td>
+      <td>616</td>
+      <td>224</td>
+      <td>720</td>
+      <td>0</td>
+      <td>3</td>
+      <td>3</td>
+      <td>...</td>
+      <td>1.169566</td>
+      <td>0.787356</td>
+      <td>27.764862</td>
+      <td>4.112562</td>
+      <td>2.690033</td>
+      <td>3.187108</td>
+      <td>0.026823</td>
+      <td>1.193745</td>
+      <td>-0.348834</td>
+      <td>0.855079</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>5</td>
+      <td>162.581936</td>
+      <td>988.687380</td>
+      <td>112</td>
+      <td>945</td>
+      <td>214</td>
+      <td>1035</td>
+      <td>0</td>
+      <td>5</td>
+      <td>5</td>
+      <td>...</td>
+      <td>1.006358</td>
+      <td>0.829287</td>
+      <td>26.639336</td>
+      <td>3.560625</td>
+      <td>2.155954</td>
+      <td>2.585183</td>
+      <td>0.032185</td>
+      <td>1.086397</td>
+      <td>-0.390953</td>
+      <td>0.841887</td>
+    </tr>
+    <tr>
+      <th>...</th>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+    </tr>
+    <tr>
+      <th>85</th>
+      <td>86</td>
+      <td>1293.937771</td>
+      <td>489.301356</td>
+      <td>1239</td>
+      <td>448</td>
+      <td>1349</td>
+      <td>532</td>
+      <td>7</td>
+      <td>2</td>
+      <td>86</td>
+      <td>...</td>
+      <td>1.108200</td>
+      <td>0.742637</td>
+      <td>27.649365</td>
+      <td>3.755580</td>
+      <td>2.774204</td>
+      <td>3.409272</td>
+      <td>0.024679</td>
+      <td>1.263264</td>
+      <td>-0.269797</td>
+      <td>0.802120</td>
+    </tr>
+    <tr>
+      <th>86</th>
+      <td>87</td>
+      <td>1284.021505</td>
+      <td>1311.323189</td>
+      <td>1239</td>
+      <td>1275</td>
+      <td>1328</td>
+      <td>1350</td>
+      <td>7</td>
+      <td>7</td>
+      <td>91</td>
+      <td>...</td>
+      <td>1.370031</td>
+      <td>0.729467</td>
+      <td>27.969614</td>
+      <td>4.622844</td>
+      <td>2.764216</td>
+      <td>3.452672</td>
+      <td>0.021514</td>
+      <td>1.404993</td>
+      <td>-0.260746</td>
+      <td>0.795513</td>
+    </tr>
+    <tr>
+      <th>87</th>
+      <td>88</td>
+      <td>1298.299929</td>
+      <td>1475.423016</td>
+      <td>1250</td>
+      <td>1430</td>
+      <td>1348</td>
+      <td>1523</td>
+      <td>7</td>
+      <td>8</td>
+      <td>92</td>
+      <td>...</td>
+      <td>1.242901</td>
+      <td>0.774189</td>
+      <td>27.577465</td>
+      <td>4.450449</td>
+      <td>2.823792</td>
+      <td>3.349485</td>
+      <td>0.026872</td>
+      <td>1.125120</td>
+      <td>-0.352028</td>
+      <td>0.868454</td>
+    </tr>
+    <tr>
+      <th>88</th>
+      <td>89</td>
+      <td>1296.660489</td>
+      <td>1624.861193</td>
+      <td>1252</td>
+      <td>1582</td>
+      <td>1335</td>
+      <td>1670</td>
+      <td>7</td>
+      <td>9</td>
+      <td>93</td>
+      <td>...</td>
+      <td>1.464127</td>
+      <td>0.724083</td>
+      <td>27.086165</td>
+      <td>5.091357</td>
+      <td>2.989982</td>
+      <td>3.669252</td>
+      <td>0.023581</td>
+      <td>1.321775</td>
+      <td>-0.301962</td>
+      <td>0.848755</td>
+    </tr>
+    <tr>
+      <th>89</th>
+      <td>90</td>
+      <td>1305.486899</td>
+      <td>1806.938209</td>
+      <td>1256</td>
+      <td>1762</td>
+      <td>1357</td>
+      <td>1853</td>
+      <td>7</td>
+      <td>10</td>
+      <td>94</td>
+      <td>...</td>
+      <td>1.332574</td>
+      <td>0.771103</td>
+      <td>28.552207</td>
+      <td>4.697378</td>
+      <td>2.657524</td>
+      <td>3.214988</td>
+      <td>0.024217</td>
+      <td>1.250490</td>
+      <td>-0.333007</td>
+      <td>0.845963</td>
+    </tr>
+  </tbody>
+</table>
+<p>90 rows × 233 columns</p>
+</div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">pipeline_output</span><span class="o">.</span><span class="n">rgb</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+(&lt;Figure size 800x600 with 1 Axes&gt;, &lt;Axes: &gt;)
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../../_images/user_guide_tutorial_notebooks_ImagePipelines_13_1.png" src="../../../_images/user_guide_tutorial_notebooks_ImagePipelines_13_1.png" />
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">pipeline_output</span><span class="o">.</span><span class="n">show_overlay</span><span class="p">()</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../../_images/user_guide_tutorial_notebooks_ImagePipelines_14_0.png" src="../../../_images/user_guide_tutorial_notebooks_ImagePipelines_14_0.png" />
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[11]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">pipeline_output</span><span class="o">.</span><span class="n">objmask</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[11]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+(&lt;Figure size 800x600 with 1 Axes&gt;, &lt;Axes: &gt;)
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../../_images/user_guide_tutorial_notebooks_ImagePipelines_15_1.png" src="../../../_images/user_guide_tutorial_notebooks_ImagePipelines_15_1.png" />
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[12]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">pipeline_output</span><span class="o">.</span><span class="n">grid</span><span class="o">.</span><span class="n">info</span><span class="p">()</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[12]:
+</pre></div>
+</div>
+<div class="output_area rendered_html docutils container">
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Metadata_BitDepth</th>
+      <th>Metadata_ImageType</th>
+      <th>Metadata_ImageName</th>
+      <th>ObjectLabel</th>
+      <th>Bbox_CenterRR</th>
+      <th>Bbox_CenterCC</th>
+      <th>Bbox_MinRR</th>
+      <th>Bbox_MinCC</th>
+      <th>Bbox_MaxRR</th>
+      <th>Bbox_MaxCC</th>
+      <th>Grid_RowNum</th>
+      <th>Grid_ColNum</th>
+      <th>Grid_SectionNum</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>8</td>
+      <td>GridImage</td>
+      <td>e8a77428-634d-4c07-b09c-c725464d6b32</td>
+      <td>1</td>
+      <td>146.506703</td>
+      <td>170.569699</td>
+      <td>91</td>
+      <td>128</td>
+      <td>204</td>
+      <td>216</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>8</td>
+      <td>GridImage</td>
+      <td>e8a77428-634d-4c07-b09c-c725464d6b32</td>
+      <td>2</td>
+      <td>149.396380</td>
+      <td>340.542659</td>
+      <td>97</td>
+      <td>298</td>
+      <td>204</td>
+      <td>386</td>
+      <td>0</td>
+      <td>1</td>
+      <td>1</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>8</td>
+      <td>GridImage</td>
+      <td>e8a77428-634d-4c07-b09c-c725464d6b32</td>
+      <td>3</td>
+      <td>160.823387</td>
+      <td>503.184827</td>
+      <td>103</td>
+      <td>456</td>
+      <td>218</td>
+      <td>552</td>
+      <td>0</td>
+      <td>2</td>
+      <td>2</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>8</td>
+      <td>GridImage</td>
+      <td>e8a77428-634d-4c07-b09c-c725464d6b32</td>
+      <td>4</td>
+      <td>163.507507</td>
+      <td>667.136392</td>
+      <td>105</td>
+      <td>616</td>
+      <td>224</td>
+      <td>720</td>
+      <td>0</td>
+      <td>3</td>
+      <td>3</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>8</td>
+      <td>GridImage</td>
+      <td>e8a77428-634d-4c07-b09c-c725464d6b32</td>
+      <td>5</td>
+      <td>162.581936</td>
+      <td>988.687380</td>
+      <td>112</td>
+      <td>945</td>
+      <td>214</td>
+      <td>1035</td>
+      <td>0</td>
+      <td>5</td>
+      <td>5</td>
+    </tr>
+    <tr>
+      <th>...</th>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+    </tr>
+    <tr>
+      <th>85</th>
+      <td>8</td>
+      <td>GridImage</td>
+      <td>e8a77428-634d-4c07-b09c-c725464d6b32</td>
+      <td>86</td>
+      <td>1293.937771</td>
+      <td>489.301356</td>
+      <td>1239</td>
+      <td>448</td>
+      <td>1349</td>
+      <td>532</td>
+      <td>7</td>
+      <td>2</td>
+      <td>86</td>
+    </tr>
+    <tr>
+      <th>86</th>
+      <td>8</td>
+      <td>GridImage</td>
+      <td>e8a77428-634d-4c07-b09c-c725464d6b32</td>
+      <td>87</td>
+      <td>1284.021505</td>
+      <td>1311.323189</td>
+      <td>1239</td>
+      <td>1275</td>
+      <td>1328</td>
+      <td>1350</td>
+      <td>7</td>
+      <td>7</td>
+      <td>91</td>
+    </tr>
+    <tr>
+      <th>87</th>
+      <td>8</td>
+      <td>GridImage</td>
+      <td>e8a77428-634d-4c07-b09c-c725464d6b32</td>
+      <td>88</td>
+      <td>1298.299929</td>
+      <td>1475.423016</td>
+      <td>1250</td>
+      <td>1430</td>
+      <td>1348</td>
+      <td>1523</td>
+      <td>7</td>
+      <td>8</td>
+      <td>92</td>
+    </tr>
+    <tr>
+      <th>88</th>
+      <td>8</td>
+      <td>GridImage</td>
+      <td>e8a77428-634d-4c07-b09c-c725464d6b32</td>
+      <td>89</td>
+      <td>1296.660489</td>
+      <td>1624.861193</td>
+      <td>1252</td>
+      <td>1582</td>
+      <td>1335</td>
+      <td>1670</td>
+      <td>7</td>
+      <td>9</td>
+      <td>93</td>
+    </tr>
+    <tr>
+      <th>89</th>
+      <td>8</td>
+      <td>GridImage</td>
+      <td>e8a77428-634d-4c07-b09c-c725464d6b32</td>
+      <td>90</td>
+      <td>1305.486899</td>
+      <td>1806.938209</td>
+      <td>1256</td>
+      <td>1762</td>
+      <td>1357</td>
+      <td>1853</td>
+      <td>7</td>
+      <td>10</td>
+      <td>94</td>
+    </tr>
+  </tbody>
+</table>
+<p>90 rows × 13 columns</p>
+</div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[13]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">shape_measurements</span> <span class="o">=</span> <span class="n">MeasureShape</span><span class="p">()</span><span class="o">.</span><span class="n">measure</span><span class="p">(</span><span class="n">pipeline_output</span><span class="p">)</span>
+<span class="n">shape_measurements</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[13]:
+</pre></div>
+</div>
+<div class="output_area rendered_html docutils container">
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>ObjectLabel</th>
+      <th>Shape_Area</th>
+      <th>Shape_Perimeter</th>
+      <th>Shape_Circularity</th>
+      <th>Shape_ConvexArea</th>
+      <th>Shape_MedianRadius</th>
+      <th>Shape_MeanRadius</th>
+      <th>Shape_MaxRadius</th>
+      <th>Shape_MinFeretDiameter</th>
+      <th>Shape_MaxFeretDiameter</th>
+      <th>Shape_Eccentricity</th>
+      <th>Shape_Solidity</th>
+      <th>Shape_Extent</th>
+      <th>Shape_BboxArea</th>
+      <th>Shape_MajorAxisLength</th>
+      <th>Shape_MinorAxisLength</th>
+      <th>Shape_Compactness</th>
+      <th>Shape_Orientation</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>1</td>
+      <td>7683.0</td>
+      <td>335.563492</td>
+      <td>0.857415</td>
+      <td>317.616082</td>
+      <td>14.142136</td>
+      <td>15.782705</td>
+      <td>41.048752</td>
+      <td>82.443454</td>
+      <td>112.946890</td>
+      <td>0.688207</td>
+      <td>24.189581</td>
+      <td>0.772627</td>
+      <td>9944.0</td>
+      <td>116.287931</td>
+      <td>84.368585</td>
+      <td>1.166296</td>
+      <td>-0.301111</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>2</td>
+      <td>7349.0</td>
+      <td>328.492424</td>
+      <td>0.855830</td>
+      <td>309.802847</td>
+      <td>13.928388</td>
+      <td>15.490497</td>
+      <td>40.718546</td>
+      <td>81.270536</td>
+      <td>110.208893</td>
+      <td>0.672004</td>
+      <td>23.721538</td>
+      <td>0.780480</td>
+      <td>9416.0</td>
+      <td>112.570343</td>
+      <td>83.363638</td>
+      <td>1.168457</td>
+      <td>-0.346249</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>3</td>
+      <td>8278.0</td>
+      <td>347.948268</td>
+      <td>0.859223</td>
+      <td>328.849209</td>
+      <td>14.764823</td>
+      <td>16.493031</td>
+      <td>43.863424</td>
+      <td>87.862531</td>
+      <td>116.468880</td>
+      <td>0.642563</td>
+      <td>25.172632</td>
+      <td>0.749819</td>
+      <td>11040.0</td>
+      <td>117.424997</td>
+      <td>89.974903</td>
+      <td>1.163842</td>
+      <td>-0.392919</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>4</td>
+      <td>9458.0</td>
+      <td>371.019336</td>
+      <td>0.863408</td>
+      <td>349.273610</td>
+      <td>16.000000</td>
+      <td>17.849295</td>
+      <td>48.010416</td>
+      <td>95.703709</td>
+      <td>122.114700</td>
+      <td>0.609198</td>
+      <td>27.079057</td>
+      <td>0.764221</td>
+      <td>12376.0</td>
+      <td>123.330059</td>
+      <td>97.802935</td>
+      <td>1.158201</td>
+      <td>-0.400819</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>5</td>
+      <td>7274.0</td>
+      <td>321.078210</td>
+      <td>0.886669</td>
+      <td>305.533007</td>
+      <td>14.000000</td>
+      <td>15.731636</td>
+      <td>42.059482</td>
+      <td>84.970583</td>
+      <td>107.540690</td>
+      <td>0.601665</td>
+      <td>23.807575</td>
+      <td>0.792375</td>
+      <td>9180.0</td>
+      <td>107.762019</td>
+      <td>86.074754</td>
+      <td>1.127817</td>
+      <td>-0.429974</td>
+    </tr>
+    <tr>
+      <th>...</th>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+    </tr>
+    <tr>
+      <th>85</th>
+      <td>86</td>
+      <td>7151.0</td>
+      <td>328.492424</td>
+      <td>0.832772</td>
+      <td>309.230424</td>
+      <td>13.416408</td>
+      <td>14.925836</td>
+      <td>39.293765</td>
+      <td>80.445199</td>
+      <td>109.457754</td>
+      <td>0.672877</td>
+      <td>23.125150</td>
+      <td>0.773918</td>
+      <td>9240.0</td>
+      <td>111.295764</td>
+      <td>82.331500</td>
+      <td>1.200809</td>
+      <td>0.026111</td>
+    </tr>
+    <tr>
+      <th>86</th>
+      <td>87</td>
+      <td>4929.0</td>
+      <td>271.178716</td>
+      <td>0.842282</td>
+      <td>255.516412</td>
+      <td>11.180340</td>
+      <td>12.558015</td>
+      <td>34.000000</td>
+      <td>71.975989</td>
+      <td>88.566359</td>
+      <td>0.577093</td>
+      <td>19.290346</td>
+      <td>0.738427</td>
+      <td>6675.0</td>
+      <td>88.080214</td>
+      <td>71.933216</td>
+      <td>1.187251</td>
+      <td>0.189082</td>
+    </tr>
+    <tr>
+      <th>87</th>
+      <td>88</td>
+      <td>6995.0</td>
+      <td>317.078210</td>
+      <td>0.874309</td>
+      <td>299.816627</td>
+      <td>13.601471</td>
+      <td>15.440377</td>
+      <td>43.104524</td>
+      <td>87.467796</td>
+      <td>99.824847</td>
+      <td>0.440490</td>
+      <td>23.330928</td>
+      <td>0.767501</td>
+      <td>9114.0</td>
+      <td>99.870924</td>
+      <td>89.659878</td>
+      <td>1.143761</td>
+      <td>-0.365050</td>
+    </tr>
+    <tr>
+      <th>88</th>
+      <td>89</td>
+      <td>5396.0</td>
+      <td>294.592929</td>
+      <td>0.781335</td>
+      <td>273.725269</td>
+      <td>11.180340</td>
+      <td>12.340611</td>
+      <td>33.541020</td>
+      <td>79.881659</td>
+      <td>95.131488</td>
+      <td>0.497171</td>
+      <td>19.713196</td>
+      <td>0.738773</td>
+      <td>7304.0</td>
+      <td>90.984682</td>
+      <td>78.943092</td>
+      <td>1.279861</td>
+      <td>0.962156</td>
+    </tr>
+    <tr>
+      <th>89</th>
+      <td>90</td>
+      <td>7137.0</td>
+      <td>321.320851</td>
+      <td>0.868656</td>
+      <td>303.153796</td>
+      <td>13.892444</td>
+      <td>15.581754</td>
+      <td>43.266615</td>
+      <td>90.000000</td>
+      <td>101.980390</td>
+      <td>0.443792</td>
+      <td>23.542506</td>
+      <td>0.776521</td>
+      <td>9191.0</td>
+      <td>100.914223</td>
+      <td>90.432267</td>
+      <td>1.151204</td>
+      <td>-0.193597</td>
+    </tr>
+  </tbody>
+</table>
+<p>90 rows × 18 columns</p>
+</div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[14]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">intensity_measurements</span> <span class="o">=</span> <span class="n">MeasureIntensity</span><span class="p">()</span><span class="o">.</span><span class="n">measure</span><span class="p">(</span><span class="n">pipeline_output</span><span class="p">)</span>
+<span class="n">intensity_measurements</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[14]:
+</pre></div>
+</div>
+<div class="output_area rendered_html docutils container">
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>ObjectLabel</th>
+      <th>Intensity_IntegratedIntensity</th>
+      <th>Intensity_MinimumIntensity</th>
+      <th>Intensity_MaximumIntensity</th>
+      <th>Intensity_MeanIntensity</th>
+      <th>Intensity_MedianIntensity</th>
+      <th>Intensity_StandardDeviationIntensity</th>
+      <th>Intensity_CoefficientVarianceIntensity</th>
+      <th>Intensity_LowerQuartileIntensity</th>
+      <th>Intensity_UpperQuartileIntensity</th>
+      <th>Intensity_InterquartileRangeIntensity</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>1</td>
+      <td>2958.221342</td>
+      <td>0.315973</td>
+      <td>0.447028</td>
+      <td>0.385035</td>
+      <td>0.393280</td>
+      <td>0.018061</td>
+      <td>0.046913</td>
+      <td>0.376440</td>
+      <td>0.398012</td>
+      <td>0.021572</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>2</td>
+      <td>3051.176300</td>
+      <td>0.320162</td>
+      <td>0.450094</td>
+      <td>0.415183</td>
+      <td>0.424600</td>
+      <td>0.027032</td>
+      <td>0.065118</td>
+      <td>0.400252</td>
+      <td>0.434407</td>
+      <td>0.034155</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>3</td>
+      <td>3272.532053</td>
+      <td>0.328571</td>
+      <td>0.435546</td>
+      <td>0.395329</td>
+      <td>0.398831</td>
+      <td>0.021133</td>
+      <td>0.053463</td>
+      <td>0.386255</td>
+      <td>0.412017</td>
+      <td>0.025762</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>4</td>
+      <td>4201.881607</td>
+      <td>0.312051</td>
+      <td>0.483713</td>
+      <td>0.444267</td>
+      <td>0.458502</td>
+      <td>0.035672</td>
+      <td>0.080303</td>
+      <td>0.428522</td>
+      <td>0.470267</td>
+      <td>0.041745</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>5</td>
+      <td>3086.875557</td>
+      <td>0.310102</td>
+      <td>0.457401</td>
+      <td>0.424371</td>
+      <td>0.442251</td>
+      <td>0.032696</td>
+      <td>0.077056</td>
+      <td>0.407827</td>
+      <td>0.448993</td>
+      <td>0.041165</td>
+    </tr>
+    <tr>
+      <th>...</th>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+    </tr>
+    <tr>
+      <th>85</th>
+      <td>86</td>
+      <td>3162.189429</td>
+      <td>0.327134</td>
+      <td>0.499667</td>
+      <td>0.442202</td>
+      <td>0.453435</td>
+      <td>0.033906</td>
+      <td>0.076686</td>
+      <td>0.421029</td>
+      <td>0.469702</td>
+      <td>0.048673</td>
+    </tr>
+    <tr>
+      <th>86</th>
+      <td>87</td>
+      <td>2198.213529</td>
+      <td>0.319291</td>
+      <td>0.508597</td>
+      <td>0.445976</td>
+      <td>0.458502</td>
+      <td>0.039786</td>
+      <td>0.089229</td>
+      <td>0.423514</td>
+      <td>0.476123</td>
+      <td>0.052609</td>
+    </tr>
+    <tr>
+      <th>87</th>
+      <td>88</td>
+      <td>3087.983356</td>
+      <td>0.334977</td>
+      <td>0.497153</td>
+      <td>0.441456</td>
+      <td>0.454581</td>
+      <td>0.035957</td>
+      <td>0.081463</td>
+      <td>0.415938</td>
+      <td>0.469955</td>
+      <td>0.054016</td>
+    </tr>
+    <tr>
+      <th>88</th>
+      <td>89</td>
+      <td>2332.659890</td>
+      <td>0.304446</td>
+      <td>0.489875</td>
+      <td>0.432294</td>
+      <td>0.445071</td>
+      <td>0.039725</td>
+      <td>0.091911</td>
+      <td>0.406375</td>
+      <td>0.465497</td>
+      <td>0.059122</td>
+    </tr>
+    <tr>
+      <th>89</th>
+      <td>90</td>
+      <td>3259.061913</td>
+      <td>0.332730</td>
+      <td>0.513404</td>
+      <td>0.456643</td>
+      <td>0.472202</td>
+      <td>0.039956</td>
+      <td>0.087512</td>
+      <td>0.433306</td>
+      <td>0.485953</td>
+      <td>0.052647</td>
+    </tr>
+  </tbody>
+</table>
+<p>90 rows × 11 columns</p>
+</div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[15]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">texture_measurements</span> <span class="o">=</span> <span class="n">MeasureTexture</span><span class="p">()</span><span class="o">.</span><span class="n">measure</span><span class="p">(</span><span class="n">pipeline_output</span><span class="p">)</span>
+<span class="n">texture_measurements</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[15]:
+</pre></div>
+</div>
+<div class="output_area rendered_html docutils container">
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>ObjectLabel</th>
+      <th>TextureGray_AngularSecondMoment-deg000-scale05</th>
+      <th>TextureGray_AngularSecondMoment-deg045-scale05</th>
+      <th>TextureGray_AngularSecondMoment-deg090-scale05</th>
+      <th>TextureGray_AngularSecondMoment-deg135-scale05</th>
+      <th>TextureGray_Contrast-deg000-scale05</th>
+      <th>TextureGray_Contrast-deg045-scale05</th>
+      <th>TextureGray_Contrast-deg090-scale05</th>
+      <th>TextureGray_Contrast-deg135-scale05</th>
+      <th>TextureGray_Correlation-deg000-scale05</th>
+      <th>...</th>
+      <th>TextureGray_HaralickVariance-avg-scale05</th>
+      <th>TextureGray_InverseDifferenceMoment-avg-scale05</th>
+      <th>TextureGray_SumAverage-avg-scale05</th>
+      <th>TextureGray_SumVariance-avg-scale05</th>
+      <th>TextureGray_SumEntropy-avg-scale05</th>
+      <th>TextureGray_Entropy-avg-scale05</th>
+      <th>TextureGray_DiffVariance-avg-scale05</th>
+      <th>TextureGray_DiffEntropy-avg-scale05</th>
+      <th>TextureGray_InfoCorrelation1-avg-scale05</th>
+      <th>TextureGray_InfoCorrelation2-avg-scale05</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>1</td>
+      <td>0.558316</td>
+      <td>0.552814</td>
+      <td>0.569642</td>
+      <td>0.555018</td>
+      <td>0.202443</td>
+      <td>0.259023</td>
+      <td>0.168024</td>
+      <td>0.234774</td>
+      <td>0.540176</td>
+      <td>...</td>
+      <td>0.221875</td>
+      <td>0.905335</td>
+      <td>23.580289</td>
+      <td>0.671432</td>
+      <td>1.232740</td>
+      <td>1.465662</td>
+      <td>0.042211</td>
+      <td>0.737523</td>
+      <td>-0.225150</td>
+      <td>0.545807</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>2</td>
+      <td>0.180660</td>
+      <td>0.163941</td>
+      <td>0.191922</td>
+      <td>0.174283</td>
+      <td>0.554479</td>
+      <td>0.847697</td>
+      <td>0.458532</td>
+      <td>0.673436</td>
+      <td>0.616016</td>
+      <td>...</td>
+      <td>0.725754</td>
+      <td>0.745372</td>
+      <td>25.873170</td>
+      <td>2.269480</td>
+      <td>2.452135</td>
+      <td>3.064197</td>
+      <td>0.026551</td>
+      <td>1.217151</td>
+      <td>-0.188587</td>
+      <td>0.670832</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>3</td>
+      <td>0.213661</td>
+      <td>0.185136</td>
+      <td>0.234503</td>
+      <td>0.205185</td>
+      <td>0.366597</td>
+      <td>0.532718</td>
+      <td>0.306311</td>
+      <td>0.419312</td>
+      <td>0.621316</td>
+      <td>...</td>
+      <td>0.483086</td>
+      <td>0.813174</td>
+      <td>24.444996</td>
+      <td>1.526108</td>
+      <td>2.198214</td>
+      <td>2.627109</td>
+      <td>0.032960</td>
+      <td>1.017509</td>
+      <td>-0.213103</td>
+      <td>0.668218</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>4</td>
+      <td>0.166461</td>
+      <td>0.140866</td>
+      <td>0.179679</td>
+      <td>0.156046</td>
+      <td>0.613354</td>
+      <td>0.927427</td>
+      <td>0.567785</td>
+      <td>0.821248</td>
+      <td>0.735854</td>
+      <td>...</td>
+      <td>1.141829</td>
+      <td>0.752739</td>
+      <td>27.813244</td>
+      <td>3.834864</td>
+      <td>2.685786</td>
+      <td>3.288824</td>
+      <td>0.024422</td>
+      <td>1.320849</td>
+      <td>-0.273127</td>
+      <td>0.795296</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>5</td>
+      <td>0.318597</td>
+      <td>0.310354</td>
+      <td>0.329535</td>
+      <td>0.316081</td>
+      <td>0.472649</td>
+      <td>0.787006</td>
+      <td>0.475967</td>
+      <td>0.669784</td>
+      <td>0.763881</td>
+      <td>...</td>
+      <td>0.983710</td>
+      <td>0.804831</td>
+      <td>26.687383</td>
+      <td>3.333487</td>
+      <td>2.139127</td>
+      <td>2.643253</td>
+      <td>0.029743</td>
+      <td>1.204538</td>
+      <td>-0.325100</td>
+      <td>0.795182</td>
+    </tr>
+    <tr>
+      <th>...</th>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+    </tr>
+    <tr>
+      <th>85</th>
+      <td>86</td>
+      <td>0.127250</td>
+      <td>0.115386</td>
+      <td>0.133147</td>
+      <td>0.112571</td>
+      <td>0.722618</td>
+      <td>1.014710</td>
+      <td>0.661861</td>
+      <td>1.100062</td>
+      <td>0.670634</td>
+      <td>...</td>
+      <td>1.093264</td>
+      <td>0.702715</td>
+      <td>27.693580</td>
+      <td>3.498243</td>
+      <td>2.751854</td>
+      <td>3.512981</td>
+      <td>0.022611</td>
+      <td>1.387838</td>
+      <td>-0.200732</td>
+      <td>0.725343</td>
+    </tr>
+    <tr>
+      <th>86</th>
+      <td>87</td>
+      <td>0.146381</td>
+      <td>0.138619</td>
+      <td>0.151912</td>
+      <td>0.132298</td>
+      <td>0.888765</td>
+      <td>1.287120</td>
+      <td>0.890989</td>
+      <td>1.398475</td>
+      <td>0.671933</td>
+      <td>...</td>
+      <td>1.347841</td>
+      <td>0.694853</td>
+      <td>28.026835</td>
+      <td>4.275028</td>
+      <td>2.735261</td>
+      <td>3.548868</td>
+      <td>0.019423</td>
+      <td>1.545692</td>
+      <td>-0.187574</td>
+      <td>0.709476</td>
+    </tr>
+    <tr>
+      <th>87</th>
+      <td>88</td>
+      <td>0.127455</td>
+      <td>0.114668</td>
+      <td>0.141462</td>
+      <td>0.118292</td>
+      <td>0.570484</td>
+      <td>0.827449</td>
+      <td>0.505204</td>
+      <td>0.767981</td>
+      <td>0.767711</td>
+      <td>...</td>
+      <td>1.218594</td>
+      <td>0.736096</td>
+      <td>27.629801</td>
+      <td>4.206596</td>
+      <td>2.812881</td>
+      <td>3.446993</td>
+      <td>0.024862</td>
+      <td>1.240555</td>
+      <td>-0.288303</td>
+      <td>0.823123</td>
+    </tr>
+    <tr>
+      <th>88</th>
+      <td>89</td>
+      <td>0.114170</td>
+      <td>0.096859</td>
+      <td>0.111693</td>
+      <td>0.101273</td>
+      <td>0.703868</td>
+      <td>1.123439</td>
+      <td>0.863260</td>
+      <td>1.267260</td>
+      <td>0.758194</td>
+      <td>...</td>
+      <td>1.444939</td>
+      <td>0.681765</td>
+      <td>27.143958</td>
+      <td>4.790298</td>
+      <td>2.969049</td>
+      <td>3.776369</td>
+      <td>0.021634</td>
+      <td>1.446004</td>
+      <td>-0.236735</td>
+      <td>0.790989</td>
+    </tr>
+    <tr>
+      <th>89</th>
+      <td>90</td>
+      <td>0.217465</td>
+      <td>0.204218</td>
+      <td>0.225225</td>
+      <td>0.204146</td>
+      <td>0.646261</td>
+      <td>0.988345</td>
+      <td>0.652948</td>
+      <td>0.995350</td>
+      <td>0.758458</td>
+      <td>...</td>
+      <td>1.301592</td>
+      <td>0.738221</td>
+      <td>28.608124</td>
+      <td>4.385640</td>
+      <td>2.639700</td>
+      <td>3.295845</td>
+      <td>0.021955</td>
+      <td>1.383115</td>
+      <td>-0.267188</td>
+      <td>0.792273</td>
+    </tr>
+  </tbody>
+</table>
+<p>90 rows × 66 columns</p>
+</div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[16]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">single_object</span> <span class="o">=</span> <span class="n">pipeline_output</span><span class="o">.</span><span class="n">objects</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+<span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">single_object</span><span class="o">.</span><span class="n">show_overlay</span><span class="p">()</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../../_images/user_guide_tutorial_notebooks_ImagePipelines_20_0.png" src="../../../_images/user_guide_tutorial_notebooks_ImagePipelines_20_0.png" />
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[17]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">color_measurements</span> <span class="o">=</span> <span class="n">MeasureColor</span><span class="p">()</span><span class="o">.</span><span class="n">measure</span><span class="p">(</span><span class="n">pipeline_output</span><span class="p">)</span>
+<span class="n">color_measurements</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[17]:
+</pre></div>
+</div>
+<div class="output_area rendered_html docutils container">
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>ObjectLabel</th>
+      <th>Colorxy_xMin</th>
+      <th>Colorxy_xQ1</th>
+      <th>Colorxy_xMean</th>
+      <th>Colorxy_xMedian</th>
+      <th>Colorxy_xQ3</th>
+      <th>Colorxy_xMax</th>
+      <th>Colorxy_xStdDev</th>
+      <th>Colorxy_xCoeffVar</th>
+      <th>Colorxy_yMin</th>
+      <th>...</th>
+      <th>ColorHSV_BrightnessMin</th>
+      <th>ColorHSV_BrightnessQ1</th>
+      <th>ColorHSV_BrightnessMean</th>
+      <th>ColorHSV_BrightnessMedian</th>
+      <th>ColorHSV_BrightnessQ3</th>
+      <th>ColorHSV_BrightnessMax</th>
+      <th>ColorHSV_BrightnessStdDev</th>
+      <th>ColorHSV_BrightnessCoeffVar</th>
+      <th>ColorLab_ChromaEstimatedMean</th>
+      <th>ColorLab_ChromaEstimatedMedian</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>1</td>
+      <td>0.307992</td>
+      <td>0.311256</td>
+      <td>0.312193</td>
+      <td>0.312423</td>
+      <td>0.312431</td>
+      <td>0.320497</td>
+      <td>0.001298</td>
+      <td>0.004157</td>
+      <td>0.315938</td>
+      <td>...</td>
+      <td>0.325490</td>
+      <td>0.400000</td>
+      <td>0.409941</td>
+      <td>0.415686</td>
+      <td>0.427451</td>
+      <td>0.466667</td>
+      <td>0.022148</td>
+      <td>0.054034</td>
+      <td>3.882206</td>
+      <td>3.840626</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>2</td>
+      <td>0.306805</td>
+      <td>0.312447</td>
+      <td>0.313282</td>
+      <td>0.313721</td>
+      <td>0.314293</td>
+      <td>0.320497</td>
+      <td>0.001651</td>
+      <td>0.005272</td>
+      <td>0.316489</td>
+      <td>...</td>
+      <td>0.329412</td>
+      <td>0.427451</td>
+      <td>0.442559</td>
+      <td>0.454902</td>
+      <td>0.462745</td>
+      <td>0.478431</td>
+      <td>0.029886</td>
+      <td>0.067539</td>
+      <td>4.030819</td>
+      <td>4.304368</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>3</td>
+      <td>0.309151</td>
+      <td>0.312437</td>
+      <td>0.313206</td>
+      <td>0.313051</td>
+      <td>0.314274</td>
+      <td>0.319059</td>
+      <td>0.001407</td>
+      <td>0.004494</td>
+      <td>0.316610</td>
+      <td>...</td>
+      <td>0.341176</td>
+      <td>0.407843</td>
+      <td>0.418482</td>
+      <td>0.423529</td>
+      <td>0.435294</td>
+      <td>0.458824</td>
+      <td>0.023953</td>
+      <td>0.057245</td>
+      <td>3.552761</td>
+      <td>3.638739</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>4</td>
+      <td>0.305788</td>
+      <td>0.310754</td>
+      <td>0.311901</td>
+      <td>0.312594</td>
+      <td>0.312598</td>
+      <td>0.321360</td>
+      <td>0.001937</td>
+      <td>0.006212</td>
+      <td>0.315381</td>
+      <td>...</td>
+      <td>0.321569</td>
+      <td>0.458824</td>
+      <td>0.475757</td>
+      <td>0.494118</td>
+      <td>0.501961</td>
+      <td>0.525490</td>
+      <td>0.039734</td>
+      <td>0.083527</td>
+      <td>4.330965</td>
+      <td>4.678852</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>5</td>
+      <td>0.305485</td>
+      <td>0.310342</td>
+      <td>0.311700</td>
+      <td>0.311406</td>
+      <td>0.312456</td>
+      <td>0.322472</td>
+      <td>0.002012</td>
+      <td>0.006457</td>
+      <td>0.314306</td>
+      <td>...</td>
+      <td>0.325490</td>
+      <td>0.435294</td>
+      <td>0.455866</td>
+      <td>0.474510</td>
+      <td>0.482353</td>
+      <td>0.498039</td>
+      <td>0.038618</td>
+      <td>0.084725</td>
+      <td>4.269135</td>
+      <td>4.652391</td>
+    </tr>
+    <tr>
+      <th>...</th>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+    </tr>
+    <tr>
+      <th>85</th>
+      <td>86</td>
+      <td>0.306004</td>
+      <td>0.311406</td>
+      <td>0.313270</td>
+      <td>0.312598</td>
+      <td>0.314267</td>
+      <td>0.328517</td>
+      <td>0.003480</td>
+      <td>0.011109</td>
+      <td>0.315243</td>
+      <td>...</td>
+      <td>0.345098</td>
+      <td>0.454902</td>
+      <td>0.474502</td>
+      <td>0.486275</td>
+      <td>0.501961</td>
+      <td>0.533333</td>
+      <td>0.037547</td>
+      <td>0.079139</td>
+      <td>3.950601</td>
+      <td>4.213721</td>
+    </tr>
+    <tr>
+      <th>86</th>
+      <td>87</td>
+      <td>0.305674</td>
+      <td>0.311417</td>
+      <td>0.312889</td>
+      <td>0.312599</td>
+      <td>0.314307</td>
+      <td>0.321468</td>
+      <td>0.002678</td>
+      <td>0.008559</td>
+      <td>0.315241</td>
+      <td>...</td>
+      <td>0.333333</td>
+      <td>0.450980</td>
+      <td>0.478372</td>
+      <td>0.494118</td>
+      <td>0.513725</td>
+      <td>0.552941</td>
+      <td>0.045051</td>
+      <td>0.094196</td>
+      <td>4.162647</td>
+      <td>4.321553</td>
+    </tr>
+    <tr>
+      <th>87</th>
+      <td>88</td>
+      <td>0.307119</td>
+      <td>0.312431</td>
+      <td>0.313232</td>
+      <td>0.312602</td>
+      <td>0.314243</td>
+      <td>0.320409</td>
+      <td>0.001957</td>
+      <td>0.006248</td>
+      <td>0.315775</td>
+      <td>...</td>
+      <td>0.349020</td>
+      <td>0.443137</td>
+      <td>0.470576</td>
+      <td>0.486275</td>
+      <td>0.501961</td>
+      <td>0.533333</td>
+      <td>0.039857</td>
+      <td>0.084710</td>
+      <td>3.974293</td>
+      <td>4.193629</td>
+    </tr>
+    <tr>
+      <th>88</th>
+      <td>89</td>
+      <td>0.305485</td>
+      <td>0.310456</td>
+      <td>0.312269</td>
+      <td>0.312463</td>
+      <td>0.313704</td>
+      <td>0.320966</td>
+      <td>0.002399</td>
+      <td>0.007685</td>
+      <td>0.315569</td>
+      <td>...</td>
+      <td>0.317647</td>
+      <td>0.431373</td>
+      <td>0.461090</td>
+      <td>0.478431</td>
+      <td>0.498039</td>
+      <td>0.533333</td>
+      <td>0.045196</td>
+      <td>0.098038</td>
+      <td>3.755356</td>
+      <td>3.815770</td>
+    </tr>
+    <tr>
+      <th>89</th>
+      <td>90</td>
+      <td>0.303893</td>
+      <td>0.310492</td>
+      <td>0.312114</td>
+      <td>0.312600</td>
+      <td>0.313632</td>
+      <td>0.320771</td>
+      <td>0.002420</td>
+      <td>0.007754</td>
+      <td>0.314794</td>
+      <td>...</td>
+      <td>0.349020</td>
+      <td>0.466667</td>
+      <td>0.488994</td>
+      <td>0.505882</td>
+      <td>0.521569</td>
+      <td>0.545098</td>
+      <td>0.043478</td>
+      <td>0.088925</td>
+      <td>4.174381</td>
+      <td>4.426421</td>
+    </tr>
+  </tbody>
+</table>
+<p>90 rows × 67 columns</p>
+</div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[18]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">pipeline_measurements</span> <span class="o">=</span> <span class="n">kmarx_pipeline</span><span class="o">.</span><span class="n">measure</span><span class="p">(</span><span class="n">pipeline_output</span><span class="p">,</span> <span class="n">include_metadata</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="n">pipeline_measurements</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[18]:
+</pre></div>
+</div>
+<div class="output_area rendered_html docutils container">
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>ObjectLabel</th>
+      <th>Bbox_CenterRR</th>
+      <th>Bbox_CenterCC</th>
+      <th>Bbox_MinRR</th>
+      <th>Bbox_MinCC</th>
+      <th>Bbox_MaxRR</th>
+      <th>Bbox_MaxCC</th>
+      <th>Grid_RowNum</th>
+      <th>Grid_ColNum</th>
+      <th>Grid_SectionNum</th>
+      <th>...</th>
+      <th>TextureGray_HaralickVariance-avg-scale04</th>
+      <th>TextureGray_InverseDifferenceMoment-avg-scale04</th>
+      <th>TextureGray_SumAverage-avg-scale04</th>
+      <th>TextureGray_SumVariance-avg-scale04</th>
+      <th>TextureGray_SumEntropy-avg-scale04</th>
+      <th>TextureGray_Entropy-avg-scale04</th>
+      <th>TextureGray_DiffVariance-avg-scale04</th>
+      <th>TextureGray_DiffEntropy-avg-scale04</th>
+      <th>TextureGray_InfoCorrelation1-avg-scale04</th>
+      <th>TextureGray_InfoCorrelation2-avg-scale04</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>1</td>
+      <td>146.506703</td>
+      <td>170.569699</td>
+      <td>91</td>
+      <td>128</td>
+      <td>204</td>
+      <td>216</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>...</td>
+      <td>0.227501</td>
+      <td>0.917104</td>
+      <td>23.561500</td>
+      <td>0.725170</td>
+      <td>1.245760</td>
+      <td>1.447084</td>
+      <td>0.044131</td>
+      <td>0.675382</td>
+      <td>-0.292161</td>
+      <td>0.617447</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>2</td>
+      <td>149.396380</td>
+      <td>340.542659</td>
+      <td>97</td>
+      <td>298</td>
+      <td>204</td>
+      <td>386</td>
+      <td>0</td>
+      <td>1</td>
+      <td>1</td>
+      <td>...</td>
+      <td>0.738942</td>
+      <td>0.779646</td>
+      <td>25.834356</td>
+      <td>2.456797</td>
+      <td>2.475868</td>
+      <td>2.975292</td>
+      <td>0.028841</td>
+      <td>1.102396</td>
+      <td>-0.263979</td>
+      <td>0.763785</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>3</td>
+      <td>160.823387</td>
+      <td>503.184827</td>
+      <td>103</td>
+      <td>456</td>
+      <td>218</td>
+      <td>552</td>
+      <td>0</td>
+      <td>2</td>
+      <td>2</td>
+      <td>...</td>
+      <td>0.491629</td>
+      <td>0.844037</td>
+      <td>24.416443</td>
+      <td>1.642722</td>
+      <td>2.198116</td>
+      <td>2.531479</td>
+      <td>0.035992</td>
+      <td>0.916609</td>
+      <td>-0.294202</td>
+      <td>0.753914</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>4</td>
+      <td>163.507507</td>
+      <td>667.136392</td>
+      <td>105</td>
+      <td>616</td>
+      <td>224</td>
+      <td>720</td>
+      <td>0</td>
+      <td>3</td>
+      <td>3</td>
+      <td>...</td>
+      <td>1.169566</td>
+      <td>0.787356</td>
+      <td>27.764862</td>
+      <td>4.112562</td>
+      <td>2.690033</td>
+      <td>3.187108</td>
+      <td>0.026823</td>
+      <td>1.193745</td>
+      <td>-0.348834</td>
+      <td>0.855079</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>5</td>
+      <td>162.581936</td>
+      <td>988.687380</td>
+      <td>112</td>
+      <td>945</td>
+      <td>214</td>
+      <td>1035</td>
+      <td>0</td>
+      <td>5</td>
+      <td>5</td>
+      <td>...</td>
+      <td>1.006358</td>
+      <td>0.829287</td>
+      <td>26.639336</td>
+      <td>3.560625</td>
+      <td>2.155954</td>
+      <td>2.585183</td>
+      <td>0.032185</td>
+      <td>1.086397</td>
+      <td>-0.390953</td>
+      <td>0.841887</td>
+    </tr>
+    <tr>
+      <th>...</th>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+    </tr>
+    <tr>
+      <th>85</th>
+      <td>86</td>
+      <td>1293.937771</td>
+      <td>489.301356</td>
+      <td>1239</td>
+      <td>448</td>
+      <td>1349</td>
+      <td>532</td>
+      <td>7</td>
+      <td>2</td>
+      <td>86</td>
+      <td>...</td>
+      <td>1.108200</td>
+      <td>0.742637</td>
+      <td>27.649365</td>
+      <td>3.755580</td>
+      <td>2.774204</td>
+      <td>3.409272</td>
+      <td>0.024679</td>
+      <td>1.263264</td>
+      <td>-0.269797</td>
+      <td>0.802120</td>
+    </tr>
+    <tr>
+      <th>86</th>
+      <td>87</td>
+      <td>1284.021505</td>
+      <td>1311.323189</td>
+      <td>1239</td>
+      <td>1275</td>
+      <td>1328</td>
+      <td>1350</td>
+      <td>7</td>
+      <td>7</td>
+      <td>91</td>
+      <td>...</td>
+      <td>1.370031</td>
+      <td>0.729467</td>
+      <td>27.969614</td>
+      <td>4.622844</td>
+      <td>2.764216</td>
+      <td>3.452672</td>
+      <td>0.021514</td>
+      <td>1.404993</td>
+      <td>-0.260746</td>
+      <td>0.795513</td>
+    </tr>
+    <tr>
+      <th>87</th>
+      <td>88</td>
+      <td>1298.299929</td>
+      <td>1475.423016</td>
+      <td>1250</td>
+      <td>1430</td>
+      <td>1348</td>
+      <td>1523</td>
+      <td>7</td>
+      <td>8</td>
+      <td>92</td>
+      <td>...</td>
+      <td>1.242901</td>
+      <td>0.774189</td>
+      <td>27.577465</td>
+      <td>4.450449</td>
+      <td>2.823792</td>
+      <td>3.349485</td>
+      <td>0.026872</td>
+      <td>1.125120</td>
+      <td>-0.352028</td>
+      <td>0.868454</td>
+    </tr>
+    <tr>
+      <th>88</th>
+      <td>89</td>
+      <td>1296.660489</td>
+      <td>1624.861193</td>
+      <td>1252</td>
+      <td>1582</td>
+      <td>1335</td>
+      <td>1670</td>
+      <td>7</td>
+      <td>9</td>
+      <td>93</td>
+      <td>...</td>
+      <td>1.464127</td>
+      <td>0.724083</td>
+      <td>27.086165</td>
+      <td>5.091357</td>
+      <td>2.989982</td>
+      <td>3.669252</td>
+      <td>0.023581</td>
+      <td>1.321775</td>
+      <td>-0.301962</td>
+      <td>0.848755</td>
+    </tr>
+    <tr>
+      <th>89</th>
+      <td>90</td>
+      <td>1305.486899</td>
+      <td>1806.938209</td>
+      <td>1256</td>
+      <td>1762</td>
+      <td>1357</td>
+      <td>1853</td>
+      <td>7</td>
+      <td>10</td>
+      <td>94</td>
+      <td>...</td>
+      <td>1.332574</td>
+      <td>0.771103</td>
+      <td>28.552207</td>
+      <td>4.697378</td>
+      <td>2.657524</td>
+      <td>3.214988</td>
+      <td>0.024217</td>
+      <td>1.250490</td>
+      <td>-0.333007</td>
+      <td>0.845963</td>
+    </tr>
+  </tbody>
+</table>
+<p>90 rows × 233 columns</p>
+</div></div>
+</div>
+</section>
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#Introduction-to-ImageOperations">Introduction to <code class="docutils literal notranslate"><span class="pre">ImageOperation</span></code>s</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#Preprocessing-Layer">Preprocessing Layer</a></li>
+</ul>
+</li>
+</ul>
+  </nav></div>
+
+  <div class="sidebar-secondary-item">
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../../../_sources/user_guide/tutorial/notebooks/ImagePipelines.ipynb.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, ExFAB BioFoundry.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.1.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

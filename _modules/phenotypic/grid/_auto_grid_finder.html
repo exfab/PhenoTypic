@@ -1,0 +1,732 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>phenotypic.grid._auto_grid_finder &#8212; PhenoTypic</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/custom.css?v=800a184d" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../../../_static/documentation_options.js?v=b3db6a4d"></script>
+    <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../../../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="../../../_static/design-tabs.js?v=f930bc37"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/phenotypic/grid/_auto_grid_finder';</script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.11.1" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+     
+  
+
+<a class="navbar-brand logo" href="../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../../_static/gradient_logo_exfab.svg" class="logo__image only-light" alt="PhenoTypic"/>
+    <img src="../../../_static/gradient_logo_exfab.svg" class="logo__image only-dark pst-js-only" alt="PhenoTypic"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../user_guide/index.html">
+    User Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../api_reference/index.html">
+    API Reference
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../contrib_guide/index.html">
+    Developer Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../downloadables.html">
+    Downloads
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/Wheeldon-Lab/PhenoScope#" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../user_guide/index.html">
+    User Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../api_reference/index.html">
+    API Reference
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../contrib_guide/index.html">
+    Developer Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../downloadables.html">
+    Downloads
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/Wheeldon-Lab/PhenoScope#" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">phenotypic.grid._auto_grid_finder</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for phenotypic.grid._auto_grid_finder</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span>
+
+<span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span> <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">scipy.optimize</span><span class="w"> </span><span class="kn">import</span> <span class="n">minimize_scalar</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">functools</span><span class="w"> </span><span class="kn">import</span> <span class="n">partial</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">GridFinder</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools.constants_</span><span class="w"> </span><span class="kn">import</span> <span class="n">BBOX</span><span class="p">,</span> <span class="n">GRID</span>
+
+
+<div class="viewcode-block" id="AutoGridFinder">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.grid.html#phenotypic.grid.AutoGridFinder">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">AutoGridFinder</span><span class="p">(</span><span class="n">GridFinder</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Automatically adjusts and processes grid configurations for images based on</span>
+<span class="sd">    parameters like row and column counts, tolerance, and iteration constraints.</span>
+
+<span class="sd">    This class extends `GridFinder` and adds flexibility to define custom grid</span>
+<span class="sd">    specifications, compute padding, manage convergence criteria, and optimize</span>
+<span class="sd">    grid alignment for image processing tasks.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        __iter_limit (float): Internal limit for the maximum number of iterations.</span>
+<span class="sd">        nrows (int): Number of rows for the grid structure.</span>
+<span class="sd">        ncols (int): Number of columns for the grid structure.</span>
+<span class="sd">        tol (float): Tolerance level to assess convergence.</span>
+<span class="sd">        max_iter (int): Maximum allowable iterations, capped by the internal limit.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">__iter_limit</span> <span class="o">=</span> <span class="mf">1e5</span>
+
+<div class="viewcode-block" id="AutoGridFinder.__init__">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.grid.html#phenotypic.grid.AutoGridFinder.__init__">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nrows</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">8</span><span class="p">,</span> <span class="n">ncols</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">12</span><span class="p">,</span>
+                 <span class="n">tol</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.01</span><span class="p">,</span> <span class="n">max_iter</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Represents a configuration object for iterative computations with constraints on</span>
+<span class="sd">        the number of nrows, columns, tolerance, and a maximum number of iterations. This</span>
+<span class="sd">        provides a flexible structure enabling adjustments to the computation parameters</span>
+<span class="sd">        such as matrix dimensions and convergence criteria.</span>
+
+<span class="sd">        Attributes:</span>
+<span class="sd">            nrows (int): Number of nrows for the computation grid or array.</span>
+<span class="sd">            ncols (int): Number of columns for the computation grid or array.</span>
+<span class="sd">            tol (float): Tolerance level for the convergence criteria.</span>
+<span class="sd">            max_iter (int | None): Maximum number of allowable iterations. Defaults to</span>
+<span class="sd">                the predefined internal convergence limit if not provided.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">nrows</span><span class="o">=</span><span class="n">nrows</span><span class="p">,</span> <span class="n">ncols</span><span class="o">=</span><span class="n">ncols</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">tol</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">tol</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">max_iter</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">max_iter</span> <span class="k">if</span> <span class="n">max_iter</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">__iter_limit</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Processes an arr image to calculate and organize grid-based boundaries and centroids using coordinates. This</span>
+<span class="sd">        function implements a two-pass approach to refine row and column boundaries with exact precision, ensuring accurate</span>
+<span class="sd">        grid labeling and indexing. The function dynamically computes boundary intervals and optimally segments the arr</span>
+<span class="sd">        space into grids based on specified nrows and columns.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            image (Image): The arr image to be analyzed and processed.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            pd.DataFrame: A DataFrame containing the grid results including boundary intervals, grid indices, and section</span>
+<span class="sd">            numbers corresponding to the segmented arr image.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Calculate optimal edges using optimization</span>
+        <span class="n">row_edges</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_row_edges</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
+        <span class="n">col_edges</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_col_edges</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
+
+        <span class="c1"># Use base class helper to assemble complete grid info</span>
+        <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">_get_grid_info</span><span class="p">(</span><span class="n">image</span><span class="o">=</span><span class="n">image</span><span class="p">,</span> <span class="n">row_edges</span><span class="o">=</span><span class="n">row_edges</span><span class="p">,</span> <span class="n">col_edges</span><span class="o">=</span><span class="n">col_edges</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_find_padding_midpoint_error</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pad_sz</span><span class="p">,</span> <span class="n">image</span><span class="p">,</span> <span class="n">axis</span><span class="p">,</span> <span class="n">row_pad</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">col_pad</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculate the mean squared error between object midpoints and grid bin midpoints.</span>
+<span class="sd">        </span>
+<span class="sd">        Args:</span>
+<span class="sd">            pad_sz: Padding size to test for the specified axis.</span>
+<span class="sd">            image: Image object containing objects to be gridded.</span>
+<span class="sd">            axis: 0 for rows, 1 for columns.</span>
+<span class="sd">            row_pad: Current row padding (used when optimizing columns).</span>
+<span class="sd">            col_pad: Current column padding (used when optimizing rows).</span>
+<span class="sd">            </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            float: Mean squared error between object and bin midpoints.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">obj_info</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">include_metadata</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">axis</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="c1"># Calculate row edges with current padding</span>
+            <span class="n">row_edges</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_row_edges</span><span class="p">(</span><span class="n">image</span><span class="o">=</span><span class="n">image</span><span class="p">,</span> <span class="n">row_padding</span><span class="o">=</span><span class="n">pad_sz</span><span class="p">,</span> <span class="n">info_table</span><span class="o">=</span><span class="n">obj_info</span><span class="p">)</span>
+            <span class="n">col_edges</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_col_edges</span><span class="p">(</span><span class="n">image</span><span class="o">=</span><span class="n">image</span><span class="p">,</span> <span class="n">column_padding</span><span class="o">=</span><span class="n">col_pad</span><span class="p">,</span> <span class="n">info_table</span><span class="o">=</span><span class="n">obj_info</span><span class="p">)</span>
+
+            <span class="c1"># Get grid info with these edges</span>
+            <span class="n">current_grid_info</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">_get_grid_info</span><span class="p">(</span><span class="n">image</span><span class="o">=</span><span class="n">image</span><span class="p">,</span> <span class="n">row_edges</span><span class="o">=</span><span class="n">row_edges</span><span class="p">,</span> <span class="n">col_edges</span><span class="o">=</span><span class="n">col_edges</span><span class="p">)</span>
+            <span class="n">current_obj_midpoints</span> <span class="o">=</span> <span class="p">(</span><span class="n">current_grid_info</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">BBOX</span><span class="o">.</span><span class="n">CENTER_RR</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="n">GRID</span><span class="o">.</span><span class="n">ROW_NUM</span><span class="p">)]]</span>
+                                     <span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">GRID</span><span class="o">.</span><span class="n">ROW_NUM</span><span class="p">),</span> <span class="n">observed</span><span class="o">=</span><span class="kc">False</span><span class="p">)[</span><span class="nb">str</span><span class="p">(</span><span class="n">BBOX</span><span class="o">.</span><span class="n">CENTER_RR</span><span class="p">)]</span>
+                                     <span class="o">.</span><span class="n">mean</span><span class="p">()</span><span class="o">.</span><span class="n">values</span><span class="p">)</span>
+
+            <span class="n">bin_edges</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">histogram_bin_edges</span><span class="p">(</span>
+                    <span class="n">a</span><span class="o">=</span><span class="n">current_grid_info</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="nb">str</span><span class="p">(</span><span class="n">BBOX</span><span class="o">.</span><span class="n">CENTER_RR</span><span class="p">)]</span><span class="o">.</span><span class="n">values</span><span class="p">,</span>
+                    <span class="n">bins</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">nrows</span><span class="p">,</span>
+                    <span class="nb">range</span><span class="o">=</span><span class="p">(</span>
+                        <span class="n">current_grid_info</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="nb">str</span><span class="p">(</span><span class="n">BBOX</span><span class="o">.</span><span class="n">MIN_RR</span><span class="p">)]</span><span class="o">.</span><span class="n">min</span><span class="p">()</span> <span class="o">-</span> <span class="n">pad_sz</span><span class="p">,</span>
+                        <span class="n">current_grid_info</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="nb">str</span><span class="p">(</span><span class="n">BBOX</span><span class="o">.</span><span class="n">MAX_RR</span><span class="p">)]</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">+</span> <span class="n">pad_sz</span>
+                    <span class="p">),</span>
+            <span class="p">)</span>
+
+        <span class="k">elif</span> <span class="n">axis</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="c1"># Calculate column edges with current padding</span>
+            <span class="n">row_edges</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_row_edges</span><span class="p">(</span><span class="n">image</span><span class="o">=</span><span class="n">image</span><span class="p">,</span> <span class="n">row_padding</span><span class="o">=</span><span class="n">row_pad</span><span class="p">,</span> <span class="n">info_table</span><span class="o">=</span><span class="n">obj_info</span><span class="p">)</span>
+            <span class="n">col_edges</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_col_edges</span><span class="p">(</span><span class="n">image</span><span class="o">=</span><span class="n">image</span><span class="p">,</span> <span class="n">column_padding</span><span class="o">=</span><span class="n">pad_sz</span><span class="p">,</span> <span class="n">info_table</span><span class="o">=</span><span class="n">obj_info</span><span class="p">)</span>
+
+            <span class="c1"># Get grid info with these edges</span>
+            <span class="n">current_grid_info</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">_get_grid_info</span><span class="p">(</span><span class="n">image</span><span class="o">=</span><span class="n">image</span><span class="p">,</span> <span class="n">row_edges</span><span class="o">=</span><span class="n">row_edges</span><span class="p">,</span> <span class="n">col_edges</span><span class="o">=</span><span class="n">col_edges</span><span class="p">)</span>
+            <span class="n">current_obj_midpoints</span> <span class="o">=</span> <span class="p">(</span><span class="n">current_grid_info</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">BBOX</span><span class="o">.</span><span class="n">CENTER_CC</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="n">GRID</span><span class="o">.</span><span class="n">COL_NUM</span><span class="p">)]]</span>
+                                     <span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">GRID</span><span class="o">.</span><span class="n">COL_NUM</span><span class="p">),</span> <span class="n">observed</span><span class="o">=</span><span class="kc">False</span><span class="p">)[</span><span class="nb">str</span><span class="p">(</span><span class="n">BBOX</span><span class="o">.</span><span class="n">CENTER_CC</span><span class="p">)]</span>
+                                     <span class="o">.</span><span class="n">mean</span><span class="p">()</span><span class="o">.</span><span class="n">values</span><span class="p">)</span>
+
+            <span class="n">bin_edges</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">histogram_bin_edges</span><span class="p">(</span>
+                    <span class="n">a</span><span class="o">=</span><span class="n">current_grid_info</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="nb">str</span><span class="p">(</span><span class="n">BBOX</span><span class="o">.</span><span class="n">CENTER_CC</span><span class="p">)]</span><span class="o">.</span><span class="n">values</span><span class="p">,</span>
+                    <span class="n">bins</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">ncols</span><span class="p">,</span>
+                    <span class="nb">range</span><span class="o">=</span><span class="p">(</span>
+                        <span class="n">current_grid_info</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="nb">str</span><span class="p">(</span><span class="n">BBOX</span><span class="o">.</span><span class="n">MIN_CC</span><span class="p">)]</span><span class="o">.</span><span class="n">min</span><span class="p">()</span> <span class="o">-</span> <span class="n">pad_sz</span><span class="p">,</span>
+                        <span class="n">current_grid_info</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="nb">str</span><span class="p">(</span><span class="n">BBOX</span><span class="o">.</span><span class="n">MAX_CC</span><span class="p">)]</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">+</span> <span class="n">pad_sz</span>
+                    <span class="p">),</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Invalid axis other_image: </span><span class="si">{</span><span class="n">axis</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="n">bin_edges</span><span class="o">.</span><span class="n">sort</span><span class="p">()</span>
+
+        <span class="c1"># (larger_point-smaller_point)/2 + smaller_point; Across all axis vectors</span>
+        <span class="n">larger_edges</span> <span class="o">=</span> <span class="n">bin_edges</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span>
+        <span class="n">smaller_edges</span> <span class="o">=</span> <span class="n">bin_edges</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">bin_midpoint</span> <span class="o">=</span> <span class="p">(</span><span class="n">larger_edges</span> <span class="o">-</span> <span class="n">smaller_edges</span><span class="p">)</span><span class="o">//</span><span class="mi">2</span> <span class="o">+</span> <span class="n">smaller_edges</span>
+
+        <span class="k">return</span> <span class="p">((</span><span class="n">current_obj_midpoints</span> <span class="o">-</span> <span class="n">bin_midpoint</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="o">/</span><span class="nb">len</span><span class="p">(</span><span class="n">current_obj_midpoints</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_get_optimal_row_pad</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Determines the optimal row padding for the given image by analyzing the metadata of the</span>
+<span class="sd">        detected objects and finding the maximum allowable padding that adheres to the constraints</span>
+<span class="sd">        of the image shape.</span>
+
+<span class="sd">        Uses the object information from the image to compute the padding range, which is derived</span>
+<span class="sd">        from the minimum and maximum bounding box nrows of the detected objects. Clips the calculated</span>
+<span class="sd">        padding size in case it results in a negative value.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            image (Image): The image object containing detected objects and their associated metadata.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            int: The optimal row padding value based on the image&#39;s object information and calculated</span>
+<span class="sd">            constraints.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">obj_info</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">include_metadata</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="n">min_rr</span><span class="p">,</span> <span class="n">max_rr</span> <span class="o">=</span> <span class="n">obj_info</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="nb">str</span><span class="p">(</span><span class="n">BBOX</span><span class="o">.</span><span class="n">MIN_RR</span><span class="p">)]</span><span class="o">.</span><span class="n">min</span><span class="p">(),</span> <span class="n">obj_info</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="nb">str</span><span class="p">(</span><span class="n">BBOX</span><span class="o">.</span><span class="n">MAX_RR</span><span class="p">)]</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+        <span class="n">max_row_pad_size</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">min_rr</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="nb">abs</span><span class="p">(</span><span class="n">image</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">max_rr</span> <span class="o">-</span> <span class="mi">1</span><span class="p">))</span>
+        <span class="n">max_row_pad_size</span> <span class="o">=</span> <span class="mi">0</span> <span class="k">if</span> <span class="n">max_row_pad_size</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="n">max_row_pad_size</span>  <span class="c1"># Clip in case pad size is negative</span>
+
+        <span class="n">partial_row_pad_finder</span> <span class="o">=</span> <span class="n">partial</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_find_padding_midpoint_error</span><span class="p">,</span> <span class="n">image</span><span class="o">=</span><span class="n">image</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">row_pad</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">col_pad</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_apply_solver</span><span class="p">(</span><span class="n">partial_row_pad_finder</span><span class="p">,</span> <span class="n">max_value</span><span class="o">=</span><span class="n">max_row_pad_size</span><span class="p">,</span> <span class="n">min_value</span><span class="o">=</span><span class="mi">0</span><span class="p">))</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_get_row_edges</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">,</span> <span class="n">row_padding</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">info_table</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Determine the row edges of an image based on object positions and padding.</span>
+
+<span class="sd">        This method calculates the edges defining nrows for objects within an image</span>
+<span class="sd">        based on their positions provided in a DataFrame, applying padding and</span>
+<span class="sd">        binning logic. The row edges are adjusted to fit within the boundaries</span>
+<span class="sd">        of the image.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            image (Image): The image where the row edges will be determined. The</span>
+<span class="sd">                shape of the image is used to establish boundaries.</span>
+<span class="sd">            row_padding (int): An additional padding applied to object bounds when</span>
+<span class="sd">                calculating row edges.</span>
+<span class="sd">            info_table (pd.DataFrame): A DataFrame containing object data, including</span>
+<span class="sd">                their minimal and maximal row positions and central row coordinates.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: An array of row edges sorted in ascending order.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">lower_row_bound</span> <span class="o">=</span> <span class="nb">round</span><span class="p">(</span><span class="n">info_table</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="nb">str</span><span class="p">(</span><span class="n">BBOX</span><span class="o">.</span><span class="n">MIN_RR</span><span class="p">)]</span><span class="o">.</span><span class="n">min</span><span class="p">()</span> <span class="o">-</span> <span class="n">row_padding</span><span class="p">)</span>
+        <span class="n">upper_row_bound</span> <span class="o">=</span> <span class="nb">round</span><span class="p">(</span><span class="n">info_table</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="nb">str</span><span class="p">(</span><span class="n">BBOX</span><span class="o">.</span><span class="n">MAX_RR</span><span class="p">)]</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">+</span> <span class="n">row_padding</span><span class="p">)</span>
+        <span class="n">obj_row_range</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span>
+                <span class="n">a</span><span class="o">=</span><span class="p">[</span><span class="n">lower_row_bound</span><span class="p">,</span> <span class="n">upper_row_bound</span><span class="p">],</span>
+                <span class="n">a_min</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">a_max</span><span class="o">=</span><span class="n">image</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="n">row_edges</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">histogram_bin_edges</span><span class="p">(</span>
+                <span class="n">a</span><span class="o">=</span><span class="n">info_table</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="nb">str</span><span class="p">(</span><span class="n">BBOX</span><span class="o">.</span><span class="n">CENTER_RR</span><span class="p">)],</span>
+                <span class="n">bins</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">nrows</span><span class="p">,</span>
+                <span class="nb">range</span><span class="o">=</span><span class="nb">tuple</span><span class="p">(</span><span class="n">obj_row_range</span><span class="p">),</span>
+        <span class="p">)</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">a</span><span class="o">=</span><span class="n">row_edges</span><span class="p">,</span> <span class="n">out</span><span class="o">=</span><span class="n">row_edges</span><span class="p">)</span>
+        <span class="n">row_edges</span><span class="o">.</span><span class="n">sort</span><span class="p">()</span>
+
+        <span class="k">return</span> <span class="n">row_edges</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+
+<div class="viewcode-block" id="AutoGridFinder.get_row_edges">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.grid.html#phenotypic.grid.AutoGridFinder.get_row_edges">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_row_edges</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Extracts and returns the edges of nrows from the given image.</span>
+
+<span class="sd">        This method first calculates the optimal row padding for the provided image</span>
+<span class="sd">        using an internal utility method and subsequently determines the row edges</span>
+<span class="sd">        based on the calculated padding and metadata of the image.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            image (Image): The input image from which the row edges need to</span>
+<span class="sd">                be identified.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            list: A list representing the edges of the nrows in the image.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">optimal_row_padding</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_optimal_row_pad</span><span class="p">(</span><span class="n">image</span><span class="o">=</span><span class="n">image</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_row_edges</span><span class="p">(</span>
+                <span class="n">image</span><span class="o">=</span><span class="n">image</span><span class="p">,</span>
+                <span class="n">row_padding</span><span class="o">=</span><span class="n">optimal_row_padding</span><span class="p">,</span>
+                <span class="n">info_table</span><span class="o">=</span><span class="n">image</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">include_metadata</span><span class="o">=</span><span class="kc">False</span><span class="p">),</span>
+        <span class="p">)</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_get_optimal_col_pad</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+        <span class="n">obj_info</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">include_metadata</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="n">min_cc</span><span class="p">,</span> <span class="n">max_cc</span> <span class="o">=</span> <span class="n">obj_info</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="nb">str</span><span class="p">(</span><span class="n">BBOX</span><span class="o">.</span><span class="n">MIN_CC</span><span class="p">)]</span><span class="o">.</span><span class="n">min</span><span class="p">(),</span> <span class="n">obj_info</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="nb">str</span><span class="p">(</span><span class="n">BBOX</span><span class="o">.</span><span class="n">MAX_CC</span><span class="p">)]</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+        <span class="n">max_col_pad_size</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">min_cc</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="nb">abs</span><span class="p">(</span><span class="n">image</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">max_cc</span> <span class="o">-</span> <span class="mi">1</span><span class="p">))</span>
+        <span class="n">max_col_pad_size</span> <span class="o">=</span> <span class="mi">0</span> <span class="k">if</span> <span class="n">max_col_pad_size</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="n">max_col_pad_size</span>  <span class="c1"># Clip in case pad size is negative</span>
+
+        <span class="n">partial_col_pad_finder</span> <span class="o">=</span> <span class="n">partial</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_find_padding_midpoint_error</span><span class="p">,</span> <span class="n">image</span><span class="o">=</span><span class="n">image</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">row_pad</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">col_pad</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_apply_solver</span><span class="p">(</span><span class="n">partial_col_pad_finder</span><span class="p">,</span> <span class="n">max_value</span><span class="o">=</span><span class="n">max_col_pad_size</span><span class="p">,</span> <span class="n">min_value</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_get_col_edges</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">,</span> <span class="n">column_padding</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">info_table</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">):</span>
+        <span class="n">lower_col_bound</span> <span class="o">=</span> <span class="nb">round</span><span class="p">(</span><span class="n">info_table</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="nb">str</span><span class="p">(</span><span class="n">BBOX</span><span class="o">.</span><span class="n">MIN_CC</span><span class="p">)]</span><span class="o">.</span><span class="n">min</span><span class="p">()</span> <span class="o">-</span> <span class="n">column_padding</span><span class="p">)</span>
+        <span class="n">upper_col_bound</span> <span class="o">=</span> <span class="nb">round</span><span class="p">(</span><span class="n">info_table</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="nb">str</span><span class="p">(</span><span class="n">BBOX</span><span class="o">.</span><span class="n">MAX_CC</span><span class="p">)]</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">+</span> <span class="n">column_padding</span><span class="p">)</span>
+        <span class="n">obj_col_range</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span>
+                <span class="n">a</span><span class="o">=</span><span class="p">[</span><span class="n">lower_col_bound</span><span class="p">,</span> <span class="n">upper_col_bound</span><span class="p">],</span>
+                <span class="n">a_min</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">a_max</span><span class="o">=</span><span class="n">image</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">col_edges</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">histogram_bin_edges</span><span class="p">(</span>
+                <span class="n">a</span><span class="o">=</span><span class="n">info_table</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="nb">str</span><span class="p">(</span><span class="n">BBOX</span><span class="o">.</span><span class="n">CENTER_CC</span><span class="p">)],</span>
+                <span class="n">bins</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">ncols</span><span class="p">,</span>
+                <span class="nb">range</span><span class="o">=</span><span class="nb">tuple</span><span class="p">(</span><span class="n">obj_col_range</span><span class="p">),</span>
+        <span class="p">)</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">a</span><span class="o">=</span><span class="n">col_edges</span><span class="p">,</span> <span class="n">out</span><span class="o">=</span><span class="n">col_edges</span><span class="p">)</span>
+        <span class="n">col_edges</span><span class="o">.</span><span class="n">sort</span><span class="p">()</span>
+
+        <span class="k">return</span> <span class="n">col_edges</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+
+<div class="viewcode-block" id="AutoGridFinder.get_col_edges">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.grid.html#phenotypic.grid.AutoGridFinder.get_col_edges">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_col_edges</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">):</span>
+        <span class="n">optimal_col_padding</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_optimal_col_pad</span><span class="p">(</span><span class="n">image</span><span class="o">=</span><span class="n">image</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_col_edges</span><span class="p">(</span>
+                <span class="n">image</span><span class="o">=</span><span class="n">image</span><span class="p">,</span>
+                <span class="n">column_padding</span><span class="o">=</span><span class="n">optimal_col_padding</span><span class="p">,</span>
+                <span class="n">info_table</span><span class="o">=</span><span class="n">image</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">include_metadata</span><span class="o">=</span><span class="kc">False</span><span class="p">),</span>
+        <span class="p">)</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_apply_solver</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">partial_cost_func</span><span class="p">,</span> <span class="n">max_value</span><span class="p">,</span> <span class="n">min_value</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Returns the optimal padding other_image that minimizes the mean squared differences between the object midpoints and grid midpoints.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">max_value</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mi">0</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">round</span><span class="p">(</span>
+                    <span class="n">minimize_scalar</span><span class="p">(</span><span class="n">partial_cost_func</span><span class="p">,</span> <span class="n">bounds</span><span class="o">=</span><span class="p">(</span><span class="n">min_value</span><span class="p">,</span> <span class="n">max_value</span><span class="p">),</span>
+                                    <span class="n">options</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;maxiter&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_iter</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_iter</span> <span class="k">else</span> <span class="mi">1000</span><span class="p">,</span>
+                                             <span class="s1">&#39;xatol&#39;</span>  <span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">tol</span><span class="p">},</span>
+                                    <span class="p">)</span><span class="o">.</span><span class="n">x</span><span class="p">,</span>
+            <span class="p">)</span></div>
+
+
+
+<span class="n">AutoGridFinder</span><span class="o">.</span><span class="n">measure</span><span class="o">.</span><span class="vm">__doc__</span> <span class="o">=</span> <span class="n">AutoGridFinder</span><span class="o">.</span><span class="n">_operate</span><span class="o">.</span><span class="vm">__doc__</span>
+<span class="n">AutoGridFinder</span><span class="o">.</span><span class="vm">__doc__</span> <span class="o">=</span> <span class="n">GRID</span><span class="o">.</span><span class="n">append_rst_to_doc</span><span class="p">(</span><span class="n">AutoGridFinder</span><span class="o">.</span><span class="vm">__doc__</span><span class="p">)</span>
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, ExFAB BioFoundry.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.1.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

@@ -1,0 +1,1727 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>phenotypic.Image.objects &#8212; PhenoTypic</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=800a184d" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../../_static/documentation_options.js?v=b3db6a4d"></script>
+    <script src="../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="../../_static/design-tabs.js?v=f930bc37"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'api_reference/api/phenotypic.Image.objects';</script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="phenotypic.Image.color" href="phenotypic.Image.color.html" />
+    <link rel="prev" title="phenotypic.Image.objmap" href="phenotypic.Image.objmap.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.11.1" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+     
+  
+
+<a class="navbar-brand logo" href="../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../_static/gradient_logo_exfab.svg" class="logo__image only-light" alt="PhenoTypic"/>
+    <img src="../../_static/gradient_logo_exfab.svg" class="logo__image only-dark pst-js-only" alt="PhenoTypic"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../user_guide/index.html">
+    User Guide
+  </a>
+</li>
+
+
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="../index.html">
+    API Reference
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../contrib_guide/index.html">
+    Developer Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../downloadables.html">
+    Downloads
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/Wheeldon-Lab/PhenoScope#" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../user_guide/index.html">
+    User Guide
+  </a>
+</li>
+
+
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="../index.html">
+    API Reference
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../contrib_guide/index.html">
+    Developer Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../downloadables.html">
+    Downloads
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/Wheeldon-Lab/PhenoScope#" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">Image</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="phenotypic.Image.html">phenotypic.Image</a></li>
+</ul>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="phenotypic.Image.rgb.html">phenotypic.Image.rgb</a></li>
+
+<li class="toctree-l1"><a class="reference internal" href="phenotypic.Image.gray.html">phenotypic.Image.gray</a></li>
+
+<li class="toctree-l1"><a class="reference internal" href="phenotypic.Image.enh_gray.html">phenotypic.Image.enh_gray</a></li>
+
+<li class="toctree-l1"><a class="reference internal" href="phenotypic.Image.objmask.html">phenotypic.Image.objmask</a></li>
+
+<li class="toctree-l1"><a class="reference internal" href="phenotypic.Image.objmap.html">phenotypic.Image.objmap</a></li>
+
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">phenotypic.Image.objects</a></li>
+
+<li class="toctree-l1"><a class="reference internal" href="phenotypic.Image.color.html">phenotypic.Image.color</a></li>
+
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">GridImage</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="phenotypic.GridImage.html">phenotypic.GridImage</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="phenotypic.GridImage.grid.html">phenotypic.GridImage.grid</a></li>
+
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Modules</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1 has-children"><a class="reference internal" href="phenotypic.abc_.html">phenotypic.abc_</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.MeasureFeatures.html">phenotypic.abc_.MeasureFeatures</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.ImageOperation.html">phenotypic.abc_.ImageOperation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.ImageEnhancer.html">phenotypic.abc_.ImageEnhancer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.ImageCorrector.html">phenotypic.abc_.ImageCorrector</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.ObjectDetector.html">phenotypic.abc_.ObjectDetector</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.ObjectRefiner.html">phenotypic.abc_.ObjectRefiner</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.ThresholdDetector.html">phenotypic.abc_.ThresholdDetector</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.GridOperation.html">phenotypic.abc_.GridOperation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.GridFinder.html">phenotypic.abc_.GridFinder</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.GridCorrector.html">phenotypic.abc_.GridCorrector</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.GridRefiner.html">phenotypic.abc_.GridRefiner</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.GridMeasureFeatures.html">phenotypic.abc_.GridMeasureFeatures</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.BaseOperation.html">phenotypic.abc_.BaseOperation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.MeasurementInfo.html">phenotypic.abc_.MeasurementInfo</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.GridObjectDetector.html">phenotypic.abc_.GridObjectDetector</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.PrefabPipeline.html">phenotypic.abc_.PrefabPipeline</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="phenotypic.analysis.html">phenotypic.analysis</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.EdgeCorrector.html">phenotypic.analysis.EdgeCorrector</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.LogGrowthModel.html">phenotypic.analysis.LogGrowthModel</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.TukeyOutlierRemover.html">phenotypic.analysis.TukeyOutlierRemover</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="phenotypic.correction.html">phenotypic.correction</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.correction.GridAligner.html">phenotypic.correction.GridAligner</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="phenotypic.data.html">phenotypic.data</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.data.load_synthetic_colony.html">phenotypic.data.load_synthetic_colony</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.data.make_synthetic_colony.html">phenotypic.data.make_synthetic_colony</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.data.make_synthetic_plate.html">phenotypic.data.make_synthetic_plate</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.data.load_plate_12hr.html">phenotypic.data.load_plate_12hr</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.data.load_plate_72hr.html">phenotypic.data.load_plate_72hr</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.data.load_plate_series.html">phenotypic.data.load_plate_series</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.data.load_early_colony.html">phenotypic.data.load_early_colony</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.data.load_faint_early_colony.html">phenotypic.data.load_faint_early_colony</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.data.load_colony.html">phenotypic.data.load_colony</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.data.load_smear_plate_12hr.html">phenotypic.data.load_smear_plate_12hr</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.data.load_smear_plate_24hr.html">phenotypic.data.load_smear_plate_24hr</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="phenotypic.detect.html">phenotypic.detect</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.detect.CannyDetector.html">phenotypic.detect.CannyDetector</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.detect.GitterDetector.html">phenotypic.detect.GitterDetector</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.detect.IsodataDetector.html">phenotypic.detect.IsodataDetector</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.detect.LiDetector.html">phenotypic.detect.LiDetector</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.detect.MeanDetector.html">phenotypic.detect.MeanDetector</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.detect.MinimumDetector.html">phenotypic.detect.MinimumDetector</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.detect.OtsuDetector.html">phenotypic.detect.OtsuDetector</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.detect.TriangleDetector.html">phenotypic.detect.TriangleDetector</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.detect.WatershedDetector.html">phenotypic.detect.WatershedDetector</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.detect.YenDetector.html">phenotypic.detect.YenDetector</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="phenotypic.enhance.html">phenotypic.enhance</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.CLAHE.html">phenotypic.enhance.CLAHE</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.GaussianBlur.html">phenotypic.enhance.GaussianBlur</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.MedianFilter.html">phenotypic.enhance.MedianFilter</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.RankMedianEnhancer.html">phenotypic.enhance.RankMedianEnhancer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.RollingBallRemoveBG.html">phenotypic.enhance.RollingBallRemoveBG</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.GaussianSubtract.html">phenotypic.enhance.GaussianSubtract</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.WhiteTophatEnhancer.html">phenotypic.enhance.WhiteTophatEnhancer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.LaplaceEnhancer.html">phenotypic.enhance.LaplaceEnhancer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.ContrastStretching.html">phenotypic.enhance.ContrastStretching</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.SobelFilter.html">phenotypic.enhance.SobelFilter</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.BM3DDenoiser.html">phenotypic.enhance.BM3DDenoiser</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="phenotypic.grid.html">phenotypic.grid</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.grid.AutoGridFinder.html">phenotypic.grid.AutoGridFinder</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.grid.ManualGridFinder.html">phenotypic.grid.ManualGridFinder</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="phenotypic.measure.html">phenotypic.measure</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.measure.MeasureBounds.html">phenotypic.measure.MeasureBounds</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.measure.MeasureColor.html">phenotypic.measure.MeasureColor</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.measure.MeasureColorComposition.html">phenotypic.measure.MeasureColorComposition</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.measure.MeasureIntensity.html">phenotypic.measure.MeasureIntensity</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.measure.MeasureShape.html">phenotypic.measure.MeasureShape</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.measure.MeasureSize.html">phenotypic.measure.MeasureSize</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.measure.MeasureTexture.html">phenotypic.measure.MeasureTexture</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.measure.MeasureGridSpread.html">phenotypic.measure.MeasureGridSpread</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.measure.MeasureGridLinRegStats.html">phenotypic.measure.MeasureGridLinRegStats</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="phenotypic.prefab.html">phenotypic.prefab</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.prefab.HeavyWatershedPipeline.html">phenotypic.prefab.HeavyWatershedPipeline</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.prefab.HeavyOtsuPipeline.html">phenotypic.prefab.HeavyOtsuPipeline</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.prefab.GridSectionPipeline.html">phenotypic.prefab.GridSectionPipeline</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.prefab.HeavyGitterPipeline.html">phenotypic.prefab.HeavyGitterPipeline</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="phenotypic.refine.html">phenotypic.refine</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.LowCircularityRemover.html">phenotypic.refine.LowCircularityRemover</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.SmallObjectRemover.html">phenotypic.refine.SmallObjectRemover</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.BorderObjectRemover.html">phenotypic.refine.BorderObjectRemover</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.CenterDeviationReducer.html">phenotypic.refine.CenterDeviationReducer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.MaskFill.html">phenotypic.refine.MaskFill</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.MaskOpener.html">phenotypic.refine.MaskOpener</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.WhiteTophatModifier.html">phenotypic.refine.WhiteTophatModifier</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.GridOversizedObjectRemover.html">phenotypic.refine.GridOversizedObjectRemover</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.MinResidualErrorReducer.html">phenotypic.refine.MinResidualErrorReducer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.ResidualOutlierRemover.html">phenotypic.refine.ResidualOutlierRemover</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="phenotypic.tools.html">phenotypic.tools</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tools.timed_execution.html">phenotypic.tools.timed_execution</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tools.is_binary_mask.html">phenotypic.tools.is_binary_mask</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tools.HDF.html">phenotypic.tools.HDF</a></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="phenotypic.tools.constants_.html">phenotypic.tools.constants_</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.constants_.BBOX.html">phenotypic.tools.constants_.BBOX</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.constants_.GRID.html">phenotypic.tools.constants_.GRID</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.constants_.GRID_LINREG_STATS_EXTRACTOR.html">phenotypic.tools.constants_.GRID_LINREG_STATS_EXTRACTOR</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.constants_.IMAGE_MODE.html">phenotypic.tools.constants_.IMAGE_MODE</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.constants_.IMAGE_TYPES.html">phenotypic.tools.constants_.IMAGE_TYPES</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.constants_.IO.html">phenotypic.tools.constants_.IO</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.constants_.METADATA.html">phenotypic.tools.constants_.METADATA</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.constants_.MPL.html">phenotypic.tools.constants_.MPL</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.constants_.OBJECT.html">phenotypic.tools.constants_.OBJECT</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.constants_.PIPE_STATUS.html">phenotypic.tools.constants_.PIPE_STATUS</a></li>
+</ul>
+</details></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="phenotypic.tools.exceptions_.html">phenotypic.tools.exceptions_</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.exceptions_.ArrayKeyValueShapeMismatchError.html">phenotypic.tools.exceptions_.ArrayKeyValueShapeMismatchError</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.exceptions_.DataIntegrityError.html">phenotypic.tools.exceptions_.DataIntegrityError</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.exceptions_.EmptyImageError.html">phenotypic.tools.exceptions_.EmptyImageError</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.exceptions_.GridImageInputError.html">phenotypic.tools.exceptions_.GridImageInputError</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.exceptions_.IllegalAssignmentError.html">phenotypic.tools.exceptions_.IllegalAssignmentError</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.exceptions_.IllegalElementAssignmentError.html">phenotypic.tools.exceptions_.IllegalElementAssignmentError</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.exceptions_.ImageOperationError.html">phenotypic.tools.exceptions_.ImageOperationError</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.exceptions_.ImmutableComponentError.html">phenotypic.tools.exceptions_.ImmutableComponentError</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.exceptions_.InputShapeMismatchError.html">phenotypic.tools.exceptions_.InputShapeMismatchError</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.exceptions_.InterfaceError.html">phenotypic.tools.exceptions_.InterfaceError</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.exceptions_.InvalidHsvSchemaError.html">phenotypic.tools.exceptions_.InvalidHsvSchemaError</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.exceptions_.InvalidMapValueError.html">phenotypic.tools.exceptions_.InvalidMapValueError</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.exceptions_.InvalidMaskScalarValueError.html">phenotypic.tools.exceptions_.InvalidMaskScalarValueError</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.exceptions_.InvalidMaskValueError.html">phenotypic.tools.exceptions_.InvalidMaskValueError</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.exceptions_.InvalidShapeError.html">phenotypic.tools.exceptions_.InvalidShapeError</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.exceptions_.MetadataKeySpacesError.html">phenotypic.tools.exceptions_.MetadataKeySpacesError</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.exceptions_.MetadataKeyValueError.html">phenotypic.tools.exceptions_.MetadataKeyValueError</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.exceptions_.MetadataValueNonScalarError.html">phenotypic.tools.exceptions_.MetadataValueNonScalarError</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.exceptions_.NoArrayError.html">phenotypic.tools.exceptions_.NoArrayError</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.exceptions_.NoComponentError.html">phenotypic.tools.exceptions_.NoComponentError</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.exceptions_.NoImageDataError.html">phenotypic.tools.exceptions_.NoImageDataError</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.exceptions_.NoObjectsError.html">phenotypic.tools.exceptions_.NoObjectsError</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.exceptions_.NoOutputError.html">phenotypic.tools.exceptions_.NoOutputError</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.exceptions_.ObjectNotFoundError.html">phenotypic.tools.exceptions_.ObjectNotFoundError</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.exceptions_.OperationFailedError.html">phenotypic.tools.exceptions_.OperationFailedError</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.exceptions_.OperationIntegrityError.html">phenotypic.tools.exceptions_.OperationIntegrityError</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.exceptions_.OutputValueError.html">phenotypic.tools.exceptions_.OutputValueError</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.exceptions_.PhenoTypicError.html">phenotypic.tools.exceptions_.PhenoTypicError</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.exceptions_.UUIDReassignmentError.html">phenotypic.tools.exceptions_.UUIDReassignmentError</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.exceptions_.UnknownError.html">phenotypic.tools.exceptions_.UnknownError</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.exceptions_.UnsupportedFileTypeError.html">phenotypic.tools.exceptions_.UnsupportedFileTypeError</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.exceptions_.UnsupportedImageFormat.html">phenotypic.tools.exceptions_.UnsupportedImageFormat</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.tools.exceptions_.UuidAssignmentError.html">phenotypic.tools.exceptions_.UuidAssignmentError</a></li>
+</ul>
+</details></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.tools.colourspaces_.html">phenotypic.tools.colourspaces_</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="phenotypic.util.html">phenotypic.util</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.util.GridApply.html">phenotypic.util.GridApply</a></li>
+</ul>
+</details></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../index.html" class="nav-link">API Reference</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">phenotypic.Image.objects</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="phenotypic-image-objects">
+<h1>phenotypic.Image.objects<a class="headerlink" href="#phenotypic-image-objects" title="Link to this heading">#</a></h1>
+<dl class="py property">
+<dt class="sig sig-object py" id="phenotypic.Image.objects">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">Image.</span></span><span class="sig-name descname"><span class="pre">objects</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">ObjectsAccessor</span></em><a class="headerlink" href="#phenotypic.Image.objects" title="Link to this definition">#</a></dt>
+<dd><p>Accessor for performing operations on detected objects in the image.</p>
+<p>Provides access to individual or grouped objects detected in the image,
+enabling measurement calculations, filtering, and object-specific analyses.
+Objects are identified through the object map (objmap) component which stores
+integer labels for each detected object.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><dl class="simple">
+<dt>An accessor instance that manages object-specific operations</dt><dd><p>and measurements.</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>ObjectsAccessor</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="../phenotypic.tools.exceptions_.html#phenotypic.tools.exceptions_.NoObjectsError" title="phenotypic.tools.exceptions_.NoObjectsError"><strong>NoObjectsError</strong></a> – If no objects are present in the image. This occurs when
+    num_objects == 0, indicating that either no object detection has been
+    performed yet, or the detection found no objects. Apply an ObjectDetector
+    first to identify and label objects.</p>
+</dd>
+</dl>
+<div class="admonition-examples admonition">
+<p class="admonition-title">Examples</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">img</span> <span class="o">=</span> <span class="n">Image</span><span class="o">.</span><span class="n">imread</span><span class="p">(</span><span class="s1">&#39;sample.jpg&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">detector</span> <span class="o">=</span> <span class="n">ObjectDetector</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">detector</span><span class="o">.</span><span class="n">detect</span><span class="p">(</span><span class="n">img</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">obj_accessor</span> <span class="o">=</span> <span class="n">img</span><span class="o">.</span><span class="n">objects</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">measurements</span> <span class="o">=</span> <span class="n">img</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">measure</span><span class="o">.</span><span class="n">area</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+</dd></dl>
+
+</section>
+<section id="objectsaccessor-api">
+<h1>ObjectsAccessor API<a class="headerlink" href="#objectsaccessor-api" title="Link to this heading">#</a></h1>
+<dl class="py class">
+<dt class="sig sig-object py">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.core._image_parts.accessors.</span></span><span class="sig-name descname"><span class="pre">ObjectsAccessor</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">root_image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="phenotypic.Image.html#phenotypic.Image" title="phenotypic.Image"><span class="pre">Image</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/phenotypic/core/_image_parts/accessors/_objects_accessor.html#ObjectsAccessor"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Provide access to detected microbial colonies and their properties in agar plate images.</p>
+<p>This accessor enables researchers to analyze individual colonies in arrayed microbial cultures
+after colony detection has been performed. It provides methods for accessing colony labels,
+retrieving colony properties (area, intensity, position), extracting individual colony crops,
+and organizing colony data for high-throughput phenotypic screening workflows.</p>
+<p>The accessor operates on labeled object maps where each pixel value indicates which colony it
+belongs to (0 for background, 1+ for individual colonies). Properties are computed using
+scikit-image’s regionprops functionality, providing standardized measurements for each colony.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>This accessor can only be used after an ObjectDetector has been applied to the Image to
+identify and label individual colonies. Attempting to access before detection raises
+NoObjectsError.</p>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>root_image</strong> (<a class="reference internal" href="phenotypic.Image.html#phenotypic.Image" title="phenotypic.Image"><em>Image</em></a>)</p>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">_root_image</span></span></dt>
+<dd><p>The parent Image containing the labeled colony map (objmap).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="phenotypic.Image.html#phenotypic.Image" title="phenotypic.Image">Image</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<div class="admonition-examples admonition">
+<p class="admonition-title">Examples</p>
+<p>Access detected colonies and measure their properties:</p>
+<p><a href="#id1"><span class="problematic" id="id2">``</span></a><a href="#id3"><span class="problematic" id="id4">`</span></a>python
+from phenotypic import Image
+from phenotypic.detect import GitterDetector</p>
+<p># Load plate image and detect colonies
+plate = Image.from_file(“colony_array.png”)
+detector = GitterDetector()
+detector.apply(plate)</p>
+<p># Access colony properties
+print(f”Detected {len(plate.objects)} colonies”)</p>
+<p># Iterate over all colonies
+for colony in plate.objects:</p>
+<blockquote>
+<div><p>print(f”Colony area: {colony.gray.sum()}”)</p>
+</div></blockquote>
+<p># Get information for all colonies
+colony_info = plate.objects.info()
+print(colony_info[[“ObjectLabel”, “Bbox_CenterRR”, “Bbox_CenterCC”]])
+<a href="#id5"><span class="problematic" id="id6">``</span></a><a href="#id7"><span class="problematic" id="id8">`</span></a></p>
+</div>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">__getitem__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">index</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="phenotypic.Image.html#phenotypic.Image" title="phenotypic.Image"><span class="pre">Image</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/core/_image_parts/accessors/_objects_accessor.html#ObjectsAccessor.__getitem__"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Extract a specific colony by its position index.</p>
+<p>This enables bracket notation (e.g., plate.objects[0]) to access individual colonies
+by their sequential position. The returned Image is cropped to the colony’s bounding
+box and contains only that colony in its object map.</p>
+<p>This is useful when you need to access a specific colony by position, such as the first
+or last detected colony, or when iterating with enumerate() to track both index and colony.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>index</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Zero-based position index of the desired colony. Must be in the range
+[0, len(objects)-1]. Negative indexing is not supported.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>A cropped Image containing only the specified colony. The Image is cropped to</dt><dd><p>the colony’s bounding box, has metadata updated to ImageType=’Object’, and has
+an objmap where pixels belonging to the colony retain their label value while
+all other pixels are set to 0.</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="phenotypic.Image.html#phenotypic.Image" title="phenotypic.Image">Image</a></p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#IndexError" title="(in Python v3.14)"><strong>IndexError</strong></a> – If index is negative or &gt;= the total number of colonies.</p>
+</dd>
+</dl>
+<div class="admonition-examples admonition">
+<p class="admonition-title">Examples</p>
+<p>Extract the first detected colony:</p>
+<p><a href="#id9"><span class="problematic" id="id10">``</span></a><a href="#id11"><span class="problematic" id="id12">`</span></a>python
+from phenotypic import Image
+from phenotypic.detect import GitterDetector</p>
+<p>plate = Image.from_file(“colony_plate.png”)
+detector = GitterDetector()
+detector.apply(plate)</p>
+<p># Get first colony
+first_colony = plate.objects[0]
+print(f”First colony label: {first_colony.objmap.max()}”)
+print(f”Colony size: {(first_colony.objmap &gt; 0).sum()} pixels”)
+<a href="#id13"><span class="problematic" id="id14">``</span></a><a href="#id15"><span class="problematic" id="id16">`</span></a></p>
+<p>Access specific colonies for comparison:</p>
+<p><a href="#id17"><span class="problematic" id="id18">``</span></a><a href="#id19"><span class="problematic" id="id20">`</span></a>python
+# Compare first and last colonies
+first = plate.objects[0]
+last = plate.objects[len(plate.objects) - 1]</p>
+<p>print(f”First colony mean intensity: {first.gray.mean()}”)
+print(f”Last colony mean intensity: {last.gray.mean()}”)
+<a href="#id21"><span class="problematic" id="id22">``</span></a><a href="#id23"><span class="problematic" id="id24">`</span></a></p>
+<p>Use with enumerate for indexed processing:</p>
+<p><a href="#id25"><span class="problematic" id="id26">``</span></a><a href="#id27"><span class="problematic" id="id28">`</span></a>python
+for idx, colony in enumerate(plate.objects):</p>
+<blockquote>
+<div><dl class="simple">
+<dt>if idx % 10 == 0:</dt><dd><p># Process every 10th colony
+colony.show()</p>
+</dd>
+</dl>
+</div></blockquote>
+<p><a href="#id29"><span class="problematic" id="id30">``</span></a><a href="#id31"><span class="problematic" id="id32">`</span></a></p>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">root_image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="phenotypic.Image.html#phenotypic.Image" title="phenotypic.Image"><span class="pre">Image</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/phenotypic/core/_image_parts/accessors/_objects_accessor.html#ObjectsAccessor.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Initialize the ObjectsAccessor with a parent Image.</p>
+<p>This method is called automatically when accessing the <cite>objects</cite> property of an Image.
+Users should not instantiate this class directly; instead, access it through the
+Image.objects property after applying an ObjectDetector.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>root_image</strong> (<a class="reference internal" href="phenotypic.Image.html#phenotypic.Image" title="phenotypic.Image"><em>Image</em></a>) – The parent Image containing detected colonies. Must have an
+objmap (object map) populated by an ObjectDetector that has been applied to
+identify and label individual colonies.</p>
+</dd>
+</dl>
+<div class="admonition-examples admonition">
+<p class="admonition-title">Examples</p>
+<p>Accessor is created automatically when accessing colonies:</p>
+<p><a href="#id33"><span class="problematic" id="id34">``</span></a><a href="#id35"><span class="problematic" id="id36">`</span></a>python
+from phenotypic import Image
+from phenotypic.detect import GitterDetector</p>
+<p>plate = Image.from_file(“plate.png”)
+detector = GitterDetector()
+detector.apply(plate)</p>
+<p># ObjectsAccessor is automatically initialized
+accessor = plate.objects  # Uses __init__ internally
+print(f”Found {len(accessor)} colonies”)
+<a href="#id37"><span class="problematic" id="id38">``</span></a><a href="#id39"><span class="problematic" id="id40">`</span></a></p>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">__iter__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Generator</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="phenotypic.Image.html#phenotypic.Image" title="phenotypic.Image"><span class="pre">Image</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/phenotypic/core/_image_parts/accessors/_objects_accessor.html#ObjectsAccessor.__iter__"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Iterate over all detected colonies, yielding each as a cropped Image.</p>
+<p>This enables using the accessor in for loops and comprehensions to process each colony
+individually. Each yielded Image is cropped to the colony’s bounding box and contains
+only that colony’s pixels in its object map (all other pixels set to 0).</p>
+<p>This is particularly useful for batch processing colonies, computing per-colony metrics,
+or performing quality control by visually inspecting individual colonies.</p>
+<dl class="field-list">
+<dt class="field-odd">Yields<span class="colon">:</span></dt>
+<dd class="field-odd"><p><em>Image</em> –</p>
+<dl class="simple">
+<dt>A cropped Image for each colony, in order by position index (0 to N-1).</dt><dd><p>Each cropped Image has its metadata updated with ImageType=’Object’ and
+contains only the pixels within that colony’s bounding box. The objmap of
+each yielded Image contains only the current colony’s label, with all other
+pixels set to 0.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>Generator[<a class="reference internal" href="phenotypic.Image.html#phenotypic.Image" title="phenotypic.Image">Image</a>, Any, None]</p>
+</dd>
+</dl>
+<div class="admonition-examples admonition">
+<p class="admonition-title">Examples</p>
+<p>Compute average intensity for each colony:</p>
+<p><a href="#id41"><span class="problematic" id="id42">``</span></a><a href="#id43"><span class="problematic" id="id44">`</span></a>python
+from phenotypic import Image
+from phenotypic.detect import GitterDetector</p>
+<p>plate = Image.from_file(“fluorescent_colonies.png”)
+detector = GitterDetector()
+detector.apply(plate)</p>
+<p># Calculate mean fluorescence for each colony
+intensities = []
+for colony in plate.objects:</p>
+<blockquote>
+<div><p>mean_intensity = colony.gray.mean()
+intensities.append(mean_intensity)</p>
+</div></blockquote>
+<p>print(f”Average colony intensity: {sum(intensities) / len(intensities)}”)
+<a href="#id45"><span class="problematic" id="id46">``</span></a><a href="#id47"><span class="problematic" id="id48">`</span></a></p>
+<p>Filter colonies by size:</p>
+<p><a href="#id49"><span class="problematic" id="id50">``</span></a><a href="#id51"><span class="problematic" id="id52">`</span></a>python
+# Get all colonies larger than 500 pixels
+large_colonies = [</p>
+<blockquote>
+<div><p>colony for colony in plate.objects
+if (colony.objmap &gt; 0).sum() &gt; 500</p>
+</div></blockquote>
+<p>]
+print(f”Found {len(large_colonies)} large colonies”)
+<a href="#id53"><span class="problematic" id="id54">``</span></a><a href="#id55"><span class="problematic" id="id56">`</span></a></p>
+<p>Extract colony names for tracking:</p>
+<p><a href="#id57"><span class="problematic" id="id58">``</span></a><a href="#id59"><span class="problematic" id="id60">`</span></a>python
+colony_names = [</p>
+<blockquote>
+<div><p>obj.metadata[METADATA.IMAGE_NAME]
+for obj in plate.objects</p>
+</div></blockquote>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">__len__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/core/_image_parts/accessors/_objects_accessor.html#ObjectsAccessor.__len__"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Return the number of detected colonies in the plate image.</p>
+<p>This enables using Python’s built-in len() function to quickly check how many colonies
+were detected by the object detector. Useful for quality control and validating that
+colony detection worked as expected.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><dl class="simple">
+<dt>The total number of labeled colonies in the object map. Returns 0 if no</dt><dd><p>colonies have been detected.</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)">int</a></p>
+</dd>
+</dl>
+<div class="admonition-examples admonition">
+<p class="admonition-title">Examples</p>
+<p>Check colony count after detection:</p>
+<p><a href="#id61"><span class="problematic" id="id62">``</span></a><a href="#id63"><span class="problematic" id="id64">`</span></a>python
+from phenotypic import Image
+from phenotypic.detect import GitterDetector</p>
+<p>plate = Image.from_file(“96well_array.png”)
+detector = GitterDetector()
+detector.apply(plate)</p>
+<p># Check if expected number of colonies detected
+colony_count = len(plate.objects)
+expected_count = 96
+if colony_count != expected_count:</p>
+<blockquote>
+<div><p>print(f”Warning: Expected {expected_count} colonies, found {colony_count}”)</p>
+</div></blockquote>
+<p><a href="#id65"><span class="problematic" id="id66">``</span></a><a href="#id67"><span class="problematic" id="id68">`</span></a></p>
+<p>Use in conditional logic:</p>
+<p><a href="#id69"><span class="problematic" id="id70">``</span></a><a href="#id71"><span class="problematic" id="id72">`</span></a>python
+if len(plate.objects) == 0:</p>
+<blockquote>
+<div><p>raise RuntimeError(“No colonies detected. Check detector parameters.”)</p>
+</div></blockquote>
+<p><a href="#id73"><span class="problematic" id="id74">``</span></a><a href="#id75"><span class="problematic" id="id76">`</span></a></p>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">get_label_idx</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">object_label</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/core/_image_parts/accessors/_objects_accessor.html#ObjectsAccessor.get_label_idx"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Convert a colony label to its position index in the labels list.</p>
+<p>This method maps from label identifiers (which may have gaps or start from values other
+than 0) to position indices (which are always contiguous from 0 to N-1). This is useful
+when you know a colony’s label but need its position for indexing into lists or arrays
+organized by position.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>object_label</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – The label identifier to look up. This is the value stored in the
+objmap for pixels belonging to the desired colony, typically a positive integer
+starting from 1.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>The zero-based position index where this label appears in the labels list.</dt><dd><p>This index can be used with methods like iloc(), slices[], or props[].</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)">int</a></p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#IndexError" title="(in Python v3.14)"><strong>IndexError</strong></a> – If object_label is not present in the current labels list. This can
+    occur if the label doesn’t exist or if colonies have been filtered/removed.</p>
+</dd>
+</dl>
+<div class="admonition-examples admonition">
+<p class="admonition-title">Examples</p>
+<p>Map label to index for accessing properties:</p>
+<p><a href="#id77"><span class="problematic" id="id78">``</span></a><a href="#id79"><span class="problematic" id="id80">`</span></a>python
+from phenotypic import Image
+from phenotypic.detect import GitterDetector</p>
+<p>plate = Image.from_file(“colony_array.png”)
+detector = GitterDetector()
+detector.apply(plate)</p>
+<p># Find the position index for colony label 5
+idx = plate.objects.get_label_idx(5)
+print(f”Colony with label 5 is at position {idx}”)</p>
+<p># Use the index to access properties
+colony_slice = plate.objects.slices[idx]
+colony_props = plate.objects.props[idx]
+print(f”Colony 5 area: {colony_props.area}”)
+<a href="#id81"><span class="problematic" id="id82">``</span></a><a href="#id83"><span class="problematic" id="id84">`</span></a></p>
+<p>Use with non-contiguous labels:</p>
+<p><a href="#id85"><span class="problematic" id="id86">``</span></a><a href="#id87"><span class="problematic" id="id88">`</span></a>python
+# After filtering, labels may not be contiguous
+labels = plate.objects.labels  # e.g., [1, 2, 5, 8, 10]</p>
+<p># Get position index for label 8 (which is at position 3)
+idx = plate.objects.get_label_idx(8)  # Returns 3
+colony_8 = plate.objects.iloc(idx)
+<a href="#id89"><span class="problematic" id="id90">``</span></a><a href="#id91"><span class="problematic" id="id92">`</span></a></p>
+<p>Verify label exists before accessing:</p>
+<p><a href="#id93"><span class="problematic" id="id94">``</span></a><a href="#id95"><span class="problematic" id="id96">`</span></a>python
+desired_label = 42
+if desired_label in plate.objects.labels:</p>
+<blockquote>
+<div><p>idx = plate.objects.get_label_idx(desired_label)
+print(f”Found colony {desired_label} at index {idx}”)</p>
+</div></blockquote>
+<dl class="simple">
+<dt>else:</dt><dd><p>print(f”Colony {desired_label} not found”)</p>
+</dd>
+</dl>
+<p><a href="#id97"><span class="problematic" id="id98">``</span></a><a href="#id99"><span class="problematic" id="id100">`</span></a></p>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">iloc</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">index</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="phenotypic.Image.html#phenotypic.Image" title="phenotypic.Image"><span class="pre">Image</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/core/_image_parts/accessors/_objects_accessor.html#ObjectsAccessor.iloc"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Access a colony by position index using pandas-style iloc syntax.</p>
+<p>This method provides a pandas-like interface for accessing colonies by their position
+index. Unlike __getitem__ (which also uses position), iloc() returns a crop that preserves
+all labels in the objmap, while __getitem__ zeros out non-matching labels.</p>
+<p>Use iloc() when you need the minimal bounding box crop but want to preserve the original
+label structure, which can be useful for certain analysis workflows.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>index</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Zero-based position index of the colony to extract. Must be in the range
+[0, num_objects-1].</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>A cropped Image containing the bounding box region of the specified colony.</dt><dd><p>Unlike __getitem__, this crop preserves all label values in the objmap without
+zeroing non-matching pixels. The metadata is updated with the parent’s metadata
+but ImageType is not changed to ‘Object’.</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="phenotypic.Image.html#phenotypic.Image" title="phenotypic.Image">Image</a></p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#IndexError" title="(in Python v3.14)"><strong>IndexError</strong></a> – If index is negative or &gt;= num_objects.</p>
+</dd>
+</dl>
+<div class="admonition-examples admonition">
+<p class="admonition-title">Examples</p>
+<p>Access first colony with pandas-style syntax:</p>
+<p><a href="#id101"><span class="problematic" id="id102">``</span></a><a href="#id103"><span class="problematic" id="id104">`</span></a>python
+from phenotypic import Image
+from phenotypic.detect import GitterDetector</p>
+<p>plate = Image.from_file(“colony_array.png”)
+detector = GitterDetector()
+detector.apply(plate)</p>
+<p># Access first colony
+first = plate.objects.iloc(0)
+print(f”Bounding box shape: {first.shape}”)
+<a href="#id105"><span class="problematic" id="id106">``</span></a><a href="#id107"><span class="problematic" id="id108">`</span></a></p>
+<p>Compare iloc() vs __getitem__:</p>
+<p><a href="#id109"><span class="problematic" id="id110">``</span></a><a href="#id111"><span class="problematic" id="id112">`</span></a>python
+# iloc preserves all labels in the crop
+crop_iloc = plate.objects.iloc(5)
+print(f”Labels in crop (iloc): {crop_iloc.objmap.max()}”)  # May show label 5</p>
+<p># __getitem__ zeros out non-matching labels
+crop_getitem = plate.objects[5]
+print(f”Labels in crop ([5]): {crop_getitem.objmap.max()}”)  # Shows only label 5
+<a href="#id113"><span class="problematic" id="id114">``</span></a><a href="#id115"><span class="problematic" id="id116">`</span></a></p>
+<p>Extract multiple specific colonies:</p>
+<p><code class="docutils literal notranslate"><span class="pre">`python</span>
+<span class="pre">#</span> <span class="pre">Get</span> <span class="pre">colonies</span> <span class="pre">at</span> <span class="pre">positions</span> <span class="pre">0,</span> <span class="pre">5,</span> <span class="pre">and</span> <span class="pre">10</span>
+<span class="pre">selected_indices</span> <span class="pre">=</span> <span class="pre">[0,</span> <span class="pre">5,</span> <span class="pre">10]</span>
+<span class="pre">selected_colonies</span> <span class="pre">=</span> <span class="pre">[plate.objects.iloc(i)</span> <span class="pre">for</span> <span class="pre">i</span> <span class="pre">in</span> <span class="pre">selected_indices]</span>
+<span class="pre">`</span></code></p>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">info</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">include_metadata</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v2.3.3)"><span class="pre">pandas.DataFrame</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/core/_image_parts/accessors/_objects_accessor.html#ObjectsAccessor.info"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Generate a summary table of colony positions and bounding boxes.</p>
+<p>This method creates a pandas DataFrame containing key positional information for all
+detected colonies, including their labels, centroid coordinates, and bounding box
+coordinates. This is particularly useful for organizing colony data for downstream
+analysis, quality control, or exporting to other tools.</p>
+<p>The table includes one row per colony with columns for the colony label, centroid
+position (row and column), and bounding box coordinates (min/max row and column).
+Optionally, image metadata can be prepended to provide experimental context.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>include_metadata</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a><em>, </em><em>optional</em>) – If True, prepend image metadata columns
+(such as ImageName, UUID, ImageType) to the DataFrame using the Image’s
+metadata.insert_metadata() method. This adds experimental context to the
+colony information. Defaults to True.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><dl>
+<dt>A DataFrame with one row per colony containing:</dt><dd><ul class="simple">
+<li><p>ObjectLabel: The colony’s label identifier</p></li>
+<li><p>Bbox_CenterRR: Row coordinate of the colony centroid</p></li>
+<li><p>Bbox_CenterCC: Column coordinate of the colony centroid</p></li>
+<li><p>Bbox_MinRR: Minimum row coordinate of the bounding box</p></li>
+<li><p>Bbox_MinCC: Minimum column coordinate of the bounding box</p></li>
+<li><p>Bbox_MaxRR: Maximum row coordinate of the bounding box</p></li>
+<li><p>Bbox_MaxCC: Maximum column coordinate of the bounding box</p></li>
+</ul>
+<p>If include_metadata=True, additional metadata columns are prepended.</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>pd.DataFrame</p>
+</dd>
+</dl>
+<div class="admonition-examples admonition">
+<p class="admonition-title">Examples</p>
+<p>Get basic colony information:</p>
+<p><a href="#id117"><span class="problematic" id="id118">``</span></a><a href="#id119"><span class="problematic" id="id120">`</span></a>python
+from phenotypic import Image
+from phenotypic.detect import GitterDetector</p>
+<p>plate = Image.from_file(“colony_array.png”)
+detector = GitterDetector()
+detector.apply(plate)</p>
+<p># Get colony information
+colony_info = plate.objects.info()
+print(colony_info.head())
+print(f”Columns: {colony_info.columns.tolist()}”)
+<a href="#id121"><span class="problematic" id="id122">``</span></a><a href="#id123"><span class="problematic" id="id124">`</span></a></p>
+<p>Access specific columns:</p>
+<p><code class="docutils literal notranslate"><span class="pre">`python</span>
+<span class="pre">#</span> <span class="pre">Get</span> <span class="pre">just</span> <span class="pre">labels</span> <span class="pre">and</span> <span class="pre">centroids</span>
+<span class="pre">labels_centroids</span> <span class="pre">=</span> <span class="pre">colony_info[[&quot;ObjectLabel&quot;,</span> <span class="pre">&quot;Bbox_CenterRR&quot;,</span> <span class="pre">&quot;Bbox_CenterCC&quot;]]</span>
+<span class="pre">print(labels_centroids)</span>
+<span class="pre">`</span></code></p>
+<p>Export colony positions for other tools:</p>
+<p><code class="docutils literal notranslate"><span class="pre">`python</span>
+<span class="pre">#</span> <span class="pre">Get</span> <span class="pre">info</span> <span class="pre">without</span> <span class="pre">metadata</span> <span class="pre">for</span> <span class="pre">cleaner</span> <span class="pre">export</span>
+<span class="pre">colony_positions</span> <span class="pre">=</span> <span class="pre">plate.objects.info(include_metadata=False)</span>
+<span class="pre">colony_positions.to_csv(&quot;colony_positions.csv&quot;,</span> <span class="pre">index=False)</span>
+<span class="pre">`</span></code></p>
+<p>Filter colonies by position:</p>
+<p><a href="#id125"><span class="problematic" id="id126">``</span></a><a href="#id127"><span class="problematic" id="id128">`</span></a>python
+info = plate.objects.info(include_metadata=False)</p>
+<p># Find colonies in the upper half of the image
+upper_colonies = info[info[“Bbox_CenterRR”] &lt; 500]
+print(f”Found {len(upper_colonies)} colonies in upper half”)
+<a href="#id129"><span class="problematic" id="id130">``</span></a><a href="#id131"><span class="problematic" id="id132">`</span></a></p>
+<p>Calculate bounding box dimensions:</p>
+<p><a href="#id133"><span class="problematic" id="id134">``</span></a><a href="#id135"><span class="problematic" id="id136">`</span></a>python
+info = plate.objects.info(include_metadata=False)</p>
+<p># Calculate width and height of each colony’s bounding box
+info[“BBox_Width”] = info[“Bbox_MaxCC”] - info[“Bbox_MinCC”]
+info[“BBox_Height”] = info[“Bbox_MaxRR”] - info[“Bbox_MinRR”]</p>
+<p>print(f”Average colony width: {info[‘BBox_Width’].mean():.1f} pixels”)
+print(f”Average colony height: {info[‘BBox_Height’].mean():.1f} pixels”)
+<a href="#id137"><span class="problematic" id="id138">``</span></a><a href="#id139"><span class="problematic" id="id140">`</span></a></p>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">labels2series</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.Series.html#pandas.Series" title="(in pandas v2.3.3)"><span class="pre">pandas.Series</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/core/_image_parts/accessors/_objects_accessor.html#ObjectsAccessor.labels2series"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Convert colony labels to a pandas Series for joining with measurement DataFrames.</p>
+<p>This method creates a pandas Series containing all colony labels with a properly named
+column (‘ObjectLabel’) and indexed by position. This is specifically designed to
+facilitate joining labels with measurement DataFrames that are indexed by position,
+which is a common pattern in high-throughput phenotypic analysis workflows.</p>
+<p>The returned Series can be easily joined or merged with other pandas DataFrames
+containing per-colony measurements to add label information.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><dl class="simple">
+<dt>A pandas Series with:</dt><dd><ul class="simple">
+<li><p>data: The colony labels (integers)</p></li>
+<li><p>index: Position indices (0 to N-1)</p></li>
+<li><p>name: ‘ObjectLabel’ for proper DataFrame column naming</p></li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>pd.Series</p>
+</dd>
+</dl>
+<div class="admonition-examples admonition">
+<p class="admonition-title">Examples</p>
+<p>Join labels with measurement data:</p>
+<p><a href="#id141"><span class="problematic" id="id142">``</span></a><a href="#id143"><span class="problematic" id="id144">`</span></a>python
+from phenotypic import Image
+from phenotypic.detect import GitterDetector
+from phenotypic.measure import AreaMeasurer
+import pandas as pd</p>
+<p>plate = Image.from_file(“colony_array.png”)
+detector = GitterDetector()
+detector.apply(plate)</p>
+<p># Calculate measurements (indexed by position)
+measurer = AreaMeasurer()
+measurements = measurer.measure(plate)</p>
+<p># Add labels to measurements
+labels = plate.objects.labels2series()
+measurements_with_labels = measurements.join(labels)</p>
+<p>print(measurements_with_labels.head())
+<a href="#id145"><span class="problematic" id="id146">``</span></a><a href="#id147"><span class="problematic" id="id148">`</span></a></p>
+<p>Merge with custom analysis results:</p>
+<p><a href="#id149"><span class="problematic" id="id150">``</span></a><a href="#id151"><span class="problematic" id="id152">`</span></a>python
+import numpy as np
+import pandas as pd</p>
+<p># Custom analysis results indexed by position
+custom_analysis = pd.DataFrame({</p>
+<blockquote>
+<div><p>‘mean_intensity’: [125.3, 142.7, 98.1, …],
+‘max_intensity’: [255, 243, 189, …]</p>
+</div></blockquote>
+<p>}, index=range(len(plate.objects)))</p>
+<p># Add colony labels
+labels_series = plate.objects.labels2series()
+analysis_with_labels = custom_analysis.join(labels_series)</p>
+<p># Now can group or filter by label
+print(analysis_with_labels)
+<a href="#id153"><span class="problematic" id="id154">``</span></a><a href="#id155"><span class="problematic" id="id156">`</span></a></p>
+<p>Use as a lookup table:</p>
+<p><a href="#id157"><span class="problematic" id="id158">``</span></a><a href="#id159"><span class="problematic" id="id160">`</span></a>python
+labels_series = plate.objects.labels2series()</p>
+<p># Get label for position 5
+label_at_pos_5 = labels_series.iloc[5]
+print(f”Colony at position 5 has label {label_at_pos_5}”)
+<a href="#id161"><span class="problematic" id="id162">``</span></a><a href="#id163"><span class="problematic" id="id164">`</span></a></p>
+<p>Handle potential label suffix conflicts:</p>
+<p><code class="docutils literal notranslate"><span class="pre">`python</span>
+<span class="pre">#</span> <span class="pre">If</span> <span class="pre">DataFrame</span> <span class="pre">already</span> <span class="pre">has</span> <span class="pre">an</span> <span class="pre">'ObjectLabel'</span> <span class="pre">column</span>
+<span class="pre">labels</span> <span class="pre">=</span> <span class="pre">plate.objects.labels2series()</span>
+<span class="pre">measurements_with_labels</span> <span class="pre">=</span> <span class="pre">measurements.join(labels,</span> <span class="pre">rsuffix=&quot;_new&quot;)</span>
+<span class="pre">#</span> <span class="pre">Creates</span> <span class="pre">'ObjectLabel'</span> <span class="pre">and</span> <span class="pre">'ObjectLabel_new'</span> <span class="pre">columns</span>
+<span class="pre">`</span></code></p>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">loc</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">label_number</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="phenotypic.Image.html#phenotypic.Image" title="phenotypic.Image"><span class="pre">Image</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/core/_image_parts/accessors/_objects_accessor.html#ObjectsAccessor.loc"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Access a colony by its label identifier using pandas-style loc syntax.</p>
+<p>This method provides a pandas-like interface for accessing colonies by their label value
+(rather than position index). This is useful when you know the specific label ID of a
+colony from the objmap and want to extract just that colony’s bounding box region.</p>
+<p>Unlike iloc() which uses position, loc() uses the actual label value assigned in the
+object map. This is particularly helpful when labels are non-contiguous or when working
+with specific colonies identified by their label in previous analysis steps.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>label_number</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – The label identifier assigned to the colony in the objmap.
+This is typically a positive integer (1, 2, 3, …) but may have gaps if
+colonies were filtered or removed.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>A cropped Image containing the bounding box region of the colony with the</dt><dd><p>specified label. The crop preserves all label values in the objmap without
+zeroing non-matching pixels.</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="phenotypic.Image.html#phenotypic.Image" title="phenotypic.Image">Image</a></p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#IndexError" title="(in Python v3.14)"><strong>IndexError</strong></a> – If label_number does not exist in the current labels list.</p>
+</dd>
+</dl>
+<div class="admonition-examples admonition">
+<p class="admonition-title">Examples</p>
+<p>Access colony by its label:</p>
+<p><a href="#id165"><span class="problematic" id="id166">``</span></a><a href="#id167"><span class="problematic" id="id168">`</span></a>python
+from phenotypic import Image
+from phenotypic.detect import GitterDetector</p>
+<p>plate = Image.from_file(“colony_array.png”)
+detector = GitterDetector()
+detector.apply(plate)</p>
+<p># Access colony with label 5
+colony_5 = plate.objects.loc(5)
+print(f”Colony 5 bounding box: {colony_5.shape}”)
+<a href="#id169"><span class="problematic" id="id170">``</span></a><a href="#id171"><span class="problematic" id="id172">`</span></a></p>
+<p>Access first colony by its label (not position):</p>
+<p><a href="#id173"><span class="problematic" id="id174">``</span></a><a href="#id175"><span class="problematic" id="id176">`</span></a>python
+# Get the label of the first colony
+first_label = plate.objects.labels[0]  # e.g., could be 1</p>
+<p># Access by that label
+first_colony = plate.objects.loc(first_label)
+<a href="#id177"><span class="problematic" id="id178">``</span></a><a href="#id179"><span class="problematic" id="id180">`</span></a></p>
+<p>Use with non-contiguous labels:</p>
+<p><a href="#id181"><span class="problematic" id="id182">``</span></a><a href="#id183"><span class="problematic" id="id184">`</span></a>python
+# Labels might be: [1, 2, 5, 8, 10] after filtering
+labels = plate.objects.labels</p>
+<p># Access colony with label 8 (not position 8)
+colony_8 = plate.objects.loc(8)</p>
+<p># Compare with position-based access
+colony_at_pos_3 = plate.objects.iloc(3)  # Also gets label 8
+<a href="#id185"><span class="problematic" id="id186">``</span></a><a href="#id187"><span class="problematic" id="id188">`</span></a></p>
+<p>Safe access with label validation:</p>
+<p><a href="#id189"><span class="problematic" id="id190">``</span></a><a href="#id191"><span class="problematic" id="id192">`</span></a>python
+desired_label = 42
+if desired_label in plate.objects.labels:</p>
+<blockquote>
+<div><p>colony = plate.objects.loc(desired_label)
+print(f”Found colony {desired_label}”)</p>
+</div></blockquote>
+<dl class="simple">
+<dt>else:</dt><dd><p>print(f”Colony {desired_label} not found”)</p>
+</dd>
+</dl>
+<p><a href="#id193"><span class="problematic" id="id194">``</span></a><a href="#id195"><span class="problematic" id="id196">`</span></a></p>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">relabel</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/core/_image_parts/accessors/_objects_accessor.html#ObjectsAccessor.relabel"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Renumber colony labels to be sequential and contiguous.</p>
+<p>This method relabels all colonies in the object map so that labels are sequential
+integers starting from 1 (i.e., 1, 2, 3, …, N for N colonies). This is useful
+after filtering or removing colonies, which can leave gaps in the label sequence,
+or when you need consistent, predictable label numbering for downstream analysis.</p>
+<p>The relabeling preserves the spatial relationships between colonies but assigns new
+labels in a consistent order. Connected components (colonies) are assigned sequential
+IDs based on their position in the label image.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><dl class="simple">
+<dt>This method modifies the parent Image’s objmap in-place. Labels are</dt><dd><p>renumbered directly in the object map, and no value is returned.</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
+<div class="admonition-examples admonition">
+<p class="admonition-title">Examples</p>
+<p>Relabel after filtering to remove gaps:</p>
+<p><a href="#id197"><span class="problematic" id="id198">``</span></a><a href="#id199"><span class="problematic" id="id200">`</span></a>python
+from phenotypic import Image
+from phenotypic.detect import GitterDetector</p>
+<p>plate = Image.from_file(“colony_array.png”)
+detector = GitterDetector()
+detector.apply(plate)</p>
+<p># Before relabeling (may have gaps)
+print(f”Labels before: {plate.objects.labels}”)
+# e.g., [1, 2, 5, 7, 10, 15]</p>
+<p># Relabel to make sequential
+plate.objects.relabel()</p>
+<p># After relabeling (sequential)
+print(f”Labels after: {plate.objects.labels}”)
+# e.g., [1, 2, 3, 4, 5, 6]
+<a href="#id201"><span class="problematic" id="id202">``</span></a><a href="#id203"><span class="problematic" id="id204">`</span></a></p>
+<p>Ensure consistent labeling for reproducibility:</p>
+<p><a href="#id205"><span class="problematic" id="id206">``</span></a><a href="#id207"><span class="problematic" id="id208">`</span></a>python
+# After any colony filtering or modification
+plate.objects.relabel()</p>
+<p># Now labels are guaranteed to be 1, 2, 3, …, N
+assert plate.objects.labels == list(range(1, len(plate.objects) + 1))
+<a href="#id209"><span class="problematic" id="id210">``</span></a><a href="#id211"><span class="problematic" id="id212">`</span></a></p>
+<p>Relabel after manual objmap modifications:</p>
+<p><a href="#id213"><span class="problematic" id="id214">``</span></a><a href="#id215"><span class="problematic" id="id216">`</span></a>python
+# After custom filtering or editing the objmap
+import numpy as np</p>
+<p># Remove small colonies (custom filtering)
+for prop in plate.objects.props:</p>
+<blockquote>
+<div><dl class="simple">
+<dt>if prop.area &lt; 100:</dt><dd><p>mask = plate.objmap[:] == prop.label
+plate.objmap[:][mask] = 0</p>
+</dd>
+</dl>
+</div></blockquote>
+<p># Relabel to clean up the label sequence
+plate.objects.relabel()
+print(f”Remaining colonies: {len(plate.objects)}”)
+print(f”New labels: {plate.objects.labels}”)
+<a href="#id217"><span class="problematic" id="id218">``</span></a><a href="#id219"><span class="problematic" id="id220">`</span></a></p>
+<p>Compare before and after relabeling:</p>
+<p><a href="#id221"><span class="problematic" id="id222">``</span></a><a href="#id223"><span class="problematic" id="id224">`</span></a>python
+labels_before = plate.objects.labels.copy()
+plate.objects.relabel()
+labels_after = plate.objects.labels</p>
+<p>print(f”Before: {labels_before}”)
+print(f”After: {labels_after}”)
+print(f”Same count: {len(labels_before) == len(labels_after)}”)
+<a href="#id225"><span class="problematic" id="id226">``</span></a><a href="#id227"><span class="problematic" id="id228">`</span></a></p>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">reset</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/core/_image_parts/accessors/_objects_accessor.html#ObjectsAccessor.reset"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Clear all colony labels from the object map.</p>
+<p>This method resets the object map to its initial empty state by setting all pixels to 0,
+effectively removing all colony detections. After calling reset(), the image reverts to
+having no detected colonies (num_objects = 0) and the entire image becomes the analysis
+target again.</p>
+<p>This is useful when you want to re-run colony detection with different parameters or when
+you need to clear previous detection results before applying a different detection method.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><dl class="simple">
+<dt>This method modifies the parent Image in-place by clearing its objmap. No value</dt><dd><p>is returned.</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
+<div class="admonition-examples admonition">
+<p class="admonition-title">Examples</p>
+<p>Clear detections to re-run with different parameters:</p>
+<p><a href="#id229"><span class="problematic" id="id230">``</span></a><a href="#id231"><span class="problematic" id="id232">`</span></a>python
+from phenotypic import Image
+from phenotypic.detect import GitterDetector</p>
+<p>plate = Image.from_file(“colony_array.png”)</p>
+<p># First detection attempt
+detector1 = GitterDetector(threshold=0.5)
+detector1.apply(plate)
+print(f”First attempt: {plate.objects.num_objects} colonies”)</p>
+<p># Clear and try with different parameters
+plate.objects.reset()
+print(f”After reset: {plate.objects.num_objects} colonies”)  # 0</p>
+<p>detector2 = GitterDetector(threshold=0.3)
+detector2.apply(plate)
+print(f”Second attempt: {plate.objects.num_objects} colonies”)
+<a href="#id233"><span class="problematic" id="id234">``</span></a><a href="#id235"><span class="problematic" id="id236">`</span></a></p>
+<p>Verify reset clears all colonies:</p>
+<p><code class="docutils literal notranslate"><span class="pre">`python</span>
+<span class="pre">plate.objects.reset()</span>
+<span class="pre">assert</span> <span class="pre">plate.num_objects</span> <span class="pre">==</span> <span class="pre">0</span>
+<span class="pre">assert</span> <span class="pre">len(plate.objects.labels)</span> <span class="pre">==</span> <span class="pre">0</span>
+<span class="pre">assert</span> <span class="pre">plate.objmap.max()</span> <span class="pre">==</span> <span class="pre">0</span>
+<span class="pre">`</span></code></p>
+</div>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">labels</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span></em></dt>
+<dd><p>Get the unique label identifiers for all detected colonies.</p>
+<p>Each colony in the object map is assigned a unique positive integer label (typically
+starting from 1). This property returns all such labels, which can be used to select
+specific colonies with the loc() method or to verify which colonies are present.</p>
+<p>Labels are extracted from scikit-image’s regionprops to ensure consistency with all
+property calculations, rather than using numpy.unique() on the object map directly.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><dl class="simple">
+<dt>A list of unique colony labels in ascending order. Returns an empty list</dt><dd><p>if no colonies have been detected. Background pixels (labeled 0) are excluded.</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)">list</a>[<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)">int</a>]</p>
+</dd>
+</dl>
+<div class="admonition-examples admonition">
+<p class="admonition-title">Examples</p>
+<p>Check which colonies are present:</p>
+<p><a href="#id237"><span class="problematic" id="id238">``</span></a><a href="#id239"><span class="problematic" id="id240">`</span></a>python
+from phenotypic import Image
+from phenotypic.detect import GitterDetector</p>
+<p>plate = Image.from_file(“colony_array.png”)
+detector = GitterDetector()
+detector.apply(plate)</p>
+<p>labels = plate.objects.labels
+print(f”Detected colonies with labels: {labels}”)
+print(f”Labels range from {min(labels)} to {max(labels)}”)
+<a href="#id241"><span class="problematic" id="id242">``</span></a><a href="#id243"><span class="problematic" id="id244">`</span></a></p>
+<p>Check if a specific colony exists:</p>
+<p><a href="#id245"><span class="problematic" id="id246">``</span></a><a href="#id247"><span class="problematic" id="id248">`</span></a>python
+if 5 in plate.objects.labels:</p>
+<blockquote>
+<div><p>colony_5 = plate.objects.loc(5)
+print(f”Colony 5 area: {colony_5.gray.sum()}”)</p>
+</div></blockquote>
+<dl class="simple">
+<dt>else:</dt><dd><p>print(“Colony 5 not found”)</p>
+</dd>
+</dl>
+<p><a href="#id249"><span class="problematic" id="id250">``</span></a><a href="#id251"><span class="problematic" id="id252">`</span></a></p>
+<p>Verify contiguous labeling:</p>
+<p><a href="#id253"><span class="problematic" id="id254">``</span></a><a href="#id255"><span class="problematic" id="id256">`</span></a>python
+labels = plate.objects.labels
+expected_labels = list(range(1, len(labels) + 1))
+if labels == expected_labels:</p>
+<blockquote>
+<div><p>print(“Labels are contiguous”)</p>
+</div></blockquote>
+<dl class="simple">
+<dt>else:</dt><dd><p>print(“Labels have gaps - consider using relabel()”)</p>
+</dd>
+</dl>
+<p><a href="#id257"><span class="problematic" id="id258">``</span></a><a href="#id259"><span class="problematic" id="id260">`</span></a></p>
+</div>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">num_objects</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></em></dt>
+<dd><p>Get the total number of detected colonies.</p>
+<p>This property provides the count of unique colony labels in the object map. It is
+equivalent to len(image.objects) but provides a more explicit property-based interface.
+The count excludes background pixels (label 0).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><dl class="simple">
+<dt>The number of unique colony labels currently tracked in the objmap. Returns 0</dt><dd><p>if no colonies have been detected.</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)">int</a></p>
+</dd>
+</dl>
+<div class="admonition-examples admonition">
+<p class="admonition-title">Examples</p>
+<p>Verify expected colony count:</p>
+<p><a href="#id261"><span class="problematic" id="id262">``</span></a><a href="#id263"><span class="problematic" id="id264">`</span></a>python
+from phenotypic import Image
+from phenotypic.detect import GitterDetector</p>
+<p>plate = Image.from_file(“96well_plate.png”)
+detector = GitterDetector()
+detector.apply(plate)</p>
+<p># Check if detection found the expected number of colonies
+expected = 96
+actual = plate.objects.num_objects
+if actual != expected:</p>
+<blockquote>
+<div><p>print(f”Warning: Expected {expected} colonies, found {actual}”)</p>
+</div></blockquote>
+<p><a href="#id265"><span class="problematic" id="id266">``</span></a><a href="#id267"><span class="problematic" id="id268">`</span></a></p>
+<p>Verify consistency with len():</p>
+<p><code class="docutils literal notranslate"><span class="pre">`python</span>
+<span class="pre">assert</span> <span class="pre">plate.objects.num_objects</span> <span class="pre">==</span> <span class="pre">len(plate.objects)</span>
+<span class="pre">`</span></code></p>
+</div>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">props</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><span class="pre">list</span></a></em></dt>
+<dd><p>Compute region properties for all detected colonies using scikit-image.</p>
+<p>This property provides access to scikit-image’s RegionProperties objects, which contain
+detailed morphological and intensity measurements for each colony. Each RegionProperties
+object provides properties like area, perimeter, centroid, bounding box coordinates,
+mean intensity, and many others.</p>
+<p>The properties are computed dynamically each time this property is accessed (cache=False),
+ensuring measurements always reflect the current state of the object map and intensity image.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><dl>
+<dt>A list of RegionProperties objects, one per</dt><dd><p>detected colony. Each object provides lazy access to properties like:
+- area: Number of pixels in the colony
+- centroid: (row, col) coordinates of the colony center
+- bbox: Bounding box as (min_row, min_col, max_row, max_col)
+- mean_intensity: Mean pixel intensity within the colony region
+- perimeter, eccentricity, solidity, and many more</p>
+<p>See scikit-image regionprops documentation for the complete list of available
+properties.</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)">list</a>[skimage.measure.RegionProperties]</p>
+</dd>
+</dl>
+<div class="admonition-examples admonition">
+<p class="admonition-title">Examples</p>
+<p>Extract colony areas:</p>
+<p><a href="#id269"><span class="problematic" id="id270">``</span></a><a href="#id271"><span class="problematic" id="id272">`</span></a>python
+from phenotypic import Image
+from phenotypic.detect import GitterDetector</p>
+<p>plate = Image.from_file(“colony_array.png”)
+detector = GitterDetector()
+detector.apply(plate)</p>
+<p># Get areas of all colonies
+areas = [prop.area for prop in plate.objects.props]
+print(f”Colony sizes: {areas}”)
+print(f”Mean colony size: {sum(areas) / len(areas):.1f} pixels”)
+<a href="#id273"><span class="problematic" id="id274">``</span></a><a href="#id275"><span class="problematic" id="id276">`</span></a></p>
+<p>Access multiple properties per colony:</p>
+<p><a href="#id277"><span class="problematic" id="id278">``</span></a><a href="#id279"><span class="problematic" id="id280">`</span></a>python
+for prop in plate.objects.props:</p>
+<blockquote>
+<div><p>print(f”Colony {prop.label}:”)
+print(f”  Area: {prop.area} pixels”)
+print(f”  Centroid: ({prop.centroid[0]:.1f}, {prop.centroid[1]:.1f})”)
+print(f”  Mean intensity: {prop.mean_intensity:.2f}”)
+print(f”  Eccentricity: {prop.eccentricity:.3f}”)</p>
+</div></blockquote>
+<p><a href="#id281"><span class="problematic" id="id282">``</span></a><a href="#id283"><span class="problematic" id="id284">`</span></a></p>
+<p>Filter colonies by morphology:</p>
+<p><a href="#id285"><span class="problematic" id="id286">``</span></a><a href="#id287"><span class="problematic" id="id288">`</span></a>python
+# Find circular colonies (low eccentricity)
+circular_colonies = [</p>
+<blockquote>
+<div><p>prop for prop in plate.objects.props
+if prop.eccentricity &lt; 0.5</p>
+</div></blockquote>
+<p>]
+print(f”Found {len(circular_colonies)} circular colonies”)
+<a href="#id289"><span class="problematic" id="id290">``</span></a><a href="#id291"><span class="problematic" id="id292">`</span></a></p>
+</div>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">slices</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><span class="pre">list</span></a></em></dt>
+<dd><p>Get bounding box slices for efficiently cropping to each colony region.</p>
+<p>This property returns NumPy-compatible slice objects that define the rectangular bounding
+box around each colony. These slices can be used directly with array indexing to extract
+the minimal rectangular region containing each colony, which is much more efficient than
+working with the full plate image when processing individual colonies.</p>
+<p>Each slice is a tuple of (row_slice, col_slice) that can be used with NumPy indexing
+syntax to extract the bounding box region from any array with the same dimensions.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><dl class="simple">
+<dt>A list of slice tuples, one per colony, in the same order</dt><dd><p>as the labels. Each tuple contains (row_slice, col_slice) where:
+- row_slice defines the row range: slice(min_row, max_row)
+- col_slice defines the column range: slice(min_col, max_col)</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)">list</a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)">tuple</a>[<a class="reference external" href="https://docs.python.org/3/library/functions.html#slice" title="(in Python v3.14)">slice</a>, <a class="reference external" href="https://docs.python.org/3/library/functions.html#slice" title="(in Python v3.14)">slice</a>]]</p>
+</dd>
+</dl>
+<div class="admonition-examples admonition">
+<p class="admonition-title">Examples</p>
+<p>Extract bounding box regions from the grayscale image:</p>
+<p><a href="#id293"><span class="problematic" id="id294">``</span></a><a href="#id295"><span class="problematic" id="id296">`</span></a>python
+from phenotypic import Image
+from phenotypic.detect import GitterDetector</p>
+<p>plate = Image.from_file(“colony_array.png”)
+detector = GitterDetector()
+detector.apply(plate)</p>
+<p># Get the bounding box region for the first colony
+first_slice = plate.objects.slices[0]
+first_colony_region = plate.gray[first_slice]
+print(f”First colony bounding box shape: {first_colony_region.shape}”)
+<a href="#id297"><span class="problematic" id="id298">``</span></a><a href="#id299"><span class="problematic" id="id300">`</span></a></p>
+<p>Process all colonies using their bounding boxes:</p>
+<p><a href="#id301"><span class="problematic" id="id302">``</span></a><a href="#id303"><span class="problematic" id="id304">`</span></a>python
+for idx, bbox_slice in enumerate(plate.objects.slices):</p>
+<blockquote>
+<div><p>colony_region = plate.gray[bbox_slice]
+mean_intensity = colony_region.mean()
+print(f”Colony {idx}: mean intensity = {mean_intensity:.2f}”)</p>
+</div></blockquote>
+<p><a href="#id305"><span class="problematic" id="id306">``</span></a><a href="#id307"><span class="problematic" id="id308">`</span></a></p>
+<p>Extract bounding boxes from multiple image channels:</p>
+<p><a href="#id309"><span class="problematic" id="id310">``</span></a><a href="#id311"><span class="problematic" id="id312">`</span></a>python
+# Process RGB channels for each colony
+for bbox_slice in plate.objects.slices:</p>
+<blockquote>
+<div><p>r_channel = plate.rgb[bbox_slice][…, 0]
+g_channel = plate.rgb[bbox_slice][…, 1]
+b_channel = plate.rgb[bbox_slice][…, 2]
+print(f”R: {r_channel.mean():.1f}, G: {g_channel.mean():.1f}, “</p>
+<blockquote>
+<div><p>f”B: {b_channel.mean():.1f}”)</p>
+</div></blockquote>
+</div></blockquote>
+<p><a href="#id313"><span class="problematic" id="id314">``</span></a><a href="#id315"><span class="problematic" id="id316">`</span></a></p>
+</div>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h1 nav-item toc-entry"><a class="reference internal nav-link" href="#">phenotypic.Image.objects</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.Image.objects"><code class="docutils literal notranslate"><span class="pre">Image.objects</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h1 nav-item toc-entry"><a class="reference internal nav-link" href="#objectsaccessor-api">ObjectsAccessor API</a></li>
+</ul>
+
+  </nav></div>
+
+  <div class="sidebar-secondary-item">
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../../_sources/api_reference/api/phenotypic.Image.objects.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, ExFAB BioFoundry.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.1.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

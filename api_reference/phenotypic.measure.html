@@ -1,0 +1,1841 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>phenotypic.measure &#8212; PhenoTypic</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=800a184d" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../_static/documentation_options.js?v=b3db6a4d"></script>
+    <script src="../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="../_static/design-tabs.js?v=f930bc37"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+    <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'api_reference/phenotypic.measure';</script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.11.1" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+     
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../_static/gradient_logo_exfab.svg" class="logo__image only-light" alt="PhenoTypic"/>
+    <img src="../_static/gradient_logo_exfab.svg" class="logo__image only-dark pst-js-only" alt="PhenoTypic"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../user_guide/index.html">
+    User Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="index.html">
+    API Reference
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../contrib_guide/index.html">
+    Developer Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../downloadables.html">
+    Downloads
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/Wheeldon-Lab/PhenoScope#" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../user_guide/index.html">
+    User Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="index.html">
+    API Reference
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../contrib_guide/index.html">
+    Developer Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../downloadables.html">
+    Downloads
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/Wheeldon-Lab/PhenoScope#" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"></div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">phenotypic.measure</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="module-phenotypic.measure">
+<span id="phenotypic-measure"></span><h1>phenotypic.measure<a class="headerlink" href="#module-phenotypic.measure" title="Link to this heading">#</a></h1>
+<p>Feature extraction from detected fungal colonies.</p>
+<p>Computes per-colony and grid-level metrics describing growth, morphology, and
+appearance on agar plates. Measurements span bounds, size/integrated intensity,
+shape descriptors, texture, color, and grid-level statistics such as spatial spread
+and linear gradients. Results are returned as pandas DataFrames ready for analysis.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="phenotypic.measure.MeasureBounds">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.measure.</span></span><span class="sig-name descname"><span class="pre">MeasureBounds</span></span><a class="reference internal" href="../_modules/phenotypic/measure/_measure_bounds.html#MeasureBounds"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.measure.MeasureBounds" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.MeasureFeatures" title="phenotypic.abc_._measure_features.MeasureFeatures"><code class="xref py py-class docutils literal notranslate"><span class="pre">MeasureFeatures</span></code></a></p>
+<blockquote>
+<div><p>Extracts the object boundary coordinate info within the image using the object map</p>
+</div></blockquote>
+<div class="pst-scrollable-table-container"><table class="table" id="id1">
+<caption><span class="caption-text">Category: <strong>BBOX</strong></span><a class="headerlink" href="#id1" title="Link to this table">#</a></caption>
+<thead>
+<tr class="row-odd"><th class="head"><p>Name</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">CenterRR</span></code></p></td>
+<td><p>The row coordinate of the center of the bounding box.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">MinRR</span></code></p></td>
+<td><p>The smallest row coordinate of the bounding box.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">MaxRR</span></code></p></td>
+<td><p>The largest row coordinate of the bounding box.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">CenterCC</span></code></p></td>
+<td><p>The column coordinate of the center of the bounding box.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">MinCC</span></code></p></td>
+<td><p>The smallest column coordinate of the bounding box.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">MaxCC</span></code></p></td>
+<td><p>The largest column coordinate of the bounding box.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.measure.MeasureBounds.__del__">
+<span class="sig-name descname"><span class="pre">__del__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.measure.MeasureBounds.__del__" title="Link to this definition">#</a></dt>
+<dd><p>Automatically stop tracemalloc when the object is deleted.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.measure.MeasureBounds.measure">
+<span class="sig-name descname"><span class="pre">measure</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">include_meta</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.measure.MeasureBounds.measure" title="Link to this definition">#</a></dt>
+<dd><p>Executes a measurement operation on the provided image and optionally includes
+metadata for the output.</p>
+<p>This method applies a series of operations to the input image using arguments
+matched from pre-defined configurations. It returns the results in a
+pandas DataFrame. Optionally, additional metadata about the operation can
+be included. If any exceptions occur during operation, they are captured and
+re-raised as a custom <cite>OperationFailedError</cite>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>image</strong> (<a class="reference internal" href="api/phenotypic.Image.html#phenotypic.Image" title="phenotypic.Image"><em>Image</em></a>) – The image on which the measurement operation is to be
+performed.</p></li>
+<li><p><strong>include_meta</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a><em>, </em><em>optional</em>) – Determines whether to include metadata
+about the operation in the result. Defaults to False.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="phenotypic.tools.exceptions_.html#phenotypic.tools.exceptions_.OperationFailedError" title="phenotypic.tools.exceptions_.OperationFailedError"><strong>OperationFailedError</strong></a> – If the operation fails due to any exception, this
+    error is raised, encapsulating details about the failure.</p>
+</dd>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><dl class="simple">
+<dt>A DataFrame containing the results of the measurement</dt><dd><p>operation. If <cite>include_meta</cite> is True, additional columns with the
+metadata are added.</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>pd.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="phenotypic.measure.MeasureColor">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.measure.</span></span><span class="sig-name descname"><span class="pre">MeasureColor</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">white_chroma_max</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">4.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">chroma_min</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">8.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">include_XYZ</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/measure/_measure_color.html#MeasureColor"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.measure.MeasureColor" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.MeasureFeatures" title="phenotypic.abc_._measure_features.MeasureFeatures"><code class="xref py py-class docutils literal notranslate"><span class="pre">MeasureFeatures</span></code></a></p>
+<blockquote>
+<div><p>Performs color-based feature extraction and calculations on segmented image objects.</p>
+<p>This class extends the MeasureFeatures class to provide additional methods for analyzing
+the color properties of segmented objects within images. It computes various color-related
+metrics, including those based on the HSB (hue, saturation, brightness) color model. These calculations
+can be used in image analysis workflows to extract detailed information about the color
+characteristics of objects.</p>
+</div></blockquote>
+<div class="pst-scrollable-table-container"><table class="table" id="id2">
+<caption><span class="caption-text">Category: <strong>ColorXYZ</strong></span><a class="headerlink" href="#id2" title="Link to this table">#</a></caption>
+<thead>
+<tr class="row-odd"><th class="head"><p>Name</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">CieXMin</span></code></p></td>
+<td><p>The minimum X value of the object in CIE XYZ color space</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">CieXQ1</span></code></p></td>
+<td><p>The lower quartile (Q1) X value of the object in CIE XYZ color space</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">CieXMean</span></code></p></td>
+<td><p>The mean X value of the object in CIE XYZ color space</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">CieXMedian</span></code></p></td>
+<td><p>The median X value of the object in CIE XYZ color space</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">CieXQ3</span></code></p></td>
+<td><p>The upper quartile (Q3) X value of the object in CIE XYZ color space</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">CieXMax</span></code></p></td>
+<td><p>The maximum X value of the object in CIE XYZ color space</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">CieXStdDev</span></code></p></td>
+<td><p>The standard deviation of the X value of the object in CIE XYZ color space</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">CieXCoeffVar</span></code></p></td>
+<td><p>The coefficient of variation of the X value of the object in CIE XYZ color space</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">CieYMin</span></code></p></td>
+<td><p>The minimum Y value of the object in CIE XYZ color space</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">CieYQ1</span></code></p></td>
+<td><p>The lower quartile (Q1) Y value of the object in CIE XYZ color space</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">CieYMean</span></code></p></td>
+<td><p>The mean Y value of the object in CIE XYZ color space</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">CieYMedian</span></code></p></td>
+<td><p>The median Y value of the object in CIE XYZ color space</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">CieYQ3</span></code></p></td>
+<td><p>The upper quartile (Q3) Y value of the object in CIE XYZ color space</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">CieYMax</span></code></p></td>
+<td><p>The maximum Y value of the object in CIE XYZ color space</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">CieYStdDev</span></code></p></td>
+<td><p>The standard deviation of the Y value of the object in CIE XYZ color space</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">CieYCoeffVar</span></code></p></td>
+<td><p>The coefficient of variation of the Y value of the object in CIE XYZ color space</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">CieZMin</span></code></p></td>
+<td><p>The minimum Z value of the object in CIE XYZ color space</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">CieZQ1</span></code></p></td>
+<td><p>The lower quartile (Q1) Z value of the object in CIE XYZ color space</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">CieZMean</span></code></p></td>
+<td><p>The mean Z value of the object in CIE XYZ color space</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">CieZMedian</span></code></p></td>
+<td><p>The median Z value of the object in CIE XYZ color space</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">CieZQ3</span></code></p></td>
+<td><p>The upper quartile (Q3) Z value of the object in CIE XYZ color space</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">CieZMax</span></code></p></td>
+<td><p>The maximum Z value of the object in CIE XYZ color space</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">CieZStdDev</span></code></p></td>
+<td><p>The standard deviation of the Z value of the object in CIE XYZ color space</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">CieZCoeffVar</span></code></p></td>
+<td><p>The coefficient of variation of the Z value of the object in CIE XYZ color space</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="pst-scrollable-table-container"><table class="table" id="id3">
+<caption><span class="caption-text">Category: <strong>Colorxy</strong></span><a class="headerlink" href="#id3" title="Link to this table">#</a></caption>
+<thead>
+<tr class="row-odd"><th class="head"><p>Name</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">xMin</span></code></p></td>
+<td><p>The minimum chromaticity x coordinate of the object</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">xQ1</span></code></p></td>
+<td><p>The lower quartile (Q1) chromaticity x coordinate of the object</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">xMean</span></code></p></td>
+<td><p>The mean chromaticity x coordinate of the object</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">xMedian</span></code></p></td>
+<td><p>The median chromaticity x coordinate of the object</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">xQ3</span></code></p></td>
+<td><p>The upper quartile (Q3) chromaticity x coordinate of the object</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">xMax</span></code></p></td>
+<td><p>The maximum chromaticity x coordinate of the object</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">xStdDev</span></code></p></td>
+<td><p>The standard deviation of the chromaticity x coordinate of the object</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">xCoeffVar</span></code></p></td>
+<td><p>The coefficient of variation of the chromaticity x coordinate of the object</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">yMin</span></code></p></td>
+<td><p>The minimum chromaticity y coordinate of the object</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">yQ1</span></code></p></td>
+<td><p>The lower quartile (Q1) chromaticity y coordinate of the object</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">yMean</span></code></p></td>
+<td><p>The mean chromaticity y coordinate of the object</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">yMedian</span></code></p></td>
+<td><p>The median chromaticity y coordinate of the object</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">yQ3</span></code></p></td>
+<td><p>The upper quartile (Q3) chromaticity y coordinate of the object</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">yMax</span></code></p></td>
+<td><p>The maximum chromaticity y coordinate of the object</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">yStdDev</span></code></p></td>
+<td><p>The standard deviation of the chromaticity y coordinate of the object</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">yCoeffVar</span></code></p></td>
+<td><p>The coefficient of variation of the chromaticity y coordinate of the object</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="pst-scrollable-table-container"><table class="table" id="id4">
+<caption><span class="caption-text">Category: <strong>ColorLab</strong></span><a class="headerlink" href="#id4" title="Link to this table">#</a></caption>
+<thead>
+<tr class="row-odd"><th class="head"><p>Name</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">L*Min</span></code></p></td>
+<td><p>The minimum L* value of the object</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">L*Q1</span></code></p></td>
+<td><p>The lower quartile (Q1) L* value of the object</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">L*Mean</span></code></p></td>
+<td><p>The mean L* value of the object</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">L*Median</span></code></p></td>
+<td><p>The median L* value of the object</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">L*Q3</span></code></p></td>
+<td><p>The upper quartile (Q3) L* value of the object</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">L*Max</span></code></p></td>
+<td><p>The maximum L* value of the object</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">L*StdDev</span></code></p></td>
+<td><p>The standard deviation of the L* value of the object</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">L*CoeffVar</span></code></p></td>
+<td><p>The coefficient of variation of the L* value of the object</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">a*Min</span></code></p></td>
+<td><p>The minimum a* value of the object</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">a*Q1</span></code></p></td>
+<td><p>The lower quartile (Q1) a* value of the object</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">a*Mean</span></code></p></td>
+<td><p>The mean a* value of the object</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">a*Median</span></code></p></td>
+<td><p>The median a* value of the object</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">a*Q3</span></code></p></td>
+<td><p>The upper quartile (Q3) a* value of the object</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">a*Max</span></code></p></td>
+<td><p>The maximum a* value of the object</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">a*StdDev</span></code></p></td>
+<td><p>The standard deviation of the a* value of the object</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">a*CoeffVar</span></code></p></td>
+<td><p>The coefficient of variation of the a* value of the object</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">b*Min</span></code></p></td>
+<td><p>The minimum b* value of the object</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">b*Q1</span></code></p></td>
+<td><p>The lower quartile (Q1) b* value of the object</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">b*Mean</span></code></p></td>
+<td><p>The mean b* value of the object</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">b*Median</span></code></p></td>
+<td><p>The median b* value of the object</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">b*Q3</span></code></p></td>
+<td><p>The upper quartile (Q3) b* value of the object</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">b*Max</span></code></p></td>
+<td><p>The maximum b* value of the object</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">b*StdDev</span></code></p></td>
+<td><p>The standard deviation of the b* value of the object</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">b*CoeffVar</span></code></p></td>
+<td><p>The coefficient of variation of the b* value of the object</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ChromaEstimatedMean</span></code></p></td>
+<td><p>The mean chroma estimation of the object calculated using <span class="math notranslate nohighlight">\(\(sqrt{a^{*}_{mean}^2 + b^{*}_{mean})^2}\)</span></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ChromaEstimatedMedian</span></code></p></td>
+<td><p>The median chroma estimation of the object using <span class="math notranslate nohighlight">\(\sqrt({a*_{median}^2 + b*_{median})^2}\)</span></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="pst-scrollable-table-container"><table class="table" id="id5">
+<caption><span class="caption-text">Category: <strong>ColorHSV</strong></span><a class="headerlink" href="#id5" title="Link to this table">#</a></caption>
+<thead>
+<tr class="row-odd"><th class="head"><p>Name</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">HueMin</span></code></p></td>
+<td><p>The minimum hue of the object</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">HueQ1</span></code></p></td>
+<td><p>The lower quartile (Q1) hue of the object</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">HueMean</span></code></p></td>
+<td><p>The mean hue of the object</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">HueMedian</span></code></p></td>
+<td><p>The median hue of the object</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">HueQ3</span></code></p></td>
+<td><p>The upper quartile (Q3) hue of the object</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">HueMax</span></code></p></td>
+<td><p>The maximum hue of the object</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">HueStdDev</span></code></p></td>
+<td><p>The standard deviation of the hue of the object</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">HueCoeffVar</span></code></p></td>
+<td><p>The coefficient of variation of the hue of the object</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">SaturationMin</span></code></p></td>
+<td><p>The minimum saturation of the object</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">SaturationQ1</span></code></p></td>
+<td><p>The lower quartile (Q1) saturation of the object</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">SaturationMean</span></code></p></td>
+<td><p>The mean saturation of the object</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">SaturationMedian</span></code></p></td>
+<td><p>The median saturation of the object</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">SaturationQ3</span></code></p></td>
+<td><p>The upper quartile (Q3) saturation of the object</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">SaturationMax</span></code></p></td>
+<td><p>The maximum saturation of the object</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">SaturationStdDev</span></code></p></td>
+<td><p>The standard deviation of the saturation of the object</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">SaturationCoeffVar</span></code></p></td>
+<td><p>The coefficient of variation of the saturation of the object</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">BrightnessMin</span></code></p></td>
+<td><p>The minimum brightness of the object</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">BrightnessQ1</span></code></p></td>
+<td><p>The lower quartile (Q1) brightness of the object</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">BrightnessMean</span></code></p></td>
+<td><p>The mean brightness of the object</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">BrightnessMedian</span></code></p></td>
+<td><p>The median brightness of the object</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">BrightnessQ3</span></code></p></td>
+<td><p>The upper quartile (Q3) brightness of the object</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">BrightnessMax</span></code></p></td>
+<td><p>The maximum brightness of the object</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">BrightnessStdDev</span></code></p></td>
+<td><p>The standard deviation of the brightness of the object</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">BrightnessCoeffVar</span></code></p></td>
+<td><p>The coefficient of variation of the brightness of the object</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>white_chroma_max</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>)</p></li>
+<li><p><strong>chroma_min</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>)</p></li>
+<li><p><strong>include_XYZ</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>)</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.measure.MeasureColor.__del__">
+<span class="sig-name descname"><span class="pre">__del__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.measure.MeasureColor.__del__" title="Link to this definition">#</a></dt>
+<dd><p>Automatically stop tracemalloc when the object is deleted.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.measure.MeasureColor.measure">
+<span class="sig-name descname"><span class="pre">measure</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">include_meta</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.measure.MeasureColor.measure" title="Link to this definition">#</a></dt>
+<dd><p>Executes a measurement operation on the provided image and optionally includes
+metadata for the output.</p>
+<p>This method applies a series of operations to the input image using arguments
+matched from pre-defined configurations. It returns the results in a
+pandas DataFrame. Optionally, additional metadata about the operation can
+be included. If any exceptions occur during operation, they are captured and
+re-raised as a custom <cite>OperationFailedError</cite>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>image</strong> (<a class="reference internal" href="api/phenotypic.Image.html#phenotypic.Image" title="phenotypic.Image"><em>Image</em></a>) – The image on which the measurement operation is to be
+performed.</p></li>
+<li><p><strong>include_meta</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a><em>, </em><em>optional</em>) – Determines whether to include metadata
+about the operation in the result. Defaults to False.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="phenotypic.tools.exceptions_.html#phenotypic.tools.exceptions_.OperationFailedError" title="phenotypic.tools.exceptions_.OperationFailedError"><strong>OperationFailedError</strong></a> – If the operation fails due to any exception, this
+    error is raised, encapsulating details about the failure.</p>
+</dd>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><dl class="simple">
+<dt>A DataFrame containing the results of the measurement</dt><dd><p>operation. If <cite>include_meta</cite> is True, additional columns with the
+metadata are added.</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>pd.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="phenotypic.measure.MeasureColorComposition">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.measure.</span></span><span class="sig-name descname"><span class="pre">MeasureColorComposition</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">hue_normalization</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">360.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sat_normalization</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">100.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">val_normalization</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">100.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">black_value_max</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">20.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">neutral_sat_max</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">15.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">white_value_min</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">85.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gray_value_min</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">20.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gray_value_max</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">85.0</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/measure/_measure_color_composition.html#MeasureColorComposition"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.measure.MeasureColorComposition" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.MeasureFeatures" title="phenotypic.abc_._measure_features.MeasureFeatures"><code class="xref py py-class docutils literal notranslate"><span class="pre">MeasureFeatures</span></code></a></p>
+<blockquote>
+<div><p>Performs perceptual color composition analysis on segmented image objects.</p>
+<p>This class extends the MeasureFeatures class to provide color composition
+analysis using an 11-color perceptual model. The model applies a priority
+hierarchy to classify pixels into categories that better match human color
+perception than simple hue-based classification.</p>
+<p>The 11 color categories are:
+- Neutrals (Priority 1): Black, White, Gray
+- Special Colors (Priority 2): Pink, Brown
+- Standard Hues (Priority 3): Red, Orange, Yellow, Green, Cyan, Blue, Purple/Magenta</p>
+<p>Implementation uses NumPy vectorization for efficiency, with no pixel-level loops.
+The classification follows human perception principles where neutrals take priority,
+followed by special cases (pink/brown), and finally standard hue-based colors.</p>
+<dl>
+<dt>Args:</dt><dd><dl class="simple">
+<dt>hue_normalization (float): Multiplier to normalize hue to 0-360 range. Default is 360.0</dt><dd><p>(assuming input hue is in 0-1 range from skimage).</p>
+</dd>
+</dl>
+<p>sat_normalization (float): Multiplier to normalize saturation to 0-100 range. Default is 100.0.
+val_normalization (float): Multiplier to normalize value/brightness to 0-100 range. Default is 100.0.
+black_value_max (float): Maximum value threshold for black classification. Default is 20.
+neutral_sat_max (float): Maximum saturation threshold for white and gray classification. Default is 15.
+white_value_min (float): Minimum value threshold for white classification. Default is 85.
+gray_value_min (float): Minimum value threshold for gray classification. Default is 20.
+gray_value_max (float): Maximum value threshold for gray classification. Default is 85.</p>
+</dd>
+<dt>Example:</dt><dd><div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.measure</span><span class="w"> </span><span class="kn">import</span> <span class="n">MeasureColorComposition</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">img</span> <span class="o">=</span> <span class="n">Image</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="s1">&#39;path/to/image.tif&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">measurer</span> <span class="o">=</span> <span class="n">MeasureColorComposition</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">composition</span> <span class="o">=</span> <span class="n">measurer</span><span class="o">.</span><span class="n">measure</span><span class="p">(</span><span class="n">img</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">composition</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Custom thresholds for different lighting conditions</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">measurer_custom</span> <span class="o">=</span> <span class="n">MeasureColorComposition</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">black_value_max</span><span class="o">=</span><span class="mi">15</span><span class="p">,</span>  <span class="c1"># Stricter black threshold</span>
+<span class="gp">... </span>    <span class="n">white_value_min</span><span class="o">=</span><span class="mi">90</span>   <span class="c1"># Stricter white threshold</span>
+<span class="gp">... </span><span class="p">)</span>
+</pre></div>
+</div>
+</dd>
+</dl>
+</div></blockquote>
+<div class="pst-scrollable-table-container"><table class="table" id="id6">
+<caption><span class="caption-text">Category: <strong>ColorComposition</strong></span><a class="headerlink" href="#id6" title="Link to this table">#</a></caption>
+<thead>
+<tr class="row-odd"><th class="head"><p>Name</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">BlackPct</span></code></p></td>
+<td><p>Percentage of pixels classified as black (Value &lt; 20)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">WhitePct</span></code></p></td>
+<td><p>Percentage of pixels classified as white (Saturation &lt; 15, Value &gt; 85)</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">GrayPct</span></code></p></td>
+<td><p>Percentage of pixels classified as gray (Saturation &lt; 15, Value 20-85)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">PinkPct</span></code></p></td>
+<td><p>Percentage of pixels classified as pink (Red/Magenta hue, Saturation 20-60, Value &gt; 80)</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">BrownPct</span></code></p></td>
+<td><p>Percentage of pixels classified as brown (Red/Orange hue, Value 20-60)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">RedPct</span></code></p></td>
+<td><p>Percentage of pixels classified as red (Hue 0-15° or 345-360°)</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">OrangePct</span></code></p></td>
+<td><p>Percentage of pixels classified as orange (Hue 15-45°)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">YellowPct</span></code></p></td>
+<td><p>Percentage of pixels classified as yellow (Hue 45-75°)</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">GreenPct</span></code></p></td>
+<td><p>Percentage of pixels classified as green (Hue 75-150°)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">CyanPct</span></code></p></td>
+<td><p>Percentage of pixels classified as cyan (Hue 150-180°)</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">BluePct</span></code></p></td>
+<td><p>Percentage of pixels classified as blue (Hue 180-250°)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">PurplePct</span></code></p></td>
+<td><p>Percentage of pixels classified as purple/magenta (Hue 250-345°)</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>hue_normalization</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>)</p></li>
+<li><p><strong>sat_normalization</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>)</p></li>
+<li><p><strong>val_normalization</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>)</p></li>
+<li><p><strong>black_value_max</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>)</p></li>
+<li><p><strong>neutral_sat_max</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>)</p></li>
+<li><p><strong>white_value_min</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>)</p></li>
+<li><p><strong>gray_value_min</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>)</p></li>
+<li><p><strong>gray_value_max</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>)</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.measure.MeasureColorComposition.__del__">
+<span class="sig-name descname"><span class="pre">__del__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.measure.MeasureColorComposition.__del__" title="Link to this definition">#</a></dt>
+<dd><p>Automatically stop tracemalloc when the object is deleted.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.measure.MeasureColorComposition.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">hue_normalization</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">360.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sat_normalization</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">100.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">val_normalization</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">100.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">black_value_max</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">20.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">neutral_sat_max</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">15.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">white_value_min</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">85.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gray_value_min</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">20.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gray_value_max</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">85.0</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/measure/_measure_color_composition.html#MeasureColorComposition.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.measure.MeasureColorComposition.__init__" title="Link to this definition">#</a></dt>
+<dd><p>Initialize the color composition measurer.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>hue_normalization</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Multiplier to normalize hue to 0-360 range</p></li>
+<li><p><strong>sat_normalization</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Multiplier to normalize saturation to 0-100 range</p></li>
+<li><p><strong>val_normalization</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Multiplier to normalize value to 0-100 range</p></li>
+<li><p><strong>black_value_max</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Maximum value threshold for black classification</p></li>
+<li><p><strong>neutral_sat_max</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Maximum saturation threshold for white and gray classification</p></li>
+<li><p><strong>white_value_min</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Minimum value threshold for white classification</p></li>
+<li><p><strong>gray_value_min</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Minimum value threshold for gray classification</p></li>
+<li><p><strong>gray_value_max</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Maximum value threshold for gray classification</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.measure.MeasureColorComposition.measure">
+<span class="sig-name descname"><span class="pre">measure</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">include_meta</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.measure.MeasureColorComposition.measure" title="Link to this definition">#</a></dt>
+<dd><p>Executes a measurement operation on the provided image and optionally includes
+metadata for the output.</p>
+<p>This method applies a series of operations to the input image using arguments
+matched from pre-defined configurations. It returns the results in a
+pandas DataFrame. Optionally, additional metadata about the operation can
+be included. If any exceptions occur during operation, they are captured and
+re-raised as a custom <cite>OperationFailedError</cite>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>image</strong> (<a class="reference internal" href="api/phenotypic.Image.html#phenotypic.Image" title="phenotypic.Image"><em>Image</em></a>) – The image on which the measurement operation is to be
+performed.</p></li>
+<li><p><strong>include_meta</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a><em>, </em><em>optional</em>) – Determines whether to include metadata
+about the operation in the result. Defaults to False.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="phenotypic.tools.exceptions_.html#phenotypic.tools.exceptions_.OperationFailedError" title="phenotypic.tools.exceptions_.OperationFailedError"><strong>OperationFailedError</strong></a> – If the operation fails due to any exception, this
+    error is raised, encapsulating details about the failure.</p>
+</dd>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><dl class="simple">
+<dt>A DataFrame containing the results of the measurement</dt><dd><p>operation. If <cite>include_meta</cite> is True, additional columns with the
+metadata are added.</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>pd.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.measure.MeasureColorComposition.visualize_masks">
+<span class="sig-name descname"><span class="pre">visualize_masks</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="api/phenotypic.Image.html#phenotypic.Image" title="phenotypic.Image"><span class="pre">Image</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">top_n</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">3</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">figsize</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">(15,</span> <span class="pre">10)</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/measure/_measure_color_composition.html#MeasureColorComposition.visualize_masks"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.measure.MeasureColorComposition.visualize_masks" title="Link to this definition">#</a></dt>
+<dd><p>Visualize the color classification masks for debugging purposes.</p>
+<p>Displays the original RGB image alongside masks for the top N most prevalent
+colors detected in the image. This method uses vectorized 2D masks to avoid
+memory issues with large images.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>image</strong> (<a class="reference internal" href="api/phenotypic.Image.html#phenotypic.Image" title="phenotypic.Image"><em>Image</em></a>) – The PhenoTypic Image object to visualize</p></li>
+<li><p><strong>top_n</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Number of top colors to display (default: 3)</p></li>
+<li><p><strong>figsize</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><em>tuple</em></a>) – Figure size as (width, height) tuple (default: (15, 10))</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>(matplotlib.figure.Figure, numpy.ndarray of axes)</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)">tuple</a></p>
+</dd>
+</dl>
+<div class="admonition-example admonition">
+<p class="admonition-title">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.measure</span><span class="w"> </span><span class="kn">import</span> <span class="n">MeasureColorComposition</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">img</span> <span class="o">=</span> <span class="n">Image</span><span class="o">.</span><span class="n">imread</span><span class="p">(</span><span class="s1">&#39;path/to/image.tif&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">measurer</span> <span class="o">=</span> <span class="n">MeasureColorComposition</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">fig</span><span class="p">,</span> <span class="n">axes</span> <span class="o">=</span> <span class="n">measurer</span><span class="o">.</span><span class="n">visualize_masks</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">top_n</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="phenotypic.measure.MeasureGridLinRegStats">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.measure.</span></span><span class="sig-name descname"><span class="pre">MeasureGridLinRegStats</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">section_num</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/measure/_measure_grid_linreg_stats.html#MeasureGridLinRegStats"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.measure.MeasureGridLinRegStats" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.GridMeasureFeatures" title="phenotypic.abc_._grid_measure.GridMeasureFeatures"><code class="xref py py-class docutils literal notranslate"><span class="pre">GridMeasureFeatures</span></code></a></p>
+<p>A class that calculates linear regression statistics for grid data and their residual errors.</p>
+<p>This class extends the GridMeasureFeatures base class to perform calculations related to
+row-wise and column-wise linear regression statistics for objects in a grid. It computes
+the predicted centroids and calculates the residual errors based on the actual and
+predicted positions. It also supports operations on specific sections if a section number
+is specified.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>section_num</strong> (<em>Optional</em><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>]</em>)</p>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="phenotypic.measure.MeasureGridLinRegStats.section_num">
+<span class="sig-name descname"><span class="pre">section_num</span></span><a class="headerlink" href="#phenotypic.measure.MeasureGridLinRegStats.section_num" title="Link to this definition">#</a></dt>
+<dd><p>Section number specifying the part of the grid to process.
+If None, operations will be performed on the entire grid.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Optional[<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)">int</a>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.measure.MeasureGridLinRegStats.__del__">
+<span class="sig-name descname"><span class="pre">__del__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.measure.MeasureGridLinRegStats.__del__" title="Link to this definition">#</a></dt>
+<dd><p>Automatically stop tracemalloc when the object is deleted.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.measure.MeasureGridLinRegStats.measure">
+<span class="sig-name descname"><span class="pre">measure</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.measure.MeasureGridLinRegStats.measure" title="Link to this definition">#</a></dt>
+<dd><p>Processes an arr image to calculate and organize grid-based boundaries and centroids using coordinates. This
+function implements a two-pass approach to refine row and column boundaries with exact precision, ensuring accurate
+grid labeling and indexing. The function dynamically computes boundary intervals and optimally segments the arr
+space into grids based on specified nrows and columns.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>image</strong> (<a class="reference internal" href="api/phenotypic.Image.html#phenotypic.Image" title="phenotypic.Image"><em>Image</em></a>) – The arr image to be analyzed and processed.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A DataFrame containing the grid results including boundary intervals, grid indices, and section
+numbers corresponding to the segmented arr image.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>pd.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="phenotypic.measure.MeasureGridSpread">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.measure.</span></span><span class="sig-name descname"><span class="pre">MeasureGridSpread</span></span><a class="reference internal" href="../_modules/phenotypic/measure/_measure_grid_spread.html#MeasureGridSpread"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.measure.MeasureGridSpread" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.GridMeasureFeatures" title="phenotypic.abc_._grid_measure.GridMeasureFeatures"><code class="xref py py-class docutils literal notranslate"><span class="pre">GridMeasureFeatures</span></code></a></p>
+<p>This module measure’s an object spread from the grid section’s center points</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.measure.MeasureGridSpread.__del__">
+<span class="sig-name descname"><span class="pre">__del__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.measure.MeasureGridSpread.__del__" title="Link to this definition">#</a></dt>
+<dd><p>Automatically stop tracemalloc when the object is deleted.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.measure.MeasureGridSpread.measure">
+<span class="sig-name descname"><span class="pre">measure</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.measure.MeasureGridSpread.measure" title="Link to this definition">#</a></dt>
+<dd><p>Processes an arr image to calculate and organize grid-based boundaries and centroids using coordinates. This
+function implements a two-pass approach to refine row and column boundaries with exact precision, ensuring accurate
+grid labeling and indexing. The function dynamically computes boundary intervals and optimally segments the arr
+space into grids based on specified nrows and columns.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>image</strong> (<a class="reference internal" href="api/phenotypic.Image.html#phenotypic.Image" title="phenotypic.Image"><em>Image</em></a>) – The arr image to be analyzed and processed.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A DataFrame containing the grid results including boundary intervals, grid indices, and section
+numbers corresponding to the segmented arr image.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>pd.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="phenotypic.measure.MeasureIntensity">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.measure.</span></span><span class="sig-name descname"><span class="pre">MeasureIntensity</span></span><a class="reference internal" href="../_modules/phenotypic/measure/_measure_intensity.html#MeasureIntensity"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.measure.MeasureIntensity" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.MeasureFeatures" title="phenotypic.abc_._measure_features.MeasureFeatures"><code class="xref py py-class docutils literal notranslate"><span class="pre">MeasureFeatures</span></code></a></p>
+<p>Calculates various intensity measures of the objects in the image.</p>
+<blockquote>
+<div><dl class="simple">
+<dt>Returns:</dt><dd><p>pd.DataFrame: A dataframe containing the intensity measures of the objects in the image.</p>
+</dd>
+<dt>Notes:</dt><dd><p>Integrated Intensity: Sum of all pixel values in the object’s grayscale footprint</p>
+</dd>
+</dl>
+</div></blockquote>
+<div class="pst-scrollable-table-container"><table class="table" id="id7">
+<caption><span class="caption-text">Category: <strong>INTENSITY</strong></span><a class="headerlink" href="#id7" title="Link to this table">#</a></caption>
+<thead>
+<tr class="row-odd"><th class="head"><p>Name</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">IntegratedIntensity</span></code></p></td>
+<td><p>The sum of the object’s pixels</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">MinimumIntensity</span></code></p></td>
+<td><p>The minimum intensity of the object</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">MaximumIntensity</span></code></p></td>
+<td><p>The maximum intensity of the object</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">MeanIntensity</span></code></p></td>
+<td><p>The mean intensity of the object</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">MedianIntensity</span></code></p></td>
+<td><p>The median intensity of the object</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">StandardDeviationIntensity</span></code></p></td>
+<td><p>The standard deviation of the object</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">CoefficientVarianceIntensity</span></code></p></td>
+<td><p>The coefficient of variation of the object</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">LowerQuartileIntensity</span></code></p></td>
+<td><p>The lower quartile intensity of the object</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">UpperQuartileIntensity</span></code></p></td>
+<td><p>The upper quartile intensity of the object</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">InterquartileRangeIntensity</span></code></p></td>
+<td><p>The interquartile range of the object</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.measure.MeasureIntensity.__del__">
+<span class="sig-name descname"><span class="pre">__del__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.measure.MeasureIntensity.__del__" title="Link to this definition">#</a></dt>
+<dd><p>Automatically stop tracemalloc when the object is deleted.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.measure.MeasureIntensity.measure">
+<span class="sig-name descname"><span class="pre">measure</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">include_meta</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.measure.MeasureIntensity.measure" title="Link to this definition">#</a></dt>
+<dd><p>Executes a measurement operation on the provided image and optionally includes
+metadata for the output.</p>
+<p>This method applies a series of operations to the input image using arguments
+matched from pre-defined configurations. It returns the results in a
+pandas DataFrame. Optionally, additional metadata about the operation can
+be included. If any exceptions occur during operation, they are captured and
+re-raised as a custom <cite>OperationFailedError</cite>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>image</strong> (<a class="reference internal" href="api/phenotypic.Image.html#phenotypic.Image" title="phenotypic.Image"><em>Image</em></a>) – The image on which the measurement operation is to be
+performed.</p></li>
+<li><p><strong>include_meta</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a><em>, </em><em>optional</em>) – Determines whether to include metadata
+about the operation in the result. Defaults to False.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="phenotypic.tools.exceptions_.html#phenotypic.tools.exceptions_.OperationFailedError" title="phenotypic.tools.exceptions_.OperationFailedError"><strong>OperationFailedError</strong></a> – If the operation fails due to any exception, this
+    error is raised, encapsulating details about the failure.</p>
+</dd>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><dl class="simple">
+<dt>A DataFrame containing the results of the measurement</dt><dd><p>operation. If <cite>include_meta</cite> is True, additional columns with the
+metadata are added.</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>pd.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="phenotypic.measure.MeasureShape">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.measure.</span></span><span class="sig-name descname"><span class="pre">MeasureShape</span></span><a class="reference internal" href="../_modules/phenotypic/measure/_measure_shape.html#MeasureShape"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.measure.MeasureShape" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.MeasureFeatures" title="phenotypic.abc_._measure_features.MeasureFeatures"><code class="xref py py-class docutils literal notranslate"><span class="pre">MeasureFeatures</span></code></a></p>
+<p>Calculates various geometric measures of the objects in the image.</p>
+<blockquote>
+<div><dl>
+<dt>Returns:</dt><dd><p>pd.DataFrame: A dataframe containing the geometric measures of the objects in the image.</p>
+</dd>
+<dt>References:</dt><dd><ol class="arabic">
+<li><ol class="upperalpha simple" start="4">
+<li><ol class="upperalpha simple" start="18">
+<li><p>Stirling, M. J. Swain-Bowden, A. M. Lucas, A. E. Carpenter, B. A. Cimini, and A. Goodman,</p></li>
+</ol>
+</li>
+</ol>
+<blockquote>
+<div><p>“CellProfiler 4: improvements in speed, utility and usability,” BMC Bioinformatics, vol. 22, no. 1, p. 433, Sep. 2021, doi: 10.1186/s12859-021-04344-9.</p>
+</div></blockquote>
+</li>
+<li><dl class="simple">
+<dt>“Shape factor (image analysis and microscopy),” Wikipedia. Oct. 09, 2021. Accessed: Apr. 08, 2025. [Online].</dt><dd><p>Available: <a class="reference external" href="https://en.wikipedia.org/w/index.php?title=Shape_factor_(image_analysis_and_microscopy)&amp;oldid=1048998776">https://en.wikipedia.org/w/index.php?title=Shape_factor_(image_analysis_and_microscopy)&amp;oldid=1048998776</a></p>
+</dd>
+</dl>
+</li>
+</ol>
+</dd>
+</dl>
+</div></blockquote>
+<div class="pst-scrollable-table-container"><table class="table" id="id8">
+<caption><span class="caption-text">Category: <strong>SHAPE</strong></span><a class="headerlink" href="#id8" title="Link to this table">#</a></caption>
+<thead>
+<tr class="row-odd"><th class="head"><p>Name</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Area</span></code></p></td>
+<td><p>Total number of pixels occupied by the microbial colony. Represents colony biomass and growth extent on agar plates. Larger areas typically indicate more robust growth or longer incubation times.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Perimeter</span></code></p></td>
+<td><p>Total length of the colony’s outer boundary in pixels. Measures colony edge complexity and surface irregularity. Smooth, circular colonies have shorter perimeters relative to their area compared to irregular or filamentous colonies.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Circularity</span></code></p></td>
+<td><p>Calculated as <span class="math notranslate nohighlight">\(\frac{4\pi*\text{Area}}{\text{Perimeter}^2}\)</span>. Measures how closely a colony approximates a perfect circle (value = 1). Values &lt; 1 indicate irregular colony morphology, which may result from genetic mutations, environmental stress, or mixed microbial populations on agar plates.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ConvexArea</span></code></p></td>
+<td><p>Area of the smallest convex polygon that completely contains the colony. Represents the colony’s “filled-in” appearance if all indentations and holes were removed. Useful for detecting colony spreading patterns or invasive growth characteristics.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">MedianRadius</span></code></p></td>
+<td><p>Median distance from colony center to edge across all directions. Provides a robust measure of typical colony size that is less sensitive to outliers than mean radius. Particularly useful for colonies with uneven growth or sectoring.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">MeanRadius</span></code></p></td>
+<td><p>Average distance from colony center to edge across all directions. Represents overall colony expansion rate. In arrayed growth assays, this correlates with microbial fitness and growth kinetics under controlled conditions.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">MaxRadius</span></code></p></td>
+<td><p>Maximum distance from colony center to edge across all directions. Represents the furthest extent of colony growth from its center. In arrayed microbial assays, this measurement helps identify asymmetric growth patterns or colonies extending toward neighboring positions.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">MinFeretDiameter</span></code></p></td>
+<td><p>Minimum caliper diameter - the shortest distance between two parallel tangent lines touching opposite sides of the colony. Represents the narrowest dimension of the colony regardless of orientation. Useful for detecting elongated or irregular colony morphologies and measuring colony width.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">MaxFeretDiameter</span></code></p></td>
+<td><p>Maximum caliper diameter - the longest distance between two parallel tangent lines touching opposite sides of the colony. Represents the maximum dimension of the colony regardless of orientation. Often exceeds major axis length for irregular shapes and helps quantify maximum colony extent.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Eccentricity</span></code></p></td>
+<td><p>Measure of colony elongation, ranging from 0 (perfect circle) to 1 (highly elongated). Values near 0 indicate compact, radially symmetric growth typical of healthy bacterial colonies, while higher values may suggest directional growth, motility, or environmental gradients on the agar surface.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Solidity</span></code></p></td>
+<td><p>Ratio of actual colony area to its convex hull area (Area/ConvexArea). Values near 1 indicate compact, solid colonies with minimal indentations. Lower values (&lt; 0.9) may indicate invasive growth, colony spreading, or the presence of clearing zones around colonies.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Extent</span></code></p></td>
+<td><p>Ratio of colony area to its bounding box area (ObjectArea/BboxArea). Measures how efficiently the colony fills its allocated space. Compact colonies have higher extent values, while spread-out or irregular colonies have lower values.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">BboxArea</span></code></p></td>
+<td><p>Area of the smallest rectangle that completely contains the colony. Represents the total spatial footprint of the colony including any empty space. In high-throughput assays, this helps assess colony positioning and potential interference with neighboring colonies.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">MajorAxisLength</span></code></p></td>
+<td><p>Length of the longest axis of the ellipse that best fits the colony shape. Represents the maximum colony dimension. In arrayed microbial growth, this measurement helps identify colonies that have grown beyond their intended grid positions.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">MinorAxisLength</span></code></p></td>
+<td><p>Length of the shortest axis of the ellipse that best fits the colony shape. Represents the minimum colony dimension. Together with major axis length, this helps characterize colony aspect ratio and growth anisotropy.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Compactness</span></code></p></td>
+<td><p>Calculated as <span class="math notranslate nohighlight">\(\frac{\text{Perimeter}^2}{4\pi*\text{Area}}\)</span>. Inverse of circularity (ranges from 1 for perfect circles to higher values for irregular shapes). Measures colony shape complexity - compact, circular colonies have values near 1, while irregular or filamentous colonies have much higher values.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Orientation</span></code></p></td>
+<td><p>Angle (in radians) between the colony’s major axis and the horizontal axis. Measures colony alignment and growth directionality. Random orientations are typical for most bacterial colonies, while consistent orientations may indicate environmental gradients or mechanical stresses during plating.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.measure.MeasureShape.__del__">
+<span class="sig-name descname"><span class="pre">__del__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.measure.MeasureShape.__del__" title="Link to this definition">#</a></dt>
+<dd><p>Automatically stop tracemalloc when the object is deleted.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.measure.MeasureShape.measure">
+<span class="sig-name descname"><span class="pre">measure</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">include_meta</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.measure.MeasureShape.measure" title="Link to this definition">#</a></dt>
+<dd><p>Executes a measurement operation on the provided image and optionally includes
+metadata for the output.</p>
+<p>This method applies a series of operations to the input image using arguments
+matched from pre-defined configurations. It returns the results in a
+pandas DataFrame. Optionally, additional metadata about the operation can
+be included. If any exceptions occur during operation, they are captured and
+re-raised as a custom <cite>OperationFailedError</cite>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>image</strong> (<a class="reference internal" href="api/phenotypic.Image.html#phenotypic.Image" title="phenotypic.Image"><em>Image</em></a>) – The image on which the measurement operation is to be
+performed.</p></li>
+<li><p><strong>include_meta</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a><em>, </em><em>optional</em>) – Determines whether to include metadata
+about the operation in the result. Defaults to False.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="phenotypic.tools.exceptions_.html#phenotypic.tools.exceptions_.OperationFailedError" title="phenotypic.tools.exceptions_.OperationFailedError"><strong>OperationFailedError</strong></a> – If the operation fails due to any exception, this
+    error is raised, encapsulating details about the failure.</p>
+</dd>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><dl class="simple">
+<dt>A DataFrame containing the results of the measurement</dt><dd><p>operation. If <cite>include_meta</cite> is True, additional columns with the
+metadata are added.</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>pd.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="phenotypic.measure.MeasureSize">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.measure.</span></span><span class="sig-name descname"><span class="pre">MeasureSize</span></span><a class="reference internal" href="../_modules/phenotypic/measure/_measure_size.html#MeasureSize"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.measure.MeasureSize" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.MeasureFeatures" title="phenotypic.abc_._measure_features.MeasureFeatures"><code class="xref py py-class docutils literal notranslate"><span class="pre">MeasureFeatures</span></code></a></p>
+<p>Calculates basic size measurements of the objects in the image.</p>
+<blockquote>
+<div><p>The measurements are equivalent to their counterparts in
+<a class="reference internal" href="#phenotypic.measure.MeasureShape" title="phenotypic.measure.MeasureShape"><code class="xref py py-class docutils literal notranslate"><span class="pre">MeasureShape</span></code></a> and
+<a class="reference internal" href="#phenotypic.measure.MeasureIntensity" title="phenotypic.measure.MeasureIntensity"><code class="xref py py-class docutils literal notranslate"><span class="pre">MeasureIntensity</span></code></a>, but are provided in this
+class for convenience.</p>
+<dl class="simple">
+<dt>Returns:</dt><dd><p>pd.DataFrame: A dataframe containing the size measurements of the objects in the image.</p>
+</dd>
+</dl>
+</div></blockquote>
+<div class="pst-scrollable-table-container"><table class="table" id="id9">
+<caption><span class="caption-text">Category: <strong>SIZE</strong></span><a class="headerlink" href="#id9" title="Link to this table">#</a></caption>
+<thead>
+<tr class="row-odd"><th class="head"><p>Name</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Area</span></code></p></td>
+<td><p>Total number of pixels occupied by the microbial colony.Larger areas typically indicate more robust growth or longer incubation times.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">IntegratedIntensity</span></code></p></td>
+<td><p>The sum of the object's grayscale pixels. Calculated as$sum{pixel values}*area$</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.measure.MeasureSize.__del__">
+<span class="sig-name descname"><span class="pre">__del__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.measure.MeasureSize.__del__" title="Link to this definition">#</a></dt>
+<dd><p>Automatically stop tracemalloc when the object is deleted.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.measure.MeasureSize.measure">
+<span class="sig-name descname"><span class="pre">measure</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">include_meta</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.measure.MeasureSize.measure" title="Link to this definition">#</a></dt>
+<dd><p>Executes a measurement operation on the provided image and optionally includes
+metadata for the output.</p>
+<p>This method applies a series of operations to the input image using arguments
+matched from pre-defined configurations. It returns the results in a
+pandas DataFrame. Optionally, additional metadata about the operation can
+be included. If any exceptions occur during operation, they are captured and
+re-raised as a custom <cite>OperationFailedError</cite>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>image</strong> (<a class="reference internal" href="api/phenotypic.Image.html#phenotypic.Image" title="phenotypic.Image"><em>Image</em></a>) – The image on which the measurement operation is to be
+performed.</p></li>
+<li><p><strong>include_meta</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a><em>, </em><em>optional</em>) – Determines whether to include metadata
+about the operation in the result. Defaults to False.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="phenotypic.tools.exceptions_.html#phenotypic.tools.exceptions_.OperationFailedError" title="phenotypic.tools.exceptions_.OperationFailedError"><strong>OperationFailedError</strong></a> – If the operation fails due to any exception, this
+    error is raised, encapsulating details about the failure.</p>
+</dd>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><dl class="simple">
+<dt>A DataFrame containing the results of the measurement</dt><dd><p>operation. If <cite>include_meta</cite> is True, additional columns with the
+metadata are added.</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>pd.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="phenotypic.measure.MeasureTexture">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.measure.</span></span><span class="sig-name descname"><span class="pre">MeasureTexture</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">scale</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">quant_lvl</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Literal" title="(in Python v3.14)"><span class="pre">Literal</span></a><span class="p"><span class="pre">[</span></span><span class="m"><span class="pre">8</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="m"><span class="pre">16</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="m"><span class="pre">32</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="m"><span class="pre">64</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">32</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">enhance</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">warn</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/measure/_measure_texture.html#MeasureTexture"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.measure.MeasureTexture" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.MeasureFeatures" title="phenotypic.abc_._measure_features.MeasureFeatures"><code class="xref py py-class docutils literal notranslate"><span class="pre">MeasureFeatures</span></code></a></p>
+<p>Provides functionality to measure texture features in an image using Haralick texture analysis.</p>
+<blockquote>
+<div><p>This class offers tools to extract texture features from foreground objects in an image, such
+as Angular Second Moment, Contrast, Correlation, Variance, and Inverse Difference Moment.
+These features are calculated over different directional orientations to quantify texture patterns
+in segmented image objects.</p>
+<dl>
+<dt>Attributes:</dt><dd><dl class="simple">
+<dt>scale (list[int]): A list of integer values representing the distance parameters used</dt><dd><p>to calculate Haralick features. Each value in the list corresponds to a scale at
+which texture features are computed.</p>
+</dd>
+<dt>quant_lvl (Literal[8, 16, 32, 64]): The quantization level for processing image intensity.</dt><dd><p>Acceptable values are 8, 16, 32, or 64.</p>
+</dd>
+<dt>enhance (bool): A flag indicating whether to enhance the image before computing</dt><dd><p>texture measurements. Enhancement may improve feature detection but can introduce
+bias in low-variance regions.</p>
+</dd>
+</dl>
+<p>warn (bool): A flag determining if warnings should be issued during the computation process.</p>
+</dd>
+<dt>References:</dt><dd><p>[1] <a class="reference external" href="https://mahotas.readthedocs.io/en/latest/api.html#mahotas.features.haralick">https://mahotas.readthedocs.io/en/latest/api.html#mahotas.features.haralick</a>
+[2] R. M. Haralick, K. Shanmugam, and I. Dinstein, “Textural Features for Image Classification,”</p>
+<blockquote>
+<div><p>IEEE Transactions on Systems, Man, and Cybernetics, vol. SMC-3, no. 6, pp. 610–621, Nov. 1973,
+doi: 10.1109/TSMC.1973.4309314.</p>
+</div></blockquote>
+</dd>
+</dl>
+</div></blockquote>
+<div class="pst-scrollable-table-container"><table class="table" id="id10">
+<caption><span class="caption-text">Category: <strong>TEXTURE</strong></span><a class="headerlink" href="#id10" title="Link to this table">#</a></caption>
+<thead>
+<tr class="row-odd"><th class="head"><p>Name</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">AngularSecondMoment</span></code></p></td>
+<td><dl class="simple">
+<dt>Angular second moment (energy / uniformity). Measures the degree of local homogeneity</dt><dd><p>(Σ p(i,j)²). High values → uniform texture (e.g., smooth, yeast-like colonies with consistent
+mycelial density). Low values → heterogeneous surfaces (e.g., sectored, wrinkled, or mixed
+sporulation zones). Reflects colony surface regularity rather than brightness.</p>
+</dd>
+</dl>
+</td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Contrast</span></code></p></td>
+<td><dl class="simple">
+<dt>Contrast (local intensity variation; Σ (i–j)² p(i,j)). High values indicate strong gray-level</dt><dd><p>differences (e.g., sharply defined rings, radial sectors, raised or folded regions). Low values
+indicate gradual tonal changes or uniformly pigmented colonies. Quantifies visual roughness
+and zonation amplitude.</p>
+</dd>
+</dl>
+</td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Correlation</span></code></p></td>
+<td><dl class="simple">
+<dt>Linear gray-level correlation between neighboring pixels. Positive, high values suggest</dt><dd><p>structured spatial dependence (e.g., oriented radial hyphae or concentric patterns); near-zero
+values indicate uncorrelated, disordered growth (e.g., diffuse cottony mycelium). Sensitive to
+illumination gradients and directional GLCM computation.</p>
+</dd>
+</dl>
+</td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">HaralickVariance</span></code></p></td>
+<td><dl class="simple">
+<dt>GLCM variance (Σ (i–μ)² p(i,j)). Captures spread of co-occurring gray-level pairs, distinct</dt><dd><p>from raw intensity variance. High values → complex, multi-zone textures with variable
+hyphal/spore densities. Low values → consistent gray-level relationships and simpler colony
+surfaces.</p>
+</dd>
+</dl>
+</td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">InverseDifferenceMoment</span></code></p></td>
+<td><dl class="simple">
+<dt>Homogeneity (Σ p(i,j) / (1 + (i–j)²)). High values → smooth, locally uniform textures</dt><dd><p>(e.g., glabrous colonies, uniform aerial mycelium). Low values → abrupt gray-level changes
+(e.g., granular sporulation, wrinkled surfaces). Typically inversely correlated with Contrast.</p>
+</dd>
+</dl>
+</td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">SumAverage</span></code></p></td>
+<td><dl class="simple">
+<dt>Mean of gray-level sums (Σ k·p_{x+y}(k)). Reflects the average intensity combination of</dt><dd><p>neighboring pixels. In fungal colonies, can loosely parallel mean colony brightness when
+illumination and exposure are controlled, but remains a second-order rather than first-order
+intensity metric.</p>
+</dd>
+</dl>
+</td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">SumVariance</span></code></p></td>
+<td><dl class="simple">
+<dt>Variance of gray-level sum distribution. High values → heterogeneous brightness zones</dt><dd><p>(e.g., alternating dense/sparse or pigmented/non-pigmented regions). Low values → uniform
+tone across the colony. Often correlated with Contrast; use comparatively within one setup.</p>
+</dd>
+</dl>
+</td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">SumEntropy</span></code></p></td>
+<td><dl class="simple">
+<dt>Entropy of the gray-level sum distribution. High values → diverse brightness combinations</dt><dd><p>and irregular zonation. Low values → repetitive or periodic brightness patterns (e.g., evenly
+spaced rings). Indicates spatial unpredictability of summed intensities.</p>
+</dd>
+</dl>
+</td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Entropy</span></code></p></td>
+<td><dl class="simple">
+<dt>Global GLCM entropy (–Σ p(i,j)·log p(i,j)). Measures total texture disorder and information</dt><dd><p>content. High values → complex, irregular colony surfaces (powdery, fuzzy, or sectored growth).
+Low values → simple, smooth, predictable patterns (glabrous or uniform colonies). Sensitive to
+gray-level quantization and image dynamic range.</p>
+</dd>
+</dl>
+</td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">DiffVariance</span></code></p></td>
+<td><dl class="simple">
+<dt>Variance of gray-level difference distribution. High values → mixture of smooth and textured</dt><dd><p>regions (e.g., smooth margins with wrinkled centers). Low values → consistent edge content.
+Highlights heterogeneity in edge magnitude across the colony.</p>
+</dd>
+</dl>
+</td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">DiffEntropy</span></code></p></td>
+<td><dl class="simple">
+<dt>Entropy of gray-level difference distribution. High values → irregular, unpredictable</dt><dd><p>intensity transitions (e.g., random sporulation or uneven mycelial networks). Low values →
+regular periodic transitions (e.g., concentric zonation). Reflects randomness of local contrast
+rather than its magnitude.</p>
+</dd>
+</dl>
+</td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">InfoCorrelation1</span></code></p></td>
+<td><dl class="simple">
+<dt>Information measure of correlation 1. Compares joint vs marginal entropies to quantify</dt><dd><p>mutual dependence between gray levels. Positive values → structured, predictable textures
+(e.g., organized radial growth); near-zero → independence between adjacent regions.
+Direction of sign varies with implementation.</p>
+</dd>
+</dl>
+</td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">InfoCorrelation2</span></code></p></td>
+<td><dl class="simple">
+<dt>Information measure of correlation 2 (√[1 – exp(–2 (H_xy2–H_xy))]). Always ≥ 0.</dt><dd><p>Values approaching 1 → strong spatial dependence and organized architecture (e.g., symmetric
+rings, radial structure). Values near 0 → random, independent patterns. Captures nonlinear
+organization missed by linear correlation.</p>
+</dd>
+</dl>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>scale</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em> | </em><em>List</em><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>]</em>)</p></li>
+<li><p><strong>quant_lvl</strong> (<em>Literal</em><em>[</em><em>8</em><em>, </em><em>16</em><em>, </em><em>32</em><em>, </em><em>64</em><em>]</em>)</p></li>
+<li><p><strong>enhance</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>)</p></li>
+<li><p><strong>warn</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>)</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.measure.MeasureTexture.__del__">
+<span class="sig-name descname"><span class="pre">__del__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.measure.MeasureTexture.__del__" title="Link to this definition">#</a></dt>
+<dd><p>Automatically stop tracemalloc when the object is deleted.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.measure.MeasureTexture.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">scale</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">quant_lvl</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Literal" title="(in Python v3.14)"><span class="pre">Literal</span></a><span class="p"><span class="pre">[</span></span><span class="m"><span class="pre">8</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="m"><span class="pre">16</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="m"><span class="pre">32</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="m"><span class="pre">64</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">32</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">enhance</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">warn</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/phenotypic/measure/_measure_texture.html#MeasureTexture.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.measure.MeasureTexture.__init__" title="Link to this definition">#</a></dt>
+<dd><p>Initializes an object with specific configurations for scale, quantization level,
+enhance, and warning behaviors. This constructor ensures that the ‘scale’
+parameter is always stored as a list.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>scale</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em> | </em><em>List</em><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>]</em>) – A single integer or a list of integers representing
+the scale configuration. If a single integer is provided, it will be
+converted into a list containing that integer.</p></li>
+<li><p><strong>quant_lvl</strong> (<em>Literal</em><em>[</em><em>8</em><em>, </em><em>16</em><em>, </em><em>32</em><em>, </em><em>64</em><em>]</em>) – The quantization level. A higher level adds
+more computational complexity but captures more discrete texture changes. A higher value is
+not always more meaningful. Think of this like sensitivity to texture. Acceptable values are either 8, 16, 32, or 64.</p></li>
+<li><p><strong>enhance</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>) – A flag indicating whether to enhance the image before measuring texture. This can
+increase the amount of detail captured but can bias the measurements in cases where the relative
+variance between pixel intensities of an object is small.</p></li>
+<li><p><strong>warn</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>) – A flag indicating whether warnings should be issued.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.measure.MeasureTexture.measure">
+<span class="sig-name descname"><span class="pre">measure</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">include_meta</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.measure.MeasureTexture.measure" title="Link to this definition">#</a></dt>
+<dd><p>Executes a measurement operation on the provided image and optionally includes
+metadata for the output.</p>
+<p>This method applies a series of operations to the input image using arguments
+matched from pre-defined configurations. It returns the results in a
+pandas DataFrame. Optionally, additional metadata about the operation can
+be included. If any exceptions occur during operation, they are captured and
+re-raised as a custom <cite>OperationFailedError</cite>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>image</strong> (<a class="reference internal" href="api/phenotypic.Image.html#phenotypic.Image" title="phenotypic.Image"><em>Image</em></a>) – The image on which the measurement operation is to be
+performed.</p></li>
+<li><p><strong>include_meta</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a><em>, </em><em>optional</em>) – Determines whether to include metadata
+about the operation in the result. Defaults to False.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="phenotypic.tools.exceptions_.html#phenotypic.tools.exceptions_.OperationFailedError" title="phenotypic.tools.exceptions_.OperationFailedError"><strong>OperationFailedError</strong></a> – If the operation fails due to any exception, this
+    error is raised, encapsulating details about the failure.</p>
+</dd>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><dl class="simple">
+<dt>A DataFrame containing the results of the measurement</dt><dd><p>operation. If <cite>include_meta</cite> is True, additional columns with the
+metadata are added.</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>pd.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.measure.MeasureBounds"><code class="docutils literal notranslate"><span class="pre">MeasureBounds</span></code></a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.measure.MeasureBounds.__del__"><code class="docutils literal notranslate"><span class="pre">MeasureBounds.__del__()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.measure.MeasureBounds.measure"><code class="docutils literal notranslate"><span class="pre">MeasureBounds.measure()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.measure.MeasureColor"><code class="docutils literal notranslate"><span class="pre">MeasureColor</span></code></a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.measure.MeasureColor.__del__"><code class="docutils literal notranslate"><span class="pre">MeasureColor.__del__()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.measure.MeasureColor.measure"><code class="docutils literal notranslate"><span class="pre">MeasureColor.measure()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.measure.MeasureColorComposition"><code class="docutils literal notranslate"><span class="pre">MeasureColorComposition</span></code></a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.measure.MeasureColorComposition.__del__"><code class="docutils literal notranslate"><span class="pre">MeasureColorComposition.__del__()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.measure.MeasureColorComposition.__init__"><code class="docutils literal notranslate"><span class="pre">MeasureColorComposition.__init__()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.measure.MeasureColorComposition.measure"><code class="docutils literal notranslate"><span class="pre">MeasureColorComposition.measure()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.measure.MeasureColorComposition.visualize_masks"><code class="docutils literal notranslate"><span class="pre">MeasureColorComposition.visualize_masks()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.measure.MeasureGridLinRegStats"><code class="docutils literal notranslate"><span class="pre">MeasureGridLinRegStats</span></code></a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.measure.MeasureGridLinRegStats.section_num"><code class="docutils literal notranslate"><span class="pre">MeasureGridLinRegStats.section_num</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.measure.MeasureGridLinRegStats.__del__"><code class="docutils literal notranslate"><span class="pre">MeasureGridLinRegStats.__del__()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.measure.MeasureGridLinRegStats.measure"><code class="docutils literal notranslate"><span class="pre">MeasureGridLinRegStats.measure()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.measure.MeasureGridSpread"><code class="docutils literal notranslate"><span class="pre">MeasureGridSpread</span></code></a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.measure.MeasureGridSpread.__del__"><code class="docutils literal notranslate"><span class="pre">MeasureGridSpread.__del__()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.measure.MeasureGridSpread.measure"><code class="docutils literal notranslate"><span class="pre">MeasureGridSpread.measure()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.measure.MeasureIntensity"><code class="docutils literal notranslate"><span class="pre">MeasureIntensity</span></code></a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.measure.MeasureIntensity.__del__"><code class="docutils literal notranslate"><span class="pre">MeasureIntensity.__del__()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.measure.MeasureIntensity.measure"><code class="docutils literal notranslate"><span class="pre">MeasureIntensity.measure()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.measure.MeasureShape"><code class="docutils literal notranslate"><span class="pre">MeasureShape</span></code></a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.measure.MeasureShape.__del__"><code class="docutils literal notranslate"><span class="pre">MeasureShape.__del__()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.measure.MeasureShape.measure"><code class="docutils literal notranslate"><span class="pre">MeasureShape.measure()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.measure.MeasureSize"><code class="docutils literal notranslate"><span class="pre">MeasureSize</span></code></a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.measure.MeasureSize.__del__"><code class="docutils literal notranslate"><span class="pre">MeasureSize.__del__()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.measure.MeasureSize.measure"><code class="docutils literal notranslate"><span class="pre">MeasureSize.measure()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.measure.MeasureTexture"><code class="docutils literal notranslate"><span class="pre">MeasureTexture</span></code></a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.measure.MeasureTexture.__del__"><code class="docutils literal notranslate"><span class="pre">MeasureTexture.__del__()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.measure.MeasureTexture.__init__"><code class="docutils literal notranslate"><span class="pre">MeasureTexture.__init__()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.measure.MeasureTexture.measure"><code class="docutils literal notranslate"><span class="pre">MeasureTexture.measure()</span></code></a></li>
+</ul>
+</li>
+</ul>
+  </nav></div>
+
+  <div class="sidebar-secondary-item">
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../_sources/api_reference/phenotypic.measure.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, ExFAB BioFoundry.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.1.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

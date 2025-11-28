@@ -1,0 +1,983 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>phenotypic.measure._measure_color_composition &#8212; PhenoTypic</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/custom.css?v=800a184d" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../../../_static/documentation_options.js?v=b3db6a4d"></script>
+    <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../../../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="../../../_static/design-tabs.js?v=f930bc37"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/phenotypic/measure/_measure_color_composition';</script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.11.1" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+     
+  
+
+<a class="navbar-brand logo" href="../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../../_static/gradient_logo_exfab.svg" class="logo__image only-light" alt="PhenoTypic"/>
+    <img src="../../../_static/gradient_logo_exfab.svg" class="logo__image only-dark pst-js-only" alt="PhenoTypic"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../user_guide/index.html">
+    User Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../api_reference/index.html">
+    API Reference
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../contrib_guide/index.html">
+    Developer Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../downloadables.html">
+    Downloads
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/Wheeldon-Lab/PhenoScope#" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../user_guide/index.html">
+    User Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../api_reference/index.html">
+    API Reference
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../contrib_guide/index.html">
+    Developer Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../downloadables.html">
+    Downloads
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/Wheeldon-Lab/PhenoScope#" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">phenotypic.measure._measure_color_composition</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for phenotypic.measure._measure_color_composition</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span>
+
+<span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span> <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">MeasureFeatures</span><span class="p">,</span> <span class="n">MeasurementInfo</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools.constants_</span><span class="w"> </span><span class="kn">import</span> <span class="n">OBJECT</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">ColorComposition</span><span class="p">(</span><span class="n">MeasurementInfo</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Measurement info for perceptual color composition using 11-color model.&quot;&quot;&quot;</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">category</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s1">&#39;ColorComposition&#39;</span>
+
+    <span class="c1"># Define the 11 color categories with descriptions</span>
+    <span class="n">BLACK_PCT</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;BlackPct&#39;</span><span class="p">,</span> <span class="s1">&#39;Percentage of pixels classified as black (Value &lt; 20)&#39;</span><span class="p">)</span>
+    <span class="n">WHITE_PCT</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;WhitePct&#39;</span><span class="p">,</span> <span class="s1">&#39;Percentage of pixels classified as white (Saturation &lt; 15, Value &gt; 85)&#39;</span><span class="p">)</span>
+    <span class="n">GRAY_PCT</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;GrayPct&#39;</span><span class="p">,</span> <span class="s1">&#39;Percentage of pixels classified as gray (Saturation &lt; 15, Value 20-85)&#39;</span><span class="p">)</span>
+    <span class="n">PINK_PCT</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;PinkPct&#39;</span><span class="p">,</span> <span class="s1">&#39;Percentage of pixels classified as pink (Red/Magenta hue, Saturation 20-60, Value &gt; 80)&#39;</span><span class="p">)</span>
+    <span class="n">BROWN_PCT</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;BrownPct&#39;</span><span class="p">,</span> <span class="s1">&#39;Percentage of pixels classified as brown (Red/Orange hue, Value 20-60)&#39;</span><span class="p">)</span>
+    <span class="n">RED_PCT</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;RedPct&#39;</span><span class="p">,</span> <span class="s1">&#39;Percentage of pixels classified as red (Hue 0-15° or 345-360°)&#39;</span><span class="p">)</span>
+    <span class="n">ORANGE_PCT</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;OrangePct&#39;</span><span class="p">,</span> <span class="s1">&#39;Percentage of pixels classified as orange (Hue 15-45°)&#39;</span><span class="p">)</span>
+    <span class="n">YELLOW_PCT</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;YellowPct&#39;</span><span class="p">,</span> <span class="s1">&#39;Percentage of pixels classified as yellow (Hue 45-75°)&#39;</span><span class="p">)</span>
+    <span class="n">GREEN_PCT</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;GreenPct&#39;</span><span class="p">,</span> <span class="s1">&#39;Percentage of pixels classified as green (Hue 75-150°)&#39;</span><span class="p">)</span>
+    <span class="n">CYAN_PCT</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;CyanPct&#39;</span><span class="p">,</span> <span class="s1">&#39;Percentage of pixels classified as cyan (Hue 150-180°)&#39;</span><span class="p">)</span>
+    <span class="n">BLUE_PCT</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;BluePct&#39;</span><span class="p">,</span> <span class="s1">&#39;Percentage of pixels classified as blue (Hue 180-250°)&#39;</span><span class="p">)</span>
+    <span class="n">PURPLE_PCT</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;PurplePct&#39;</span><span class="p">,</span> <span class="s1">&#39;Percentage of pixels classified as purple/magenta (Hue 250-345°)&#39;</span><span class="p">)</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">all_headers</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return all color composition measurement headers.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">[</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">BLACK_PCT</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">WHITE_PCT</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">GRAY_PCT</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">PINK_PCT</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">BROWN_PCT</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">RED_PCT</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">ORANGE_PCT</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">YELLOW_PCT</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">GREEN_PCT</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">CYAN_PCT</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">BLUE_PCT</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">PURPLE_PCT</span><span class="p">),</span>
+        <span class="p">]</span>
+
+
+<div class="viewcode-block" id="MeasureColorComposition">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.measure.html#phenotypic.measure.MeasureColorComposition">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">MeasureColorComposition</span><span class="p">(</span><span class="n">MeasureFeatures</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Performs perceptual color composition analysis on segmented image objects.</span>
+
+<span class="sd">    This class extends the MeasureFeatures class to provide color composition</span>
+<span class="sd">    analysis using an 11-color perceptual model. The model applies a priority</span>
+<span class="sd">    hierarchy to classify pixels into categories that better match human color</span>
+<span class="sd">    perception than simple hue-based classification.</span>
+
+<span class="sd">    The 11 color categories are:</span>
+<span class="sd">    - Neutrals (Priority 1): Black, White, Gray</span>
+<span class="sd">    - Special Colors (Priority 2): Pink, Brown</span>
+<span class="sd">    - Standard Hues (Priority 3): Red, Orange, Yellow, Green, Cyan, Blue, Purple/Magenta</span>
+
+<span class="sd">    Implementation uses NumPy vectorization for efficiency, with no pixel-level loops.</span>
+<span class="sd">    The classification follows human perception principles where neutrals take priority,</span>
+<span class="sd">    followed by special cases (pink/brown), and finally standard hue-based colors.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        hue_normalization (float): Multiplier to normalize hue to 0-360 range. Default is 360.0</span>
+<span class="sd">            (assuming input hue is in 0-1 range from skimage).</span>
+<span class="sd">        sat_normalization (float): Multiplier to normalize saturation to 0-100 range. Default is 100.0.</span>
+<span class="sd">        val_normalization (float): Multiplier to normalize value/brightness to 0-100 range. Default is 100.0.</span>
+<span class="sd">        black_value_max (float): Maximum value threshold for black classification. Default is 20.</span>
+<span class="sd">        neutral_sat_max (float): Maximum saturation threshold for white and gray classification. Default is 15.</span>
+<span class="sd">        white_value_min (float): Minimum value threshold for white classification. Default is 85.</span>
+<span class="sd">        gray_value_min (float): Minimum value threshold for gray classification. Default is 20.</span>
+<span class="sd">        gray_value_max (float): Maximum value threshold for gray classification. Default is 85.</span>
+
+<span class="sd">    Example:</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic import Image</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.measure import MeasureColorComposition</span>
+<span class="sd">        &gt;&gt;&gt; img = Image.load(&#39;path/to/image.tif&#39;)</span>
+<span class="sd">        &gt;&gt;&gt; measurer = MeasureColorComposition()</span>
+<span class="sd">        &gt;&gt;&gt; composition = measurer.measure(img)</span>
+<span class="sd">        &gt;&gt;&gt; print(composition)</span>
+<span class="sd">        &gt;&gt;&gt;</span>
+<span class="sd">        &gt;&gt;&gt; # Custom thresholds for different lighting conditions</span>
+<span class="sd">        &gt;&gt;&gt; measurer_custom = MeasureColorComposition(</span>
+<span class="sd">        ...     black_value_max=15,  # Stricter black threshold</span>
+<span class="sd">        ...     white_value_min=90   # Stricter white threshold</span>
+<span class="sd">        ... )</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="MeasureColorComposition.__init__">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.measure.html#phenotypic.measure.MeasureColorComposition.__init__">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                 <span class="n">hue_normalization</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">360.0</span><span class="p">,</span>
+                 <span class="n">sat_normalization</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">100.0</span><span class="p">,</span>
+                 <span class="n">val_normalization</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">100.0</span><span class="p">,</span>
+                 <span class="n">black_value_max</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">20.0</span><span class="p">,</span>
+                 <span class="n">neutral_sat_max</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">15.0</span><span class="p">,</span>
+                 <span class="n">white_value_min</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">85.0</span><span class="p">,</span>
+                 <span class="n">gray_value_min</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">20.0</span><span class="p">,</span>
+                 <span class="n">gray_value_max</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">85.0</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Initialize the color composition measurer.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            hue_normalization: Multiplier to normalize hue to 0-360 range</span>
+<span class="sd">            sat_normalization: Multiplier to normalize saturation to 0-100 range</span>
+<span class="sd">            val_normalization: Multiplier to normalize value to 0-100 range</span>
+<span class="sd">            black_value_max: Maximum value threshold for black classification</span>
+<span class="sd">            neutral_sat_max: Maximum saturation threshold for white and gray classification</span>
+<span class="sd">            white_value_min: Minimum value threshold for white classification</span>
+<span class="sd">            gray_value_min: Minimum value threshold for gray classification</span>
+<span class="sd">            gray_value_max: Maximum value threshold for gray classification</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">hue_normalization</span> <span class="o">=</span> <span class="n">hue_normalization</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sat_normalization</span> <span class="o">=</span> <span class="n">sat_normalization</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">val_normalization</span> <span class="o">=</span> <span class="n">val_normalization</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">black_value_max</span> <span class="o">=</span> <span class="n">black_value_max</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">neutral_sat_max</span> <span class="o">=</span> <span class="n">neutral_sat_max</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">white_value_min</span> <span class="o">=</span> <span class="n">white_value_min</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">gray_value_min</span> <span class="o">=</span> <span class="n">gray_value_min</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">gray_value_max</span> <span class="o">=</span> <span class="n">gray_value_max</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Execute color composition analysis on the image.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            image: The PhenoTypic Image object to analyze</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            pd.DataFrame: DataFrame with object labels and color composition percentages</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Get HSV representation (shape: H x W x 3)</span>
+        <span class="c1"># Note: skimage&#39;s rgb2hsv returns H in [0,1], S in [0,1], V in [0,1]</span>
+        <span class="n">hsv_foreground</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">color</span><span class="o">.</span><span class="n">hsv</span><span class="o">.</span><span class="n">foreground</span><span class="p">()</span>
+
+        <span class="c1"># Normalize to human-readable ranges: H: 0-360, S: 0-100, V: 0-100</span>
+        <span class="n">hue</span> <span class="o">=</span> <span class="n">hsv_foreground</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">hue_normalization</span>
+        <span class="n">saturation</span> <span class="o">=</span> <span class="n">hsv_foreground</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">sat_normalization</span>
+        <span class="n">value</span> <span class="o">=</span> <span class="n">hsv_foreground</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">2</span><span class="p">]</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">val_normalization</span>
+
+        <span class="c1"># Get object map for per-object analysis</span>
+        <span class="n">objmap</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">objmap</span><span class="p">[:]</span>
+
+        <span class="c1"># Get unique object labels (excluding background 0)</span>
+        <span class="n">object_labels</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">labels2series</span><span class="p">()</span>
+
+        <span class="c1"># Compute color composition for each object using vectorized masks</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Computing color composition for each object&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Generate all color masks (2D boolean arrays)</span>
+        <span class="n">color_masks</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_all_color_masks</span><span class="p">(</span><span class="n">hue</span><span class="p">,</span> <span class="n">saturation</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+
+        <span class="c1"># Calculate percentages for all objects using vectorized operations</span>
+        <span class="n">results</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_calculate_sum</span><span class="p">(</span><span class="n">objmap</span><span class="p">,</span> <span class="n">object_labels</span><span class="p">,</span> <span class="n">color_masks</span><span class="p">)</span>
+
+        <span class="c1"># Create DataFrame</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="p">{</span><span class="n">header</span><span class="p">:</span> <span class="p">[</span><span class="n">result</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">result</span> <span class="ow">in</span> <span class="n">results</span><span class="p">]</span>
+                <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">header</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">ColorComposition</span><span class="o">.</span><span class="n">all_headers</span><span class="p">())}</span>
+
+        <span class="n">meas</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">data</span><span class="o">=</span><span class="n">data</span><span class="p">)</span>
+        <span class="n">meas</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="n">loc</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">column</span><span class="o">=</span><span class="n">OBJECT</span><span class="o">.</span><span class="n">LABEL</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="n">object_labels</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">meas</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_get_black_mask</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">hue</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">sat</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">val</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get mask for black pixels.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">val</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">black_value_max</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_get_white_mask</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">hue</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">sat</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">val</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+                        <span class="n">exclude_mask</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get mask for white pixels.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">sat</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">neutral_sat_max</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">val</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">white_value_min</span><span class="p">)</span> <span class="o">&amp;</span> <span class="o">~</span><span class="n">exclude_mask</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_get_gray_mask</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">hue</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">sat</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">val</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+                       <span class="n">exclude_mask</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get mask for gray pixels.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">((</span><span class="n">sat</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">neutral_sat_max</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">val</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">gray_value_min</span><span class="p">)</span> <span class="o">&amp;</span>
+                <span class="p">(</span><span class="n">val</span> <span class="o">&lt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">gray_value_max</span><span class="p">)</span> <span class="o">&amp;</span> <span class="o">~</span><span class="n">exclude_mask</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_get_pink_mask</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">hue</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">sat</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">val</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+                       <span class="n">exclude_mask</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get mask for pink pixels.&quot;&quot;&quot;</span>
+        <span class="n">pink_hue_mask</span> <span class="o">=</span> <span class="p">((</span><span class="n">hue</span> <span class="o">&lt;=</span> <span class="mi">15</span><span class="p">)</span> <span class="o">|</span> <span class="p">(</span><span class="n">hue</span> <span class="o">&gt;=</span> <span class="mi">250</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">pink_hue_mask</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">sat</span> <span class="o">&gt;=</span> <span class="mi">20</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">sat</span> <span class="o">&lt;=</span> <span class="mi">60</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">val</span> <span class="o">&gt;</span> <span class="mi">80</span><span class="p">)</span> <span class="o">&amp;</span> <span class="o">~</span><span class="n">exclude_mask</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_get_brown_mask</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">hue</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">sat</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">val</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+                        <span class="n">exclude_mask</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get mask for brown pixels.&quot;&quot;&quot;</span>
+        <span class="n">brown_hue_mask</span> <span class="o">=</span> <span class="p">(</span><span class="n">hue</span> <span class="o">&lt;=</span> <span class="mi">45</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">brown_hue_mask</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">val</span> <span class="o">&gt;=</span> <span class="mi">20</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">val</span> <span class="o">&lt;=</span> <span class="mi">60</span><span class="p">)</span> <span class="o">&amp;</span> <span class="o">~</span><span class="n">exclude_mask</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_get_red_mask</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">hue</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">sat</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">val</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+                      <span class="n">exclude_mask</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get mask for red pixels.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">((</span><span class="n">hue</span> <span class="o">&lt;=</span> <span class="mi">15</span><span class="p">)</span> <span class="o">|</span> <span class="p">(</span><span class="n">hue</span> <span class="o">&gt;=</span> <span class="mi">345</span><span class="p">))</span> <span class="o">&amp;</span> <span class="o">~</span><span class="n">exclude_mask</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_get_orange_mask</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">hue</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">sat</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">val</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+                         <span class="n">exclude_mask</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get mask for orange pixels.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">hue</span> <span class="o">&gt;</span> <span class="mi">15</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">hue</span> <span class="o">&lt;=</span> <span class="mi">45</span><span class="p">)</span> <span class="o">&amp;</span> <span class="o">~</span><span class="n">exclude_mask</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_get_yellow_mask</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">hue</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">sat</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">val</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+                         <span class="n">exclude_mask</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get mask for yellow pixels.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">hue</span> <span class="o">&gt;</span> <span class="mi">45</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">hue</span> <span class="o">&lt;=</span> <span class="mi">75</span><span class="p">)</span> <span class="o">&amp;</span> <span class="o">~</span><span class="n">exclude_mask</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_get_green_mask</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">hue</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">sat</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">val</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+                        <span class="n">exclude_mask</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get mask for green pixels.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">hue</span> <span class="o">&gt;</span> <span class="mi">75</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">hue</span> <span class="o">&lt;=</span> <span class="mi">150</span><span class="p">)</span> <span class="o">&amp;</span> <span class="o">~</span><span class="n">exclude_mask</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_get_cyan_mask</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">hue</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">sat</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">val</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+                       <span class="n">exclude_mask</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get mask for cyan pixels.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">hue</span> <span class="o">&gt;</span> <span class="mi">150</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">hue</span> <span class="o">&lt;=</span> <span class="mi">180</span><span class="p">)</span> <span class="o">&amp;</span> <span class="o">~</span><span class="n">exclude_mask</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_get_blue_mask</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">hue</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">sat</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">val</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+                       <span class="n">exclude_mask</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get mask for blue pixels.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">hue</span> <span class="o">&gt;</span> <span class="mi">180</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">hue</span> <span class="o">&lt;=</span> <span class="mi">250</span><span class="p">)</span> <span class="o">&amp;</span> <span class="o">~</span><span class="n">exclude_mask</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_get_purple_mask</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">hue</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">sat</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">val</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+                         <span class="n">exclude_mask</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get mask for purple pixels.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">hue</span> <span class="o">&gt;</span> <span class="mi">250</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">hue</span> <span class="o">&lt;</span> <span class="mi">345</span><span class="p">)</span> <span class="o">&amp;</span> <span class="o">~</span><span class="n">exclude_mask</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_get_all_color_masks</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">hue</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">sat</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+                             <span class="n">val</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Generate all 12 color masks in priority order.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            hue: Hue values (H x W)</span>
+<span class="sd">            sat: Saturation values (H x W)</span>
+<span class="sd">            val: Value/brightness (H x W)</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            List of 12 boolean masks (one per color category)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Track which pixels have been classified (cumulative exclude mask)</span>
+        <span class="n">exclude_mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">hue</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+
+        <span class="c1"># Priority 1: Neutrals</span>
+        <span class="n">black_mask</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_black_mask</span><span class="p">(</span><span class="n">hue</span><span class="p">,</span> <span class="n">sat</span><span class="p">,</span> <span class="n">val</span><span class="p">)</span>
+        <span class="n">exclude_mask</span> <span class="o">|=</span> <span class="n">black_mask</span>
+
+        <span class="n">white_mask</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_white_mask</span><span class="p">(</span><span class="n">hue</span><span class="p">,</span> <span class="n">sat</span><span class="p">,</span> <span class="n">val</span><span class="p">,</span> <span class="n">exclude_mask</span><span class="p">)</span>
+        <span class="n">exclude_mask</span> <span class="o">|=</span> <span class="n">white_mask</span>
+
+        <span class="n">gray_mask</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_gray_mask</span><span class="p">(</span><span class="n">hue</span><span class="p">,</span> <span class="n">sat</span><span class="p">,</span> <span class="n">val</span><span class="p">,</span> <span class="n">exclude_mask</span><span class="p">)</span>
+        <span class="n">exclude_mask</span> <span class="o">|=</span> <span class="n">gray_mask</span>
+
+        <span class="c1"># Priority 2: Special colors</span>
+        <span class="n">pink_mask</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_pink_mask</span><span class="p">(</span><span class="n">hue</span><span class="p">,</span> <span class="n">sat</span><span class="p">,</span> <span class="n">val</span><span class="p">,</span> <span class="n">exclude_mask</span><span class="p">)</span>
+        <span class="n">exclude_mask</span> <span class="o">|=</span> <span class="n">pink_mask</span>
+
+        <span class="n">brown_mask</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_brown_mask</span><span class="p">(</span><span class="n">hue</span><span class="p">,</span> <span class="n">sat</span><span class="p">,</span> <span class="n">val</span><span class="p">,</span> <span class="n">exclude_mask</span><span class="p">)</span>
+        <span class="n">exclude_mask</span> <span class="o">|=</span> <span class="n">brown_mask</span>
+
+        <span class="c1"># Priority 3: Standard hues</span>
+        <span class="n">red_mask</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_red_mask</span><span class="p">(</span><span class="n">hue</span><span class="p">,</span> <span class="n">sat</span><span class="p">,</span> <span class="n">val</span><span class="p">,</span> <span class="n">exclude_mask</span><span class="p">)</span>
+        <span class="n">exclude_mask</span> <span class="o">|=</span> <span class="n">red_mask</span>
+
+        <span class="n">orange_mask</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_orange_mask</span><span class="p">(</span><span class="n">hue</span><span class="p">,</span> <span class="n">sat</span><span class="p">,</span> <span class="n">val</span><span class="p">,</span> <span class="n">exclude_mask</span><span class="p">)</span>
+        <span class="n">exclude_mask</span> <span class="o">|=</span> <span class="n">orange_mask</span>
+
+        <span class="n">yellow_mask</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_yellow_mask</span><span class="p">(</span><span class="n">hue</span><span class="p">,</span> <span class="n">sat</span><span class="p">,</span> <span class="n">val</span><span class="p">,</span> <span class="n">exclude_mask</span><span class="p">)</span>
+        <span class="n">exclude_mask</span> <span class="o">|=</span> <span class="n">yellow_mask</span>
+
+        <span class="n">green_mask</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_green_mask</span><span class="p">(</span><span class="n">hue</span><span class="p">,</span> <span class="n">sat</span><span class="p">,</span> <span class="n">val</span><span class="p">,</span> <span class="n">exclude_mask</span><span class="p">)</span>
+        <span class="n">exclude_mask</span> <span class="o">|=</span> <span class="n">green_mask</span>
+
+        <span class="n">cyan_mask</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_cyan_mask</span><span class="p">(</span><span class="n">hue</span><span class="p">,</span> <span class="n">sat</span><span class="p">,</span> <span class="n">val</span><span class="p">,</span> <span class="n">exclude_mask</span><span class="p">)</span>
+        <span class="n">exclude_mask</span> <span class="o">|=</span> <span class="n">cyan_mask</span>
+
+        <span class="n">blue_mask</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_blue_mask</span><span class="p">(</span><span class="n">hue</span><span class="p">,</span> <span class="n">sat</span><span class="p">,</span> <span class="n">val</span><span class="p">,</span> <span class="n">exclude_mask</span><span class="p">)</span>
+        <span class="n">exclude_mask</span> <span class="o">|=</span> <span class="n">blue_mask</span>
+
+        <span class="n">purple_mask</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_purple_mask</span><span class="p">(</span><span class="n">hue</span><span class="p">,</span> <span class="n">sat</span><span class="p">,</span> <span class="n">val</span><span class="p">,</span> <span class="n">exclude_mask</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="p">[</span><span class="n">black_mask</span><span class="p">,</span> <span class="n">white_mask</span><span class="p">,</span> <span class="n">gray_mask</span><span class="p">,</span> <span class="n">pink_mask</span><span class="p">,</span> <span class="n">brown_mask</span><span class="p">,</span>
+                <span class="n">red_mask</span><span class="p">,</span> <span class="n">orange_mask</span><span class="p">,</span> <span class="n">yellow_mask</span><span class="p">,</span> <span class="n">green_mask</span><span class="p">,</span> <span class="n">cyan_mask</span><span class="p">,</span>
+                <span class="n">blue_mask</span><span class="p">,</span> <span class="n">purple_mask</span><span class="p">]</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_calculate_sum</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">objmap</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">object_labels</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">,</span>
+                       <span class="n">color_masks</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">float</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculate color composition percentages for each object.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            objmap: Object label map (H x W)</span>
+<span class="sd">            object_labels: Series of object labels to process</span>
+<span class="sd">            color_masks: List of 12 boolean masks (one per color)</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            List of percentage lists (one per object, 12 values each)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">results</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">for</span> <span class="n">label</span> <span class="ow">in</span> <span class="n">object_labels</span><span class="p">:</span>
+            <span class="c1"># Create mask for this object</span>
+            <span class="n">obj_mask</span> <span class="o">=</span> <span class="n">objmap</span> <span class="o">==</span> <span class="n">label</span>
+            <span class="n">total_pixels</span> <span class="o">=</span> <span class="n">obj_mask</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+
+            <span class="k">if</span> <span class="n">total_pixels</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="c1"># No pixels in object, return zeros</span>
+                <span class="n">results</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="mf">0.0</span><span class="p">]</span> <span class="o">*</span> <span class="mi">12</span><span class="p">)</span>
+                <span class="k">continue</span>
+
+            <span class="c1"># Calculate percentage for each color</span>
+            <span class="n">percentages</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">color_mask</span> <span class="ow">in</span> <span class="n">color_masks</span><span class="p">:</span>
+                <span class="n">count</span> <span class="o">=</span> <span class="p">(</span><span class="n">obj_mask</span> <span class="o">&amp;</span> <span class="n">color_mask</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+                <span class="n">percentage</span> <span class="o">=</span> <span class="p">(</span><span class="n">count</span> <span class="o">/</span> <span class="n">total_pixels</span> <span class="o">*</span> <span class="mi">100</span><span class="p">)</span>
+                <span class="n">percentages</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">percentage</span><span class="p">)</span>
+
+            <span class="n">results</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">percentages</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">results</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_classify_colors</span><span class="p">(</span><span class="n">hue</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">sat</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">val</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+                         <span class="n">black_max</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">20.0</span><span class="p">,</span>
+                         <span class="n">neutral_sat</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">15.0</span><span class="p">,</span>
+                         <span class="n">white_min</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">85.0</span><span class="p">,</span>
+                         <span class="n">gray_min</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">20.0</span><span class="p">,</span>
+                         <span class="n">gray_max</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">85.0</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Classify pixels into 11 perceptual color categories using priority hierarchy.</span>
+
+<span class="sd">        This method implements a human perception-based color classification that differs</span>
+<span class="sd">        from pure mathematical HSV classification. The priority order ensures that:</span>
+<span class="sd">        1. Neutrals (black/white/gray) are identified first regardless of hue noise</span>
+<span class="sd">        2. Special cases (pink/brown) are identified before standard hues</span>
+<span class="sd">        3. Standard hue-based colors fill in the remaining pixels</span>
+
+<span class="sd">        This approach better matches human color naming than simple hue binning.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            hue: Hue values normalized to 0-360 range</span>
+<span class="sd">            sat: Saturation values normalized to 0-100 range</span>
+<span class="sd">            val: Value/brightness normalized to 0-100 range</span>
+<span class="sd">            black_max: Maximum value threshold for black classification</span>
+<span class="sd">            neutral_sat: Maximum saturation threshold for white and gray</span>
+<span class="sd">            white_min: Minimum value threshold for white classification</span>
+<span class="sd">            gray_min: Minimum value threshold for gray classification</span>
+<span class="sd">            gray_max: Maximum value threshold for gray classification</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            list: Percentages for each of the 11 color categories (in order matching all_headers)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">total_pixels</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">hue</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">total_pixels</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="c1"># Return zeros for all categories if no pixels</span>
+            <span class="k">return</span> <span class="p">[</span><span class="mf">0.0</span><span class="p">]</span><span class="o">*</span><span class="mi">12</span>
+
+        <span class="c1"># Initialize classification array (will store color index for each pixel)</span>
+        <span class="c1"># -1 means unclassified</span>
+        <span class="n">classification</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">total_pixels</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">int8</span><span class="p">)</span>
+
+        <span class="c1"># Color indices (matching order in all_headers)</span>
+        <span class="n">BLACK</span><span class="p">,</span> <span class="n">WHITE</span><span class="p">,</span> <span class="n">GRAY</span><span class="p">,</span> <span class="n">PINK</span><span class="p">,</span> <span class="n">BROWN</span><span class="p">,</span> <span class="n">RED</span><span class="p">,</span> <span class="n">ORANGE</span><span class="p">,</span> <span class="n">YELLOW</span><span class="p">,</span> <span class="n">GREEN</span><span class="p">,</span> <span class="n">CYAN</span><span class="p">,</span> <span class="n">BLUE</span><span class="p">,</span> <span class="n">PURPLE</span> <span class="o">=</span> <span class="nb">range</span><span class="p">(</span><span class="mi">12</span><span class="p">)</span>
+
+        <span class="c1"># PRIORITY 1: NEUTRALS (take precedence over all hue-based classifications)</span>
+        <span class="c1"># Human perception: Very low saturation means we perceive it as achromatic</span>
+        <span class="c1"># regardless of nominal hue value (which is often noise in low-sat regions)</span>
+
+        <span class="c1"># Black: Very dark pixels</span>
+        <span class="n">black_mask</span> <span class="o">=</span> <span class="n">val</span> <span class="o">&lt;</span> <span class="n">black_max</span>
+        <span class="n">classification</span><span class="p">[</span><span class="n">black_mask</span><span class="p">]</span> <span class="o">=</span> <span class="n">BLACK</span>
+
+        <span class="c1"># White: Very bright and desaturated pixels</span>
+        <span class="n">white_mask</span> <span class="o">=</span> <span class="p">(</span><span class="n">sat</span> <span class="o">&lt;</span> <span class="n">neutral_sat</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">val</span> <span class="o">&gt;</span> <span class="n">white_min</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">classification</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">classification</span><span class="p">[</span><span class="n">white_mask</span><span class="p">]</span> <span class="o">=</span> <span class="n">WHITE</span>
+
+        <span class="c1"># Gray: Mid-range value with low saturation</span>
+        <span class="n">gray_mask</span> <span class="o">=</span> <span class="p">(</span><span class="n">sat</span> <span class="o">&lt;</span> <span class="n">neutral_sat</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">val</span> <span class="o">&gt;=</span> <span class="n">gray_min</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">val</span> <span class="o">&lt;=</span> <span class="n">gray_max</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">classification</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">classification</span><span class="p">[</span><span class="n">gray_mask</span><span class="p">]</span> <span class="o">=</span> <span class="n">GRAY</span>
+
+        <span class="c1"># PRIORITY 2: SPECIAL COLORS (complex saturation/value dependencies)</span>
+        <span class="c1"># These are perceptual categories that don&#39;t fit pure hue binning</span>
+
+        <span class="c1"># Pink: Desaturated red/magenta with high brightness</span>
+        <span class="c1"># Human perception: We call high-value, low-mid saturation reds &quot;pink&quot; not &quot;light red&quot;</span>
+        <span class="n">pink_hue_mask</span> <span class="o">=</span> <span class="p">((</span><span class="n">hue</span> <span class="o">&lt;=</span> <span class="mi">15</span><span class="p">)</span> <span class="o">|</span> <span class="p">(</span><span class="n">hue</span> <span class="o">&gt;=</span> <span class="mi">250</span><span class="p">))</span>
+        <span class="n">pink_mask</span> <span class="o">=</span> <span class="n">pink_hue_mask</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">sat</span> <span class="o">&gt;=</span> <span class="mi">20</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">sat</span> <span class="o">&lt;=</span> <span class="mi">60</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">val</span> <span class="o">&gt;</span> <span class="mi">80</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">classification</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">classification</span><span class="p">[</span><span class="n">pink_mask</span><span class="p">]</span> <span class="o">=</span> <span class="n">PINK</span>
+
+        <span class="c1"># Brown: Dark orange/red tones</span>
+        <span class="c1"># Human perception: We perceive dark orange as &quot;brown&quot; not &quot;dark orange&quot;</span>
+        <span class="c1"># This is a key difference between math (HSV) and human perception</span>
+        <span class="n">brown_hue_mask</span> <span class="o">=</span> <span class="p">(</span><span class="n">hue</span> <span class="o">&lt;=</span> <span class="mi">45</span><span class="p">)</span>
+        <span class="n">brown_mask</span> <span class="o">=</span> <span class="n">brown_hue_mask</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">val</span> <span class="o">&gt;=</span> <span class="mi">20</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">val</span> <span class="o">&lt;=</span> <span class="mi">60</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">classification</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">classification</span><span class="p">[</span><span class="n">brown_mask</span><span class="p">]</span> <span class="o">=</span> <span class="n">BROWN</span>
+
+        <span class="c1"># PRIORITY 3: STANDARD HUES (for remaining chromatic pixels)</span>
+        <span class="c1"># Now apply standard hue-based classification to remaining pixels</span>
+        <span class="c1"># These are the &quot;pure&quot; colors humans recognize from the color wheel</span>
+
+        <span class="c1"># Red: 0-15° and 345-360° (wraps around)</span>
+        <span class="n">red_mask</span> <span class="o">=</span> <span class="p">((</span><span class="n">hue</span> <span class="o">&lt;=</span> <span class="mi">15</span><span class="p">)</span> <span class="o">|</span> <span class="p">(</span><span class="n">hue</span> <span class="o">&gt;=</span> <span class="mi">345</span><span class="p">))</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">classification</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">classification</span><span class="p">[</span><span class="n">red_mask</span><span class="p">]</span> <span class="o">=</span> <span class="n">RED</span>
+
+        <span class="c1"># Orange: 15-45°</span>
+        <span class="n">orange_mask</span> <span class="o">=</span> <span class="p">(</span><span class="n">hue</span> <span class="o">&gt;</span> <span class="mi">15</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">hue</span> <span class="o">&lt;=</span> <span class="mi">45</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">classification</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">classification</span><span class="p">[</span><span class="n">orange_mask</span><span class="p">]</span> <span class="o">=</span> <span class="n">ORANGE</span>
+
+        <span class="c1"># Yellow: 45-75°</span>
+        <span class="n">yellow_mask</span> <span class="o">=</span> <span class="p">(</span><span class="n">hue</span> <span class="o">&gt;</span> <span class="mi">45</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">hue</span> <span class="o">&lt;=</span> <span class="mi">75</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">classification</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">classification</span><span class="p">[</span><span class="n">yellow_mask</span><span class="p">]</span> <span class="o">=</span> <span class="n">YELLOW</span>
+
+        <span class="c1"># Green: 75-150°</span>
+        <span class="n">green_mask</span> <span class="o">=</span> <span class="p">(</span><span class="n">hue</span> <span class="o">&gt;</span> <span class="mi">75</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">hue</span> <span class="o">&lt;=</span> <span class="mi">150</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">classification</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">classification</span><span class="p">[</span><span class="n">green_mask</span><span class="p">]</span> <span class="o">=</span> <span class="n">GREEN</span>
+
+        <span class="c1"># Cyan: 150-180°</span>
+        <span class="n">cyan_mask</span> <span class="o">=</span> <span class="p">(</span><span class="n">hue</span> <span class="o">&gt;</span> <span class="mi">150</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">hue</span> <span class="o">&lt;=</span> <span class="mi">180</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">classification</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">classification</span><span class="p">[</span><span class="n">cyan_mask</span><span class="p">]</span> <span class="o">=</span> <span class="n">CYAN</span>
+
+        <span class="c1"># Blue: 180-250°</span>
+        <span class="n">blue_mask</span> <span class="o">=</span> <span class="p">(</span><span class="n">hue</span> <span class="o">&gt;</span> <span class="mi">180</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">hue</span> <span class="o">&lt;=</span> <span class="mi">250</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">classification</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">classification</span><span class="p">[</span><span class="n">blue_mask</span><span class="p">]</span> <span class="o">=</span> <span class="n">BLUE</span>
+
+        <span class="c1"># Purple/Magenta: 250-345°</span>
+        <span class="n">purple_mask</span> <span class="o">=</span> <span class="p">(</span><span class="n">hue</span> <span class="o">&gt;</span> <span class="mi">250</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">hue</span> <span class="o">&lt;</span> <span class="mi">345</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">classification</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">classification</span><span class="p">[</span><span class="n">purple_mask</span><span class="p">]</span> <span class="o">=</span> <span class="n">PURPLE</span>
+
+        <span class="c1"># Calculate percentages for each color</span>
+        <span class="c1"># Use np.bincount for efficient counting</span>
+        <span class="n">counts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">bincount</span><span class="p">(</span><span class="n">classification</span><span class="p">[</span><span class="n">classification</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">],</span> <span class="n">minlength</span><span class="o">=</span><span class="mi">12</span><span class="p">)</span>
+        <span class="n">percentages</span> <span class="o">=</span> <span class="p">(</span><span class="n">counts</span><span class="o">/</span><span class="n">total_pixels</span><span class="o">*</span><span class="mi">100</span><span class="p">)</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+
+        <span class="k">return</span> <span class="n">percentages</span>
+
+<div class="viewcode-block" id="MeasureColorComposition.visualize_masks">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.measure.html#phenotypic.measure.MeasureColorComposition.visualize_masks">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">visualize_masks</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">,</span> <span class="n">top_n</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span> <span class="n">figsize</span><span class="p">:</span> <span class="nb">tuple</span> <span class="o">=</span> <span class="p">(</span><span class="mi">15</span><span class="p">,</span> <span class="mi">10</span><span class="p">)):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Visualize the color classification masks for debugging purposes.</span>
+
+<span class="sd">        Displays the original RGB image alongside masks for the top N most prevalent</span>
+<span class="sd">        colors detected in the image. This method uses vectorized 2D masks to avoid</span>
+<span class="sd">        memory issues with large images.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            image: The PhenoTypic Image object to visualize</span>
+<span class="sd">            top_n: Number of top colors to display (default: 3)</span>
+<span class="sd">            figsize: Figure size as (width, height) tuple (default: (15, 10))</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            tuple: (matplotlib.figure.Figure, numpy.ndarray of axes)</span>
+
+<span class="sd">        Example:</span>
+<span class="sd">            &gt;&gt;&gt; from phenotypic import Image</span>
+<span class="sd">            &gt;&gt;&gt; from phenotypic.measure import MeasureColorComposition</span>
+<span class="sd">            &gt;&gt;&gt; img = Image.imread(&#39;path/to/image.tif&#39;)</span>
+<span class="sd">            &gt;&gt;&gt; measurer = MeasureColorComposition()</span>
+<span class="sd">            &gt;&gt;&gt; fig, axes = measurer.visualize_masks(img, top_n=3)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+
+        <span class="c1"># Get HSV data - computed dynamically, not stored</span>
+        <span class="n">hsv_foreground</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">color</span><span class="o">.</span><span class="n">hsv</span><span class="o">.</span><span class="n">foreground</span><span class="p">()</span>
+        <span class="n">hue</span> <span class="o">=</span> <span class="n">hsv_foreground</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">hue_normalization</span>
+        <span class="n">saturation</span> <span class="o">=</span> <span class="n">hsv_foreground</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">sat_normalization</span>
+        <span class="n">value</span> <span class="o">=</span> <span class="n">hsv_foreground</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">2</span><span class="p">]</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">val_normalization</span>
+
+        <span class="c1"># Clean up large array immediately after extraction</span>
+        <span class="k">del</span> <span class="n">hsv_foreground</span>
+
+        <span class="c1"># Get object mask for foreground</span>
+        <span class="n">objmask</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">objmask</span><span class="p">[:]</span> <span class="o">==</span> <span class="mi">1</span>
+
+        <span class="c1"># Generate all color masks using the helper methods (works on 2D arrays)</span>
+        <span class="n">color_masks</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_all_color_masks</span><span class="p">(</span><span class="n">hue</span><span class="p">,</span> <span class="n">saturation</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+
+        <span class="c1"># Clean up HSV arrays</span>
+        <span class="k">del</span> <span class="n">hue</span><span class="p">,</span> <span class="n">saturation</span><span class="p">,</span> <span class="n">value</span>
+
+        <span class="c1"># Calculate percentages for foreground pixels only</span>
+        <span class="n">total_pixels</span> <span class="o">=</span> <span class="n">objmask</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">total_pixels</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">total_pixels</span> <span class="o">=</span> <span class="mi">1</span>  <span class="c1"># Avoid division by zero</span>
+
+        <span class="n">percentages</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">color_mask</span> <span class="ow">in</span> <span class="n">color_masks</span><span class="p">:</span>
+            <span class="c1"># Count only foreground pixels for each color</span>
+            <span class="n">count</span> <span class="o">=</span> <span class="p">(</span><span class="n">objmask</span> <span class="o">&amp;</span> <span class="n">color_mask</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+            <span class="n">percentage</span> <span class="o">=</span> <span class="p">(</span><span class="n">count</span> <span class="o">/</span> <span class="n">total_pixels</span> <span class="o">*</span> <span class="mi">100</span><span class="p">)</span>
+            <span class="n">percentages</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">percentage</span><span class="p">)</span>
+
+        <span class="n">percentages</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">percentages</span><span class="p">)</span>
+
+        <span class="c1"># Get top N colors</span>
+        <span class="n">color_names</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;Black&#39;</span><span class="p">,</span> <span class="s1">&#39;White&#39;</span><span class="p">,</span> <span class="s1">&#39;Gray&#39;</span><span class="p">,</span> <span class="s1">&#39;Pink&#39;</span><span class="p">,</span> <span class="s1">&#39;Brown&#39;</span><span class="p">,</span> <span class="s1">&#39;Red&#39;</span><span class="p">,</span>
+                       <span class="s1">&#39;Orange&#39;</span><span class="p">,</span> <span class="s1">&#39;Yellow&#39;</span><span class="p">,</span> <span class="s1">&#39;Green&#39;</span><span class="p">,</span> <span class="s1">&#39;Cyan&#39;</span><span class="p">,</span> <span class="s1">&#39;Blue&#39;</span><span class="p">,</span> <span class="s1">&#39;Purple&#39;</span><span class="p">]</span>
+        <span class="n">top_indices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argsort</span><span class="p">(</span><span class="n">percentages</span><span class="p">)[::</span><span class="o">-</span><span class="mi">1</span><span class="p">][:</span><span class="n">top_n</span><span class="p">]</span>
+
+        <span class="c1"># Create visualization</span>
+        <span class="n">n_plots</span> <span class="o">=</span> <span class="n">top_n</span> <span class="o">+</span> <span class="mi">1</span>  <span class="c1"># +1 for original image</span>
+        <span class="n">fig</span><span class="p">,</span> <span class="n">axes</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">n_plots</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="n">figsize</span><span class="p">)</span>
+
+        <span class="c1"># Display original image</span>
+        <span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">image</span><span class="o">.</span><span class="n">rgb</span><span class="p">[:])</span>
+        <span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s1">&#39;Original Image&#39;</span><span class="p">)</span>
+        <span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">axis</span><span class="p">(</span><span class="s1">&#39;off&#39;</span><span class="p">)</span>
+
+        <span class="c1"># Display top color masks (only the ones we need)</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">color_idx</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">top_indices</span><span class="p">):</span>
+            <span class="c1"># Get the mask for this color (already 2D, no reconstruction needed)</span>
+            <span class="n">color_mask</span> <span class="o">=</span> <span class="n">color_masks</span><span class="p">[</span><span class="n">color_idx</span><span class="p">]</span> <span class="o">&amp;</span> <span class="n">objmask</span>
+
+            <span class="c1"># Display mask</span>
+            <span class="n">axes</span><span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">color_mask</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="s1">&#39;gray&#39;</span><span class="p">)</span>
+            <span class="n">axes</span><span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">color_names</span><span class="p">[</span><span class="n">color_idx</span><span class="p">]</span><span class="si">}</span><span class="se">\n</span><span class="si">{</span><span class="n">percentages</span><span class="p">[</span><span class="n">color_idx</span><span class="p">]</span><span class="si">:</span><span class="s1">.1f</span><span class="si">}</span><span class="s1">%&#39;</span><span class="p">)</span>
+            <span class="n">axes</span><span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">axis</span><span class="p">(</span><span class="s1">&#39;off&#39;</span><span class="p">)</span>
+
+        <span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">fig</span><span class="p">,</span> <span class="n">axes</span></div>
+</div>
+
+
+
+<span class="c1"># Append documentation from MeasurementInfo class</span>
+<span class="n">MeasureColorComposition</span><span class="o">.</span><span class="vm">__doc__</span> <span class="o">=</span> <span class="n">ColorComposition</span><span class="o">.</span><span class="n">append_rst_to_doc</span><span class="p">(</span><span class="n">MeasureColorComposition</span><span class="p">)</span>
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, ExFAB BioFoundry.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.1.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

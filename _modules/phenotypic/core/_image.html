@@ -1,0 +1,599 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>phenotypic.core._image &#8212; PhenoTypic</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/custom.css?v=800a184d" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../../../_static/documentation_options.js?v=b3db6a4d"></script>
+    <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../../../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="../../../_static/design-tabs.js?v=f930bc37"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/phenotypic/core/_image';</script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.11.1" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+     
+  
+
+<a class="navbar-brand logo" href="../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../../_static/gradient_logo_exfab.svg" class="logo__image only-light" alt="PhenoTypic"/>
+    <img src="../../../_static/gradient_logo_exfab.svg" class="logo__image only-dark pst-js-only" alt="PhenoTypic"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../user_guide/index.html">
+    User Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../api_reference/index.html">
+    API Reference
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../contrib_guide/index.html">
+    Developer Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../downloadables.html">
+    Downloads
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/Wheeldon-Lab/PhenoScope#" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../user_guide/index.html">
+    User Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../api_reference/index.html">
+    API Reference
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../contrib_guide/index.html">
+    Developer Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../downloadables.html">
+    Downloads
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/Wheeldon-Lab/PhenoScope#" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">phenotypic.core._image</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for phenotypic.core._image</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Literal</span><span class="p">,</span> <span class="n">TYPE_CHECKING</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">colour</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
+<span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span> <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">._image_parts._image_io_handler</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImageIOHandler</span>
+
+
+<div class="viewcode-block" id="Image">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.Image.html#phenotypic.Image">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">Image</span><span class="p">(</span><span class="n">ImageIOHandler</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Comprehensive image processing class with integrated data, color, and I/O management.</span>
+
+<span class="sd">    The `Image` class is the primary interface for image processing, analysis, and manipulation</span>
+<span class="sd">    within the PhenoTypic framework. It combines:</span>
+<span class="sd">    - Data management (image arrays, enhanced versions, object maps)</span>
+<span class="sd">    - Color space handling (RGB, grayscale, HSV, XYZ, Lab with color corrections)</span>
+<span class="sd">    - Object detection and analysis (object masks, labels, measurements)</span>
+<span class="sd">    - File I/O and metadata management (loading, saving, metadata extraction)</span>
+<span class="sd">    - Image manipulation (rotation, slicing, copying, visualization)</span>
+
+<span class="sd">    Image data can be provided as:</span>
+<span class="sd">    - NumPy arrays (2-D grayscale or 3-D RGB/RGBA)</span>
+<span class="sd">    - Another Image instance (copies all data)</span>
+<span class="sd">    - Loaded from file via imread()</span>
+
+<span class="sd">    The class automatically manages format conversions and maintains internal consistency</span>
+<span class="sd">    across multiple data representations. RGB and grayscale forms are kept synchronized,</span>
+<span class="sd">    and additional representations (enhanced grayscale, object maps) support analysis workflows.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        rgb (ImageRGB): RGB image accessor (empty for grayscale-only images).</span>
+<span class="sd">        gray (Grayscale): Grayscale image accessor (always present).</span>
+<span class="sd">        enh_gray (EnhancedGrayscale): Enhanced grayscale for preprocessing and detection.</span>
+<span class="sd">        objmask (ObjectMask): Binary mask indicating analyzed regions.</span>
+<span class="sd">        objmap (ObjectMap): Integer labels for detected objects.</span>
+<span class="sd">        metadata (MetadataAccessor): Protected, public, and imported metadata access.</span>
+<span class="sd">        color (ColorAccessor): Color space transformations (XYZ, Lab, HSV, etc.).</span>
+<span class="sd">        objects (ObjectsAccessor): Object-specific measurements and analysis.</span>
+
+<span class="sd">    Notes:</span>
+<span class="sd">        - 2-D input arrays are treated as grayscale; rgb form remains empty.</span>
+<span class="sd">        - 3-D input arrays are treated as RGB; grayscale is computed automatically.</span>
+<span class="sd">        - Color space properties (gamma_encoding, illuminant, observer) are inherited.</span>
+<span class="sd">        - Object detection and measurements require an ObjectDetector first.</span>
+<span class="sd">        - HSV color space support added in v0.5.0.</span>
+
+<span class="sd">    Examples:</span>
+<span class="sd">        Create from array:</span>
+
+<span class="sd">        ```python</span>
+<span class="sd">        import numpy as np</span>
+<span class="sd">        from phenotypic import Image</span>
+
+<span class="sd">        arr = np.random.randint(0, 256, (480, 640, 3), dtype=np.uint8)</span>
+<span class="sd">        img = Image(arr, name=&#39;sample&#39;)</span>
+<span class="sd">        img.show()</span>
+<span class="sd">        ```</span>
+
+<span class="sd">        Load from file:</span>
+
+<span class="sd">        ```python</span>
+<span class="sd">        img = Image.imread(&#39;photo.jpg&#39;)</span>
+<span class="sd">        print(img.shape)  # Image dimensions</span>
+<span class="sd">        img.save2pickle(&#39;saved.pkl&#39;)</span>
+<span class="sd">        ```</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="Image.__init__">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.Image.html#phenotypic.Image.__init__">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                 <span class="n">arr</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="n">Image</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                 <span class="n">name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                 <span class="n">bit_depth</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="mi">8</span><span class="p">,</span> <span class="mi">16</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                 <span class="n">gamma_encoding</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="s1">&#39;sRGB&#39;</span><span class="p">,</span>
+                 <span class="n">illuminant</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="s1">&#39;D65&#39;</span><span class="p">,</span>
+                 <span class="n">observer</span><span class="o">=</span><span class="s1">&#39;CIE 1931 2 Degree Standard Observer&#39;</span>
+
+                 <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize an Image instance with optional image data and color properties.</span>
+
+<span class="sd">        Creates a new Image with complete initialization of all data management, color space,</span>
+<span class="sd">        I/O, and object handling capabilities. The image can be initialized empty or with</span>
+<span class="sd">        data from a NumPy array or another Image instance.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            arr (np.ndarray | Image | None): Optional image data. Can be:</span>
+<span class="sd">                - A NumPy array of shape (height, width) for grayscale or</span>
+<span class="sd">                  (height, width, channels) for RGB/RGBA</span>
+<span class="sd">                - An existing Image instance to copy from</span>
+<span class="sd">                - None to create an empty image</span>
+<span class="sd">                Defaults to None.</span>
+<span class="sd">            name (str | None): Optional human-readable name for the image. If not provided,</span>
+<span class="sd">                the image UUID will be used as the name. Defaults to None.</span>
+<span class="sd">            bit_depth (Literal[8, 16] | None): The bit depth of the image data (8 or 16 bits).</span>
+<span class="sd">                If not specified and arr is provided, bit depth is automatically inferred</span>
+<span class="sd">                from the array dtype. Defaults to None.</span>
+<span class="sd">            gamma_encoding (str | None): The gamma encoding used for color correction.</span>
+<span class="sd">                &#39;sRGB&#39;: applies sRGB gamma correction (standard display gamma)</span>
+<span class="sd">                None: assumes linear RGB data</span>
+<span class="sd">                Only &#39;sRGB&#39; and None are supported. Defaults to &#39;sRGB&#39;.</span>
+<span class="sd">            illuminant (str | None): The reference illuminant for color calculations.</span>
+<span class="sd">                &#39;D65&#39;: standard daylight illuminant (recommended)</span>
+<span class="sd">                &#39;D50&#39;: standard illumination for imaging</span>
+<span class="sd">                Defaults to &#39;D65&#39;.</span>
+<span class="sd">            observer (str): The CIE standard observer model used in color calculations.</span>
+<span class="sd">                Common value is &#39;CIE 1931 2 Degree Standard Observer&#39; (standard).</span>
+<span class="sd">                Defaults to &#39;CIE 1931 2 Degree Standard Observer&#39;.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: If gamma_encoding is not &#39;sRGB&#39; or None.</span>
+<span class="sd">            ValueError: If illuminant is not &#39;D65&#39; or &#39;D50&#39;.</span>
+<span class="sd">            TypeError: If arr is provided but is not a NumPy array or Image instance.</span>
+
+<span class="sd">        Examples:</span>
+<span class="sd">            Create empty image:</span>
+
+<span class="sd">            ```python</span>
+<span class="sd">            img = Image(name=&#39;empty_image&#39;)</span>
+<span class="sd">            ```</span>
+
+<span class="sd">            Create from grayscale array:</span>
+
+<span class="sd">            ```python</span>
+<span class="sd">            gray_arr = np.random.randint(0, 256, (480, 640), dtype=np.uint8)</span>
+<span class="sd">            img = Image(gray_arr, name=&#39;grayscale_photo&#39;)</span>
+<span class="sd">            ```</span>
+
+<span class="sd">            Create from RGB array:</span>
+
+<span class="sd">            ```python</span>
+<span class="sd">            rgb_arr = np.random.randint(0, 256, (480, 640, 3), dtype=np.uint8)</span>
+<span class="sd">            img = Image(rgb_arr, name=&#39;color_photo&#39;, gamma_encoding=&#39;sRGB&#39;)</span>
+<span class="sd">            ```</span>
+
+<span class="sd">            Copy another image:</span>
+
+<span class="sd">            ```python</span>
+<span class="sd">            img1 = Image.imread(&#39;original.jpg&#39;)</span>
+<span class="sd">            img2 = Image(img1, name=&#39;copy_of_original&#39;)</span>
+<span class="sd">            ```</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
+                <span class="n">arr</span><span class="o">=</span><span class="n">arr</span><span class="p">,</span>
+                <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span>
+                <span class="n">bit_depth</span><span class="o">=</span><span class="n">bit_depth</span><span class="p">,</span>
+                <span class="n">gamma_encoding</span><span class="o">=</span><span class="n">gamma_encoding</span><span class="p">,</span>
+                <span class="n">illuminant</span><span class="o">=</span><span class="n">illuminant</span><span class="p">,</span>
+                <span class="n">observer</span><span class="o">=</span><span class="n">observer</span><span class="p">,</span>
+        <span class="p">)</span></div>
+</div>
+
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, ExFAB BioFoundry.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.1.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>
