@@ -144,9 +144,9 @@ class MeasureColorComposition(MeasureFeatures):
         hsv_foreground = image.color.hsv.foreground()
 
         # Normalize to human-readable ranges: H: 0-360, S: 0-100, V: 0-100
-        hue = hsv_foreground[..., 0] * self.hue_normalization
-        saturation = hsv_foreground[..., 1] * self.sat_normalization
-        value = hsv_foreground[..., 2] * self.val_normalization
+        hue = hsv_foreground[..., 0]*self.hue_normalization
+        saturation = hsv_foreground[..., 1]*self.sat_normalization
+        value = hsv_foreground[..., 2]*self.val_normalization
 
         # Get object map for per-object analysis
         objmap = image.objmap[:]
@@ -154,29 +154,14 @@ class MeasureColorComposition(MeasureFeatures):
         # Get unique object labels (excluding background 0)
         object_labels = image.objects.labels2series()
 
-        # Compute color composition for each object
+        # Compute color composition for each object using vectorized masks
         logger.info("Computing color composition for each object")
-        results = []
 
-        for label in object_labels:
-            # Create mask for this object
-            obj_mask = objmap == label
+        # Generate all color masks (2D boolean arrays)
+        color_masks = self._get_all_color_masks(hue, saturation, value)
 
-            # Extract HSV values for this object only
-            obj_hue = hue[obj_mask]
-            obj_sat = saturation[obj_mask]
-            obj_val = value[obj_mask]
-
-            # Calculate color percentages using the 11-color model
-            percentages = self._classify_colors(
-                obj_hue, obj_sat, obj_val,
-                black_max=self.black_value_max,
-                neutral_sat=self.neutral_sat_max,
-                white_min=self.white_value_min,
-                gray_min=self.gray_value_min,
-                gray_max=self.gray_value_max
-            )
-            results.append(percentages)
+        # Calculate percentages for all objects using vectorized operations
+        results = self._calculate_sum(objmap, object_labels, color_masks)
 
         # Create DataFrame
         data = {header: [result[i] for result in results]
@@ -187,13 +172,169 @@ class MeasureColorComposition(MeasureFeatures):
 
         return meas
 
+    def _get_black_mask(self, hue: np.ndarray, sat: np.ndarray, val: np.ndarray) -> np.ndarray:
+        """Get mask for black pixels."""
+        return val < self.black_value_max
+
+    def _get_white_mask(self, hue: np.ndarray, sat: np.ndarray, val: np.ndarray,
+                        exclude_mask: np.ndarray) -> np.ndarray:
+        """Get mask for white pixels."""
+        return (sat < self.neutral_sat_max) & (val > self.white_value_min) & ~exclude_mask
+
+    def _get_gray_mask(self, hue: np.ndarray, sat: np.ndarray, val: np.ndarray,
+                       exclude_mask: np.ndarray) -> np.ndarray:
+        """Get mask for gray pixels."""
+        return ((sat < self.neutral_sat_max) & (val >= self.gray_value_min) &
+                (val <= self.gray_value_max) & ~exclude_mask)
+
+    def _get_pink_mask(self, hue: np.ndarray, sat: np.ndarray, val: np.ndarray,
+                       exclude_mask: np.ndarray) -> np.ndarray:
+        """Get mask for pink pixels."""
+        pink_hue_mask = ((hue <= 15) | (hue >= 250))
+        return pink_hue_mask & (sat >= 20) & (sat <= 60) & (val > 80) & ~exclude_mask
+
+    def _get_brown_mask(self, hue: np.ndarray, sat: np.ndarray, val: np.ndarray,
+                        exclude_mask: np.ndarray) -> np.ndarray:
+        """Get mask for brown pixels."""
+        brown_hue_mask = (hue <= 45)
+        return brown_hue_mask & (val >= 20) & (val <= 60) & ~exclude_mask
+
+    def _get_red_mask(self, hue: np.ndarray, sat: np.ndarray, val: np.ndarray,
+                      exclude_mask: np.ndarray) -> np.ndarray:
+        """Get mask for red pixels."""
+        return ((hue <= 15) | (hue >= 345)) & ~exclude_mask
+
+    def _get_orange_mask(self, hue: np.ndarray, sat: np.ndarray, val: np.ndarray,
+                         exclude_mask: np.ndarray) -> np.ndarray:
+        """Get mask for orange pixels."""
+        return (hue > 15) & (hue <= 45) & ~exclude_mask
+
+    def _get_yellow_mask(self, hue: np.ndarray, sat: np.ndarray, val: np.ndarray,
+                         exclude_mask: np.ndarray) -> np.ndarray:
+        """Get mask for yellow pixels."""
+        return (hue > 45) & (hue <= 75) & ~exclude_mask
+
+    def _get_green_mask(self, hue: np.ndarray, sat: np.ndarray, val: np.ndarray,
+                        exclude_mask: np.ndarray) -> np.ndarray:
+        """Get mask for green pixels."""
+        return (hue > 75) & (hue <= 150) & ~exclude_mask
+
+    def _get_cyan_mask(self, hue: np.ndarray, sat: np.ndarray, val: np.ndarray,
+                       exclude_mask: np.ndarray) -> np.ndarray:
+        """Get mask for cyan pixels."""
+        return (hue > 150) & (hue <= 180) & ~exclude_mask
+
+    def _get_blue_mask(self, hue: np.ndarray, sat: np.ndarray, val: np.ndarray,
+                       exclude_mask: np.ndarray) -> np.ndarray:
+        """Get mask for blue pixels."""
+        return (hue > 180) & (hue <= 250) & ~exclude_mask
+
+    def _get_purple_mask(self, hue: np.ndarray, sat: np.ndarray, val: np.ndarray,
+                         exclude_mask: np.ndarray) -> np.ndarray:
+        """Get mask for purple pixels."""
+        return (hue > 250) & (hue < 345) & ~exclude_mask
+
+    def _get_all_color_masks(self, hue: np.ndarray, sat: np.ndarray,
+                             val: np.ndarray) -> list[np.ndarray]:
+        """
+        Generate all 12 color masks in priority order.
+
+        Args:
+            hue: Hue values (H x W)
+            sat: Saturation values (H x W)
+            val: Value/brightness (H x W)
+
+        Returns:
+            List of 12 boolean masks (one per color category)
+        """
+        # Track which pixels have been classified (cumulative exclude mask)
+        exclude_mask = np.zeros(hue.shape, dtype=bool)
+
+        # Priority 1: Neutrals
+        black_mask = self._get_black_mask(hue, sat, val)
+        exclude_mask |= black_mask
+
+        white_mask = self._get_white_mask(hue, sat, val, exclude_mask)
+        exclude_mask |= white_mask
+
+        gray_mask = self._get_gray_mask(hue, sat, val, exclude_mask)
+        exclude_mask |= gray_mask
+
+        # Priority 2: Special colors
+        pink_mask = self._get_pink_mask(hue, sat, val, exclude_mask)
+        exclude_mask |= pink_mask
+
+        brown_mask = self._get_brown_mask(hue, sat, val, exclude_mask)
+        exclude_mask |= brown_mask
+
+        # Priority 3: Standard hues
+        red_mask = self._get_red_mask(hue, sat, val, exclude_mask)
+        exclude_mask |= red_mask
+
+        orange_mask = self._get_orange_mask(hue, sat, val, exclude_mask)
+        exclude_mask |= orange_mask
+
+        yellow_mask = self._get_yellow_mask(hue, sat, val, exclude_mask)
+        exclude_mask |= yellow_mask
+
+        green_mask = self._get_green_mask(hue, sat, val, exclude_mask)
+        exclude_mask |= green_mask
+
+        cyan_mask = self._get_cyan_mask(hue, sat, val, exclude_mask)
+        exclude_mask |= cyan_mask
+
+        blue_mask = self._get_blue_mask(hue, sat, val, exclude_mask)
+        exclude_mask |= blue_mask
+
+        purple_mask = self._get_purple_mask(hue, sat, val, exclude_mask)
+
+        return [black_mask, white_mask, gray_mask, pink_mask, brown_mask,
+                red_mask, orange_mask, yellow_mask, green_mask, cyan_mask,
+                blue_mask, purple_mask]
+
+    def _calculate_sum(self, objmap: np.ndarray, object_labels: pd.Series,
+                       color_masks: list[np.ndarray]) -> list[list[float]]:
+        """
+        Calculate color composition percentages for each object.
+
+        Args:
+            objmap: Object label map (H x W)
+            object_labels: Series of object labels to process
+            color_masks: List of 12 boolean masks (one per color)
+
+        Returns:
+            List of percentage lists (one per object, 12 values each)
+        """
+        results = []
+
+        for label in object_labels:
+            # Create mask for this object
+            obj_mask = objmap == label
+            total_pixels = obj_mask.sum()
+
+            if total_pixels == 0:
+                # No pixels in object, return zeros
+                results.append([0.0] * 12)
+                continue
+
+            # Calculate percentage for each color
+            percentages = []
+            for color_mask in color_masks:
+                count = (obj_mask & color_mask).sum()
+                percentage = (count / total_pixels * 100)
+                percentages.append(percentage)
+
+            results.append(percentages)
+
+        return results
+
     @staticmethod
     def _classify_colors(hue: np.ndarray, sat: np.ndarray, val: np.ndarray,
-                        black_max: float = 20.0,
-                        neutral_sat: float = 15.0,
-                        white_min: float = 85.0,
-                        gray_min: float = 20.0,
-                        gray_max: float = 85.0) -> list:
+                         black_max: float = 20.0,
+                         neutral_sat: float = 15.0,
+                         white_min: float = 85.0,
+                         gray_min: float = 20.0,
+                         gray_max: float = 85.0) -> list:
         """
         Classify pixels into 11 perceptual color categories using priority hierarchy.
 
@@ -221,7 +362,7 @@ class MeasureColorComposition(MeasureFeatures):
         total_pixels = len(hue)
         if total_pixels == 0:
             # Return zeros for all categories if no pixels
-            return [0.0] * 12
+            return [0.0]*12
 
         # Initialize classification array (will store color index for each pixel)
         # -1 means unclassified
@@ -297,7 +438,7 @@ class MeasureColorComposition(MeasureFeatures):
         # Calculate percentages for each color
         # Use np.bincount for efficient counting
         counts = np.bincount(classification[classification >= 0], minlength=12)
-        percentages = (counts / total_pixels * 100).tolist()
+        percentages = (counts/total_pixels*100).tolist()
 
         return percentages
 
@@ -306,8 +447,8 @@ class MeasureColorComposition(MeasureFeatures):
         Visualize the color classification masks for debugging purposes.
 
         Displays the original RGB image alongside masks for the top N most prevalent
-        colors detected in the image. This method processes data dynamically to avoid
-        memory issues, only creating the masks needed for visualization.
+        colors detected in the image. This method uses vectorized 2D masks to avoid
+        memory issues with large images.
 
         Args:
             image: The PhenoTypic Image object to visualize
@@ -320,7 +461,7 @@ class MeasureColorComposition(MeasureFeatures):
         Example:
             >>> from phenotypic import Image
             >>> from phenotypic.measure import MeasureColorComposition
-            >>> img = Image.load('path/to/image.tif')
+            >>> img = Image.imread('path/to/image.tif')
             >>> measurer = MeasureColorComposition()
             >>> fig, axes = measurer.visualize_masks(img, top_n=3)
         """
@@ -328,66 +469,35 @@ class MeasureColorComposition(MeasureFeatures):
 
         # Get HSV data - computed dynamically, not stored
         hsv_foreground = image.color.hsv.foreground()
-        hue = hsv_foreground[..., 0] * self.hue_normalization
-        saturation = hsv_foreground[..., 1] * self.sat_normalization
-        value = hsv_foreground[..., 2] * self.val_normalization
+        hue = hsv_foreground[..., 0]*self.hue_normalization
+        saturation = hsv_foreground[..., 1]*self.sat_normalization
+        value = hsv_foreground[..., 2]*self.val_normalization
 
         # Clean up large array immediately after extraction
         del hsv_foreground
 
         # Get object mask for foreground
-        objmask = image.objmask[:]
+        objmask = image.objmask[:] == 1
 
-        # Flatten HSV arrays for classification (views, not copies)
-        hue_flat = hue[objmask]
-        sat_flat = saturation[objmask]
-        val_flat = value[objmask]
+        # Generate all color masks using the helper methods (works on 2D arrays)
+        color_masks = self._get_all_color_masks(hue, saturation, value)
 
-        # Classify colors using instance parameters
-        total_pixels = len(hue_flat)
-        classification = np.full(total_pixels, -1, dtype=np.int8)
+        # Clean up HSV arrays
+        del hue, saturation, value
 
-        # Color indices
-        BLACK, WHITE, GRAY, PINK, BROWN, RED, ORANGE, YELLOW, GREEN, CYAN, BLUE, PURPLE = range(12)
+        # Calculate percentages for foreground pixels only
+        total_pixels = objmask.sum()
+        if total_pixels == 0:
+            total_pixels = 1  # Avoid division by zero
 
-        # Priority 1: Neutrals (use instance parameters)
-        black_mask = val_flat < self.black_value_max
-        classification[black_mask] = BLACK
-        white_mask = (sat_flat < self.neutral_sat_max) & (val_flat > self.white_value_min) & (classification == -1)
-        classification[white_mask] = WHITE
-        gray_mask = (sat_flat < self.neutral_sat_max) & (val_flat >= self.gray_value_min) & (val_flat <= self.gray_value_max) & (classification == -1)
-        classification[gray_mask] = GRAY
+        percentages = []
+        for color_mask in color_masks:
+            # Count only foreground pixels for each color
+            count = (objmask & color_mask).sum()
+            percentage = (count / total_pixels * 100)
+            percentages.append(percentage)
 
-        # Priority 2: Special colors
-        pink_hue_mask = ((hue_flat <= 15) | (hue_flat >= 250))
-        pink_mask = pink_hue_mask & (sat_flat >= 20) & (sat_flat <= 60) & (val_flat > 80) & (classification == -1)
-        classification[pink_mask] = PINK
-        brown_hue_mask = (hue_flat <= 45)
-        brown_mask = brown_hue_mask & (val_flat >= 20) & (val_flat <= 60) & (classification == -1)
-        classification[brown_mask] = BROWN
-
-        # Priority 3: Standard hues
-        red_mask = ((hue_flat <= 15) | (hue_flat >= 345)) & (classification == -1)
-        classification[red_mask] = RED
-        orange_mask = (hue_flat > 15) & (hue_flat <= 45) & (classification == -1)
-        classification[orange_mask] = ORANGE
-        yellow_mask = (hue_flat > 45) & (hue_flat <= 75) & (classification == -1)
-        classification[yellow_mask] = YELLOW
-        green_mask = (hue_flat > 75) & (hue_flat <= 150) & (classification == -1)
-        classification[green_mask] = GREEN
-        cyan_mask = (hue_flat > 150) & (hue_flat <= 180) & (classification == -1)
-        classification[cyan_mask] = CYAN
-        blue_mask = (hue_flat > 180) & (hue_flat <= 250) & (classification == -1)
-        classification[blue_mask] = BLUE
-        purple_mask = (hue_flat > 250) & (hue_flat < 345) & (classification == -1)
-        classification[purple_mask] = PURPLE
-
-        # Clean up intermediate arrays
-        del hue_flat, sat_flat, val_flat, hue, saturation, value
-
-        # Calculate percentages to find top colors
-        counts = np.bincount(classification[classification >= 0], minlength=12)
-        percentages = (counts / total_pixels * 100) if total_pixels > 0 else np.zeros(12)
+        percentages = np.array(percentages)
 
         # Get top N colors
         color_names = ['Black', 'White', 'Gray', 'Pink', 'Brown', 'Red',
@@ -403,25 +513,15 @@ class MeasureColorComposition(MeasureFeatures):
         axes[0].set_title('Original Image')
         axes[0].axis('off')
 
-        # Display top color masks (create on-demand, don't store all)
+        # Display top color masks (only the ones we need)
         for i, color_idx in enumerate(top_indices):
-            # Create mask for this specific color only (memory efficient)
-            color_mask_flat = (classification == color_idx)
-
-            # Reconstruct 2D mask only for this color
-            mask_2d = np.zeros(image.shape[:2], dtype=bool)
-            mask_2d[objmask] = color_mask_flat
+            # Get the mask for this color (already 2D, no reconstruction needed)
+            color_mask = color_masks[color_idx] & objmask
 
             # Display mask
-            axes[i + 1].imshow(mask_2d, cmap='gray')
+            axes[i + 1].imshow(color_mask, cmap='gray')
             axes[i + 1].set_title(f'{color_names[color_idx]}\n{percentages[color_idx]:.1f}%')
             axes[i + 1].axis('off')
-
-            # Clean up immediately
-            del color_mask_flat, mask_2d
-
-        # Clean up classification array
-        del classification
 
         plt.tight_layout()
         return fig, axes

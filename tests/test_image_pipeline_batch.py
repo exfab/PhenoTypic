@@ -8,7 +8,7 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from phenotypic import Image, ImagePipeline, ImageSet
+from phenotypic import Image, ImagePipeline
 from phenotypic.abc_ import MeasureFeatures, ObjectDetector
 from phenotypic.data import load_plate_12hr
 from phenotypic.detect import OtsuDetector
@@ -39,6 +39,7 @@ class DetectFull(ObjectDetector):
 
 def _make_imageset(tmp_path: Path):
     from phenotypic.data import load_synthetic_colony
+    from phenotypic import ImageSet
 
     image1 = load_synthetic_colony(mode='Image')
     image1.name = 'synth1'
