@@ -50,9 +50,11 @@ class ImageIOHandler(ImageColorSpace):
     extraction supports round-trip storage and recovery of PhenoTypic-specific data.
 
     Examples:
-        >>> img = ImageIOHandler.imread('photo.jpg')
-        >>> img.save2hdf5('output.h5')
-        >>> loaded = ImageIOHandler.load_hdf5('output.h5', 'photo')
+        .. dropdown:: Basic usage
+
+            >>> img = ImageIOHandler.imread('photo.jpg')
+            >>> img.save2hdf5('output.h5')
+            >>> loaded = ImageIOHandler.load_hdf5('output.h5', 'photo')
     """
 
     def __init__(self,
@@ -569,9 +571,11 @@ class ImageIOHandler(ImageColorSpace):
             - All numeric data types are preserved when storing.
 
         Examples:
-            >>> img = Image.imread('photo.jpg')
-            >>> img.save2hdf5('output.h5')
-            >>> img.save2hdf5('output.h5', compression='szip')
+            .. dropdown:: Save to HDF5
+
+                >>> img = Image.imread('photo.jpg')
+                >>> img.save2hdf5('output.h5')
+                >>> img.save2hdf5('output.h5', compression='szip')
         """
         with h5py.File(filename, mode="a") as filehandler:
             # 1) Create image group if it doesnt already exist & sets grp obj
@@ -650,9 +654,11 @@ class ImageIOHandler(ImageColorSpace):
             - Pickle files may not be compatible across Python versions.
 
         Examples:
-            >>> img = Image.imread('photo.jpg')
-            >>> img.save2pickle('image.pkl')
-            >>> loaded = Image.load_pickle('image.pkl')
+            .. dropdown:: Save to pickle
+
+                >>> img = Image.imread('photo.jpg')
+                >>> img.save2pickle('image.pkl')
+                >>> loaded = Image.load_pickle('image.pkl')
         """
         with open(filename, 'wb') as filehandler:
             pickle.dump({
@@ -689,8 +695,10 @@ class ImageIOHandler(ImageColorSpace):
             - Metadata (protected and public) is fully restored.
 
         Examples:
-            >>> loaded = Image.load_pickle('image.pkl')
-            >>> print(loaded.shape)
+            .. dropdown:: Load from pickle
+
+                >>> loaded = Image.load_pickle('image.pkl')
+                >>> print(loaded.shape)
         """
         with open(filename, 'rb') as f:
             loaded = pickle.load(f)

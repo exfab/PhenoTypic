@@ -56,3 +56,4 @@ debug/*.log
 # Development tools
 .ropeproject/
 .git.backup/
+CLAUDE.md

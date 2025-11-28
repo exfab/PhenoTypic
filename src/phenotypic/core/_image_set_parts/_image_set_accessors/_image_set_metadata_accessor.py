@@ -274,64 +274,71 @@ class ImageSetMetadataAccessor:
             RuntimeError: If there are issues with HDF5 file operations.
             
         Examples:
-            >>> # Example 1: Dictionary with constant values
-            >>> image_set.metadata.update_metadata({
-            ...     'experiment': 'growth_assay_1',
-            ...     'temperature': 37.0,
-            ...     'media_type': 'LB'
-            ... })
-            
-            >>> # Example 2: Dictionary with lambda functions
-            >>> image_set.metadata.update_metadata({
-            ...     'name_length': lambda name: len(name),
-            ...     'plate_row': lambda name: name.split('_')[0] if '_' in name else 'unknown'
-            ... })
-            
-            >>> # Example 3: Custom function for parsing complex metadata
-            >>> def parse_colony_metadata(metadata_dict, name):
-            ...     # Parse image name like "1_S_3" -> time=1, media=S, replicate=3
-            ...     parts = name.split('_')
-            ...     if len(parts) >= 3:
-            ...         return {
-            ...             'timepoint': int(parts[0]),
-            ...             'media_condition': parts[1], 
-            ...             'biological_replicate': int(parts[2]),
-            ...             'colony_count': len(metadata_dict.get('detected_objects', []))
-            ...         }
-            ...     return {}
-            >>> image_set.metadata.update_metadata(parse_colony_metadata)
-            
-            >>> # Example 4: Pandas Series for external data integration
-            >>> growth_rates = pd.Series([0.15, 0.23, 0.18], 
-            ...                          index=['img_1', 'img_2', 'img_3'],
-            ...                          name='growth_rate')
-            >>> image_set.metadata.update_metadata(growth_rates)
-            
-            >>> # Example 5: Preview mode to review changes before applying
-            >>> proposed = image_set.metadata.update_metadata(
-            ...     {'quality_score': lambda name: random.uniform(0.7, 1.0)},
-            ...     inplace=False
-            ... )
-            >>> print(proposed)  # Review proposed changes
-            >>> # Apply if satisfied
-            >>> image_set.metadata.update_metadata(
-            ...     {'quality_score': lambda name: random.uniform(0.7, 1.0)}
-            ... )
-            
-            >>> # Example 6: Selective updates on specific images
-            >>> image_set.metadata.update_metadata(
-            ...     {'processed': True},
-            ...     image_names=['img_1', 'img_3']
-            ... )
-            
-            >>> # Example 7: Function with additional parameters
-            >>> def calculate_growth_rate(metadata_dict, name, baseline=0.1):
-            ...     current_area = metadata_dict.get('colony_area', 0)
-            ...     return {'growth_rate': max(0, current_area - baseline)}
-            >>> image_set.metadata.update_metadata(
-            ...     calculate_growth_rate, 
-            ...     baseline=0.05
-            ... )
+            .. dropdown:: Dictionary with constant values
+
+                >>> image_set.metadata.update_metadata({
+                ...     'experiment': 'growth_assay_1',
+                ...     'temperature': 37.0,
+                ...     'media_type': 'LB'
+                ... })
+
+            .. dropdown:: Dictionary with lambda functions
+
+                >>> image_set.metadata.update_metadata({
+                ...     'name_length': lambda name: len(name),
+                ...     'plate_row': lambda name: name.split('_')[0] if '_' in name else 'unknown'
+                ... })
+
+            .. dropdown:: Custom function for parsing complex metadata
+
+                >>> def parse_colony_metadata(metadata_dict, name):
+                ...     # Parse image name like "1_S_3" -> time=1, media=S, replicate=3
+                ...     parts = name.split('_')
+                ...     if len(parts) >= 3:
+                ...         return {
+                ...             'timepoint': int(parts[0]),
+                ...             'media_condition': parts[1],
+                ...             'biological_replicate': int(parts[2]),
+                ...             'colony_count': len(metadata_dict.get('detected_objects', []))
+                ...         }
+                ...     return {}
+                >>> image_set.metadata.update_metadata(parse_colony_metadata)
+
+            .. dropdown:: Pandas Series for external data integration
+
+                >>> growth_rates = pd.Series([0.15, 0.23, 0.18],
+                ...                          index=['img_1', 'img_2', 'img_3'],
+                ...                          name='growth_rate')
+                >>> image_set.metadata.update_metadata(growth_rates)
+
+            .. dropdown:: Preview mode to review changes before applying
+
+                >>> proposed = image_set.metadata.update_metadata(
+                ...     {'quality_score': lambda name: random.uniform(0.7, 1.0)},
+                ...     inplace=False
+                ... )
+                >>> print(proposed)  # Review proposed changes
+                >>> # Apply if satisfied
+                >>> image_set.metadata.update_metadata(
+                ...     {'quality_score': lambda name: random.uniform(0.7, 1.0)}
+                ... )
+
+            .. dropdown:: Selective updates on specific images
+
+                >>> image_set.metadata.update_metadata(
+                ...     {'processed': True},
+                ...     image_names=['img_1', 'img_3']
+                ... )
+
+            .. dropdown:: Function with additional parameters
+
+                >>> def calculate_growth_rate(metadata_dict, name, baseline=0.1):
+                ...     current_area = metadata_dict.get('colony_area', 0)
+                ...     return {'growth_rate': max(0, current_area - baseline)}
+                >>> image_set.metadata.update_metadata(
+                ...     calculate_growth_rate,
+                ...     baseline=0.05
+                ... )
         """
         # Get target image names
         if image_names is None:

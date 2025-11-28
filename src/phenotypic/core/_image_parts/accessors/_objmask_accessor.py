@@ -35,25 +35,25 @@ class ObjectMask(SingleChannelAccessor):
         are directly modified.
 
     Examples:
-        Basic access and slicing:
+        .. dropdown:: Basic access and slicing
 
-        ```python
-        # Access the mask as a dense array
-        mask_array = np.array(objmask)
+            .. code-block:: python
 
-        # Slice operations
-        region = objmask[10:50, 20:60]
+                # Access the mask as a dense array
+                mask_array = np.array(objmask)
 
-        # Modify mask regions
-        objmask[10:50, 20:60] = np.zeros((40, 40))
-        ```
+                # Slice operations
+                region = objmask[10:50, 20:60]
 
-        Creating foreground images:
+                # Modify mask regions
+                objmask[10:50, 20:60] = np.zeros((40, 40))
 
-        ```python
-        # Get foreground of a grayscale channel
-        foreground = image.gray.foreground()
-        ```
+        .. dropdown:: Creating foreground images
+
+            .. code-block:: python
+
+                # Get foreground of a grayscale channel
+                foreground = image.gray.foreground()
     """
 
     @property
@@ -89,14 +89,16 @@ class ObjectMask(SingleChannelAccessor):
                 int dtype (0 and 1 values), or the specified dtype.
 
         Examples:
-            ```python
-            # Use with NumPy functions
-            num_foreground_pixels = np.count_nonzero(objmask)
-            total_pixels = np.sum(objmask)
+            .. dropdown:: Using with NumPy functions and type conversion
 
-            # Explicit type conversion
-            mask_float = np.array(objmask, dtype=np.float32)
-            ```
+                .. code-block:: python
+
+                    # Use with NumPy functions
+                    num_foreground_pixels = np.count_nonzero(objmask)
+                    total_pixels = np.sum(objmask)
+
+                    # Explicit type conversion
+                    mask_float = np.array(objmask, dtype=np.float32)
         """
         arr = (self._backend.toarray() > 0).astype(int)
         if dtype is not None:
@@ -121,19 +123,21 @@ class ObjectMask(SingleChannelAccessor):
                 the mask, with the same shape as the indexed region.
 
         Examples:
-            ```python
-            # Single row
-            row = objmask[10]
+            .. dropdown:: NumPy slicing and indexing operations
 
-            # Rectangular region
-            region = objmask[10:50, 20:60]
+                .. code-block:: python
 
-            # Column
-            col = objmask[:, 5]
+                    # Single row
+                    row = objmask[10]
 
-            # Boolean indexing
-            foreground_indices = objmask > 0
-            ```
+                    # Rectangular region
+                    region = objmask[10:50, 20:60]
+
+                    # Column
+                    col = objmask[:, 5]
+
+                    # Boolean indexing
+                    foreground_indices = objmask > 0
         """
         return (self._backend.toarray()[key] > 0).astype(int)
 
@@ -164,17 +168,19 @@ class ObjectMask(SingleChannelAccessor):
                 match the shape of the indexed mask region.
 
         Examples:
-            ```python
-            # Set a rectangular region to background (0)
-            objmask[10:50, 20:60] = 0
+            .. dropdown:: Setting mask regions with scalars and arrays
 
-            # Set with a matching array
-            region_mask = np.ones((40, 40))
-            objmask[10:50, 20:60] = region_mask
+                .. code-block:: python
 
-            # Set single pixel
-            objmask[5, 10] = True
-            ```
+                    # Set a rectangular region to background (0)
+                    objmask[10:50, 20:60] = 0
+
+                    # Set with a matching array
+                    region_mask = np.ones((40, 40))
+                    objmask[10:50, 20:60] = region_mask
+
+                    # Set single pixel
+                    objmask[5, 10] = True
 
         Note:
             The entire mask is relabeled after any modification. This ensures
@@ -220,10 +226,12 @@ class ObjectMask(SingleChannelAccessor):
                 parent image dimensions.
 
         Examples:
-            ```python
-            height, width = objmask.shape
-            assert objmask.shape == image.gray.shape
-            ```
+            .. dropdown:: Accessing mask shape
+
+                .. code-block:: python
+
+                    height, width = objmask.shape
+                    assert objmask.shape == image.gray.shape
         """
         return self._root_image.objmap.shape
 
@@ -239,11 +247,13 @@ class ObjectMask(SingleChannelAccessor):
                 of the original sparse representation.
 
         Examples:
-            ```python
-            # Create a modifiable copy for processing
-            mask_copy = objmask.copy()
-            mask_copy[10:50, 20:60] = 0  # Doesn't affect objmask
-            ```
+            .. dropdown:: Creating an independent mask copy
+
+                .. code-block:: python
+
+                    # Create a modifiable copy for processing
+                    mask_copy = objmask.copy()
+                    mask_copy[10:50, 20:60] = 0  # Doesn't affect objmask
         """
         return (self._backend.toarray() > 0).astype(int).copy()
 
@@ -255,11 +265,13 @@ class ObjectMask(SingleChannelAccessor):
         re-segmenting the image or clearing previous detection results.
 
         Examples:
-            ```python
-            # Clear the mask and object map
-            objmask.reset()
-            # Now objmask contains only background (0s)
-            ```
+            .. dropdown:: Resetting the mask to cleared state
+
+                .. code-block:: python
+
+                    # Clear the mask and object map
+                    objmask.reset()
+                    # Now objmask contains only background (0s)
 
         Note:
             This operation affects both the object mask and the parent image's object
@@ -294,18 +306,20 @@ class ObjectMask(SingleChannelAccessor):
                 the rendered mask.
 
         Examples:
-            ```python
-            # Display with default settings
-            fig, ax = objmask.show()
+            .. dropdown:: Displaying the mask with various options
 
-            # Display with custom size and title
-            fig, ax = objmask.show(figsize=(8, 8), title='Object Mask')
+                .. code-block:: python
 
-            # Display on existing axes
-            fig, (ax1, ax2) = plt.subplots(1, 2)
-            objmask.show(ax=ax1, title='Mask')
-            image.gray.show(ax=ax2, title='Original')
-            ```
+                    # Display with default settings
+                    fig, ax = objmask.show()
+
+                    # Display with custom size and title
+                    fig, ax = objmask.show(figsize=(8, 8), title='Object Mask')
+
+                    # Display on existing axes
+                    fig, (ax1, ax2) = plt.subplots(1, 2)
+                    objmask.show(ax=ax1, title='Mask')
+                    image.gray.show(ax=ax2, title='Original')
         """
         return self._plot(arr=self._subject_arr, figsize=figsize, ax=ax, title=title, cmap=cmap)
 
@@ -328,16 +342,18 @@ class ObjectMask(SingleChannelAccessor):
                 Foreground pixels retain their original values.
 
         Examples:
-            ```python
-            # Extract foreground from a grayscale image
-            foreground = objmask._create_foreground(image.gray[:])
+            .. dropdown:: Extracting foreground from various array types
 
-            # Extract foreground from RGB image
-            foreground_rgb = objmask._create_foreground(image.rgb[:])
+                .. code-block:: python
 
-            # Set background to white (255 for uint8)
-            foreground = objmask._create_foreground(image.gray[:], bg_label=255)
-            ```
+                    # Extract foreground from a grayscale image
+                    foreground = objmask._create_foreground(image.gray[:])
+
+                    # Extract foreground from RGB image
+                    foreground_rgb = objmask._create_foreground(image.rgb[:])
+
+                    # Set background to white (255 for uint8)
+                    foreground = objmask._create_foreground(image.gray[:], bg_label=255)
 
         Note:
             This is an internal method used by the parent image's accessor classes

@@ -34,28 +34,28 @@ class ObjectsAccessor:
         _root_image (Image): The parent Image containing the labeled colony map (objmap).
 
     Examples:
-        Access detected colonies and measure their properties:
+        .. dropdown:: Access detected colonies and measure their properties
 
-        ```python
-        from phenotypic import Image
-        from phenotypic.detect import GitterDetector
+            .. code-block:: python
 
-        # Load plate image and detect colonies
-        plate = Image.from_file("colony_array.png")
-        detector = GitterDetector()
-        detector.apply(plate)
+                from phenotypic import Image
+                from phenotypic.detect import GitterDetector
 
-        # Access colony properties
-        print(f"Detected {len(plate.objects)} colonies")
+                # Load plate image and detect colonies
+                plate = Image.from_file("colony_array.png")
+                detector = GitterDetector()
+                detector.apply(plate)
 
-        # Iterate over all colonies
-        for colony in plate.objects:
-            print(f"Colony area: {colony.gray.sum()}")
+                # Access colony properties
+                print(f"Detected {len(plate.objects)} colonies")
 
-        # Get information for all colonies
-        colony_info = plate.objects.info()
-        print(colony_info[["ObjectLabel", "Bbox_CenterRR", "Bbox_CenterCC"]])
-        ```
+                # Iterate over all colonies
+                for colony in plate.objects:
+                    print(f"Colony area: {colony.gray.sum()}")
+
+                # Get information for all colonies
+                colony_info = plate.objects.info()
+                print(colony_info[["ObjectLabel", "Bbox_CenterRR", "Bbox_CenterCC"]])
     """
 
     def __init__(self, root_image: Image):
@@ -71,20 +71,20 @@ class ObjectsAccessor:
                 identify and label individual colonies.
 
         Examples:
-            Accessor is created automatically when accessing colonies:
+            .. dropdown:: Accessor is created automatically when accessing colonies
 
-            ```python
-            from phenotypic import Image
-            from phenotypic.detect import GitterDetector
+                .. code-block:: python
 
-            plate = Image.from_file("plate.png")
-            detector = GitterDetector()
-            detector.apply(plate)
+                    from phenotypic import Image
+                    from phenotypic.detect import GitterDetector
 
-            # ObjectsAccessor is automatically initialized
-            accessor = plate.objects  # Uses __init__ internally
-            print(f"Found {len(accessor)} colonies")
-            ```
+                    plate = Image.from_file("plate.png")
+                    detector = GitterDetector()
+                    detector.apply(plate)
+
+                    # ObjectsAccessor is automatically initialized
+                    accessor = plate.objects  # Uses __init__ internally
+                    print(f"Found {len(accessor)} colonies")
         """
         self._root_image = root_image
 
@@ -100,29 +100,29 @@ class ObjectsAccessor:
                 colonies have been detected.
 
         Examples:
-            Check colony count after detection:
+            .. dropdown:: Check colony count after detection
 
-            ```python
-            from phenotypic import Image
-            from phenotypic.detect import GitterDetector
+                .. code-block:: python
 
-            plate = Image.from_file("96well_array.png")
-            detector = GitterDetector()
-            detector.apply(plate)
+                    from phenotypic import Image
+                    from phenotypic.detect import GitterDetector
 
-            # Check if expected number of colonies detected
-            colony_count = len(plate.objects)
-            expected_count = 96
-            if colony_count != expected_count:
-                print(f"Warning: Expected {expected_count} colonies, found {colony_count}")
-            ```
+                    plate = Image.from_file("96well_array.png")
+                    detector = GitterDetector()
+                    detector.apply(plate)
 
-            Use in conditional logic:
+                    # Check if expected number of colonies detected
+                    colony_count = len(plate.objects)
+                    expected_count = 96
+                    if colony_count != expected_count:
+                        print(f"Warning: Expected {expected_count} colonies, found {colony_count}")
 
-            ```python
-            if len(plate.objects) == 0:
-                raise RuntimeError("No colonies detected. Check detector parameters.")
-            ```
+            .. dropdown:: Use in conditional logic
+
+                .. code-block:: python
+
+                    if len(plate.objects) == 0:
+                        raise RuntimeError("No colonies detected. Check detector parameters.")
         """
         return self._root_image.num_objects
 
@@ -144,44 +144,44 @@ class ObjectsAccessor:
                 pixels set to 0.
 
         Examples:
-            Compute average intensity for each colony:
+            .. dropdown:: Compute average intensity for each colony
 
-            ```python
-            from phenotypic import Image
-            from phenotypic.detect import GitterDetector
+                .. code-block:: python
 
-            plate = Image.from_file("fluorescent_colonies.png")
-            detector = GitterDetector()
-            detector.apply(plate)
+                    from phenotypic import Image
+                    from phenotypic.detect import GitterDetector
 
-            # Calculate mean fluorescence for each colony
-            intensities = []
-            for colony in plate.objects:
-                mean_intensity = colony.gray.mean()
-                intensities.append(mean_intensity)
+                    plate = Image.from_file("fluorescent_colonies.png")
+                    detector = GitterDetector()
+                    detector.apply(plate)
 
-            print(f"Average colony intensity: {sum(intensities) / len(intensities)}")
-            ```
+                    # Calculate mean fluorescence for each colony
+                    intensities = []
+                    for colony in plate.objects:
+                        mean_intensity = colony.gray.mean()
+                        intensities.append(mean_intensity)
 
-            Filter colonies by size:
+                    print(f"Average colony intensity: {sum(intensities) / len(intensities)}")
 
-            ```python
-            # Get all colonies larger than 500 pixels
-            large_colonies = [
-                colony for colony in plate.objects
-                if (colony.objmap > 0).sum() > 500
-            ]
-            print(f"Found {len(large_colonies)} large colonies")
-            ```
+            .. dropdown:: Filter colonies by size
 
-            Extract colony names for tracking:
+                .. code-block:: python
 
-            ```python
-            colony_names = [
-                obj.metadata[METADATA.IMAGE_NAME]
-                for obj in plate.objects
-            ]
-            ```
+                    # Get all colonies larger than 500 pixels
+                    large_colonies = [
+                        colony for colony in plate.objects
+                        if (colony.objmap > 0).sum() > 500
+                    ]
+                    print(f"Found {len(large_colonies)} large colonies")
+
+            .. dropdown:: Extract colony names for tracking
+
+                .. code-block:: python
+
+                    colony_names = [
+                        obj.metadata[METADATA.IMAGE_NAME]
+                        for obj in plate.objects
+                    ]
         """
         for i in range(self._root_image.num_objects):
             yield self[i]
@@ -210,41 +210,41 @@ class ObjectsAccessor:
             IndexError: If index is negative or >= the total number of colonies.
 
         Examples:
-            Extract the first detected colony:
+            .. dropdown:: Extract the first detected colony
 
-            ```python
-            from phenotypic import Image
-            from phenotypic.detect import GitterDetector
+                .. code-block:: python
 
-            plate = Image.from_file("colony_plate.png")
-            detector = GitterDetector()
-            detector.apply(plate)
+                    from phenotypic import Image
+                    from phenotypic.detect import GitterDetector
 
-            # Get first colony
-            first_colony = plate.objects[0]
-            print(f"First colony label: {first_colony.objmap.max()}")
-            print(f"Colony size: {(first_colony.objmap > 0).sum()} pixels")
-            ```
+                    plate = Image.from_file("colony_plate.png")
+                    detector = GitterDetector()
+                    detector.apply(plate)
 
-            Access specific colonies for comparison:
+                    # Get first colony
+                    first_colony = plate.objects[0]
+                    print(f"First colony label: {first_colony.objmap.max()}")
+                    print(f"Colony size: {(first_colony.objmap > 0).sum()} pixels")
 
-            ```python
-            # Compare first and last colonies
-            first = plate.objects[0]
-            last = plate.objects[len(plate.objects) - 1]
+            .. dropdown:: Access specific colonies for comparison
 
-            print(f"First colony mean intensity: {first.gray.mean()}")
-            print(f"Last colony mean intensity: {last.gray.mean()}")
-            ```
+                .. code-block:: python
 
-            Use with enumerate for indexed processing:
+                    # Compare first and last colonies
+                    first = plate.objects[0]
+                    last = plate.objects[len(plate.objects) - 1]
 
-            ```python
-            for idx, colony in enumerate(plate.objects):
-                if idx % 10 == 0:
-                    # Process every 10th colony
-                    colony.show()
-            ```
+                    print(f"First colony mean intensity: {first.gray.mean()}")
+                    print(f"Last colony mean intensity: {last.gray.mean()}")
+
+            .. dropdown:: Use with enumerate for indexed processing
+
+                .. code-block:: python
+
+                    for idx, colony in enumerate(plate.objects):
+                        if idx % 10 == 0:
+                            # Process every 10th colony
+                            colony.show()
         """
         current_object = self.props[index]
         label = current_object.label
@@ -280,43 +280,43 @@ class ObjectsAccessor:
                 Refer to scikit-image documentation for the complete list of available properties.
 
         Examples:
-            Extract colony areas:
+            .. dropdown:: Extract colony areas
 
-            ```python
-            from phenotypic import Image
-            from phenotypic.detect import GitterDetector
+                .. code-block:: python
 
-            plate = Image.from_file("colony_array.png")
-            detector = GitterDetector()
-            detector.apply(plate)
+                    from phenotypic import Image
+                    from phenotypic.detect import GitterDetector
 
-            # Get areas of all colonies
-            areas = [prop.area for prop in plate.objects.props]
-            print(f"Colony sizes: {areas}")
-            print(f"Mean colony size: {sum(areas) / len(areas):.1f} pixels")
-            ```
+                    plate = Image.from_file("colony_array.png")
+                    detector = GitterDetector()
+                    detector.apply(plate)
 
-            Access multiple properties per colony:
+                    # Get areas of all colonies
+                    areas = [prop.area for prop in plate.objects.props]
+                    print(f"Colony sizes: {areas}")
+                    print(f"Mean colony size: {sum(areas) / len(areas):.1f} pixels")
 
-            ```python
-            for prop in plate.objects.props:
-                print(f"Colony {prop.label}:")
-                print(f"  Area: {prop.area} pixels")
-                print(f"  Centroid: ({prop.centroid[0]:.1f}, {prop.centroid[1]:.1f})")
-                print(f"  Mean intensity: {prop.mean_intensity:.2f}")
-                print(f"  Eccentricity: {prop.eccentricity:.3f}")
-            ```
+            .. dropdown:: Access multiple properties per colony
 
-            Filter colonies by morphology:
+                .. code-block:: python
 
-            ```python
-            # Find circular colonies (low eccentricity)
-            circular_colonies = [
-                prop for prop in plate.objects.props
-                if prop.eccentricity < 0.5
-            ]
-            print(f"Found {len(circular_colonies)} circular colonies")
-            ```
+                    for prop in plate.objects.props:
+                        print(f"Colony {prop.label}:")
+                        print(f"  Area: {prop.area} pixels")
+                        print(f"  Centroid: ({prop.centroid[0]:.1f}, {prop.centroid[1]:.1f})")
+                        print(f"  Mean intensity: {prop.mean_intensity:.2f}")
+                        print(f"  Eccentricity: {prop.eccentricity:.3f}")
+
+            .. dropdown:: Filter colonies by morphology
+
+                .. code-block:: python
+
+                    # Find circular colonies (low eccentricity)
+                    circular_colonies = [
+                        prop for prop in plate.objects.props
+                        if prop.eccentricity < 0.5
+                    ]
+                    print(f"Found {len(circular_colonies)} circular colonies")
         """
         return regionprops(label_image=self._root_image.objmap[:], intensity_image=self._root_image.gray[:],
                            cache=False)
@@ -337,41 +337,41 @@ class ObjectsAccessor:
                 if no colonies have been detected. Background pixels (labeled 0) are excluded.
 
         Examples:
-            Check which colonies are present:
+            .. dropdown:: Check which colonies are present
 
-            ```python
-            from phenotypic import Image
-            from phenotypic.detect import GitterDetector
+                .. code-block:: python
 
-            plate = Image.from_file("colony_array.png")
-            detector = GitterDetector()
-            detector.apply(plate)
+                    from phenotypic import Image
+                    from phenotypic.detect import GitterDetector
 
-            labels = plate.objects.labels
-            print(f"Detected colonies with labels: {labels}")
-            print(f"Labels range from {min(labels)} to {max(labels)}")
-            ```
+                    plate = Image.from_file("colony_array.png")
+                    detector = GitterDetector()
+                    detector.apply(plate)
 
-            Check if a specific colony exists:
+                    labels = plate.objects.labels
+                    print(f"Detected colonies with labels: {labels}")
+                    print(f"Labels range from {min(labels)} to {max(labels)}")
 
-            ```python
-            if 5 in plate.objects.labels:
-                colony_5 = plate.objects.loc(5)
-                print(f"Colony 5 area: {colony_5.gray.sum()}")
-            else:
-                print("Colony 5 not found")
-            ```
+            .. dropdown:: Check if a specific colony exists
 
-            Verify contiguous labeling:
+                .. code-block:: python
 
-            ```python
-            labels = plate.objects.labels
-            expected_labels = list(range(1, len(labels) + 1))
-            if labels == expected_labels:
-                print("Labels are contiguous")
-            else:
-                print("Labels have gaps - consider using relabel()")
-            ```
+                    if 5 in plate.objects.labels:
+                        colony_5 = plate.objects.loc(5)
+                        print(f"Colony 5 area: {colony_5.gray.sum()}")
+                    else:
+                        print("Colony 5 not found")
+
+            .. dropdown:: Verify contiguous labeling
+
+                .. code-block:: python
+
+                    labels = plate.objects.labels
+                    expected_labels = list(range(1, len(labels) + 1))
+                    if labels == expected_labels:
+                        print("Labels are contiguous")
+                    else:
+                        print("Labels have gaps - consider using relabel()")
         """
         # considered using a simple numpy.unique() call on the object map, but wanted to guarantee that the labels will always be consistent
         # with any skimage outputs.
@@ -397,42 +397,42 @@ class ObjectsAccessor:
                 - col_slice: slice(min_col, max_col) - includes cols from min_col to max_col-1
 
         Examples:
-            Extract bounding box regions from the grayscale image:
+            .. dropdown:: Extract bounding box regions from the grayscale image
 
-            ```python
-            from phenotypic import Image
-            from phenotypic.detect import GitterDetector
+                .. code-block:: python
 
-            plate = Image.from_file("colony_array.png")
-            detector = GitterDetector()
-            detector.apply(plate)
+                    from phenotypic import Image
+                    from phenotypic.detect import GitterDetector
 
-            # Get the bounding box region for the first colony
-            first_slice = plate.objects.slices[0]
-            first_colony_region = plate.gray[first_slice]
-            print(f"First colony bounding box shape: {first_colony_region.shape}")
-            ```
+                    plate = Image.from_file("colony_array.png")
+                    detector = GitterDetector()
+                    detector.apply(plate)
 
-            Process all colonies using their bounding boxes:
+                    # Get the bounding box region for the first colony
+                    first_slice = plate.objects.slices[0]
+                    first_colony_region = plate.gray[first_slice]
+                    print(f"First colony bounding box shape: {first_colony_region.shape}")
 
-            ```python
-            for idx, bbox_slice in enumerate(plate.objects.slices):
-                colony_region = plate.gray[bbox_slice]
-                mean_intensity = colony_region.mean()
-                print(f"Colony {idx}: mean intensity = {mean_intensity:.2f}")
-            ```
+            .. dropdown:: Process all colonies using their bounding boxes
 
-            Extract bounding boxes from multiple image channels:
+                .. code-block:: python
 
-            ```python
-            # Process RGB channels for each colony
-            for bbox_slice in plate.objects.slices:
-                r_channel = plate.rgb[bbox_slice][..., 0]
-                g_channel = plate.rgb[bbox_slice][..., 1]
-                b_channel = plate.rgb[bbox_slice][..., 2]
-                print(f"R: {r_channel.mean():.1f}, G: {g_channel.mean():.1f}, "
-                      f"B: {b_channel.mean():.1f}")
-            ```
+                    for idx, bbox_slice in enumerate(plate.objects.slices):
+                        colony_region = plate.gray[bbox_slice]
+                        mean_intensity = colony_region.mean()
+                        print(f"Colony {idx}: mean intensity = {mean_intensity:.2f}")
+
+            .. dropdown:: Extract bounding boxes from multiple image channels
+
+                .. code-block:: python
+
+                    # Process RGB channels for each colony
+                    for bbox_slice in plate.objects.slices:
+                        r_channel = plate.rgb[bbox_slice][..., 0]
+                        g_channel = plate.rgb[bbox_slice][..., 1]
+                        b_channel = plate.rgb[bbox_slice][..., 2]
+                        print(f"R: {r_channel.mean():.1f}, G: {g_channel.mean():.1f}, "
+                              f"B: {b_channel.mean():.1f}")
         """
         return [x.slice for x in self.props]
 
@@ -459,47 +459,47 @@ class ObjectsAccessor:
                 colony.
 
         Examples:
-            Map label to index for accessing properties:
+            .. dropdown:: Map label to index for accessing properties
 
-            ```python
-            from phenotypic import Image
-            from phenotypic.detect import GitterDetector
+                .. code-block:: python
 
-            plate = Image.from_file("colony_array.png")
-            detector = GitterDetector()
-            detector.apply(plate)
+                    from phenotypic import Image
+                    from phenotypic.detect import GitterDetector
 
-            # Find the position index for colony label 5
-            idx = plate.objects.get_label_idx(5)
-            print(f"Colony with label 5 is at position {idx}")
+                    plate = Image.from_file("colony_array.png")
+                    detector = GitterDetector()
+                    detector.apply(plate)
 
-            # Use the index to access properties
-            colony_slice = plate.objects.slices[idx]
-            colony_props = plate.objects.props[idx]
-            print(f"Colony 5 area: {colony_props.area}")
-            ```
+                    # Find the position index for colony label 5
+                    idx = plate.objects.get_label_idx(5)
+                    print(f"Colony with label 5 is at position {idx}")
 
-            Use with non-contiguous labels:
+                    # Use the index to access properties
+                    colony_slice = plate.objects.slices[idx]
+                    colony_props = plate.objects.props[idx]
+                    print(f"Colony 5 area: {colony_props.area}")
 
-            ```python
-            # After filtering, labels may not be contiguous
-            labels = plate.objects.labels  # e.g., [1, 2, 5, 8, 10]
+            .. dropdown:: Use with non-contiguous labels
 
-            # Get position index for label 8 (which is at position 3)
-            idx = plate.objects.get_label_idx(8)  # Returns 3
-            colony_8 = plate.objects.iloc(idx)
-            ```
+                .. code-block:: python
 
-            Verify label exists before accessing:
+                    # After filtering, labels may not be contiguous
+                    labels = plate.objects.labels  # e.g., [1, 2, 5, 8, 10]
 
-            ```python
-            desired_label = 42
-            if desired_label in plate.objects.labels:
-                idx = plate.objects.get_label_idx(desired_label)
-                print(f"Found colony {desired_label} at index {idx}")
-            else:
-                print(f"Colony {desired_label} not found")
-            ```
+                    # Get position index for label 8 (which is at position 3)
+                    idx = plate.objects.get_label_idx(8)  # Returns 3
+                    colony_8 = plate.objects.iloc(idx)
+
+            .. dropdown:: Verify label exists before accessing
+
+                .. code-block:: python
+
+                    desired_label = 42
+                    if desired_label in plate.objects.labels:
+                        idx = plate.objects.get_label_idx(desired_label)
+                        print(f"Found colony {desired_label} at index {idx}")
+                    else:
+                        print(f"Colony {desired_label} not found")
         """
         return np.where(self.labels == object_label)[0][0]
 
@@ -516,28 +516,28 @@ class ObjectsAccessor:
                 if no colonies have been detected.
 
         Examples:
-            Verify expected colony count:
+            .. dropdown:: Verify expected colony count
 
-            ```python
-            from phenotypic import Image
-            from phenotypic.detect import GitterDetector
+                .. code-block:: python
 
-            plate = Image.from_file("96well_plate.png")
-            detector = GitterDetector()
-            detector.apply(plate)
+                    from phenotypic import Image
+                    from phenotypic.detect import GitterDetector
 
-            # Check if detection found the expected number of colonies
-            expected = 96
-            actual = plate.objects.num_objects
-            if actual != expected:
-                print(f"Warning: Expected {expected} colonies, found {actual}")
-            ```
+                    plate = Image.from_file("96well_plate.png")
+                    detector = GitterDetector()
+                    detector.apply(plate)
 
-            Verify consistency with len():
+                    # Check if detection found the expected number of colonies
+                    expected = 96
+                    actual = plate.objects.num_objects
+                    if actual != expected:
+                        print(f"Warning: Expected {expected} colonies, found {actual}")
 
-            ```python
-            assert plate.objects.num_objects == len(plate.objects)
-            ```
+            .. dropdown:: Verify consistency with len()
+
+                .. code-block:: python
+
+                    assert plate.objects.num_objects == len(plate.objects)
         """
         return self._root_image.num_objects
 
@@ -557,36 +557,36 @@ class ObjectsAccessor:
                 is returned.
 
         Examples:
-            Clear detections to re-run with different parameters:
+            .. dropdown:: Clear detections to re-run with different parameters
 
-            ```python
-            from phenotypic import Image
-            from phenotypic.detect import GitterDetector
+                .. code-block:: python
 
-            plate = Image.from_file("colony_array.png")
+                    from phenotypic import Image
+                    from phenotypic.detect import GitterDetector
 
-            # First detection attempt
-            detector1 = GitterDetector(threshold=0.5)
-            detector1.apply(plate)
-            print(f"First attempt: {plate.objects.num_objects} colonies")
+                    plate = Image.from_file("colony_array.png")
 
-            # Clear and try with different parameters
-            plate.objects.reset()
-            print(f"After reset: {plate.objects.num_objects} colonies")  # 0
+                    # First detection attempt
+                    detector1 = GitterDetector(threshold=0.5)
+                    detector1.apply(plate)
+                    print(f"First attempt: {plate.objects.num_objects} colonies")
 
-            detector2 = GitterDetector(threshold=0.3)
-            detector2.apply(plate)
-            print(f"Second attempt: {plate.objects.num_objects} colonies")
-            ```
+                    # Clear and try with different parameters
+                    plate.objects.reset()
+                    print(f"After reset: {plate.objects.num_objects} colonies")  # 0
 
-            Verify reset clears all colonies:
+                    detector2 = GitterDetector(threshold=0.3)
+                    detector2.apply(plate)
+                    print(f"Second attempt: {plate.objects.num_objects} colonies")
 
-            ```python
-            plate.objects.reset()
-            assert plate.num_objects == 0
-            assert len(plate.objects.labels) == 0
-            assert plate.objmap.max() == 0
-            ```
+            .. dropdown:: Verify reset clears all colonies
+
+                .. code-block:: python
+
+                    plate.objects.reset()
+                    assert plate.num_objects == 0
+                    assert len(plate.objects.labels) == 0
+                    assert plate.objmap.max() == 0
         """
         self._root_image.objmap.reset()
 
@@ -615,42 +615,42 @@ class ObjectsAccessor:
             IndexError: If index is negative or >= num_objects.
 
         Examples:
-            Access first colony with pandas-style syntax:
+            .. dropdown:: Access first colony with pandas-style syntax
 
-            ```python
-            from phenotypic import Image
-            from phenotypic.detect import GitterDetector
+                .. code-block:: python
 
-            plate = Image.from_file("colony_array.png")
-            detector = GitterDetector()
-            detector.apply(plate)
+                    from phenotypic import Image
+                    from phenotypic.detect import GitterDetector
 
-            # Access first colony
-            first = plate.objects.iloc(0)
-            print(f"Bounding box shape: {first.shape}")
-            ```
+                    plate = Image.from_file("colony_array.png")
+                    detector = GitterDetector()
+                    detector.apply(plate)
 
-            Compare iloc() vs __getitem__:
+                    # Access first colony
+                    first = plate.objects.iloc(0)
+                    print(f"Bounding box shape: {first.shape}")
 
-            ```python
-            # iloc preserves all labels in the crop
-            crop_iloc = plate.objects.iloc(5)
-            print(f"All labels in crop (iloc): {set(crop_iloc.objmap.flatten())}")
-            # May show {0, 5} if other colonies are nearby
+            .. dropdown:: Compare iloc() vs __getitem__
 
-            # __getitem__ zeros out non-matching labels for isolation
-            crop_getitem = plate.objects[5]
-            print(f"Labels in isolated crop ([5]): {crop_getitem.objmap.max()}")
-            # Shows only label 5 (others zeroed)
-            ```
+                .. code-block:: python
 
-            Extract multiple specific colonies:
+                    # iloc preserves all labels in the crop
+                    crop_iloc = plate.objects.iloc(5)
+                    print(f"All labels in crop (iloc): {set(crop_iloc.objmap.flatten())}")
+                    # May show {0, 5} if other colonies are nearby
 
-            ```python
-            # Get colonies at positions 0, 5, and 10 with preserved context
-            selected_indices = [0, 5, 10]
-            selected_colonies = [plate.objects.iloc(i) for i in selected_indices]
-            ```
+                    # __getitem__ zeros out non-matching labels for isolation
+                    crop_getitem = plate.objects[5]
+                    print(f"Labels in isolated crop ([5]): {crop_getitem.objmap.max()}")
+                    # Shows only label 5 (others zeroed)
+
+            .. dropdown:: Extract multiple specific colonies
+
+                .. code-block:: python
+
+                    # Get colonies at positions 0, 5, and 10 with preserved context
+                    selected_indices = [0, 5, 10]
+                    selected_colonies = [plate.objects.iloc(i) for i in selected_indices]
         """
         return self._root_image[self.props[index].slice]
 
@@ -679,54 +679,54 @@ class ObjectsAccessor:
             IndexError: If label_number does not exist in the current labels list.
 
         Examples:
-            Access colony by its label:
+            .. dropdown:: Access colony by its label
 
-            ```python
-            from phenotypic import Image
-            from phenotypic.detect import GitterDetector
+                .. code-block:: python
 
-            plate = Image.from_file("colony_array.png")
-            detector = GitterDetector()
-            detector.apply(plate)
+                    from phenotypic import Image
+                    from phenotypic.detect import GitterDetector
 
-            # Access colony with label 5
-            colony_5 = plate.objects.loc(5)
-            print(f"Colony 5 bounding box: {colony_5.shape}")
-            ```
+                    plate = Image.from_file("colony_array.png")
+                    detector = GitterDetector()
+                    detector.apply(plate)
 
-            Access first colony by its label (not position):
+                    # Access colony with label 5
+                    colony_5 = plate.objects.loc(5)
+                    print(f"Colony 5 bounding box: {colony_5.shape}")
 
-            ```python
-            # Get the label of the first colony
-            first_label = plate.objects.labels[0]  # e.g., could be 1
+            .. dropdown:: Access first colony by its label (not position)
 
-            # Access by that label
-            first_colony = plate.objects.loc(first_label)
-            ```
+                .. code-block:: python
 
-            Use with non-contiguous labels:
+                    # Get the label of the first colony
+                    first_label = plate.objects.labels[0]  # e.g., could be 1
 
-            ```python
-            # Labels might be: [1, 2, 5, 8, 10] after filtering
-            labels = plate.objects.labels
+                    # Access by that label
+                    first_colony = plate.objects.loc(first_label)
 
-            # Access colony with label 8 (not position 8)
-            colony_8 = plate.objects.loc(8)
+            .. dropdown:: Use with non-contiguous labels
 
-            # Compare with position-based access
-            colony_at_pos_3 = plate.objects.iloc(3)  # Also gets label 8
-            ```
+                .. code-block:: python
 
-            Safe access with label validation:
+                    # Labels might be: [1, 2, 5, 8, 10] after filtering
+                    labels = plate.objects.labels
 
-            ```python
-            desired_label = 42
-            if desired_label in plate.objects.labels:
-                colony = plate.objects.loc(desired_label)
-                print(f"Found colony {desired_label}")
-            else:
-                print(f"Colony {desired_label} not found")
-            ```
+                    # Access colony with label 8 (not position 8)
+                    colony_8 = plate.objects.loc(8)
+
+                    # Compare with position-based access
+                    colony_at_pos_3 = plate.objects.iloc(3)  # Also gets label 8
+
+            .. dropdown:: Safe access with label validation
+
+                .. code-block:: python
+
+                    desired_label = 42
+                    if desired_label in plate.objects.labels:
+                        colony = plate.objects.loc(desired_label)
+                        print(f"Found colony {desired_label}")
+                    else:
+                        print(f"Colony {desired_label} not found")
         """
         idx = self.get_label_idx(label_number)
         return self._root_image[self.props[idx].slice]
@@ -762,60 +762,60 @@ class ObjectsAccessor:
                 If include_metadata=True, additional metadata columns are prepended.
 
         Examples:
-            Get basic colony information:
+            .. dropdown:: Get basic colony information
 
-            ```python
-            from phenotypic import Image
-            from phenotypic.detect import GitterDetector
+                .. code-block:: python
 
-            plate = Image.from_file("colony_array.png")
-            detector = GitterDetector()
-            detector.apply(plate)
+                    from phenotypic import Image
+                    from phenotypic.detect import GitterDetector
 
-            # Get colony information
-            colony_info = plate.objects.info()
-            print(colony_info.head())
-            print(f"Columns: {colony_info.columns.tolist()}")
-            ```
+                    plate = Image.from_file("colony_array.png")
+                    detector = GitterDetector()
+                    detector.apply(plate)
 
-            Access specific columns:
+                    # Get colony information
+                    colony_info = plate.objects.info()
+                    print(colony_info.head())
+                    print(f"Columns: {colony_info.columns.tolist()}")
 
-            ```python
-            # Get just labels and centroids
-            labels_centroids = colony_info[["ObjectLabel", "Bbox_CenterRR", "Bbox_CenterCC"]]
-            print(labels_centroids)
-            ```
+            .. dropdown:: Access specific columns
 
-            Export colony positions for other tools:
+                .. code-block:: python
 
-            ```python
-            # Get info without metadata for cleaner export
-            colony_positions = plate.objects.info(include_metadata=False)
-            colony_positions.to_csv("colony_positions.csv", index=False)
-            ```
+                    # Get just labels and centroids
+                    labels_centroids = colony_info[["ObjectLabel", "Bbox_CenterRR", "Bbox_CenterCC"]]
+                    print(labels_centroids)
 
-            Filter colonies by position:
+            .. dropdown:: Export colony positions for other tools
 
-            ```python
-            info = plate.objects.info(include_metadata=False)
+                .. code-block:: python
 
-            # Find colonies in the upper half of the image
-            upper_colonies = info[info["Bbox_CenterRR"] < 500]
-            print(f"Found {len(upper_colonies)} colonies in upper half")
-            ```
+                    # Get info without metadata for cleaner export
+                    colony_positions = plate.objects.info(include_metadata=False)
+                    colony_positions.to_csv("colony_positions.csv", index=False)
 
-            Calculate bounding box dimensions:
+            .. dropdown:: Filter colonies by position
 
-            ```python
-            info = plate.objects.info(include_metadata=False)
+                .. code-block:: python
 
-            # Calculate width and height of each colony's bounding box
-            info["BBox_Width"] = info["Bbox_MaxCC"] - info["Bbox_MinCC"]
-            info["BBox_Height"] = info["Bbox_MaxRR"] - info["Bbox_MinRR"]
+                    info = plate.objects.info(include_metadata=False)
 
-            print(f"Average colony width: {info['BBox_Width'].mean():.1f} pixels")
-            print(f"Average colony height: {info['BBox_Height'].mean():.1f} pixels")
-            ```
+                    # Find colonies in the upper half of the image
+                    upper_colonies = info[info["Bbox_CenterRR"] < 500]
+                    print(f"Found {len(upper_colonies)} colonies in upper half")
+
+            .. dropdown:: Calculate bounding box dimensions
+
+                .. code-block:: python
+
+                    info = plate.objects.info(include_metadata=False)
+
+                    # Calculate width and height of each colony's bounding box
+                    info["BBox_Width"] = info["Bbox_MaxCC"] - info["Bbox_MinCC"]
+                    info["BBox_Height"] = info["Bbox_MaxRR"] - info["Bbox_MinRR"]
+
+                    print(f"Average colony width: {info['BBox_Width'].mean():.1f} pixels")
+                    print(f"Average colony height: {info['BBox_Height'].mean():.1f} pixels")
         """
         info = pd.DataFrame(
                 data=regionprops_table(
@@ -855,67 +855,67 @@ class ObjectsAccessor:
                 - name: 'ObjectLabel' for proper DataFrame column naming
 
         Examples:
-            Join labels with measurement data:
+            .. dropdown:: Join labels with measurement data
 
-            ```python
-            from phenotypic import Image
-            from phenotypic.detect import GitterDetector
-            from phenotypic.measure import AreaMeasurer
-            import pandas as pd
+                .. code-block:: python
 
-            plate = Image.from_file("colony_array.png")
-            detector = GitterDetector()
-            detector.apply(plate)
+                    from phenotypic import Image
+                    from phenotypic.detect import GitterDetector
+                    from phenotypic.measure import AreaMeasurer
+                    import pandas as pd
 
-            # Calculate measurements (indexed by position)
-            measurer = AreaMeasurer()
-            measurements = measurer.measure(plate)
+                    plate = Image.from_file("colony_array.png")
+                    detector = GitterDetector()
+                    detector.apply(plate)
 
-            # Add labels to measurements
-            labels = plate.objects.labels2series()
-            measurements_with_labels = measurements.join(labels)
+                    # Calculate measurements (indexed by position)
+                    measurer = AreaMeasurer()
+                    measurements = measurer.measure(plate)
 
-            print(measurements_with_labels.head())
-            ```
+                    # Add labels to measurements
+                    labels = plate.objects.labels2series()
+                    measurements_with_labels = measurements.join(labels)
 
-            Merge with custom analysis results:
+                    print(measurements_with_labels.head())
 
-            ```python
-            import numpy as np
-            import pandas as pd
+            .. dropdown:: Merge with custom analysis results
 
-            # Custom analysis results indexed by position
-            custom_analysis = pd.DataFrame({
-                'mean_intensity': [125.3, 142.7, 98.1, ...],
-                'max_intensity': [255, 243, 189, ...]
-            }, index=range(len(plate.objects)))
+                .. code-block:: python
 
-            # Add colony labels
-            labels_series = plate.objects.labels2series()
-            analysis_with_labels = custom_analysis.join(labels_series)
+                    import numpy as np
+                    import pandas as pd
 
-            # Now can group or filter by label
-            print(analysis_with_labels)
-            ```
+                    # Custom analysis results indexed by position
+                    custom_analysis = pd.DataFrame({
+                        'mean_intensity': [125.3, 142.7, 98.1, ...],
+                        'max_intensity': [255, 243, 189, ...]
+                    }, index=range(len(plate.objects)))
 
-            Use as a lookup table:
+                    # Add colony labels
+                    labels_series = plate.objects.labels2series()
+                    analysis_with_labels = custom_analysis.join(labels_series)
 
-            ```python
-            labels_series = plate.objects.labels2series()
+                    # Now can group or filter by label
+                    print(analysis_with_labels)
 
-            # Get label for position 5
-            label_at_pos_5 = labels_series.iloc[5]
-            print(f"Colony at position 5 has label {label_at_pos_5}")
-            ```
+            .. dropdown:: Use as a lookup table
 
-            Handle potential label suffix conflicts:
+                .. code-block:: python
 
-            ```python
-            # If DataFrame already has an 'ObjectLabel' column
-            labels = plate.objects.labels2series()
-            measurements_with_labels = measurements.join(labels, rsuffix="_new")
-            # Creates 'ObjectLabel' and 'ObjectLabel_new' columns
-            ```
+                    labels_series = plate.objects.labels2series()
+
+                    # Get label for position 5
+                    label_at_pos_5 = labels_series.iloc[5]
+                    print(f"Colony at position 5 has label {label_at_pos_5}")
+
+            .. dropdown:: Handle potential label suffix conflicts
+
+                .. code-block:: python
+
+                    # If DataFrame already has an 'ObjectLabel' column
+                    labels = plate.objects.labels2series()
+                    measurements_with_labels = measurements.join(labels, rsuffix="_new")
+                    # Creates 'ObjectLabel' and 'ObjectLabel_new' columns
         """
         labels = self.labels
         return pd.Series(
@@ -941,66 +941,66 @@ class ObjectsAccessor:
                 renumbered directly in the object map, and no value is returned.
 
         Examples:
-            Relabel after filtering to remove gaps:
+            .. dropdown:: Relabel after filtering to remove gaps
 
-            ```python
-            from phenotypic import Image
-            from phenotypic.detect import GitterDetector
+                .. code-block:: python
 
-            plate = Image.from_file("colony_array.png")
-            detector = GitterDetector()
-            detector.apply(plate)
+                    from phenotypic import Image
+                    from phenotypic.detect import GitterDetector
 
-            # Before relabeling (may have gaps)
-            print(f"Labels before: {plate.objects.labels}")
-            # e.g., [1, 2, 5, 7, 10, 15]
+                    plate = Image.from_file("colony_array.png")
+                    detector = GitterDetector()
+                    detector.apply(plate)
 
-            # Relabel to make sequential
-            plate.objects.relabel()
+                    # Before relabeling (may have gaps)
+                    print(f"Labels before: {plate.objects.labels}")
+                    # e.g., [1, 2, 5, 7, 10, 15]
 
-            # After relabeling (sequential)
-            print(f"Labels after: {plate.objects.labels}")
-            # e.g., [1, 2, 3, 4, 5, 6]
-            ```
+                    # Relabel to make sequential
+                    plate.objects.relabel()
 
-            Ensure consistent labeling for reproducibility:
+                    # After relabeling (sequential)
+                    print(f"Labels after: {plate.objects.labels}")
+                    # e.g., [1, 2, 3, 4, 5, 6]
 
-            ```python
-            # After any colony filtering or modification
-            plate.objects.relabel()
+            .. dropdown:: Ensure consistent labeling for reproducibility
 
-            # Now labels are guaranteed to be 1, 2, 3, ..., N
-            assert plate.objects.labels == list(range(1, len(plate.objects) + 1))
-            ```
+                .. code-block:: python
 
-            Relabel after manual objmap modifications:
+                    # After any colony filtering or modification
+                    plate.objects.relabel()
 
-            ```python
-            # After custom filtering or editing the objmap
-            import numpy as np
+                    # Now labels are guaranteed to be 1, 2, 3, ..., N
+                    assert plate.objects.labels == list(range(1, len(plate.objects) + 1))
 
-            # Remove small colonies (custom filtering)
-            for prop in plate.objects.props:
-                if prop.area < 100:
-                    mask = plate.objmap[:] == prop.label
-                    plate.objmap[:][mask] = 0
+            .. dropdown:: Relabel after manual objmap modifications
 
-            # Relabel to clean up the label sequence
-            plate.objects.relabel()
-            print(f"Remaining colonies: {len(plate.objects)}")
-            print(f"New labels: {plate.objects.labels}")
-            ```
+                .. code-block:: python
 
-            Compare before and after relabeling:
+                    # After custom filtering or editing the objmap
+                    import numpy as np
 
-            ```python
-            labels_before = plate.objects.labels.copy()
-            plate.objects.relabel()
-            labels_after = plate.objects.labels
+                    # Remove small colonies (custom filtering)
+                    for prop in plate.objects.props:
+                        if prop.area < 100:
+                            mask = plate.objmap[:] == prop.label
+                            plate.objmap[:][mask] = 0
 
-            print(f"Before: {labels_before}")
-            print(f"After: {labels_after}")
-            print(f"Same count: {len(labels_before) == len(labels_after)}")
-            ```
+                    # Relabel to clean up the label sequence
+                    plate.objects.relabel()
+                    print(f"Remaining colonies: {len(plate.objects)}")
+                    print(f"New labels: {plate.objects.labels}")
+
+            .. dropdown:: Compare before and after relabeling
+
+                .. code-block:: python
+
+                    labels_before = plate.objects.labels.copy()
+                    plate.objects.relabel()
+                    labels_after = plate.objects.labels
+
+                    print(f"Before: {labels_before}")
+                    print(f"After: {labels_after}")
+                    print(f"Same count: {len(labels_before) == len(labels_after)}")
         """
         self._root_image.objmap.relabel()

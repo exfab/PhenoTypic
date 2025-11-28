@@ -43,13 +43,15 @@ class SerializablePipeline(ImagePipelineCore):
             str: JSON string representation of the pipeline configuration.
         
         Example:
-            >>> from phenotypic import ImagePipeline
-            >>> from phenotypic.detect import OtsuDetector
-            >>> from phenotypic.measure import MeasureShape
-            >>> 
-            >>> pipe = ImagePipeline(ops=[OtsuDetector()], meas=[MeasureShape()])
-            >>> json_str = pipe.to_json()
-            >>> pipe.to_json('my_pipeline.json')  # Save to file
+            .. dropdown:: Serialize a pipeline to JSON format
+
+                >>> from phenotypic import ImagePipeline
+                >>> from phenotypic.detect import OtsuDetector
+                >>> from phenotypic.measure import MeasureShape
+                >>>
+                >>> pipe = ImagePipeline(ops=[OtsuDetector()], meas=[MeasureShape()])
+                >>> json_str = pipe.to_json()
+                >>> pipe.to_json('my_pipeline.json')  # Save to file
         """
         config = {
             'ops': self._serialize_operations(self._ops),
@@ -87,14 +89,16 @@ class SerializablePipeline(ImagePipelineCore):
             AttributeError: If a class cannot be found in the phenotypic namespace.
         
         Example:
-            >>> from phenotypic import ImagePipeline
-            >>> 
-            >>> # Load from file
-            >>> pipe = ImagePipeline.from_json('my_pipeline.json')
-            >>> 
-            >>> # Load from string
-            >>> json_str = '{"ops": {...}, "meas": {...}}'
-            >>> pipe = ImagePipeline.from_json(json_str)
+            .. dropdown:: Deserialize a pipeline from JSON format
+
+                >>> from phenotypic import ImagePipeline
+                >>>
+                >>> # Load from file
+                >>> pipe = ImagePipeline.from_json('my_pipeline.json')
+                >>>
+                >>> # Load from string
+                >>> json_str = '{"ops": {...}, "meas": {...}}'
+                >>> pipe = ImagePipeline.from_json(json_str)
         """
         # Check if json_data is a file path
         if isinstance(json_data, (str, Path)):

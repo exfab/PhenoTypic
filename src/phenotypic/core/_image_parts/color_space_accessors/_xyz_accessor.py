@@ -92,20 +92,20 @@ class XyzAccessor(ColorSpaceAccessor):
               implementation.
 
         Examples:
-            Basic access to XYZ data:
+            .. dropdown:: Basic access to XYZ data
 
-            ```python
-            image = Image('photo.jpg')  # sRGB, D65
-            xyz_data = image.color.XYZ[:]
-            print(xyz_data.shape)  # (height, width, 3)
-            print(xyz_data.dtype)  # float64
-            ```
+                .. code-block:: python
 
-            Access specific region:
+                    image = Image('photo.jpg')  # sRGB, D65
+                    xyz_data = image.color.XYZ[:]
+                    print(xyz_data.shape)  # (height, width, 3)
+                    print(xyz_data.dtype)  # float64
 
-            ```python
-            xyz_region = image.color.XYZ[100:200, 50:150, :]
-            ```
+            .. dropdown:: Access specific region
+
+                .. code-block:: python
+
+                    xyz_region = image.color.XYZ[100:200, 50:150, :]
         """
         if self._root_image.rgb.isempty():
             raise AttributeError('XYZ conversion is not available for grayscale images')
@@ -164,18 +164,18 @@ class XyzAccessor(ColorSpaceAccessor):
                 reflected the next time the XYZ property is accessed.
 
         Examples:
-            This operation always fails:
+            .. dropdown:: This operation always fails
 
-            ```python
-            image = Image('photo.jpg')
-            image.color.XYZ[0, 0, 0] = 50  # Raises IllegalAssignmentError
-            ```
+                .. code-block:: python
 
-            To modify color data, work with the RGB accessor instead:
+                    image = Image('photo.jpg')
+                    image.color.XYZ[0, 0, 0] = 50  # Raises IllegalAssignmentError
 
-            ```python
-            image.rgb[0, 0, :] = [255, 128, 64]  # Valid
-            xyz_updated = image.color.XYZ[:]  # Recomputed automatically
-            ```
+            .. dropdown:: To modify color data, work with the RGB accessor instead
+
+                .. code-block:: python
+
+                    image.rgb[0, 0, :] = [255, 128, 64]  # Valid
+                    xyz_updated = image.color.XYZ[:]  # Recomputed automatically
         """
         raise IllegalAssignmentError('XYZ')

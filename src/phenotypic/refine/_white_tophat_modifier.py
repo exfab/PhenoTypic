@@ -44,9 +44,11 @@ class WhiteTophatModifier(ObjectRefiner):
             appendages. ``None`` auto-scales with image size.
 
     Examples:
-        >>> from phenotypic.refine import WhiteTophatModifier
-        >>> op = WhiteTophatModifier(shape='disk', radius=5)
-        >>> image = op.apply(image, inplace=True)  # doctest: +SKIP
+        .. dropdown:: Suppress small bright structures in the mask using white tophat
+
+            >>> from phenotypic.refine import WhiteTophatModifier
+            >>> op = WhiteTophatModifier(shape='disk', radius=5)
+            >>> image = op.apply(image, inplace=True)  # doctest: +SKIP
     """
 
     def __init__(self, footprint_shape='disk', footprint_radius: int = None):

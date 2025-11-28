@@ -28,14 +28,16 @@ class XyzD65Accessor(ColorSpaceAccessor):
             this accessor via Image.color.XYZ_D65.
 
     Examples:
-        ```python
-        from phenotypic import Image
-        img = Image('path/to/image.tif')
-        # Access XYZ D65 color space
-        xyz_d65_arr = img.color.XYZ_D65[:]
-        # For images with D65 illuminant, returns XYZ values directly
-        # For images with D50 illuminant, applies Bradford chromatic adaptation
-        ```
+        .. dropdown:: Access XYZ D65 color space with chromatic adaptation
+
+            .. code-block:: python
+
+                from phenotypic import Image
+                img = Image('path/to/image.tif')
+                # Access XYZ D65 color space
+                xyz_d65_arr = img.color.XYZ_D65[:]
+                # For images with D65 illuminant, returns XYZ values directly
+                # For images with D50 illuminant, applies Bradford chromatic adaptation
     """
 
     _accessor_property_name: str = "color.XYZ_D65"
@@ -76,15 +78,17 @@ class XyzD65Accessor(ColorSpaceAccessor):
             - See: https://colour.readthedocs.io/en/develop/generated/colour.chromatic_adaptation.html
 
         Examples:
-            ```python
-            import numpy as np
-            # Access the underlying XYZ D65 array
-            xyz_arr = accessor._subject_arr
-            # Shape is (height, width, 3)
-            # Can be used with colour library for further conversions
-            print(xyz_arr.shape)  # e.g., (480, 640, 3)
-            print(xyz_arr.dtype)  # float64
-            ```
+            .. dropdown:: Access the underlying XYZ D65 array
+
+                .. code-block:: python
+
+                    import numpy as np
+                    # Access the underlying XYZ D65 array
+                    xyz_arr = accessor._subject_arr
+                    # Shape is (height, width, 3)
+                    # Can be used with colour library for further conversions
+                    print(xyz_arr.shape)  # e.g., (480, 640, 3)
+                    print(xyz_arr.dtype)  # float64
         """
         wp = colour.CCS_ILLUMINANTS[self._root_image.observer]
 

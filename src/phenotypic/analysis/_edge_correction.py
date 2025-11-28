@@ -126,22 +126,24 @@ class EdgeCorrector(SetAnalyzer):
             - Results are always sorted for deterministic output
 
         Examples:
-            >>> import numpy as np
-            >>> # 8×12 plate; 3×3 active block centered at (4,6)
-            >>> rows, cols = 8, 12
-            >>> block_rc = [(r, c) for r in range(3, 6) for c in range(5, 8)]
-            >>> active = np.array([r*cols + c for r, c in block_rc], dtype=np.int64)
-            >>>
-            >>> # Fully surrounded (default, since min_neighbors=None → all)
-            >>> res_all = EdgeCorrector._surrounded_positions(active, (rows, cols), connectivity=4)
-            >>> assert np.array_equal(res_all, np.array([4*cols + 6], dtype=np.int64))
-            >>>
-            >>> # Threshold: at least 3 of 4 neighbors
-            >>> idxs, counts = EdgeCorrector._surrounded_positions(
-            ...     active, (rows, cols), connectivity=4, min_neighbors=3, return_counts=True
-            ... )
-            >>> assert (counts >= 3).all()
-            >>> assert (4*cols + 6) in idxs  # center has 4
+            .. dropdown:: Finding fully surrounded and partially surrounded cells on an 8×12 grid
+
+                >>> import numpy as np
+                >>> # 8×12 plate; 3×3 active block centered at (4,6)
+                >>> rows, cols = 8, 12
+                >>> block_rc = [(r, c) for r in range(3, 6) for c in range(5, 8)]
+                >>> active = np.array([r*cols + c for r, c in block_rc], dtype=np.int64)
+                >>>
+                >>> # Fully surrounded (default, since min_neighbors=None → all)
+                >>> res_all = EdgeCorrector._surrounded_positions(active, (rows, cols), connectivity=4)
+                >>> assert np.array_equal(res_all, np.array([4*cols + 6], dtype=np.int64))
+                >>>
+                >>> # Threshold: at least 3 of 4 neighbors
+                >>> idxs, counts = EdgeCorrector._surrounded_positions(
+                ...     active, (rows, cols), connectivity=4, min_neighbors=3, return_counts=True
+                ... )
+                >>> assert (counts >= 3).all()
+                >>> assert (4*cols + 6) in idxs  # center has 4
         """
         # Validate connectivity
         if connectivity not in (4, 8):
@@ -261,31 +263,33 @@ class EdgeCorrector(SetAnalyzer):
             ValueError: If data is empty or malformed.
 
         Examples:
-            >>> import pandas as pd
-            >>> import numpy as np
-            >>> from phenotypic.analysis import EdgeCorrector
-            >>> from phenotypic.tools.constants_ import GRID
-            >>>
-            >>> # Create sample grid data with measurements
-            >>> np.random.seed(42)
-            >>> data = pd.DataFrame({
-            ...     'ImageName': ['img1'] * 96,
-            ...     GRID.SECTION_NUM: range(96),
-            ...     'Area': np.random.uniform(100, 500, 96)
-            ... })
-            >>>
-            >>> # Apply edge correction
-            >>> corrector = EdgeCorrector(
-            ...     on='Area',
-            ...     groupby=['ImageName'],
-            ...     nrows=8,
-            ...     ncols=12,
-            ...     top_n=10
-            ... )
-            >>> corrected = corrector.analyze(data)
-            >>>
-            >>> # Check results
-            >>> results = corrector.results()
+            .. dropdown:: Applying edge correction to a 96-well plate dataset
+
+                >>> import pandas as pd
+                >>> import numpy as np
+                >>> from phenotypic.analysis import EdgeCorrector
+                >>> from phenotypic.tools.constants_ import GRID
+                >>>
+                >>> # Create sample grid data with measurements
+                >>> np.random.seed(42)
+                >>> data = pd.DataFrame({
+                ...     'ImageName': ['img1'] * 96,
+                ...     GRID.SECTION_NUM: range(96),
+                ...     'Area': np.random.uniform(100, 500, 96)
+                ... })
+                >>>
+                >>> # Apply edge correction
+                >>> corrector = EdgeCorrector(
+                ...     on='Area',
+                ...     groupby=['ImageName'],
+                ...     nrows=8,
+                ...     ncols=12,
+                ...     top_n=10
+                ... )
+                >>> corrected = corrector.analyze(data)
+                >>>
+                >>> # Check results
+                >>> results = corrector.results()
 
         Notes:
             - Stores original data in self._original_data for comparison
@@ -681,13 +685,15 @@ class EdgeCorrector(SetAnalyzer):
             returns an empty DataFrame.
 
         Examples:
-            >>> corrector = EdgeCorrector(
-            ...     on='Area',
-            ...     groupby=['ImageName']
-            ... )
-            >>> corrected = corrector.analyze(data)
-            >>> results = corrector.results()  # Same as corrected
-            >>> assert results.equals(corrected)
+            .. dropdown:: Retrieving corrected measurements after analysis
+
+                >>> corrector = EdgeCorrector(
+                ...     on='Area',
+                ...     groupby=['ImageName']
+                ... )
+                >>> corrected = corrector.analyze(data)
+                >>> results = corrector.results()  # Same as corrected
+                >>> assert results.equals(corrected)
 
         Notes:
             - Returns the DataFrame stored in self._latest_measurements

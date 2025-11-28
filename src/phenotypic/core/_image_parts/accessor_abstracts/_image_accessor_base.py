@@ -61,9 +61,11 @@ class ImageAccessorBase(ABC):
             UserWarning: If metadata is missing or indicates the image was saved
                 from a different accessor type.
 
-        Example:
-            >>> from phenotypic.core._image_parts.accessors import Grayscale
-            >>> arr = Grayscale.load("my_gray_image.png")
+        Examples:
+            .. dropdown:: Load a grayscale image from file
+
+                >>> from phenotypic.core._image_parts.accessors import Grayscale
+                >>> arr = Grayscale.load("my_gray_image.png")
         """
         filepath = Path(filepath)
         expected_property = f"Image.{cls._accessor_property_name}"

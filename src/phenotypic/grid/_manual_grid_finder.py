@@ -25,11 +25,13 @@ class ManualGridFinder(GridFinder):
         col_edges (np.ndarray): Array of column edge coordinates defining grid columns.
 
     Example:
-        >>> # Create a 3x4 grid with specific coordinates
-        >>> row_edges = np.array([0, 100, 200, 300])  # 3 rows
-        >>> col_edges = np.array([0, 80, 160, 240, 320])  # 4 columns
-        >>> finder = ManualGridFinder(row_edges=row_edges, col_edges=col_edges)
-        >>> grid_info = finder.measure(image)
+        .. dropdown:: Create a 3x4 grid with specific coordinates
+
+            >>> # Create a 3x4 grid with specific coordinates
+            >>> row_edges = np.array([0, 100, 200, 300])  # 3 rows
+            >>> col_edges = np.array([0, 80, 160, 240, 320])  # 4 columns
+            >>> finder = ManualGridFinder(row_edges=row_edges, col_edges=col_edges)
+            >>> grid_info = finder.measure(image)
     """
 
     def __init__(self, row_edges: np.ndarray, col_edges: np.ndarray):

@@ -37,17 +37,17 @@ class ImageRGB(MultiChannelAccessor):
             (no RGB array form exists).
 
     Examples:
-        Access RGB data from an Image object:
+        .. dropdown:: Access RGB data from an Image object
 
-        ```python
-        rgb_accessor = image.rgb
-        # Get a copy of the full RGB array
-        rgb_data = rgb_accessor[:]
-        # Modify a region
-        rgb_accessor[10:20, 10:20] = [255, 0, 0]
-        # Display the image
-        fig, ax = rgb_accessor.show()
-        ```
+            .. code-block:: python
+
+                rgb_accessor = image.rgb
+                # Get a copy of the full RGB array
+                rgb_data = rgb_accessor[:]
+                # Modify a region
+                rgb_accessor[10:20, 10:20] = [255, 0, 0]
+                # Display the image
+                fig, ax = rgb_accessor.show()
     """
 
     _accessor_property_name: str = "rgb"
@@ -76,23 +76,23 @@ class ImageRGB(MultiChannelAccessor):
                 form exists.
 
         Examples:
-            Extract the full RGB array:
+            .. dropdown:: Extract the full RGB array
 
-            ```python
-            full_rgb = image.rgb[:]
-            ```
+                .. code-block:: python
 
-            Extract a rectangular region:
+                    full_rgb = image.rgb[:]
 
-            ```python
-            region = image.rgb[10:50, 20:60, :]
-            ```
+            .. dropdown:: Extract a rectangular region
 
-            Extract a specific channel:
+                .. code-block:: python
 
-            ```python
-            red_channel = image.rgb[:, :, 0]
-            ```
+                    region = image.rgb[10:50, 20:60, :]
+
+            .. dropdown:: Extract a specific channel
+
+                .. code-block:: python
+
+                    red_channel = image.rgb[:, :, 0]
         """
         if self.isempty():
             if self._root_image.gray.isempty():
@@ -137,24 +137,24 @@ class ImageRGB(MultiChannelAccessor):
             through this accessor.
 
         Examples:
-            Set a region to a solid color:
+            .. dropdown:: Set a region to a solid color
 
-            ```python
-            image.rgb[10:20, 10:20] = [255, 128, 64]
-            ```
+                .. code-block:: python
 
-            Set a region from another array:
+                    image.rgb[10:20, 10:20] = [255, 128, 64]
 
-            ```python
-            patch = np.ones((10, 10, 3), dtype=np.uint8) * 128
-            image.rgb[10:20, 10:20] = patch
-            ```
+            .. dropdown:: Set a region from another array
 
-            Modify a single channel:
+                .. code-block:: python
 
-            ```python
-            image.rgb[:, :, 0] = 255  # Set red channel to maximum
-            ```
+                    patch = np.ones((10, 10, 3), dtype=np.uint8) * 128
+                    image.rgb[10:20, 10:20] = patch
+
+            .. dropdown:: Modify a single channel
+
+                .. code-block:: python
+
+                    image.rgb[:, :, 0] = 255  # Set red channel to maximum
         """
         if pd.api.types.is_scalar(value):  # handle scalar values
             if not isinstance(value, (int, float, np.number)):  # assert numeric value

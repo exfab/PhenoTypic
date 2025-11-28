@@ -150,7 +150,10 @@ def load_synthetic_colony(mode: Literal['array', 'Image'] = 'array') -> Union[np
         ValueError: If the mode is neither 'array' nor 'Image'.
 
     Example:
-        img = make_synthetic_colony(h=384, w=384, bit_depth=16)
+        .. dropdown:: Load synthetic colony data as a NumPy array or Image object
+
+            >>> from phenotypic.data import load_synthetic_colony
+            >>> img = load_synthetic_colony(mode='array')
     """
     from phenotypic import Image
 

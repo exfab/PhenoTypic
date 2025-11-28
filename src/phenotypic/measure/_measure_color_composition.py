@@ -84,18 +84,23 @@ class MeasureColorComposition(MeasureFeatures):
         gray_value_max (float): Maximum value threshold for gray classification. Default is 85.
 
     Example:
-        >>> from phenotypic import Image
-        >>> from phenotypic.measure import MeasureColorComposition
-        >>> img = Image.load('path/to/image.tif')
-        >>> measurer = MeasureColorComposition()
-        >>> composition = measurer.measure(img)
-        >>> print(composition)
-        >>>
-        >>> # Custom thresholds for different lighting conditions
-        >>> measurer_custom = MeasureColorComposition(
-        ...     black_value_max=15,  # Stricter black threshold
-        ...     white_value_min=90   # Stricter white threshold
-        ... )
+        .. dropdown:: Measure and analyze color composition with custom thresholds
+
+            .. code-block:: python
+
+                from phenotypic import Image
+                from phenotypic.measure import MeasureColorComposition
+
+                img = Image.load('path/to/image.tif')
+                measurer = MeasureColorComposition()
+                composition = measurer.measure(img)
+                print(composition)
+
+                # Custom thresholds for different lighting conditions
+                measurer_custom = MeasureColorComposition(
+                    black_value_max=15,  # Stricter black threshold
+                    white_value_min=90   # Stricter white threshold
+                )
     """
 
     def __init__(self,
@@ -459,11 +464,16 @@ class MeasureColorComposition(MeasureFeatures):
             tuple: (matplotlib.figure.Figure, numpy.ndarray of axes)
 
         Example:
-            >>> from phenotypic import Image
-            >>> from phenotypic.measure import MeasureColorComposition
-            >>> img = Image.imread('path/to/image.tif')
-            >>> measurer = MeasureColorComposition()
-            >>> fig, axes = measurer.visualize_masks(img, top_n=3)
+            .. dropdown:: Visualize top color masks for debugging
+
+                .. code-block:: python
+
+                    from phenotypic import Image
+                    from phenotypic.measure import MeasureColorComposition
+
+                    img = Image.imread('path/to/image.tif')
+                    measurer = MeasureColorComposition()
+                    fig, axes = measurer.visualize_masks(img, top_n=3)
         """
         import matplotlib.pyplot as plt
 

@@ -17,12 +17,15 @@ class ImagePipeline(SerializablePipeline):
 
     Example:
 
-    .. code-block:: python
-       >>> import phenotypic as pt
-       >>> from phenotypic.detect import OtsuDetector
-       >>> from phenotypic.measure import MeasureShape, MeasureIntensity
-       >>>
-       >>> pipe = pt.ImagePipeline(ops=[OtsuDetector()], meas=[MeasureShape(), MeasureIntensity()])
+    .. dropdown:: Create a pipeline with detector and measurements
+
+        .. code-block:: python
+
+            >>> import phenotypic as pt
+            >>> from phenotypic.detect import OtsuDetector
+            >>> from phenotypic.measure import MeasureShape, MeasureIntensity
+            >>>
+            >>> pipe = pt.ImagePipeline(ops=[OtsuDetector()], meas=[MeasureShape(), MeasureIntensity()])
 
     """
     pass

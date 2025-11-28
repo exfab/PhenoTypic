@@ -22,27 +22,27 @@ class Grayscale(SingleChannelAccessor):
             Image object (set to "gray").
 
     Examples:
-        Access and display grayscale data:
+        .. dropdown:: Access and display grayscale data
 
-        ```python
-        img = Image("path/to/image.png")
-        gray_array = img.gray[:]
-        fig, ax = img.gray.show()
-        ```
+            .. code-block:: python
 
-        Modify grayscale data with validation:
+                img = Image("path/to/image.png")
+                gray_array = img.gray[:]
+                fig, ax = img.gray.show()
 
-        ```python
-        img.gray[10:20, 10:20] = 0.5  # Set region to mid-gray
-        img.gray[100, 100] = 0.8      # Set single pixel to light gray
-        ```
+        .. dropdown:: Modify grayscale data with validation
 
-        Visualize histogram and overlay:
+            .. code-block:: python
 
-        ```python
-        fig, axes = img.gray.histogram()
-        fig, ax = img.gray.show_overlay(show_labels=True)
-        ```
+                img.gray[10:20, 10:20] = 0.5  # Set region to mid-gray
+                img.gray[100, 100] = 0.8      # Set single pixel to light gray
+
+        .. dropdown:: Visualize histogram and overlay
+
+            .. code-block:: python
+
+                fig, axes = img.gray.histogram()
+                fig, ax = img.gray.show_overlay(show_labels=True)
     """
 
     _accessor_property_name: str = "gray"
@@ -67,19 +67,21 @@ class Grayscale(SingleChannelAccessor):
             EmptyImageError: If the underlying image data is empty (shape[0] == 0).
 
         Examples:
-            ```python
-            # Access entire grayscale array
-            full_gray = img.gray[:]
+            .. dropdown:: Access grayscale data with various indexing techniques
 
-            # Slice a region
-            region = img.gray[10:20, 5:15]
+                .. code-block:: python
 
-            # Access single row
-            row = img.gray[10]
+                    # Access entire grayscale array
+                    full_gray = img.gray[:]
 
-            # Advanced indexing not recommended but supported
-            mask = img.gray > 0.5
-            ```
+                    # Slice a region
+                    region = img.gray[10:20, 5:15]
+
+                    # Access single row
+                    row = img.gray[10]
+
+                    # Advanced indexing not recommended but supported
+                    mask = img.gray > 0.5
         """
         if self.isempty():
             raise EmptyImageError
@@ -115,17 +117,19 @@ class Grayscale(SingleChannelAccessor):
             - For bulk operations, consider using direct array indexing on a copy.
 
         Examples:
-            ```python
-            # Set a region to a specific value
-            img.gray[10:20, 5:15] = 0.5
+            .. dropdown:: Modify grayscale data with different assignment patterns
 
-            # Set a single pixel
-            img.gray[100, 100] = 0.8
+                .. code-block:: python
 
-            # Assign from another array
-            region = np.random.rand(10, 10)
-            img.gray[10:20, 5:15] = region
-            ```
+                    # Set a region to a specific value
+                    img.gray[10:20, 5:15] = 0.5
+
+                    # Set a single pixel
+                    img.gray[100, 100] = 0.8
+
+                    # Assign from another array
+                    region = np.random.rand(10, 10)
+                    img.gray[10:20, 5:15] = region
         """
         if isinstance(value, np.ndarray):
             if self._root_image._data.gray[key].shape != value.shape: raise ArrayKeyValueShapeMismatchError

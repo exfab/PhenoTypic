@@ -38,46 +38,46 @@ class ColorAccessor:
         _hsv (HsvAccessor): Accessor for HSV color space representation.
 
     Examples:
-        Access different color spaces from an image:
+        .. dropdown:: Access different color spaces from an image
 
-        ```python
-        from phenotypic import Image
+            .. code-block:: python
 
-        img = Image.imread('sample.jpg')
+                from phenotypic import Image
 
-        # Access CIE XYZ color space
-        xyz_data = img.color.XYZ[:]
-        print(xyz_data.shape)  # (height, width, 3)
+                img = Image.imread('sample.jpg')
 
-        # Access perceptually uniform Lab color space
-        lab_data = img.color.Lab[:]
+                # Access CIE XYZ color space
+                xyz_data = img.color.XYZ[:]
+                print(xyz_data.shape)  # (height, width, 3)
 
-        # Access HSV components (hue is first channel)
-        hue_channel = img.color.hsv[..., 0]
-        saturation_channel = img.color.hsv[..., 1]
-        brightness_channel = img.color.hsv[..., 2]
+                # Access perceptually uniform Lab color space
+                lab_data = img.color.Lab[:]
 
-        # Access chromaticity coordinates
-        xy_coords = img.color.xy[:]
-        ```
+                # Access HSV components (hue is first channel)
+                hue_channel = img.color.hsv[..., 0]
+                saturation_channel = img.color.hsv[..., 1]
+                brightness_channel = img.color.hsv[..., 2]
 
-        Use color spaces for analysis:
+                # Access chromaticity coordinates
+                xy_coords = img.color.xy[:]
 
-        ```python
-        import numpy as np
+        .. dropdown:: Use color spaces for analysis
 
-        # Calculate color differences using Lab space
-        lab_data = img.color.Lab[:]
-        differences = np.sqrt(
-            (lab_data[..., 0] - 50)**2 +
-            (lab_data[..., 1] - 25)**2 +
-            (lab_data[..., 2] - 10)**2
-        )
+            .. code-block:: python
 
-        # Extract hue for color classification
-        hue = img.color.hsv[..., 0] * 360  # Convert to degrees
-        red_mask = (hue < 30) | (hue > 330)
-        ```
+                import numpy as np
+
+                # Calculate color differences using Lab space
+                lab_data = img.color.Lab[:]
+                differences = np.sqrt(
+                    (lab_data[..., 0] - 50)**2 +
+                    (lab_data[..., 1] - 25)**2 +
+                    (lab_data[..., 2] - 10)**2
+                )
+
+                # Extract hue for color classification
+                hue = img.color.hsv[..., 0] * 360  # Convert to degrees
+                red_mask = (hue < 30) | (hue > 330)
     """
 
     def __init__(self, root_image: Image):
@@ -94,15 +94,15 @@ class ColorAccessor:
                 (illuminant, observer, gamma encoding).
 
         Examples:
-            ColorAccessor is typically accessed through the Image.color property:
+            .. dropdown:: Access ColorAccessor through Image.color property
 
-            ```python
-            from phenotypic import Image
+                .. code-block:: python
 
-            img = Image.imread('photo.jpg')
-            # Direct initialization is not typically needed - use img.color instead
-            accessor = img.color  # Returns ColorAccessor instance
-            ```
+                    from phenotypic import Image
+
+                    img = Image.imread('photo.jpg')
+                    # Direct initialization is not typically needed - use img.color instead
+                    accessor = img.color  # Returns ColorAccessor instance
         """
         self._root_image = root_image
         self._xyz = XyzAccessor(root_image)
@@ -133,23 +133,25 @@ class ColorAccessor:
             xy: Normalized chromaticity coordinates derived from XYZ.
 
         Examples:
-            ```python
-            from phenotypic import Image
+            .. dropdown:: Access and work with XYZ color space
 
-            img = Image.imread('photo.jpg')
+                .. code-block:: python
 
-            # Get full XYZ array
-            xyz_array = img.color.XYZ[:]
-            print(xyz_array.shape)  # (height, width, 3)
+                    from phenotypic import Image
 
-            # Extract individual channels
-            X = img.color.XYZ[..., 0]
-            Y = img.color.XYZ[..., 1]  # Luminance
-            Z = img.color.XYZ[..., 2]
+                    img = Image.imread('photo.jpg')
 
-            # Slice specific region
-            roi_xyz = img.color.XYZ[100:200, 100:200, :]
-            ```
+                    # Get full XYZ array
+                    xyz_array = img.color.XYZ[:]
+                    print(xyz_array.shape)  # (height, width, 3)
+
+                    # Extract individual channels
+                    X = img.color.XYZ[..., 0]
+                    Y = img.color.XYZ[..., 1]  # Luminance
+                    Z = img.color.XYZ[..., 2]
+
+                    # Slice specific region
+                    roi_xyz = img.color.XYZ[100:200, 100:200, :]
         """
         return self._xyz
 
@@ -176,20 +178,22 @@ class ColorAccessor:
             Lab: Perceptually uniform color space (typically uses D65).
 
         Examples:
-            ```python
-            from phenotypic import Image
+            .. dropdown:: Access XYZ color space under D65 illuminant
 
-            img = Image.imread('photo.jpg')
+                .. code-block:: python
 
-            # Get XYZ D65 representation
-            xyz_d65 = img.color.XYZ_D65[:]
+                    from phenotypic import Image
 
-            # Use D65 for standardized color comparison
-            luminance_d65 = img.color.XYZ_D65[..., 1]
+                    img = Image.imread('photo.jpg')
 
-            # If original illuminant differs from D65, chromatic adaptation is applied
-            # For images originally in D65, this is equivalent to XYZ
-            ```
+                    # Get XYZ D65 representation
+                    xyz_d65 = img.color.XYZ_D65[:]
+
+                    # Use D65 for standardized color comparison
+                    luminance_d65 = img.color.XYZ_D65[..., 1]
+
+                    # If original illuminant differs from D65, chromatic adaptation is applied
+                    # For images originally in D65, this is equivalent to XYZ
         """
         return self._xyz_d65
 
@@ -219,26 +223,28 @@ class ColorAccessor:
             Lab: Perceptually uniform color space incorporating both chromaticity and lightness.
 
         Examples:
-            ```python
-            from phenotypic import Image
-            import matplotlib.pyplot as plt
+            .. dropdown:: Access and visualize xy chromaticity coordinates
 
-            img = Image.imread('photo.jpg')
+                .. code-block:: python
 
-            # Get chromaticity coordinates
-            xy_coords = img.color.xy[:]
-            x = img.color.xy[..., 0]
-            y = img.color.xy[..., 1]
+                    from phenotypic import Image
+                    import matplotlib.pyplot as plt
 
-            # Plot color on CIE 1931 chromaticity diagram
-            plt.scatter(x.flatten(), y.flatten(), c=img.rgb[:].reshape(-1, 3)/255)
-            plt.xlabel('x')
-            plt.ylabel('y')
-            plt.show()
+                    img = Image.imread('photo.jpg')
 
-            # Analyze color composition without luminance effects
-            roi_xy = img.color.xy[100:200, 100:200, :]
-            ```
+                    # Get chromaticity coordinates
+                    xy_coords = img.color.xy[:]
+                    x = img.color.xy[..., 0]
+                    y = img.color.xy[..., 1]
+
+                    # Plot color on CIE 1931 chromaticity diagram
+                    plt.scatter(x.flatten(), y.flatten(), c=img.rgb[:].reshape(-1, 3)/255)
+                    plt.xlabel('x')
+                    plt.ylabel('y')
+                    plt.show()
+
+                    # Analyze color composition without luminance effects
+                    roi_xy = img.color.xy[100:200, 100:200, :]
         """
         return self._xy
 
@@ -270,33 +276,35 @@ class ColorAccessor:
             XYZ_D65: XYZ under standard D65 illuminant (Lab typically computed from this).
 
         Examples:
-            ```python
-            from phenotypic import Image
-            import numpy as np
+            .. dropdown:: Access Lab color space and calculate color differences
 
-            img = Image.imread('photo.jpg')
+                .. code-block:: python
 
-            # Access Lab color space
-            lab = img.color.Lab[:]
-            L = img.color.Lab[..., 0]  # Lightness (0-100)
-            a = img.color.Lab[..., 1]  # Green (-) to Red (+)
-            b = img.color.Lab[..., 2]  # Blue (-) to Yellow (+)
+                    from phenotypic import Image
+                    import numpy as np
 
-            # Calculate perceptually meaningful color difference
-            reference_lab = np.array([50, 0, 0])  # Mid-gray
-            color_difference = np.sqrt(
-                (lab[..., 0] - reference_lab[0])**2 +
-                (lab[..., 1] - reference_lab[1])**2 +
-                (lab[..., 2] - reference_lab[2])**2
-            )
+                    img = Image.imread('photo.jpg')
 
-            # Find pixels close to a reference color (within ΔE of 5)
-            similar_mask = color_difference < 5
+                    # Access Lab color space
+                    lab = img.color.Lab[:]
+                    L = img.color.Lab[..., 0]  # Lightness (0-100)
+                    a = img.color.Lab[..., 1]  # Green (-) to Red (+)
+                    b = img.color.Lab[..., 2]  # Blue (-) to Yellow (+)
 
-            # Adjust lightness across entire image
-            brightened = lab.copy()
-            brightened[..., 0] += 10  # Increase L* by 10
-            ```
+                    # Calculate perceptually meaningful color difference
+                    reference_lab = np.array([50, 0, 0])  # Mid-gray
+                    color_difference = np.sqrt(
+                        (lab[..., 0] - reference_lab[0])**2 +
+                        (lab[..., 1] - reference_lab[1])**2 +
+                        (lab[..., 2] - reference_lab[2])**2
+                    )
+
+                    # Find pixels close to a reference color (within ΔE of 5)
+                    similar_mask = color_difference < 5
+
+                    # Adjust lightness across entire image
+                    brightened = lab.copy()
+                    brightened[..., 0] += 10  # Increase L* by 10
         """
         return self._cielab
 
@@ -335,32 +343,34 @@ class ColorAccessor:
             Lab: Perceptually uniform color space alternative.
 
         Examples:
-            ```python
-            from phenotypic import Image
+            .. dropdown:: Access HSV components and perform color-based filtering
 
-            img = Image.imread('photo.jpg')
+                .. code-block:: python
 
-            # Access HSV components
-            hsv = img.color.hsv[:]
-            hue = img.color.hsv[..., 0]  # 0 to 1
-            saturation = img.color.hsv[..., 1]  # 0 to 1
-            brightness = img.color.hsv[..., 2]  # 0 to 1
+                    from phenotypic import Image
 
-            # Convert hue to degrees (0-360)
-            hue_degrees = hue * 360
+                    img = Image.imread('photo.jpg')
 
-            # Extract red pixels (hue near 0 or near 360)
-            red_hue = hue_degrees
-            red_mask = (red_hue < 30) | (red_hue > 330)
+                    # Access HSV components
+                    hsv = img.color.hsv[:]
+                    hue = img.color.hsv[..., 0]  # 0 to 1
+                    saturation = img.color.hsv[..., 1]  # 0 to 1
+                    brightness = img.color.hsv[..., 2]  # 0 to 1
 
-            # Extract highly saturated colors
-            saturated_mask = saturation > 0.5
+                    # Convert hue to degrees (0-360)
+                    hue_degrees = hue * 360
 
-            # Find bright colors
-            bright_mask = brightness > 0.7
+                    # Extract red pixels (hue near 0 or near 360)
+                    red_hue = hue_degrees
+                    red_mask = (red_hue < 30) | (red_hue > 330)
 
-            # Visualize HSV components
-            fig, axes = img.color.hsv.show()
-            ```
+                    # Extract highly saturated colors
+                    saturated_mask = saturation > 0.5
+
+                    # Find bright colors
+                    bright_mask = brightness > 0.7
+
+                    # Visualize HSV components
+                    fig, axes = img.color.hsv.show()
         """
         return self._hsv

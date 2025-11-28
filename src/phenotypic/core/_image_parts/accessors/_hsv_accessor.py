@@ -77,9 +77,11 @@ class HsvAccessor(ImageAccessorBase):
             UserWarning: If metadata is missing or indicates the image was saved
                 from a different accessor type.
 
-        Example:
-            >>> from phenotypic.core._image_parts.accessors import HsvAccessor
-            >>> hsv_arr = HsvAccessor.load("my_hsv_image.tif")
+        Examples:
+            .. dropdown:: Loading an HSV array from a TIFF file
+
+                >>> from phenotypic.core._image_parts.accessors import HsvAccessor
+                >>> hsv_arr = HsvAccessor.load("my_hsv_image.tif")
         """
         filepath = Path(filepath)
         expected_property = f"Image.{cls._accessor_property_name}"
@@ -450,9 +452,11 @@ class HsvAccessor(ImageAccessorBase):
             - Creates ImageDescription TIFF tag with JSON-formatted metadata
             - The TIFF photometric interpretation is set to 'minisblack'
 
-        Example:
-            >>> image.color.hsv.imsave("output_hsv.tif")
-            >>> loaded_hsv = HsvAccessor.load("output_hsv.tif")  # Verify metadata
+        Examples:
+            .. dropdown:: Saving HSV data and verifying metadata
+
+                >>> image.color.hsv.imsave("output_hsv.tif")
+                >>> loaded_hsv = HsvAccessor.load("output_hsv.tif")  # Verify metadata
         """
         filepath = Path(filepath)
 

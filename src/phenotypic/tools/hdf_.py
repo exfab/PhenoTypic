@@ -274,8 +274,12 @@ class HDF:
         property is used to obtain an `h5py.File` object configured with the latest library version.
 
         Note:
-            If using SWMR mode, don't forget to enable SWMR mode with:
+            If using SWMR mode, don't forget to enable SWMR mode:
+
+            .. dropdown:: Enable SWMR mode
+
                 .. code-block:: python
+
                     hdf = HDF(filepath)
                     with hdf.writer as writer:
                         writer.swmr_mode = True

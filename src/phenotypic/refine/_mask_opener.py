@@ -40,9 +40,11 @@ class MaskOpener(ObjectRefiner):
             thin connections and specks but risks eroding colony boundaries.
 
     Examples:
-        >>> from phenotypic.refine import MaskOpener
-        >>> op = MaskOpener(footprint='auto')
-        >>> image = op.apply(image, inplace=True)  # doctest: +SKIP
+        .. dropdown:: Morphologically open masks to separate touching colonies
+
+            >>> from phenotypic.refine import MaskOpener
+            >>> op = MaskOpener(footprint='auto')
+            >>> image = op.apply(image, inplace=True)  # doctest: +SKIP
 
     Raises:
         AttributeError: If an invalid ``footprint`` type is provided (checked
