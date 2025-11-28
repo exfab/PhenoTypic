@@ -1,0 +1,197 @@
+classDiagram
+    %% Main Classes
+    class BaseOperation {
+        <<abstract>>
+        +__init__()
+        +_log_memory_usage()
+        +_get_matched_operation_args()
+        +_matched_args()
+        Base class providing memory logging and operation argument matching for all operations
+    }
+
+    class ImageOperation {
+        <<abstract>>
+        +apply(image, inplace=False)
+        +_operate(image)**
+        Base class for all image processing operations with integrity validation and widget support
+    }
+
+    class MeasureFeatures {
+        <<abstract>>
+        +measure(image, include_meta=False)
+        +_operate(image)**
+        +_calculate_center_of_mass()
+        +_calculate_max()
+        +_calculate_mean()
+        +_calculate_median()
+        +_calculate_minimum()
+        +_calculate_stddev()
+        +_calculate_sum()
+        +_calculate_variance()
+        +_calculate_coeff_variation()
+        +_calculate_extrema()
+        +_calculate_q1()
+        +_calculate_q3()
+        +_calculate_iqr()
+        Base class for measuring features on detected objects with statistical calculation utilities
+    }
+
+    class LazyWidgetMixin {
+        Provides lazy loading for GUI widgets to improve performance
+    }
+
+    %% Image Operations
+    class ImageEnhancer {
+        <<abstract>>
+        +apply(image, inplace=False)
+        +_make_footprint()
+        Enhances image quality for better detection (filtering, denoising, contrast adjustment)
+    }
+
+    class ImageCorrector {
+        <<abstract>>
+        +apply(image, inplace=False)
+        Corrects image defects (illumination correction, background subtraction, artifact removal)
+    }
+
+    class ObjectDetector {
+        <<abstract>>
+        +apply(image, inplace=False)
+        Detects objects in images and creates object masks/maps (thresholding, segmentation, blob detection)
+    }
+
+    class ObjectRefiner {
+        <<abstract>>
+        +apply(image, inplace=False)
+        +_make_footprint()
+        Refines detected objects (filtering by size/shape, morphological operations, object merging/splitting)
+    }
+
+    class ThresholdDetector {
+        <<abstract>>
+        +apply(image, inplace=False)
+        Subset of ObjectDetector using threshold-based methods (Otsu, adaptive, fixed threshold)
+    }
+
+    %% Grid Operations
+    class GridOperation {
+        <<abstract>>
+        +apply(grid_image, inplace=False)
+        Base class for operations on gridded images (requires GridImage input)
+    }
+
+    class GridCorrector {
+        <<abstract>>
+        +apply(grid_image, inplace=False)
+        Corrects grid-related issues (grid alignment, perspective correction, well position adjustment)
+    }
+
+    class GridRefiner {
+        <<abstract>>
+        +apply(grid_image, inplace=False)
+        Refines grid object detection and mapping (grid-aware object filtering, section assignment)
+    }
+
+    class GridObjectDetector {
+        <<abstract>>
+        +apply(grid_image, inplace=False)
+        Detects objects in gridded images with grid-aware processing
+    }
+
+    %% Grid Measurements
+    class GridMeasureFeatures {
+        <<abstract>>
+        +measure(grid_image)
+        Base class for measurements on GridImage objects
+    }
+
+    class GridFinder {
+        <<abstract>>
+        +measure(image)
+        +get_row_edges(image)
+        +get_col_edges(image)
+        +_get_grid_info()
+        Detects and measures grid layouts from object positions (finds row/column edges, assigns section numbers)
+    }
+
+    %% Pipeline Classes
+    class PrefabPipeline {
+        <<abstract>>
+        Base class for predefined pipeline configurations
+    }
+
+    class Image {
+        +rgb: ImageRGB
+        +gray: Grayscale
+        +enh_gray: EnhancedGrayscale
+        +objmask: ObjectMask
+        +objmap: ObjectMap
+        +metadata: MetadataAccessor
+        +color: ColorAccessor
+        +objects: ObjectsAccessor
+        +__init__(arr, name, bit_depth, gamma_encoding, illuminant, observer)
+        +copy()
+        +show()
+        Main image processing class with integrated data management, color handling, and object analysis
+    }
+
+    class ImagePipeline {
+        +benchmark: bool
+        +verbose: bool
+        +__init__(ops, meas, benchmark, verbose)
+        +apply(images)
+        Sequential pipeline for applying operations and measurements to images
+    }
+
+    %% Core Infrastructure
+    class ImageIOHandler {
+        +imread()
+        +save2hdf()
+        +save2pickle()
+        +metadata extraction
+        Handles I/O operations, file format support, and metadata management
+    }
+
+    class SerializablePipeline {
+        +to_json()
+        +from_json()
+        +save_pipeline()
+        +load_pipeline()
+        Adds JSON serialization capabilities to pipeline configurations
+    }
+
+    %% Inheritance Relationships
+    BaseOperation <|-- ImageOperation
+    BaseOperation <|-- MeasureFeatures
+
+    ImageOperation <|-- ImageEnhancer
+    ImageOperation <|-- ImageCorrector
+    ImageOperation <|-- ObjectDetector
+    ImageOperation <|-- ObjectRefiner
+    ImageOperation <|-- GridOperation
+
+    ObjectDetector <|-- ThresholdDetector
+
+    GridOperation <|-- GridCorrector
+    GridOperation <|-- GridRefiner
+    GridOperation <|-- GridObjectDetector
+
+    MeasureFeatures <|-- GridMeasureFeatures
+    GridMeasureFeatures <|-- GridFinder
+
+    ImageOperation .. LazyWidgetMixin : mixes in
+
+    ImageIOHandler <|-- Image
+    SerializablePipeline <|-- ImagePipeline
+
+    %% Notes
+    note for ImageOperation "All image operations inherit from ImageOperation.\nThey apply transformations to Image objects and support inplace operations.\nAbstract _operate() method must be implemented by subclasses."
+    note for MeasureFeatures "All measurement classes inherit from MeasureFeatures.\nThey calculate statistical properties of detected objects.\nReturns pandas DataFrames with measurement results."
+    note for ImageEnhancer "Enhances image quality to improve subsequent detection.\nExamples: denoising, contrast enhancement, edge sharpening.\nWorks on enh_gray attribute of Image."
+    note for ObjectDetector "Detects objects and creates objmask/objmap.\nExamples: threshold-based detection, blob detection, segmentation.\nFundamental step before measurements can be taken."
+    note for ObjectRefiner "Refines detected objects after initial detection.\nExamples: size filtering, morphological operations, object merging.\nWorks on existing objmask/objmap."
+    note for GridFinder "Analyzes object positions to detect grid layouts.\nCalculates row/column edges and assigns section numbers.\nWorks on regular Image objects (not just GridImage)."
+    note for GridOperation "Requires GridImage input (gridded images).\nGrid-aware operations that consider grid structure.\nExamples: grid alignment, section-based processing."
+    note for Image "Central class containing all image data and accessors.\nProvides unified interface to RGB, grayscale, enhanced, and object data.\nSupports color space transformations and metadata management."
+    note for ImagePipeline "Applies operations and measurements sequentially.\nSupports benchmarking and verbose logging.\nCan serialize/deserialize pipeline configurations."
+
