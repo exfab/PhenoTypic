@@ -47,7 +47,7 @@ def catch_warnings_decorator(func):
 # <<Interface>>
 class MeasureFeatures(BaseOperation, ABC):
     """
-    A FeatureExtractor is an abc_ object intended to calculate measurements on the values within detected objects of
+    A FeatureExtractor is an ``abc_`` object intended to calculate measurements on the values within detected objects of
     the image array. The __init__ constructor & _operate method is meant to be the only parts overloaded in inherited classes. This is so
     that the main measure method call can contain all the necessary type validation and output validation checks to streamline development.
     """

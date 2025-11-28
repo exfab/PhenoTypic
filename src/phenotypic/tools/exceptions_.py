@@ -21,7 +21,7 @@ class UnknownError(PhenoTypicError):
 
 
 class InterfaceError(NotImplementedError, PhenoTypicError):
-    """Exception raised when an abc_ method is called when it's not supposed to be."""
+    """Exception raised when an ``abc_`` method is called when it's not supposed to be."""
 
     def __init__(self):
         super().__init__(

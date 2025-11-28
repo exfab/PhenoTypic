@@ -133,7 +133,6 @@ Welcome to Phenotypic's documentation. Here you'll find comprehensive guides and
    :hidden:
    :titlesonly:
 
-   installation
    user_guide/index
    api_reference/index
    contrib_guide/index
