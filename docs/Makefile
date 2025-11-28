@@ -20,7 +20,7 @@ help:
 	@$(SPHINXBUILD) -M $@ "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
 
 apidoc:
-	sphinx-apidoc -o source/api_reference ../src/phenotypic --module-first --separate
+	sphinx-apidoc -o source/api_reference ../src/phenotypic --module-first --separate --no-toc
 
 html: apidoc
 	make clean

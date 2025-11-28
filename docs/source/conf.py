@@ -38,6 +38,17 @@ import sphinx_autosummary_accessors
 sys.path.insert(0, os.path.abspath('../../src'))
 sys.path.insert(0, os.path.abspath('./_extensions'))
 
+# Register ipython2 as an alias for ipython3 to suppress warnings in old notebooks
+from pygments.lexers import get_lexer_by_name
+try:
+    # Try to register ipython2 as ipython3
+    from pygments.lexers import PythonLexer
+    from sphinx.highlighting import lexers
+    lexers['ipython2'] = get_lexer_by_name('ipython3')
+except Exception:
+    # If that fails, just use python3
+    pass
+
 project = 'PhenoTypic'
 copyright = '2025, ExFAB BioFoundry'
 author = 'Alexander Nguyen'
@@ -97,6 +108,15 @@ autodoc_typehints = 'both'
 autodoc_typehints_format = 'short'
 autodoc_member_order = 'groupwise'
 
+# Map type abbreviations used in code to their full module paths
+autodoc_type_aliases = {
+    'pd.DataFrame': 'pandas.DataFrame',
+    'pd.Series': 'pandas.Series',
+    'np.ndarray': 'numpy.ndarray',
+    'plt.Axes': 'matplotlib.axes.Axes',
+    'plt.Figure': 'matplotlib.figure.Figure',
+}
+
 templates_path = ['_templates', sphinx_autosummary_accessors.templates_path]
 
 # Suppress specific warnings
@@ -104,6 +124,7 @@ suppress_warnings = [
     'toc.not_readable',  # Suppress warnings about documents not in toctree
     'autosectionlabel.*',  # Suppress duplicate label warnings
     'autodoc.duplicate_object',  # Suppress duplicate object warnings
+    'ref.class',  # Suppress unresolvable class reference warnings (external types)
 ]
 
 # Exclude patterns - don't process these files/directories
@@ -113,6 +134,11 @@ exclude_patterns = ['_build', '**.ipynb_checkpoints', '**/auto_examples']
 nbsphinx_execute = 'auto'
 nbsphinx_allow_errors = True
 nbsphinx_kernel_name = 'python3'
+
+# Fix for deprecated ipython2 lexer in Jupyter notebooks
+# Map ipython2 to python3 for syntax highlighting
+highlight_language = 'python3'
+pygments_style = 'sphinx'
 
 # myst_nb configuration
 myst_enable_extensions = [
@@ -185,7 +211,16 @@ napoleon_use_rtype = True
 # Type aliases for cleaner documentation
 python_type_aliases = {
     'matplotlib.axes._axes.Axes': 'matplotlib.axes.Axes',
-    'matplotlib.figure.Figure'  : 'matplotlib.figure.Figure'
+    'matplotlib.figure.Figure'  : 'matplotlib.figure.Figure',
+    # Common abbreviations
+    'np.ndarray': 'numpy.ndarray',
+    'pd.DataFrame': 'pandas.DataFrame',
+    'pd.Series': 'pandas.Series',
+    'plt.Axes': 'matplotlib.axes.Axes',
+    'plt.Figure': 'matplotlib.figure.Figure',
+    # Type hint aliases
+    'optional': 'typing.Optional',
+    'Optional': 'typing.Optional',
 }
 
 intersphinx_mapping = {
@@ -200,6 +235,27 @@ intersphinx_mapping = {
     "colour"    : ("https://colour.readthedocs.io/en/latest/", None),
     "matplotlib": ("https://matplotlib.org/stable/", None),
 }
+
+# Nitpicky mode to check for broken cross-references (disabled due to too many warnings)
+# We'll suppress reference warnings for types that don't have proper intersphinx mappings
+nitpicky = False
+nitpick_ignore = [
+    # Type hints
+    ('py:class', 'optional'),
+    ('py:class', 'Optional'),
+    # Common abbreviations that may not resolve via intersphinx
+    ('py:class', 'pd.DataFrame'),
+    ('py:class', 'pd.Series'),
+    ('py:class', 'np.ndarray'),
+    ('py:class', 'plt.Axes'),
+    ('py:class', 'plt.Figure'),
+    # H5py internal classes
+    ('py:class', 'h5py._hl.group.Group'),
+    ('py:class', 'h5py._hl.files.File'),
+    # Other external types
+    ('py:class', 'ipywidgets.Widget'),
+    ('py:class', 'Path'),
+]
 
 
 # Auto-generate downloadables documentation
