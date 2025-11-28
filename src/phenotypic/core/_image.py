@@ -30,16 +30,6 @@ class Image(ImageIOHandler):
     across multiple data representations. RGB and grayscale forms are kept synchronized,
     and additional representations (enhanced grayscale, object maps) support analysis workflows.
 
-    Attributes:
-        rgb (ImageRGB): RGB image accessor (empty for grayscale-only images).
-        gray (Grayscale): Grayscale image accessor (always present).
-        enh_gray (EnhancedGrayscale): Enhanced grayscale for preprocessing and detection.
-        objmask (ObjectMask): Binary mask indicating analyzed regions.
-        objmap (ObjectMap): Integer labels for detected objects.
-        metadata (MetadataAccessor): Protected, public, and imported metadata access.
-        color (ColorAccessor): Color space transformations (XYZ, Lab, HSV, etc.).
-        objects (ObjectsAccessor): Object-specific measurements and analysis.
-
     Notes:
         - 2-D input arrays are treated as grayscale; rgb form remains empty.
         - 3-D input arrays are treated as RGB; grayscale is computed automatically.

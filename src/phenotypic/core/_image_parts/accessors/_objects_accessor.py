@@ -22,7 +22,8 @@ class ObjectsAccessor:
 
     The accessor operates on labeled object maps where each pixel value indicates which colony it
     belongs to (0 for background, 1+ for individual colonies). Properties are computed using
-    scikit-image's regionprops functionality, providing standardized measurements for each colony.
+    scikit-image's regionprops functionality, providing standardized morphological and intensity
+    measurements for each colony.
 
     Note:
         This accessor can only be used after an ObjectDetector has been applied to the Image to
@@ -258,23 +259,25 @@ class ObjectsAccessor:
 
         This property provides access to scikit-image's RegionProperties objects, which contain
         detailed morphological and intensity measurements for each colony. Each RegionProperties
-        object provides properties like area, perimeter, centroid, bounding box coordinates,
-        mean intensity, and many others.
+        object provides lazy-evaluated properties like area, perimeter, centroid, bounding box
+        coordinates, mean intensity, and many morphological descriptors.
 
         The properties are computed dynamically each time this property is accessed (cache=False),
-        ensuring measurements always reflect the current state of the object map and intensity image.
+        ensuring measurements always reflect the current state of the object map and grayscale
+        intensity image.
 
         Returns:
             list[skimage.measure.RegionProperties]: A list of RegionProperties objects, one per
-                detected colony. Each object provides lazy access to properties like:
+                detected colony, sorted by label. Each object provides lazy access to properties:
                 - area: Number of pixels in the colony
                 - centroid: (row, col) coordinates of the colony center
                 - bbox: Bounding box as (min_row, min_col, max_row, max_col)
                 - mean_intensity: Mean pixel intensity within the colony region
-                - perimeter, eccentricity, solidity, and many more
+                - perimeter, eccentricity, solidity, major_axis_length, minor_axis_length,
+                  moments, moments_central, moments_hu, and many more standard morphological
+                  measurements from scikit-image.measure.regionprops
 
-                See scikit-image regionprops documentation for the complete list of available
-                properties.
+                Refer to scikit-image documentation for the complete list of available properties.
 
         Examples:
             Extract colony areas:
@@ -378,19 +381,20 @@ class ObjectsAccessor:
     def slices(self) -> list:
         """Get bounding box slices for efficiently cropping to each colony region.
 
-        This property returns NumPy-compatible slice objects that define the rectangular bounding
-        box around each colony. These slices can be used directly with array indexing to extract
-        the minimal rectangular region containing each colony, which is much more efficient than
-        working with the full plate image when processing individual colonies.
+        This property returns NumPy-compatible slice objects that define the minimal rectangular
+        bounding box around each colony. These slices can be used directly with NumPy array
+        indexing to extract bounding box regions, which is much more efficient than processing
+        the full plate image when analyzing individual colonies.
 
-        Each slice is a tuple of (row_slice, col_slice) that can be used with NumPy indexing
-        syntax to extract the bounding box region from any array with the same dimensions.
+        Each slice is a tuple of (row_slice, col_slice) that can be used with NumPy standard
+        indexing syntax: `array[row_slice, col_slice]` to extract the bounding box region from
+        any array with the same dimensions.
 
         Returns:
             list[tuple[slice, slice]]: A list of slice tuples, one per colony, in the same order
                 as the labels. Each tuple contains (row_slice, col_slice) where:
-                - row_slice defines the row range: slice(min_row, max_row)
-                - col_slice defines the column range: slice(min_col, max_col)
+                - row_slice: slice(min_row, max_row) - includes rows from min_row to max_row-1
+                - col_slice: slice(min_col, max_col) - includes cols from min_col to max_col-1
 
         Examples:
             Extract bounding box regions from the grayscale image:
@@ -450,8 +454,9 @@ class ObjectsAccessor:
                 This index can be used with methods like iloc(), slices[], or props[].
 
         Raises:
-            IndexError: If object_label is not present in the current labels list. This can
-                occur if the label doesn't exist or if colonies have been filtered/removed.
+            IndexError: If object_label is not present in the current labels list. This occurs
+                when the label doesn't exist, was filtered out, or does not match any detected
+                colony.
 
         Examples:
             Map label to index for accessing properties:
@@ -590,10 +595,11 @@ class ObjectsAccessor:
 
         This method provides a pandas-like interface for accessing colonies by their position
         index. Unlike __getitem__ (which also uses position), iloc() returns a crop that preserves
-        all labels in the objmap, while __getitem__ zeros out non-matching labels.
+        all labels in the objmap, while __getitem__ zeros out non-matching labels for isolation.
 
         Use iloc() when you need the minimal bounding box crop but want to preserve the original
-        label structure, which can be useful for certain analysis workflows.
+        label structure and neighboring colonies within the bounding box, which can be useful
+        for context-aware analysis workflows.
 
         Args:
             index (int): Zero-based position index of the colony to extract. Must be in the range
@@ -602,8 +608,8 @@ class ObjectsAccessor:
         Returns:
             Image: A cropped Image containing the bounding box region of the specified colony.
                 Unlike __getitem__, this crop preserves all label values in the objmap without
-                zeroing non-matching pixels. The metadata is updated with the parent's metadata
-                but ImageType is not changed to 'Object'.
+                zeroing non-matching pixels. The metadata is inherited from the parent Image,
+                and ImageType is not changed to 'Object'.
 
         Raises:
             IndexError: If index is negative or >= num_objects.
@@ -629,17 +635,19 @@ class ObjectsAccessor:
             ```python
             # iloc preserves all labels in the crop
             crop_iloc = plate.objects.iloc(5)
-            print(f"Labels in crop (iloc): {crop_iloc.objmap.max()}")  # May show label 5
+            print(f"All labels in crop (iloc): {set(crop_iloc.objmap.flatten())}")
+            # May show {0, 5} if other colonies are nearby
 
-            # __getitem__ zeros out non-matching labels
+            # __getitem__ zeros out non-matching labels for isolation
             crop_getitem = plate.objects[5]
-            print(f"Labels in crop ([5]): {crop_getitem.objmap.max()}")  # Shows only label 5
+            print(f"Labels in isolated crop ([5]): {crop_getitem.objmap.max()}")
+            # Shows only label 5 (others zeroed)
             ```
 
             Extract multiple specific colonies:
 
             ```python
-            # Get colonies at positions 0, 5, and 10
+            # Get colonies at positions 0, 5, and 10 with preserved context
             selected_indices = [0, 5, 10]
             selected_colonies = [plate.objects.iloc(i) for i in selected_indices]
             ```

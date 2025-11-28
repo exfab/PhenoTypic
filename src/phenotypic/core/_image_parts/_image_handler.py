@@ -448,7 +448,10 @@ class ImageHandler(ImageDataManager):
         Returns:
             list[skimage.measure._regionprops.RegionProperties]: A list of properties for the entire provided image.
 
-        Notes:
+
+        .. admonition:: property details
+            :class: dropdown
+
             (Excerpt from skimage.measure.regionprops documentation on available properties.):
 
             Read more at :class:`skimage.measure.regionprops` or
@@ -606,6 +609,7 @@ class ImageHandler(ImageDataManager):
 
             solidity: float
                 Ratio of pixels in the region to pixels of the convex hull image.
+
 
         References:
             https://scikit-image.org/docs/stable/api/skimage.measure.html#skimage.measure.regionprops

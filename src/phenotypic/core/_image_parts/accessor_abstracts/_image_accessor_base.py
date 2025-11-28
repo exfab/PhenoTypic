@@ -76,19 +76,19 @@ class ImageAccessorBase(ABC):
 
         if phenotypic_data is None:
             warnings.warn(
-                f"No PhenoTypic metadata found in '{filepath.name}'. "
-                f"Cannot verify this image was saved from {expected_property}. "
-                "Loading anyway, but this may lead to undefined behavior.",
-                UserWarning
+                    f"No PhenoTypic metadata found in '{filepath.name}'. "
+                    f"Cannot verify this image was saved from {expected_property}. "
+                    "Loading anyway, but this may lead to undefined behavior.",
+                    UserWarning
             )
         else:
             saved_property = phenotypic_data.get('phenotypic_image_property', 'unknown')
             if saved_property != expected_property:
                 warnings.warn(
-                    f"Metadata mismatch: Image was saved from '{saved_property}' "
-                    f"but being loaded as '{expected_property}'. "
-                    "This may lead to undefined behavior.",
-                    UserWarning
+                        f"Metadata mismatch: Image was saved from '{saved_property}' "
+                        f"but being loaded as '{expected_property}'. "
+                        "This may lead to undefined behavior.",
+                        UserWarning
                 )
 
         return arr
@@ -116,8 +116,8 @@ class ImageAccessorBase(ABC):
                 # Try exiftool for JPEG UserComment
                 if shutil.which('exiftool'):
                     result = subprocess.run(
-                        ['exiftool', '-json', '-UserComment', str(filepath)],
-                        capture_output=True, text=True, timeout=30
+                            ['exiftool', '-json', '-UserComment', str(filepath)],
+                            capture_output=True, text=True, timeout=30
                     )
                     if result.returncode == 0:
                         exif_data = json.loads(result.stdout)
@@ -256,6 +256,19 @@ class ImageAccessorBase(ABC):
         return self._subject_arr.copy()
 
     def foreground(self):
+        """
+        Extracts and returns the foreground of the image by masking out the background.
+
+        This method generates a foreground image by applying the object mask
+        stored in the Image to the current array representation.
+        Pixels outside the object mask are set to zero in the resulting foreground
+        image. This is useful in image processing tasks to isolate the region
+        of interest in the image, such as microbe colonies on an agar plate.
+
+        Returns:
+            numpy.ndarray: A numpy array containing only the foreground portion
+            of the image, with all non-foreground pixels set to zero.
+        """
         foreground = self._subject_arr.copy()
         foreground[self._root_image.objmask[:] == 0] = 0
         return foreground
@@ -394,6 +407,38 @@ class ImageAccessorBase(ABC):
         return fig, ax
 
     def _plot_obj_labels(self, ax: plt.Axes, color: str, size: int, facecolor: str, object_label: None | int, **kwargs):
+        """
+        Adds labels to objects in an image plot. This method overlays numerical labels onto
+        the visual representation of segmented objects (e.g., microbe colonies) on a solid
+        media agar. These labels typically correspond to unique identifiers from the object's
+        segmentation process, helping in visually associating each object with its properties.
+
+        This functionality is particularly useful in microbiology image analysis where
+        different colonies need to be identified and studied individually. Adjusting certain
+        attributes impacts the clarity, visibility, and interpretability of labels, aiding
+        in downstream qualitative and quantitative analyses.
+
+        Args:
+            ax (plt.Axes): The matplotlib Axes object to plot on. This canvas will display
+                the overlaid labels and is intended to correspond to a plot of the segmented
+                agar plate.
+            color (str): The color of the label text. Altering this influences the contrast
+                and visibility of the text against the image, which might be critical when
+                distinguishing labels on different background or media types used.
+            size (int): The font size of the label text. Larger values make the labels more
+                prominent, useful for densely populated plates or distant views, whereas smaller
+                values add discretion and are better for crowded colonies or finer details.
+            facecolor (str): The background color of the label's text box. This can help to
+                enhance text contrast, especially when visualizing colonies with similar colors
+                as the text. An opaque background makes labels clearer when overlapping colonies.
+            object_label (None | int): If `None`, all objects are labeled. Setting a specific
+                integer labels only the corresponding object. Modifying this allows targeted
+                labeling, which simplifies results for cases focusing on individual colonies
+                with unique interest.
+            **kwargs: Additional keyword arguments passed to `matplotlib.axes.Axes.text()`
+                that control text rendering properties such as rotation, alignment, or weight,
+                providing flexibility in presentation.
+        """
         props = self._root_image.objects.props
         for i, label in enumerate(self._root_image.objects.labels):
             if object_label is None:
@@ -548,10 +593,10 @@ class ImageAccessorBase(ABC):
                 public[str(key)] = value
 
         return {
-            "phenotypic_version": phenotypic.__version__,
+            "phenotypic_version"       : phenotypic.__version__,
             "phenotypic_image_property": f"Image.{self._accessor_property_name}",
-            "protected": protected,
-            "public": public,
+            "protected"                : protected,
+            "public"                   : public,
         }
 
     @staticmethod
@@ -570,23 +615,23 @@ class ImageAccessorBase(ABC):
         if shutil.which('exiftool'):
             try:
                 subprocess.run(
-                    [
-                        'exiftool',
-                        '-overwrite_original',
-                        f'-UserComment={metadata_json}',
-                        str(filepath)
-                    ],
-                    capture_output=True,
-                    text=True,
-                    timeout=30,
-                    check=True
+                        [
+                            'exiftool',
+                            '-overwrite_original',
+                            f'-UserComment={metadata_json}',
+                            str(filepath)
+                        ],
+                        capture_output=True,
+                        text=True,
+                        timeout=30,
+                        check=True
                 )
             except (subprocess.TimeoutExpired, subprocess.CalledProcessError) as e:
                 warnings.warn(f'Failed to write EXIF metadata to JPEG: {e}')
         else:
             warnings.warn(
-                'exiftool not found. JPEG metadata will not be saved. '
-                'Install exiftool for full metadata support.'
+                    'exiftool not found. JPEG metadata will not be saved. '
+                    'Install exiftool for full metadata support.'
             )
 
     @staticmethod
@@ -599,6 +644,7 @@ class ImageAccessorBase(ABC):
             metadata_json: JSON string of PhenoTypic metadata.
         """
         from PIL import PngImagePlugin
+
         pnginfo = PngImagePlugin.PngInfo()
         pnginfo.add_text(IO.PHENOTYPIC_METADATA_KEY, metadata_json)
         pil_image.save(filepath, optimize=True, pnginfo=pnginfo)

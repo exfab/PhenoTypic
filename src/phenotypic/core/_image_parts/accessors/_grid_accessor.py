@@ -87,11 +87,13 @@ class GridAccessor(ImageAccessorBase):
         """Set the number of rows in the grid.
 
         Args:
-            nrows (int): Number of rows. Must be a positive integer.
+            nrows (int): Number of rows in the grid. Must be a positive integer
+                (>= 1). Typically corresponds to the number of row pins in a
+                colony pinning robot.
 
         Raises:
-            ValueError: If nrows < 1.
-            TypeError: If nrows is not an integer.
+            ValueError: If nrows is less than 1.
+            TypeError: If nrows is not an integer type.
         """
         if nrows < 1: raise ValueError('Number of nrows must be greater than 0')
         if type(nrows) != int: raise TypeError('Number of nrows must be an integer')
@@ -112,11 +114,13 @@ class GridAccessor(ImageAccessorBase):
         """Set the number of columns in the grid.
 
         Args:
-            ncols (int): Number of columns. Must be a positive integer.
+            ncols (int): Number of columns in the grid. Must be a positive
+                integer (>= 1). Typically corresponds to the number of column
+                pins in a colony pinning robot.
 
         Raises:
-            ValueError: If ncols < 1.
-            TypeError: If ncols is not an integer.
+            ValueError: If ncols is less than 1.
+            TypeError: If ncols is not an integer type.
         """
         if ncols < 1: raise ValueError('Number of columns must be greater than 0')
         if type(ncols) != int: raise TypeError('Number of columns must be an integer')
@@ -167,46 +171,55 @@ class GridAccessor(ImageAccessorBase):
             return info
 
     @property
-    def _idx_ref_matrix(self):
+    def _idx_ref_matrix(self) -> np.ndarray:
         """Internal property: matrix mapping grid positions to flattened indices.
 
+        Creates a reference matrix that converts 2D grid coordinates (row, col)
+        to flattened section indices. Grid sections are ordered left-to-right,
+        top-to-bottom (row-major order).
+
         Returns:
-            np.ndarray: 2D array of shape (nrows, ncols) where element [i, j] contains
-                the flattened index for that grid position.
+            np.ndarray: 2D integer array of shape (nrows, ncols) where element
+                [i, j] contains the flattened section index corresponding to grid
+                position (i, j). For an 8x12 grid: [0, 0] = 0 (top-left),
+                [0, 11] = 11 (top-right), [7, 0] = 84 (bottom-left),
+                [7, 11] = 95 (bottom-right).
         """
         return np.reshape(np.arange(self.nrows*self.ncols), newshape=(self.nrows, self.ncols))
 
-    def __getitem__(self, idx):
+    def __getitem__(self, idx: int | tuple[int, int]) -> phenotypic.Image:
         """Extract a grid section as a subimage.
 
         Returns a cropped image corresponding to a specific grid section based on either
         its flattened index or a (row, column) grid coordinate. The grid is indexed
         left-to-right, top-to-bottom (row-major order). Only objects belonging to the
-        specified grid section are included in the subimage.
+        specified grid section are included in the subimage. The subimage's pixel
+        coordinates are adjusted relative to the section origin (top-left corner).
 
         Args:
             idx (int | tuple[int, int]): Grid section identifier.
                 - If int: flattened grid section index, ranging from 0 to
-                  ``nrows * ncols - 1``. For an 8x12 grid: section 0 is top-left,
+                  nrows * ncols - 1. For an 8x12 grid: section 0 is top-left,
                   section 11 is top-right, section 84 is bottom-left,
                   section 95 is bottom-right.
-                - If tuple: ``(row_index, col_index)`` pair specifying the grid
-                  location, with both indices 0-based.
+                - If tuple[int, int]: (row_index, col_index) pair specifying the grid
+                  location, with both indices 0-based (0 <= row_index < nrows,
+                  0 <= col_index < ncols).
 
         Returns:
-            phenotypic.Image: A subimage containing the grid section. Pixel coordinates
-                are adjusted to the section origin. Object labels are preserved for objects
-                belonging to this section only; other objects are removed (label set to 0).
-                If no objects are present in the parent image, returns a copy of the entire
-                parent image.
+            phenotypic.Image: A subimage containing the grid section. Includes only
+                pixels and objects belonging to this section. Pixel coordinates in the
+                returned image are relative to the section's top-left corner. Object
+                labels are preserved for objects in this section; objects from other
+                sections have their labels removed (set to 0). The subimage is marked
+                with IMAGE_TYPE=GRID_SECTION metadata. If no objects are present in
+                the parent image, returns a copy of the entire parent image.
 
         Raises:
-            IndexError: If idx is out of bounds (for either flattened or
-                ``(row, col)`` indexing), or if a tuple index does not have
-                length 2.
+            IndexError: If idx is out of bounds for the grid dimensions, or if idx
+                is a tuple with length != 2.
 
         Examples:
-
             ```python
             # Extract top-left grid section (row 0, col 0)
             top_left = grid_image.grid[0]
@@ -252,44 +265,52 @@ class GridAccessor(ImageAccessorBase):
         else:
             return phenotypic.Image(self._root_image)
 
-    def get_centroid_alignment_info(self, axis) -> Tuple[np.ndarray[float], np.ndarray[int]]:
+    def get_centroid_alignment_info(self, axis: int) -> tuple[np.ndarray, np.ndarray]:
         """Calculate linear regression fit for colony centroids along a grid axis.
 
         Computes the slope and intercept of a best-fit line through the centroids of
         colonies arranged along a specified axis (rows or columns). This quantifies
-        alignment quality and any systematic drift in the pinned colony array.
+        alignment quality and any systematic drift in the pinned colony array. Uses
+        standard least-squares linear regression to fit the line: y = m*x + b.
 
-        The linear regression uses the standard least-squares method (2D covariance/variance)
-        to find the best-fit line: y = m*x + b.
+        For row-wise analysis (axis=0), the function groups colonies by their row
+        index and fits a line to the relationship between column position and column
+        coordinate. For column-wise analysis (axis=1), it groups by column index and
+        fits a line to the relationship between row position and row coordinate.
 
         Args:
             axis (int): Axis along which to compute alignment:
-                - 0: Row-wise alignment. For each row, finds how colony centers vary
-                  along the column (CC) axis as a function of their column index.
-                - 1: Column-wise alignment. For each column, finds how colony centers
-                  vary along the row (RR) axis as a function of their row index.
+                - 0: Row-wise alignment. For each row, measures how colony centers
+                  vary along the column (CC) axis as a function of their grid column
+                  position. Slope indicates pixels of drift per grid column.
+                - 1: Column-wise alignment. For each column, measures how colony
+                  centers vary along the row (RR) axis as a function of their grid
+                  row position. Slope indicates pixels of drift per grid row.
 
         Returns:
-            Tuple[np.ndarray[float], np.ndarray[int]]: A tuple containing:
-                - m_slope (np.ndarray): Slopes for each row/column (length nrows or ncols).
-                  NaN indicates no colonies in that row/column.
-                - b_intercept (np.ndarray): Y-intercepts, rounded to nearest integer.
-                  NaN indicates no colonies in that row/column.
+            tuple[np.ndarray, np.ndarray]: A tuple containing:
+                - m_slope (np.ndarray[float]): Slopes for each row or column. Length
+                  is nrows if axis=0, ncols if axis=1. Values represent pixels of
+                  drift per grid position unit. NaN indicates no colonies in that
+                  row/column, 0 indicates single colony with no drift measurable.
+                - b_intercept (np.ndarray): Y-intercepts for each row/column, rounded
+                  to nearest integer. NaN indicates no colonies in that row/column.
 
         Raises:
             NoObjectsError: If the parent image contains no detected objects (colonies).
-            ValueError: If axis is not 0 or 1.
+            ValueError: If axis is neither 0 nor 1.
 
         Examples:
             ```python
-            # Check row alignment (how much do colonies shift left-right across their row?)
+            # Check row alignment (horizontal drift of colonies across each row)
             row_slopes, row_intercepts = grid_image.grid.get_centroid_alignment_info(axis=0)
             print(f"Row alignment slopes (pixels/column): {row_slopes}")
 
-            # Check column alignment (how much do colonies shift top-bottom across their column?)
+            # Check column alignment (vertical drift of colonies across each column)
             col_slopes, col_intercepts = grid_image.grid.get_centroid_alignment_info(axis=1)
+            print(f"Column alignment slopes (pixels/row): {col_slopes}")
 
-            # Identify problematic rows with high drift
+            # Identify rows with significant drift indicating pinning issues
             drift_threshold = 0.05  # pixels per grid position
             problematic_rows = np.where(np.abs(row_slopes) > drift_threshold)[0]
             print(f"Rows with significant drift: {problematic_rows}")
@@ -345,13 +366,14 @@ class GridAccessor(ImageAccessorBase):
         """Get the column boundary positions in pixel coordinates.
 
         Returns the x-coordinates (column indices) that define the vertical boundaries
-        of each grid column. For an ncols-column grid, returns ncols+1 values representing
-        the left edge of column 0, boundaries between adjacent columns, and the right edge
-        of column ncols-1.
+        of each grid column in the image. For an ncols-column grid, returns ncols+1
+        boundary values: the left edge of column 0, internal boundaries between
+        adjacent columns, and the right edge of column ncols-1.
 
         Returns:
-            np.ndarray: 1D array of column edge positions (pixel column indices).
-                Length is ncols+1. Values are in ascending order.
+            np.ndarray: 1D array of strictly increasing column edge positions (pixel
+                column indices). Length is ncols+1. First value is 0 or the left edge
+                of the first column, last value is the image width or right boundary.
 
         Examples:
             ```python
@@ -366,6 +388,11 @@ class GridAccessor(ImageAccessorBase):
             # Extract pixels for column 3
             col_3_min, col_3_max = int(col_edges[3]), int(col_edges[4])
             column_3_data = grid_image.gray[:, col_3_min:col_3_max]
+
+            # Visualize grid column positions
+            fig, ax = plt.subplots()
+            ax.imshow(grid_image.gray)
+            ax.vlines(x=col_edges, ymin=0, ymax=grid_image.shape[0], colors='cyan')
             ```
         """
         return self._root_image.grid_finder.get_col_edges(self._root_image)
@@ -373,14 +400,16 @@ class GridAccessor(ImageAccessorBase):
     def get_col_map(self) -> np.ndarray:
         """Get an object map with objects labeled by their grid column number.
 
-        Creates a copy of the object map where each detected colony is relabeled according
-        to its grid column assignment. This is useful for visualizing or analyzing all
-        colonies in a particular column together.
+        Creates a copy of the object map where each detected colony is relabeled
+        according to its grid column assignment. All pixels belonging to colonies
+        in the same grid column receive the same label. This is useful for
+        visualizing or analyzing all colonies in a particular column together.
 
         Returns:
-            np.ndarray: 2D integer array with same shape as the parent image. Each pixel
-                belonging to a colony is set to that colony's grid column number (1-indexed,
-                ranging from 1 to ncols). Pixels not belonging to any colony are 0.
+            np.ndarray: 2D integer array with same shape as the parent image. Each
+                pixel belonging to a colony is set to that colony's grid column number
+                (1-indexed, ranging from 1 to ncols). Pixels not belonging to any
+                colony are 0. Can be passed directly to label2rgb for visualization.
 
         Examples:
             ```python
@@ -394,6 +423,11 @@ class GridAccessor(ImageAccessorBase):
             for col_num in range(1, grid_image.grid.ncols + 1):
                 col_pixels = np.sum(col_map == col_num)
                 print(f"Column {col_num}: {col_pixels} pixels")
+
+            # Visualize columns with distinct colors
+            from skimage.color import label2rgb
+            colored_columns = label2rgb(label=col_map, image=grid_image.gray[:])
+            plt.imshow(colored_columns)
             ```
         """
         grid_info = self.info()
@@ -408,27 +442,32 @@ class GridAccessor(ImageAccessorBase):
             )] = n + 1
         return col_map
 
-    def show_column_overlay(self, use_enhanced=False, show_gridlines=True, ax=None,
-                            figsize=(9, 10)) -> Tuple[plt.Figure, plt.Axes]:
+    def show_column_overlay(self, use_enhanced: bool = False, show_gridlines: bool = True,
+                            ax: plt.Axes | None = None, figsize: tuple[int, int] = (9, 10)) -> tuple[plt.Figure, plt.Axes]:
         """Visualize colonies with column-based color coding and optional grid overlay.
 
-        Displays the image with an overlay showing each colony colored by its grid column.
-        This helps visualize the column structure of the pinned array and identify any
-        column-wise positioning issues.
+        Displays the image with an overlay where each colony is colored according to
+        its grid column assignment. This helps visualize the column structure of the
+        pinned array and identify any column-wise positioning issues or misalignment.
 
         Args:
             use_enhanced (bool, optional): If True, use the enhanced grayscale version
-                of the image for better visibility. Defaults to False.
-            show_gridlines (bool, optional): If True, overlay cyan dashed lines marking
-                the grid column and row boundaries. Defaults to True.
-            ax (plt.Axes, optional): Existing Matplotlib Axes to plot into. If None,
-                a new figure and axes are created. Defaults to None.
-            figsize (tuple[int, int], optional): Figure size as (width, height) in inches.
-                Only used if ax is None. Defaults to (9, 10).
+                of the parent image (enh_gray) for better contrast and visibility.
+                If False, use the standard grayscale image (gray). Defaults to False.
+            show_gridlines (bool, optional): If True, overlay cyan dashed vertical lines
+                marking the column boundaries and horizontal lines for row boundaries.
+                Defaults to True.
+            ax (plt.Axes | None, optional): Existing Matplotlib Axes object to plot into.
+                If None, a new figure and axes are created with the specified figsize.
+                Defaults to None.
+            figsize (tuple[int, int], optional): Figure size as (width, height) in inches,
+                only used when ax is None. Defaults to (9, 10).
 
         Returns:
-            Tuple[plt.Figure, plt.Axes]: Matplotlib Figure and Axes objects. If ax was
-                provided as input, ax is returned instead of the original input value.
+            tuple[plt.Figure, plt.Axes]: A tuple containing the Matplotlib Figure and
+                Axes objects. If ax was provided as input, the function returns the
+                created figure and the input ax object (not func_ax). If ax is None,
+                returns the newly created figure and axes.
 
         Examples:
             ```python
@@ -477,13 +516,14 @@ class GridAccessor(ImageAccessorBase):
         """Get the row boundary positions in pixel coordinates.
 
         Returns the y-coordinates (row indices) that define the horizontal boundaries
-        of each grid row. For an nrows-row grid, returns nrows+1 values representing
-        the top edge of row 0, boundaries between adjacent rows, and the bottom edge
-        of row nrows-1.
+        of each grid row in the image. For an nrows-row grid, returns nrows+1
+        boundary values: the top edge of row 0, internal boundaries between
+        adjacent rows, and the bottom edge of row nrows-1.
 
         Returns:
-            np.ndarray: 1D array of row edge positions (pixel row indices).
-                Length is nrows+1. Values are in ascending order.
+            np.ndarray: 1D array of strictly increasing row edge positions (pixel
+                row indices). Length is nrows+1. First value is 0 or the top edge
+                of the first row, last value is the image height or bottom boundary.
 
         Examples:
             ```python
@@ -498,6 +538,11 @@ class GridAccessor(ImageAccessorBase):
             # Extract pixels for row 4
             row_4_min, row_4_max = int(row_edges[4]), int(row_edges[5])
             row_4_data = grid_image.gray[row_4_min:row_4_max, :]
+
+            # Visualize grid row positions
+            fig, ax = plt.subplots()
+            ax.imshow(grid_image.gray)
+            ax.hlines(y=row_edges, xmin=0, xmax=grid_image.shape[1], colors='cyan')
             ```
         """
         return self._root_image.grid_finder.get_row_edges(self._root_image)
@@ -505,14 +550,16 @@ class GridAccessor(ImageAccessorBase):
     def get_row_map(self) -> np.ndarray:
         """Get an object map with objects labeled by their grid row number.
 
-        Creates a copy of the object map where each detected colony is relabeled according
-        to its grid row assignment. This is useful for visualizing or analyzing all
-        colonies in a particular row together.
+        Creates a copy of the object map where each detected colony is relabeled
+        according to its grid row assignment. All pixels belonging to colonies
+        in the same grid row receive the same label. This is useful for
+        visualizing or analyzing all colonies in a particular row together.
 
         Returns:
-            np.ndarray: 2D integer array with same shape as the parent image. Each pixel
-                belonging to a colony is set to that colony's grid row number (1-indexed,
-                ranging from 1 to nrows). Pixels not belonging to any colony are 0.
+            np.ndarray: 2D integer array with same shape as the parent image. Each
+                pixel belonging to a colony is set to that colony's grid row number
+                (1-indexed, ranging from 1 to nrows). Pixels not belonging to any
+                colony are 0. Can be passed directly to label2rgb for visualization.
 
         Examples:
             ```python
@@ -526,6 +573,11 @@ class GridAccessor(ImageAccessorBase):
             for row_num in range(1, grid_image.grid.nrows + 1):
                 row_pixels = np.sum(row_map == row_num)
                 print(f"Row {row_num}: {row_pixels} pixels")
+
+            # Visualize rows with distinct colors
+            from skimage.color import label2rgb
+            colored_rows = label2rgb(label=row_map, image=grid_image.gray[:])
+            plt.imshow(colored_rows)
             ```
         """
         grid_info = self.info()
@@ -542,27 +594,31 @@ class GridAccessor(ImageAccessorBase):
             ] = n + 1
         return row_map
 
-    def show_row_overlay(self, use_enhanced=False, show_gridlines=True, ax=None,
-                         figsize=(9, 10)) -> (plt.Figure, plt.Axes):
+    def show_row_overlay(self, use_enhanced: bool = False, show_gridlines: bool = True,
+                         ax: plt.Axes | None = None, figsize: tuple[int, int] = (9, 10)) -> tuple[plt.Figure, plt.Axes]:
         """Visualize colonies with row-based color coding and optional grid overlay.
 
-        Displays the image with an overlay showing each colony colored by its grid row.
-        This helps visualize the row structure of the pinned array and identify any
-        row-wise positioning issues.
+        Displays the image with an overlay where each colony is colored according to
+        its grid row assignment. This helps visualize the row structure of the pinned
+        array and identify any row-wise positioning issues or misalignment.
 
         Args:
             use_enhanced (bool, optional): If True, use the enhanced grayscale version
-                of the image for better visibility. Defaults to False.
-            show_gridlines (bool, optional): If True, overlay cyan dashed lines marking
-                the grid row and column boundaries. Defaults to True.
-            ax (plt.Axes, optional): Existing Matplotlib Axes to plot into. If None,
-                a new figure and axes are created. Defaults to None.
-            figsize (tuple[int, int], optional): Figure size as (width, height) in inches.
-                Only used if ax is None. Defaults to (9, 10).
+                of the parent image (enh_gray) for better contrast and visibility.
+                If False, use the standard grayscale image (gray). Defaults to False.
+            show_gridlines (bool, optional): If True, overlay cyan dashed horizontal
+                lines marking the row boundaries and vertical lines for column boundaries.
+                Defaults to True.
+            ax (plt.Axes | None, optional): Existing Matplotlib Axes object to plot into.
+                If None, a new figure and axes are created with the specified figsize.
+                Defaults to None.
+            figsize (tuple[int, int], optional): Figure size as (width, height) in inches,
+                only used when ax is None. Defaults to (9, 10).
 
         Returns:
-            Tuple[plt.Figure, plt.Axes]: Matplotlib Figure and Axes objects. If ax was
-                provided as input, only the axes are returned.
+            tuple[plt.Figure, plt.Axes]: A tuple containing the Matplotlib Figure and
+                Axes objects. If ax is None, returns the created figure and axes.
+                If ax is provided, returns the created figure and the input ax object.
 
         Examples:
             ```python
@@ -615,14 +671,16 @@ class GridAccessor(ImageAccessorBase):
     def get_section_map(self) -> np.ndarray:
         """Get an object map with objects labeled by their grid section number.
 
-        Creates a copy of the object map where each detected colony is relabeled according
-        to its grid section assignment (flattened grid index). Section numbering is 0-indexed,
-        ordered left-to-right, top-to-bottom.
+        Creates a copy of the object map where each detected colony is relabeled
+        according to its grid section assignment (flattened grid index). Section
+        numbering is 0-indexed, ordered left-to-right, top-to-bottom (row-major).
 
         Returns:
-            np.ndarray: 2D integer array with same shape as the parent image. Each pixel
-                belonging to a colony is set to that colony's grid section number (0-indexed,
-                ranging from 0 to nrows*ncols-1). Pixels not belonging to any colony are 0.
+            np.ndarray: 2D integer array with same shape as the parent image. Each
+                pixel belonging to a colony is set to that colony's grid section
+                number (0-indexed, ranging from 0 to nrows*ncols-1). Pixels not
+                belonging to any colony are 0. Can be passed directly to label2rgb
+                for visualization.
 
         Examples:
             ```python
@@ -659,22 +717,26 @@ class GridAccessor(ImageAccessorBase):
 
         return section_map
 
-    def get_section_counts(self, ascending=False) -> pd.DataFrame:
+    def get_section_counts(self, ascending: bool = False) -> pd.Series:
         """Count the number of objects (colonies) in each grid section.
 
-        Returns a Series showing how many colonies were detected in each grid section.
-        Useful for quality control to identify problematic sections with unexpected
-        colony counts (e.g., empty sections, multiple colonies in single pinned location).
+        Returns a Series showing how many colonies were detected in each grid section,
+        sorted by count. Useful for quality control to identify problematic sections
+        with unexpected colony counts (e.g., empty sections, multiple colonies in
+        single pinned location, indicating pinning errors or detection artifacts).
 
         Args:
-            ascending (bool, optional): If False (default), sort counts in descending order
-                (sections with most colonies first). If True, sort ascending (fewest first).
+            ascending (bool, optional): If False (default), sort counts in descending
+                order (sections with most colonies first). If True, sort ascending
+                (fewest colonies first, useful for identifying empty sections).
                 Defaults to False.
 
         Returns:
             pd.Series: A pandas Series where:
-                - Index: Grid section number (0 to nrows*ncols-1)
+                - Index: Grid section number (0 to nrows*ncols-1), unsorted sections
+                  (those with no colonies) are not included
                 - Values: Count of colonies in that section
+                - Index name: GRID.SECTION_NUM constant
 
         Examples:
             ```python
@@ -704,22 +766,26 @@ class GridAccessor(ImageAccessorBase):
         """
         return self.info().loc[:, GRID.SECTION_NUM].value_counts().sort_values(ascending=ascending)
 
-    def get_info_by_section(self, section_number):
+    def get_info_by_section(self, section_number: int | tuple[int, int]) -> pd.DataFrame:
         """Get grid information for colonies in a specific grid section.
 
-        Retrieves detailed colony information (bounding box, centroid, etc.) for all
-        objects within a given grid section. The section can be specified either by
-        flattened index or by (row, column) tuple.
+        Retrieves detailed colony information (bounding box coordinates, centroid,
+        area, etc.) for all objects within a given grid section. The section can be
+        specified either by flattened index or by (row, column) tuple. Returns an
+        empty DataFrame if no colonies are present in the requested section.
 
         Args:
-            section_number (int or tuple[int, int]): Grid section identifier:
+            section_number (int | tuple[int, int]): Grid section identifier:
                 - If int: flattened section index (0 to nrows*ncols-1)
-                - If tuple: (row_index, col_index) pair specifying the grid location
+                - If tuple[int, int]: (row_index, col_index) pair specifying grid
+                  position, with both indices 0-based
 
         Returns:
             pd.DataFrame: DataFrame with one row per colony in the specified section.
-                Contains same columns as info() method. Empty DataFrame if section
-                contains no colonies.
+                Contains the same columns as the info() method, including ObjectLabel,
+                CenterRR, CenterCC, bounding box coordinates, grid position columns
+                (RowNum, ColNum, SectionNum), and optionally metadata columns.
+                Returns empty DataFrame if section contains no colonies.
 
         Raises:
             ValueError: If section_number is neither an int nor a 2-tuple.
@@ -759,19 +825,22 @@ class GridAccessor(ImageAccessorBase):
         else:
             raise ValueError('Section index should be int or a tuple of label_subset')
 
-    def _naive_get_grid_section_slices(self, idx) -> ((int, int), (int, int)):
+    def _naive_get_grid_section_slices(self, idx: int) -> tuple[tuple[float, float], tuple[float, float]]:
         """Internal method: get pixel slices for a grid section based on grid edges.
 
         Returns the exact pixel boundaries of a grid section without considering
-        the actual objects within it. This may result in cropping objects that
-        extend beyond the grid section boundaries.
+        the actual objects within it. Uses grid edge positions to determine section
+        bounds. This may result in cropping objects that extend beyond the grid
+        section boundaries.
 
         Args:
-            idx (int): Flattened grid section index.
+            idx (int): Flattened grid section index (0 to nrows*ncols-1).
 
         Returns:
-            Tuple[Tuple[int, int], Tuple[int, int]]: ((min_row, min_col), (max_row, max_col))
-                giving pixel coordinates for slicing the parent image.
+            tuple[tuple[float, float], tuple[float, float]]: A tuple containing:
+                - (min_row, min_col): Minimum pixel coordinates (top-left corner)
+                - (max_row, max_col): Maximum pixel coordinates (bottom-right corner)
+                These values can be used for slicing the parent image.
         """
         row_edges, col_edges = self.get_row_edges(), self.get_col_edges()
         row_pos, col_pos = np.where(self._idx_ref_matrix == idx)
@@ -781,19 +850,23 @@ class GridAccessor(ImageAccessorBase):
         max_rr = row_edges[row_pos + 1]
         return (min_rr, min_cc), (max_rr, max_cc)
 
-    def _adv_get_grid_section_slices(self, idx) -> ((int, int), (int, int)):
+    def _adv_get_grid_section_slices(self, idx: int) -> tuple[tuple[float, float], tuple[float, float]]:
         """Internal method: get pixel slices for a grid section accounting for object boundaries.
 
         Returns pixel boundaries for a grid section, expanded if necessary to fully
         include all objects that belong to this section. This preserves complete
-        objects that might extend slightly beyond the ideal grid boundaries.
+        objects that might extend slightly beyond the ideal grid boundaries, and
+        clips to image boundaries.
 
         Args:
-            idx (int): Flattened grid section index.
+            idx (int): Flattened grid section index (0 to nrows*ncols-1).
 
         Returns:
-            Tuple[Tuple[int, int], Tuple[int, int]]: ((min_row, min_col), (max_row, max_col))
-                giving pixel coordinates for slicing the parent image.
+            tuple[tuple[float, float], tuple[float, float]]: A tuple containing:
+                - (min_row, min_col): Minimum pixel coordinates (top-left corner)
+                - (max_row, max_col): Maximum pixel coordinates (bottom-right corner)
+                Coordinates are clipped to valid image boundaries [0, image_width/height].
+                These values can be used for slicing the parent image.
         """
         grid_min, grid_max = self._naive_get_grid_section_slices(idx)
         grid_min_rr, grid_min_cc = grid_min
@@ -820,14 +893,18 @@ class GridAccessor(ImageAccessorBase):
 
         return (min_rr, min_cc), (max_rr, max_cc)
 
-    def _get_section_labels(self, idx) -> list[int]:
+    def _get_section_labels(self, idx: int) -> list[int]:
         """Internal method: get object labels belonging to a grid section.
 
+        Retrieves all object labels (colony identifiers) that are assigned to
+        the specified grid section based on centroid-based grid assignment.
+
         Args:
-            idx (int): Flattened grid section index.
+            idx (int): Flattened grid section index (0 to nrows*ncols-1).
 
         Returns:
             list[int]: List of object labels assigned to this grid section.
+                Returns empty list if no colonies are in the section.
         """
         grid_info = self.info()
         section_info = grid_info.loc[grid_info.loc[:, str(GRID.SECTION_NUM)] == idx, :]
