@@ -3,10 +3,10 @@ from typing import Literal
 import numpy as np
 
 from phenotypic.abc_ import PrefabPipeline
-from phenotypic.enhance import CLAHE, GaussianBlur, MedianEnhancer, ContrastStretching, SobelFilter
+from phenotypic.enhance import CLAHE, GaussianBlur, MedianFilter, ContrastStretching, SobelFilter
 from phenotypic.detect import OtsuDetector, WatershedDetector
 from phenotypic.correction import GridAligner
-from phenotypic.grid import (MinResidualErrorReducer, GridOversizedObjectRemover)
+from phenotypic.refine import MinResidualErrorReducer, GridOversizedObjectRemover
 from phenotypic.refine import BorderObjectRemover, SmallObjectRemover, LowCircularityRemover
 from phenotypic.refine import MaskFill, MaskOpener
 from phenotypic.measure import MeasureIntensity, MeasureShape, MeasureTexture, MeasureColor
@@ -75,10 +75,10 @@ class HeavyOtsuPipeline(PrefabPipeline):
         border_remover = BorderObjectRemover(border_size=border_remover_size)
         min_residual_reducer = MinResidualErrorReducer()
 
-        self._ops = [
+        ops = [
             GaussianBlur(sigma=gaussian_sigma, mode=gaussian_mode, truncate=gaussian_truncate),
             CLAHE(),
-            MedianEnhancer(),
+            MedianFilter(),
             SobelFilter(),
             OtsuDetector(ignore_zeros=otsu_ignore_zeros, ignore_borders=otsu_ignore_borders),
             MaskOpener(footprint=mask_opener_footprint),
@@ -97,13 +97,13 @@ class HeavyOtsuPipeline(PrefabPipeline):
             MaskFill()
         ]
 
-        self._meas = [
+        meas = [
             MeasureShape(),
             MeasureColor(),
             MeasureTexture(scale=texture_scale, warn=texture_warn),
             MeasureIntensity()
         ]
-        super().__init__(benchmark=benchmark, verbose=verbose)
+        super().__init__(ops=ops, meas=meas, benchmark=benchmark, verbose=verbose)
 
 
 __all__ = "HeavyOtsuPipeline"

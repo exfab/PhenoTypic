@@ -149,11 +149,11 @@ class ColorLab(MeasurementInfo):
 
     CHROMA_EST_MEAN = (
         'ChromaEstimatedMean',
-        r'The mean chroma estimation of the object calculated using :math:`\\sqrt{a*_{mean}^2 + b*_{mean})^2}`'
+        r'The mean chroma estimation of the object calculated using :math:`\(sqrt{a^{*}_{mean}^2 + b^{*}_{mean})^2}`'
     )
     CHROMA_EST_MEDIAN = (
         'ChromaEstimatedMedian',
-        r'The median chroma estimation of the object using :math:`\\sqrt{a*_{median}^2 + b*_{median})^2}`'
+        r'The median chroma estimation of the object using :math:`\sqrt({a*_{median}^2 + b*_{median})^2}`'
     )
 
 

@@ -1,5 +1,5 @@
-phenotypic.tools package
-========================
+phenotypic.tools
+================
 
 .. automodule:: phenotypic.tools
    :members:

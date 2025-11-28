@@ -1,5 +1,5 @@
-phenotypic.tools.exceptions\_ module
-====================================
+phenotypic.tools.exceptions\_
+=============================
 
 .. automodule:: phenotypic.tools.exceptions_
    :members:

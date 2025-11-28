@@ -6,56 +6,90 @@ if TYPE_CHECKING: from phenotypic import GridImage
 import numpy as np
 from typing import Optional
 
-from phenotypic.abc_ import GridMapModifier
-from phenotypic.grid import MeasureGridLinRegStats
+from phenotypic.abc_ import GridRefiner
+from phenotypic.measure import MeasureGridLinRegStats
 from phenotypic.tools.constants_ import GRID_LINREG_STATS_EXTRACTOR, GRID
 
 
-class GridAlignmentOutlierRemover(GridMapModifier):
-    """
-    Identifies and removes linear regression residual outliers in a grid-based image.
+class ResidualOutlierRemover(GridRefiner):
+    """Remove objects with large regression residuals in noisy grid rows/columns.
 
-    This class is designed to analyze the variance of each row and column in a grid-based image.
-    Rows or columns with variances exceeding a specified maximum threshold are analyzed further for
-    residual outliers using linear regression. Objects with residuals above the defined cutoff
-    (mean + standard deviation * multiplier) are considered outliers and removed. This is useful for
-    removing noise that interferes with gridding
+    Intuition:
+        In grid assays, colony centroids should align along near-linear trends
+        within each row/column. Rows or columns with high variability suggest
+        mis-detections or artifacts. Within such noisy lines, this operation
+        removes objects whose positional residuals exceed a robust cutoff.
+
+    Why this is useful for agar plates:
+        Condensation, glare, and debris can produce off-grid detections that
+        inflate row/column variance and break gridding assumptions. Pruning
+        residual outliers restores alignment and improves subsequent measures.
+
+    Use cases:
+        - Cleaning rows with multiple off-line blobs before measuring growth.
+        - Stabilizing grid registration when a subset of positions is noisy.
+
+    Caveats:
+        - If true colonies deviate due to warping or growth spreading, strict
+          cutoffs may remove real data.
+        - Depends on reasonable initial grid fit; with severe misregistration
+          it may prune valid colonies.
 
     Attributes:
-        axis (Optional[int]): Axis to analyze for outliers. If None, both nrows and columns are
-            analyzed; 0 analyzes nrows; 1 analyzes columns.
-        cutoff_multiplier (float): Multiplier to define the cutoff for residual error relative
-            to the standard deviation. Higher values make the cutoff less strict.
-        max_coeff_variance (int): Maximum coefficient of variance (standard deviation divided
-            by mean) allowed for nrows or columns before they are analyzed for outliers.
+        axis (Optional[int]): Axis to analyze for outliers. ``None`` analyzes
+            both rows and columns; ``0`` analyzes rows; ``1`` analyzes columns.
+            Restricting the axis can speed up processing or focus on suspected
+            directions of error.
+        cutoff_multiplier (float): Multiplier applied to a robust dispersion
+            estimate (IQR-based in implementation) to set the outlier cutoff.
+            Higher values are more permissive (fewer removals) and preserve
+            edge cases; lower values prune more aggressively.
+        max_coeff_variance (int): Maximum coefficient of variance (std/mean)
+            allowed for a row/column before it is considered for outlier
+            pruning. Smaller values trigger cleaning sooner; larger values only
+            clean severely noisy lines.
+
+    Examples:
+        >>> from phenotypic.refine import ResidualOutlierRemover
+        >>> op = ResidualOutlierRemover(axis=None, stddev_multiplier=1.5, max_coeff_variance=1)
+        >>> image = op.apply(image, inplace=True)  # doctest: +SKIP
     """
 
     def __init__(self, axis: Optional[int] = None, stddev_multiplier=1.5, max_coeff_variance: int = 1):
+        """Initialize the remover.
+
+        Args:
+            axis (Optional[int]): Axis selection for analysis. ``None`` runs
+                both directions; ``0`` rows; ``1`` columns. Limiting the axis
+                reduces runtime and targets known problem directions.
+            stddev_multiplier (float): Robust residual cutoff multiplier. Lower
+                values remove more outliers (stronger cleanup) but risk dropping
+                valid off-center colonies; higher values are conservative.
+            max_coeff_variance (int): Threshold for row/column variability
+                (std/mean) to trigger outlier analysis. Lower values clean more
+                lines; higher values only address extremely noisy lines.
+
+        Raises:
+            ValueError: If parameters are not consistent with the operation
+                (e.g., invalid types). Errors may arise during execution when
+                measuring grid statistics.
+        """
         self.axis = axis  # Either none for both axis, 0 for row, or 1 for column
         self.cutoff_multiplier = stddev_multiplier
         self.max_coeff_variance = max_coeff_variance
 
     def _operate(self, image: GridImage) -> GridImage:
-        """
-        Processes a GridImage to identify and remove row-wise and column-wise outlier
-        objects based on residual errors and coefficient of variance.
-
-        Outlier identification is performed by first calculating the coefficient of
-        variance for each row or column. Rows or columns with variance above a specified
-        threshold are considered for outlier detection. Within these nrows or columns,
-        objects with residual errors exceeding a computed cutoff based on standard
-        deviation multiplier are identified and subsequently removed.
+        """Identify and remove residual outliers per noisy row/column.
 
         Args:
-            image (GridImage): The GridImage object that represents the arr grid
-                containing object information for analysis and modification.
+            image (GridImage): Grid image with object map and grid metadata.
 
         Returns:
-            GridImage: The modified GridImage object with outlier objects removed.
+            GridImage: Modified grid image with outlier objects removed.
 
         Raises:
-            ValueError: If max_coeff_variance or cutoff_multiplier attributes are not
-                properly specified for the operation.
+            ValueError: If parameters are misconfigured in a way that prevents
+                computation (propagated from measurement utilities).
         """
         # Generate cached version of grid_info
         linreg_stat_extractor = MeasureGridLinRegStats()

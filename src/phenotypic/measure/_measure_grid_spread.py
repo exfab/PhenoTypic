@@ -10,7 +10,7 @@ from scipy.spatial import distance_matrix
 from phenotypic.tools.constants_ import OBJECT, BBOX, GRID
 
 
-class ObjectSpreadExtractor(GridMeasureFeatures):
+class MeasureGridSpread(GridMeasureFeatures):
     """
     This module measure's an object spread from the grid section's center points
     """

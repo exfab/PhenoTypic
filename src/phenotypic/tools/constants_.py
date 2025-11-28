@@ -89,6 +89,9 @@ class IO:
     TIFF_EXTENSIONS = ('.tif', '.tiff')
     ACCEPTED_FILE_EXTENSIONS = PNG_FILE_EXTENSIONS + JPEG_FILE_EXTENSIONS + TIFF_EXTENSIONS
 
+    # Key used for PhenoTypic metadata container in image files
+    PHENOTYPIC_METADATA_KEY = "phenotypic"
+
     if Version(phenotypic.__version__) < Version("0.7.1"):
         SINGLE_IMAGE_HDF5_PARENT_GROUP = Path(f'phenotypic/')
     else:

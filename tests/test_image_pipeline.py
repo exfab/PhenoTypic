@@ -4,10 +4,11 @@ from phenotypic import GridImage, ImagePipeline
 from phenotypic.correction import GridAligner
 from phenotypic.data import load_plate_12hr
 from phenotypic.detect import OtsuDetector, WatershedDetector
-from phenotypic.enhance import CLAHE, ContrastStretching, GaussianBlur, MedianEnhancer
-from phenotypic.grid import GridAlignmentOutlierRemover, GridApply, MinResidualErrorReducer
+from phenotypic.enhance import CLAHE, ContrastStretching, GaussianBlur, MedianFilter
 from phenotypic.measure import MeasureColor, MeasureIntensity, MeasureShape, MeasureTexture
-from phenotypic.refine import BorderObjectRemover, LowCircularityRemover, SmallObjectRemover
+from phenotypic.refine import (BorderObjectRemover, LowCircularityRemover, SmallObjectRemover,
+                               ResidualOutlierRemover, MinResidualErrorReducer)
+from phenotypic.util import GridApply
 from .resources.TestHelper import timeit
 from .test_fixtures import plate_grid_images
 
@@ -44,28 +45,28 @@ def test_pipeline_on_image(plate_grid_images):
     assert output is not None
 
     compound_output = pipe.apply_and_measure(plate_grid_images, reset=True)
-    
+
     # Compare with better NaN handling and allow for floating point differences
     import pandas as pd
     import numpy as np
-    
+
     # Check same shape
     assert output.shape == compound_output.shape, f"Different shapes: {output.shape} vs {compound_output.shape}"
-    
+
     # Check same columns
     assert set(output.columns) == set(compound_output.columns), "Different columns"
-    
+
     # Exclude columns that are expected to differ (e.g., UUIDs that change between runs)
     cols_to_skip = {'Metadata_ImageName'}  # UUIDs change between pipeline runs
-    
+
     # For each column, check if values are close (handling NaNs)
     for col in output.columns:
         if col in cols_to_skip:
             continue
-            
+
         o_series = output[col]
         c_series = compound_output[col]
-        
+
         # Handle categorical columns
         if isinstance(o_series.dtype, pd.CategoricalDtype):
             # Convert to underlying codes for comparison
@@ -89,17 +90,17 @@ def test_kmarx_pipeline_pickleable(plate_grid_images):
             {
                 'blur'                            : GaussianBlur(sigma=2),
                 'clahe'                           : CLAHE(),
-                'median filter'                   : MedianEnhancer(),
+                'median filter'                   : MedianFilter(),
                 'detection'                       : OtsuDetector(),
                 'border_removal'                  : BorderObjectRemover(50),
                 'low circularity remover'         : LowCircularityRemover(0.6),
                 'small object remover'            : SmallObjectRemover(100),
                 'Reduce by section residual error': MinResidualErrorReducer(),
-                'outlier removal'                 : GridAlignmentOutlierRemover(),
+                'outlier removal'                 : ResidualOutlierRemover(),
                 'align'                           : GridAligner(),
                 'section-level detect'            : GridApply(ImagePipeline({
                     'blur'               : GaussianBlur(sigma=5),
-                    'median filter'      : MedianEnhancer(),
+                    'median filter'      : MedianFilter(),
                     'contrast stretching': ContrastStretching(),
                     'detection'          : OtsuDetector(),
                 }
@@ -120,11 +121,11 @@ def test_watershed_kmarx_pipeline_pickleable(plate_grid_images):
             ops={
                 'blur'                            : GaussianBlur(sigma=5),
                 'clahe'                           : CLAHE(),
-                'median filter'                   : MedianEnhancer(),
+                'median filter'                   : MedianFilter(),
                 'detection'                       : WatershedDetector(footprint='auto', min_size=100, relabel=True),
                 'low circularity remover'         : LowCircularityRemover(0.5),
                 'reduce by section residual error': MinResidualErrorReducer(),
-                'outlier removal'                 : GridAlignmentOutlierRemover(),
+                'outlier removal'                 : ResidualOutlierRemover(),
                 'align'                           : GridAligner(),
                 'grid_reduction'                  : MinResidualErrorReducer(),
             },
@@ -146,11 +147,11 @@ def test_watershed_kmarx_pipeline_with_measurements_pickleable(plate_grid_images
             ops={
                 'blur'                            : GaussianBlur(sigma=5),
                 'clahe'                           : CLAHE(),
-                'median filter'                   : MedianEnhancer(),
+                'median filter'                   : MedianFilter(),
                 'detection'                       : WatershedDetector(footprint='auto', min_size=100, relabel=True),
                 'low circularity remover'         : LowCircularityRemover(0.5),
                 'reduce by section residual error': MinResidualErrorReducer(),
-                'outlier removal'                 : GridAlignmentOutlierRemover(),
+                'outlier removal'                 : ResidualOutlierRemover(),
                 'align'                           : GridAligner(),
                 'grid_reduction'                  : MinResidualErrorReducer(),
             },

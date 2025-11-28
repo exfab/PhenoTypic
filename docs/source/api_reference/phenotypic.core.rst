@@ -1,5 +1,5 @@
-phenotypic.core package
-=======================
+phenotypic.core
+===============
 
 .. automodule:: phenotypic.core
    :members:

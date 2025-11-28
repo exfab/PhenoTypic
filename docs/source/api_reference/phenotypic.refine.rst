@@ -1,5 +1,5 @@
-phenotypic.refine package
-=========================
+phenotypic.refine
+=================
 
 .. automodule:: phenotypic.refine
    :members:

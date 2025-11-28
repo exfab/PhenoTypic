@@ -5,15 +5,44 @@ if TYPE_CHECKING: from phenotypic import GridImage
 
 import numpy as np
 
-from phenotypic.abc_ import GridMapModifier
-from phenotypic.grid import MeasureGridLinRegStats
+from phenotypic.abc_ import GridRefiner
+from phenotypic.measure import MeasureGridLinRegStats
 from phenotypic.tools.constants_ import GRID_LINREG_STATS_EXTRACTOR
 
 
-class MinResidualErrorReducer(GridMapModifier):
-    """
-    This map modifier reduces the amount of objects in sections where there are multiple based on their distance from the linreg predicted location.
-    This modifier is relatively slow, but shows good results in removing the correct obj when paired with small object removers and other filters.
+class MinResidualErrorReducer(GridRefiner):
+    """Reduce multi-detections per grid cell by keeping objects closest to a
+    linear-regression prediction of expected positions.
+
+    Intuition:
+        In grid assays, some cells contain multiple detections due to halos,
+        debris, or over-segmentation. By modeling the expected colony position
+        in each row/column with linear regression, we can retain the object with
+        the smallest residual error (closest to the predicted location) and
+        remove the rest. This iterates across the grid until each cell is
+        simplified.
+
+    Why this is useful for agar plates:
+        Pinned arrays assume consistent spatial layout. Selecting the object
+        nearest the learned grid trend eliminates off-grid artifacts while
+        preserving the most plausible colony per cell.
+
+    Use cases:
+        - Over-segmentation yields several blobs per grid position.
+        - Condensation or glare introduces extra detections near a colony.
+
+    Caveats:
+        - If the grid fit is inaccurate (bad registration, warped plates), the
+          closest-to-trend object may not be the true colony.
+        - Relatively slow due to repeated measurement and iteration over cells.
+
+    Attributes:
+        (No public attributes)
+
+    Examples:
+        >>> from phenotypic.refine import MinResidualErrorReducer
+        >>> op = MinResidualErrorReducer()
+        >>> image = op.apply(image, inplace=True)  # doctest: +SKIP
     """
 
     # TODO: Add a setting to retain a certain number of objects in the event of removal

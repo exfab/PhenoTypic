@@ -212,7 +212,7 @@ class ImageGridHandler(Image):
             # Set x-axes labels to grid column numbers
             secax_x = ax.secondary_xaxis('top')
             secax_x.set_xlabel('Grid Column Number')
-            
+
             col_centers = ((upper_col_edges - lower_col_edges)//2) + lower_col_edges
             secax_x.set_xticks(col_centers)
             secax_x.set_xticklabels(np.arange(self.ncols))
@@ -223,7 +223,7 @@ class ImageGridHandler(Image):
 
             # Set y-axis labels to grid row numbers
             secax_y = ax.secondary_yaxis('right')
-            secax_y.set_ylabel('Grid Row Number')
+            secax_y.set_ylabel('Grid Row Number', rotation=270, labelpad=10)
 
             row_centers = ((upper_row_edges - lower_row_edges)//2) + lower_row_edges
             secax_y.set_yticks(row_centers)

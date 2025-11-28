@@ -5,10 +5,13 @@ import numpy as np
 from phenotypic.abc_ import PrefabPipeline
 from phenotypic.correction import GridAligner
 from phenotypic.detect import WatershedDetector
-from phenotypic.enhance import CLAHE, GaussianBlur, MedianEnhancer
-from phenotypic.grid import (GridOversizedObjectRemover, MinResidualErrorReducer)
+from phenotypic.enhance import CLAHE, GaussianBlur, MedianFilter
 from phenotypic.measure import MeasureColor, MeasureIntensity, MeasureShape, MeasureTexture
-from phenotypic.refine import BorderObjectRemover, MaskFill, LowCircularityRemover
+from phenotypic.refine import (BorderObjectRemover,
+                               MaskFill,
+                               LowCircularityRemover,
+                               GridOversizedObjectRemover,
+                               MinResidualErrorReducer)
 
 
 class HeavyWatershedPipeline(PrefabPipeline):
@@ -86,7 +89,7 @@ class HeavyWatershedPipeline(PrefabPipeline):
         ops = [
             GaussianBlur(sigma=gaussian_sigma, mode=gaussian_mode, truncate=gaussian_truncate),
             CLAHE(),
-            MedianEnhancer(),
+            MedianFilter(),
             watershed_detector,
             border_remover,
             GridOversizedObjectRemover(),
@@ -94,6 +97,7 @@ class HeavyWatershedPipeline(PrefabPipeline):
             min_residual_reducer,
             GridAligner(),
             watershed_detector,
+            GridOversizedObjectRemover(),
             min_residual_reducer,
             border_remover,
             LowCircularityRemover(cutoff=circularity_cutoff),

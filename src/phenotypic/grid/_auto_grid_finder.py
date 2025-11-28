@@ -274,3 +274,4 @@ class AutoGridFinder(GridFinder):
 
 
 AutoGridFinder.measure.__doc__ = AutoGridFinder._operate.__doc__
+AutoGridFinder.__doc__ = GRID.append_rst_to_doc(AutoGridFinder.__doc__)

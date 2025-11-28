@@ -13,26 +13,61 @@ from ._image_handler import ImageHandler
 
 
 class ImageObjectsHandler(ImageHandler):
-    """Adds the ability to isolate and work with specific objects from an image."""
+    """Adds the ability to isolate and work with specific objects in an image.
+
+    This class extends ImageHandler with object-oriented functionality, enabling:
+    - Access to detected/segmented objects through the objects accessor
+    - Individual object measurement calculations
+    - Object filtering and manipulation
+    - Seamless integration with object detection and analysis workflows
+
+    The class provides a unified interface for working with image objects while
+    maintaining consistency with the underlying image data representations.
+
+    Attributes:
+        _accessors (SimpleNamespace): Extended accessor container including an
+            ObjectsAccessor instance for object-specific operations.
+    """
 
     def __init__(self,
                  arr: np.ndarray | Image | None = None,
                  name: str | None = None,
                  bit_depth: int | None = None, ):
+        """Initialize ImageObjectsHandler with object detection support.
+
+        Args:
+            arr (np.ndarray | Image | None): Optional initial image data. Defaults to None.
+            name (str | None): Optional image name. Defaults to None.
+            bit_depth (int | None): Optional bit depth (8 or 16). Defaults to None.
+        """
         super().__init__(arr=arr, name=name, bit_depth=bit_depth)
         self._accessors.objects = ObjectsAccessor(self)
 
     @property
     def objects(self) -> ObjectsAccessor:
-        """Returns an acessor to the objects in an image and perform operations on them, such as measurement calculations.
+        """Accessor for performing operations on detected objects in the image.
 
-        This method provides access to `ImageObjects`.
+        Provides access to individual or grouped objects detected in the image,
+        enabling measurement calculations, filtering, and object-specific analyses.
+        Objects are identified through the object map (objmap) component which stores
+        integer labels for each detected object.
 
         Returns:
-            ObjectsAccessor: The subhandler instance that manages image-related objects.
+            ObjectsAccessor: An accessor instance that manages object-specific operations
+                and measurements.
 
         Raises:
-            NoObjectsError: If no objects are targeted in the image. Apply an ObjectDetector first.
+            NoObjectsError: If no objects are present in the image. This occurs when
+                num_objects == 0, indicating that either no object detection has been
+                performed yet, or the detection found no objects. Apply an ObjectDetector
+                first to identify and label objects.
+
+        Examples:
+            >>> img = Image.imread('sample.jpg')
+            >>> detector = ObjectDetector()
+            >>> detector.detect(img)
+            >>> obj_accessor = img.objects
+            >>> measurements = img.objects.measure.area()
         """
         if self.num_objects == 0:
             raise NoObjectsError(self.name)

@@ -6,18 +6,42 @@ if TYPE_CHECKING: from phenotypic import GridImage
 
 import numpy as np
 
-from phenotypic.abc_ import GridMapModifier
+from phenotypic.abc_ import GridRefiner
 from phenotypic.tools.constants_ import BBOX, OBJECT
 
 
-class GridOversizedObjectRemover(GridMapModifier):
-    """
-    Removes oversized objects from grid-based image data.
+class GridOversizedObjectRemover(GridRefiner):
+    """Remove objects that are larger than their grid cell allows.
 
-    This class inherits from `GridMapModifier` and is designed to remove objects from the
-    grid-based image representation that exceed the maximum allowable width or height of the
-    grid cells. The removal process sets the oversized object regions to the background value
-    of 0. This class is useful for preprocessing grid images for further analysis or visualization.
+    Intuition:
+        In pinned colony grids, each cell should contain at most one colony of
+        limited extent. Objects spanning nearly an entire cell width/height are
+        often merged colonies, agar edges, or segmentation spillover. Removing
+        these oversized objects improves the reliability of per-cell analysis.
+
+    Why this is useful for agar plates:
+        Grid-based assays assume spatial confinement. Oversized detections
+        disrupt row/column statistics and bias growth comparisons. Filtering
+        them stabilizes downstream measurements.
+
+    Use cases:
+        - Dropping merged blobs that span adjacent positions.
+        - Removing strong edge artifacts near the plate rim that intrude into
+          the grid.
+
+    Caveats:
+        - If genuine colonies expand to fill the cell (late time points), this
+          remover may exclude real growth.
+        - Highly irregular grids or mis-registered edges can cause over-
+          removal; ensure grid metadata is accurate.
+
+    Attributes:
+        (No public attributes)
+
+    Examples:
+        >>> from phenotypic.refine import GridOversizedObjectRemover
+        >>> op = GridOversizedObjectRemover()
+        >>> image = op.apply(image, inplace=True)  # doctest: +SKIP
     """
 
     def _operate(self, image: GridImage) -> GridImage:

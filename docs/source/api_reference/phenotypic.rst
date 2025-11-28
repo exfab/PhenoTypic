@@ -5,6 +5,8 @@ phenotypic package
    :members:
    :undoc-members:
    :show-inheritance:
+   :member-order: bysource
+   :exclude-members: Image, GridImage
 
 Subpackages
 -----------
@@ -24,3 +26,4 @@ Subpackages
    phenotypic.prefab
    phenotypic.refine
    phenotypic.tools
+   phenotypic.util

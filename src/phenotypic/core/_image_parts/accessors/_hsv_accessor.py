@@ -1,17 +1,23 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING
+
+import json
+import os
+import warnings
+from pathlib import Path
+from typing import TYPE_CHECKING, Tuple, Optional
 
 if TYPE_CHECKING: from phenotypic import Image
 
-from typing import Tuple, Optional
-
 import numpy as np
+import tifffile
 from matplotlib import pyplot as plt
 from skimage.color import rgb2hsv
 from skimage.exposure import histogram
+import skimage.io
 
+import phenotypic
 from phenotypic.core._image_parts.accessor_abstracts import ImageAccessorBase
-from phenotypic.tools.constants_ import IMAGE_MODE
+from phenotypic.tools.constants_ import IMAGE_MODE, IO
 from phenotypic.tools.exceptions_ import IllegalAssignmentError
 
 
@@ -30,6 +36,77 @@ class HsvAccessor(ImageAccessorBase):
     Attributes:
         image (Image): The parent Image object that manages image data and operations.
     """
+
+    _accessor_property_name: str = "color.hsv"
+
+    @classmethod
+    def load(cls, filepath: str | os.PathLike | Path) -> np.ndarray:
+        """Load an HSV array from a TIFF file and verify it was saved from this accessor type.
+
+        HSV arrays are stored as float32 TIFF files. This method checks if the
+        image contains PhenoTypic metadata indicating it was saved from the HSV
+        accessor. If metadata doesn't match or is missing, a warning is raised
+        but the array is still loaded.
+
+        Args:
+            filepath: Path to the TIFF file to load.
+
+        Returns:
+            np.ndarray: The loaded HSV array (float32) with shape (H, W, 3).
+
+        Raises:
+            ValueError: If file extension is not .tif or .tiff.
+
+        Warns:
+            UserWarning: If metadata is missing or indicates the image was saved
+                from a different accessor type.
+
+        Example:
+            >>> from phenotypic.core._image_parts.accessors import HsvAccessor
+            >>> hsv_arr = HsvAccessor.load("my_hsv_image.tif")
+        """
+        filepath = Path(filepath)
+        expected_property = f"Image.{cls._accessor_property_name}"
+
+        if filepath.suffix.lower() not in IO.TIFF_EXTENSIONS:
+            raise ValueError(
+                'HSV arrays can only be loaded from TIFF format (.tif, .tiff). '
+                f'File extension is: {filepath.suffix.lower()}'
+            )
+
+        # Load using tifffile for float array support
+        with tifffile.TiffFile(filepath) as tif:
+            arr = tif.asarray()
+            desc = tif.pages[0].description if tif.pages else None
+
+        # Check metadata
+        phenotypic_data = None
+        if desc:
+            try:
+                data = json.loads(desc)
+                if 'phenotypic_version' in data:
+                    phenotypic_data = data
+            except json.JSONDecodeError:
+                pass
+
+        if phenotypic_data is None:
+            warnings.warn(
+                f"No PhenoTypic metadata found in '{filepath.name}'. "
+                f"Cannot verify this image was saved from {expected_property}. "
+                "Loading anyway, but this may lead to undefined behavior.",
+                UserWarning
+            )
+        else:
+            saved_property = phenotypic_data.get('phenotypic_image_property', 'unknown')
+            if saved_property != expected_property:
+                warnings.warn(
+                    f"Metadata mismatch: Image was saved from '{saved_property}' "
+                    f"but being loaded as '{expected_property}'. "
+                    "This may lead to undefined behavior.",
+                    UserWarning
+                )
+
+        return arr
 
     @property
     def _subject_arr(self) -> np.ndarray:
@@ -241,3 +318,41 @@ class HsvAccessor(ImageAccessorBase):
         if title is not None: ax.set_title(title)
 
         return fig, ax
+
+    def imsave(self, filepath: str | os.PathLike | Path) -> None:
+        """Save HSV color space data to TIFF file with PhenoTypic metadata embedded.
+
+        HSV arrays can only be saved in TIFF format due to their floating-point nature.
+        Metadata is embedded in the ImageDescription tag.
+
+        Args:
+            filepath: Path to save the TIFF file.
+
+        Raises:
+            ValueError: If file extension is not .tif or .tiff.
+        """
+        filepath = Path(filepath)
+
+        if filepath.suffix.lower() not in IO.TIFF_EXTENSIONS:
+            raise ValueError(
+                'HSV arrays can only be saved in TIFF format (.tif, .tiff). '
+                f'File extension is: {filepath.suffix.lower()}'
+            )
+
+        # Build metadata JSON
+        phenotypic_metadata = self._build_phenotypic_metadata()
+        metadata_json = json.dumps(phenotypic_metadata, ensure_ascii=False)
+
+        # Get array and ensure it's float32 for TIFF compatibility
+        arr = self._subject_arr
+        if arr.dtype == np.float64:
+            arr = arr.astype(np.float32)
+
+        # Use tifffile directly for float array support
+        tifffile.imwrite(
+            filepath,
+            arr,
+            description=metadata_json,
+            compression='zlib',
+            photometric='minisblack'
+        )

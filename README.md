@@ -1,5 +1,5 @@
- <div style="background-color: white; display: inline-block; padding: 10px; border-radius: 5px;">
-  <img src="./docs/source/_static/assets/200x150/light_logo_sponsor.svg" alt="Phenotypic Logo" style="width: 200px; height: auto;">
+<div style="background-color: white; display: inline-block; padding: 10px; border-radius: 0px;">
+  <img src="./docs/source/_static/assets/400x150/gradient_logo_exfab.svg" alt="Phenotypic Logo" style="width: 400px; height: auto;">
 </div>
 
 # PhenoTypic: A Python Framework for Bio-Image Analysis
@@ -36,7 +36,7 @@ uv add phenotypic
 To download the base package plus prototyping environment (recommended for pipeline development)
 
 ```bash
-uv add phenotypic --groups jupyter
+uv add phenotypic --extras jupyter
 ```
 
 ## Pip
@@ -65,7 +65,7 @@ uv sync --group dev
 
 ## Optional Installation
 
-To extract metadata from images, PhenoTypic uses the `PyExifTool` module. This requires an external software called
+To extract metadata from raw images, PhenoTypic uses the `PyExifTool` module. This requires an external software called
 ExifTool. You can install ExifTool here: https://exiftool.org/install.html. If you don't use it, some metadata from raw
 files may not be able to be imported. Read more here: https://pypi.org/project/PyExifTool/#pyexiftool-dependencies
 
@@ -85,6 +85,6 @@ files may not be able to be imported. Read more here: https://pypi.org/project/P
 
 # Sponsors
 
-## ExFAB NSF BioFoundry
-
-## National Science Foundation
+<div style="background-color: white; display: inline-block; padding: 10px; border-radius: 5px;">
+  <img src="./docs/source/_static/assets/ExFabLogo.svg" alt="Phenotypic Logo" style="width: 400px; height: auto;">
+</div>

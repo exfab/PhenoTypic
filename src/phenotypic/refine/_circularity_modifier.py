@@ -9,43 +9,59 @@ import numpy as np
 from skimage.measure import regionprops_table
 import math
 
-from ..abc_ import MapModifier
+from ..abc_ import ObjectRefiner
 from ..tools.constants_ import OBJECT
 
 
-class LowCircularityRemover(MapModifier):
-    """
-    LowCircularityRemover is a map modifier that removes objects in an image
-    based on their circularity measurement.
+class LowCircularityRemover(ObjectRefiner):
+    """Remove objects with circularity below a specified cutoff.
 
-    This class evaluates objects in an image using the Polsby-Popper score to
-    calculate circularity. Objects with a circularity score below the specified
-    cutoff other_image are removed from the image. The user can specify a `cutoff` other_image
-    to determine the minimum acceptable circularity for objects to remain in the
-    image. Objects meeting the cutoff criteria are preserved, while others are
-    filtered out.
+    Intuition:
+        Single bacterial/fungal colonies on agar often appear approximately
+        round. Irregular, elongated, or fragmented shapes can indicate merged
+        colonies, scratches, agar texture, or segmentation errors. Filtering by
+        circularity keeps well-formed colonies and removes unlikely shapes.
 
-    The Polsby-Popper circularity score is calculated using the following formula:
+    Why this is useful for agar plates:
+        Circular colonies produce more reliable area and intensity measurements.
+        Removing low-circularity detections reduces bias from streaks, debris,
+        or incomplete segmentation near plate edges and grid borders.
 
-    .. math::
+    Use cases:
+        - Post-threshold cleanup to exclude elongated artifacts or merged
+          colonies before counting or phenotyping.
+        - Enforcing morphology consistency in high-throughput grid assays.
 
-        SHAPE = \\frac{4\\pi A}{P^2}
-
-    where:
-        - SHAPE is the circularity score (ranging from 0 to 1)
-        - A is the area of the object
-        - P is the perimeter of the object
-        - π (pi) is the mathematical constant
-
-    A perfect circle has a score of 1, while more complex or elongated shapes have
-    lower scores approaching 0.
+    Caveats:
+        - Some colonies are intrinsically irregular (wrinkled, spreading,
+          filamentous). A high cutoff may incorrectly remove these phenotypes.
+        - Perimeter estimates on low-resolution masks can be noisy, slightly
+          biasing the circularity calculation.
 
     Attributes:
-        cutoff (float): The minimum threshold for the circularity score of
-            objects. Must be a other_image between 0 and 1.
+        cutoff (float): Minimum Polsby–Popper circularity required to keep an
+            object, in [0, 1]. Higher values retain only near-circular shapes
+            (sharper shape constraints) and can improve edge sharpness in the
+            kept set but may reduce recall for irregular colonies.
+
+    Examples:
+        >>> from phenotypic.refine import LowCircularityRemover
+        >>> op = LowCircularityRemover(cutoff=0.8)
+        >>> image = op.apply(image, inplace=True)  # doctest: +SKIP
     """
 
     def __init__(self, cutoff: float = 0.785):
+        """Initialize the remover.
+
+        Args:
+            cutoff (float): Minimum allowed circularity in [0, 1]. Increasing
+                the cutoff favors compact, round objects (often cleaner masks),
+                whereas lowering it retains irregular colonies but may keep more
+                debris or merged objects.
+
+        Raises:
+            ValueError: If ``cutoff`` is outside [0, 1].
+        """
         if cutoff < 0 or cutoff > 1: raise ValueError('threshold should be a number between 0 and 1.')
         self.cutoff = cutoff
 

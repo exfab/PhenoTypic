@@ -63,6 +63,76 @@ class LazyWidgetMixin:
             display(self._ui)
         return self._ui
 
+    def _create_doc_widget(self) -> Optional[Widget]:
+        """Create a widget displaying the class docstring."""
+        import ipywidgets as widgets
+        import inspect
+        import html
+        
+        doc = self.__doc__
+        if not doc:
+            return None
+            
+        # Clean up docstring indentation
+        doc = inspect.cleandoc(doc)
+        
+        # Reflow paragraphs to improve readability
+        doc = self._reflow_docstring(doc)
+        
+        # Escape HTML to prevent rendering issues with code examples
+        doc = html.escape(doc)
+            
+        # Format docstring for display (preserve formatting)
+        # Use pre-wrap to handle newlines correctly while wrapping text
+        html_content = f"<pre style='font-family: monospace; font-size: 11px; white-space: pre-wrap; margin: 0;'>{doc}</pre>"
+        
+        doc_html = widgets.HTML(value=html_content)
+        
+        accordion = widgets.Accordion(children=[doc_html])
+        accordion.set_title(0, "Description")
+        accordion.selected_index = None  # Collapsed by default
+        
+        return accordion
+
+    def _reflow_docstring(self, text: str) -> str:
+        """Reflow docstring text to merge paragraphs while preserving structure."""
+        lines = text.split('\n')
+        new_lines = []
+        buffer = []
+        
+        def flush_buffer():
+            if buffer:
+                new_lines.append(" ".join(buffer))
+                buffer.clear()
+        
+        for line in lines:
+            # Check if line should break the current paragraph
+            # 1. Empty lines
+            # 2. Indented lines (code blocks, parameters)
+            # 3. List items (-, *, +)
+            # 4. Doctests (>>>)
+            # 5. Headers or blockquotes (#, >)
+            
+            stripped = line.strip()
+            is_empty = not stripped
+            
+            # Check for raw indentation (before strip)
+            is_indented = line.startswith(' ') or line.startswith('\t')
+            
+            # Check content markers
+            is_list = stripped.startswith(('-', '*', '+'))
+            is_special = stripped.startswith(('>>>', '>', '#', ':'))
+            
+            if is_empty or is_indented or is_list or is_special:
+                flush_buffer()
+                new_lines.append(line)
+            else:
+                buffer.append(stripped)
+                
+        flush_buffer()
+        return "\n".join(new_lines)
+
+
     def _create_widgets(self) -> None:
         """Create and assign the root widget to self._ui."""
         import ipywidgets as widgets
@@ -70,6 +140,11 @@ class LazyWidgetMixin:
         
         self._param_widgets = {}
         controls = []
+        
+        # 0. Docstring widget
+        doc_widget = self._create_doc_widget()
+        if doc_widget:
+            controls.append(doc_widget)
 
         # 1. Introspect __init__ parameters
         # Skip for ImagePipeline 
@@ -505,50 +580,65 @@ class LazyWidgetMixin:
         
         if self._output_widget is None or self._image_ref is None:
             return
+
+        # Set loading state
+        if b is not None:
+            original_icon = b.icon
+            original_desc = b.description
+            b.icon = 'spinner'
+            b.description = 'Rendering...'
+            b.disabled = True
             
         self._output_widget.clear_output(wait=True)
         
-        with self._output_widget:
-            try:
-                # Create copy and apply
-                # Note: self.apply is expected to exist on the subclass (ImageOperation)
-                img_copy = self._image_ref.copy()
-                
-                # Check if we are in an ImageOperation
-                if hasattr(self, 'apply'):
-                     # Use inplace=True for efficiency on the copy
-                     # Check signature of apply to be safe (some might not support inplace?)
-                     # Standard ImageOperation.apply supports inplace.
-                     self.apply(img_copy, inplace=True)
-                else:
-                     print("Error: Mixin used on class without apply()")
-                     return
-                
-                # Show
-                view = self._view_dropdown.value
-                
-                if view == 'overlay':
-                    img_copy.show_overlay()
-                elif view == 'rgb':
-                    if not img_copy.rgb.isempty():
-                        img_copy.rgb.show()
-                    else:
-                        print("No RGB data available.")
-                elif view == 'gray':
-                    img_copy.gray.show()
-                elif view == 'enh_gray':
-                    img_copy.enh_gray.show()
-                elif view == 'objmap':
-                    img_copy.objmap.show()
-                elif view == 'objmask':
-                    img_copy.objmask.show()
+        try:
+            with self._output_widget:
+                try:
+                    # Create copy and apply
+                    # Note: self.apply is expected to exist on the subclass (ImageOperation)
+                    img_copy = self._image_ref.copy()
                     
-                plt.show()
-                
-            except Exception as e:
-                print(f"Error during visualization: {e}")
-                import traceback
-                traceback.print_exc()
+                    # Check if we are in an ImageOperation
+                    if hasattr(self, 'apply'):
+                         # Use inplace=True for efficiency on the copy
+                         # Check signature of apply to be safe (some might not support inplace?)
+                         # Standard ImageOperation.apply supports inplace.
+                         self.apply(img_copy, inplace=True)
+                    else:
+                         print("Error: Mixin used on class without apply()")
+                         return
+                    
+                    # Show
+                    view = self._view_dropdown.value
+                    
+                    if view == 'overlay':
+                        img_copy.show_overlay()
+                    elif view == 'rgb':
+                        if not img_copy.rgb.isempty():
+                            img_copy.rgb.show()
+                        else:
+                            print("No RGB data available.")
+                    elif view == 'gray':
+                        img_copy.gray.show()
+                    elif view == 'enh_gray':
+                        img_copy.enh_gray.show()
+                    elif view == 'objmap':
+                        img_copy.objmap.show()
+                    elif view == 'objmask':
+                        img_copy.objmask.show()
+                        
+                    plt.show()
+                    
+                except Exception as e:
+                    print(f"Error during visualization: {e}")
+                    import traceback
+                    traceback.print_exc()
+        finally:
+            # Restore button state
+            if b is not None:
+                b.icon = original_icon
+                b.description = original_desc
+                b.disabled = False
 
     def sync_widgets_from_state(self) -> None:
         """Push internal state into widgets."""

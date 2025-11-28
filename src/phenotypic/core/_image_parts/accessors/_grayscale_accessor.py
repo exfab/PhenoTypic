@@ -17,6 +17,8 @@ class Grayscale(SingleChannelAccessor):
     for data analysis purposes.
     """
 
+    _accessor_property_name: str = "gray"
+
     def __getitem__(self, key) -> np.ndarray:
         """
         Provides functionality to retrieve a copy of a specified portion of the parent image's

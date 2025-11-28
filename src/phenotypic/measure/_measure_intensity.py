@@ -15,7 +15,6 @@ import pandas as pd
 from phenotypic.abc_ import MeasureFeatures, MeasurementInfo
 
 
-# TODO: Add more measurements
 class INTENSITY(MeasurementInfo):
     @classmethod
     def category(cls):

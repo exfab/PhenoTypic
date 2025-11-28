@@ -12,25 +12,33 @@ import colour
 
 
 class ImageColorSpace(ImageObjectsHandler):
-    """Represents an image's color space and its associated properties and transformations.
+    """Manages color space representation and transformations for image data.
 
-    This class encapsulates various properties of an image's color space, including gamma encoding, observer model,
-    illuminant, and color profile. It provides mechanisms for handling image data with specific attributes
-    and accessing color transformations through a unified interface. It supports initialization with image
-    data as a NumPy array or another compatible image format, along with metadata.
+    This class extends ImageObjectsHandler to add comprehensive color space management,
+    enabling access to multiple color space representations through a unified ColorAccessor
+    interface. It handles:
+    - Gamma encoding and color correction (sRGB or linear)
+    - Color space transformations (RGB, XYZ, Lab, HSV, etc.)
+    - Observer model and illuminant specification for colorimetric calculations
+    - Integration with the colour library for accurate color conversions
+
+    The class ensures consistency across different color space representations while
+    maintaining the underlying image data integrity. All color transformations are
+    computed on-demand through the color accessor to minimize memory overhead.
 
     Attributes:
-        color_profile (str): The color profile associated with the image (default: 'sRGB').
-        gamma_encoding (colour.CCTF_ENCODINGS | str | None): The gamma encoding applied to the image, as
-            either a predefined encoding in `colour.CCTF_ENCODINGS` or a string representation
-            (default: 'sRGB').
-        observer (str): The observer model employed for the image (default: 'CIE 1931 2 Degree Standard Observer').
-        illuminant (Literal["D65", "D50"]): The illuminant type defining the lighting conditions for the image
-            (default: "D65").
+        gamma_encoding (str | None): The gamma encoding applied to the image
+            ('sRGB' for gamma-corrected, None for linear RGB). Defaults to 'sRGB'.
+        observer (str): The CIE standard observer model for color calculations
+            (default: 'CIE 1931 2 Degree Standard Observer').
+        illuminant (Literal["D65", "D50"]): The reference illuminant defining viewing
+            conditions. 'D65' represents standard daylight, 'D50' represents standard
+            illumination for imaging. Defaults to 'D65'.
+        _accessors.color (ColorAccessor): Unified accessor for color space representations.
 
     References:
-        - http://www.brucelindbloom.com/index.html?Eqn_ChromAdapt.html
-        - https://colour.readthedocs.io/en/latest/generated/colour.CCTF_DECODINGS.html#colour.CCTF_DECODINGS
+        - Bruce Lindbloom Color Calculator: http://www.brucelindbloom.com/index.html?Eqn_ChromAdapt.html
+        - Colour Library Decodings: https://colour.readthedocs.io/en/latest/generated/colour.CCTF_DECODINGS.html
     """
 
     def __init__(self,
@@ -42,20 +50,31 @@ class ImageColorSpace(ImageObjectsHandler):
                  illuminant: Literal["D65", "D50"] = "D65",
                  observer: str = 'CIE 1931 2 Degree Standard Observer',
                  ):
-        """
-        Represents an image with associated metadata and color properties. This class is
-        used for handling image data with specific attributes such as bit depth, gamma
-        encoding, observer, and illuminant. It provides functionality for working with
-        color images, with the ability to set and retrieve associated metadata and color
-        attributes.
+        """Initialize ImageColorSpace with color properties and representations.
 
-        Attributes:
-            observer: str
-                The standard observer used in the color computations, such as 'CIE 1931
-                2 Degree Standard Observer'.
-            illuminant: Literal["D65", "D50"]
-                The illuminant used, typically "D65" for daylight conditions or "D50"
-                for standard viewing for imaging.
+        Sets up color space management for the image, including gamma encoding,
+        observer model, and illuminant specification. These parameters are critical
+        for accurate color space transformations and colorimetric calculations.
+
+        Args:
+            arr (np.ndarray | Image | None): Optional initial image data. Can be a NumPy array
+                or an existing Image instance. Defaults to None.
+            name (str | None): Optional name for the image. Defaults to None.
+            bit_depth (Literal[8, 16] | None): The bit depth of the image (8 or 16 bits).
+                Defaults to 8.
+            gamma_encoding (Literal["sRGB"] | None): The gamma encoding applied to the image.
+                'sRGB' applies gamma correction for display, None assumes linear RGB.
+                Only 'sRGB' and None are supported. Defaults to 'sRGB'.
+            illuminant (Literal["D65", "D50"]): The reference illuminant for color calculations.
+                'D65' represents standard daylight, 'D50' represents standard illumination
+                for imaging. Defaults to 'D65'.
+            observer (str): The CIE standard observer model for color computations.
+                Common value is 'CIE 1931 2 Degree Standard Observer'. Defaults to
+                'CIE 1931 2 Degree Standard Observer'.
+
+        Raises:
+            ValueError: If gamma_encoding is not 'sRGB' or None.
+            ValueError: If illuminant is not 'D65' or 'D50'.
         """
         if (gamma_encoding != "sRGB") and (gamma_encoding is not None):
             raise ValueError(f'only sRGB or None for linear is supported for gamma encoding: got {gamma_encoding}')

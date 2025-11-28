@@ -50,24 +50,13 @@ dependencies = [
     "pympler>=1.0.1",
     "exifread>=3.5.1",
     "click>=8.3.0",
+    "bm3d>=4.0.3",
 ]
 
 [project.urls]
 Repository = "https://github.com/Wheeldon-Lab/PhenoTypic"
 
 [project.optional-dependencies]
-dev = [
-    "memory-profiler>=0.61.0",
-    "pytest>=8.4.0",
-    "pytest-cov",
-    "mypy",
-    "pytest-xdist>=3.8.0",
-    "pympler; sys_platform!='win32'",
-    "jupyter;sys_platform!='win32'",
-    "ipykernel;sys_platform!='win32'",
-    "notebook;sys_platform!='win32'",
-]
-
 jupyter = [
     "ipywidgets>=8.1.7",
     "jupyter>=1.1.1",

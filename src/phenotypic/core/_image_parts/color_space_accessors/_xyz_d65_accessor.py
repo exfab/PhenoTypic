@@ -18,6 +18,8 @@ class XyzD65Accessor(ColorSpaceAccessor):
             illuminant, and data for chromatic adaptation and XYZ conversions.
     """
 
+    _accessor_property_name: str = "color.XYZ_D65"
+
     @property
     def _subject_arr(self) -> np.ndarray:
         """

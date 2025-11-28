@@ -12,6 +12,8 @@ class CieLabAccessor(ColorSpaceAccessor):
     function, where L* represents lightness and a*/b* represent color dimensions.
     """
 
+    _accessor_property_name: str = "color.Lab"
+
     @property
     def _subject_arr(self) -> np.ndarray:
         return colour.XYZ_to_Lab(

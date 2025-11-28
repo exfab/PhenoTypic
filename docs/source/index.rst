@@ -28,7 +28,7 @@ Welcome to Phenotypic's documentation. Here you'll find comprehensive guides and
 
       +++
 
-      .. button-ref:: user_guide/getting_started
+      .. button-ref:: user_guide/tutorial/overview
          :ref-type: doc
          :click-parent:
          :color: secondary
@@ -54,22 +54,6 @@ Welcome to Phenotypic's documentation. Here you'll find comprehensive guides and
 
          To the user guide
 
-   .. grid-item-card::  Tutorial
-      :img-top: ./_static/assets/200x150/tutorial.svg
-      :class-card: intro-card
-      :shadow: md
-
-      The tutorial provides longer, more in-depth examples of image processing concepts through Phenotypic. Start here if you're starting out with image processing.
-
-      +++
-
-      .. button-ref:: user_guide/tutorial/index
-         :ref-type: doc
-         :click-parent:
-         :color: secondary
-         :expand:
-
-         To the tutorials
 
    .. grid-item-card:: Examples
       :img-top: ./_static/assets/200x150/examples.svg
@@ -87,6 +71,23 @@ Welcome to Phenotypic's documentation. Here you'll find comprehensive guides and
          :expand:
 
          To the examples
+
+   .. grid-item-card::  Downloadables
+      :img-top: ./_static/assets/200x150/downloads.svg
+      :class-card: intro-card
+      :shadow: md
+
+      Downloadable helper scripts for deploying PhenoTypic at scale.
+
+      +++
+
+      .. button-ref:: downloadables
+         :ref-type: doc
+         :click-parent:
+         :color: secondary
+         :expand:
+
+         To downloads!
 
    .. grid-item-card::  API reference
       :img-top: ./_static/assets/200x150/api_ref_sign.svg

@@ -20,10 +20,10 @@ help:
 	@$(SPHINXBUILD) -M $@ "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
 
 apidoc:
-	sphinx-apidoc -o source/api_reference ../src/phenotypic --force --module-first --separate
+	sphinx-apidoc -o source/api_reference ../src/phenotypic --module-first --separate
 
 html: apidoc
-	rm -rf build
+	make clean
 	sphinx-build -n -b html source build/html
 
 #    sphinx-build -n -W -b html source build/html
