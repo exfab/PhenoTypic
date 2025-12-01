@@ -1,5 +1,5 @@
 """
-Comprehensive test suite for the GitterDetector class.
+Comprehensive test suite for the CircularDetector class.
 
 Tests cover initialization, detection on different image types, parameter variations,
 helper methods, and edge cases.
@@ -7,19 +7,19 @@ helper methods, and edge cases.
 import pytest
 import numpy as np
 import phenotypic
-from phenotypic.detect import GitterDetector
+from phenotypic.detect import CircularDetector
 from phenotypic.data import load_plate_12hr, load_plate_72hr
 
 from .resources.TestHelper import timeit
 
 
 class TestGitterDetectorInitialization:
-    """Test GitterDetector initialization and parameter handling."""
+    """Test CircularDetector initialization and parameter handling."""
 
     @timeit
     def test_default_initialization(self):
-        """Test that GitterDetector can be initialized with default parameters."""
-        detector = GitterDetector()
+        """Test that CircularDetector can be initialized with default parameters."""
+        detector = CircularDetector()
         assert detector.thresh_method == 'otsu'
         assert detector.subtract_background is True
         assert detector.remove_noise is True
@@ -33,21 +33,21 @@ class TestGitterDetectorInitialization:
     @pytest.mark.parametrize("thresh_method", ['otsu', 'mean', 'local', 'triangle', 'minimum', 'isodata'])
     def test_initialization_with_thresh_methods(self, thresh_method):
         """Test initialization with different thresholding methods."""
-        detector = GitterDetector(thresh_method=thresh_method)
+        detector = CircularDetector(thresh_method=thresh_method)
         assert detector.thresh_method == thresh_method
 
     @timeit
     def test_initialization_with_custom_parameters(self):
         """Test initialization with custom parameters."""
-        detector = GitterDetector(
-            thresh_method='triangle',
-            subtract_background=False,
-            remove_noise=False,
-            footprint_radius=5,
-            smoothing_sigma=3.0,
-            min_peak_distance=10,
-            peak_prominence=0.2,
-            edge_refinement=False
+        detector = CircularDetector(
+                thresh_method='triangle',
+                subtract_background=False,
+                remove_noise=False,
+                footprint_radius=5,
+                smoothing_sigma=3.0,
+                min_peak_distance=10,
+                peak_prominence=0.2,
+                edge_refinement=False
         )
         assert detector.thresh_method == 'triangle'
         assert detector.subtract_background is False
@@ -60,13 +60,13 @@ class TestGitterDetectorInitialization:
 
 
 class TestGitterDetectorOnGridImage:
-    """Test GitterDetector on GridImage with known grid structure."""
+    """Test CircularDetector on GridImage with known grid structure."""
 
     @timeit
     def test_detection_on_grid_image_12hr(self):
         """Test detection on 12-hour plate GridImage."""
         image = phenotypic.GridImage(load_plate_12hr())
-        detector = GitterDetector()
+        detector = CircularDetector()
         result = detector.apply(image, inplace=False)
 
         assert result is not None
@@ -80,7 +80,7 @@ class TestGitterDetectorOnGridImage:
     def test_detection_on_grid_image_72hr(self):
         """Test detection on 72-hour plate GridImage."""
         image = phenotypic.GridImage(load_plate_72hr())
-        detector = GitterDetector()
+        detector = CircularDetector()
         result = detector.apply(image, inplace=False)
 
         assert result is not None
@@ -93,7 +93,7 @@ class TestGitterDetectorOnGridImage:
     def test_detection_preserves_grid_info(self):
         """Test that detection preserves grid information in GridImage."""
         image = phenotypic.GridImage(load_plate_12hr(), nrows=8, ncols=12)
-        detector = GitterDetector()
+        detector = CircularDetector()
         result = detector.apply(image, inplace=False)
 
         assert isinstance(result, phenotypic.GridImage)
@@ -105,7 +105,7 @@ class TestGitterDetectorOnGridImage:
         """Test in-place detection modifies the original image."""
         image = phenotypic.GridImage(load_plate_12hr())
         original_objmap = image.objmap[:].copy()
-        detector = GitterDetector()
+        detector = CircularDetector()
         result = detector.apply(image, inplace=True)
 
         assert result is image
@@ -114,13 +114,13 @@ class TestGitterDetectorOnGridImage:
 
 
 class TestGitterDetectorOnRegularImage:
-    """Test GitterDetector on regular Image (grid inference)."""
+    """Test CircularDetector on regular Image (grid inference)."""
 
     @timeit
     def test_detection_on_regular_image(self):
         """Test detection on regular Image without explicit grid."""
         image = phenotypic.Image(load_plate_12hr())
-        detector = GitterDetector()
+        detector = CircularDetector()
         result = detector.apply(image, inplace=False)
 
         assert result is not None
@@ -131,7 +131,7 @@ class TestGitterDetectorOnRegularImage:
     def test_grid_inference_12hr(self):
         """Test that grid inference works on 12hr plate."""
         image = phenotypic.Image(load_plate_12hr())
-        detector = GitterDetector()
+        detector = CircularDetector()
         result = detector.apply(image, inplace=False)
 
         # Should detect colonies even without explicit grid
@@ -141,14 +141,14 @@ class TestGitterDetectorOnRegularImage:
 
 
 class TestGitterDetectorParameters:
-    """Test GitterDetector with different parameter combinations."""
+    """Test CircularDetector with different parameter combinations."""
 
     @timeit
     @pytest.mark.parametrize("thresh_method", ['otsu', 'mean', 'triangle', 'minimum', 'isodata'])
     def test_different_thresholding_methods(self, thresh_method):
         """Test that different thresholding methods all work."""
         image = phenotypic.GridImage(load_plate_12hr())
-        detector = GitterDetector(thresh_method=thresh_method)
+        detector = CircularDetector(thresh_method=thresh_method)
         result = detector.apply(image, inplace=False)
 
         assert result.num_objects > 0
@@ -157,7 +157,7 @@ class TestGitterDetectorParameters:
     def test_with_background_subtraction(self):
         """Test detection with background subtraction enabled."""
         image = phenotypic.GridImage(load_plate_12hr())
-        detector = GitterDetector(subtract_background=True)
+        detector = CircularDetector(subtract_background=True)
         result = detector.apply(image, inplace=False)
 
         assert result.num_objects > 0
@@ -166,7 +166,7 @@ class TestGitterDetectorParameters:
     def test_without_background_subtraction(self):
         """Test detection without background subtraction."""
         image = phenotypic.GridImage(load_plate_12hr())
-        detector = GitterDetector(subtract_background=False)
+        detector = CircularDetector(subtract_background=False)
         result = detector.apply(image, inplace=False)
 
         assert result.num_objects > 0
@@ -175,7 +175,7 @@ class TestGitterDetectorParameters:
     def test_with_noise_removal(self):
         """Test detection with noise removal enabled."""
         image = phenotypic.GridImage(load_plate_12hr())
-        detector = GitterDetector(remove_noise=True)
+        detector = CircularDetector(remove_noise=True)
         result = detector.apply(image, inplace=False)
 
         assert result.num_objects > 0
@@ -184,7 +184,7 @@ class TestGitterDetectorParameters:
     def test_without_noise_removal(self):
         """Test detection without noise removal."""
         image = phenotypic.GridImage(load_plate_12hr())
-        detector = GitterDetector(remove_noise=False)
+        detector = CircularDetector(remove_noise=False)
         result = detector.apply(image, inplace=False)
 
         assert result.num_objects > 0
@@ -193,7 +193,7 @@ class TestGitterDetectorParameters:
     def test_with_edge_refinement(self):
         """Test detection with edge refinement enabled."""
         image = phenotypic.GridImage(load_plate_12hr())
-        detector = GitterDetector(edge_refinement=True)
+        detector = CircularDetector(edge_refinement=True)
         result = detector.apply(image, inplace=False)
 
         assert result.num_objects > 0
@@ -202,7 +202,7 @@ class TestGitterDetectorParameters:
     def test_without_edge_refinement(self):
         """Test detection without edge refinement."""
         image = phenotypic.GridImage(load_plate_12hr())
-        detector = GitterDetector(edge_refinement=False)
+        detector = CircularDetector(edge_refinement=False)
         result = detector.apply(image, inplace=False)
 
         assert result.num_objects > 0
@@ -212,7 +212,7 @@ class TestGitterDetectorParameters:
     def test_different_smoothing_sigma(self, sigma):
         """Test detection with different smoothing sigma values."""
         image = phenotypic.GridImage(load_plate_12hr())
-        detector = GitterDetector(smoothing_sigma=sigma)
+        detector = CircularDetector(smoothing_sigma=sigma)
         result = detector.apply(image, inplace=False)
 
         assert result.num_objects > 0
@@ -222,7 +222,7 @@ class TestGitterDetectorParameters:
     def test_different_footprint_radius(self, radius):
         """Test detection with different footprint radii."""
         image = phenotypic.GridImage(load_plate_12hr())
-        detector = GitterDetector(footprint_radius=radius)
+        detector = CircularDetector(footprint_radius=radius)
         result = detector.apply(image, inplace=False)
 
         assert result.num_objects > 0
@@ -231,7 +231,7 @@ class TestGitterDetectorParameters:
     def test_with_custom_peak_distance(self):
         """Test detection with custom minimum peak distance."""
         image = phenotypic.GridImage(load_plate_12hr())
-        detector = GitterDetector(min_peak_distance=20)
+        detector = CircularDetector(min_peak_distance=20)
         result = detector.apply(image, inplace=False)
 
         assert result.num_objects > 0
@@ -240,20 +240,20 @@ class TestGitterDetectorParameters:
     def test_with_custom_peak_prominence(self):
         """Test detection with custom peak prominence."""
         image = phenotypic.GridImage(load_plate_12hr())
-        detector = GitterDetector(peak_prominence=0.15)
+        detector = CircularDetector(peak_prominence=0.15)
         result = detector.apply(image, inplace=False)
 
         assert result.num_objects > 0
 
 
 class TestGitterDetectorHelperMethods:
-    """Test GitterDetector helper methods."""
+    """Test CircularDetector helper methods."""
 
     @timeit
     def test_thresholding_creates_binary_mask(self):
         """Test that _thresholding creates a valid binary mask."""
         image = phenotypic.GridImage(load_plate_12hr())
-        detector = GitterDetector()
+        detector = CircularDetector()
 
         matrix = image.enh_gray[:]
         binary_mask = detector._thresholding(matrix)
@@ -265,7 +265,7 @@ class TestGitterDetectorHelperMethods:
     @timeit
     def test_clean_and_sum_binary_axis0(self):
         """Test _clean_and_sum_binary for axis=0 (rows)."""
-        detector = GitterDetector()
+        detector = CircularDetector()
         # Create simple test pattern
         binary_image = np.zeros((100, 100), dtype=bool)
         binary_image[20:30, 20:80] = True  # Horizontal stripe
@@ -279,7 +279,7 @@ class TestGitterDetectorHelperMethods:
     @timeit
     def test_clean_and_sum_binary_axis1(self):
         """Test _clean_and_sum_binary for axis=1 (columns)."""
-        detector = GitterDetector()
+        detector = CircularDetector()
         # Create simple test pattern
         binary_image = np.zeros((100, 100), dtype=bool)
         binary_image[20:80, 20:30] = True  # Vertical stripe
@@ -293,7 +293,7 @@ class TestGitterDetectorHelperMethods:
     @timeit
     def test_estimate_edges_returns_correct_number(self):
         """Test that _estimate_edges returns n_bins+1 edges."""
-        detector = GitterDetector()
+        detector = CircularDetector()
         binary_image = np.zeros((100, 100), dtype=bool)
         binary_image[10:20, :] = True
         binary_image[30:40, :] = True
@@ -309,7 +309,7 @@ class TestGitterDetectorHelperMethods:
     @timeit
     def test_refine_edges_maintains_count(self):
         """Test that _refine_edges maintains the number of edges."""
-        detector = GitterDetector()
+        detector = CircularDetector()
         binary_image = np.zeros((100, 100), dtype=bool)
         binary_image[10:20, :] = True
 
@@ -322,28 +322,28 @@ class TestGitterDetectorHelperMethods:
 
     @timeit
     @pytest.mark.parametrize("nrows,ncols", [
-        (8, 12),   # 96-well plate
+        (8, 12),  # 96-well plate
         (16, 24),  # 384-well plate
         (32, 48),  # 1536-well plate
-        (4, 6),    # Small grid
+        (4, 6),  # Small grid
     ])
     def test_infer_grid_shape_with_synthetic_data(self, nrows, ncols):
         """Test grid shape inference with synthetic gridded data."""
-        detector = GitterDetector()
+        detector = CircularDetector()
 
         # Create synthetic binary image with grid pattern
         height, width = 200, 300
         binary_image = np.zeros((height, width), dtype=bool)
 
-        row_spacing = height // nrows
-        col_spacing = width // ncols
+        row_spacing = height//nrows
+        col_spacing = width//ncols
 
         for r in range(nrows):
             for c in range(ncols):
                 # Add a small colony at each grid position
-                r_center = r * row_spacing + row_spacing // 2
-                c_center = c * col_spacing + col_spacing // 2
-                binary_image[r_center-3:r_center+3, c_center-3:c_center+3] = True
+                r_center = r*row_spacing + row_spacing//2
+                c_center = c*col_spacing + col_spacing//2
+                binary_image[r_center - 3:r_center + 3, c_center - 3:c_center + 3] = True
 
         inferred_rows, inferred_cols = detector._infer_grid_shape(binary_image)
 
@@ -353,15 +353,15 @@ class TestGitterDetectorHelperMethods:
 
 
 class TestGitterDetectorEdgeCases:
-    """Test GitterDetector with edge cases and unusual inputs."""
+    """Test CircularDetector with edge cases and unusual inputs."""
 
     @timeit
     def test_empty_image(self):
         """Test detection on an empty/blank image."""
         # Create blank image (RGB for GridImage compatibility)
-        blank_array = np.ones((100, 100, 3), dtype=np.uint8) * 255
+        blank_array = np.ones((100, 100, 3), dtype=np.uint8)*255
         image = phenotypic.GridImage(blank_array)
-        detector = GitterDetector()
+        detector = CircularDetector()
         result = detector.apply(image, inplace=False)
 
         # Should complete without error, even if no objects detected
@@ -372,7 +372,7 @@ class TestGitterDetectorEdgeCases:
         """Test detection on very dark image."""
         dark_array = np.zeros((100, 100, 3), dtype=np.uint8)
         image = phenotypic.GridImage(dark_array)
-        detector = GitterDetector()
+        detector = CircularDetector()
         result = detector.apply(image, inplace=False)
 
         # Should complete without error
@@ -385,7 +385,7 @@ class TestGitterDetectorEdgeCases:
         single_colony = np.zeros((100, 100, 3), dtype=np.uint8)
         single_colony[40:60, 40:60, :] = 255
         image = phenotypic.Image(single_colony)
-        detector = GitterDetector()
+        detector = CircularDetector()
         result = detector.apply(image, inplace=False)
 
         assert result is not None
@@ -397,7 +397,7 @@ class TestGitterDetectorEdgeCases:
         """Test detection on very small image."""
         small_array = np.random.randint(0, 255, (50, 50, 3), dtype=np.uint8)
         image = phenotypic.GridImage(small_array, nrows=4, ncols=6)
-        detector = GitterDetector()
+        detector = CircularDetector()
         result = detector.apply(image, inplace=False)
 
         # Should complete without error
@@ -407,7 +407,7 @@ class TestGitterDetectorEdgeCases:
     def test_large_footprint_radius(self):
         """Test with footprint radius larger than typical colony size."""
         image = phenotypic.GridImage(load_plate_12hr())
-        detector = GitterDetector(footprint_radius=20)
+        detector = CircularDetector(footprint_radius=20)
         result = detector.apply(image, inplace=False)
 
         # Should still work, though may affect results
@@ -415,13 +415,13 @@ class TestGitterDetectorEdgeCases:
 
 
 class TestGitterDetectorOutputConsistency:
-    """Test that GitterDetector produces consistent and valid outputs."""
+    """Test that CircularDetector produces consistent and valid outputs."""
 
     @timeit
     def test_objmap_has_sequential_labels(self):
         """Test that objmap has properly sequential labels after detection."""
         image = phenotypic.GridImage(load_plate_12hr())
-        detector = GitterDetector()
+        detector = CircularDetector()
         result = detector.apply(image, inplace=False)
 
         unique_labels = np.unique(result.objmap[:])
@@ -437,7 +437,7 @@ class TestGitterDetectorOutputConsistency:
     def test_objmask_matches_objmap(self):
         """Test that objmask and objmap are consistent."""
         image = phenotypic.GridImage(load_plate_12hr())
-        detector = GitterDetector()
+        detector = CircularDetector()
         result = detector.apply(image, inplace=False)
 
         # Where objmap > 0, objmask should be True
@@ -450,7 +450,7 @@ class TestGitterDetectorOutputConsistency:
     def test_num_objects_matches_objmap(self):
         """Test that num_objects matches the actual number of objects in objmap."""
         image = phenotypic.GridImage(load_plate_12hr())
-        detector = GitterDetector()
+        detector = CircularDetector()
         result = detector.apply(image, inplace=False)
 
         unique_labels = np.unique(result.objmap[:])
@@ -465,13 +465,13 @@ class TestGitterDetectorOutputConsistency:
         image1 = phenotypic.GridImage(load_plate_12hr())
         image2 = phenotypic.GridImage(load_plate_12hr())
 
-        detector = GitterDetector(
-            thresh_method='otsu',
-            subtract_background=True,
-            remove_noise=True,
-            footprint_radius=3,
-            smoothing_sigma=2.0,
-            edge_refinement=True
+        detector = CircularDetector(
+                thresh_method='otsu',
+                subtract_background=True,
+                remove_noise=True,
+                footprint_radius=3,
+                smoothing_sigma=2.0,
+                edge_refinement=True
         )
 
         result1 = detector.apply(image1, inplace=False)
@@ -483,17 +483,17 @@ class TestGitterDetectorOutputConsistency:
 
 
 class TestGitterDetectorComparisonWithOtherDetectors:
-    """Compare GitterDetector with other detectors as sanity check."""
+    """Compare CircularDetector with other detectors as sanity check."""
 
     @timeit
     def test_detects_similar_number_as_watershed(self):
-        """Test that GitterDetector finds similar number of objects as WatershedDetector."""
+        """Test that CircularDetector finds similar number of objects as WatershedDetector."""
         from phenotypic.detect import WatershedDetector
 
         image_gitter = phenotypic.GridImage(load_plate_12hr())
         image_watershed = phenotypic.GridImage(load_plate_12hr())
 
-        gitter = GitterDetector()
+        gitter = CircularDetector()
         watershed = WatershedDetector()
 
         result_gitter = gitter.apply(image_gitter, inplace=False)
@@ -505,8 +505,8 @@ class TestGitterDetectorComparisonWithOtherDetectors:
 
         # Numbers don't need to match exactly, but should be in similar range
         # Allow up to 50% difference
-        ratio = result_gitter.num_objects / max(result_watershed.num_objects, 1)
-        assert 0.5 <= ratio <= 2.0, f"GitterDetector found {result_gitter.num_objects} objects, WatershedDetector found {result_watershed.num_objects}"
+        ratio = result_gitter.num_objects/max(result_watershed.num_objects, 1)
+        assert 0.5 <= ratio <= 2.0, f"CircularDetector found {result_gitter.num_objects} objects, WatershedDetector found {result_watershed.num_objects}"
 
 
 # Run all tests if this file is executed directly
