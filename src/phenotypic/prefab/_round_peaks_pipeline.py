@@ -4,7 +4,7 @@ from typing import List, Literal
 
 from phenotypic.abc_ import PrefabPipeline
 from phenotypic.enhance import GaussianBlur
-from phenotypic.detect import CircularDetector
+from phenotypic.detect import RoundPeaksDetector
 from phenotypic.measure import (
     MeasureShape,
     MeasureIntensity,
@@ -13,20 +13,20 @@ from phenotypic.measure import (
 )
 
 
-class CircularPipeline(PrefabPipeline):
+class RoundPeaksPipeline(PrefabPipeline):
     """Lightweight pipeline for circular colonies on solid media agar.
 
     This prefab pipeline provides a streamlined sequence of operations tailored for
     imaging pinned or arrayed fungal colonies on solid media agar. It performs a
     gentle Gaussian blur to suppress scanner and agar noise, followed by a
     grid-aware circular colony detector and a compact set of measurement
-    modules. Compared with :class:`HeavyCircularPipeline`, this variant exposes a
+    modules. Compared with :class:`HeavyRoundPeaksPipeline`, this variant exposes a
     smaller number of stages and parameters but still allows fine control over
     blur strength, thresholding, grid refinement, and texture scale.
 
     Operations:
         1. ``GaussianBlur``
-        2. ``CircularDetector``
+        2. ``RoundPeaksDetector``
 
     Measurements:
         - ``MeasureShape``
@@ -62,7 +62,7 @@ class CircularPipeline(PrefabPipeline):
         pinned fungal colonies, the default is usually sufficient; very large
         values can over-smooth diffuse halos or ring-like growth.
     detector_thresh_method : {"otsu", "mean", "local", "triangle", "minimum", "isodata"}, optional
-        Thresholding method used inside ``CircularDetector``. ``"otsu"`` works
+        Thresholding method used inside ``RoundPeaksDetector``. ``"otsu"`` works
         well for plates with reasonably uniform agar and clear contrast between
         colonies and background. ``"local"`` can cope with strong gradients or
         condensation streaks but may be slower. ``"mean"``, ``"triangle"``,
@@ -152,62 +152,62 @@ class CircularPipeline(PrefabPipeline):
     pinned or arrayed circular colonies on agar where only a modest amount of
     preprocessing is needed. For plates with severe background gradients,
     strong vignetting, or highly irregular grids, consider using
-    :class:`HeavyCircularPipeline`, which exposes additional refinement and
+    :class:`HeavyRoundPeaksPipeline`, which exposes additional refinement and
     alignment stages.
     """
 
     def __init__(
-        self,
-        *,
-        blur_sigma: int = 5,
-        blur_mode: str = "reflect",
-        blur_cval: float = 0.0,
-        blur_truncate: float = 4.0,
-        detector_thresh_method: Literal[
-            "otsu",
-            "mean",
-            "local",
-            "triangle",
-            "minimum",
-            "isodata",
-        ] = "otsu",
-        detector_subtract_background: bool = True,
-        detector_remove_noise: bool = True,
-        detector_footprint_radius: int = 5,
-        detector_smoothing_sigma: float = 2.0,
-        detector_min_peak_distance: int | None = None,
-        detector_peak_prominence: float | None = None,
-        detector_edge_refinement: bool = True,
-        texture_scale: int | List[int] = 5,
-        texture_quant_lvl: Literal[8, 16, 32, 64] = 32,
-        texture_enhance: bool = False,
-        texture_warn: bool = False,
-        benchmark: bool = False,
-        verbose: bool = False,
+            self,
+            *,
+            blur_sigma: int = 5,
+            blur_mode: str = "reflect",
+            blur_cval: float = 0.0,
+            blur_truncate: float = 4.0,
+            detector_thresh_method: Literal[
+                "otsu",
+                "mean",
+                "local",
+                "triangle",
+                "minimum",
+                "isodata",
+            ] = "otsu",
+            detector_subtract_background: bool = True,
+            detector_remove_noise: bool = True,
+            detector_footprint_radius: int = 5,
+            detector_smoothing_sigma: float = 2.0,
+            detector_min_peak_distance: int | None = None,
+            detector_peak_prominence: float | None = None,
+            detector_edge_refinement: bool = True,
+            texture_scale: int | List[int] = 5,
+            texture_quant_lvl: Literal[8, 16, 32, 64] = 32,
+            texture_enhance: bool = False,
+            texture_warn: bool = False,
+            benchmark: bool = False,
+            verbose: bool = False,
     ) -> None:
         gaussian = GaussianBlur(
-            sigma=blur_sigma,
-            mode=blur_mode,
-            cval=blur_cval,
-            truncate=blur_truncate,
+                sigma=blur_sigma,
+                mode=blur_mode,
+                cval=blur_cval,
+                truncate=blur_truncate,
         )
 
-        detector = CircularDetector(
-            thresh_method=detector_thresh_method,
-            subtract_background=detector_subtract_background,
-            remove_noise=detector_remove_noise,
-            footprint_radius=detector_footprint_radius,
-            smoothing_sigma=detector_smoothing_sigma,
-            min_peak_distance=detector_min_peak_distance,
-            peak_prominence=detector_peak_prominence,
-            edge_refinement=detector_edge_refinement,
+        detector = RoundPeaksDetector(
+                thresh_method=detector_thresh_method,
+                subtract_background=detector_subtract_background,
+                remove_noise=detector_remove_noise,
+                footprint_radius=detector_footprint_radius,
+                smoothing_sigma=detector_smoothing_sigma,
+                min_peak_distance=detector_min_peak_distance,
+                peak_prominence=detector_peak_prominence,
+                edge_refinement=detector_edge_refinement,
         )
 
         texture_meas = MeasureTexture(
-            scale=texture_scale,
-            quant_lvl=texture_quant_lvl,
-            enhance=texture_enhance,
-            warn=texture_warn,
+                scale=texture_scale,
+                quant_lvl=texture_quant_lvl,
+                enhance=texture_enhance,
+                warn=texture_warn,
         )
 
         ops = [gaussian, detector]
@@ -221,4 +221,4 @@ class CircularPipeline(PrefabPipeline):
         super().__init__(ops=ops, meas=meas, benchmark=benchmark, verbose=verbose)
 
 
-__all__ = ("CircularPipeline",)
+__all__ = ("RoundPeaksPipeline",)

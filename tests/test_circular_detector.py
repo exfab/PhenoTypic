@@ -1,5 +1,5 @@
 """
-Comprehensive test suite for the CircularDetector class.
+Comprehensive test suite for the RoundPeaksDetector class.
 
 Tests cover initialization, detection on different image types, parameter variations,
 helper methods, and edge cases.
@@ -8,19 +8,19 @@ import pytest
 import numpy as np
 import phenotypic
 from phenotypic import GridImage
-from phenotypic.detect import CircularDetector
+from phenotypic.detect import RoundPeaksDetector
 from phenotypic.data import load_plate_12hr, load_plate_72hr
 
 from .resources.TestHelper import timeit
 
 
 class TestCircularDetectorInitialization:
-    """Test CircularDetector initialization and parameter handling."""
+    """Test RoundPeaksDetector initialization and parameter handling."""
 
     @timeit
     def test_default_initialization(self):
-        """Test that CircularDetector can be initialized with default parameters."""
-        detector = CircularDetector()
+        """Test that RoundPeaksDetector can be initialized with default parameters."""
+        detector = RoundPeaksDetector()
         assert detector.thresh_method == 'otsu'
         assert detector.subtract_background is True
         assert detector.remove_noise is True
@@ -34,13 +34,13 @@ class TestCircularDetectorInitialization:
     @pytest.mark.parametrize("thresh_method", ['otsu', 'mean', 'local', 'triangle', 'minimum', 'isodata'])
     def test_initialization_with_thresh_methods(self, thresh_method):
         """Test initialization with different thresholding methods."""
-        detector = CircularDetector(thresh_method=thresh_method)
+        detector = RoundPeaksDetector(thresh_method=thresh_method)
         assert detector.thresh_method == thresh_method
 
     @timeit
     def test_initialization_with_custom_parameters(self):
         """Test initialization with custom parameters."""
-        detector = CircularDetector(
+        detector = RoundPeaksDetector(
                 thresh_method='triangle',
                 subtract_background=False,
                 remove_noise=False,
@@ -61,13 +61,13 @@ class TestCircularDetectorInitialization:
 
 
 class TestCircularDetectorOnGridImage:
-    """Test CircularDetector on GridImage with known grid structure."""
+    """Test RoundPeaksDetector on GridImage with known grid structure."""
 
     @timeit
     def test_detection_on_grid_image_12hr(self):
         """Test detection on 12-hour plate GridImage."""
         image = phenotypic.GridImage(load_plate_12hr())
-        detector = CircularDetector()
+        detector = RoundPeaksDetector()
         result = detector.apply(image, inplace=False)
 
         assert result is not None
@@ -81,7 +81,7 @@ class TestCircularDetectorOnGridImage:
     def test_detection_on_grid_image_72hr(self):
         """Test detection on 72-hour plate GridImage."""
         image = phenotypic.GridImage(load_plate_72hr())
-        detector = CircularDetector()
+        detector = RoundPeaksDetector()
         result = detector.apply(image, inplace=False)
 
         assert result is not None
@@ -94,7 +94,7 @@ class TestCircularDetectorOnGridImage:
     def test_detection_preserves_grid_info(self):
         """Test that detection preserves grid information in GridImage."""
         image = phenotypic.GridImage(load_plate_12hr(), nrows=8, ncols=12)
-        detector = CircularDetector()
+        detector = RoundPeaksDetector()
         result = detector.apply(image, inplace=False)
 
         assert isinstance(result, phenotypic.GridImage)
@@ -106,7 +106,7 @@ class TestCircularDetectorOnGridImage:
         """Test in-place detection modifies the original image."""
         image = phenotypic.GridImage(load_plate_12hr())
         original_objmap = image.objmap[:].copy()
-        detector = CircularDetector()
+        detector = RoundPeaksDetector()
         result = detector.apply(image, inplace=True)
 
         assert result is image
@@ -115,13 +115,13 @@ class TestCircularDetectorOnGridImage:
 
 
 class TestCircularDetectorOnRegularImage:
-    """Test CircularDetector on regular Image (grid inference)."""
+    """Test RoundPeaksDetector on regular Image (grid inference)."""
 
     @timeit
     def test_detection_on_regular_image(self):
         """Test detection on regular Image without explicit grid."""
         image = phenotypic.Image(load_plate_12hr())
-        detector = CircularDetector()
+        detector = RoundPeaksDetector()
         result = detector.apply(image, inplace=False)
 
         assert result is not None
@@ -132,7 +132,7 @@ class TestCircularDetectorOnRegularImage:
     def test_grid_inference_12hr(self):
         """Test that grid inference works on 12hr plate."""
         image = phenotypic.Image(load_plate_12hr())
-        detector = CircularDetector()
+        detector = RoundPeaksDetector()
         result = detector.apply(image, inplace=False)
 
         # Should detect colonies even without explicit grid
@@ -142,14 +142,14 @@ class TestCircularDetectorOnRegularImage:
 
 
 class TestCircularDetectorParameters:
-    """Test CircularDetector with different parameter combinations."""
+    """Test RoundPeaksDetector with different parameter combinations."""
 
     @timeit
     @pytest.mark.parametrize("thresh_method", ['otsu', 'mean', 'triangle', 'minimum', 'isodata'])
     def test_different_thresholding_methods(self, thresh_method):
         """Test that different thresholding methods all work."""
         image = phenotypic.GridImage(load_plate_12hr())
-        detector = CircularDetector(thresh_method=thresh_method)
+        detector = RoundPeaksDetector(thresh_method=thresh_method)
         result = detector.apply(image, inplace=False)
 
         assert result.num_objects > 0
@@ -158,7 +158,7 @@ class TestCircularDetectorParameters:
     def test_with_background_subtraction(self):
         """Test detection with background subtraction enabled."""
         image = phenotypic.GridImage(load_plate_12hr())
-        detector = CircularDetector(subtract_background=True)
+        detector = RoundPeaksDetector(subtract_background=True)
         result = detector.apply(image, inplace=False)
 
         assert result.num_objects > 0
@@ -167,7 +167,7 @@ class TestCircularDetectorParameters:
     def test_without_background_subtraction(self):
         """Test detection without background subtraction."""
         image = phenotypic.GridImage(load_plate_12hr())
-        detector = CircularDetector(subtract_background=False)
+        detector = RoundPeaksDetector(subtract_background=False)
         result = detector.apply(image, inplace=False)
 
         assert result.num_objects > 0
@@ -176,7 +176,7 @@ class TestCircularDetectorParameters:
     def test_with_noise_removal(self):
         """Test detection with noise removal enabled."""
         image = phenotypic.GridImage(load_plate_12hr())
-        detector = CircularDetector(remove_noise=True)
+        detector = RoundPeaksDetector(remove_noise=True)
         result = detector.apply(image, inplace=False)
 
         assert result.num_objects > 0
@@ -185,7 +185,7 @@ class TestCircularDetectorParameters:
     def test_without_noise_removal(self):
         """Test detection without noise removal."""
         image = phenotypic.GridImage(load_plate_12hr())
-        detector = CircularDetector(remove_noise=False)
+        detector = RoundPeaksDetector(remove_noise=False)
         result = detector.apply(image, inplace=False)
 
         assert result.num_objects > 0
@@ -194,7 +194,7 @@ class TestCircularDetectorParameters:
     def test_with_edge_refinement(self):
         """Test detection with edge refinement enabled."""
         image = phenotypic.GridImage(load_plate_12hr())
-        detector = CircularDetector(edge_refinement=True)
+        detector = RoundPeaksDetector(edge_refinement=True)
         result = detector.apply(image, inplace=False)
 
         assert result.num_objects > 0
@@ -203,7 +203,7 @@ class TestCircularDetectorParameters:
     def test_without_edge_refinement(self):
         """Test detection without edge refinement."""
         image = phenotypic.GridImage(load_plate_12hr())
-        detector = CircularDetector(edge_refinement=False)
+        detector = RoundPeaksDetector(edge_refinement=False)
         result = detector.apply(image, inplace=False)
 
         assert result.num_objects > 0
@@ -213,7 +213,7 @@ class TestCircularDetectorParameters:
     def test_different_smoothing_sigma(self, sigma):
         """Test detection with different smoothing sigma values."""
         image = phenotypic.GridImage(load_plate_12hr())
-        detector = CircularDetector(smoothing_sigma=sigma)
+        detector = RoundPeaksDetector(smoothing_sigma=sigma)
         result = detector.apply(image, inplace=False)
 
         assert result.num_objects > 0
@@ -223,7 +223,7 @@ class TestCircularDetectorParameters:
     def test_different_footprint_radius(self, radius):
         """Test detection with different footprint radii."""
         image = phenotypic.GridImage(load_plate_12hr())
-        detector = CircularDetector(footprint_radius=radius)
+        detector = RoundPeaksDetector(footprint_radius=radius)
         result = detector.apply(image, inplace=False)
 
         assert result.num_objects > 0
@@ -232,7 +232,7 @@ class TestCircularDetectorParameters:
     def test_with_custom_peak_distance(self):
         """Test detection with custom minimum peak distance."""
         image = phenotypic.GridImage(load_plate_12hr())
-        detector = CircularDetector(min_peak_distance=20)
+        detector = RoundPeaksDetector(min_peak_distance=20)
         result = detector.apply(image, inplace=False)
 
         assert result.num_objects > 0
@@ -241,20 +241,20 @@ class TestCircularDetectorParameters:
     def test_with_custom_peak_prominence(self):
         """Test detection with custom peak prominence."""
         image = phenotypic.GridImage(load_plate_12hr())
-        detector = CircularDetector(peak_prominence=0.15)
+        detector = RoundPeaksDetector(peak_prominence=0.15)
         result = detector.apply(image, inplace=False)
 
         assert result.num_objects > 0
 
 
 class TestCircularDetectorHelperMethods:
-    """Test CircularDetector helper methods."""
+    """Test RoundPeaksDetector helper methods."""
 
     @timeit
     def test_thresholding_creates_binary_mask(self):
         """Test that _thresholding creates a valid binary mask."""
         image = phenotypic.GridImage(load_plate_12hr())
-        detector = CircularDetector()
+        detector = RoundPeaksDetector()
 
         matrix = image.enh_gray[:]
         binary_mask = detector._thresholding(matrix)
@@ -266,7 +266,7 @@ class TestCircularDetectorHelperMethods:
     @timeit
     def test_clean_and_sum_binary_axis0(self):
         """Test _clean_and_sum_binary for axis=0 (rows)."""
-        detector = CircularDetector()
+        detector = RoundPeaksDetector()
         # Create simple test pattern
         binary_image = np.zeros((100, 100), dtype=bool)
         binary_image[20:30, 20:80] = True  # Horizontal stripe
@@ -280,7 +280,7 @@ class TestCircularDetectorHelperMethods:
     @timeit
     def test_clean_and_sum_binary_axis1(self):
         """Test _clean_and_sum_binary for axis=1 (columns)."""
-        detector = CircularDetector()
+        detector = RoundPeaksDetector()
         # Create simple test pattern
         binary_image = np.zeros((100, 100), dtype=bool)
         binary_image[20:80, 20:30] = True  # Vertical stripe
@@ -294,7 +294,7 @@ class TestCircularDetectorHelperMethods:
     @timeit
     def test_estimate_edges_returns_correct_number(self):
         """Test that _estimate_edges returns n_bins+1 edges."""
-        detector = CircularDetector()
+        detector = RoundPeaksDetector()
         binary_image = np.zeros((100, 100), dtype=bool)
         binary_image[10:20, :] = True
         binary_image[30:40, :] = True
@@ -310,7 +310,7 @@ class TestCircularDetectorHelperMethods:
     @timeit
     def test_refine_edges_maintains_count(self):
         """Test that _refine_edges maintains the number of edges."""
-        detector = CircularDetector()
+        detector = RoundPeaksDetector()
         binary_image = np.zeros((100, 100), dtype=bool)
         binary_image[10:20, :] = True
 
@@ -330,7 +330,7 @@ class TestCircularDetectorHelperMethods:
     ])
     def test_infer_grid_shape_with_synthetic_data(self, nrows, ncols):
         """Test grid shape inference with synthetic gridded data."""
-        detector = CircularDetector()
+        detector = RoundPeaksDetector()
 
         # Create synthetic binary image with grid pattern
         height, width = 200, 300
@@ -354,7 +354,7 @@ class TestCircularDetectorHelperMethods:
 
 
 class TestCircularDetectorEdgeCases:
-    """Test CircularDetector with edge cases and unusual inputs."""
+    """Test RoundPeaksDetector with edge cases and unusual inputs."""
 
     @timeit
     def test_empty_image(self):
@@ -362,7 +362,7 @@ class TestCircularDetectorEdgeCases:
         # Create blank image (RGB for GridImage compatibility)
         blank_array = np.ones((100, 100, 3), dtype=np.uint8)*255
         image = phenotypic.GridImage(blank_array)
-        detector = CircularDetector()
+        detector = RoundPeaksDetector()
         result = detector.apply(image, inplace=False)
 
         # Should complete without error, even if no objects detected
@@ -373,7 +373,7 @@ class TestCircularDetectorEdgeCases:
         """Test detection on very dark image."""
         dark_array = np.zeros((100, 100, 3), dtype=np.uint8)
         image = phenotypic.GridImage(dark_array)
-        detector = CircularDetector()
+        detector = RoundPeaksDetector()
         result = detector.apply(image, inplace=False)
 
         # Should complete without error
@@ -386,7 +386,7 @@ class TestCircularDetectorEdgeCases:
         single_colony = np.zeros((100, 100, 3), dtype=np.uint8)
         single_colony[40:60, 40:60, :] = 255
         image = phenotypic.Image(single_colony)
-        detector = CircularDetector()
+        detector = RoundPeaksDetector()
         result = detector.apply(image, inplace=False)
 
         assert result is not None
@@ -398,7 +398,7 @@ class TestCircularDetectorEdgeCases:
         """Test detection on very small image."""
         small_array = np.random.randint(0, 255, (50, 50, 3), dtype=np.uint8)
         image = phenotypic.GridImage(small_array, nrows=4, ncols=6)
-        detector = CircularDetector()
+        detector = RoundPeaksDetector()
         result = detector.apply(image, inplace=False)
 
         # Should complete without error
@@ -408,7 +408,7 @@ class TestCircularDetectorEdgeCases:
     def test_large_footprint_radius(self):
         """Test with footprint radius larger than typical colony size."""
         image = phenotypic.GridImage(load_plate_12hr())
-        detector = CircularDetector(footprint_radius=20)
+        detector = RoundPeaksDetector(footprint_radius=20)
         result = detector.apply(image, inplace=False)
 
         # Should still work, though may affect results
@@ -416,13 +416,13 @@ class TestCircularDetectorEdgeCases:
 
 
 class TestCircularDetectorOutputConsistency:
-    """Test that CircularDetector produces consistent and valid outputs."""
+    """Test that RoundPeaksDetector produces consistent and valid outputs."""
 
     @timeit
     def test_objmap_has_sequential_labels(self):
         """Test that objmap has properly sequential labels after detection."""
         image = phenotypic.GridImage(load_plate_12hr())
-        detector = CircularDetector()
+        detector = RoundPeaksDetector()
         result = detector.apply(image, inplace=False)
 
         unique_labels = np.unique(result.objmap[:])
@@ -438,7 +438,7 @@ class TestCircularDetectorOutputConsistency:
     def test_objmask_matches_objmap(self):
         """Test that objmask and objmap are consistent."""
         image = phenotypic.GridImage(load_plate_12hr())
-        detector = CircularDetector()
+        detector = RoundPeaksDetector()
         result = detector.apply(image, inplace=False)
 
         # Where objmap > 0, objmask should be True
@@ -451,7 +451,7 @@ class TestCircularDetectorOutputConsistency:
     def test_num_objects_matches_objmap(self):
         """Test that num_objects matches the actual number of objects in objmap."""
         image = phenotypic.GridImage(load_plate_12hr())
-        detector = CircularDetector()
+        detector = RoundPeaksDetector()
         result = detector.apply(image, inplace=False)
 
         unique_labels = np.unique(result.objmap[:])
@@ -466,7 +466,7 @@ class TestCircularDetectorOutputConsistency:
         image1 = phenotypic.GridImage(load_plate_12hr())
         image2 = phenotypic.GridImage(load_plate_12hr())
 
-        detector = CircularDetector(
+        detector = RoundPeaksDetector(
                 thresh_method='otsu',
                 subtract_background=True,
                 remove_noise=True,
@@ -484,17 +484,17 @@ class TestCircularDetectorOutputConsistency:
 
 
 class TestCircularDetectorComparisonWithOtherDetectors:
-    """Compare CircularDetector with other detectors as sanity check."""
+    """Compare RoundPeaksDetector with other detectors as sanity check."""
 
     @timeit
     def test_detects_similar_number_as_watershed(self):
-        """Test that CircularDetector finds similar number of objects as WatershedDetector."""
+        """Test that RoundPeaksDetector finds similar number of objects as WatershedDetector."""
         from phenotypic.detect import WatershedDetector
 
         image_gitter = phenotypic.GridImage(load_plate_12hr())
         image_watershed = phenotypic.GridImage(load_plate_12hr())
 
-        gitter = CircularDetector()
+        gitter = RoundPeaksDetector()
         watershed = WatershedDetector()
 
         result_gitter = gitter.apply(image_gitter, inplace=False)
@@ -507,7 +507,7 @@ class TestCircularDetectorComparisonWithOtherDetectors:
         # Numbers don't need to match exactly, but should be in similar range
         # Allow up to 50% difference
         ratio = result_gitter.num_objects/max(result_watershed.num_objects, 1)
-        assert 0.5 <= ratio <= 2.0, f"CircularDetector found {result_gitter.num_objects} objects, WatershedDetector found {result_watershed.num_objects}"
+        assert 0.5 <= ratio <= 2.0, f"RoundPeaksDetector found {result_gitter.num_objects} objects, WatershedDetector found {result_watershed.num_objects}"
 
 
 # Run all tests if this file is executed directly

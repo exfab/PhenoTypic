@@ -39,11 +39,11 @@ class ObjectsAccessor:
             .. code-block:: python
 
                 from phenotypic import Image
-                from phenotypic.detect import CircularDetector
+                from phenotypic.detect import RoundPeaksDetector
 
                 # Load plate image and detect colonies
                 plate = Image.from_file("colony_array.png")
-                detector = CircularDetector()
+                detector = RoundPeaksDetector()
                 detector.apply(plate)
 
                 # Access colony properties
@@ -76,10 +76,10 @@ class ObjectsAccessor:
                 .. code-block:: python
 
                     from phenotypic import Image
-                    from phenotypic.detect import CircularDetector
+                    from phenotypic.detect import RoundPeaksDetector
 
                     plate = Image.from_file("plate.png")
-                    detector = CircularDetector()
+                    detector = RoundPeaksDetector()
                     detector.apply(plate)
 
                     # ObjectsAccessor is automatically initialized
@@ -105,10 +105,10 @@ class ObjectsAccessor:
                 .. code-block:: python
 
                     from phenotypic import Image
-                    from phenotypic.detect import CircularDetector
+                    from phenotypic.detect import RoundPeaksDetector
 
                     plate = Image.from_file("96well_array.png")
-                    detector = CircularDetector()
+                    detector = RoundPeaksDetector()
                     detector.apply(plate)
 
                     # Check if expected number of colonies detected
@@ -149,10 +149,10 @@ class ObjectsAccessor:
                 .. code-block:: python
 
                     from phenotypic import Image
-                    from phenotypic.detect import CircularDetector
+                    from phenotypic.detect import RoundPeaksDetector
 
                     plate = Image.from_file("fluorescent_colonies.png")
-                    detector = CircularDetector()
+                    detector = RoundPeaksDetector()
                     detector.apply(plate)
 
                     # Calculate mean fluorescence for each colony
@@ -215,10 +215,10 @@ class ObjectsAccessor:
                 .. code-block:: python
 
                     from phenotypic import Image
-                    from phenotypic.detect import CircularDetector
+                    from phenotypic.detect import RoundPeaksDetector
 
                     plate = Image.from_file("colony_plate.png")
-                    detector = CircularDetector()
+                    detector = RoundPeaksDetector()
                     detector.apply(plate)
 
                     # Get first colony
@@ -285,10 +285,10 @@ class ObjectsAccessor:
                 .. code-block:: python
 
                     from phenotypic import Image
-                    from phenotypic.detect import CircularDetector
+                    from phenotypic.detect import RoundPeaksDetector
 
                     plate = Image.from_file("colony_array.png")
-                    detector = CircularDetector()
+                    detector = RoundPeaksDetector()
                     detector.apply(plate)
 
                     # Get areas of all colonies
@@ -342,10 +342,10 @@ class ObjectsAccessor:
                 .. code-block:: python
 
                     from phenotypic import Image
-                    from phenotypic.detect import CircularDetector
+                    from phenotypic.detect import RoundPeaksDetector
 
                     plate = Image.from_file("colony_array.png")
-                    detector = CircularDetector()
+                    detector = RoundPeaksDetector()
                     detector.apply(plate)
 
                     labels = plate.objects.labels
@@ -402,10 +402,10 @@ class ObjectsAccessor:
                 .. code-block:: python
 
                     from phenotypic import Image
-                    from phenotypic.detect import CircularDetector
+                    from phenotypic.detect import RoundPeaksDetector
 
                     plate = Image.from_file("colony_array.png")
-                    detector = CircularDetector()
+                    detector = RoundPeaksDetector()
                     detector.apply(plate)
 
                     # Get the bounding box region for the first colony
@@ -464,10 +464,10 @@ class ObjectsAccessor:
                 .. code-block:: python
 
                     from phenotypic import Image
-                    from phenotypic.detect import CircularDetector
+                    from phenotypic.detect import RoundPeaksDetector
 
                     plate = Image.from_file("colony_array.png")
-                    detector = CircularDetector()
+                    detector = RoundPeaksDetector()
                     detector.apply(plate)
 
                     # Find the position index for colony label 5
@@ -521,10 +521,10 @@ class ObjectsAccessor:
                 .. code-block:: python
 
                     from phenotypic import Image
-                    from phenotypic.detect import CircularDetector
+                    from phenotypic.detect import RoundPeaksDetector
 
                     plate = Image.from_file("96well_plate.png")
-                    detector = CircularDetector()
+                    detector = RoundPeaksDetector()
                     detector.apply(plate)
 
                     # Check if detection found the expected number of colonies
@@ -562,12 +562,12 @@ class ObjectsAccessor:
                 .. code-block:: python
 
                     from phenotypic import Image
-                    from phenotypic.detect import CircularDetector
+                    from phenotypic.detect import RoundPeaksDetector
 
                     plate = Image.from_file("colony_array.png")
 
                     # First detection attempt
-                    detector1 = CircularDetector(thresh_method="otsu")
+                    detector1 = RoundPeaksDetector(thresh_method="otsu")
                     detector1.apply(plate)
                     print(f"First attempt: {plate.objects.num_objects} colonies")
 
@@ -575,7 +575,7 @@ class ObjectsAccessor:
                     plate.objects.reset()
                     print(f"After reset: {plate.objects.num_objects} colonies")  # 0
 
-                    detector2 = CircularDetector(thresh_method="mean")
+                    detector2 = RoundPeaksDetector(thresh_method="mean")
                     detector2.apply(plate)
                     print(f"Second attempt: {plate.objects.num_objects} colonies")
 
@@ -620,10 +620,10 @@ class ObjectsAccessor:
                 .. code-block:: python
 
                     from phenotypic import Image
-                    from phenotypic.detect import CircularDetector
+                    from phenotypic.detect import RoundPeaksDetector
 
                     plate = Image.from_file("colony_array.png")
-                    detector = CircularDetector()
+                    detector = RoundPeaksDetector()
                     detector.apply(plate)
 
                     # Access first colony
@@ -684,10 +684,10 @@ class ObjectsAccessor:
                 .. code-block:: python
 
                     from phenotypic import Image
-                    from phenotypic.detect import CircularDetector
+                    from phenotypic.detect import RoundPeaksDetector
 
                     plate = Image.from_file("colony_array.png")
-                    detector = CircularDetector()
+                    detector = RoundPeaksDetector()
                     detector.apply(plate)
 
                     # Access colony with label 5
@@ -767,10 +767,10 @@ class ObjectsAccessor:
                 .. code-block:: python
 
                     from phenotypic import Image
-                    from phenotypic.detect import CircularDetector
+                    from phenotypic.detect import RoundPeaksDetector
 
                     plate = Image.from_file("colony_array.png")
-                    detector = CircularDetector()
+                    detector = RoundPeaksDetector()
                     detector.apply(plate)
 
                     # Get colony information
@@ -860,12 +860,12 @@ class ObjectsAccessor:
                 .. code-block:: python
 
                     from phenotypic import Image
-                    from phenotypic.detect import CircularDetector
+                    from phenotypic.detect import RoundPeaksDetector
                     from phenotypic.measure import AreaMeasurer
                     import pandas as pd
 
                     plate = Image.from_file("colony_array.png")
-                    detector = CircularDetector()
+                    detector = RoundPeaksDetector()
                     detector.apply(plate)
 
                     # Calculate measurements (indexed by position)
@@ -946,10 +946,10 @@ class ObjectsAccessor:
                 .. code-block:: python
 
                     from phenotypic import Image
-                    from phenotypic.detect import CircularDetector
+                    from phenotypic.detect import RoundPeaksDetector
 
                     plate = Image.from_file("colony_array.png")
-                    detector = CircularDetector()
+                    detector = RoundPeaksDetector()
                     detector.apply(plate)
 
                     # Before relabeling (may have gaps)

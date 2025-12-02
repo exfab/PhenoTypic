@@ -16,11 +16,11 @@ import skimage.filters as filters
 import skimage.morphology as morphology
 
 
-class CircularDetector(ObjectDetector):
+class RoundPeaksDetector(ObjectDetector):
     """
     Class for detecting circular colonies in gridded plate images using the gitter algorithm.
 
-    The CircularDetector implements an improved Python version of the gitter colony detection
+    The RoundPeaksDetector implements an improved Python version of the gitter colony detection
     algorithm originally developed for R. This method is specifically designed for
     quantifying pinned microbial cultures arranged in a regular grid pattern on
     agar plates. The algorithm works by:
@@ -86,7 +86,7 @@ class CircularDetector(ObjectDetector):
                  peak_prominence: float | None = None,
                  edge_refinement: bool = True):
         """
-        Initialize the CircularDetector with specified parameters.
+        Initialize the RoundPeaksDetector with specified parameters.
 
         Args:
             thresh_method: Method for thresholding the image. Options are:

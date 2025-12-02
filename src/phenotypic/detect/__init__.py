@@ -8,7 +8,7 @@ segmentation for clustered colonies.
 """
 
 from ._canny_detector import CannyDetector
-from ._circular_detector import CircularDetector
+from ._round_peaks_detector import RoundPeaksDetector
 from ._isodata_detector import IsodataDetector
 from ._li_detector import LiDetector
 from ._mean_detector import MeanDetector
@@ -20,7 +20,7 @@ from ._yen_detector import YenDetector
 
 __all__ = [
     "CannyDetector",
-    "CircularDetector",
+    "RoundPeaksDetector",
     "IsodataDetector",
     "LiDetector",
     "MeanDetector",

@@ -4,7 +4,7 @@ import numpy as np
 
 from phenotypic.abc_ import PrefabPipeline
 from phenotypic.enhance import CLAHE, MedianFilter, BM3DDenoiser
-from phenotypic.detect import CircularDetector
+from phenotypic.detect import RoundPeaksDetector
 from phenotypic.correction import GridAligner
 from phenotypic.refine import MinResidualErrorReducer, GridOversizedObjectRemover
 from phenotypic.refine import BorderObjectRemover, SmallObjectRemover
@@ -12,7 +12,7 @@ from phenotypic.refine import MaskFill, MaskOpener
 from phenotypic.measure import MeasureIntensity, MeasureShape, MeasureTexture, MeasureColor
 
 
-class HeavyCircularPipeline(PrefabPipeline):
+class HeavyRoundPeaksPipeline(PrefabPipeline):
     """
     Configures and initializes a robust image processing pipeline tailored for analyzing circular colonies grown on
     solid media agar. It incorporates preprocessing, detection, morphological refinement, and feature extraction
@@ -23,7 +23,7 @@ class HeavyCircularPipeline(PrefabPipeline):
         1. `BM3DDenoiser`
         2. `CLAHE`
         3. `MedianFilter`
-        4. `CircularDetector`
+        4. `RoundPeaksDetector`
         5. `MaskOpener`
         6. `BorderObjectRemover`
         7. `SmallObjectRemover`
@@ -31,7 +31,7 @@ class HeavyCircularPipeline(PrefabPipeline):
         9. `GridOversizedObjectRemover`
         10. `MinResidualRemover`
         11. `GridAligner`
-        12. `CircularDetector` (second pass since alignment might improve detection)
+        12. `RoundPeaksDetector` (second pass since alignment might improve detection)
         13. `MaskOpener`
         14. `BorderObjectRemover`
         15. `SmallObjectRemover`
@@ -156,7 +156,7 @@ class HeavyCircularPipeline(PrefabPipeline):
             MedianFilter(shape=median_shape, radius=median_radius),
 
             # First detection pass
-            CircularDetector(**detector_kwargs),
+            RoundPeaksDetector(**detector_kwargs),
             MaskOpener(footprint=mask_opener_footprint),
             BorderObjectRemover(border_size=border_remover_size),
             SmallObjectRemover(min_size=small_object_min_size),
@@ -166,7 +166,7 @@ class HeavyCircularPipeline(PrefabPipeline):
             GridAligner(),
 
             # Second detection pass
-            CircularDetector(**detector_kwargs),
+            RoundPeaksDetector(**detector_kwargs),
             MaskOpener(footprint=None),
             BorderObjectRemover(border_size=border_remover_size),
             SmallObjectRemover(min_size=small_object_min_size),
@@ -185,4 +185,4 @@ class HeavyCircularPipeline(PrefabPipeline):
         super().__init__(ops=ops, meas=meas, benchmark=benchmark, verbose=verbose)
 
 
-__all__ = ("HeavyCircularPipeline",)
+__all__ = ("HeavyRoundPeaksPipeline",)
