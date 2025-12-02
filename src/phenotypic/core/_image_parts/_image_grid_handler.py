@@ -98,16 +98,58 @@ class ImageGridHandler(Image):
 
     @property
     def grid_finder(self) -> GridFinder:
-        """
-        Returns the GridFinder object for identifying grid boundaries.
+        """Get the GridFinder object responsible for detecting and aligning the grid.
+
+        The GridFinder determines the positions of grid lines (rows and columns) in the
+        image, enabling well-level detection and measurement. The finder is initialized
+        during construction and can be customized via the grid_finder setter.
+
+        Returns:
+            GridFinder: The grid finding/alignment algorithm currently in use for this image.
+
+        Examples:
+            .. dropdown:: Access and inspect grid finder
+
+                .. code-block:: python
+
+                    from phenotypic import GridImage
+                    from phenotypic.grid import AutoGridFinder
+
+                    grid_img = GridImage('plate.jpg')
+                    finder = grid_img.grid_finder
+                    print(type(finder))  # GridFinder instance
 
         See Also:
-            :class:`GridFinder`
+            GridFinder: Base class for grid finding algorithms.
         """
         return self._grid_finder
 
     @grid_finder.setter
-    def grid_finder(self, value):
+    def grid_finder(self, value: GridFinder):
+        """Set a new GridFinder for grid detection and alignment.
+
+        Replaces the current grid finding algorithm with a new one. This is useful for
+        switching between different grid detection strategies or fine-tuning grid
+        parameters after image loading.
+
+        Args:
+            value (GridFinder): A GridFinder instance to use for grid operations.
+
+        Raises:
+            TypeError: If value is not a GridFinder instance.
+
+        Examples:
+            .. dropdown:: Replace grid finder with custom implementation
+
+                .. code-block:: python
+
+                    from phenotypic import GridImage
+                    from phenotypic.grid import AutoGridFinder
+
+                    grid_img = GridImage('plate.jpg')
+                    new_finder = AutoGridFinder(nrows=16, ncols=24)
+                    grid_img.grid_finder = new_finder
+        """
         if isinstance(value, GridFinder):
             self._grid_finder = value
         else:
@@ -128,15 +170,30 @@ class ImageGridHandler(Image):
         return self.grid_finder.nrows
 
     @nrows.setter
-    def nrows(self, nrows):
-        """
-        Sets the number of nrows in the grid. Ensures that the provided value is of the correct type.
+    def nrows(self, nrows: int):
+        """Set the number of rows in the grid structure.
+
+        Updates the grid finder with a new row count. This is useful for adjusting
+        the grid layout after the image has been loaded, which affects well-level
+        detection and measurement operations.
 
         Args:
-            nrows (int): The number of nrows to set. Must be an integer.
+            nrows (int): The number of rows to set in the grid. Must be a positive integer.
+                Common values: 8 (96-well), 16 (384-well), 32 (1536-well).
 
         Raises:
-            TypeError: If the provided value for nrows is not of type int.
+            TypeError: If nrows is not of type int.
+
+        Examples:
+            .. dropdown:: Adjust grid rows for different plate formats
+
+                .. code-block:: python
+
+                    from phenotypic import GridImage
+
+                    grid_img = GridImage('plate.jpg')
+                    grid_img.nrows = 16  # Switch to 384-well format
+                    print(grid_img.nrows)  # Output: 16
         """
         if not isinstance(nrows, int):
             raise TypeError(f'Expected int, got {type(nrows)}')
@@ -157,18 +214,30 @@ class ImageGridHandler(Image):
         return self.grid_finder.ncols
 
     @ncols.setter
-    def ncols(self, ncols):
-        """
-        Setter for the 'ncols' attribute ensuring it is assigned a valid value. The 'ncols'
-        attribute defines the number of columns in the grid structure. The method validates
-        the data type of the input and guarantees that only integers are accepted. If an invalid
-        type is provided, a TypeError exception is raised.
+    def ncols(self, ncols: int):
+        """Set the number of columns in the grid structure.
+
+        Updates the grid finder with a new column count. This is useful for adjusting
+        the grid layout after the image has been loaded, which affects well-level
+        detection and measurement operations.
 
         Args:
-            ncols: The number of columns to set for the grid structure.
+            ncols (int): The number of columns to set in the grid. Must be a positive integer.
+                Common values: 12 (96-well), 24 (384-well), 48 (1536-well).
 
         Raises:
-            TypeError: If the provided value for 'ncols' is not of type int.
+            TypeError: If ncols is not of type int.
+
+        Examples:
+            .. dropdown:: Adjust grid columns for different plate formats
+
+                .. code-block:: python
+
+                    from phenotypic import GridImage
+
+                    grid_img = GridImage('plate.jpg')
+                    grid_img.ncols = 24  # Switch to 384-well format
+                    print(grid_img.ncols)  # Output: 24
         """
         if not isinstance(ncols, int):
             raise TypeError(f'Expected int, got {type(ncols)}')

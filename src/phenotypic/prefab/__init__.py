@@ -10,10 +10,12 @@ from ._heavy_watershed_pipeline import HeavyWatershedPipeline
 from ._heavy_otsu_pipeline import HeavyOtsuPipeline
 from ._grid_section_pipeline import GridSectionPipeline
 from ._heavy_circular_pipeline import HeavyCircularPipeline
+from ._circular_pipeline import CircularPipeline
 
 __all__ = [
     "HeavyWatershedPipeline",
     "HeavyOtsuPipeline",
     "GridSectionPipeline",
     "HeavyCircularPipeline",
+    "CircularPipeline",
 ]

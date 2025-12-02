@@ -62,6 +62,9 @@ jupyter = [
     "jupyter>=1.1.1",
 ]
 
+[project.scripts]
+phenotypic = "phenotypic.phenotypic_cli:main"
+
 [dependency-groups]
 dev = [
     "memory-profiler>=0.61.0",
