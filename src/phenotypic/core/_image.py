@@ -131,5 +131,4 @@ class Image(ImageIOHandler):
                 bit_depth=bit_depth,
                 gamma_encoding=gamma_encoding,
                 illuminant=illuminant,
-                observer=observer,
         )
