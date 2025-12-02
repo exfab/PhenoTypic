@@ -29,7 +29,7 @@ class ImageColorSpace(ImageObjectsHandler):
     Attributes:
         gamma_encoding (str | None): The gamma encoding applied to the image
             ('sRGB' for gamma-corrected, None for linear RGB). Defaults to 'sRGB'.
-        observer (str): The CIE standard observer model for color calculations
+        _observer (str): The CIE standard observer model for color calculations
             (default: 'CIE 1931 2 Degree Standard Observer').
         illuminant (Literal["D65", "D50"]): The reference illuminant defining viewing
             conditions. 'D65' represents standard daylight, 'D50' represents standard
@@ -48,7 +48,6 @@ class ImageColorSpace(ImageObjectsHandler):
                  *,
                  gamma_encoding: Literal["sRGB"] | None = 'sRGB',
                  illuminant: Literal["D65", "D50"] = "D65",
-                 observer: str = 'CIE 1931 2 Degree Standard Observer',
                  ):
         """Initialize ImageColorSpace with color properties and representations.
 
@@ -68,9 +67,6 @@ class ImageColorSpace(ImageObjectsHandler):
             illuminant (Literal["D65", "D50"]): The reference illuminant for color calculations.
                 'D65' represents standard daylight, 'D50' represents standard illumination
                 for imaging. Defaults to 'D65'.
-            observer (str): The CIE standard observer model for color computations.
-                Common value is 'CIE 1931 2 Degree Standard Observer'. Defaults to
-                'CIE 1931 2 Degree Standard Observer'.
 
         Raises:
             ValueError: If gamma_encoding is not 'sRGB' or None.
@@ -82,7 +78,7 @@ class ImageColorSpace(ImageObjectsHandler):
             raise ValueError('illuminant must be "D65" or "D50"')
 
         self.gamma_encoding = gamma_encoding
-        self.observer: str = observer
+        self._observer: str = 'CIE 1931 2 Degree Standard Observer'
         self.illuminant: Literal["D50", "D65"] = illuminant
         super().__init__(arr=arr, name=name, bit_depth=bit_depth)
 

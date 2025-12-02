@@ -33,7 +33,7 @@ class Image(ImageIOHandler):
     Notes:
         - 2-D input arrays are treated as grayscale; rgb form remains empty.
         - 3-D input arrays are treated as RGB; grayscale is computed automatically.
-        - Color space properties (gamma_encoding, illuminant, observer) are inherited.
+        - Color space properties (gamma_encoding, illuminant, _observer) are inherited.
         - Object detection and measurements require an ObjectDetector first.
         - HSV color space support added in v0.5.0.
 
@@ -64,8 +64,6 @@ class Image(ImageIOHandler):
                  bit_depth: Literal[8, 16] | None = None,
                  gamma_encoding: str | None = 'sRGB',
                  illuminant: str | None = 'D65',
-                 observer='CIE 1931 2 Degree Standard Observer'
-
                  ):
         """Initialize an Image instance with optional image data and color properties.
 
@@ -93,9 +91,6 @@ class Image(ImageIOHandler):
                 'D65': standard daylight illuminant (recommended)
                 'D50': standard illumination for imaging
                 Defaults to 'D65'.
-            observer (str): The CIE standard observer model used in color calculations.
-                Common value is 'CIE 1931 2 Degree Standard Observer' (standard).
-                Defaults to 'CIE 1931 2 Degree Standard Observer'.
 
         Raises:
             ValueError: If gamma_encoding is not 'sRGB' or None.

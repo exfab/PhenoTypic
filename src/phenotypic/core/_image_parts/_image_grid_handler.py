@@ -74,7 +74,7 @@ class ImageGridHandler(Image):
         elif grid_finder is None:
             grid_finder = AutoGridFinder(nrows=nrows, ncols=ncols)
 
-        self.grid_finder: Optional[GridFinder] = grid_finder
+        self._grid_finder: Optional[GridFinder] = grid_finder
         self._accessors.grid = GridAccessor(self)
         self.metadata[METADATA.IMAGE_TYPE] = IMAGE_TYPES.GRID.value
 
@@ -95,6 +95,23 @@ class ImageGridHandler(Image):
 
     def info(self, include_metadata: bool = True) -> pd.DataFrame:
         return self.grid.info(include_metadata=include_metadata)
+
+    @property
+    def grid_finder(self) -> GridFinder:
+        """
+        Returns the GridFinder object for identifying grid boundaries.
+
+        See Also:
+            :class:`GridFinder`
+        """
+        return self._grid_finder
+
+    @grid_finder.setter
+    def grid_finder(self, value):
+        if isinstance(value, GridFinder):
+            self._grid_finder = value
+        else:
+            raise TypeError(f'Expected GridFinder, got {type(value)}')
 
     @property
     def nrows(self) -> int:

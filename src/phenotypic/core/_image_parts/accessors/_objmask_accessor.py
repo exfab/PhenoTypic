@@ -376,6 +376,16 @@ class ObjectMask(SingleChannelAccessor):
         methods (e.g., `show()`, `histogram()`) for visualization and analysis.
 
         Returns:
-            np.ndarray: Dense binary array with int dtype, same shape as parent image.
+            np.ndarray: Dense binary array with ``uint16`` dtype, same shape as the
+                parent image. Using ``uint16`` ensures that, when possible, the
+                mask is saved as a 16-bit image (e.g. PNG/TIFF) while JPEG output
+                is still handled as 8-bit by the shared ``imsave`` logic.
         """
-        return (self._backend.toarray() > 0).astype(int)
+        # NOTE:
+        # ``ImageAccessorBase.imsave`` preserves ``uint16`` arrays for formats
+        # that support 16-bit data (e.g. PNG/TIFF) and only downcasts to
+        # ``uint8`` for JPEGs (with a warning). By exposing the object mask as a
+        # ``uint16`` array here, objmask images will be written as 16-bit where
+        # possible, and automatically converted to 8-bit for JPEGs. This matches
+        # the behaviour of ``ObjectMap`` whose backend is already ``uint16``.
+        return (self._backend.toarray() > 0).astype(np.uint16)

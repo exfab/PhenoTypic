@@ -40,10 +40,12 @@ sys.path.insert(0, os.path.abspath('./_extensions'))
 
 # Register ipython2 as an alias for ipython3 to suppress warnings in old notebooks
 from pygments.lexers import get_lexer_by_name
+
 try:
     # Try to register ipython2 as ipython3
     from pygments.lexers import PythonLexer
     from sphinx.highlighting import lexers
+
     lexers['ipython2'] = get_lexer_by_name('ipython3')
 except Exception:
     # If that fails, just use python3
@@ -111,10 +113,10 @@ autodoc_member_order = 'groupwise'
 # Map type abbreviations used in code to their full module paths
 autodoc_type_aliases = {
     'pd.DataFrame': 'pandas.DataFrame',
-    'pd.Series': 'pandas.Series',
-    'np.ndarray': 'numpy.ndarray',
-    'plt.Axes': 'matplotlib.axes.Axes',
-    'plt.Figure': 'matplotlib.figure.Figure',
+    'pd.Series'   : 'pandas.Series',
+    'np.ndarray'  : 'numpy.ndarray',
+    'plt.Axes'    : 'matplotlib.axes.Axes',
+    'plt.Figure'  : 'matplotlib.figure.Figure',
 }
 
 templates_path = ['_templates', sphinx_autosummary_accessors.templates_path]
@@ -213,14 +215,14 @@ python_type_aliases = {
     'matplotlib.axes._axes.Axes': 'matplotlib.axes.Axes',
     'matplotlib.figure.Figure'  : 'matplotlib.figure.Figure',
     # Common abbreviations
-    'np.ndarray': 'numpy.ndarray',
-    'pd.DataFrame': 'pandas.DataFrame',
-    'pd.Series': 'pandas.Series',
-    'plt.Axes': 'matplotlib.axes.Axes',
-    'plt.Figure': 'matplotlib.figure.Figure',
+    'np.ndarray'                : 'numpy.ndarray',
+    'pd.DataFrame'              : 'pandas.DataFrame',
+    'pd.Series'                 : 'pandas.Series',
+    'plt.Axes'                  : 'matplotlib.axes.Axes',
+    'plt.Figure'                : 'matplotlib.figure.Figure',
     # Type hint aliases
-    'optional': 'typing.Optional',
-    'Optional': 'typing.Optional',
+    'optional'                  : 'typing.Optional',
+    'Optional'                  : 'typing.Optional',
 }
 
 intersphinx_mapping = {
@@ -267,8 +269,8 @@ def generate_downloadables_rst(app):
 
     # Get directories relative to conf.py
     source_dir = os.path.abspath(os.path.dirname(__file__))
-    downloadables_dir = os.path.join(source_dir, '_downloadables')
-    output_file = os.path.join(source_dir, 'downloadables.rst')
+    downloadables_dir = os.path.join(source_dir, '_downloads')
+    output_file = os.path.join(source_dir, 'downloads.rst')
 
     # Check if directory exists
     if not os.path.exists(downloadables_dir):
@@ -470,7 +472,7 @@ def generate_downloadables_rst(app):
         content.append(f"        {description}")
         content.append("")
         content.append("        +++")
-        content.append(f"        :download:`Download script <_downloadables/{filename}>`")
+        content.append(f"        :download:`Download script <_downloads/{filename}>`")
         content.append("")
 
     # Collect Jupyter notebooks from examples and tutorials so they can also be

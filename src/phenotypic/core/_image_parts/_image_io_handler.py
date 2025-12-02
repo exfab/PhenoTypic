@@ -8,7 +8,7 @@ from datetime import datetime
 from fractions import Fraction
 from typing import Tuple, TYPE_CHECKING
 
-if TYPE_CHECKING: from phenotypic import Image
+if TYPE_CHECKING: from phenotypic import Image, GridImage
 
 import exifread
 import h5py
@@ -272,10 +272,10 @@ class ImageIOHandler(ImageColorSpace):
         if shutil.which('exiftool'):
             try:
                 result = subprocess.run(
-                    ['exiftool', '-json', '-n', str(filepath)],
-                    capture_output=True,
-                    text=True,
-                    timeout=30
+                        ['exiftool', '-json', '-n', str(filepath)],
+                        capture_output=True,
+                        text=True,
+                        timeout=30
                 )
                 if result.returncode == 0:
                     exif_data = json.loads(result.stdout)
@@ -661,15 +661,19 @@ class ImageIOHandler(ImageColorSpace):
                 >>> loaded = Image.load_pickle('image.pkl')
         """
         with open(filename, 'wb') as filehandler:
-            pickle.dump({
+            data2save = {
                 "_data.rgb"         : self._data.rgb,
                 '_data.gray'        : self._data.gray,
                 '_data.enh_gray'    : self._data.enh_gray,
                 'objmap'            : self.objmap[:],
                 "protected_metadata": self._metadata.protected,
                 "public_metadata"   : self._metadata.public,
-            }, filehandler,
-            )
+            }
+
+            if hasattr(self, "grid_finder"):
+                data2save['grid_finder'] = self.grid_finder
+
+            pickle.dump(data2save, filehandler)
 
     @classmethod
     def load_pickle(cls, filename: str) -> Image:
@@ -716,4 +720,10 @@ class ImageIOHandler(ImageColorSpace):
         instance.objmap[:] = loaded["objmap"]
         instance._metadata.protected = loaded["protected_metadata"]
         instance._metadata.public = loaded["public_metadata"]
+
+        if hasattr(instance, "grid_finder"):
+            instance: GridImage  # handled case of GridImage instead of Image
+            if hasattr(instance, "grid_finder"):
+                instance.grid_finder
+
         return instance

@@ -112,7 +112,7 @@ class XyzAccessor(ColorSpaceAccessor):
         norm_rgb = normalize_rgb_bitdepth(self._root_image.rgb[:])
         match (self._root_image.gamma_encoding, self._root_image.illuminant):
             case ('sRGB', "D50"):
-                sRGB_D50.whitepoint = colour.CCS_ILLUMINANTS[self._root_image.observer]["D50"]
+                sRGB_D50.whitepoint = colour.CCS_ILLUMINANTS[self._root_image._observer]["D50"]
                 return colour.RGB_to_XYZ(
                         RGB=norm_rgb,
                         colourspace=sRGB_D50,
@@ -123,11 +123,11 @@ class XyzAccessor(ColorSpaceAccessor):
                 return colour.RGB_to_XYZ(
                         RGB=norm_rgb,
                         colourspace=colour.RGB_COLOURSPACES["sRGB"],
-                        illuminant=colour.CCS_ILLUMINANTS[self._root_image.observer]["D65"],
+                        illuminant=colour.CCS_ILLUMINANTS[self._root_image._observer]["D65"],
                         cctf_decoding=True,
                 )
             case (None, "D50"):
-                sRGB_D50.whitepoint = colour.CCS_ILLUMINANTS[self._root_image.observer]["D50"]
+                sRGB_D50.whitepoint = colour.CCS_ILLUMINANTS[self._root_image._observer]["D50"]
                 return colour.RGB_to_XYZ(
                         rgb=norm_rgb,
                         colourspace=colour.RGB_COLOURSPACES["sRGB"],
@@ -138,7 +138,7 @@ class XyzAccessor(ColorSpaceAccessor):
                 return colour.RGB_to_XYZ(
                         rgb=norm_rgb,
                         colourspace=colour.RGB_COLOURSPACES["sRGB"],
-                        illuminant=colour.CCS_ILLUMINANTS[self._root_image.observer]["D65"],
+                        illuminant=colour.CCS_ILLUMINANTS[self._root_image._observer]["D65"],
                         cctf_decoding=False,
                 )
             case _:

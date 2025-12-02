@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import abc
 from typing import TYPE_CHECKING
 
 from typing_extensions import Callable
@@ -103,6 +104,7 @@ class MeasureFeatures(BaseOperation, ABC):
                                        )
 
     @staticmethod
+    @abc.abstractmethod
     def _operate(image: Image) -> pd.DataFrame:
         return pd.DataFrame()
 

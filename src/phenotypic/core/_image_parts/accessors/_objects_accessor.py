@@ -567,7 +567,7 @@ class ObjectsAccessor:
                     plate = Image.from_file("colony_array.png")
 
                     # First detection attempt
-                    detector1 = CircularDetector(threshold=0.5)
+                    detector1 = CircularDetector(thresh_method="otsu")
                     detector1.apply(plate)
                     print(f"First attempt: {plate.objects.num_objects} colonies")
 
@@ -575,7 +575,7 @@ class ObjectsAccessor:
                     plate.objects.reset()
                     print(f"After reset: {plate.objects.num_objects} colonies")  # 0
 
-                    detector2 = CircularDetector(threshold=0.3)
+                    detector2 = CircularDetector(thresh_method="mean")
                     detector2.apply(plate)
                     print(f"Second attempt: {plate.objects.num_objects} colonies")
 

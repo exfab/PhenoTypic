@@ -159,6 +159,40 @@ def walk_package(pkg):
 _public = list(walk_package(phenotypic))
 
 
+def walk_package_for_class(pkg, target_class):
+    """Yield (qualified_name, obj) for every public, top‑level object in *pkg*
+    and all of its sub‑modules, skipping module objects themselves."""
+    modules = [pkg]  # start with the root
+    if hasattr(pkg, "__path__"):  # add all sub‑modules
+        modules += [
+            importlib.import_module(name)
+            for _, name, _ in pkgutil.walk_packages(pkg.__path__, pkg.__name__ + ".") \
+            if not name.split(".")[-1].startswith("_")  # Skip modules with names starting with underscore
+
+        ]
+
+    seen = set()
+    for mod in modules:
+        if mod.__name__.startswith("_"):
+            continue
+
+        for attr in dir(mod):
+            if attr.startswith("_"):
+                continue
+
+            obj = getattr(mod, attr)
+            if (inspect.ismodule(obj)
+                    or inspect.isabstract(obj)
+                    or not isinstance(obj, type)
+                    or not issubclass(obj, target_class)):
+                continue
+
+            qualname = f"{mod.__name__}.{attr}"
+            if qualname not in seen:
+                seen.add(qualname)
+                yield qualname, obj
+
+
 def walk_package_for_operations(pkg):
     """Yield (qualified_name, obj) for every public, top‑level object in *pkg*
     and all of its sub‑modules, skipping module objects themselves. this collects all image operations for testing."""

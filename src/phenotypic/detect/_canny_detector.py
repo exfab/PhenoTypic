@@ -32,38 +32,6 @@ class CannyDetector(ThresholdDetector):
     - Robustly trace colony perimeters when background subtraction is imperfect
       or when agar texture is pronounced.
 
-    Tuning and effects:
-    - sigma: Controls pre-smoothing intensity. Higher sigma reduces noise
-      sensitivity and suppresses spurious edges from agar granularity or scanner
-      artifacts, but may blur fine colony boundaries or merge nearby colonies
-      if set too high. Start with 1-2 for high-resolution images; increase for
-      noisier scans.
-    - low_threshold: Lower bound in hysteresis thresholding. Raising this
-      suppresses weak edges from noise or faint texture but may fragment colony
-      boundaries if edges are dim. Lowering it recovers more boundary detail but
-      risks false edges. If use_quantiles=True, this is a fraction (0-1) of
-      gradient values; if False, an absolute gradient magnitude.
-    - high_threshold: Upper bound in hysteresis thresholding. Strong edges above
-      this seed the edge traces; too high and faint colonies lose boundaries, too
-      low and noise creates spurious edges. Adjust relative to low_threshold to
-      control edge connectivity.
-    - use_quantiles: When True, thresholds are interpreted as quantiles of the
-      gradient distribution (e.g., 0.1 = 10th percentile), making behavior more
-      robust to image-specific intensity ranges. When False, thresholds are
-      absolute gradient magnitudes, requiring manual tuning per imaging setup.
-    - min_size: Minimum pixel area to retain as an object after labeling regions
-      enclosed by edges. Increase to remove dust, debris, or imaging artifacts;
-      decrease to capture very small colonies. Setting too high discards genuine
-      small colonies.
-    - invert_edges: When True (default), regions *between* edges (i.e., enclosed
-      areas) are labeled as objects, suitable for detecting solid colonies. When
-      False, edges themselves are labeled (useful for atypical cases like ring-
-      shaped colonies or debugging edge quality).
-    - connectivity: Connectivity level for labeling regions (1 for 4-connected,
-      2 for 8-connected in 2D). Higher connectivity merges diagonally adjacent
-      pixels into the same object, which can join fragmented colony regions but
-      may also merge nearby colonies touching at corners.
-
     Caveats:
     - Canny assumes objects are defined by edges. Colonies with very diffuse or
       gradual boundaries (e.g., fuzzy/mucoid colonies) may yield incomplete or
@@ -83,19 +51,40 @@ class CannyDetector(ThresholdDetector):
 
     Attributes:
         sigma (float): Standard deviation for Gaussian smoothing applied before
-            edge detection. Higher values reduce noise but blur fine boundaries.
-        low_threshold (float): Lower threshold for hysteresis. Controls weak edge
-            retention; interpretation depends on use_quantiles.
-        high_threshold (float): Upper threshold for hysteresis. Seeds edge traces;
-            interpretation depends on use_quantiles.
-        use_quantiles (bool): If True, thresholds are quantiles (0-1); if False,
-            absolute gradient magnitudes.
-        min_size (int): Minimum object size in pixels. Objects smaller than this
-            are removed to filter noise and artifacts.
-        invert_edges (bool): If True, label regions between edges as objects
-            (default for colonies); if False, label edge pixels themselves.
-        connectivity (int): Connectivity for labeling (1 = 4-connected, 2 =
-            8-connected). Higher connectivity merges diagonal neighbors.
+            edge detection, controlling pre-smoothing intensity. Higher values
+            reduce noise sensitivity and suppress spurious edges from agar
+            granularity or scanner artifacts, but may blur fine colony
+            boundaries or merge nearby colonies if set too high. Start with 1–2
+            for high-resolution images; increase for noisier scans.
+        low_threshold (float): Lower bound for hysteresis thresholding.
+            Raising this suppresses weak edges from noise or faint texture but
+            may fragment colony boundaries if edges are dim. Lowering it
+            recovers more boundary detail but risks false edges. If
+            use_quantiles=True, this is a fraction (0–1) of gradient values; if
+            False, an absolute gradient magnitude.
+        high_threshold (float): Upper bound for hysteresis thresholding.
+            Strong edges above this seed the edge traces; too high and faint
+            colonies lose boundaries, too low and noise creates spurious edges.
+            Adjust relative to low_threshold to control edge connectivity.
+        use_quantiles (bool): When True, thresholds are interpreted as
+            quantiles of the gradient distribution (e.g., 0.1 = 10th
+            percentile), making behavior more robust to image-specific
+            intensity ranges. When False, thresholds are absolute gradient
+            magnitudes, requiring manual tuning per imaging setup.
+        min_size (int): Minimum pixel area to retain as an object after
+            labeling regions enclosed by edges. Increase to remove dust,
+            debris, or imaging artifacts; decrease to capture very small
+            colonies. Setting too high discards genuine small colonies.
+        invert_edges (bool): If True (default), regions *between* edges (i.e.,
+            enclosed areas) are labeled as objects, suitable for detecting
+            solid colonies. When False, edges themselves are labeled (useful
+            for atypical cases like ring-shaped colonies or debugging edge
+            quality).
+        connectivity (int): Connectivity level for labeling regions (1 for
+            4-connected, 2 for 8-connected in 2D). Higher connectivity merges
+            diagonally adjacent pixels into the same object, which can join
+            fragmented colony regions but may also merge nearby colonies
+            touching at corners.
     """
 
     def __init__(
@@ -181,4 +170,3 @@ class CannyDetector(ThresholdDetector):
 
 # Set the docstring so that it appears in the sphinx documentation
 CannyDetector.apply.__doc__ = CannyDetector._operate.__doc__
-

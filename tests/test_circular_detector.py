@@ -7,13 +7,14 @@ helper methods, and edge cases.
 import pytest
 import numpy as np
 import phenotypic
+from phenotypic import GridImage
 from phenotypic.detect import CircularDetector
 from phenotypic.data import load_plate_12hr, load_plate_72hr
 
 from .resources.TestHelper import timeit
 
 
-class TestGitterDetectorInitialization:
+class TestCircularDetectorInitialization:
     """Test CircularDetector initialization and parameter handling."""
 
     @timeit
@@ -59,7 +60,7 @@ class TestGitterDetectorInitialization:
         assert detector.edge_refinement is False
 
 
-class TestGitterDetectorOnGridImage:
+class TestCircularDetectorOnGridImage:
     """Test CircularDetector on GridImage with known grid structure."""
 
     @timeit
@@ -113,7 +114,7 @@ class TestGitterDetectorOnGridImage:
         assert image.num_objects > 0
 
 
-class TestGitterDetectorOnRegularImage:
+class TestCircularDetectorOnRegularImage:
     """Test CircularDetector on regular Image (grid inference)."""
 
     @timeit
@@ -140,7 +141,7 @@ class TestGitterDetectorOnRegularImage:
         assert 10 < result.num_objects < 150
 
 
-class TestGitterDetectorParameters:
+class TestCircularDetectorParameters:
     """Test CircularDetector with different parameter combinations."""
 
     @timeit
@@ -246,7 +247,7 @@ class TestGitterDetectorParameters:
         assert result.num_objects > 0
 
 
-class TestGitterDetectorHelperMethods:
+class TestCircularDetectorHelperMethods:
     """Test CircularDetector helper methods."""
 
     @timeit
@@ -352,7 +353,7 @@ class TestGitterDetectorHelperMethods:
         assert inferred_cols > 0
 
 
-class TestGitterDetectorEdgeCases:
+class TestCircularDetectorEdgeCases:
     """Test CircularDetector with edge cases and unusual inputs."""
 
     @timeit
@@ -414,7 +415,7 @@ class TestGitterDetectorEdgeCases:
         assert result is not None
 
 
-class TestGitterDetectorOutputConsistency:
+class TestCircularDetectorOutputConsistency:
     """Test that CircularDetector produces consistent and valid outputs."""
 
     @timeit
@@ -482,7 +483,7 @@ class TestGitterDetectorOutputConsistency:
         assert np.array_equal(result1.objmap[:], result2.objmap[:])
 
 
-class TestGitterDetectorComparisonWithOtherDetectors:
+class TestCircularDetectorComparisonWithOtherDetectors:
     """Compare CircularDetector with other detectors as sanity check."""
 
     @timeit

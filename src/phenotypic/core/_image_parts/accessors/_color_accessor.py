@@ -24,13 +24,13 @@ class ColorAccessor:
     arrays. Individual accessor objects maintain caching to avoid redundant computations
     when the same color space is accessed multiple times.
 
-    The parent Image object configuration (illuminant, observer model, gamma encoding) is
+    The parent Image object configuration (illuminant, _observer model, gamma encoding) is
     used consistently across all color space transformations to ensure coherent color
     space analysis.
 
     Attributes:
         _root_image (Image): The parent Image object that this accessor is bound to.
-            Used to access raw RGB/grayscale data and color properties (illuminant, observer).
+            Used to access raw RGB/grayscale data and color properties (illuminant, _observer).
         _xyz (XyzAccessor): Accessor for CIE XYZ color space representation.
         _xyz_d65 (XyzD65Accessor): Accessor for CIE XYZ under D65 illuminant.
         _cielab (CieLabAccessor): Accessor for perceptually uniform L*a*b* color space.
@@ -85,13 +85,13 @@ class ColorAccessor:
 
         Creates all subordinate color space accessor objects, each providing specialized
         access to a specific color space representation. All accessors share the same
-        parent Image reference to ensure consistent color properties (illuminant, observer)
+        parent Image reference to ensure consistent color properties (illuminant, _observer)
         are used across all color space transformations.
 
         Args:
             root_image (Image): The Image object that this accessor is bound to.
                 Used to access RGB/grayscale data and color configuration properties
-                (illuminant, observer, gamma encoding).
+                (illuminant, _observer, gamma encoding).
 
         Examples:
             .. dropdown:: Access ColorAccessor through Image.color property
