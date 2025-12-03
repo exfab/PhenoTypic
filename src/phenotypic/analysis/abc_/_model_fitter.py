@@ -6,18 +6,24 @@ from typing import TYPE_CHECKING, Callable, List
 
 import pandas as pd
 
-if TYPE_CHECKING: pass
+if TYPE_CHECKING:
+    pass
 
 from ._set_analyzer import SetAnalyzer
 
 
 class ModelFitter(SetAnalyzer, ABC):
-
-    def __init__(self, on: str, groupby: List[str],
-                 agg_func: Callable | str | list | dict | None = 'mean',
-                 *,
-                 num_workers: int = 1, ):
-        super().__init__(on=on, groupby=groupby, agg_func=agg_func, num_workers=num_workers)
+    def __init__(
+        self,
+        on: str,
+        groupby: List[str],
+        agg_func: Callable | str | list | dict | None = "mean",
+        *,
+        num_workers: int = 1,
+    ):
+        super().__init__(
+            on=on, groupby=groupby, agg_func=agg_func, num_workers=num_workers
+        )
         self._latest_model_scores: pd.DataFrame = pd.DataFrame()
 
     @staticmethod

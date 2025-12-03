@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-if TYPE_CHECKING: from phenotypic import Image
+if TYPE_CHECKING:
+    from phenotypic import Image
 
 import numpy as np
 from scipy.ndimage import binary_fill_holes
@@ -69,14 +70,13 @@ class MaskFill(ObjectRefiner):
             ValueError: If ``structure`` is provided and is not a binary mask.
         """
         if structure is not None:
-            if not is_binary_mask(structure): raise ValueError('arr object array must be a binary array')
+            if not is_binary_mask(structure):
+                raise ValueError("arr object array must be a binary array")
         self.structure = structure
         self.origin = origin
 
     def _operate(self, image: Image) -> Image:
         image.objmask[:] = binary_fill_holes(
-                input=image.objmask[:],
-                structure=self.structure,
-                origin=self.origin
+            input=image.objmask[:], structure=self.structure, origin=self.origin
         )
         return image

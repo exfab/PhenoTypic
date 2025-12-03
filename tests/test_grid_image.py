@@ -75,6 +75,7 @@ def test_optimal_grid_setter_defaults():
 # Test GridImage with Various Dtypes
 # ============================================================================================
 
+
 class TestGridImageDtypeHandling:
     """Tests for GridImage initialization with various dtypes."""
 
@@ -163,7 +164,7 @@ class TestGridImageBitDepthInheritance:
         grid_image = GridImage(arr=uint8_array)
 
         # GridImage should have bit_depth property from Image parent
-        assert hasattr(grid_image, 'bit_depth')
+        assert hasattr(grid_image, "bit_depth")
         assert grid_image.bit_depth == 8
 
     @timeit
@@ -223,8 +224,18 @@ class TestGridImageBitDepthInheritance:
         assert grid_float32.grid is not None
 
         # All should have same grid dimensions (defaults)
-        assert grid_uint8.grid.nrows == grid_uint16.grid.nrows == grid_float32.grid.nrows == 8
-        assert grid_uint8.grid.ncols == grid_uint16.grid.ncols == grid_float32.grid.ncols == 12
+        assert (
+            grid_uint8.grid.nrows
+            == grid_uint16.grid.nrows
+            == grid_float32.grid.nrows
+            == 8
+        )
+        assert (
+            grid_uint8.grid.ncols
+            == grid_uint16.grid.ncols
+            == grid_float32.grid.ncols
+            == 12
+        )
 
         # All should have correct bit_depth
         assert grid_uint8.bit_depth == 8

@@ -3,6 +3,7 @@
 This test suite verifies that numpy functions (e.g., np.sum, np.mean, np.max)
 can be applied directly on accessor objects through the __array__ dunder method.
 """
+
 import numpy as np
 import pytest
 from phenotypic import Image
@@ -258,7 +259,7 @@ class TestNumpyFunctionCompatibility:
         """Test np.concatenate with multiple accessors."""
         matrix = sample_rgb_image.gray
         result = np.concatenate([matrix, matrix], axis=0)
-        assert result.shape[0] == matrix.shape[0]*2
+        assert result.shape[0] == matrix.shape[0] * 2
 
     def test_percentile_operations(self, sample_rgb_image):
         """Test np.percentile with accessor."""

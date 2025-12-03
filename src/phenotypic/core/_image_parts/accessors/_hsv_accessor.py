@@ -6,7 +6,8 @@ import warnings
 from pathlib import Path
 from typing import TYPE_CHECKING, Tuple, Optional
 
-if TYPE_CHECKING: from phenotypic import Image
+if TYPE_CHECKING:
+    from phenotypic import Image
 
 import numpy as np
 import tifffile
@@ -88,8 +89,8 @@ class HsvAccessor(ImageAccessorBase):
 
         if filepath.suffix.lower() not in IO.TIFF_EXTENSIONS:
             raise ValueError(
-                'HSV arrays can only be loaded from TIFF format (.tif, .tiff). '
-                f'File extension is: {filepath.suffix.lower()}'
+                "HSV arrays can only be loaded from TIFF format (.tif, .tiff). "
+                f"File extension is: {filepath.suffix.lower()}"
             )
 
         # Load using tifffile for float array support
@@ -102,7 +103,7 @@ class HsvAccessor(ImageAccessorBase):
         if desc:
             try:
                 data = json.loads(desc)
-                if 'phenotypic_version' in data:
+                if "phenotypic_version" in data:
                     phenotypic_data = data
             except json.JSONDecodeError:
                 pass
@@ -112,16 +113,16 @@ class HsvAccessor(ImageAccessorBase):
                 f"No PhenoTypic metadata found in '{filepath.name}'. "
                 f"Cannot verify this image was saved from {expected_property}. "
                 "Loading anyway, but this may lead to undefined behavior.",
-                UserWarning
+                UserWarning,
             )
         else:
-            saved_property = phenotypic_data.get('phenotypic_image_property', 'unknown')
+            saved_property = phenotypic_data.get("phenotypic_image_property", "unknown")
             if saved_property != expected_property:
                 warnings.warn(
                     f"Metadata mismatch: Image was saved from '{saved_property}' "
                     f"but being loaded as '{expected_property}'. "
                     "This may lead to undefined behavior.",
-                    UserWarning
+                    UserWarning,
                 )
 
         return arr
@@ -146,7 +147,7 @@ class HsvAccessor(ImageAccessorBase):
                 and has no RGB channel available.
         """
         if self._root_image.rgb.isempty():
-            raise AttributeError('HSV is not available for grayscale images')
+            raise AttributeError("HSV is not available for grayscale images")
         else:
             return rgb2hsv(self._root_image.rgb[:])
 
@@ -183,7 +184,7 @@ class HsvAccessor(ImageAccessorBase):
         Raises:
             IllegalAssignmentError: Always raised to prevent data modification.
         """
-        raise IllegalAssignmentError('HSV')
+        raise IllegalAssignmentError("HSV")
 
     @property
     def shape(self) -> Optional[tuple[int, ...]]:
@@ -211,8 +212,13 @@ class HsvAccessor(ImageAccessorBase):
         """
         return self._subject_arr.copy()
 
-    def histogram(self, figsize: Tuple[int, int] = (10, 5), linewidth=1,
-                  hue_bins: int = 1, hue_offset: float = 0.0):
+    def histogram(
+        self,
+        figsize: Tuple[int, int] = (10, 5),
+        linewidth=1,
+        hue_bins: int = 1,
+        hue_offset: float = 0.0,
+    ):
         """Generate and display histograms for HSV channels with specialized hue visualization.
 
         Creates a comprehensive visualization with four subplots:
@@ -251,8 +257,9 @@ class HsvAccessor(ImageAccessorBase):
         """
         import matplotlib.colors as mcolors
 
-        fig, axes = plt.subplots(nrows=2, ncols=2, figsize=figsize,
-                                 subplot_kw={'projection': None})
+        fig, axes = plt.subplots(
+            nrows=2, ncols=2, figsize=figsize, subplot_kw={"projection": None}
+        )
         axes_ = axes.ravel()
 
         # Original image
@@ -262,17 +269,17 @@ class HsvAccessor(ImageAccessorBase):
 
         # Hue radial histogram
         axes_[1].remove()  # Remove the regular axes
-        axes_[1] = fig.add_subplot(2, 2, 2, projection='polar')
+        axes_[1] = fig.add_subplot(2, 2, 2, projection="polar")
 
         # Get hue data and apply offset
-        hue_data = (self._subject_arr[:, :, 0]*360 + hue_offset)%360
+        hue_data = (self._subject_arr[:, :, 0] * 360 + hue_offset) % 360
 
         # Create bins
         bin_edges = np.arange(0, 360 + hue_bins, hue_bins)
         hist_counts, _ = np.histogram(hue_data.flatten(), bins=bin_edges)
 
         # Convert bin edges to radians and get bin centers
-        bin_centers_deg = (bin_edges[:-1] + bin_edges[1:])/2
+        bin_centers_deg = (bin_edges[:-1] + bin_edges[1:]) / 2
         bin_centers_rad = np.deg2rad(bin_centers_deg)
         bin_width_rad = np.deg2rad(hue_bins)
 
@@ -281,14 +288,15 @@ class HsvAccessor(ImageAccessorBase):
         colors = []
         for hue_deg in bin_centers_deg:
             # Create HSV color (hue/360, saturation=1, value=1)
-            hsv_color = np.array([hue_deg/360, 1.0, 1.0])
+            hsv_color = np.array([hue_deg / 360, 1.0, 1.0])
             # Convert to RGB
             rgb_color = mcolors.hsv_to_rgb(hsv_color)
             colors.append(rgb_color)
 
         # Create the radial histogram
-        bars = axes_[1].bar(bin_centers_rad, hist_counts,
-                            width=bin_width_rad, color=colors, alpha=0.8)
+        bars = axes_[1].bar(
+            bin_centers_rad, hist_counts, width=bin_width_rad, color=colors, alpha=0.8
+        )
 
         # Set radial gridlines for count values
         max_count = np.max(hist_counts) if len(hist_counts) > 0 else 1
@@ -299,11 +307,11 @@ class HsvAccessor(ImageAccessorBase):
         axes_[1].set_rlabel_position(45)  # Position radial labels at 45 degrees
 
         # Set angular ticks for hue degrees
-        axes_[1].set_theta_zero_location('N')  # 0 degrees at top
+        axes_[1].set_theta_zero_location("N")  # 0 degrees at top
         axes_[1].set_theta_direction(-1)  # Clockwise
         axes_[1].set_thetagrids(np.arange(0, 360, 30))  # Every 30 degrees
 
-        axes_[1].set_title('Hue (Radial)', pad=20)
+        axes_[1].set_title("Hue (Radial)", pad=20)
         axes_[1].grid(True, alpha=0.3)
 
         # Saturation histogram (unchanged)
@@ -318,8 +326,9 @@ class HsvAccessor(ImageAccessorBase):
 
         return fig, axes
 
-    def show(self, figsize: Tuple[int, int] = (10, 8),
-             title: str = None, shrink=0.2) -> (plt.Figure, plt.Axes):
+    def show(
+        self, figsize: Tuple[int, int] = (10, 8), title: str = None, shrink=0.2
+    ) -> (plt.Figure, plt.Axes):
         """Display HSV channels as color-mapped images with colorbars.
 
         Creates a visualization of all three HSV channels stacked vertically, with
@@ -349,28 +358,36 @@ class HsvAccessor(ImageAccessorBase):
         fig, axes = plt.subplots(nrows=3, figsize=figsize)
         ax = axes.ravel()
 
-        hue = ax[0].imshow(self._subject_arr[:, :, 0]*360, cmap='hsb', vmin=0, vmax=360)
-        ax[0].set_title('Hue')
+        hue = ax[0].imshow(
+            self._subject_arr[:, :, 0] * 360, cmap="hsb", vmin=0, vmax=360
+        )
+        ax[0].set_title("Hue")
         ax[0].grid(False)
         fig.colorbar(mappable=hue, ax=ax[0], shrink=shrink)
 
-        saturation = ax[1].imshow(self._subject_arr[:, :, 1], cmap='viridis', vmin=0, vmax=1)
-        ax[1].set_title('Saturation')
+        saturation = ax[1].imshow(
+            self._subject_arr[:, :, 1], cmap="viridis", vmin=0, vmax=1
+        )
+        ax[1].set_title("Saturation")
         ax[1].grid(False)
         fig.colorbar(mappable=saturation, ax=ax[1], shrink=shrink)
 
-        brightness = ax[2].imshow(self._subject_arr[:, :, 2], cmap='gray', vmin=0, vmax=1)
-        ax[2].set_title('Brightness')
+        brightness = ax[2].imshow(
+            self._subject_arr[:, :, 2], cmap="gray", vmin=0, vmax=1
+        )
+        ax[2].set_title("Brightness")
         ax[2].grid(False)
         fig.colorbar(mappable=brightness, ax=ax[2], shrink=shrink)
 
         # Adjust ax settings
-        if title is not None: ax.set_title(title)
+        if title is not None:
+            ax.set_title(title)
 
         return fig, ax
 
-    def show_objects(self, figsize: Tuple[int, int] = (10, 8),
-                     title: str = None, shrink=0.6) -> (plt.Figure, plt.Axes):
+    def show_objects(
+        self, figsize: Tuple[int, int] = (10, 8), title: str = None, shrink=0.6
+    ) -> (plt.Figure, plt.Axes):
         """Display HSV channels for segmented objects only, masked by object mask.
 
         Creates a visualization of all three HSV channels stacked vertically, with
@@ -403,29 +420,41 @@ class HsvAccessor(ImageAccessorBase):
         fig, axes = plt.subplots(nrows=3, figsize=figsize)
         ax = axes.ravel()
 
-        hue = ax[0].imshow(np.ma.array(self._subject_arr[:, :, 0]*360, mask=~self._root_image.objmask[:]),
-                           cmap='hsb', vmin=0, vmax=360,
-                           )
-        ax[0].set_title('Hue')
+        hue = ax[0].imshow(
+            np.ma.array(
+                self._subject_arr[:, :, 0] * 360, mask=~self._root_image.objmask[:]
+            ),
+            cmap="hsb",
+            vmin=0,
+            vmax=360,
+        )
+        ax[0].set_title("Hue")
         ax[0].grid(False)
         fig.colorbar(mappable=hue, ax=ax[0], shrink=shrink)
 
-        saturation = ax[1].imshow(np.ma.array(self._subject_arr[:, :, 1], mask=~self._root_image.objmask[:]),
-                                  cmap='viridis', vmin=0, vmax=1,
-                                  )
-        ax[1].set_title('Saturation')
+        saturation = ax[1].imshow(
+            np.ma.array(self._subject_arr[:, :, 1], mask=~self._root_image.objmask[:]),
+            cmap="viridis",
+            vmin=0,
+            vmax=1,
+        )
+        ax[1].set_title("Saturation")
         ax[1].grid(False)
         fig.colorbar(mappable=saturation, ax=ax[1], shrink=shrink)
 
-        brightness = ax[2].imshow(np.ma.array(self._subject_arr[:, :, 2], mask=~self._root_image.objmask[:]),
-                                  cmap='gray', vmin=0, vmax=1,
-                                  )
-        ax[2].set_title('Brightness')
+        brightness = ax[2].imshow(
+            np.ma.array(self._subject_arr[:, :, 2], mask=~self._root_image.objmask[:]),
+            cmap="gray",
+            vmin=0,
+            vmax=1,
+        )
+        ax[2].set_title("Brightness")
         ax[2].grid(False)
         fig.colorbar(mappable=brightness, ax=ax[2], shrink=shrink)
 
         # Adjust ax settings
-        if title is not None: ax.set_title(title)
+        if title is not None:
+            ax.set_title(title)
 
         return fig, ax
 
@@ -462,8 +491,8 @@ class HsvAccessor(ImageAccessorBase):
 
         if filepath.suffix.lower() not in IO.TIFF_EXTENSIONS:
             raise ValueError(
-                'HSV arrays can only be saved in TIFF format (.tif, .tiff). '
-                f'File extension is: {filepath.suffix.lower()}'
+                "HSV arrays can only be saved in TIFF format (.tif, .tiff). "
+                f"File extension is: {filepath.suffix.lower()}"
             )
 
         # Build metadata JSON
@@ -480,6 +509,6 @@ class HsvAccessor(ImageAccessorBase):
             filepath,
             arr,
             description=metadata_json,
-            compression='zlib',
-            photometric='minisblack'
+            compression="zlib",
+            photometric="minisblack",
         )

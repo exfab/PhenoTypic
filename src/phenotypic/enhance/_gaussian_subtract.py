@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-if TYPE_CHECKING: from phenotypic import Image
+if TYPE_CHECKING:
+    from phenotypic import Image
 
 import numpy as np
 from skimage.filters import gaussian
@@ -49,12 +50,14 @@ class GaussianSubtract(ImageEnhancer):
         preserve_range (bool): Preserve input value range during filtering.
     """
 
-    def __init__(self,
-                 sigma: float = 50.0,
-                 mode: str = 'reflect',
-                 cval: float = 0.0,
-                 truncate: float = 4.0,
-                 preserve_range: bool = True):
+    def __init__(
+        self,
+        sigma: float = 50.0,
+        mode: str = "reflect",
+        cval: float = 0.0,
+        truncate: float = 4.0,
+        preserve_range: bool = True,
+    ):
         """
         Parameters:
             sigma (float): Background scale. Set larger than colony diameter so
@@ -72,11 +75,13 @@ class GaussianSubtract(ImageEnhancer):
         self.preserve_range: bool = preserve_range
 
     def _operate(self, image: Image):
-        background = gaussian(image=image.enh_gray[:],
-                              sigma=self.sigma,
-                              mode=self.mode,
-                              cval=self.cval,
-                              truncate=self.truncate,
-                              preserve_range=self.preserve_range)
+        background = gaussian(
+            image=image.enh_gray[:],
+            sigma=self.sigma,
+            mode=self.mode,
+            cval=self.cval,
+            truncate=self.truncate,
+            preserve_range=self.preserve_range,
+        )
         image.enh_gray[:] = image.enh_gray[:].copy() - background
         return image

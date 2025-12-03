@@ -27,16 +27,16 @@ from phenotypic import Image, GridImage, ImagePipeline
 from phenotypic.tools.constants_ import IO
 
 # Set non-interactive backend for headless execution
-matplotlib.use('Agg')
+matplotlib.use("Agg")
 
 
 def process_single_image(
-        image_path: Path,
-        meas_dir: Path,
-        overlay_dir: Path,
-        pipeline: ImagePipeline,
-        image_cls: Type[Image],
-        read_kwargs: Dict[str, Any]
+    image_path: Path,
+    meas_dir: Path,
+    overlay_dir: Path,
+    pipeline: ImagePipeline,
+    image_cls: Type[Image],
+    read_kwargs: Dict[str, Any],
 ) -> Optional[pd.DataFrame]:
     """
     Processes a single image of a microbe colony on solid media agar by applying an
@@ -95,14 +95,14 @@ def process_single_image(
         meas = pipeline.apply_and_measure(image, inplace=True)
 
         # Save measurements for this individual image
-        meas_path = meas_dir/f"{image_stem}.csv"
+        meas_path = meas_dir / f"{image_stem}.csv"
         meas.to_csv(meas_path, index=False)
 
         # Generate and save overlay
         # We suppress the plot display since we are in a CLI
         fig, ax = image.show_overlay()
-        overlay_path = overlay_dir/f"{image_stem}.png"
-        fig.savefig(overlay_path, bbox_inches='tight')
+        overlay_path = overlay_dir / f"{image_stem}.png"
+        fig.savefig(overlay_path, bbox_inches="tight")
         plt.close(fig)
 
         return meas
@@ -113,21 +113,53 @@ def process_single_image(
 
 
 @click.command()
-@click.argument('pipeline_json', type=click.Path(exists=True, dir_okay=False, path_type=Path))
-@click.argument('input_dir', type=click.Path(exists=True, file_okay=False, path_type=Path))
-@click.argument('output_dir', type=click.Path(path_type=Path))
-@click.option('--image-type', type=click.Choice(['Image', 'GridImage'], case_sensitive=False),
-              default='GridImage', help='Type of image object to instantiate.')
-@click.option('--nrows', type=int, default=8, show_default=True,
-              help='Number of rows for GridImage.')
-@click.option('--ncols', type=int, default=12, show_default=True,
-              help='Number of columns for GridImage.')
-@click.option('--bit-depth', type=int, default=None,
-              help='Bit depth of input images (8 or 16).')
-@click.option('--n-jobs', type=int, default=-1, show_default=True,
-              help='Number of parallel jobs. -1 uses all available cores.')
-def main(pipeline_json: Path, input_dir: Path, output_dir: Path,
-         image_type: str, nrows: int, ncols: int, bit_depth: Optional[int], n_jobs: int):
+@click.argument(
+    "pipeline_json", type=click.Path(exists=True, dir_okay=False, path_type=Path)
+)
+@click.argument(
+    "input_dir", type=click.Path(exists=True, file_okay=False, path_type=Path)
+)
+@click.argument("output_dir", type=click.Path(path_type=Path))
+@click.option(
+    "--image-type",
+    type=click.Choice(["Image", "GridImage"], case_sensitive=False),
+    default="GridImage",
+    help="Type of image object to instantiate.",
+)
+@click.option(
+    "--nrows",
+    type=int,
+    default=8,
+    show_default=True,
+    help="Number of rows for GridImage.",
+)
+@click.option(
+    "--ncols",
+    type=int,
+    default=12,
+    show_default=True,
+    help="Number of columns for GridImage.",
+)
+@click.option(
+    "--bit-depth", type=int, default=None, help="Bit depth of input images (8 or 16)."
+)
+@click.option(
+    "--n-jobs",
+    type=int,
+    default=-1,
+    show_default=True,
+    help="Number of parallel jobs. -1 uses all available cores.",
+)
+def main(
+    pipeline_json: Path,
+    input_dir: Path,
+    output_dir: Path,
+    image_type: str,
+    nrows: int,
+    ncols: int,
+    bit_depth: Optional[int],
+    n_jobs: int,
+):
     """
     Execute a PhenoTypic pipeline on a directory of images.
 
@@ -139,10 +171,10 @@ def main(pipeline_json: Path, input_dir: Path, output_dir: Path,
     # Setup
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    meas_dir = output_dir/'measurements'
+    meas_dir = output_dir / "measurements"
     meas_dir.mkdir(parents=True, exist_ok=True)
 
-    overlay_dir = output_dir/'overlays'
+    overlay_dir = output_dir / "overlays"
     overlay_dir.mkdir(parents=True, exist_ok=True)
 
     click.echo(f"Loading pipeline from {pipeline_json}...")
@@ -153,44 +185,48 @@ def main(pipeline_json: Path, input_dir: Path, output_dir: Path,
         sys.exit(1)
 
     # Determine Image Class and Arguments
-    if image_type == 'GridImage':
+    if image_type == "GridImage":
         image_cls = GridImage
-        read_kwargs = {'nrows': nrows, 'ncols': ncols}
+        read_kwargs = {"nrows": nrows, "ncols": ncols}
     else:
         image_cls = Image
         read_kwargs = {}
 
     if bit_depth:
-        read_kwargs['bit_depth'] = bit_depth
+        read_kwargs["bit_depth"] = bit_depth
 
     # Find images
     extensions = IO.ACCEPTED_FILE_EXTENSIONS + IO.RAW_FILE_EXTENSIONS
     image_paths = [
-        p for p in input_dir.iterdir()
-        if p.is_file() and p.suffix.lower() in extensions
+        p for p in input_dir.iterdir() if p.is_file() and p.suffix.lower() in extensions
     ]
 
     if not image_paths:
         click.echo(f"No valid images found in {input_dir}", err=True)
         sys.exit(1)
 
-    click.echo(f"Found {len(image_paths)} images. Starting processing with {n_jobs} jobs...")
+    click.echo(
+        f"Found {len(image_paths)} images. Starting processing with {n_jobs} jobs..."
+    )
 
     # Parallel Execution
     # We use joblib to parallelize the processing
     results = Parallel(n_jobs=n_jobs)(
-            delayed(process_single_image)(
-                    path, meas_dir, overlay_dir, pipeline, image_cls, read_kwargs
-            ) for path in image_paths
+        delayed(process_single_image)(
+            path, meas_dir, overlay_dir, pipeline, image_cls, read_kwargs
+        )
+        for path in image_paths
     )
 
     # Aggregate Results
     valid_results = [res for res in results if res is not None]
 
     if valid_results:
-        click.echo(f"Successfully processed {len(valid_results)}/{len(image_paths)} images.")
+        click.echo(
+            f"Successfully processed {len(valid_results)}/{len(image_paths)} images."
+        )
         master_df = pd.concat(valid_results, axis=0, ignore_index=True)
-        master_path = output_dir/"master_measurements.csv"
+        master_path = output_dir / "master_measurements.csv"
         master_df.to_csv(master_path, index=False)
         click.echo(f"Master measurements saved to {master_path}")
     else:
@@ -198,5 +234,5 @@ def main(pipeline_json: Path, input_dir: Path, output_dir: Path,
         sys.exit(1)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

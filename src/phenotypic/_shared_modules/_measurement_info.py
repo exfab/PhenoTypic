@@ -115,16 +115,15 @@ class MeasurementInfo(str, Enum):
 
     @classmethod
     def rst_table(
-            cls,
-            *,
-            title: str | None = None,
-            header: tuple[str, str] = ("Name", "Description"),
+        cls,
+        *,
+        title: str | None = None,
+        header: tuple[str, str] = ("Name", "Description"),
     ) -> str:
         title = title or cls.__name__
         left, right = header
         lines = [
-            f".. list-table:: Category: **{title}**"
-            f"",
+            f".. list-table:: Category: **{title}**",
             "   :header-rows: 1",
             "",
             f"   * - {left}",

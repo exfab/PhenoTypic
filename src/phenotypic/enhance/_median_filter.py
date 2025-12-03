@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from typing import Literal, TYPE_CHECKING
 
-if TYPE_CHECKING: from phenotypic import Image
+if TYPE_CHECKING:
+    from phenotypic import Image
 from phenotypic.abc_ import ImageEnhancer
 
 from skimage.filters import median
@@ -42,11 +43,13 @@ class MedianFilter(ImageEnhancer):
         cval (float): Constant fill when `mode='constant'`.
     """
 
-    def __init__(self,
-                 mode: Literal["nearest", "reflect", "constant", "mirror", "wrap"] = 'nearest',
-                 shape: Literal["disk", "square", "diamond"] | None = None,
-                 radius: int = 5,
-                 cval: float = 0.0):
+    def __init__(
+        self,
+        mode: Literal["nearest", "reflect", "constant", "mirror", "wrap"] = "nearest",
+        shape: Literal["disk", "square", "diamond"] | None = None,
+        radius: int = 5,
+        cval: float = 0.0,
+    ):
         """
         This class is designed to facilitate image processing tasks, particularly for analyzing microbe
         colonies on solid media agar. By adjusting the mode, footprint, radius, and cval attributes,
@@ -78,21 +81,26 @@ class MedianFilter(ImageEnhancer):
                 colony recognition at the edges; for example, setting a high cval compared to
                 colony intensity might obscure colonies near the borders.
         """
-        if mode in ['nearest', 'reflect', 'constant', 'mirror', 'wrap']:
+        if mode in ["nearest", "reflect", "constant", "mirror", "wrap"]:
             self.mode = mode
             self.shape = shape
             self.radius = radius
             self.cval = cval
         else:
-            raise ValueError('mode must be one of "nearest","reflect","constant","mirror","wrap"')
+            raise ValueError(
+                'mode must be one of "nearest","reflect","constant","mirror","wrap"'
+            )
 
     def _operate(self, image: Image) -> Image:
         image.enh_gray[:] = median(
-                image=image.enh_gray[:],
-                behavior='ndimage',
-                footprint=(self.shape
-                           if self.shape is None
-                           else self._make_footprint(shape=self.shape, radius=self.radius)),
-                mode=self.mode,
-                cval=self.cval)
+            image=image.enh_gray[:],
+            behavior="ndimage",
+            footprint=(
+                self.shape
+                if self.shape is None
+                else self._make_footprint(shape=self.shape, radius=self.radius)
+            ),
+            mode=self.mode,
+            cval=self.cval,
+        )
         return image

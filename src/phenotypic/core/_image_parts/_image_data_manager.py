@@ -20,6 +20,7 @@ from phenotypic.tools.constants_ import IMAGE_MODE, METADATA, IMAGE_TYPES
 @dataclass
 class ImageData:
     """Container for core image data representations."""
+
     rgb: np.ndarray | None = None
     gray: np.ndarray | None = None
     enh_gray: np.ndarray | None = None
@@ -54,10 +55,17 @@ class ImageMetadata:
         imported (dict[str, Union[int, str, float, bool]]): Metadata from the original image if imported from a file
             instead of from an array.
     """
+
     private: dict[str, Any] = field(default_factory=dict)
-    protected: dict[str, Union[int, str, float, bool, np.nan]] = field(default_factory=dict)
-    public: dict[str, Union[int, str, float, bool, np.nan]] = field(default_factory=dict)
-    imported: dict[str, Union[int, str, float, bool, np.nan]] = field(default_factory=dict)
+    protected: dict[str, Union[int, str, float, bool, np.nan]] = field(
+        default_factory=dict
+    )
+    public: dict[str, Union[int, str, float, bool, np.nan]] = field(
+        default_factory=dict
+    )
+    imported: dict[str, Union[int, str, float, bool, np.nan]] = field(
+        default_factory=dict
+    )
 
     def clear(self) -> None:
         self.protected[METADATA.IMAGE_NAME] = np.nan
@@ -89,9 +97,9 @@ class ImageDataManager:
     _ARRAY16_DTYPE = np.uint16
     _OBJMAP_DTYPE = np.uint16
 
-    def __init__(self,
-                 name: str | None = None,
-                 bit_depth: Literal[8, 16] | None = None):
+    def __init__(
+        self, name: str | None = None, bit_depth: Literal[8, 16] | None = None
+    ):
         """
         Initializes a class instance to manage the image data and metadata.
 
@@ -110,16 +118,14 @@ class ImageDataManager:
 
         # Initialize metadata structure
         self._metadata = ImageMetadata(
-                private={
-                    METADATA.UUID: uuid.uuid4()
-                },
-                protected={
-                    METADATA.IMAGE_NAME: name,
-                    METADATA.IMAGE_TYPE: IMAGE_TYPES.BASE.value,
-                    METADATA.BIT_DEPTH : bit_depth,
-                },
-                public={},
-                imported={},
+            private={METADATA.UUID: uuid.uuid4()},
+            protected={
+                METADATA.IMAGE_NAME: name,
+                METADATA.IMAGE_TYPE: IMAGE_TYPES.BASE.value,
+                METADATA.BIT_DEPTH: bit_depth,
+            },
+            public={},
+            imported={},
         )
 
     @property
@@ -166,7 +172,7 @@ class ImageDataManager:
                 self._set_from_class_instance(x)
             case _:
                 raise ValueError(
-                        f'Input must be a NumPy array, Image instance. Got {type(input_image)}'
+                    f"Input must be a NumPy array, Image instance. Got {type(input_image)}"
                 )
 
     def _handle_array_input(self, arr: np.ndarray):
@@ -182,10 +188,10 @@ class ImageDataManager:
     @staticmethod
     def _infer_bit_depth(arr: np.ndarray) -> int:
         """Infer bit depth from array dtype.
-        
+
         Args:
             arr (np.ndarray): Input array.
-            
+
         Returns:
             int: Inferred bit depth (8 or 16).
         """
@@ -198,8 +204,8 @@ class ImageDataManager:
                 return 16
             case _:
                 warnings.warn(
-                        'Input image has unknown dtype, bit_depth could not be guessed. '
-                        'Defaulting to 16'
+                    "Input image has unknown dtype, bit_depth could not be guessed. "
+                    "Defaulting to 16"
                 )
                 return 16
 
@@ -215,12 +221,12 @@ class ImageDataManager:
 
     def _set_from_class_instance(self, input_cls):
         """Copy data from another Image instance.
-        
+
         Args:
             input_cls: Source Image instance to copy from.
         """
         if not self._is_image_handler(input_cls):
-            raise ValueError('Input is not an Image object')
+            raise ValueError("Input is not an Image object")
 
         # Determine format from whether RGB data exists
         if not input_cls.rgb.isempty():
@@ -237,19 +243,19 @@ class ImageDataManager:
 
     def _set_from_matrix(self, matrix: np.ndarray):
         """Initialize 2-D image components from a matrix.
-        
+
         Args:
             matrix (np.ndarray): A 2-D array form of an image.
         """
         self._data.gray = matrix
         self._data.enh_gray = matrix.copy()
         self._data.sparse_object_map = csc_matrix(
-                np.zeros(matrix.shape, dtype=self._OBJMAP_DTYPE)
+            np.zeros(matrix.shape, dtype=self._OBJMAP_DTYPE)
         )
 
     def _set_from_rgb(self, rgb_array: np.ndarray):
         """Initialize all components from an RGB array.
-        
+
         Args:
             rgb_array (np.ndarray): RGB image array.
         """
@@ -268,9 +274,7 @@ class ImageDataManager:
         # Process based on detected format
         match format_enum:
             case IMAGE_MODE.GRAYSCALE | IMAGE_MODE.GRAYSCALE_SINGLE_CHANNEL:
-                self._set_from_matrix(
-                        imarr if imarr.ndim == 2 else imarr[:, :, 0]
-                )
+                self._set_from_matrix(imarr if imarr.ndim == 2 else imarr[:, :, 0])
 
             case IMAGE_MODE.RGB | IMAGE_MODE.RGB_OR_BGR:
                 self._set_from_rgb(imarr)
@@ -282,18 +286,18 @@ class ImageDataManager:
                 self._set_from_rgb(rgba2rgb(imarr))
 
             case _:
-                raise ValueError(f'Unsupported image format: {format_enum}')
+                raise ValueError(f"Unsupported image format: {format_enum}")
 
     @staticmethod
     def _guess_image_format(img: np.ndarray) -> IMAGE_MODE:
         """Determine image format from array dimensions and channels.
-        
+
         Args:
             img (np.ndarray): Input image array.
-            
+
         Returns:
             IMAGE_MODE: Detected format of the image.
-            
+
         Raises:
             TypeError: If input is not a numpy array.
             ValueError: If image has unsupported dimensions or channels.
@@ -318,19 +322,20 @@ class ImageDataManager:
         raise ValueError("Unknown format (unsupported number of dimensions)")
 
     @staticmethod
-    def _convert_float_array_to_int(float_array: np.ndarray,
-                                    bit_depth: Literal[8, 16]) -> np.ndarray:
+    def _convert_float_array_to_int(
+        float_array: np.ndarray, bit_depth: Literal[8, 16]
+    ) -> np.ndarray:
         """Convert normalized float array to integer array.
-        
+
         Args:
             float_array (np.ndarray): Array with float values in range [0, 1].
             bit_depth (Literal[8, 16]): Target bit depth (8 or 16).
-            
+
         Returns:
             np.ndarray: Converted integer array (uint8 or uint16).
-            
+
         Raises:
-            ValueError: If bit_depth is not 8 or 16, or if array values 
+            ValueError: If bit_depth is not 8 or 16, or if array values
                        are outside [0, 1] range.
         """
         if bit_depth not in (8, 16):
@@ -338,8 +343,8 @@ class ImageDataManager:
 
         if np.any(float_array < 0) or np.any(float_array > 1):
             raise ValueError(
-                    f"Float array contains values outside [0, 1] range. "
-                    f"Min: {float_array.min()}, Max: {float_array.max()}"
+                f"Float array contains values outside [0, 1] range. "
+                f"Min: {float_array.min()}, Max: {float_array.max()}"
             )
 
         if bit_depth == 8:
@@ -349,4 +354,4 @@ class ImageDataManager:
             target_dtype = np.uint16
             max_value = 65535
 
-        return (float_array*max_value).astype(target_dtype)
+        return (float_array * max_value).astype(target_dtype)

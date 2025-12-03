@@ -25,17 +25,19 @@ from .core._image_pipeline import ImagePipeline
 # commented out until complete
 # from .core._image_set import ImageSet
 
-from . import (abc_,
-               analysis,
-               correction,
-               data,
-               detect,
-               enhance,
-               grid,
-               measure,
-               refine,
-               tools,
-               prefab)
+from . import (
+    abc_,
+    analysis,
+    correction,
+    data,
+    detect,
+    enhance,
+    grid,
+    measure,
+    refine,
+    tools,
+    prefab,
+)
 
 __all__ = [
     "Image",  # Class imported from core

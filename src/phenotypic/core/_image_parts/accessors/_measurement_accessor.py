@@ -5,6 +5,7 @@ from typing import Dict, Union, List, Optional
 
 # TODO: Implement
 
+
 class MeasurementAccessor:
     """Container for storing and managing measurement data as pandas Series or DataFrames.
 
@@ -45,6 +46,7 @@ class MeasurementAccessor:
                 keys = accessor.keys()  # ['color_intensity', 'morphology']
                 values = accessor.values()  # [Series(...), DataFrame(...)]
     """
+
     def __init__(self):
         """Initialize an empty MeasurementAccessor.
 
@@ -166,7 +168,9 @@ class MeasurementAccessor:
             raise ValueError("key must not contain spaces")
 
         if type(value) not in [pd.Series, pd.DataFrame]:
-            raise TypeError("Measurement container only supports pd.Series or pd.DataFrame")
+            raise TypeError(
+                "Measurement container only supports pd.Series or pd.DataFrame"
+            )
         self.__measurements[key] = value
 
     def __len__(self) -> int:
@@ -189,7 +193,9 @@ class MeasurementAccessor:
         """
         return len(self.keys())
 
-    def pop(self, key: str, exc_type: Optional[str] = 'raise') -> Optional[Union[pd.Series, pd.DataFrame]]:
+    def pop(
+        self, key: str, exc_type: Optional[str] = "raise"
+    ) -> Optional[Union[pd.Series, pd.DataFrame]]:
         """Remove and return a measurement.
 
         Removes a measurement from the accessor and returns it. Allows control
@@ -227,9 +233,9 @@ class MeasurementAccessor:
                     result = accessor.pop('metric', exc_type='ignore')
                     # Returns None if 'metric' doesn't exist
         """
-        if exc_type == 'raise':
+        if exc_type == "raise":
             return self.__measurements.pop(key)
-        if exc_type == 'ignore':
+        if exc_type == "ignore":
             return self.__measurements.pop(key, None)
 
     def clear(self) -> None:
@@ -254,9 +260,12 @@ class MeasurementAccessor:
             tmp = self.__measurements.pop(key)
             del tmp
 
-    def merge_on_index_names(self, idx_name_subset: Optional[List[str]] = None,
-                             join_type: str = 'outer',
-                             verify_integrity: bool = False) -> Dict[str, Union[pd.Series, pd.DataFrame]]:
+    def merge_on_index_names(
+        self,
+        idx_name_subset: Optional[List[str]] = None,
+        join_type: str = "outer",
+        verify_integrity: bool = False,
+    ) -> Dict[str, Union[pd.Series, pd.DataFrame]]:
         """Merge measurements by their index names.
 
         Groups measurements by their index name and merges each group by
@@ -314,32 +323,39 @@ class MeasurementAccessor:
             target_index_names = idx_names
         elif set(idx_name_subset).issubset(set(idx_name_list)) is False:
             raise ValueError(
-                "the index names in idx_name_subset must be a found in the index names of the measurements.")
+                "the index names in idx_name_subset must be a found in the index names of the measurements."
+            )
         else:
             target_index_names = idx_name_subset
 
         merged_measurements = {}
         for idx_name in target_index_names:
             current_tables = list(
-                measurement for measurement in (self.__measurements.values())
+                measurement
+                for measurement in (self.__measurements.values())
                 if measurement.index.name == idx_name
             )
 
             # In the event the index name appears in the measurements key
             if (measurement_key := idx_name) in self.keys():
-                idx_name_appearances = len(list(
-                    idx_name_iter for idx_name_iter in self.keys()
-                    if idx_name in idx_name_iter
-                ))
+                idx_name_appearances = len(
+                    list(
+                        idx_name_iter
+                        for idx_name_iter in self.keys()
+                        if idx_name in idx_name_iter
+                    )
+                )
 
-                measurement_key = f'{idx_name} ({idx_name_appearances})'
+                measurement_key = f"{idx_name} ({idx_name_appearances})"
 
-            merged_measurements[measurement_key] = pd.concat(objs=current_tables,
-                                                             axis=1,
-                                                             join=join_type,
-                                                             ignore_index=False,
-                                                             verify_integrity=verify_integrity,
-                                                             copy=True)
+            merged_measurements[measurement_key] = pd.concat(
+                objs=current_tables,
+                axis=1,
+                join=join_type,
+                ignore_index=False,
+                verify_integrity=verify_integrity,
+                copy=True,
+            )
         self.__measurements = {**self.__measurements, **merged_measurements}
         return merged_measurements
 
@@ -394,9 +410,12 @@ class MeasurementAccessor:
                     # recarrays['data'] is a numpy recarray with index and values
                     # Access via: recarrays['data']['index'], recarrays['data']['values']
         """
-        return {key: table.copy().to_records(index=True) for key, table in self.__measurements.items()}
+        return {
+            key: table.copy().to_records(index=True)
+            for key, table in self.__measurements.items()
+        }
 
-    def copy(self) -> 'MeasurementAccessor':
+    def copy(self) -> "MeasurementAccessor":
         """Create an independent copy of this MeasurementAccessor.
 
         Creates a new MeasurementAccessor instance with a shallow copy of the

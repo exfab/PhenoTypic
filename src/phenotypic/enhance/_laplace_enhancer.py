@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-if TYPE_CHECKING: from phenotypic import Image
+if TYPE_CHECKING:
+    from phenotypic import Image
 from skimage.filters import laplace
 from typing import Optional
 import numpy as np
@@ -42,7 +43,9 @@ class LaplaceEnhancer(ImageEnhancer):
             operation to specific regions (e.g., the plate area).
     """
 
-    def __init__(self, kernel_size: Optional[int] = 3, mask: Optional[np.ndarray] = None):
+    def __init__(
+        self, kernel_size: Optional[int] = 3, mask: Optional[np.ndarray] = None
+    ):
         """
         Parameters:
             kernel_size (Optional[int]): Controls the edge scale. Smaller values
@@ -57,8 +60,8 @@ class LaplaceEnhancer(ImageEnhancer):
 
     def _operate(self, image: Image) -> Image:
         image.enh_gray[:] = laplace(
-                image=image.enh_gray[:],
-                ksize=self.kernel_size,
-                mask=self.mask,
+            image=image.enh_gray[:],
+            ksize=self.kernel_size,
+            mask=self.mask,
         )
         return image

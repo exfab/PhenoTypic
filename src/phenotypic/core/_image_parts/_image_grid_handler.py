@@ -43,10 +43,15 @@ class ImageGridHandler(Image):
             accessing row and column edges and generating section maps for the image's grid system.
     """
 
-    def __init__(self, arr: Optional[Union[np.ndarray, Image]] = None,
-                 name: str = None,
-                 grid_finder: Optional[GridFinder] = None,
-                 nrows: int = 8, ncols: int = 12, **kwargs):
+    def __init__(
+        self,
+        arr: Optional[Union[np.ndarray, Image]] = None,
+        name: str = None,
+        grid_finder: Optional[GridFinder] = None,
+        nrows: int = 8,
+        ncols: int = 12,
+        **kwargs,
+    ):
         """
         Initializes the instance with the given image, format, grid finding
         mechanism, and dimensions of the grid.
@@ -69,7 +74,7 @@ class ImageGridHandler(Image):
         """
         super().__init__(arr=arr, name=name, **kwargs)
 
-        if hasattr(arr, 'grid_finder'):
+        if hasattr(arr, "grid_finder"):
             grid_finder = arr.grid_finder
         elif grid_finder is None:
             grid_finder = AutoGridFinder(nrows=nrows, ncols=ncols)
@@ -91,7 +96,7 @@ class ImageGridHandler(Image):
 
     @grid.setter
     def grid(self, grid):
-        raise IllegalAssignmentError('grid')
+        raise IllegalAssignmentError("grid")
 
     def info(self, include_metadata: bool = True) -> pd.DataFrame:
         return self.grid.info(include_metadata=include_metadata)
@@ -153,7 +158,7 @@ class ImageGridHandler(Image):
         if isinstance(value, GridFinder):
             self._grid_finder = value
         else:
-            raise TypeError(f'Expected GridFinder, got {type(value)}')
+            raise TypeError(f"Expected GridFinder, got {type(value)}")
 
     @property
     def nrows(self) -> int:
@@ -196,7 +201,7 @@ class ImageGridHandler(Image):
                     print(grid_img.nrows)  # Output: 16
         """
         if not isinstance(nrows, int):
-            raise TypeError(f'Expected int, got {type(nrows)}')
+            raise TypeError(f"Expected int, got {type(nrows)}")
         self.grid_finder.nrows = nrows
 
     @property
@@ -240,7 +245,7 @@ class ImageGridHandler(Image):
                     print(grid_img.ncols)  # Output: 24
         """
         if not isinstance(ncols, int):
-            raise TypeError(f'Expected int, got {type(ncols)}')
+            raise TypeError(f"Expected int, got {type(ncols)}")
         self.grid_finder.ncols = ncols
 
     def __getitem__(self, key) -> Image:
@@ -258,14 +263,16 @@ class ImageGridHandler(Image):
         subimage.objmap[:] = self.objmap[key]
         return subimage
 
-    def show_overlay(self, object_label: Optional[int] = None,
-                     show_gridlines: bool = True,
-                     show_linreg: bool = False,
-                     figsize: Tuple[int, int] = (9, 10),
-                     show_labels: bool = False,
-                     label_settings: None | dict = None,
-                     ax: plt.Axes = None,
-                     ) -> (plt.Figure, plt.Axes):
+    def show_overlay(
+        self,
+        object_label: Optional[int] = None,
+        show_gridlines: bool = True,
+        show_linreg: bool = False,
+        figsize: Tuple[int, int] = (9, 10),
+        show_labels: bool = False,
+        label_settings: None | dict = None,
+        ax: plt.Axes = None,
+    ) -> (plt.Figure, plt.Axes):
         """
         Displays an overlay of data with optional annotations, linear regression lines, and gridlines on a
         grid-based figure. The figure can be customized with various parameters to suit visualization needs.
@@ -286,8 +293,11 @@ class ImageGridHandler(Image):
             Tuple[plt.Figure, plt.Axes]: Modified figure and axis containing the rendered overlay.
         """
         fig, ax = super().show_overlay(
-                object_label=object_label, ax=ax, figsize=figsize,
-                show_labels=show_labels, label_settings=label_settings,
+            object_label=object_label,
+            ax=ax,
+            figsize=figsize,
+            show_labels=show_labels,
+            label_settings=label_settings,
         )
 
         if show_gridlines and self.num_objects > 0:
@@ -296,10 +306,10 @@ class ImageGridHandler(Image):
             lower_col_edges = col_edges[:-1]
 
             # Set x-axes labels to grid column numbers
-            secax_x = ax.secondary_xaxis('top')
-            secax_x.set_xlabel('Grid Column Number')
+            secax_x = ax.secondary_xaxis("top")
+            secax_x.set_xlabel("Grid Column Number")
 
-            col_centers = ((upper_col_edges - lower_col_edges)//2) + lower_col_edges
+            col_centers = ((upper_col_edges - lower_col_edges) // 2) + lower_col_edges
             secax_x.set_xticks(col_centers)
             secax_x.set_xticklabels(np.arange(self.ncols))
 
@@ -308,18 +318,30 @@ class ImageGridHandler(Image):
             lower_row_edges = row_edges[:-1]
 
             # Set y-axis labels to grid row numbers
-            secax_y = ax.secondary_yaxis('right')
-            secax_y.set_ylabel('Grid Row Number', rotation=270, labelpad=10)
+            secax_y = ax.secondary_yaxis("right")
+            secax_y.set_ylabel("Grid Row Number", rotation=270, labelpad=10)
 
-            row_centers = ((upper_row_edges - lower_row_edges)//2) + lower_row_edges
+            row_centers = ((upper_row_edges - lower_row_edges) // 2) + lower_row_edges
             secax_y.set_yticks(row_centers)
             secax_y.set_yticklabels(np.arange(self.nrows))
 
             # Draw grid lines
-            ax.vlines(x=col_edges, ymin=row_edges.min(), ymax=row_edges.max(), colors='c', linestyles='--')
-            ax.hlines(y=row_edges, xmin=col_edges.min(), xmax=col_edges.max(), color='c', linestyles='--')
+            ax.vlines(
+                x=col_edges,
+                ymin=row_edges.min(),
+                ymax=row_edges.max(),
+                colors="c",
+                linestyles="--",
+            )
+            ax.hlines(
+                y=row_edges,
+                xmin=col_edges.min(),
+                xmax=col_edges.max(),
+                color="c",
+                linestyles="--",
+            )
 
-            cmap = plt.get_cmap('tab20')
+            cmap = plt.get_cmap("tab20")
             cmap_cycle = cycle(cmap(i) for i in range(cmap.N))
             img = self.copy()
             img.objmap = self.grid.get_section_map()
@@ -337,11 +359,13 @@ class ImageGridHandler(Image):
                 height = max_rr - min_rr
 
                 ax.add_patch(
-                        Rectangle(
-                                (min_cc, min_rr), width=width, height=height,
-                                edgecolor=next(cmap_cycle),
-                                facecolor='none',
-                        ),
+                    Rectangle(
+                        (min_cc, min_rr),
+                        width=width,
+                        height=height,
+                        edgecolor=next(cmap_cycle),
+                        facecolor="none",
+                    ),
                 )
 
         return fig, ax

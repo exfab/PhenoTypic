@@ -1,7 +1,8 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
 
-if TYPE_CHECKING: from phenotypic import Image, GridImage
+if TYPE_CHECKING:
+    from phenotypic import Image, GridImage
 
 from typing import Literal
 import gc
@@ -49,13 +50,15 @@ class WatershedDetector(ThresholdDetector):
             images where zero pixels represent true background or imaging artifacts.
     """
 
-    def __init__(self,
-                 footprint: Literal['auto'] | np.ndarray | int | None = None,
-                 min_size: int = 50,
-                 compactness: float = 0.001,
-                 connectivity: int = 1,
-                 relabel: bool = True,
-                 ignore_zeros: bool = True):
+    def __init__(
+        self,
+        footprint: Literal["auto"] | np.ndarray | int | None = None,
+        min_size: int = 50,
+        compactness: float = 0.001,
+        connectivity: int = 1,
+        relabel: bool = True,
+        ignore_zeros: bool = True,
+    ):
         super().__init__()
 
         match footprint:
@@ -63,8 +66,8 @@ class WatershedDetector(ThresholdDetector):
                 self.footprint = morphology.diamond(footprint)
             case x if isinstance(x, np.ndarray):
                 self.footprint = footprint
-            case 'auto':
-                self.footprint = 'auto'
+            case "auto":
+                self.footprint = "auto"
             case None:
                 # footprint will be automatically determined by implementation
                 self.footprint = None
@@ -77,14 +80,19 @@ class WatershedDetector(ThresholdDetector):
     def _operate(self, image: Image | GridImage) -> Image:
         from phenotypic import Image, GridImage
 
-        enhanced_matrix = image.enh_gray[:]  # direct access to reduce memory footprint, but careful to not delete
+        enhanced_matrix = image.enh_gray[
+            :
+        ]  # direct access to reduce memory footprint, but careful to not delete
         self._log_memory_usage("getting enhanced gray")
 
         # Determine footprint for peak detection
-        if self.footprint == 'auto':
+        if self.footprint == "auto":
             if isinstance(image, GridImage):
-                est_footprint_diameter = max(image.shape[0]//image.grid.nrows, image.shape[1]//image.grid.ncols)
-                footprint = morphology.diamond(est_footprint_diameter//2)
+                est_footprint_diameter = max(
+                    image.shape[0] // image.grid.nrows,
+                    image.shape[1] // image.grid.ncols,
+                )
+                footprint = morphology.diamond(est_footprint_diameter // 2)
                 del est_footprint_diameter
             elif isinstance(image, Image):
                 # Not enough information with a normal image to infer
@@ -114,10 +122,12 @@ class WatershedDetector(ThresholdDetector):
         del threshold  # don't need this after obtaining binary mask
         self._log_memory_usage("threshold calculation and binary mask creation")
 
-        binary = morphology.remove_small_objects(binary, min_size=self.min_size)  # clean to reduce runtime
+        binary = morphology.remove_small_objects(
+            binary, min_size=self.min_size
+        )  # clean to reduce runtime
 
         # Ensure binary is contiguous for memory-efficient operations (only if needed)
-        if not binary.flags['C_CONTIGUOUS']:
+        if not binary.flags["C_CONTIGUOUS"]:
             binary = np.ascontiguousarray(binary)
 
         # Memory-intensive distance transform operation
@@ -128,9 +138,8 @@ class WatershedDetector(ThresholdDetector):
         self._log_memory_usage("after distance transform", include_tracemalloc=True)
 
         max_peak_indices = feature.peak_local_max(
-                image=dist_matrix,
-                footprint=footprint,
-                labels=binary)
+            image=dist_matrix, footprint=footprint, labels=binary
+        )
 
         del footprint, dist_matrix
         gc.collect()  # Force garbage collection to free memory before watershed
@@ -146,24 +155,30 @@ class WatershedDetector(ThresholdDetector):
         # Sobel filter enhances edges which improve watershed to nearly the point of necessity in most cases
         gradient = filters.sobel(enhanced_matrix)
         # Convert to float32 and ensure contiguity in one step if needed
-        if gradient.dtype != np.float32 or not gradient.flags['C_CONTIGUOUS']:
-            gradient = np.asarray(gradient, dtype=np.float32, order='C')
+        if gradient.dtype != np.float32 or not gradient.flags["C_CONTIGUOUS"]:
+            gradient = np.asarray(gradient, dtype=np.float32, order="C")
         self._log_memory_usage("Sobel filter for gradient", include_tracemalloc=True)
 
         # Memory-intensive watershed operation - detailed tracking
-        self._log_memory_usage("before watershed segmentation",
-                               include_process=True, include_tracemalloc=True)
-
-        objmap = segmentation.watershed(
-                image=gradient,
-                markers=max_peaks,
-                compactness=self.compactness,
-                connectivity=self.connectivity,
-                mask=binary,
+        self._log_memory_usage(
+            "before watershed segmentation",
+            include_process=True,
+            include_tracemalloc=True,
         )
 
-        self._log_memory_usage("after watershed segmentation",
-                               include_process=True, include_tracemalloc=True)
+        objmap = segmentation.watershed(
+            image=gradient,
+            markers=max_peaks,
+            compactness=self.compactness,
+            connectivity=self.connectivity,
+            mask=binary,
+        )
+
+        self._log_memory_usage(
+            "after watershed segmentation",
+            include_process=True,
+            include_tracemalloc=True,
+        )
         if objmap.dtype != np.uint16:
             objmap = objmap.astype(image._OBJMAP_DTYPE)
 
@@ -175,7 +190,10 @@ class WatershedDetector(ThresholdDetector):
         image.objmap.relabel(connectivity=self.connectivity)
 
         # Final comprehensive memory report
-        self._log_memory_usage("final cleanup and relabeling",
-                               include_process=True, include_tracemalloc=True)
+        self._log_memory_usage(
+            "final cleanup and relabeling",
+            include_process=True,
+            include_tracemalloc=True,
+        )
 
         return image

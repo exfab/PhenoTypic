@@ -3,7 +3,8 @@ from typing import TYPE_CHECKING
 
 import pandas as pd
 
-if TYPE_CHECKING: from phenotypic import Image
+if TYPE_CHECKING:
+    from phenotypic import Image
 from phenotypic.tools.constants_ import METADATA
 from collections import ChainMap
 
@@ -60,7 +61,9 @@ class MetadataAccessor:
             ChainMap: A ChainMap with private metadata at highest priority, then protected,
                 then public. Enables unified read access while maintaining search order.
         """
-        return ChainMap(self._private_metadata, self._protected_metadata, self._public_metadata)
+        return ChainMap(
+            self._private_metadata, self._protected_metadata, self._public_metadata
+        )
 
     @property
     def _private_metadata(self):
@@ -194,9 +197,9 @@ class MetadataAccessor:
                     img.metadata['ImageName'] = 'updated_name'  # Updates protected metadata
         """
         if not isinstance(value, (str, int, float, bool, type(None))):
-            raise ValueError('Metadata values must be of scalar types or None.')
+            raise ValueError("Metadata values must be of scalar types or None.")
         if key in self._private_metadata:
-            raise PermissionError('Private metadata cannot be modified.')
+            raise PermissionError("Private metadata cannot be modified.")
         elif key in self._protected_metadata:
             self._protected_metadata[key] = value
         else:
@@ -223,7 +226,7 @@ class MetadataAccessor:
                     del img.metadata['user_notes']  # Deletes public metadata
         """
         if key in self._private_metadata or key in self._protected_metadata:
-            raise PermissionError('Private and protected metadata cannot be removed.')
+            raise PermissionError("Private and protected metadata cannot be removed.")
         elif key in self._public_metadata:
             del self._public_metadata[key]
         else:
@@ -253,7 +256,7 @@ class MetadataAccessor:
                     old_value = img.metadata.pop('user_notes')
         """
         if key in self._private_metadata or key in self._protected_metadata:
-            raise PermissionError('Private and protected metadata cannot be removed.')
+            raise PermissionError("Private and protected metadata cannot be removed.")
         elif key in self._public_metadata:
             return self._public_metadata.pop(key)
         else:
@@ -285,7 +288,9 @@ class MetadataAccessor:
         else:
             return default
 
-    def insert_metadata(self, df: pd.DataFrame, inplace=False, allow_duplicates=False) -> pd.DataFrame:
+    def insert_metadata(
+        self, df: pd.DataFrame, inplace=False, allow_duplicates=False
+    ) -> pd.DataFrame:
         """Insert metadata as columns into a DataFrame.
 
         Adds public and protected metadata as new columns at the beginning of the DataFrame.
@@ -325,13 +330,17 @@ class MetadataAccessor:
         working_df = df if inplace else df.copy()
         for key, value in self._public_protected_metadata.items():
             if key == METADATA.IMAGE_NAME:
-                value = self._parent_image.name  # offload handling to image handler class
-            if not key.startswith(f'Metadata_'):
-                header = f'Metadata_{key}'
+                value = (
+                    self._parent_image.name
+                )  # offload handling to image handler class
+            if not key.startswith(f"Metadata_"):
+                header = f"Metadata_{key}"
             else:
                 header = key
             if header not in working_df.columns:
-                working_df.insert(loc=0, column=header, value=value, allow_duplicates=allow_duplicates)
+                working_df.insert(
+                    loc=0, column=header, value=value, allow_duplicates=allow_duplicates
+                )
         return working_df
 
     def table(self) -> pd.Series:
@@ -356,6 +365,6 @@ class MetadataAccessor:
                     print(series['ImageName'])  # 'sample_image'
         """
         return pd.Series(
-                self._combined_metadata,
-                name=self._parent_image.name,
+            self._combined_metadata,
+            name=self._parent_image.name,
         )

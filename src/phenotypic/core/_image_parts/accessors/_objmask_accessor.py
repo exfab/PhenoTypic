@@ -1,15 +1,19 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
 
-if TYPE_CHECKING: pass
+if TYPE_CHECKING:
+    pass
 
 from skimage.measure import label
 import matplotlib.pyplot as plt
 import numpy as np
 
 from phenotypic.core._image_parts.accessor_abstracts import SingleChannelAccessor
-from phenotypic.tools.exceptions_ import InvalidMaskValueError, InvalidMaskScalarValueError, \
-    ArrayKeyValueShapeMismatchError
+from phenotypic.tools.exceptions_ import (
+    InvalidMaskValueError,
+    InvalidMaskScalarValueError,
+    ArrayKeyValueShapeMismatchError,
+)
 
 
 class ObjectMask(SingleChannelAccessor):
@@ -203,7 +207,7 @@ class ObjectMask(SingleChannelAccessor):
                 raise ArrayKeyValueShapeMismatchError
 
             # Sets the section of the binary mask to the value array
-            mask[key] = (value > 0)
+            mask[key] = value > 0
         else:
             raise InvalidMaskValueError(type(value))
 
@@ -279,11 +283,13 @@ class ObjectMask(SingleChannelAccessor):
         """
         self._root_image.objmap.reset()
 
-    def show(self, ax: plt.Axes | None = None,
-             figsize: tuple[int, int] | None = None,
-             cmap: str = 'gray',
-             title: str | None = None
-             ) -> tuple[plt.Figure, plt.Axes]:
+    def show(
+        self,
+        ax: plt.Axes | None = None,
+        figsize: tuple[int, int] | None = None,
+        cmap: str = "gray",
+        title: str | None = None,
+    ) -> tuple[plt.Figure, plt.Axes]:
         """Display the binary object mask as a Matplotlib image.
 
         Renders the object mask using Matplotlib's imshow with customizable appearance.
@@ -321,7 +327,9 @@ class ObjectMask(SingleChannelAccessor):
                     objmask.show(ax=ax1, title='Mask')
                     image.gray.show(ax=ax2, title='Original')
         """
-        return self._plot(arr=self._subject_arr, figsize=figsize, ax=ax, title=title, cmap=cmap)
+        return self._plot(
+            arr=self._subject_arr, figsize=figsize, ax=ax, title=title, cmap=cmap
+        )
 
     def _create_foreground(self, array: np.ndarray, bg_label: int = 0) -> np.ndarray:
         """Extract foreground from an array using the object mask.

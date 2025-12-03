@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-if TYPE_CHECKING: from phenotypic import Image
+if TYPE_CHECKING:
+    from phenotypic import Image
 
 import pandas as pd
 import numpy as np
@@ -62,23 +63,32 @@ class LowCircularityRemover(ObjectRefiner):
         Raises:
             ValueError: If ``cutoff`` is outside [0, 1].
         """
-        if cutoff < 0 or cutoff > 1: raise ValueError('threshold should be a number between 0 and 1.')
+        if cutoff < 0 or cutoff > 1:
+            raise ValueError("threshold should be a number between 0 and 1.")
         self.cutoff = cutoff
 
     def _operate(self, image: Image) -> Image:
         # Create intial measurement table
-        table = (pd.DataFrame(regionprops_table(label_image=image.objmap[:], intensity_image=image.gray[:],
-                                                properties=['label', 'area', 'perimeter']
-                                                )
-                              )
-                 .rename(columns={'label': OBJECT.LABEL})
-                 .set_index(OBJECT.LABEL))
+        table = (
+            pd.DataFrame(
+                regionprops_table(
+                    label_image=image.objmap[:],
+                    intensity_image=image.gray[:],
+                    properties=["label", "area", "perimeter"],
+                )
+            )
+            .rename(columns={"label": OBJECT.LABEL})
+            .set_index(OBJECT.LABEL)
+        )
 
         # Calculate circularity based on Polsby-Popper Score
-        table['circularity'] = (4*math.pi*table['area'])/(table['perimeter'] ** 2)
+        table["circularity"] = (4 * math.pi * table["area"]) / (table["perimeter"] ** 2)
 
-        passing_objects = table[table['circularity'] > self.cutoff]
+        passing_objects = table[table["circularity"] > self.cutoff]
         failed_object_boolean_indices = ~(
-            np.isin(element=image.objmap[:], test_elements=passing_objects.index.to_numpy()))
+            np.isin(
+                element=image.objmap[:], test_elements=passing_objects.index.to_numpy()
+            )
+        )
         image.objmap[failed_object_boolean_indices] = 0
         return image

@@ -9,7 +9,12 @@ from phenotypic.correction import GridAligner
 from phenotypic.refine import MinResidualErrorReducer, GridOversizedObjectRemover
 from phenotypic.refine import BorderObjectRemover, SmallObjectRemover
 from phenotypic.refine import MaskFill, MaskOpener
-from phenotypic.measure import MeasureIntensity, MeasureShape, MeasureTexture, MeasureColor
+from phenotypic.measure import (
+    MeasureIntensity,
+    MeasureShape,
+    MeasureTexture,
+    MeasureColor,
+)
 
 
 class HeavyRoundPeaksPipeline(PrefabPipeline):
@@ -46,37 +51,32 @@ class HeavyRoundPeaksPipeline(PrefabPipeline):
     """
 
     def __init__(
-            self,
-
-            # Preprocessing / enhancement
-            bm3d_sigma: float = 0.02,
-            bm3d_stage_arg: Literal["all_stages", "hard_thresholding"] = "all_stages",
-            clahe_kernel_size: int | None = None,
-            median_shape: Literal["disk", "square", "diamond"] = "diamond",
-            median_radius: int = 5,
-
-            # detection settings
-            detector_thresh_method: Literal[
-                "gitter", "otsu", "mean", "local", "triangle", "minimum", "isodata"
-            ] = "gitter",
-            detector_subtract_background: bool = True,
-            detector_remove_noise: bool = False,
-            detector_fast_resize: int | None = 1000,
-            detector_fixed_square: float = 2.0,
-            detector_expf: float = 1.5,
-
-            # Morphology / refinement
-            mask_opener_footprint: Literal["auto"] | int | np.ndarray | None = "auto",
-            border_remover_size: int = 1,
-            small_object_min_size: int = 50,
-
-            # Measurements
-            texture_scale: int = 5,
-            texture_warn: bool = False,
-
-            # Pipeline bookkeeping
-            benchmark: bool = False,
-            verbose: bool = False,
+        self,
+        # Preprocessing / enhancement
+        bm3d_sigma: float = 0.02,
+        bm3d_stage_arg: Literal["all_stages", "hard_thresholding"] = "all_stages",
+        clahe_kernel_size: int | None = None,
+        median_shape: Literal["disk", "square", "diamond"] = "diamond",
+        median_radius: int = 5,
+        # detection settings
+        detector_thresh_method: Literal[
+            "gitter", "otsu", "mean", "local", "triangle", "minimum", "isodata"
+        ] = "gitter",
+        detector_subtract_background: bool = True,
+        detector_remove_noise: bool = False,
+        detector_fast_resize: int | None = 1000,
+        detector_fixed_square: float = 2.0,
+        detector_expf: float = 1.5,
+        # Morphology / refinement
+        mask_opener_footprint: Literal["auto"] | int | np.ndarray | None = "auto",
+        border_remover_size: int = 1,
+        small_object_min_size: int = 50,
+        # Measurements
+        texture_scale: int = 5,
+        texture_warn: bool = False,
+        # Pipeline bookkeeping
+        benchmark: bool = False,
+        verbose: bool = False,
     ) -> None:
         """
         Represents an image processing pipeline for analyzing microbe colonies on solid media agar.
@@ -142,19 +142,18 @@ class HeavyRoundPeaksPipeline(PrefabPipeline):
 
         # Construct the operations pipeline
         detector_kwargs = dict(
-                thresh_method=detector_thresh_method,
-                subtract_background=detector_subtract_background,
-                remove_noise=detector_remove_noise,
-                fast_resize=detector_fast_resize,
-                fixed_square=detector_fixed_square,
-                expf=detector_expf,
+            thresh_method=detector_thresh_method,
+            subtract_background=detector_subtract_background,
+            remove_noise=detector_remove_noise,
+            fast_resize=detector_fast_resize,
+            fixed_square=detector_fixed_square,
+            expf=detector_expf,
         )
 
         ops = [
             BM3DDenoiser(sigma_psd=bm3d_sigma, stage_arg=bm3d_stage_arg),
             CLAHE(kernel_size=clahe_kernel_size),
             MedianFilter(shape=median_shape, radius=median_radius),
-
             # First detection pass
             RoundPeaksDetector(**detector_kwargs),
             MaskOpener(footprint=mask_opener_footprint),
@@ -164,7 +163,6 @@ class HeavyRoundPeaksPipeline(PrefabPipeline):
             GridOversizedObjectRemover(),
             MinResidualErrorReducer(),
             GridAligner(),
-
             # Second detection pass
             RoundPeaksDetector(**detector_kwargs),
             MaskOpener(footprint=None),

@@ -1,7 +1,8 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
 
-if TYPE_CHECKING: from phenotypic import Image
+if TYPE_CHECKING:
+    from phenotypic import Image
 from skimage.filters import threshold_triangle
 
 from ..abc_ import ThresholdDetector
@@ -36,8 +37,10 @@ class TriangleDetector(ThresholdDetector):
         Returns:
             Image: The modified image object with an updated output mask (`omask`).
         """
-        nbins = 2 ** image.bit_depth
-        image.objmask[:] = image.enh_gray[:] >= threshold_triangle(image.enh_gray[:], nbins=nbins)
+        nbins = 2**image.bit_depth
+        image.objmask[:] = image.enh_gray[:] >= threshold_triangle(
+            image.enh_gray[:], nbins=nbins
+        )
         return image
 
 

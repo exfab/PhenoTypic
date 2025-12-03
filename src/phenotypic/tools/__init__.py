@@ -15,6 +15,6 @@ __all__ = [
     "is_binary_mask",
     "constants_",
     "exceptions_",
-    'colourspaces_',
+    "colourspaces_",
     "HDF",
 ]

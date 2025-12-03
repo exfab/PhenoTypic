@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Generator
 
-if TYPE_CHECKING: from phenotypic import Image
+if TYPE_CHECKING:
+    from phenotypic import Image
 
 import numpy as np
 import pandas as pd
@@ -318,8 +319,11 @@ class ObjectsAccessor:
                     ]
                     print(f"Found {len(circular_colonies)} circular colonies")
         """
-        return regionprops(label_image=self._root_image.objmap[:], intensity_image=self._root_image.gray[:],
-                           cache=False)
+        return regionprops(
+            label_image=self._root_image.objmap[:],
+            intensity_image=self._root_image.gray[:],
+            cache=False,
+        )
 
     @property
     def labels(self) -> List[int]:
@@ -818,19 +822,20 @@ class ObjectsAccessor:
                     print(f"Average colony height: {info['BBox_Height'].mean():.1f} pixels")
         """
         info = pd.DataFrame(
-                data=regionprops_table(
-                        label_image=self._root_image.objmap[:],
-                        properties=['label', 'centroid', 'bbox'],
-                ),
-        ).rename(columns={
-            'label'     : OBJECT.LABEL,
-            'centroid-0': str(BBOX.CENTER_RR),
-            'centroid-1': str(BBOX.CENTER_CC),
-            'bbox-0'    : str(BBOX.MIN_RR),
-            'bbox-1'    : str(BBOX.MIN_CC),
-            'bbox-2'    : str(BBOX.MAX_RR),
-            'bbox-3'    : str(BBOX.MAX_CC),
-        },
+            data=regionprops_table(
+                label_image=self._root_image.objmap[:],
+                properties=["label", "centroid", "bbox"],
+            ),
+        ).rename(
+            columns={
+                "label": OBJECT.LABEL,
+                "centroid-0": str(BBOX.CENTER_RR),
+                "centroid-1": str(BBOX.CENTER_CC),
+                "bbox-0": str(BBOX.MIN_RR),
+                "bbox-1": str(BBOX.MIN_CC),
+                "bbox-2": str(BBOX.MAX_RR),
+                "bbox-3": str(BBOX.MAX_CC),
+            },
         )
         if include_metadata:
             return self._root_image.metadata.insert_metadata(info)
@@ -919,9 +924,9 @@ class ObjectsAccessor:
         """
         labels = self.labels
         return pd.Series(
-                data=labels,
-                index=range(len(labels)),
-                name=OBJECT.LABEL,
+            data=labels,
+            index=range(len(labels)),
+            name=OBJECT.LABEL,
         )
 
     def relabel(self) -> None:

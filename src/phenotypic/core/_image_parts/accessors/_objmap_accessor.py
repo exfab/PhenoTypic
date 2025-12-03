@@ -1,7 +1,8 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
 
-if TYPE_CHECKING: pass
+if TYPE_CHECKING:
+    pass
 
 import numpy as np
 
@@ -10,7 +11,10 @@ import matplotlib.pyplot as plt
 from skimage.measure import label
 
 from phenotypic.core._image_parts.accessor_abstracts import SingleChannelAccessor
-from phenotypic.tools.exceptions_ import ArrayKeyValueShapeMismatchError, InvalidMapValueError
+from phenotypic.tools.exceptions_ import (
+    ArrayKeyValueShapeMismatchError,
+    InvalidMapValueError,
+)
 
 
 class ObjectMap(SingleChannelAccessor):
@@ -323,10 +327,14 @@ class ObjectMap(SingleChannelAccessor):
         """
         return self._backend.tocoo()
 
-    def show(self, figsize=None, title=None, cmap: str = 'nipy_spectral', ax: None | plt.Axes = None,
-             mpl_params: None | dict = None) -> (
-            plt.Figure, plt.Axes
-    ):
+    def show(
+        self,
+        figsize=None,
+        title=None,
+        cmap: str = "nipy_spectral",
+        ax: None | plt.Axes = None,
+        mpl_params: None | dict = None,
+    ) -> (plt.Figure, plt.Axes):
         """Display the object map using matplotlib's imshow.
 
         This method visualizes the labeled object map using matplotlib. Each
@@ -376,9 +384,14 @@ class ObjectMap(SingleChannelAccessor):
                     image.objmap.show(ax=ax[0])
                     image.gray.show(ax=ax[1])
         """
-        return self._plot(arr=self._backend.toarray(),
-                          figsize=figsize, title=title, ax=ax, cmap=cmap, mpl_settings=mpl_params,
-                          )
+        return self._plot(
+            arr=self._backend.toarray(),
+            figsize=figsize,
+            title=title,
+            ax=ax,
+            cmap=cmap,
+            mpl_settings=mpl_params,
+        )
 
     def reset(self) -> None:
         """Reset the object map to an empty state with no labeled objects.
@@ -400,7 +413,9 @@ class ObjectMap(SingleChannelAccessor):
                     # Now image.objmap contains no objects
                     assert image.objmap[:].max() == 0
         """
-        self._root_image._data.sparse_object_map = self._dense_to_sparse(self._root_image.gray.shape)
+        self._root_image._data.sparse_object_map = self._dense_to_sparse(
+            self._root_image.gray.shape
+        )
 
     def relabel(self, connectivity: int = 1):
         """Relabel all connected components in the object map.

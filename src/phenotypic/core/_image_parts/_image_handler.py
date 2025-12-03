@@ -23,9 +23,7 @@ from phenotypic.core._image_parts.accessors import (
 )
 
 from phenotypic.tools.constants_ import METADATA, IMAGE_TYPES
-from phenotypic.tools.exceptions_ import (
-    EmptyImageError, IllegalAssignmentError
-)
+from phenotypic.tools.exceptions_ import EmptyImageError, IllegalAssignmentError
 
 
 class ImageHandler(ImageDataManager):
@@ -48,11 +46,12 @@ class ImageHandler(ImageDataManager):
             read/write access to image components (rgb, gray, enh_gray, objmask, objmap, metadata).
     """
 
-    def __init__(self,
-                 arr: np.ndarray | Image | None = None,
-                 name: str | None = None,
-                 bit_depth: Literal[8, 16] | None = None
-                 ):
+    def __init__(
+        self,
+        arr: np.ndarray | Image | None = None,
+        name: str | None = None,
+        bit_depth: Literal[8, 16] | None = None,
+    ):
         """Initialize ImageHandler with accessors and optional image data.
 
         Initializes all image accessors (rgb, gray, enh_gray, objmask, objmap, metadata)
@@ -124,12 +123,14 @@ class ImageHandler(ImageDataManager):
         """
 
         # Sections can only be set to another Image class
-        if isinstance(other_image, self.__class__) or issubclass(type(other_image), ImageHandler):
+        if isinstance(other_image, self.__class__) or issubclass(
+            type(other_image), ImageHandler
+        ):
             # Handle the rgb case
             if not other_image.rgb.isempty() and not self.rgb.isempty():
                 if np.array_equal(self.rgb[key].shape, other_image.rgb.shape) is False:
                     raise ValueError(
-                            'The image being set must be of the same shape as the image elements being accessed.',
+                        "The image being set must be of the same shape as the image elements being accessed.",
                     )
                 else:
                     self._data.rgb[key] = other_image._data.rgb[:]
@@ -137,7 +138,7 @@ class ImageHandler(ImageDataManager):
             # handle other cases
             if np.array_equal(self.gray[key].shape, other_image.gray.shape) is False:
                 raise ValueError(
-                        'The image being set must be of the same shape as the image elements being accessed.',
+                    "The image being set must be of the same shape as the image elements being accessed.",
                 )
             else:
                 self._data.gray[key] = other_image._data.gray[:]
@@ -163,19 +164,23 @@ class ImageHandler(ImageDataManager):
             of the `other` object. Returns False otherwise.
         """
         # Check if both images have the same format (RGB vs grayscale)
-        format_match = (self.rgb.isempty() == other.rgb.isempty())
+        format_match = self.rgb.isempty() == other.rgb.isempty()
 
         # Check RGB arrays: equal if both present and matching, or both absent
         self_has_rgb = not self.rgb.isempty()
         other_has_rgb = not other.rgb.isempty()
 
-        rgb_check = (
-                (self_has_rgb == other_has_rgb) and
-                (not self_has_rgb or np.array_equal(self.rgb[:], other.rgb[:]))
+        rgb_check = (self_has_rgb == other_has_rgb) and (
+            not self_has_rgb or np.array_equal(self.rgb[:], other.rgb[:])
         )
 
-        return format_match and rgb_check and np.array_equal(self.gray[:], other.gray[:]) and np.array_equal(
-                self.enh_gray[:], other.enh_gray[:]) and np.array_equal(self.objmap[:], other.objmap[:])
+        return (
+            format_match
+            and rgb_check
+            and np.array_equal(self.gray[:], other.gray[:])
+            and np.array_equal(self.enh_gray[:], other.enh_gray[:])
+            and np.array_equal(self.objmap[:], other.objmap[:])
+        )
 
     def __ne__(self, other):
         return not self == other
@@ -227,7 +232,7 @@ class ImageHandler(ImageDataManager):
 
     @metadata.setter
     def metadata(self, value):
-        raise IllegalAssignmentError('metadata')
+        raise IllegalAssignmentError("metadata")
 
     @property
     def rgb(self) -> ImageRGB:
@@ -275,7 +280,7 @@ class ImageHandler(ImageDataManager):
         if isinstance(value, (np.ndarray, int, float)):
             self.rgb[:] = value
         else:
-            raise IllegalAssignmentError('rgb')
+            raise IllegalAssignmentError("rgb")
 
     @property
     def gray(self) -> Grayscale:
@@ -316,7 +321,7 @@ class ImageHandler(ImageDataManager):
         if isinstance(value, (np.ndarray, int, float)):
             self.gray[:] = value
         else:
-            raise IllegalAssignmentError('gray')
+            raise IllegalAssignmentError("gray")
 
     @property
     def enh_gray(self) -> EnhancedGrayscale:
@@ -357,7 +362,7 @@ class ImageHandler(ImageDataManager):
         if isinstance(value, (np.ndarray, int, float)):
             self.enh_gray[:] = value
         else:
-            raise IllegalAssignmentError('enh_gray')
+            raise IllegalAssignmentError("enh_gray")
 
     @property
     def objmask(self) -> ObjectMask:
@@ -397,7 +402,7 @@ class ImageHandler(ImageDataManager):
         if isinstance(value, (np.ndarray, int, bool)):
             self.objmask[:] = value
         else:
-            raise IllegalAssignmentError('objmask')
+            raise IllegalAssignmentError("objmask")
 
     @property
     def objmap(self) -> ObjectMap:
@@ -438,7 +443,7 @@ class ImageHandler(ImageDataManager):
         if isinstance(value, (np.ndarray, int, float, bool)):
             self.objmap[:] = value
         else:
-            raise IllegalAssignmentError('objmap')
+            raise IllegalAssignmentError("objmap")
 
     @property
     def props(self) -> list[ski.measure._regionprops.RegionProperties]:
@@ -620,8 +625,11 @@ class ImageHandler(ImageDataManager):
 
 
         """
-        return ski.measure.regionprops(label_image=np.full(shape=self.shape, fill_value=1),
-                                       intensity_image=self._data.gray, cache=False)
+        return ski.measure.regionprops(
+            label_image=np.full(shape=self.shape, fill_value=1),
+            intensity_image=self._data.gray,
+            cache=False,
+        )
 
     @property
     def num_objects(self) -> int:
@@ -645,7 +653,7 @@ class ImageHandler(ImageDataManager):
 
     def _set_from_matrix(self, matrix: np.ndarray):
         """Override parent to also reset accessors after setting matrix data.
-        
+
         Args:
             matrix (np.ndarray): A 2-D array form of an image.
         """
@@ -653,11 +661,9 @@ class ImageHandler(ImageDataManager):
         self._accessors.enh_gray.reset()
         self._accessors.objmap.reset()
 
-    def show(self,
-             ax: plt.Axes = None,
-             figsize: Tuple[int, int] | None = None,
-             **kwargs
-             ) -> (plt.Figure, plt.Axes):
+    def show(
+        self, ax: plt.Axes = None, figsize: Tuple[int, int] | None = None, **kwargs
+    ) -> (plt.Figure, plt.Axes):
         """
         Displays the image data using matplotlib.
 
@@ -684,16 +690,18 @@ class ImageHandler(ImageDataManager):
         else:
             return self.gray.show(ax=ax, figsize=figsize, **kwargs)
 
-    def show_overlay(self, object_label: Optional[int] = None,
-                     figsize: Tuple[int, int] = (10, 5),
-                     title: str | None = None,
-                     show_labels: bool = False,
-                     ax: plt.Axes = None,
-                     *,
-                     label_settings: None | dict = None,
-                     overlay_settings: None | dict = None,
-                     imshow_settings: None | dict = None,
-                     ) -> (plt.Figure, plt.Axes):
+    def show_overlay(
+        self,
+        object_label: Optional[int] = None,
+        figsize: Tuple[int, int] = (10, 5),
+        title: str | None = None,
+        show_labels: bool = False,
+        ax: plt.Axes = None,
+        *,
+        label_settings: None | dict = None,
+        overlay_settings: None | dict = None,
+        imshow_settings: None | dict = None,
+    ) -> (plt.Figure, plt.Axes):
         """
         Displays an overlay of the provided object label and image using the specified settings.
 
@@ -726,17 +734,36 @@ class ImageHandler(ImageDataManager):
         """
 
         if not self.rgb.isempty():
-            return self.rgb.show_overlay(object_label=object_label, figsize=figsize, title=title,
-                                         show_labels=show_labels, ax=ax,
-                                         label_settings=label_settings, overlay_settings=overlay_settings,
-                                         imshow_settings=imshow_settings)
+            return self.rgb.show_overlay(
+                object_label=object_label,
+                figsize=figsize,
+                title=title,
+                show_labels=show_labels,
+                ax=ax,
+                label_settings=label_settings,
+                overlay_settings=overlay_settings,
+                imshow_settings=imshow_settings,
+            )
         else:
-            return self.gray.show_overlay(object_label=object_label, figsize=figsize, title=title,
-                                          show_labels=show_labels, ax=ax,
-                                          label_settings=label_settings, overlay_settings=overlay_settings,
-                                          imshow_settings=imshow_settings)
+            return self.gray.show_overlay(
+                object_label=object_label,
+                figsize=figsize,
+                title=title,
+                show_labels=show_labels,
+                ax=ax,
+                label_settings=label_settings,
+                overlay_settings=overlay_settings,
+                imshow_settings=imshow_settings,
+            )
 
-    def rotate(self, angle_of_rotation: int, mode: str = 'constant', cval=0, order=0, preserve_range=True) -> None:
+    def rotate(
+        self,
+        angle_of_rotation: int,
+        mode: str = "constant",
+        cval=0,
+        order=0,
+        preserve_range=True,
+    ) -> None:
         """
         Rotates various data attributes of the object by a specified angle.
 
@@ -757,19 +784,46 @@ class ImageHandler(ImageDataManager):
             None
         """
         if not self.rgb.isempty():
-            self._data.rgb = skimage_rotate(image=self._data.rgb, angle=angle_of_rotation, mode=mode, clip=True,
-                                            cval=cval, order=order, preserve_range=preserve_range)
+            self._data.rgb = skimage_rotate(
+                image=self._data.rgb,
+                angle=angle_of_rotation,
+                mode=mode,
+                clip=True,
+                cval=cval,
+                order=order,
+                preserve_range=preserve_range,
+            )
 
-        self._data.gray = skimage_rotate(image=self._data.gray, angle=angle_of_rotation, mode=mode, clip=True,
-                                         cval=cval, order=order, preserve_range=preserve_range)
+        self._data.gray = skimage_rotate(
+            image=self._data.gray,
+            angle=angle_of_rotation,
+            mode=mode,
+            clip=True,
+            cval=cval,
+            order=order,
+            preserve_range=preserve_range,
+        )
 
-        self._data.enh_gray = skimage_rotate(image=self._data.enh_gray, angle=angle_of_rotation, mode=mode,
-                                             clip=True, cval=cval, order=order, preserve_range=preserve_range)
+        self._data.enh_gray = skimage_rotate(
+            image=self._data.enh_gray,
+            angle=angle_of_rotation,
+            mode=mode,
+            clip=True,
+            cval=cval,
+            order=order,
+            preserve_range=preserve_range,
+        )
 
         # Rotate the object map while preserving the details and using nearest-neighbor interpolation
         # This one must be nearest-neighbor
-        self.objmap[:] = ndimage.rotate(input=self.objmap[:], angle=angle_of_rotation, mode='constant', cval=0, order=0,
-                                        reshape=False)
+        self.objmap[:] = ndimage.rotate(
+            input=self.objmap[:],
+            angle=angle_of_rotation,
+            mode="constant",
+            cval=0,
+            order=0,
+            reshape=False,
+        )
 
     def reset(self) -> Type[Image]:
         """

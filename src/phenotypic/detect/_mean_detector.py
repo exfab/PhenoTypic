@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-if TYPE_CHECKING: from phenotypic import Image
+if TYPE_CHECKING:
+    from phenotypic import Image
 from skimage.filters import threshold_mean
 from skimage.segmentation import clear_border
 
@@ -45,7 +46,7 @@ class MeanDetector(ThresholdDetector):
         """
         enh_matrix = image.enh_gray[:]
         mask = image.enh_gray[:] >= threshold_mean(
-                enh_matrix[enh_matrix != 0] if self.ignore_zeros else enh_matrix
+            enh_matrix[enh_matrix != 0] if self.ignore_zeros else enh_matrix
         )
         mask = clear_border(mask) if self.ignore_borders else mask
         image.objmask = mask

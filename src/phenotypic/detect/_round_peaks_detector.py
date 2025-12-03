@@ -1,7 +1,8 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
 
-if TYPE_CHECKING: from phenotypic import Image
+if TYPE_CHECKING:
+    from phenotypic import Image
 
 import gc
 from typing import Literal
@@ -76,15 +77,19 @@ class RoundPeaksDetector(ObjectDetector):
         https://omarwagih.github.io/gitter/
     """
 
-    def __init__(self,
-                 thresh_method: Literal['otsu', 'mean', 'local', 'triangle', 'minimum', 'isodata'] = 'otsu',
-                 subtract_background: bool = True,
-                 remove_noise: bool = True,
-                 footprint_radius: int = 3,
-                 smoothing_sigma: float = 2.0,
-                 min_peak_distance: int | None = None,
-                 peak_prominence: float | None = None,
-                 edge_refinement: bool = True):
+    def __init__(
+        self,
+        thresh_method: Literal[
+            "otsu", "mean", "local", "triangle", "minimum", "isodata"
+        ] = "otsu",
+        subtract_background: bool = True,
+        remove_noise: bool = True,
+        footprint_radius: int = 3,
+        smoothing_sigma: float = 2.0,
+        min_peak_distance: int | None = None,
+        peak_prominence: float | None = None,
+        edge_refinement: bool = True,
+    ):
         """
         Initialize the RoundPeaksDetector with specified parameters.
 
@@ -144,13 +149,17 @@ class RoundPeaksDetector(ObjectDetector):
         self._log_memory_usage("after thresholding")
 
         if self.remove_noise:
-            objmask = morphology.binary_opening(objmask, morphology.diamond(radius=self.footprint_radius))
+            objmask = morphology.binary_opening(
+                objmask, morphology.diamond(radius=self.footprint_radius)
+            )
             self._log_memory_usage("after noise removal")
 
         # Keep a copy of the mask we intend to use for downstream measurements
         image.objmask[:] = objmask
 
-        labeled, num_features = ndimage.label(objmask, structure=ndimage.generate_binary_structure(2, 2))
+        labeled, num_features = ndimage.label(
+            objmask, structure=ndimage.generate_binary_structure(2, 2)
+        )
         self._log_memory_usage(f"after labeling ({num_features} features)")
 
         # Determine grid edges either from GridImage or by estimating from the binary mask
@@ -213,7 +222,9 @@ class RoundPeaksDetector(ObjectDetector):
         image.objmap.relabel(connectivity=1)
 
         gc.collect()  # Force garbage collection
-        self._log_memory_usage("final cleanup", include_process=True, include_tracemalloc=True)
+        self._log_memory_usage(
+            "final cleanup", include_process=True, include_tracemalloc=True
+        )
 
         return image
 
@@ -234,7 +245,9 @@ class RoundPeaksDetector(ObjectDetector):
         Raises:
             ValueError: If an invalid thresholding method is specified.
         """
-        kernel = morphology.footprint_rectangle((self.footprint_radius*2, self.footprint_radius*2))
+        kernel = morphology.footprint_rectangle(
+            (self.footprint_radius * 2, self.footprint_radius * 2)
+        )
         enh_matrix = matrix.copy()  # Work on a copy to avoid modifying input
 
         # Subtract background using white tophat to handle uneven illumination
@@ -244,18 +257,20 @@ class RoundPeaksDetector(ObjectDetector):
 
         # Apply selected thresholding method
         match self.thresh_method:
-            case 'otsu':
+            case "otsu":
                 thresh = filters.threshold_otsu(enh_matrix)
-            case 'mean':
+            case "mean":
                 thresh = filters.threshold_mean(enh_matrix)
-            case 'local':
-                block_size = max(self.footprint_radius*2 + 1, 3)  # Ensure odd block size
+            case "local":
+                block_size = max(
+                    self.footprint_radius * 2 + 1, 3
+                )  # Ensure odd block size
                 thresh = filters.threshold_local(enh_matrix, block_size=block_size)
-            case 'triangle':
+            case "triangle":
                 thresh = filters.threshold_triangle(enh_matrix)
-            case 'minimum':
+            case "minimum":
                 thresh = filters.threshold_minimum(enh_matrix)
-            case 'isodata':
+            case "isodata":
                 thresh = filters.threshold_isodata(enh_matrix)
             case _:
                 # Default to Otsu if method not recognized
@@ -263,7 +278,9 @@ class RoundPeaksDetector(ObjectDetector):
 
         return enh_matrix >= thresh
 
-    def _clean_and_sum_binary(self, binary_image: np.ndarray, p: float = 0.2, axis: int = 0) -> np.ndarray:
+    def _clean_and_sum_binary(
+        self, binary_image: np.ndarray, p: float = 0.2, axis: int = 0
+    ) -> np.ndarray:
         """
         Compute projection sums while removing problematic edge artifacts.
 
@@ -291,10 +308,10 @@ class RoundPeaksDetector(ObjectDetector):
         # For axis=0: we're summing columns, so check for long runs across columns
         # For axis=1: we're summing rows, so check for long runs across rows
         if axis == 0:
-            c = p*binary_image.shape[1]  # Threshold based on number of columns
+            c = p * binary_image.shape[1]  # Threshold based on number of columns
             n_slices = binary_image.shape[0]  # Number of rows to iterate through
         else:
-            c = p*binary_image.shape[0]  # Threshold based on number of rows
+            c = p * binary_image.shape[0]  # Threshold based on number of rows
             n_slices = binary_image.shape[1]  # Number of columns to iterate through
 
         # Identify problematic rows/columns with long stretches of 1s
@@ -320,14 +337,14 @@ class RoundPeaksDetector(ObjectDetector):
         sums = np.sum(binary_image, axis=axis, dtype=np.float64)
 
         # Split problematic array in half and zero out problematic regions at edges
-        mid = len(problematic)//2
+        mid = len(problematic) // 2
         left_prob = problematic[:mid]
         right_prob = problematic[mid:]
 
         # Zero out sums for problematic regions at edges
         if np.any(left_prob):
             last_prob = np.where(left_prob)[0][-1]
-            sums[:last_prob + 1] = 0
+            sums[: last_prob + 1] = 0
 
         if np.any(right_prob):
             first_prob = np.where(right_prob)[0][0] + mid
@@ -335,7 +352,9 @@ class RoundPeaksDetector(ObjectDetector):
 
         return sums
 
-    def _estimate_edges(self, binary_image: np.ndarray, axis: int, n_bins: int) -> np.ndarray:
+    def _estimate_edges(
+        self, binary_image: np.ndarray, axis: int, n_bins: int
+    ) -> np.ndarray:
         """
         Estimate grid edges by detecting periodic peaks in row/column intensity sums.
 
@@ -366,10 +385,14 @@ class RoundPeaksDetector(ObjectDetector):
 
         # Calculate expected spacing between colonies
         image_size = binary_image.shape[1 - axis]  # Size along the summed dimension
-        expected_spacing = max(image_size//max(n_bins, 1), 1)
+        expected_spacing = max(image_size // max(n_bins, 1), 1)
 
         # Determine peak detection parameters
-        min_distance = self.min_peak_distance if self.min_peak_distance is not None else max(expected_spacing//2, 1)
+        min_distance = (
+            self.min_peak_distance
+            if self.min_peak_distance is not None
+            else max(expected_spacing // 2, 1)
+        )
 
         # Calculate prominence if not provided
         if self.peak_prominence is not None:
@@ -377,18 +400,20 @@ class RoundPeaksDetector(ObjectDetector):
         else:
             # noinspection PyUnresolvedReferences
             signal_range = np.max(sums) - np.min(sums)
-            prominence = 0.1*signal_range if signal_range > 0 else None
+            prominence = 0.1 * signal_range if signal_range > 0 else None
 
         # Detect peaks with prominence and distance constraints
-        peaks, properties = find_peaks(sums, distance=min_distance, prominence=prominence)
+        peaks, properties = find_peaks(
+            sums, distance=min_distance, prominence=prominence
+        )
 
         if peaks.size < n_bins:
             # Fallback: enforce evenly spaced peaks if auto detection under-fits
             peaks = np.linspace(
-                    start=expected_spacing//2,
-                    stop=image_size - expected_spacing//2,
-                    num=n_bins,
-                    dtype=int
+                start=expected_spacing // 2,
+                stop=image_size - expected_spacing // 2,
+                num=n_bins,
+                dtype=int,
             )
         elif peaks.size > n_bins:
             # Keep the strongest n_bins peaks by height
@@ -399,7 +424,7 @@ class RoundPeaksDetector(ObjectDetector):
         # Derive edges midway between peaks
         if len(peaks) > 1:
             # Calculate midpoints between consecutive peaks
-            midpoints = ((peaks[:-1] + peaks[1:])/2).astype(int)
+            midpoints = ((peaks[:-1] + peaks[1:]) / 2).astype(int)
             # Prepend/append image borders
             edges = np.concatenate(([0], midpoints, [image_size]))
         else:
@@ -408,14 +433,16 @@ class RoundPeaksDetector(ObjectDetector):
 
         # Ensure we have exactly n_bins + 1 edges
         if edges.size > n_bins + 1:
-            edges = edges[:n_bins + 1]
+            edges = edges[: n_bins + 1]
         elif edges.size < n_bins + 1:
             missing = (n_bins + 1) - edges.size
             edges = np.concatenate((edges, np.full(missing, image_size)))
 
         return edges.astype(int)
 
-    def _refine_edges(self, binary_image: np.ndarray, edges: np.ndarray, axis: int) -> np.ndarray:
+    def _refine_edges(
+        self, binary_image: np.ndarray, edges: np.ndarray, axis: int
+    ) -> np.ndarray:
         """
         Refine grid edges using local intensity profiles for improved accuracy.
 
@@ -442,7 +469,7 @@ class RoundPeaksDetector(ObjectDetector):
         for i in range(1, len(edges) - 1):
             edge_pos = edges[i]
             # Define search window around current edge
-            search_radius = min(10, (edges[i + 1] - edges[i - 1])//4)
+            search_radius = min(10, (edges[i + 1] - edges[i - 1]) // 4)
             search_start = max(0, edge_pos - search_radius)
             search_end = min(len(sums), edge_pos + search_radius + 1)
 
@@ -478,7 +505,7 @@ class RoundPeaksDetector(ObjectDetector):
             return 8, 12
 
         # Estimate based on aspect ratio and colony count
-        aspect_ratio = binary_image.shape[1]/binary_image.shape[0]
+        aspect_ratio = binary_image.shape[1] / binary_image.shape[0]
 
         if aspect_ratio > 1.3:  # Wide plate (likely 8x12 or similar)
             # Try 8x12 (96 wells), 16x24 (384 wells), etc.
@@ -487,8 +514,8 @@ class RoundPeaksDetector(ObjectDetector):
             elif num <= 400:
                 return 16, 24
             else:
-                approx_rows = int(np.ceil(np.sqrt(num/aspect_ratio)))
-                approx_cols = int(np.ceil(np.sqrt(num*aspect_ratio)))
+                approx_rows = int(np.ceil(np.sqrt(num / aspect_ratio)))
+                approx_cols = int(np.ceil(np.sqrt(num * aspect_ratio)))
                 return approx_rows, approx_cols
         else:
             # Square-ish layout

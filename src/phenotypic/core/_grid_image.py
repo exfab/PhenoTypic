@@ -30,15 +30,17 @@ class GridImage(ImageGridHandler):
         ncols (int): Number of columns in the grid structure. Default 12 (standard for 96-well).
     """
 
-    def __init__(self,
-                 arr: np.ndarray | Image | PathLike | Path | str | None = None,
-                 name: str | None = None,
-                 grid_finder: Optional[GridFinder] = None,
-                 nrows: int = 8, ncols: int = 12,
-                 bit_depth: Literal[8, 16] | None = None,
-                 illuminant: str | None = 'D65',
-                 gamma_encoding: Literal["sRGB"] | None = "sRGB",
-                 ):
+    def __init__(
+        self,
+        arr: np.ndarray | Image | PathLike | Path | str | None = None,
+        name: str | None = None,
+        grid_finder: Optional[GridFinder] = None,
+        nrows: int = 8,
+        ncols: int = 12,
+        bit_depth: Literal[8, 16] | None = None,
+        illuminant: str | None = "D65",
+        gamma_encoding: Literal["sRGB"] | None = "sRGB",
+    ):
         """Initialize a GridImage with grid-based processing capabilities.
 
         Creates a new GridImage instance with support for grid detection, well-level
@@ -97,11 +99,12 @@ class GridImage(ImageGridHandler):
                     print(grid_img.nrows, grid_img.ncols)  # Output: 16 24
         """
         super().__init__(
-                arr=arr,
-                name=name,
-                grid_finder=grid_finder,
-                nrows=nrows, ncols=ncols,
-                bit_depth=bit_depth,
-                illuminant=illuminant,
-                gamma_encoding=gamma_encoding,
+            arr=arr,
+            name=name,
+            grid_finder=grid_finder,
+            nrows=nrows,
+            ncols=ncols,
+            bit_depth=bit_depth,
+            illuminant=illuminant,
+            gamma_encoding=gamma_encoding,
         )

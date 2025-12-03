@@ -70,7 +70,7 @@ def compute_gradient_geometric_median(x: np.ndarray, points: np.ndarray) -> np.n
     norms = np.maximum(norms, 1e-10)  # Avoid division by zero
 
     # ∇f = Σ (x - a^(i))/||x - a^(i)||
-    gradient = np.sum(diffs/norms, axis=0)
+    gradient = np.sum(diffs / norms, axis=0)
     return gradient
 
 
@@ -109,8 +109,8 @@ def compute_g_t(x: np.ndarray, points: np.ndarray, t: float) -> np.ndarray:
         Array of g_t^(i)(x) values, shape (n,)
     """
     diffs = x - points  # (n, d)
-    norms_squared = np.sum(diffs ** 2, axis=1)  # (n,)
-    return np.sqrt(1.0 + t ** 2*norms_squared)
+    norms_squared = np.sum(diffs**2, axis=1)  # (n,)
+    return np.sqrt(1.0 + t**2 * norms_squared)
 
 
 def compute_f_t(x: np.ndarray, points: np.ndarray, t: float) -> float:
@@ -164,7 +164,7 @@ def compute_weight_t(x: np.ndarray, points: np.ndarray, t: float) -> float:
         Weight wt(x)
     """
     g_vals = compute_g_t(x, points, t)
-    return np.sum(1.0/(1.0 + g_vals))
+    return np.sum(1.0 / (1.0 + g_vals))
 
 
 # =============================================================================
@@ -207,13 +207,13 @@ def compute_gradient_f_t(x: np.ndarray, points: np.ndarray, t: float) -> np.ndar
     g_vals = compute_g_t(x, points, t)  # (n,)
 
     # Denominators: (1 + g_t^(i)) * g_t^(i)
-    denominators = (1.0 + g_vals)*g_vals  # (n,)
+    denominators = (1.0 + g_vals) * g_vals  # (n,)
 
     # Weights: t^2 / [(1 + g_t^(i))g_t^(i)]
-    weights = (t ** 2)/denominators  # (n,)
+    weights = (t**2) / denominators  # (n,)
 
     # Gradient: Σ weight_i * (x - a^(i))
-    gradient = np.sum(diffs*weights[:, np.newaxis], axis=0)  # (d,)
+    gradient = np.sum(diffs * weights[:, np.newaxis], axis=0)  # (d,)
 
     return gradient
 
@@ -236,8 +236,9 @@ where:
 """
 
 
-def compute_hessian_vector_product(x: np.ndarray, points: np.ndarray,
-                                   t: float, v: np.ndarray) -> np.ndarray:
+def compute_hessian_vector_product(
+    x: np.ndarray, points: np.ndarray, t: float, v: np.ndarray
+) -> np.ndarray:
     """
     Compute Hessian-vector product ∇²ft(x) @ v without forming full matrix.
 
@@ -265,12 +266,12 @@ def compute_hessian_vector_product(x: np.ndarray, points: np.ndarray,
         g = g_vals[i]
         one_plus_g = 1.0 + g
 
-        c1 = (t ** 2)/(one_plus_g*g) - (t ** 4)/(one_plus_g ** 2*g ** 2)
-        c2 = (t ** 4)/(one_plus_g ** 2*g ** 3)
+        c1 = (t**2) / (one_plus_g * g) - (t**4) / (one_plus_g**2 * g**2)
+        c2 = (t**4) / (one_plus_g**2 * g**3)
 
         # (c1·I - c2·uu^T) @ v = c1·v - c2·(u^T v)·u
-        result += c1*v
-        result -= c2*np.dot(u, v)*u
+        result += c1 * v
+        result -= c2 * np.dot(u, v) * u
 
     return result
 
@@ -302,11 +303,11 @@ def compute_hessian_f_t(x: np.ndarray, points: np.ndarray, t: float) -> np.ndarr
         g = g_vals[i]
         one_plus_g = 1.0 + g
 
-        c1 = (t ** 2)/(one_plus_g*g) - (t ** 4)/(one_plus_g ** 2*g ** 2)
-        c2 = (t ** 4)/(one_plus_g ** 2*g ** 3)
+        c1 = (t**2) / (one_plus_g * g) - (t**4) / (one_plus_g**2 * g**2)
+        c2 = (t**4) / (one_plus_g**2 * g**3)
 
-        hessian += c1*np.eye(d)
-        hessian -= c2*np.outer(u, u)
+        hessian += c1 * np.eye(d)
+        hessian -= c2 * np.outer(u, u)
 
     return hessian
 
@@ -319,8 +320,9 @@ Reference: Standard algorithm, used in Algorithm 2 (Page 6)
 """
 
 
-def power_method(A: np.ndarray, max_iter: int = 100,
-                 tol: float = 1e-10) -> Tuple[float, np.ndarray]:
+def power_method(
+    A: np.ndarray, max_iter: int = 100, tol: float = 1e-10
+) -> Tuple[float, np.ndarray]:
     """
     Power method to find maximum eigenvalue and eigenvector.
 
@@ -337,14 +339,14 @@ def power_method(A: np.ndarray, max_iter: int = 100,
     """
     d = A.shape[0]
     v = np.random.randn(d)
-    v = v/np.linalg.norm(v)
+    v = v / np.linalg.norm(v)
 
     for iteration in range(max_iter):
-        Av = A@v
+        Av = A @ v
         norm_Av = np.linalg.norm(Av)
         if norm_Av < 1e-14:
             break
-        v_new = Av/norm_Av
+        v_new = Av / norm_Av
 
         # Check convergence
         if np.abs(np.abs(np.dot(v, v_new)) - 1.0) < tol:
@@ -353,7 +355,7 @@ def power_method(A: np.ndarray, max_iter: int = 100,
         v = v_new
 
     # Compute eigenvalue
-    eigenvalue = v@A@v
+    eigenvalue = v @ A @ v
 
     return eigenvalue, v
 
@@ -374,9 +376,13 @@ The matrix A emphasizes the structure leading to the minimum eigenvalue.
 """
 
 
-def approx_min_eig(x: np.ndarray, points: np.ndarray, t: float,
-                   target_accuracy: float,
-                   matrix_free: bool = False) -> Tuple[float, np.ndarray]:
+def approx_min_eig(
+    x: np.ndarray,
+    points: np.ndarray,
+    t: float,
+    target_accuracy: float,
+    matrix_free: bool = False,
+) -> Tuple[float, np.ndarray]:
     """
     Algorithm 2: ApproxMinEig - Approximate minimum eigenvector of Hessian.
 
@@ -404,7 +410,7 @@ def approx_min_eig(x: np.ndarray, points: np.ndarray, t: float,
     g_vals = compute_g_t(x, points, t)  # (n,)
 
     # Number of power iterations: Θ(log(d/ε))
-    k = max(int(np.ceil(2*np.log(d/max(target_accuracy, 1e-12)))), 10)
+    k = max(int(np.ceil(2 * np.log(d / max(target_accuracy, 1e-12)))), 10)
 
     if matrix_free and d > 100:
         # Matrix-free power method
@@ -413,20 +419,20 @@ def approx_min_eig(x: np.ndarray, points: np.ndarray, t: float,
             for i in range(n):
                 u_i = diffs[i]
                 g_i = g_vals[i]
-                weight = (t ** 4)/((1.0 + g_i) ** 2*g_i)
-                result += weight*np.dot(u_i, v)*u_i
+                weight = (t**4) / ((1.0 + g_i) ** 2 * g_i)
+                result += weight * np.dot(u_i, v) * u_i
             return result
 
         # Power method using matvec
         v = np.random.randn(d)
-        v = v/np.linalg.norm(v)
+        v = v / np.linalg.norm(v)
 
         for _ in range(k):
             Av = A_matvec(v)
             norm_Av = np.linalg.norm(Av)
             if norm_Av < 1e-14:
                 break
-            v = Av/norm_Av
+            v = Av / norm_Av
 
         u = v
     else:
@@ -436,8 +442,8 @@ def approx_min_eig(x: np.ndarray, points: np.ndarray, t: float,
         for i in range(n):
             u_i = diffs[i]
             g_i = g_vals[i]
-            weight = (t ** 4)/((1.0 + g_i) ** 2*g_i)
-            A += weight*np.outer(u_i, u_i)
+            weight = (t**4) / ((1.0 + g_i) ** 2 * g_i)
+            A += weight * np.outer(u_i, u_i)
 
         # Power method on A
         _, u = power_method(A, max_iter=k)
@@ -465,9 +471,14 @@ where a = t²·wt and b = t²·wt - λ
 """
 
 
-def apply_hessian_inverse_approx(x: np.ndarray, points: np.ndarray, t: float,
-                                 v: np.ndarray, lambda_min: float,
-                                 u_min: np.ndarray) -> np.ndarray:
+def apply_hessian_inverse_approx(
+    x: np.ndarray,
+    points: np.ndarray,
+    t: float,
+    v: np.ndarray,
+    lambda_min: float,
+    u_min: np.ndarray,
+) -> np.ndarray:
     """
     Apply approximate Hessian inverse using Sherman-Morrison formula.
 
@@ -491,16 +502,16 @@ def apply_hessian_inverse_approx(x: np.ndarray, points: np.ndarray, t: float,
     wt = compute_weight_t(x, points, t)
 
     # Parameters for Sherman-Morrison
-    a = t ** 2*wt
-    b = t ** 2*wt - lambda_min
+    a = t**2 * wt
+    b = t**2 * wt - lambda_min
 
     # Check if Sherman-Morrison applies
     if b > 1e-10 and (a - b) > 1e-10:
         # Q^(-1) @ v = (1/a)v + (b/(a(a-b)))(u^T v)u
-        result = (1.0/a)*v + (b/(a*(a - b)))*np.dot(u_min, v)*u_min
+        result = (1.0 / a) * v + (b / (a * (a - b))) * np.dot(u_min, v) * u_min
     else:
         # Fallback: simple diagonal approximation
-        result = v/(a + 1e-10)
+        result = v / (a + 1e-10)
 
     return result
 
@@ -531,26 +542,31 @@ This combines the paper's iteration bound with practical early stopping.
 """
 
 
-def local_center(y: np.ndarray, points: np.ndarray, t: float,
-                 target_accuracy: float, f_star_est: float,
-                 radius: Optional[float] = None,
-                 matrix_free: bool = False) -> np.ndarray:
+def local_center(
+    y: np.ndarray,
+    points: np.ndarray,
+    t: float,
+    target_accuracy: float,
+    f_star_est: float,
+    radius: Optional[float] = None,
+    matrix_free: bool = False,
+) -> np.ndarray:
     """
     Algorithm 3: LocalCenter - CORRECTED with conservative steps.
     """
     n, d = points.shape
 
     if radius is None:
-        radius = 1.0/(100.0*t)
+        radius = 1.0 / (100.0 * t)
 
     x = y.copy()
 
     # Compute minimum eigenvector
-    eig_accuracy = min(1e-6, 1.0/(n*t*f_star_est + 1e-10))
+    eig_accuracy = min(1e-6, 1.0 / (n * t * f_star_est + 1e-10))
     lambda_min, v_min = approx_min_eig(x, points, t, eig_accuracy, matrix_free)
 
     # Maximum iterations
-    max_iter = min(int(np.ceil(64*np.log(1.0/max(target_accuracy, 1e-12)))), 200)
+    max_iter = min(int(np.ceil(64 * np.log(1.0 / max(target_accuracy, 1e-12)))), 200)
 
     # Initial objective
     f_current = compute_geometric_median_objective(x, points)
@@ -568,8 +584,9 @@ def local_center(y: np.ndarray, points: np.ndarray, t: float,
             break
 
         # Apply Hessian inverse
-        direction = apply_hessian_inverse_approx(x, points, t, grad_ft,
-                                                 lambda_min, v_min)
+        direction = apply_hessian_inverse_approx(
+            x, points, t, grad_ft, lambda_min, v_min
+        )
 
         # CONSERVATIVE line search
         step_size = 0.1  # Start smaller
@@ -577,13 +594,13 @@ def local_center(y: np.ndarray, points: np.ndarray, t: float,
         f_best = f_current
 
         for ls_iter in range(10):
-            x_trial = x - step_size*direction
+            x_trial = x - step_size * direction
 
             # Project onto ball
             diff = x_trial - y
             diff_norm = np.linalg.norm(diff)
             if diff_norm > radius:
-                x_trial = y + (radius/diff_norm)*diff
+                x_trial = y + (radius / diff_norm) * diff
 
             # Check if this improves ACTUAL objective
             f_trial = compute_geometric_median_objective(x_trial, points)
@@ -604,7 +621,7 @@ def local_center(y: np.ndarray, points: np.ndarray, t: float,
             break
 
         # Check convergence
-        relative_improvement = (f_initial - f_current)/(f_initial + 1e-10)
+        relative_improvement = (f_initial - f_current) / (f_initial + 1e-10)
         if iteration > 10 and relative_improvement < rel_tol:
             break
 
@@ -630,10 +647,16 @@ Oracle evaluations use LocalCenter with proper convergence checks.
 """
 
 
-def line_search(x: np.ndarray, points: np.ndarray,
-                t_current: float, t_next: float,
-                u: np.ndarray, target_accuracy: float,
-                f_star_est: float, matrix_free: bool = False) -> np.ndarray:
+def line_search(
+    x: np.ndarray,
+    points: np.ndarray,
+    t_current: float,
+    t_next: float,
+    u: np.ndarray,
+    target_accuracy: float,
+    f_star_est: float,
+    matrix_free: bool = False,
+) -> np.ndarray:
     """
     Algorithm 4: LineSearch along direction u with proper convergence.
 
@@ -658,20 +681,21 @@ def line_search(x: np.ndarray, points: np.ndarray,
     n = points.shape[0]
 
     # Search interval: use problem diameter estimate
-    diameter = 2.0*np.max(np.linalg.norm(points - np.mean(points, axis=0), axis=1))
+    diameter = 2.0 * np.max(np.linalg.norm(points - np.mean(points, axis=0), axis=1))
     alpha_min = -diameter
     alpha_max = diameter
 
     # Oracle: evaluate ACTUAL objective after centering
     def q_alpha(alpha: float) -> float:
         """Oracle for line search."""
-        y = x + alpha*u
-        x_centered = local_center(y, points, t_next, target_accuracy,
-                                  f_star_est, matrix_free=matrix_free)
+        y = x + alpha * u
+        x_centered = local_center(
+            y, points, t_next, target_accuracy, f_star_est, matrix_free=matrix_free
+        )
         return compute_geometric_median_objective(x_centered, points)
 
     # Golden section search
-    phi = (1.0 + np.sqrt(5.0))/2.0
+    phi = (1.0 + np.sqrt(5.0)) / 2.0
     max_iter = 20  # Practical limit
 
     alpha_a = alpha_min
@@ -683,8 +707,8 @@ def line_search(x: np.ndarray, points: np.ndarray,
     best_f = f_center
 
     for iteration in range(max_iter):
-        alpha_1 = alpha_b - (alpha_b - alpha_a)/phi
-        alpha_2 = alpha_a + (alpha_b - alpha_a)/phi
+        alpha_1 = alpha_b - (alpha_b - alpha_a) / phi
+        alpha_2 = alpha_a + (alpha_b - alpha_a) / phi
 
         f_1 = q_alpha(alpha_1)
         f_2 = q_alpha(alpha_2)
@@ -704,13 +728,14 @@ def line_search(x: np.ndarray, points: np.ndarray,
             alpha_a = alpha_1
 
         # Early convergence: interval small enough
-        if (alpha_b - alpha_a) < target_accuracy*diameter:
+        if (alpha_b - alpha_a) < target_accuracy * diameter:
             break
 
     # Use best point found, then center once more
-    y_best = x + best_alpha*u
-    x_next = local_center(y_best, points, t_next, target_accuracy,
-                          f_star_est, matrix_free=matrix_free)
+    y_best = x + best_alpha * u
+    x_next = local_center(
+        y_best, points, t_next, target_accuracy, f_star_est, matrix_free=matrix_free
+    )
 
     return x_next
 
@@ -729,8 +754,9 @@ This gives x^(0) with f(x^(0)) ≤ C·f(x*) for some constant C.
 """
 
 
-def compute_crude_approximation(points: np.ndarray,
-                                max_iter: int = 20) -> Tuple[np.ndarray, float]:
+def compute_crude_approximation(
+    points: np.ndarray, max_iter: int = 20
+) -> Tuple[np.ndarray, float]:
     """
     Compute crude constant-factor approximation for initialization.
 
@@ -765,8 +791,8 @@ def compute_crude_approximation(points: np.ndarray,
         dists = np.linalg.norm(diffs, axis=1)
         dists = np.maximum(dists, 1e-10)
 
-        weights = 1.0/dists
-        x_new = np.sum(points*weights[:, np.newaxis], axis=0)/np.sum(weights)
+        weights = 1.0 / dists
+        x_new = np.sum(points * weights[:, np.newaxis], axis=0) / np.sum(weights)
 
         # Check convergence - use loose tolerance
         step_size = np.linalg.norm(x_new - x)
@@ -809,10 +835,13 @@ These allow early stopping while maintaining correctness.
 """
 
 
-def accurate_median(points: np.ndarray, epsilon: float = 1e-6,
-                    matrix_free: Optional[bool] = None,
-                    matrix_free_threshold: int = 100,
-                    verbose: bool = True) -> Tuple[np.ndarray, Dict]:
+def accurate_median(
+    points: np.ndarray,
+    epsilon: float = 1e-6,
+    matrix_free: Optional[bool] = None,
+    matrix_free_threshold: int = 100,
+    verbose: bool = True,
+) -> Tuple[np.ndarray, Dict]:
     """
     Algorithm 1: AccurateMedian - CORRECTED version.
 
@@ -824,11 +853,11 @@ def accurate_median(points: np.ndarray, epsilon: float = 1e-6,
     n, d = points.shape
 
     if matrix_free is None:
-        matrix_free = (d > matrix_free_threshold)
+        matrix_free = d > matrix_free_threshold
 
     if verbose:
         print(f"Cohen et al. (2016) - Geometric Median Algorithm")
-        print(f"="*70)
+        print(f"=" * 70)
         print(f"Dataset: n={n}, d={d}")
         print(f"Target accuracy: ε={epsilon:.2e}")
         print(f"Matrix-free mode: {matrix_free}")
@@ -844,8 +873,8 @@ def accurate_median(points: np.ndarray, epsilon: float = 1e-6,
         print()
 
     # Step 2: Initialize path parameter (Page 6, line 3)
-    beta = 1.0/600.0
-    t = 1.0/(400.0*f_star_est)
+    beta = 1.0 / 600.0
+    t = 1.0 / (400.0 * f_star_est)
 
     # Step 3: Initial centering (Page 6, line 4)
     # CORRECTED: The paper calls LineSearch(x^(0), t_1, t_1, 0, c)
@@ -859,7 +888,7 @@ def accurate_median(points: np.ndarray, epsilon: float = 1e-6,
     f_after_center = compute_geometric_median_objective(x, points)
 
     # SANITY CHECK: Initial centering should improve or maintain objective
-    if f_after_center > f_initial*1.01:  # Allow 1% tolerance for numerical issues
+    if f_after_center > f_initial * 1.01:  # Allow 1% tolerance for numerical issues
         if verbose:
             print(f"  ⚠ Warning: Centering increased objective!")
             print(f"  f(x¹) = {f_after_center:.6f} (was {f_initial:.6f})")
@@ -878,11 +907,11 @@ def accurate_median(points: np.ndarray, epsilon: float = 1e-6,
     f_initial = f_after_center
 
     # Step 4: Main path-following loop (Page 6, lines 5-8)
-    t_target = 2.0*n/(epsilon*f_star_est)
+    t_target = 2.0 * n / (epsilon * f_star_est)
 
     # CORRECTED: More reasonable iteration bound
     # The paper's formula gives huge numbers for small epsilon
-    iterations_needed = int(np.ceil(np.log(t_target/t)/np.log(1 + beta)))
+    iterations_needed = int(np.ceil(np.log(t_target / t) / np.log(1 + beta)))
     max_iterations = min(iterations_needed, 10000)  # Practical cap
 
     if verbose:
@@ -903,7 +932,7 @@ def accurate_median(points: np.ndarray, epsilon: float = 1e-6,
     last_f = f_after_center
 
     for i in range(max_iterations):
-        t_next = t*(1.0 + beta)
+        t_next = t * (1.0 + beta)
 
         # Compute minimum eigenvector
         eps_v = min(1e-4, epsilon)
@@ -916,27 +945,29 @@ def accurate_median(points: np.ndarray, epsilon: float = 1e-6,
         # If t is very small, the paper's threshold becomes numerically unstable.
         # Instead, use a dynamic threshold that adapts to the scale of the problem.
         # This prevents the algorithm from always choosing local centering when t is tiny.
-        threshold_paper = 0.25*t ** 2*wt
-        threshold_adaptive = max(1e-10*wt, threshold_paper)
+        threshold_paper = 0.25 * t**2 * wt
+        threshold_adaptive = max(1e-10 * wt, threshold_paper)
 
         # Choose between line search and local centering based on eigenvalue magnitude
         is_centering_phase = lambda_min >= threshold_adaptive
 
         if is_centering_phase:
             # Near optimum, apply simple centering (Hessian well-conditioned)
-            x_next = local_center(x, points, t_next, epsilon, f_star_est,
-                                  matrix_free=matrix_free)
+            x_next = local_center(
+                x, points, t_next, epsilon, f_star_est, matrix_free=matrix_free
+            )
         else:
             # Line search along bad eigenvector direction (Hessian ill-conditioned)
-            x_next = line_search(x, points, t, t_next, u, epsilon,
-                                 f_star_est, matrix_free)
+            x_next = line_search(
+                x, points, t, t_next, u, epsilon, f_star_est, matrix_free
+            )
 
         # SANITY CHECK: Objective should not increase
         f_prev = compute_geometric_median_objective(x, points)
         f_next = compute_geometric_median_objective(x_next, points)
 
-        if f_next > f_prev*1.001:  # Allow tiny tolerance
-            if verbose and (i + 1)%100 == 0:
+        if f_next > f_prev * 1.001:  # Allow tiny tolerance
+            if verbose and (i + 1) % 100 == 0:
                 print(f"  ⚠ Iter {i + 1}: Step increased objective, reverting")
             # Don't take the step
             stall_count += 1
@@ -960,19 +991,23 @@ def accurate_median(points: np.ndarray, epsilon: float = 1e-6,
             x_best = x.copy()
 
         # Progress reporting
-        if verbose and (i + 1)%10 == 0:
+        if verbose and (i + 1) % 10 == 0:
             improvement = f_initial - f_current
-            relative_improvement = improvement/f_initial
-            print(f"  Iter {i + 1:4d}: t={t:.4e}, f(x)={f_current:.6f}, "
-                  f"improvement={relative_improvement*100:.3f}%")
+            relative_improvement = improvement / f_initial
+            print(
+                f"  Iter {i + 1:4d}: t={t:.4e}, f(x)={f_current:.6f}, "
+                f"improvement={relative_improvement * 100:.3f}%"
+            )
 
         # Detect if we're stuck
-        if (i + 1)%10 == 0:
-            if abs(f_current - last_f) < 1e-10*f_initial:
+        if (i + 1) % 10 == 0:
+            if abs(f_current - last_f) < 1e-10 * f_initial:
                 stall_count += 1
                 if stall_count > 5:
                     if verbose:
-                        print(f"\n⚠ Stopping: No progress for {stall_count*10} iterations")
+                        print(
+                            f"\n⚠ Stopping: No progress for {stall_count * 10} iterations"
+                        )
                     break
             else:
                 stall_count = 0
@@ -989,19 +1024,21 @@ def accurate_median(points: np.ndarray, epsilon: float = 1e-6,
         # Check 2: Achieved good approximation
         # Only exit if we've actually made meaningful progress
         if i > 50:
-            improvement_achieved = (f_initial - f_current)/f_initial
+            improvement_achieved = (f_initial - f_current) / f_initial
             # Require at least epsilon relative improvement to stop early
             if improvement_achieved > epsilon:
                 if verbose:
-                    print(f"\n✓ Converged: Achieved {improvement_achieved*100:.3f}% improvement")
+                    print(
+                        f"\n✓ Converged: Achieved {improvement_achieved * 100:.3f}% improvement"
+                    )
                 break
 
         # Check 3: Gradient norm
-        if i > 50 and (i + 1)%20 == 0:
+        if i > 50 and (i + 1) % 20 == 0:
             grad_norm = np.linalg.norm(compute_gradient_geometric_median(x, points))
-            grad_norm_normalized = grad_norm/n
+            grad_norm_normalized = grad_norm / n
 
-            if grad_norm_normalized < epsilon*f_star_est/(n*100):
+            if grad_norm_normalized < epsilon * f_star_est / (n * 100):
                 if verbose:
                     print(f"\n✓ Converged: Gradient sufficiently small")
                 break
@@ -1012,30 +1049,34 @@ def accurate_median(points: np.ndarray, epsilon: float = 1e-6,
 
     if verbose:
         print()
-        print("="*70)
+        print("=" * 70)
         print("RESULTS:")
         print(f"  Initial:  f(x⁰) = {f_initial:.6f}")
         print(f"  Final:    f(x)  = {final_objective:.6f}")
 
         if final_objective < f_initial:
-            print(f"  Improvement: {((f_initial - final_objective)/f_initial)*100:.2f}%")
+            print(
+                f"  Improvement: {((f_initial - final_objective) / f_initial) * 100:.2f}%"
+            )
         else:
-            print(f"  ⚠ WARNING: Objective increased by {((final_objective - f_initial)/f_initial)*100:.2f}%")
+            print(
+                f"  ⚠ WARNING: Objective increased by {((final_objective - f_initial) / f_initial) * 100:.2f}%"
+            )
 
         print(f"  Iterations: {iterations_performed}")
         print(f"  Final t: {t:.4e} (target: {t_target:.4e})")
-        print("="*70)
+        print("=" * 70)
 
     info = {
-        'iterations'          : iterations_performed,
-        'final_t'             : t,
-        'objective'           : final_objective,
-        'initial_objective'   : f_initial,
-        'improvement'         : f_initial - final_objective,
-        'relative_improvement': (f_initial - final_objective)/f_initial,
-        'converged'           : t >= t_target*0.1,  # Consider "close enough"
-        'matrix_free'         : matrix_free,
-        'method'              : 'cohen'
+        "iterations": iterations_performed,
+        "final_t": t,
+        "objective": final_objective,
+        "initial_objective": f_initial,
+        "improvement": f_initial - final_objective,
+        "relative_improvement": (f_initial - final_objective) / f_initial,
+        "converged": t >= t_target * 0.1,  # Consider "close enough"
+        "matrix_free": matrix_free,
+        "method": "cohen",
     }
 
     return x, info
@@ -1054,9 +1095,9 @@ NOT part of Cohen et al., included for benchmarking.
 """
 
 
-def weiszfeld_median(points: np.ndarray, eps: float = 1e-6,
-                     max_iter: int = 1000,
-                     verbose: bool = True) -> Tuple[np.ndarray, Dict]:
+def weiszfeld_median(
+    points: np.ndarray, eps: float = 1e-6, max_iter: int = 1000, verbose: bool = True
+) -> Tuple[np.ndarray, Dict]:
     """
     Classical Weiszfeld algorithm for geometric median.
 
@@ -1080,7 +1121,7 @@ def weiszfeld_median(points: np.ndarray, eps: float = 1e-6,
 
     if verbose:
         print(f"Weiszfeld Algorithm (1937)")
-        print(f"="*70)
+        print(f"=" * 70)
         print(f"Dataset: n={n}, d={d}")
         print(f"Tolerance: ε={eps:.2e}")
         print()
@@ -1095,10 +1136,10 @@ def weiszfeld_median(points: np.ndarray, eps: float = 1e-6,
         # Compute weights: w_i = 1/||x - a^(i)||_2
         distances = np.linalg.norm(points - x, axis=1)
         distances = np.maximum(distances, 1e-10)
-        weights = 1.0/distances
+        weights = 1.0 / distances
 
         # Weighted update
-        x = np.sum(points*weights[:, np.newaxis], axis=0)/np.sum(weights)
+        x = np.sum(points * weights[:, np.newaxis], axis=0) / np.sum(weights)
 
         # Check convergence
         change = np.linalg.norm(x - x_old)
@@ -1107,16 +1148,18 @@ def weiszfeld_median(points: np.ndarray, eps: float = 1e-6,
             if verbose:
                 print(f"✓ Converged after {iteration + 1} iterations")
                 print(f"  Final: f(x) = {objective:.6f}")
-                print(f"  Improvement: {((f_initial - objective)/f_initial)*100:.2f}%")
+                print(
+                    f"  Improvement: {((f_initial - objective) / f_initial) * 100:.2f}%"
+                )
             return x, {
-                'iterations'       : iteration + 1,
-                'objective'        : objective,
-                'initial_objective': f_initial,
-                'converged'        : True,
-                'method'           : 'weiszfeld'
+                "iterations": iteration + 1,
+                "objective": objective,
+                "initial_objective": f_initial,
+                "converged": True,
+                "method": "weiszfeld",
             }
 
-        if verbose and (iteration + 1)%100 == 0:
+        if verbose and (iteration + 1) % 100 == 0:
             objective = compute_geometric_median_objective(x, points)
             print(f"  Iteration {iteration + 1}: f(x)={objective:.6f}")
 
@@ -1126,11 +1169,11 @@ def weiszfeld_median(points: np.ndarray, eps: float = 1e-6,
         print(f"  Final: f(x) = {objective:.6f}")
 
     return x, {
-        'iterations'       : max_iter,
-        'objective'        : objective,
-        'initial_objective': f_initial,
-        'converged'        : False,
-        'method'           : 'weiszfeld'
+        "iterations": max_iter,
+        "objective": objective,
+        "initial_objective": f_initial,
+        "converged": False,
+        "method": "weiszfeld",
     }
 
 
@@ -1138,13 +1181,16 @@ def weiszfeld_median(points: np.ndarray, eps: float = 1e-6,
 # Main Interface Function
 # =============================================================================
 
-def geometric_median(points: np.ndarray,
-                     eps: float = 1e-6,
-                     method: Literal['cohen', 'weiszfeld'] = 'cohen',
-                     matrix_free: Optional[bool] = None,
-                     matrix_free_threshold: int = 100,
-                     verbose: bool = True,
-                     **kwargs) -> Tuple[np.ndarray, Dict]:
+
+def geometric_median(
+    points: np.ndarray,
+    eps: float = 1e-6,
+    method: Literal["cohen", "weiszfeld"] = "cohen",
+    matrix_free: Optional[bool] = None,
+    matrix_free_threshold: int = 100,
+    verbose: bool = True,
+    **kwargs,
+) -> Tuple[np.ndarray, Dict]:
     """
     Compute geometric median of a set of points.
 
@@ -1202,14 +1248,17 @@ def geometric_median(points: np.ndarray,
     if points.shape[0] < 1:
         raise ValueError("Need at least one point")
 
-    if method == 'cohen':
+    if method == "cohen":
         raise ValueError(f"Method 'cohen' is not implemented yet.")
 
-        return accurate_median(points, epsilon=eps,
-                               matrix_free=matrix_free,
-                               matrix_free_threshold=matrix_free_threshold,
-                               verbose=verbose)
-    elif method == 'weiszfeld':
+        return accurate_median(
+            points,
+            epsilon=eps,
+            matrix_free=matrix_free,
+            matrix_free_threshold=matrix_free_threshold,
+            verbose=verbose,
+        )
+    elif method == "weiszfeld":
         return weiszfeld_median(points, eps=eps, verbose=verbose, **kwargs)
     else:
         raise ValueError(f"Unknown method '{method}'. Use 'cohen' or 'weiszfeld'")

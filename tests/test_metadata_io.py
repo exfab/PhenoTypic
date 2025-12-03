@@ -3,6 +3,7 @@
 This module tests the reading and writing of metadata to/from image files
 in JPEG, PNG, and TIFF formats, including PhenoTypic-specific metadata.
 """
+
 import json
 import os
 import shutil
@@ -18,12 +19,13 @@ from PIL import Image as PIL_Image
 import phenotypic
 from phenotypic.tools.constants_ import IO, METADATA
 
-HAS_EXIFTOOL = shutil.which('exiftool') is not None
+HAS_EXIFTOOL = shutil.which("exiftool") is not None
 
 
 # -----------------------------------------------------------------------------
 # Fixtures
 # -----------------------------------------------------------------------------
+
 
 @pytest.fixture
 def sample_rgb_image():
@@ -50,53 +52,64 @@ def temp_image_dir():
 # Test Metadata Normalization
 # -----------------------------------------------------------------------------
 
+
 class TestMetadataNormalization:
     """Tests for the _normalize_metadata_value helper."""
 
     def test_normalize_int(self):
         from phenotypic.core._image_parts._image_io_handler import ImageIOHandler
+
         assert ImageIOHandler._normalize_metadata_value(42) == 42
         assert isinstance(ImageIOHandler._normalize_metadata_value(42), int)
 
     def test_normalize_float(self):
         from phenotypic.core._image_parts._image_io_handler import ImageIOHandler
+
         assert ImageIOHandler._normalize_metadata_value(3.14) == 3.14
         assert isinstance(ImageIOHandler._normalize_metadata_value(3.14), float)
 
     def test_normalize_bool(self):
         from phenotypic.core._image_parts._image_io_handler import ImageIOHandler
+
         assert ImageIOHandler._normalize_metadata_value(True) is True
         assert ImageIOHandler._normalize_metadata_value(False) is False
 
     def test_normalize_string(self):
         from phenotypic.core._image_parts._image_io_handler import ImageIOHandler
+
         assert ImageIOHandler._normalize_metadata_value("test") == "test"
 
     def test_normalize_bytes(self):
         from phenotypic.core._image_parts._image_io_handler import ImageIOHandler
+
         assert ImageIOHandler._normalize_metadata_value(b"test") == "test"
 
     def test_normalize_none(self):
         from phenotypic.core._image_parts._image_io_handler import ImageIOHandler
+
         assert ImageIOHandler._normalize_metadata_value(None) is None
 
     def test_normalize_numpy_int(self):
         from phenotypic.core._image_parts._image_io_handler import ImageIOHandler
+
         assert ImageIOHandler._normalize_metadata_value(np.int64(42)) == 42
         assert isinstance(ImageIOHandler._normalize_metadata_value(np.int64(42)), int)
 
     def test_normalize_numpy_float(self):
         from phenotypic.core._image_parts._image_io_handler import ImageIOHandler
+
         result = ImageIOHandler._normalize_metadata_value(np.float64(3.14))
         assert abs(result - 3.14) < 1e-10
         assert isinstance(result, float)
 
     def test_normalize_list_single_element(self):
         from phenotypic.core._image_parts._image_io_handler import ImageIOHandler
+
         assert ImageIOHandler._normalize_metadata_value([42]) == 42
 
     def test_normalize_list_multiple_elements(self):
         from phenotypic.core._image_parts._image_io_handler import ImageIOHandler
+
         result = ImageIOHandler._normalize_metadata_value([1, 2, 3])
         assert result == "[1, 2, 3]"
 
@@ -104,6 +117,7 @@ class TestMetadataNormalization:
 # -----------------------------------------------------------------------------
 # Test PNG Round-Trip
 # -----------------------------------------------------------------------------
+
 
 class TestPNGMetadataRoundTrip:
     """Tests for PNG metadata round-trip."""
@@ -144,7 +158,9 @@ class TestPNGMetadataRoundTrip:
         loaded = phenotypic.Image.imread(filepath)
         assert loaded._metadata.public.get("experiment") == "growth_curve"
 
-    def test_png_phenotypic_image_property_gray(self, sample_gray_image, temp_image_dir):
+    def test_png_phenotypic_image_property_gray(
+        self, sample_gray_image, temp_image_dir
+    ):
         """Test that phenotypic_image_property is correctly set for gray accessor."""
         filepath = temp_image_dir / "test_property_gray.png"
 
@@ -157,7 +173,9 @@ class TestPNGMetadataRoundTrip:
             data = json.loads(phenotypic_json)
             assert data["phenotypic_image_property"] == "Image.gray"
 
-    def test_png_phenotypic_image_property_enh_gray(self, sample_gray_image, temp_image_dir):
+    def test_png_phenotypic_image_property_enh_gray(
+        self, sample_gray_image, temp_image_dir
+    ):
         """Test that phenotypic_image_property is correctly set for enh_gray accessor."""
         filepath = temp_image_dir / "test_property_enh_gray.png"
 
@@ -185,6 +203,7 @@ class TestPNGMetadataRoundTrip:
 # -----------------------------------------------------------------------------
 # Test JPEG Round-Trip
 # -----------------------------------------------------------------------------
+
 
 @pytest.mark.skipif(not HAS_EXIFTOOL, reason="exiftool not installed")
 class TestJPEGMetadataRoundTrip:
@@ -222,12 +241,12 @@ class TestJPEGMetadataRoundTrip:
 
         # Read EXIF UserComment using exiftool
         result = subprocess.run(
-            ['exiftool', '-json', '-UserComment', str(filepath)],
+            ["exiftool", "-json", "-UserComment", str(filepath)],
             capture_output=True,
-            text=True
+            text=True,
         )
         exif_data = json.loads(result.stdout)
-        user_comment = exif_data[0].get('UserComment')
+        user_comment = exif_data[0].get("UserComment")
 
         assert user_comment is not None
         data = json.loads(user_comment)
@@ -237,6 +256,7 @@ class TestJPEGMetadataRoundTrip:
 # -----------------------------------------------------------------------------
 # Test TIFF Round-Trip
 # -----------------------------------------------------------------------------
+
 
 class TestTIFFMetadataRoundTrip:
     """Tests for TIFF metadata round-trip."""
@@ -283,6 +303,7 @@ class TestTIFFMetadataRoundTrip:
 # Test Protected Metadata Preservation
 # -----------------------------------------------------------------------------
 
+
 class TestProtectedMetadataPreservation:
     """Tests for protected metadata preservation during round-trip."""
 
@@ -326,6 +347,7 @@ class TestProtectedMetadataPreservation:
 # Test Version Info
 # -----------------------------------------------------------------------------
 
+
 class TestVersionInfo:
     """Tests for version information in saved metadata."""
 
@@ -358,63 +380,89 @@ class TestVersionInfo:
 # Test Accessor Property Names
 # -----------------------------------------------------------------------------
 
+
 class TestAccessorPropertyNames:
     """Tests for accessor property name class attributes."""
 
     def test_grayscale_accessor_property_name(self):
         """Test Grayscale accessor has correct property name."""
         from phenotypic.core._image_parts.accessors._grayscale_accessor import Grayscale
+
         assert Grayscale._accessor_property_name == "gray"
 
     def test_enhanced_grayscale_accessor_property_name(self):
         """Test EnhancedGrayscale accessor has correct property name."""
-        from phenotypic.core._image_parts.accessors._enh_grayscale_accessor import EnhancedGrayscale
+        from phenotypic.core._image_parts.accessors._enh_grayscale_accessor import (
+            EnhancedGrayscale,
+        )
+
         assert EnhancedGrayscale._accessor_property_name == "enh_gray"
 
     def test_rgb_accessor_property_name(self):
         """Test ImageRGB accessor has correct property name."""
         from phenotypic.core._image_parts.accessors._array_accessor import ImageRGB
+
         assert ImageRGB._accessor_property_name == "rgb"
 
     def test_base_accessor_property_name_default(self):
         """Test ImageAccessorBase has default property name."""
-        from phenotypic.core._image_parts.accessor_abstracts._image_accessor_base import ImageAccessorBase
+        from phenotypic.core._image_parts.accessor_abstracts._image_accessor_base import (
+            ImageAccessorBase,
+        )
+
         assert ImageAccessorBase._accessor_property_name == "unknown"
 
     def test_xyz_accessor_property_name(self):
         """Test XyzAccessor has correct property name."""
-        from phenotypic.core._image_parts.color_space_accessors._xyz_accessor import XyzAccessor
+        from phenotypic.core._image_parts.color_space_accessors._xyz_accessor import (
+            XyzAccessor,
+        )
+
         assert XyzAccessor._accessor_property_name == "color.XYZ"
 
     def test_xyz_d65_accessor_property_name(self):
         """Test XyzD65Accessor has correct property name."""
-        from phenotypic.core._image_parts.color_space_accessors._xyz_d65_accessor import XyzD65Accessor
+        from phenotypic.core._image_parts.color_space_accessors._xyz_d65_accessor import (
+            XyzD65Accessor,
+        )
+
         assert XyzD65Accessor._accessor_property_name == "color.XYZ_D65"
 
     def test_cielab_accessor_property_name(self):
         """Test CieLabAccessor has correct property name."""
-        from phenotypic.core._image_parts.color_space_accessors._cielab_accessor import CieLabAccessor
+        from phenotypic.core._image_parts.color_space_accessors._cielab_accessor import (
+            CieLabAccessor,
+        )
+
         assert CieLabAccessor._accessor_property_name == "color.Lab"
 
     def test_chromaticity_xy_accessor_property_name(self):
         """Test xyChromaticityAccessor has correct property name."""
-        from phenotypic.core._image_parts.color_space_accessors._chromaticity_xy_accessor import xyChromaticityAccessor
+        from phenotypic.core._image_parts.color_space_accessors._chromaticity_xy_accessor import (
+            xyChromaticityAccessor,
+        )
+
         assert xyChromaticityAccessor._accessor_property_name == "color.xy"
 
     def test_hsv_accessor_property_name(self):
         """Test HsvAccessor has correct property name."""
         from phenotypic.core._image_parts.accessors._hsv_accessor import HsvAccessor
+
         assert HsvAccessor._accessor_property_name == "color.hsv"
 
     def test_color_space_accessor_base_property_name(self):
         """Test ColorSpaceAccessor has default property name."""
-        from phenotypic.core._image_parts.accessor_abstracts._color_space_accessor import ColorSpaceAccessor
+        from phenotypic.core._image_parts.accessor_abstracts._color_space_accessor import (
+            ColorSpaceAccessor,
+        )
+
         assert ColorSpaceAccessor._accessor_property_name == "color.unknown"
 
 
 # -----------------------------------------------------------------------------
 # Test Color Space TIFF Round-Trip
 # -----------------------------------------------------------------------------
+
 
 class TestColorSpaceTIFFRoundTrip:
     """Tests for color space accessor TIFF metadata round-trip."""
@@ -473,13 +521,16 @@ class TestColorSpaceTIFFRoundTrip:
         """Test that color space accessor raises error for non-TIFF formats."""
         filepath = temp_image_dir / "test_xyz.png"
 
-        with pytest.raises(ValueError, match="Color space arrays can only be saved in TIFF format"):
+        with pytest.raises(
+            ValueError, match="Color space arrays can only be saved in TIFF format"
+        ):
             sample_rgb_image.color.XYZ.imsave(filepath)
 
 
 # -----------------------------------------------------------------------------
 # Test Accessor Load Methods
 # -----------------------------------------------------------------------------
+
 
 class TestAccessorLoad:
     """Tests for accessor load class methods."""
@@ -496,7 +547,11 @@ class TestAccessorLoad:
             warnings.simplefilter("always")
             arr = Grayscale.load(filepath)
             # Filter for our specific warnings
-            phenotypic_warnings = [x for x in w if "PhenoTypic" in str(x.message) or "mismatch" in str(x.message)]
+            phenotypic_warnings = [
+                x
+                for x in w
+                if "PhenoTypic" in str(x.message) or "mismatch" in str(x.message)
+            ]
             assert len(phenotypic_warnings) == 0
 
         assert isinstance(arr, np.ndarray)
@@ -525,7 +580,11 @@ class TestAccessorLoad:
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
             arr = ImageRGB.load(filepath)
-            phenotypic_warnings = [x for x in w if "PhenoTypic" in str(x.message) or "mismatch" in str(x.message)]
+            phenotypic_warnings = [
+                x
+                for x in w
+                if "PhenoTypic" in str(x.message) or "mismatch" in str(x.message)
+            ]
             assert len(phenotypic_warnings) == 0
 
         assert isinstance(arr, np.ndarray)
@@ -548,7 +607,9 @@ class TestAccessorLoad:
     def test_color_space_load_success(self, sample_rgb_image, temp_image_dir):
         """Test ColorSpaceAccessor.load() with matching metadata."""
         import tifffile
-        from phenotypic.core._image_parts.color_space_accessors._cielab_accessor import CieLabAccessor
+        from phenotypic.core._image_parts.color_space_accessors._cielab_accessor import (
+            CieLabAccessor,
+        )
 
         filepath = temp_image_dir / "test_lab.tif"
         sample_rgb_image.color.Lab.imsave(filepath)
@@ -556,7 +617,11 @@ class TestAccessorLoad:
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
             arr = CieLabAccessor.load(filepath)
-            phenotypic_warnings = [x for x in w if "PhenoTypic" in str(x.message) or "mismatch" in str(x.message)]
+            phenotypic_warnings = [
+                x
+                for x in w
+                if "PhenoTypic" in str(x.message) or "mismatch" in str(x.message)
+            ]
             assert len(phenotypic_warnings) == 0
 
         assert isinstance(arr, np.ndarray)
@@ -564,8 +629,12 @@ class TestAccessorLoad:
 
     def test_color_space_load_mismatch_warning(self, sample_rgb_image, temp_image_dir):
         """Test ColorSpaceAccessor.load() warns when metadata doesn't match."""
-        from phenotypic.core._image_parts.color_space_accessors._xyz_accessor import XyzAccessor
-        from phenotypic.core._image_parts.color_space_accessors._cielab_accessor import CieLabAccessor
+        from phenotypic.core._image_parts.color_space_accessors._xyz_accessor import (
+            XyzAccessor,
+        )
+        from phenotypic.core._image_parts.color_space_accessors._cielab_accessor import (
+            CieLabAccessor,
+        )
 
         filepath = temp_image_dir / "test_xyz.tif"
         # Save from XYZ accessor
@@ -579,7 +648,9 @@ class TestAccessorLoad:
 
     def test_color_space_load_rejects_non_tiff(self, temp_image_dir):
         """Test ColorSpaceAccessor.load() raises error for non-TIFF."""
-        from phenotypic.core._image_parts.color_space_accessors._cielab_accessor import CieLabAccessor
+        from phenotypic.core._image_parts.color_space_accessors._cielab_accessor import (
+            CieLabAccessor,
+        )
 
         filepath = temp_image_dir / "test.png"
         with pytest.raises(ValueError, match="can only be loaded from TIFF format"):
@@ -595,10 +666,13 @@ class TestAccessorLoad:
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
             arr = HsvAccessor.load(filepath)
-            phenotypic_warnings = [x for x in w if "PhenoTypic" in str(x.message) or "mismatch" in str(x.message)]
+            phenotypic_warnings = [
+                x
+                for x in w
+                if "PhenoTypic" in str(x.message) or "mismatch" in str(x.message)
+            ]
             assert len(phenotypic_warnings) == 0
 
         assert isinstance(arr, np.ndarray)
         assert arr.dtype == np.float32
         assert arr.shape[2] == 3  # HSV has 3 channels
-

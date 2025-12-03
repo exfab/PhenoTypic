@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-if TYPE_CHECKING: from phenotypic import Image
+if TYPE_CHECKING:
+    from phenotypic import Image
 
 import pandas as pd
 import numpy as np
@@ -48,9 +49,13 @@ class ManualGridFinder(GridFinder):
             ValueError: If row_edges or col_edges have fewer than 2 elements.
         """
         if len(row_edges) < 2:
-            raise ValueError("row_edges must have at least 2 elements to define at least 1 row")
+            raise ValueError(
+                "row_edges must have at least 2 elements to define at least 1 row"
+            )
         if len(col_edges) < 2:
-            raise ValueError("col_edges must have at least 2 elements to define at least 1 column")
+            raise ValueError(
+                "col_edges must have at least 2 elements to define at least 1 column"
+            )
 
         self._row_edges = np.asarray(row_edges, dtype=int)
         self._col_edges = np.asarray(col_edges, dtype=int)
@@ -75,7 +80,9 @@ class ManualGridFinder(GridFinder):
                 grid indices, and section numbers corresponding to the manually defined grid.
         """
         # Use base class method to assemble grid info with our predefined edges
-        return self._get_grid_info(image=image, row_edges=self._row_edges, col_edges=self._col_edges)
+        return self._get_grid_info(
+            image=image, row_edges=self._row_edges, col_edges=self._col_edges
+        )
 
     def get_row_edges(self, image: Image) -> np.ndarray:
         """

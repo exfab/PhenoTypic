@@ -1,18 +1,19 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
 
-if TYPE_CHECKING: from phenotypic import GridImage
+if TYPE_CHECKING:
+    from phenotypic import GridImage
 
 import numpy as np
 from typing import Optional
 
-from phenotypic.abc_ import GridRefiner
+from phenotypic.abc_ import GridObjectRefiner
 from phenotypic.measure import MeasureGridLinRegStats
-from phenotypic.tools.constants_ import GRID
 from phenotypic.measure._measure_grid_linreg_stats import GRID_LINREG_STATS
+from phenotypic.tools.constants_ import GRID
 
 
-class ResidualOutlierRemover(GridRefiner):
+class ResidualOutlierRemover(GridObjectRefiner):
     """Remove objects with large regression residuals in noisy grid rows/columns.
 
     Intuition:
@@ -58,8 +59,12 @@ class ResidualOutlierRemover(GridRefiner):
             >>> image = op.apply(image, inplace=True)  # doctest: +SKIP
     """
 
-    def __init__(self, axis: Optional[int] = None, stddev_multiplier=1.5,
-                 max_coeff_variance: int = 1):
+    def __init__(
+        self,
+        axis: Optional[int] = None,
+        stddev_multiplier=1.5,
+        max_coeff_variance: int = 1,
+    ):
         """Initialize the remover.
 
         Args:
@@ -107,21 +112,26 @@ class ResidualOutlierRemover(GridRefiner):
             # Calculate the coefficient of variance (std/mean)
             #   Collect the standard deviation
             row_variance = grid_info.groupby(str(GRID.ROW_NUM))[
-                GRID_LINREG_STATS.RESIDUAL_ERR].std()
+                str(GRID_LINREG_STATS.RESIDUAL_ERR)
+            ].std()
 
             #   Divide standard deviation by mean
-            row_variance = row_variance \
-                           /grid_info.groupby(str(GRID.ROW_NUM))[
-                               GRID_LINREG_STATS.RESIDUAL_ERR].mean()
+            row_variance = (
+                row_variance
+                / grid_info.groupby(str(GRID.ROW_NUM))[
+                    str(GRID_LINREG_STATS.RESIDUAL_ERR)
+                ].mean()
+            )
 
             over_limit_row_variance = row_variance.loc[
-                row_variance > self.max_coeff_variance]
+                row_variance > self.max_coeff_variance
+            ]
 
             # Collect outlier objects in the nrows with a variance over the maximum
             for row_idx in over_limit_row_variance.index:
                 row_err = grid_info.loc[
                     grid_info.loc[:, str(GRID.ROW_NUM)] == row_idx,
-                    GRID_LINREG_STATS.RESIDUAL_ERR
+                    str(GRID_LINREG_STATS.RESIDUAL_ERR),
                 ]
                 row_err_mean = row_err.mean()
                 row_q3, row_q1 = row_err.quantile([0.75, 0.25])
@@ -130,38 +140,46 @@ class ResidualOutlierRemover(GridRefiner):
                 # row_stddev = row_err.std()
                 # upper_row_cutoff = row_err_mean + row_stddev * self.cutoff_multiplier
 
-                upper_row_cutoff = row_err_mean + row_iqr*self.cutoff_multiplier
+                upper_row_cutoff = row_err_mean + row_iqr * self.cutoff_multiplier
                 outlier_obj_ids += row_err.loc[
-                    row_err >= upper_row_cutoff].index.tolist()
+                    row_err >= upper_row_cutoff
+                ].index.tolist()
 
         # Column-wise residual outlier discovery
         if self.axis is None or self.axis == 1:
             # Calculate the coefficient of variance (std/mean)
             #   Collect the standard deviation
             col_variance = grid_info.groupby(str(GRID.COL_NUM))[
-                GRID_LINREG_STATS.RESIDUAL_ERR].std()
+                str(GRID_LINREG_STATS.RESIDUAL_ERR)
+            ].std()
 
             #   Divide standard deviation by mean
-            col_variance = col_variance/grid_info.groupby(str(GRID.COL_NUM))[
-                GRID_LINREG_STATS.RESIDUAL_ERR].mean()
+            col_variance = (
+                col_variance
+                / grid_info.groupby(str(GRID.COL_NUM))[
+                    str(GRID_LINREG_STATS.RESIDUAL_ERR)
+                ].mean()
+            )
 
             over_limit_col_variance = col_variance.loc[
-                col_variance > self.max_coeff_variance]
+                col_variance > self.max_coeff_variance
+            ]
 
             # Collect outlier objects in the columns with a variance over the maximum
             for col_idx in over_limit_col_variance.index:
                 col_err = grid_info.loc[
                     grid_info.loc[:, str(GRID.COL_NUM)] == col_idx,
-                    GRID_LINREG_STATS.RESIDUAL_ERR
+                    str(GRID_LINREG_STATS.RESIDUAL_ERR),
                 ]
                 col_err_mean = col_err.mean()
                 col_q3, col_q1 = col_err.quantile([0.75, 0.25])
                 col_iqr = col_q3 - col_q1
                 # col_stddev = col_err.std()
 
-                upper_col_cutoff = col_err_mean + col_iqr*self.cutoff_multiplier
+                upper_col_cutoff = col_err_mean + col_iqr * self.cutoff_multiplier
                 outlier_obj_ids += col_err.loc[
-                    col_err >= upper_col_cutoff].index.tolist()
+                    col_err >= upper_col_cutoff
+                ].index.tolist()
 
         # Remove objects from obj map
         image.objmap[np.isin(image.objmap[:], outlier_obj_ids)] = 0

@@ -24,14 +24,16 @@ class SingleChannelAccessor(ImageAccessorBase):
         _dtype (Any): Data type of the Image data stored in the target array.
     """
 
-    def show(self,
-             figsize: tuple[int, int] | None = None,
-             title: str | None = None,
-             ax: plt.Axes | None = None,
-             cmap: str | None = 'gray',
-             foreground_only: bool = False,
-             *,
-             mpl_settings: dict | None = None) -> tuple[plt.Figure, plt.Axes]:
+    def show(
+        self,
+        figsize: tuple[int, int] | None = None,
+        title: str | None = None,
+        ax: plt.Axes | None = None,
+        cmap: str | None = "gray",
+        foreground_only: bool = False,
+        *,
+        mpl_settings: dict | None = None,
+    ) -> tuple[plt.Figure, plt.Axes]:
         """
         Displays a visual representation of the current object using matplotlib.
 
@@ -58,10 +60,10 @@ class SingleChannelAccessor(ImageAccessorBase):
                 containing the generated plot.
         """
         return self._plot(
-                arr=self[:] if not foreground_only else self.foreground(),
-                figsize=figsize,
-                ax=ax,
-                title=title,
-                cmap=cmap,
-                mpl_settings=mpl_settings,
+            arr=self[:] if not foreground_only else self.foreground(),
+            figsize=figsize,
+            ax=ax,
+            title=title,
+            cmap=cmap,
+            mpl_settings=mpl_settings,
         )

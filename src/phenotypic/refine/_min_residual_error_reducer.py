@@ -1,16 +1,17 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
 
-if TYPE_CHECKING: from phenotypic import GridImage
+if TYPE_CHECKING:
+    from phenotypic import GridImage
 
 import numpy as np
 
-from phenotypic.abc_ import GridRefiner
+from phenotypic.abc_ import GridObjectRefiner
 from phenotypic.measure import MeasureGridLinRegStats
 from phenotypic.measure._measure_grid_linreg_stats import GRID_LINREG_STATS
 
 
-class MinResidualErrorReducer(GridRefiner):
+class MinResidualErrorReducer(GridObjectRefiner):
     """Reduce multi-detections per grid cell by keeping objects closest to a
     linear-regression prediction of expected positions.
 
@@ -53,7 +54,7 @@ class MinResidualErrorReducer(GridRefiner):
     def _operate(image: GridImage) -> GridImage:
         # Get the section objects in order of most amount. More objects in a section means
         # more potential spread that can affect linreg results.
-        max_iter = (image.grid.nrows*image.grid.ncols)*4
+        max_iter = (image.grid.nrows * image.grid.ncols) * 4
 
         # Initialize extractor here to save obj construction time
         linreg_stat_extractor = MeasureGridLinRegStats()
@@ -78,7 +79,8 @@ class MinResidualErrorReducer(GridRefiner):
 
             # Isolate the object id with the smallest residual error
             min_err_obj_id = section_info.loc[
-                :, GRID_LINREG_STATS.RESIDUAL_ERR].idxmin()
+                :, str(GRID_LINREG_STATS.RESIDUAL_ERR)
+            ].idxmin()
 
             # Isolate which objects within the section should be dropped
             objects_to_drop = section_info.index.drop(min_err_obj_id).to_numpy()

@@ -3,7 +3,10 @@ from __future__ import annotations
 import numpy as np
 
 from phenotypic.core._image_parts.accessor_abstracts import SingleChannelAccessor
-from phenotypic.tools.exceptions_ import ArrayKeyValueShapeMismatchError, EmptyImageError
+from phenotypic.tools.exceptions_ import (
+    ArrayKeyValueShapeMismatchError,
+    EmptyImageError,
+)
 
 
 class Grayscale(SingleChannelAccessor):
@@ -132,13 +135,17 @@ class Grayscale(SingleChannelAccessor):
                     img.gray[10:20, 5:15] = region
         """
         if isinstance(value, np.ndarray):
-            if self._root_image._data.gray[key].shape != value.shape: raise ArrayKeyValueShapeMismatchError
-            assert (0 <= np.min(value) <= 1) and (0 <= np.max(value) <= 1), 'gray values must be between 0 and 1'
+            if self._root_image._data.gray[key].shape != value.shape:
+                raise ArrayKeyValueShapeMismatchError
+            assert (0 <= np.min(value) <= 1) and (0 <= np.max(value) <= 1), (
+                "gray values must be between 0 and 1"
+            )
         elif isinstance(value, (int, float)):
-            assert 0 <= value <= 1, 'gray values must be between 0 and 1'
+            assert 0 <= value <= 1, "gray values must be between 0 and 1"
         else:
             raise TypeError(
-                    f'Unsupported type for setting the gray. Value should be scalar or a numpy array: {type(value)}')
+                f"Unsupported type for setting the gray. Value should be scalar or a numpy array: {type(value)}"
+            )
 
         self._root_image._data.gray[key] = value
         self._root_image.enh_gray.reset()

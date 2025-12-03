@@ -1,5 +1,5 @@
 classDiagram
-    %% Main Classes
+%% Main Classes
     class BaseOperation {
         <<abstract>>
         +__init__()
@@ -40,56 +40,56 @@ classDiagram
         Provides lazy loading for GUI widgets to improve performance
     }
 
-    %% Image Operations
+%% Image Operations
     class ImageEnhancer {
         <<abstract>>
         +apply(image, inplace=False)
         +_make_footprint()
-        Enhances image quality for better detection (filtering, denoising, contrast adjustment)
+        Enhances image quality for better detection(filtering, denoising, contrast adjustment)
     }
 
     class ImageCorrector {
         <<abstract>>
         +apply(image, inplace=False)
-        Corrects image defects (illumination correction, background subtraction, artifact removal)
+        Corrects image defects(illumination correction, background subtraction, artifact removal)
     }
 
     class ObjectDetector {
         <<abstract>>
         +apply(image, inplace=False)
-        Detects objects in images and creates object masks/maps (thresholding, segmentation, blob detection)
+        Detects objects in images and creates object masks/maps(thresholding, segmentation, blob detection)
     }
 
     class ObjectRefiner {
         <<abstract>>
         +apply(image, inplace=False)
         +_make_footprint()
-        Refines detected objects (filtering by size/shape, morphological operations, object merging/splitting)
+        Refines detected objects(filtering by size/shape, morphological operations, object merging/splitting)
     }
 
     class ThresholdDetector {
         <<abstract>>
         +apply(image, inplace=False)
-        Subset of ObjectDetector using threshold-based methods (Otsu, adaptive, fixed threshold)
+        Subset of ObjectDetector using threshold-based methods(Otsu, adaptive, fixed threshold)
     }
 
-    %% Grid Operations
+%% Grid Operations
     class GridOperation {
         <<abstract>>
         +apply(grid_image, inplace=False)
-        Base class for operations on gridded images (requires GridImage input)
+        Base class for operations on gridded images(requires GridImage input)
     }
 
     class GridCorrector {
         <<abstract>>
         +apply(grid_image, inplace=False)
-        Corrects grid-related issues (grid alignment, perspective correction, well position adjustment)
+        Corrects grid-related issues(grid alignment, perspective correction, well position adjustment)
     }
 
-    class GridRefiner {
+    class GridObjectRefiner {
         <<abstract>>
         +apply(grid_image, inplace=False)
-        Refines grid object detection and mapping (grid-aware object filtering, section assignment)
+        Refines grid object detection and mapping(grid-aware object filtering, section assignment)
     }
 
     class GridObjectDetector {
@@ -98,7 +98,7 @@ classDiagram
         Detects objects in gridded images with grid-aware processing
     }
 
-    %% Grid Measurements
+%% Grid Measurements
     class GridMeasureFeatures {
         <<abstract>>
         +measure(grid_image)
@@ -111,10 +111,10 @@ classDiagram
         +get_row_edges(image)
         +get_col_edges(image)
         +_get_grid_info()
-        Detects and measures grid layouts from object positions (finds row/column edges, assigns section numbers)
+        Detects and measures grid layouts from object positions(finds row/column edges, assigns section numbers)
     }
 
-    %% Pipeline Classes
+%% Pipeline Classes
     class PrefabPipeline {
         <<abstract>>
         Base class for predefined pipeline configurations
@@ -143,7 +143,7 @@ classDiagram
         Sequential pipeline for applying operations and measurements to images
     }
 
-    %% Core Infrastructure
+%% Core Infrastructure
     class ImageIOHandler {
         +imread()
         +save2hdf()
@@ -160,31 +160,24 @@ classDiagram
         Adds JSON serialization capabilities to pipeline configurations
     }
 
-    %% Inheritance Relationships
+%% Inheritance Relationships
     BaseOperation <|-- ImageOperation
     BaseOperation <|-- MeasureFeatures
-
     ImageOperation <|-- ImageEnhancer
     ImageOperation <|-- ImageCorrector
     ImageOperation <|-- ObjectDetector
     ImageOperation <|-- ObjectRefiner
     ImageOperation <|-- GridOperation
-
     ObjectDetector <|-- ThresholdDetector
-
     GridOperation <|-- GridCorrector
-    GridOperation <|-- GridRefiner
+    GridOperation <|-- GridObjectRefiner
     GridOperation <|-- GridObjectDetector
-
     MeasureFeatures <|-- GridMeasureFeatures
     GridMeasureFeatures <|-- GridFinder
-
-    ImageOperation .. LazyWidgetMixin : mixes in
-
+    ImageOperation .. LazyWidgetMixin: mixes in
     ImageIOHandler <|-- Image
     SerializablePipeline <|-- ImagePipeline
-
-    %% Notes
+%% Notes
     note for ImageOperation "All image operations inherit from ImageOperation.\nThey apply transformations to Image objects and support inplace operations.\nAbstract _operate() method must be implemented by subclasses."
     note for MeasureFeatures "All measurement classes inherit from MeasureFeatures.\nThey calculate statistical properties of detected objects.\nReturns pandas DataFrames with measurement results."
     note for ImageEnhancer "Enhances image quality to improve subsequent detection.\nExamples: denoising, contrast enhancement, edge sharpening.\nWorks on enh_gray attribute of Image."
@@ -194,4 +187,3 @@ classDiagram
     note for GridOperation "Requires GridImage input (gridded images).\nGrid-aware operations that consider grid structure.\nExamples: grid alignment, section-based processing."
     note for Image "Central class containing all image data and accessors.\nProvides unified interface to RGB, grayscale, enhanced, and object data.\nSupports color space transformations and metadata management."
     note for ImagePipeline "Applies operations and measurements sequentially.\nSupports benchmarking and verbose logging.\nCan serialize/deserialize pipeline configurations."
-

@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-if TYPE_CHECKING: from phenotypic import Image
+if TYPE_CHECKING:
+    from phenotypic import Image
 
 import numpy as np
 from skimage.restoration import rolling_ball
@@ -46,10 +47,9 @@ class RollingBallRemoveBG(ImageEnhancer):
         nansafe (bool): Handle NaNs during computation to respect masked regions.
     """
 
-    def __init__(self,
-                 radius: int = 100,
-                 kernel: np.ndarray = None,
-                 nansafe: bool = False):
+    def __init__(
+        self, radius: int = 100, kernel: np.ndarray = None, nansafe: bool = False
+    ):
         """
         Parameters:
             radius (int): Rolling-ball radius (pixels). Use a value larger than
@@ -64,9 +64,10 @@ class RollingBallRemoveBG(ImageEnhancer):
         self.nansafe: bool = nansafe
 
     def _operate(self, image: Image):
-        image.enh_gray[:] = image.enh_gray[:] \
-                            - rolling_ball(image=image.enh_gray[:],
-                                           radius=self.radius,
-                                           kernel=self.kernel,
-                                           nansafe=self.nansafe)
+        image.enh_gray[:] = image.enh_gray[:] - rolling_ball(
+            image=image.enh_gray[:],
+            radius=self.radius,
+            kernel=self.kernel,
+            nansafe=self.nansafe,
+        )
         return image

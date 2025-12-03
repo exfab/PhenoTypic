@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from typing import Literal, TYPE_CHECKING
 
-if TYPE_CHECKING: from phenotypic import Image
+if TYPE_CHECKING:
+    from phenotypic import Image
 
 import numpy as np
 
@@ -41,14 +42,15 @@ class ImageColorSpace(ImageObjectsHandler):
         - Colour Library Decodings: https://colour.readthedocs.io/en/latest/generated/colour.CCTF_DECODINGS.html
     """
 
-    def __init__(self,
-                 arr: np.ndarray | Image | None = None,
-                 name: str | None = None,
-                 bit_depth: Literal[8, 16] | None = 8,
-                 *,
-                 gamma_encoding: Literal["sRGB"] | None = 'sRGB',
-                 illuminant: Literal["D65", "D50"] = "D65",
-                 ):
+    def __init__(
+            self,
+            arr: np.ndarray | Image | None = None,
+            name: str | None = None,
+            bit_depth: Literal[8, 16] | None = 8,
+            *,
+            gamma_encoding: Literal["sRGB"] | None = "sRGB",
+            illuminant: Literal["D65", "D50"] = "D65",
+    ):
         """Initialize ImageColorSpace with color properties and representations.
 
         Sets up color space management for the image, including gamma encoding,
@@ -73,12 +75,14 @@ class ImageColorSpace(ImageObjectsHandler):
             ValueError: If illuminant is not 'D65' or 'D50'.
         """
         if (gamma_encoding != "sRGB") and (gamma_encoding is not None):
-            raise ValueError(f'only sRGB or None for linear is supported for gamma encoding: got {gamma_encoding}')
+            raise ValueError(
+                    f"only sRGB or None for linear is supported for gamma encoding: got {gamma_encoding}"
+            )
         if illuminant not in ["D65", "D50"]:
             raise ValueError('illuminant must be "D65" or "D50"')
 
         self.gamma_encoding = gamma_encoding
-        self._observer: str = 'CIE 1931 2 Degree Standard Observer'
+        self._observer: str = "CIE 1931 2 Degree Standard Observer"
         self.illuminant: Literal["D50", "D65"] = illuminant
         super().__init__(arr=arr, name=name, bit_depth=bit_depth)
 
@@ -89,19 +93,19 @@ class ImageColorSpace(ImageObjectsHandler):
     def color(self) -> ColorAccessor:
         """
         Access all color space representations through a unified interface.
-        
+
         This property provides access to the ColorAccessor object, which groups
         all color space transformations and representations including:
-        
+
         - XYZ: CIE XYZ color space
         - XYZ_D65: CIE XYZ under D65 illuminant
         - Lab: CIE L*a*b* perceptually uniform color space
         - xy: CIE xy chromaticity coordinates
         - hsv: HSV (Hue, Saturation, Value) color space
-        
+
         Returns:
             ColorAccessor: Unified accessor for all color space representations.
-            
+
         Examples:
             .. dropdown:: Access color spaces
 

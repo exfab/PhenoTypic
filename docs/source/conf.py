@@ -6,7 +6,7 @@
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
-""" Color Palette
+"""Color Palette
 Primary (Sky Blue)
     #00AEEF
     Bright sky blue for branding focus
@@ -35,8 +35,8 @@ import os
 import sys
 import sphinx_autosummary_accessors
 
-sys.path.insert(0, os.path.abspath('../../src'))
-sys.path.insert(0, os.path.abspath('./_extensions'))
+sys.path.insert(0, os.path.abspath("../../src"))
+sys.path.insert(0, os.path.abspath("./_extensions"))
 
 # Register ipython2 as an alias for ipython3 to suppress warnings in old notebooks
 from pygments.lexers import get_lexer_by_name
@@ -46,19 +46,19 @@ try:
     from pygments.lexers import PythonLexer
     from sphinx.highlighting import lexers
 
-    lexers['ipython2'] = get_lexer_by_name('ipython3')
+    lexers["ipython2"] = get_lexer_by_name("ipython3")
 except Exception:
     # If that fails, just use python3
     pass
 
-project = 'PhenoTypic'
-copyright = '2025, ExFAB BioFoundry'
-author = 'Alexander Nguyen'
+project = "PhenoTypic"
+copyright = "2025, ExFAB BioFoundry"
+author = "Alexander Nguyen"
 
 # Variables
-github_url = 'https://github.com/Wheeldon-Lab/PhenoScope#'
-LIGHT_LOGO_PATH = './_static/assets/400x150/gradient_logo_exfab.svg'
-DARK_LOGO_PATH = './_static/assets/400x150/gradient_logo_exfab.svg'
+github_url = "https://github.com/Wheeldon-Lab/PhenoScope#"
+LIGHT_LOGO_PATH = "./_static/assets/400x150/gradient_logo_exfab.svg"
+DARK_LOGO_PATH = "./_static/assets/400x150/gradient_logo_exfab.svg"
 
 # Try to get the version from PhenoTypic, but use a default if not available
 try:
@@ -66,27 +66,27 @@ try:
 
     version = str(phenotypic.__version__)
 except ImportError:
-    version = '0.1.0'  # Default version if PhenoTypic is not installed
+    version = "0.1.0"  # Default version if PhenoTypic is not installed
 release = version
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
 extensions = [
-    'sphinx.ext.autodoc',
-    'sphinx.ext.napoleon',
-    'sphinx.ext.viewcode',
-    'sphinx.ext.intersphinx',
-    'sphinx.ext.autosummary',
-    'sphinx.ext.coverage',
-    'sphinx.ext.doctest',
-    'sphinx.ext.ifconfig',
-    'sphinx.ext.autosectionlabel',
-    'nbsphinx',
-    'sphinx_autosummary_accessors',
-    'sphinx_design',
-    'class_members',
-    "sphinx_togglebutton"
+    "sphinx.ext.autodoc",
+    "sphinx.ext.napoleon",
+    "sphinx.ext.viewcode",
+    "sphinx.ext.intersphinx",
+    "sphinx.ext.autosummary",
+    "sphinx.ext.coverage",
+    "sphinx.ext.doctest",
+    "sphinx.ext.ifconfig",
+    "sphinx.ext.autosectionlabel",
+    "nbsphinx",
+    "sphinx_autosummary_accessors",
+    "sphinx_design",
+    "class_members",
+    "sphinx_togglebutton",
 ]
 
 autosummary_generate = True
@@ -98,49 +98,49 @@ autosummary_generate = True
 autosummary_ignore_module_all = False
 
 autodoc_default_options = {
-    'members'          : True,  # Document class members
-    'undoc-members'    : True,  # Include undocumented members
-    'private-members'  : False,  # Include private members (e.g., `_method`)
-    'show-inheritance' : True,  # Show class inheritance in docs
-    'inherited-members': True,  # Include inherited members
+    "members": True,  # Document class members
+    "undoc-members": True,  # Include undocumented members
+    "private-members": False,  # Include private members (e.g., `_method`)
+    "show-inheritance": True,  # Show class inheritance in docs
+    "inherited-members": True,  # Include inherited members
     # 'member-order'     : 'bysource',
 }
 
-autodoc_typehints = 'both'
-autodoc_typehints_format = 'short'
-autodoc_member_order = 'groupwise'
+autodoc_typehints = "both"
+autodoc_typehints_format = "short"
+autodoc_member_order = "groupwise"
 
 # Map type abbreviations used in code to their full module paths
 autodoc_type_aliases = {
-    'pd.DataFrame': 'pandas.DataFrame',
-    'pd.Series'   : 'pandas.Series',
-    'np.ndarray'  : 'numpy.ndarray',
-    'plt.Axes'    : 'matplotlib.axes.Axes',
-    'plt.Figure'  : 'matplotlib.figure.Figure',
+    "pd.DataFrame": "pandas.DataFrame",
+    "pd.Series": "pandas.Series",
+    "np.ndarray": "numpy.ndarray",
+    "plt.Axes": "matplotlib.axes.Axes",
+    "plt.Figure": "matplotlib.figure.Figure",
 }
 
-templates_path = ['_templates', sphinx_autosummary_accessors.templates_path]
+templates_path = ["_templates", sphinx_autosummary_accessors.templates_path]
 
 # Suppress specific warnings
 suppress_warnings = [
-    'toc.not_readable',  # Suppress warnings about documents not in toctree
-    'autosectionlabel.*',  # Suppress duplicate label warnings
-    'autodoc.duplicate_object',  # Suppress duplicate object warnings
-    'ref.class',  # Suppress unresolvable class reference warnings (external types)
+    "toc.not_readable",  # Suppress warnings about documents not in toctree
+    "autosectionlabel.*",  # Suppress duplicate label warnings
+    "autodoc.duplicate_object",  # Suppress duplicate object warnings
+    "ref.class",  # Suppress unresolvable class reference warnings (external types)
 ]
 
 # Exclude patterns - don't process these files/directories
-exclude_patterns = ['_build', '**.ipynb_checkpoints', '**/auto_examples']
+exclude_patterns = ["_build", "**.ipynb_checkpoints", "**/auto_examples"]
 
 # nbsphinx configuration
-nbsphinx_execute = 'auto'
+nbsphinx_execute = "auto"
 nbsphinx_allow_errors = True
-nbsphinx_kernel_name = 'python3'
+nbsphinx_kernel_name = "python3"
 
 # Fix for deprecated ipython2 lexer in Jupyter notebooks
 # Map ipython2 to python3 for syntax highlighting
-highlight_language = 'python3'
-pygments_style = 'sphinx'
+highlight_language = "python3"
+pygments_style = "sphinx"
 
 # myst_nb configuration
 myst_enable_extensions = [
@@ -164,37 +164,36 @@ html5_writer = True
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
 # Themes: 'sphinxawesome_theme', 'furo', 'pydata_sphinx_theme'
-html_theme = 'pydata_sphinx_theme'
-html_static_path = ['_static']
+html_theme = "pydata_sphinx_theme"
+html_static_path = ["_static"]
 html_css_files = [
-    'custom.css',
+    "custom.css",
 ]
 
-if html_theme == 'pydata_sphinx_theme':
+if html_theme == "pydata_sphinx_theme":
     html_title = "PhenoTypic"
     html_theme_options = {
         "subtitle": "A modular framework for bioimage analysis and visualization"
     }
     html_logo = LIGHT_LOGO_PATH
     html_theme_options = {
-        "logo"                : {
-            "alt_text"   : "PhenoTypic",
-            "link"       : "index",
+        "logo": {
+            "alt_text": "PhenoTypic",
+            "link": "index",
             "image_light": LIGHT_LOGO_PATH,
-            "image_dark" : DARK_LOGO_PATH
+            "image_dark": DARK_LOGO_PATH,
         },
-        "icon_links"          : [
+        "icon_links": [
             {
                 "name": "GitHub",
-                "url" : github_url,
+                "url": github_url,
                 "icon": "fa-brands fa-github",
             }
         ],
         "use_edit_page_button": False,
-        "show_toc_level"      : 3,
-
+        "show_toc_level": 3,
         "navigation_with_keys": True,
-        "show_prev_next"      : False,
+        "show_prev_next": False,
     }
 
 # Napoleon Settings
@@ -212,29 +211,29 @@ napoleon_use_rtype = True
 
 # Type aliases for cleaner documentation
 python_type_aliases = {
-    'matplotlib.axes._axes.Axes': 'matplotlib.axes.Axes',
-    'matplotlib.figure.Figure'  : 'matplotlib.figure.Figure',
+    "matplotlib.axes._axes.Axes": "matplotlib.axes.Axes",
+    "matplotlib.figure.Figure": "matplotlib.figure.Figure",
     # Common abbreviations
-    'np.ndarray'                : 'numpy.ndarray',
-    'pd.DataFrame'              : 'pandas.DataFrame',
-    'pd.Series'                 : 'pandas.Series',
-    'plt.Axes'                  : 'matplotlib.axes.Axes',
-    'plt.Figure'                : 'matplotlib.figure.Figure',
+    "np.ndarray": "numpy.ndarray",
+    "pd.DataFrame": "pandas.DataFrame",
+    "pd.Series": "pandas.Series",
+    "plt.Axes": "matplotlib.axes.Axes",
+    "plt.Figure": "matplotlib.figure.Figure",
     # Type hint aliases
-    'optional'                  : 'typing.Optional',
-    'Optional'                  : 'typing.Optional',
+    "optional": "typing.Optional",
+    "Optional": "typing.Optional",
 }
 
 intersphinx_mapping = {
-    "python"    : ("https://docs.python.org/3", None),
-    "numpy"     : ("https://numpy.org/doc/stable/", None),
-    "pandas"    : ("https://pandas.pydata.org/docs/", None),
-    "scipy"     : ("https://docs.scipy.org/doc/scipy/", None),
-    "sklearn"   : ("https://scikit-learn.org/stable/", None),
-    "skimage"   : ("https://scikit-image.org/docs/stable/", None),
-    "h5py"      : ("https://docs.h5py.org/en/stable/", None),
-    "plotly"    : ("https://plotly.com/python-api-reference/", None),
-    "colour"    : ("https://colour.readthedocs.io/en/latest/", None),
+    "python": ("https://docs.python.org/3", None),
+    "numpy": ("https://numpy.org/doc/stable/", None),
+    "pandas": ("https://pandas.pydata.org/docs/", None),
+    "scipy": ("https://docs.scipy.org/doc/scipy/", None),
+    "sklearn": ("https://scikit-learn.org/stable/", None),
+    "skimage": ("https://scikit-image.org/docs/stable/", None),
+    "h5py": ("https://docs.h5py.org/en/stable/", None),
+    "plotly": ("https://plotly.com/python-api-reference/", None),
+    "colour": ("https://colour.readthedocs.io/en/latest/", None),
     "matplotlib": ("https://matplotlib.org/stable/", None),
 }
 
@@ -243,20 +242,20 @@ intersphinx_mapping = {
 nitpicky = False
 nitpick_ignore = [
     # Type hints
-    ('py:class', 'optional'),
-    ('py:class', 'Optional'),
+    ("py:class", "optional"),
+    ("py:class", "Optional"),
     # Common abbreviations that may not resolve via intersphinx
-    ('py:class', 'pd.DataFrame'),
-    ('py:class', 'pd.Series'),
-    ('py:class', 'np.ndarray'),
-    ('py:class', 'plt.Axes'),
-    ('py:class', 'plt.Figure'),
+    ("py:class", "pd.DataFrame"),
+    ("py:class", "pd.Series"),
+    ("py:class", "np.ndarray"),
+    ("py:class", "plt.Axes"),
+    ("py:class", "plt.Figure"),
     # H5py internal classes
-    ('py:class', 'h5py._hl.group.Group'),
-    ('py:class', 'h5py._hl.files.File'),
+    ("py:class", "h5py._hl.group.Group"),
+    ("py:class", "h5py._hl.files.File"),
     # Other external types
-    ('py:class', 'ipywidgets.Widget'),
-    ('py:class', 'Path'),
+    ("py:class", "ipywidgets.Widget"),
+    ("py:class", "Path"),
 ]
 
 
@@ -269,19 +268,23 @@ def generate_downloadables_rst(app):
 
     # Get directories relative to conf.py
     source_dir = os.path.abspath(os.path.dirname(__file__))
-    downloadables_dir = os.path.join(source_dir, '_downloads')
-    output_file = os.path.join(source_dir, 'downloads.rst')
+    downloadables_dir = os.path.join(source_dir, "_downloads")
+    output_file = os.path.join(source_dir, "downloads.rst")
 
     # Check if directory exists
     if not os.path.exists(downloadables_dir):
-        print(f"Warning: {downloadables_dir} does not exist. Skipping downloadables generation.")
+        print(
+            f"Warning: {downloadables_dir} does not exist. Skipping downloadables generation."
+        )
         return
 
     content = []
     content.append("Downloads")
     content.append("=========")
     content.append("")
-    content.append("This page contains downloadable scripts, notebooks, and utilities for PhenoTypic.")
+    content.append(
+        "This page contains downloadable scripts, notebooks, and utilities for PhenoTypic."
+    )
     content.append("")
     content.append(".. grid:: 1 1 2 2")
     content.append("    :gutter: 3")
@@ -290,7 +293,7 @@ def generate_downloadables_rst(app):
     def extract_bash_description(filepath):
         """Extract title and description from bash script comments."""
         try:
-            with open(filepath, 'r', encoding='utf-8') as f:
+            with open(filepath, "r", encoding="utf-8") as f:
                 lines = f.readlines()
         except Exception as e:
             print(f"Error reading {filepath}: {e}")
@@ -305,22 +308,22 @@ def generate_downloadables_rst(app):
             stripped = line.strip()
 
             # Skip shebang and empty lines at start
-            if i == 0 and stripped.startswith('#!'):
+            if i == 0 and stripped.startswith("#!"):
                 continue
             if not stripped:
                 continue
 
             # Check if it's a comment line
-            if stripped.startswith('#'):
+            if stripped.startswith("#"):
                 # Skip separator lines (===, ---, etc.)
                 comment_content = stripped[1:].strip()
-                if not comment_content or re.match(r'^[=\-]+$', comment_content):
+                if not comment_content or re.match(r"^[=\-]+$", comment_content):
                     continue
 
                 # Extract title from first meaningful comment
                 if title is None and comment_content:
                     # Check if it looks like a title (short, no period, capitalized)
-                    if len(comment_content) < 100 and not comment_content.endswith('.'):
+                    if len(comment_content) < 100 and not comment_content.endswith("."):
                         title = comment_content
                     else:
                         description_lines.append(comment_content)
@@ -333,13 +336,13 @@ def generate_downloadables_rst(app):
                             # Check if next non-empty line is not a comment
                             for j in range(i + 1, min(i + 3, len(lines))):
                                 next_stripped = lines[j].strip()
-                                if next_stripped and not next_stripped.startswith('#'):
+                                if next_stripped and not next_stripped.startswith("#"):
                                     break
                             else:
                                 continue
                             break
 
-        description = ' '.join(description_lines) if description_lines else None
+        description = " ".join(description_lines) if description_lines else None
         return title, description
 
     def extract_notebook_metadata(filepath):
@@ -350,7 +353,7 @@ def generate_downloadables_rst(app):
         """
 
         try:
-            with open(filepath, 'r', encoding='utf-8') as f:
+            with open(filepath, "r", encoding="utf-8") as f:
                 nb = json.load(f)
         except Exception as e:
             print(f"Error reading notebook {filepath}: {e}")
@@ -378,8 +381,8 @@ def generate_downloadables_rst(app):
             title = None
             for idx, line in enumerate(lines):
                 stripped = line.strip()
-                if stripped.startswith('#'):
-                    heading = stripped.lstrip('#').strip()
+                if stripped.startswith("#"):
+                    heading = stripped.lstrip("#").strip()
                     if heading:
                         title = heading
                         title_line_index = idx
@@ -390,7 +393,7 @@ def generate_downloadables_rst(app):
 
             # Build a short description from the remaining lines in the same cell
             desc_lines = []
-            for line in lines[title_line_index + 1:]:
+            for line in lines[title_line_index + 1 :]:
                 stripped = line.strip()
                 if not stripped:
                     if desc_lines:
@@ -398,13 +401,13 @@ def generate_downloadables_rst(app):
                     continue
                 desc_lines.append(stripped)
 
-            description = ' '.join(desc_lines) if desc_lines else None
+            description = " ".join(desc_lines) if desc_lines else None
             return title, description
 
         return None, None
 
     for filename in sorted(os.listdir(downloadables_dir)):
-        if not (filename.endswith('.py') or filename.endswith('.sh')):
+        if not (filename.endswith(".py") or filename.endswith(".sh")):
             continue
 
         filepath = os.path.join(downloadables_dir, filename)
@@ -412,10 +415,10 @@ def generate_downloadables_rst(app):
         title = filename
         description = "No description available."
 
-        if filename.endswith('.py'):
+        if filename.endswith(".py"):
             # Handle Python files
             try:
-                with open(filepath, 'r', encoding='utf-8') as f:
+                with open(filepath, "r", encoding="utf-8") as f:
                     tree = ast.parse(f.read())
                     docstring = ast.get_docstring(tree)
             except Exception as e:
@@ -423,14 +426,18 @@ def generate_downloadables_rst(app):
                 docstring = None
 
             if docstring:
-                lines = docstring.strip().split('\n')
+                lines = docstring.strip().split("\n")
                 # Try to extract a title from the first line or ReST header
                 first_line = lines[0].strip()
 
                 # Check for Title underline style
                 # Title
                 # =====
-                if len(lines) > 1 and len(lines[1].strip()) >= len(first_line) and set(lines[1].strip()) == {'='}:
+                if (
+                    len(lines) > 1
+                    and len(lines[1].strip()) >= len(first_line)
+                    and set(lines[1].strip()) == {"="}
+                ):
                     title = first_line
                     # Description starts after the header
                     desc_lines_raw = lines[2:]
@@ -455,9 +462,9 @@ def generate_downloadables_rst(app):
                         desc_lines.append(stripped)
 
                 if desc_lines:
-                    description = ' '.join(desc_lines)
+                    description = " ".join(desc_lines)
 
-        elif filename.endswith('.sh'):
+        elif filename.endswith(".sh"):
             # Handle bash files
             bash_title, bash_description = extract_bash_description(filepath)
             if bash_title:
@@ -479,11 +486,11 @@ def generate_downloadables_rst(app):
     # offered as downloads on this page.
     notebook_dirs = [
         # Current locations under user_guide
-        os.path.join(source_dir, 'user_guide', 'examples', 'notebooks'),
-        os.path.join(source_dir, 'user_guide', 'tutorial', 'notebooks'),
+        os.path.join(source_dir, "user_guide", "examples", "notebooks"),
+        os.path.join(source_dir, "user_guide", "tutorial", "notebooks"),
         # Fallback legacy-style locations if they exist
-        os.path.join(source_dir, 'examples', 'notebooks'),
-        os.path.join(source_dir, 'tutorial', 'notebooks'),
+        os.path.join(source_dir, "examples", "notebooks"),
+        os.path.join(source_dir, "tutorial", "notebooks"),
     ]
 
     # Insert a separate grid for notebooks if we find any
@@ -494,7 +501,7 @@ def generate_downloadables_rst(app):
 
         rel_dir = os.path.relpath(nb_dir, source_dir)
         for filename in sorted(os.listdir(nb_dir)):
-            if not filename.endswith('.ipynb'):
+            if not filename.endswith(".ipynb"):
                 continue
             notebook_entries.append((rel_dir, filename))
 
@@ -516,7 +523,7 @@ def generate_downloadables_rst(app):
             if not nb_description:
                 nb_description = "No description available."
 
-            rel_path = os.path.join(rel_dir, filename).replace(os.sep, '/')
+            rel_path = os.path.join(rel_dir, filename).replace(os.sep, "/")
 
             content.append(f"    .. grid-item-card:: {nb_title}")
             content.append("        :shadow: md")
@@ -527,10 +534,10 @@ def generate_downloadables_rst(app):
             content.append(f"        :download:`Download notebook <{rel_path}>`")
             content.append("")
 
-    with open(output_file, 'w', encoding='utf-8') as f:
-        f.write('\n'.join(content))
+    with open(output_file, "w", encoding="utf-8") as f:
+        f.write("\n".join(content))
     print(f"Generated {output_file}")
 
 
 def setup(app):
-    app.connect('builder-inited', generate_downloadables_rst)
+    app.connect("builder-inited", generate_downloadables_rst)
