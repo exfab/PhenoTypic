@@ -8,7 +8,7 @@ from datetime import datetime
 from fractions import Fraction
 from typing import Tuple, TYPE_CHECKING
 
-if TYPE_CHECKING: from phenotypic import Image
+if TYPE_CHECKING: from phenotypic import Image, GridImage
 
 import exifread
 import h5py
@@ -50,9 +50,11 @@ class ImageIOHandler(ImageColorSpace):
     extraction supports round-trip storage and recovery of PhenoTypic-specific data.
 
     Examples:
-        >>> img = ImageIOHandler.imread('photo.jpg')
-        >>> img.save2hdf5('output.h5')
-        >>> loaded = ImageIOHandler.load_hdf5('output.h5', 'photo')
+        .. dropdown:: Basic usage
+
+            >>> img = ImageIOHandler.imread('photo.jpg')
+            >>> img.save2hdf5('output.h5')
+            >>> loaded = ImageIOHandler.load_hdf5('output.h5', 'photo')
     """
 
     def __init__(self,
@@ -270,10 +272,10 @@ class ImageIOHandler(ImageColorSpace):
         if shutil.which('exiftool'):
             try:
                 result = subprocess.run(
-                    ['exiftool', '-json', '-n', str(filepath)],
-                    capture_output=True,
-                    text=True,
-                    timeout=30
+                        ['exiftool', '-json', '-n', str(filepath)],
+                        capture_output=True,
+                        text=True,
+                        timeout=30
                 )
                 if result.returncode == 0:
                     exif_data = json.loads(result.stdout)
@@ -569,9 +571,11 @@ class ImageIOHandler(ImageColorSpace):
             - All numeric data types are preserved when storing.
 
         Examples:
-            >>> img = Image.imread('photo.jpg')
-            >>> img.save2hdf5('output.h5')
-            >>> img.save2hdf5('output.h5', compression='szip')
+            .. dropdown:: Save to HDF5
+
+                >>> img = Image.imread('photo.jpg')
+                >>> img.save2hdf5('output.h5')
+                >>> img.save2hdf5('output.h5', compression='szip')
         """
         with h5py.File(filename, mode="a") as filehandler:
             # 1) Create image group if it doesnt already exist & sets grp obj
@@ -650,20 +654,26 @@ class ImageIOHandler(ImageColorSpace):
             - Pickle files may not be compatible across Python versions.
 
         Examples:
-            >>> img = Image.imread('photo.jpg')
-            >>> img.save2pickle('image.pkl')
-            >>> loaded = Image.load_pickle('image.pkl')
+            .. dropdown:: Save to pickle
+
+                >>> img = Image.imread('photo.jpg')
+                >>> img.save2pickle('image.pkl')
+                >>> loaded = Image.load_pickle('image.pkl')
         """
         with open(filename, 'wb') as filehandler:
-            pickle.dump({
+            data2save = {
                 "_data.rgb"         : self._data.rgb,
                 '_data.gray'        : self._data.gray,
                 '_data.enh_gray'    : self._data.enh_gray,
                 'objmap'            : self.objmap[:],
                 "protected_metadata": self._metadata.protected,
                 "public_metadata"   : self._metadata.public,
-            }, filehandler,
-            )
+            }
+
+            if hasattr(self, "grid_finder"):
+                data2save['grid_finder'] = self.grid_finder
+
+            pickle.dump(data2save, filehandler)
 
     @classmethod
     def load_pickle(cls, filename: str) -> Image:
@@ -689,8 +699,10 @@ class ImageIOHandler(ImageColorSpace):
             - Metadata (protected and public) is fully restored.
 
         Examples:
-            >>> loaded = Image.load_pickle('image.pkl')
-            >>> print(loaded.shape)
+            .. dropdown:: Load from pickle
+
+                >>> loaded = Image.load_pickle('image.pkl')
+                >>> print(loaded.shape)
         """
         with open(filename, 'rb') as f:
             loaded = pickle.load(f)
@@ -708,4 +720,10 @@ class ImageIOHandler(ImageColorSpace):
         instance.objmap[:] = loaded["objmap"]
         instance._metadata.protected = loaded["protected_metadata"]
         instance._metadata.public = loaded["public_metadata"]
+
+        if hasattr(instance, "grid_finder"):
+            instance: GridImage  # handled case of GridImage instead of Image
+            if hasattr(instance, "grid_finder"):
+                instance.grid_finder
+
         return instance

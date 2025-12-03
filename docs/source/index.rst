@@ -19,23 +19,6 @@ Welcome to Phenotypic's documentation. Here you'll find comprehensive guides and
    :padding: 2 2 0 0
    :class-container: sd-text-center
 
-   .. grid-item-card::  Getting Started
-      :img-top: ./_static/assets/200x150/getting_started_rocket.svg
-      :class-card: intro-card
-      :shadow: md
-
-      The getting started guide explains how to install and get started with Phenotypic.
-
-      +++
-
-      .. button-ref:: user_guide/tutorial/overview
-         :ref-type: doc
-         :click-parent:
-         :color: secondary
-         :expand:
-
-         To getting started
-
    .. grid-item-card::  User guide
       :img-top: ./_static/assets/200x150/user_guide_book.svg
       :class-card: intro-card
@@ -72,7 +55,7 @@ Welcome to Phenotypic's documentation. Here you'll find comprehensive guides and
 
          To the examples
 
-   .. grid-item-card::  Downloadables
+   .. grid-item-card::  Downloads
       :img-top: ./_static/assets/200x150/downloads.svg
       :class-card: intro-card
       :shadow: md
@@ -81,7 +64,7 @@ Welcome to Phenotypic's documentation. Here you'll find comprehensive guides and
 
       +++
 
-      .. button-ref:: downloadables
+      .. button-ref:: downloads
          :ref-type: doc
          :click-parent:
          :color: secondary
@@ -124,7 +107,19 @@ Welcome to Phenotypic's documentation. Here you'll find comprehensive guides and
          :color: secondary
          :expand:
 
-         To the contributor guide
+         To the contributor guide\
+
+
+   .. grid-item-card::  Report a problem
+      :img-top: ./_static/assets/200x150/contact_us.svg
+      :class-card: intro-card
+      :shadow: md
+      :link: https://github.com/exfab/PhenoTypic/issues
+      :link-type: url
+
+      Notice a problem or need help? Open an issue on GitHub and add a label so we can help you faster.
+
+      +++
 
 
 .. toctree::
@@ -136,4 +131,4 @@ Welcome to Phenotypic's documentation. Here you'll find comprehensive guides and
    user_guide/index
    api_reference/index
    contrib_guide/index
-   downloadables
+   downloads

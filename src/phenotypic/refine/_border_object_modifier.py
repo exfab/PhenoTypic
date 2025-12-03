@@ -43,10 +43,12 @@ class BorderObjectRemover(ObjectRefiner):
         border_size (int): Width of the exclusion border around the image.
 
     Examples:
-        >>> from phenotypic.refine import BorderObjectRemover
-        >>> op = BorderObjectRemover(border_size=15)
-        >>> image = op.apply(image, inplace=True)  # doctest: +SKIP
-        >>> # All colonies intersecting a 15-pixel frame margin are removed
+        .. dropdown:: Remove objects that touch the image border within a margin
+
+            >>> from phenotypic.refine import BorderObjectRemover
+            >>> op = BorderObjectRemover(border_size=15)
+            >>> image = op.apply(image, inplace=True)  # doctest: +SKIP
+            >>> # All colonies intersecting a 15-pixel frame margin are removed
 
     Raises:
         TypeError: If an invalid ``border_size`` type is provided (raised during

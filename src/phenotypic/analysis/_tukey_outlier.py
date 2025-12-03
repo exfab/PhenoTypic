@@ -31,37 +31,41 @@ class TukeyOutlierRemover(SetAnalyzer):
         num_workers: Number of parallel workers. Default is 1.
         
     Examples:
-        >>> import pandas as pd
-        >>> import numpy as np
-        >>> from phenotypic.analysis import TukeyOutlierRemover
-        >>> 
-        >>> # Create sample data with some outliers
-        >>> np.random.seed(42)
-        >>> data = pd.DataFrame({
-        ...     'ImageName': ['img1'] * 50 + ['img2'] * 50,
-        ...     'Area': np.concatenate([
-        ...         np.random.normal(200, 30, 48),
-        ...         [500, 550],  # outliers in img1
-        ...         np.random.normal(180, 25, 48),
-        ...         [50, 600]  # outliers in img2
-        ...     ])
-        ... })
-        >>> 
-        >>> # Initialize detector
-        >>> detector = TukeyOutlierRemover(
-        ...     on='Area',
-        ...     groupby=['ImageName'],
-        ...     k=1.5
-        ... )
-        >>> 
-        >>> # Remove outliers
-        >>> filtered_data = detector.analyze(data)
-        >>> 
-        >>> # Check how many were removed
-        >>> print(f"Original: {len(data)}, Filtered: {len(filtered_data)}")
-        >>> 
-        >>> # Visualize removed outliers
-        >>> fig = detector.show()
+        .. dropdown:: Remove outliers and visualize results
+
+            .. code-block:: python
+
+                import pandas as pd
+                import numpy as np
+                from phenotypic.analysis import TukeyOutlierRemover
+
+                # Create sample data with some outliers
+                np.random.seed(42)
+                data = pd.DataFrame({
+                    'ImageName': ['img1'] * 50 + ['img2'] * 50,
+                    'Area': np.concatenate([
+                        np.random.normal(200, 30, 48),
+                        [500, 550],  # outliers in img1
+                        np.random.normal(180, 25, 48),
+                        [50, 600]  # outliers in img2
+                    ])
+                })
+
+                # Initialize detector
+                detector = TukeyOutlierRemover(
+                    on='Area',
+                    groupby=['ImageName'],
+                    k=1.5
+                )
+
+                # Remove outliers
+                filtered_data = detector.analyze(data)
+
+                # Check how many were removed
+                print(f"Original: {len(data)}, Filtered: {len(filtered_data)}")
+
+                # Visualize removed outliers
+                fig = detector.show()
     """
 
     def __init__(
@@ -113,31 +117,35 @@ class TukeyOutlierRemover(SetAnalyzer):
             ValueError: If data is empty or malformed.
         
         Examples:
-            >>> import pandas as pd
-            >>> import numpy as np
-            >>> from phenotypic.analysis import TukeyOutlierRemover
-            >>> 
-            >>> # Create sample data
-            >>> np.random.seed(42)
-            >>> data = pd.DataFrame({
-            ...     'ImageName': ['img1'] * 100,
-            ...     'Area': np.concatenate([
-            ...         np.random.normal(200, 30, 98),
-            ...         [500, 50]  # outliers
-            ...     ])
-            ... })
-            >>> 
-            >>> # Remove outliers
-            >>> detector = TukeyOutlierRemover(
-            ...     on='Area',
-            ...     groupby=['ImageName'],
-            ...     k=1.5
-            ... )
-            >>> filtered_data = detector.analyze(data)
-            >>> 
-            >>> # Check results
-            >>> print(f"Original: {len(data)} rows, Filtered: {len(filtered_data)} rows")
-            >>> print(f"Removed {len(data) - len(filtered_data)} outliers")
+            .. dropdown:: Analyze and filter outliers from measurement data
+
+                .. code-block:: python
+
+                    import pandas as pd
+                    import numpy as np
+                    from phenotypic.analysis import TukeyOutlierRemover
+
+                    # Create sample data
+                    np.random.seed(42)
+                    data = pd.DataFrame({
+                        'ImageName': ['img1'] * 100,
+                        'Area': np.concatenate([
+                            np.random.normal(200, 30, 98),
+                            [500, 50]  # outliers
+                        ])
+                    })
+
+                    # Remove outliers
+                    detector = TukeyOutlierRemover(
+                        on='Area',
+                        groupby=['ImageName'],
+                        k=1.5
+                    )
+                    filtered_data = detector.analyze(data)
+
+                    # Check results
+                    print(f"Original: {len(data)} rows, Filtered: {len(filtered_data)} rows")
+                    print(f"Removed {len(data) - len(filtered_data)} outliers")
         
         Notes:
             - Stores original data in self._original_data for visualization
@@ -216,35 +224,39 @@ class TukeyOutlierRemover(SetAnalyzer):
             KeyError: If criteria references columns not present in the data.
         
         Examples:
-            >>> import pandas as pd
-            >>> import numpy as np
-            >>> from phenotypic.analysis import TukeyOutlierRemover
-            >>> 
-            >>> # Create sample data with multiple grouping columns
-            >>> np.random.seed(42)
-            >>> data = pd.DataFrame({
-            ...     'ImageName': ['img1', 'img2'] * 50,
-            ...     'Plate': ['P1'] * 50 + ['P2'] * 50,
-            ...     'Area': np.concatenate([
-            ...         np.random.normal(200, 30, 48), [500, 550],
-            ...         np.random.normal(180, 25, 48), [50, 600]
-            ...     ])
-            ... })
-            >>> 
-            >>> # Remove outliers and visualize all groups
-            >>> detector = TukeyOutlierRemover(
-            ...     on='Area',
-            ...     groupby=['Plate', 'ImageName'],
-            ...     k=1.5
-            ... )
-            >>> results = detector.analyze(data)
-            >>> fig, axes = detector.show(figsize=(12, 5))
-            >>> 
-            >>> # Visualize only specific plate
-            >>> fig, axes = detector.show(criteria={'Plate': 'P1'})
-            >>> 
-            >>> # Visualize specific images across plates using collapsed view
-            >>> fig, ax = detector.show(criteria={'ImageName': 'img1'}, collapsed=True)
+            .. dropdown:: Visualize outlier detection with multiple grouping options
+
+                .. code-block:: python
+
+                    import pandas as pd
+                    import numpy as np
+                    from phenotypic.analysis import TukeyOutlierRemover
+
+                    # Create sample data with multiple grouping columns
+                    np.random.seed(42)
+                    data = pd.DataFrame({
+                        'ImageName': ['img1', 'img2'] * 50,
+                        'Plate': ['P1'] * 50 + ['P2'] * 50,
+                        'Area': np.concatenate([
+                            np.random.normal(200, 30, 48), [500, 550],
+                            np.random.normal(180, 25, 48), [50, 600]
+                        ])
+                    })
+
+                    # Remove outliers and visualize all groups
+                    detector = TukeyOutlierRemover(
+                        on='Area',
+                        groupby=['Plate', 'ImageName'],
+                        k=1.5
+                    )
+                    results = detector.analyze(data)
+                    fig, axes = detector.show(figsize=(12, 5))
+
+                    # Visualize only specific plate
+                    fig, axes = detector.show(criteria={'Plate': 'P1'})
+
+                    # Visualize specific images across plates using collapsed view
+                    fig, ax = detector.show(criteria={'ImageName': 'img1'}, collapsed=True)
         
         Notes:
             Individual mode (collapsed=False):
@@ -532,17 +544,21 @@ class TukeyOutlierRemover(SetAnalyzer):
             returns an empty DataFrame.
         
         Examples:
-            >>> detector = TukeyOutlierRemover(
-            ...     on='Area',
-            ...     groupby=['ImageName']
-            ... )
-            >>> filtered_data = detector.analyze(data)
-            >>> results_copy = detector.results()  # Same as filtered_data
-            >>> assert results_copy.equals(filtered_data)
-            >>> 
-            >>> # Check how many rows were removed
-            >>> num_removed = len(data) - len(filtered_data)
-            >>> print(f"Removed {num_removed} outliers")
+            .. dropdown:: Retrieve filtered results after analysis
+
+                .. code-block:: python
+
+                    detector = TukeyOutlierRemover(
+                        on='Area',
+                        groupby=['ImageName']
+                    )
+                    filtered_data = detector.analyze(data)
+                    results_copy = detector.results()  # Same as filtered_data
+                    assert results_copy.equals(filtered_data)
+
+                    # Check how many rows were removed
+                    num_removed = len(data) - len(filtered_data)
+                    print(f"Removed {num_removed} outliers")
         
         Notes:
             - Returns the DataFrame stored in self._latest_measurements

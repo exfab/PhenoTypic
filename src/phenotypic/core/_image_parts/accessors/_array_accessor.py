@@ -11,36 +11,88 @@ from phenotypic.tools.exceptions_ import ArrayKeyValueShapeMismatchError, NoArra
 
 
 class ImageRGB(MultiChannelAccessor):
-    """An accessor for handling image rgb values with helper methods for accessing, modifying, visualizing, and analyzing the multichannel image data.
+    """Accessor for interacting with RGB multichannel image data.
 
-    It relies on the parent image handler object that serves as the bridge to the underlying image
-    rgb and associated metadata or attributes.
+    ImageRGB provides a comprehensive interface for accessing, modifying, visualizing,
+    and analyzing RGB image arrays. It acts as a bridge to the underlying RGB data stored
+    in the parent Image object, exposing the data through intuitive indexing operations
+    and utility methods.
 
-    The class allows users to interact with image arrays intuitively while providing
-    features such as advanced visualization (both for the raw images and their derived
-    representations, like histograms or overlays). Through its properties and methods,
-    users can explore, manipulate, and analyze the structural or geometrical attributes
-    of the image and its segmented objects.
+    This accessor supports advanced visualization capabilities including display of
+    individual channels or composite images, overlays with segmentation maps, and
+    channel-specific histograms. Users can seamlessly manipulate image arrays, explore
+    geometric and structural attributes, and analyze segmented objects.
 
-    Key use cases for this class include displaying selected channels or the entire
-    image (including overlays and highlighted objects), generating channel-specific
-    histograms, and accessing image data attributes, such as shape.
+    The class inherits from MultiChannelAccessor and extends functionality for
+    3-channel (RGB) images specifically. All visualization and analysis methods
+    from the base class are available and can handle 3-channel color data.
 
+    Attributes:
+        _accessor_property_name (str): Property name on Image that returns this accessor.
+            Set to "rgb" to identify this as the RGB accessor.
+
+    Raises:
+        EmptyImageError: If attempting to access data when no image is loaded.
+        NoArrayError: If attempting to access RGB data when the image is 2D
+            (no RGB array form exists).
+
+    Examples:
+        .. dropdown:: Access RGB data from an Image object
+
+            .. code-block:: python
+
+                rgb_accessor = image.rgb
+                # Get a copy of the full RGB array
+                rgb_data = rgb_accessor[:]
+                # Modify a region
+                rgb_accessor[10:20, 10:20] = [255, 0, 0]
+                # Display the image
+                fig, ax = rgb_accessor.show()
     """
 
     _accessor_property_name: str = "rgb"
 
     def __getitem__(self, key) -> np.ndarray:
-        """
-        Returns a copy of the elements at the subregion specified by the given key.
+        """Return a read-only view of the RGB subregion specified by the given key.
 
-        This class provides a mechanism for extracting a specific subregion from
-        the multichannel image array. The extracted subregion is represented in the form of a
-        NumPy array, and its indexable nature allows users to freely interact with the
-        underlying array data.
+        This method supports NumPy-style indexing and slicing to extract subregions
+        from the RGB image array. The returned array is read-only to prevent accidental
+        modifications outside of the __setitem__ interface.
+
+        Args:
+            key: Index or slice specifying the subregion to extract. Supports standard
+                NumPy indexing (e.g., integer indices, slices, boolean masks, advanced
+                indexing). For 3D RGB data, can use notation like [:, :, channel] to
+                select specific channels.
 
         Returns:
-            np.ndarray: A copy of the extracted subregion represented as a NumPy array.
+            np.ndarray: A read-only NumPy array containing the extracted subregion
+                with shape matching the selected region.
+
+        Raises:
+            EmptyImageError: If the image contains no RGB data and no grayscale
+                fallback is available.
+            NoArrayError: If the image is 2D (grayscale only) and no RGB array
+                form exists.
+
+        Examples:
+            .. dropdown:: Extract the full RGB array
+
+                .. code-block:: python
+
+                    full_rgb = image.rgb[:]
+
+            .. dropdown:: Extract a rectangular region
+
+                .. code-block:: python
+
+                    region = image.rgb[10:50, 20:60, :]
+
+            .. dropdown:: Extract a specific channel
+
+                .. code-block:: python
+
+                    red_channel = image.rgb[:, :, 0]
         """
         if self.isempty():
             if self._root_image.gray.isempty():
@@ -53,22 +105,56 @@ class ImageRGB(MultiChannelAccessor):
             return view
 
     def __setitem__(self, key, value):
-        """
-        Sets a other_image for a given key in the parent image array. The other_image must either be of
-        type int, float, or bool, or it must match the shape of the corresponding key's other_image
-        in the parent image array. If the other_image's shape does not align with the required shape,
-        an exception is raised.
+        """Modify a subregion of the RGB image array.
 
-        Note:
-            If you want to change the entire image array data, use Image.set_image() instead.
+        This method allows in-place modification of the underlying RGB image data using
+        NumPy-style indexing. The provided value must either be a numeric scalar or a
+        NumPy array with shape matching the indexed subregion.
 
         Args:
-            key: Index key specifying the location in the parent image array to modify.
-            value: The new other_image to assign to the specified key in the array. Can be of types
-                int, float, or bool. If not, it must match the shape of the target array segment.
+            key: Index or slice specifying the subregion to modify. Supports standard
+                NumPy indexing (e.g., integer indices, slices, boolean masks, advanced
+                indexing).
+            value (int | float | np.number | np.ndarray): The new value(s) to assign.
+                Can be a numeric scalar (int, float, or np.number) which will be broadcast
+                to all elements in the indexed region, or a NumPy array with dtype
+                compatible with the image array. If an array, its shape must exactly
+                match the shape of the indexed subregion.
 
         Raises:
-            ArrayKeyValueShapeMismatchError: If the other_image is an array and its shape does not match
+            TypeError: If value is a scalar that is not numeric (int, float, or np.number).
+            TypeError: If value is an array with non-numeric dtype.
+            TypeError: If value is neither a scalar nor a numpy array.
+            ArrayKeyValueShapeMismatchError: If value is an array and its shape does
+                not match the shape of the indexed subregion.
+
+        Note:
+            To replace the entire RGB image data, use Image.set_image() instead of
+            this method. This method only modifies specific regions of the existing
+            image array.
+
+            After modification, the parent image is updated to reflect changes made
+            through this accessor.
+
+        Examples:
+            .. dropdown:: Set a region to a solid color
+
+                .. code-block:: python
+
+                    image.rgb[10:20, 10:20] = [255, 128, 64]
+
+            .. dropdown:: Set a region from another array
+
+                .. code-block:: python
+
+                    patch = np.ones((10, 10, 3), dtype=np.uint8) * 128
+                    image.rgb[10:20, 10:20] = patch
+
+            .. dropdown:: Modify a single channel
+
+                .. code-block:: python
+
+                    image.rgb[:, :, 0] = 255  # Set red channel to maximum
         """
         if pd.api.types.is_scalar(value):  # handle scalar values
             if not isinstance(value, (int, float, np.number)):  # assert numeric value
@@ -88,5 +174,24 @@ class ImageRGB(MultiChannelAccessor):
         self._root_image._set_from_array(self._root_image._data.rgb)
 
     @property
-    def _subject_arr(self):
+    def _subject_arr(self) -> np.ndarray:
+        """Return a copy of the underlying RGB image array.
+
+        This property implements the abstract _subject_arr interface from ImageAccessorBase,
+        providing access to the RGB array data managed by the parent Image object.
+
+        The returned array is a copy, allowing safe inspection and manipulation without
+        affecting the underlying image data directly. Use __setitem__ to modify the
+        image and ensure proper synchronization with the parent Image object.
+
+        Returns:
+            np.ndarray: A copy of the RGB image array with shape (height, width, 3)
+                for RGB images. The array dtype matches the image's bit depth
+                (typically uint8 or uint16).
+
+        Note:
+            This property always returns a copy, not a view. Modifications to the
+            returned array do not affect the parent image. Use the indexing interface
+            (image.rgb[key] = value) to modify the image.
+        """
         return self._root_image._data.rgb.copy()

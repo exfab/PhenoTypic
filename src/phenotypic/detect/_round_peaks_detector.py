@@ -10,18 +10,17 @@ import numpy as np
 import scipy.ndimage as ndimage
 from scipy.signal import find_peaks
 from scipy.ndimage import gaussian_filter1d
-from functools import partial
 
 from phenotypic.abc_ import ObjectDetector
 import skimage.filters as filters
 import skimage.morphology as morphology
 
 
-class GitterDetector(ObjectDetector):
+class RoundPeaksDetector(ObjectDetector):
     """
-    Class for detecting colonies in gridded plate images using the gitter algorithm.
+    Class for detecting circular colonies in gridded plate images using the gitter algorithm.
 
-    The GitterDetector implements an improved Python version of the gitter colony detection
+    The RoundPeaksDetector implements an improved Python version of the gitter colony detection
     algorithm originally developed for R. This method is specifically designed for
     quantifying pinned microbial cultures arranged in a regular grid pattern on
     agar plates. The algorithm works by:
@@ -87,7 +86,7 @@ class GitterDetector(ObjectDetector):
                  peak_prominence: float | None = None,
                  edge_refinement: bool = True):
         """
-        Initialize the GitterDetector with specified parameters.
+        Initialize the RoundPeaksDetector with specified parameters.
 
         Args:
             thresh_method: Method for thresholding the image. Options are:

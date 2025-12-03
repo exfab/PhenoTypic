@@ -244,22 +244,26 @@ class ImageHandler(ImageDataManager):
         Raises:
             NoArrayError: If no multichannel image data is set as arr.
 
-        .. code-block:: python
-            from phenotypic import Image
-            from phenotypic.data import load_colony
+        Example:
+            .. dropdown:: Image.rgb
 
-            image = Image(load_colony())
+                .. code-block:: python
 
-            # get the rgb data
-            arr = image.rgb[:]
-            print(type(arr))
+                    from phenotypic import Image
+                    from phenotypic.data import load_colony
 
-            # set the rgb data
-            # the shape of the new rgb must be the same shape as the original rgb
-            image.rgb[:] = arr
+                    image = Image(load_colony())
 
-            # without the bracket indexing the accessor is returned instead
-            print(image.rgb[:])
+                    # get the rgb data
+                    arr = image.rgb[:]
+                    print(type(arr))
+
+                    # set the rgb data
+                    # the shape of the new rgb must be the same shape as the original rgb
+                    image.rgb[:] = arr
+
+                    # without the bracket indexing the accessor is returned instead
+                    sprint(image.rgb[:])
 
 
         See Also: :class:`ImageArray`
@@ -448,7 +452,10 @@ class ImageHandler(ImageDataManager):
         Returns:
             list[skimage.measure._regionprops.RegionProperties]: A list of properties for the entire provided image.
 
-        Notes:
+
+        .. admonition:: Propertyetails
+            :class: dropdown
+
             (Excerpt from skimage.measure.regionprops documentation on available properties.):
 
             Read more at :class:`skimage.measure.regionprops` or
@@ -606,6 +613,7 @@ class ImageHandler(ImageDataManager):
 
             solidity: float
                 Ratio of pixels in the region to pixels of the convex hull image.
+
 
         References:
             https://scikit-image.org/docs/stable/api/skimage.measure.html#skimage.measure.regionprops

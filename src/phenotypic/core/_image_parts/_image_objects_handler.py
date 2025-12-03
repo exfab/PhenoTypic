@@ -63,11 +63,13 @@ class ImageObjectsHandler(ImageHandler):
                 first to identify and label objects.
 
         Examples:
-            >>> img = Image.imread('sample.jpg')
-            >>> detector = ObjectDetector()
-            >>> detector.detect(img)
-            >>> obj_accessor = img.objects
-            >>> measurements = img.objects.measure.area()
+            .. dropdown:: Measure object properties
+
+                >>> img = Image.imread('sample.jpg')
+                >>> detector = ObjectDetector()
+                >>> detector.detect(img)
+                >>> obj_accessor = img.objects
+                >>> measurements = img.objects.measure.area()
         """
         if self.num_objects == 0:
             raise NoObjectsError(self.name)

@@ -84,19 +84,31 @@ class MeasureColorComposition(MeasureFeatures):
         gray_value_max (float): Maximum value threshold for gray classification. Default is 85.
 
     Example:
-        >>> from phenotypic import Image
-        >>> from phenotypic.measure import MeasureColorComposition
-        >>> img = Image.load('path/to/image.tif')
-        >>> measurer = MeasureColorComposition()
-        >>> composition = measurer.measure(img)
-        >>> print(composition)
-        >>>
-        >>> # Custom thresholds for different lighting conditions
-        >>> measurer_custom = MeasureColorComposition(
-        ...     black_value_max=15,  # Stricter black threshold
-        ...     white_value_min=90   # Stricter white threshold
-        ... )
+        .. dropdown:: Measure and analyze color composition with custom thresholds
+
+            .. code-block:: python
+
+                from phenotypic import Image
+                from phenotypic.measure import MeasureColorComposition
+
+                img = Image.load('path/to/image.tif')
+                measurer = MeasureColorComposition()
+                composition = measurer.measure(img)
+                print(composition)
+
+                # Custom thresholds for different lighting conditions
+                measurer_custom = MeasureColorComposition(
+                    black_value_max=15,  # Stricter black threshold
+                    white_value_min=90   # Stricter white threshold
+                )
     """
+
+    # Standardized color name mapping (index -> name)
+    # This order matches ColorComposition.all_headers() and is used throughout the module
+    _COLOR_NAMES = [
+        'Black', 'White', 'Gray', 'Pink', 'Brown', 'Red',
+        'Orange', 'Yellow', 'Green', 'Cyan', 'Blue', 'Purple'
+    ]
 
     def __init__(self,
                  hue_normalization: float = 360.0,
@@ -128,6 +140,61 @@ class MeasureColorComposition(MeasureFeatures):
         self.white_value_min = white_value_min
         self.gray_value_min = gray_value_min
         self.gray_value_max = gray_value_max
+
+    @staticmethod
+    def encode_color_name(name: str) -> int:
+        """Convert a color name to its standardized index.
+
+        Args:
+            name: Color name (case-insensitive). Valid names are:
+                'Black', 'White', 'Gray', 'Pink', 'Brown', 'Red',
+                'Orange', 'Yellow', 'Green', 'Cyan', 'Blue', 'Purple'
+
+        Returns:
+            int: Index of the color (0-11)
+
+        Raises:
+            ValueError: If the color name is not recognized
+
+        Example:
+            >>> MeasureColorComposition.encode_color_name('Red')
+            5
+            >>> MeasureColorComposition.encode_color_name('blue')
+            10
+        """
+        name_normalized = name.capitalize()
+        try:
+            return MeasureColorComposition._COLOR_NAMES.index(name_normalized)
+        except ValueError:
+            valid_names = ', '.join(MeasureColorComposition._COLOR_NAMES)
+            raise ValueError(
+                f"Invalid color name '{name}'. Valid names are: {valid_names}"
+            )
+
+    @staticmethod
+    def decode_color_index(index: int) -> str:
+        """Convert a color index to its standardized name.
+
+        Args:
+            index: Color index (0-11)
+
+        Returns:
+            str: Name of the color
+
+        Raises:
+            IndexError: If the index is out of range
+
+        Example:
+            >>> MeasureColorComposition.decode_color_index(5)
+            'Red'
+            >>> MeasureColorComposition.decode_color_index(10)
+            'Blue'
+        """
+        if not 0 <= index < len(MeasureColorComposition._COLOR_NAMES):
+            raise IndexError(
+                f"Color index {index} out of range. Valid range is 0-{len(MeasureColorComposition._COLOR_NAMES) - 1}"
+            )
+        return MeasureColorComposition._COLOR_NAMES[index]
 
     def _operate(self, image: Image) -> pd.DataFrame:
         """
@@ -459,11 +526,16 @@ class MeasureColorComposition(MeasureFeatures):
             tuple: (matplotlib.figure.Figure, numpy.ndarray of axes)
 
         Example:
-            >>> from phenotypic import Image
-            >>> from phenotypic.measure import MeasureColorComposition
-            >>> img = Image.imread('path/to/image.tif')
-            >>> measurer = MeasureColorComposition()
-            >>> fig, axes = measurer.visualize_masks(img, top_n=3)
+            .. dropdown:: Visualize top color masks for debugging
+
+                .. code-block:: python
+
+                    from phenotypic import Image
+                    from phenotypic.measure import MeasureColorComposition
+
+                    img = Image.imread('path/to/image.tif')
+                    measurer = MeasureColorComposition()
+                    fig, axes = measurer.visualize_masks(img, top_n=3)
         """
         import matplotlib.pyplot as plt
 
@@ -500,8 +572,6 @@ class MeasureColorComposition(MeasureFeatures):
         percentages = np.array(percentages)
 
         # Get top N colors
-        color_names = ['Black', 'White', 'Gray', 'Pink', 'Brown', 'Red',
-                       'Orange', 'Yellow', 'Green', 'Cyan', 'Blue', 'Purple']
         top_indices = np.argsort(percentages)[::-1][:top_n]
 
         # Create visualization
@@ -518,9 +588,12 @@ class MeasureColorComposition(MeasureFeatures):
             # Get the mask for this color (already 2D, no reconstruction needed)
             color_mask = color_masks[color_idx] & objmask
 
+            # Get color name using standardized decoding
+            color_name = MeasureColorComposition.decode_color_index(color_idx)
+
             # Display mask
             axes[i + 1].imshow(color_mask, cmap='gray')
-            axes[i + 1].set_title(f'{color_names[color_idx]}\n{percentages[color_idx]:.1f}%')
+            axes[i + 1].set_title(f'{color_name}\n{percentages[color_idx]:.1f}%')
             axes[i + 1].axis('off')
 
         plt.tight_layout()

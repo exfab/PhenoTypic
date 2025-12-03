@@ -22,19 +22,35 @@ from phenotypic.tools.exceptions_ import IllegalAssignmentError
 
 
 class HsvAccessor(ImageAccessorBase):
-    """An accessor class to handle and analyze HSB (Hue, Saturation, Brightness) image data efficiently.
+    """Access and analyze HSV (Hue, Saturation, Value) color space data from image objects.
 
-    This class provides functionality for accessing and processing HSV image data.
-    Users can retrieve components (hue, saturation, brightness) of the image, generate
-    visual histograms of color distributions, and measure specific object properties
-    masked within the HSV image.
+    This accessor class provides comprehensive functionality for working with the HSV color
+    space, which decomposes color information into three independent channels. HSV is
+    particularly useful for color-based image analysis because it separates color (hue)
+    from luminosity (value), making it well-suited for object segmentation and analysis
+    based on color properties.
 
-    Extensive visualization methods are also included, allowing display of HSV components
-    and their masked variations. This class is ideal for image analysis tasks where color
-    properties play a significant role.
+    The HSV color space is computed on-demand from the parent image's RGB data using
+    scikit-image's rgb2hsv conversion, which assumes input RGB values in the range [0, 1]
+    and produces HSV output where:
+    - Hue (H) ranges from 0 to 1 (representing 0 to 360 degrees)
+    - Saturation (S) ranges from 0 to 1 (0% to 100%)
+    - Value (V) ranges from 0 to 1 (brightness from dark to bright)
+
+    The class provides methods for:
+    - Accessing individual HSV channels and entire HSV arrays
+    - Generating histograms of color distributions with radial hue visualization
+    - Displaying HSV components with color-mapped subplots
+    - Viewing masked HSV data for segmented objects only
+    - Saving and loading HSV arrays with embedded PhenoTypic metadata
 
     Attributes:
-        image (Image): The parent Image object that manages image data and operations.
+        _root_image (Image): The parent Image object containing RGB data and metadata.
+        _accessor_property_name (str): The property name "color.hsv" for metadata tracking.
+
+    Note:
+        This accessor is only available for RGB images. For grayscale images,
+        accessing HSV data raises an AttributeError.
     """
 
     _accessor_property_name: str = "color.hsv"
@@ -61,9 +77,11 @@ class HsvAccessor(ImageAccessorBase):
             UserWarning: If metadata is missing or indicates the image was saved
                 from a different accessor type.
 
-        Example:
-            >>> from phenotypic.core._image_parts.accessors import HsvAccessor
-            >>> hsv_arr = HsvAccessor.load("my_hsv_image.tif")
+        Examples:
+            .. dropdown:: Loading an HSV array from a TIFF file
+
+                >>> from phenotypic.core._image_parts.accessors import HsvAccessor
+                >>> hsv_arr = HsvAccessor.load("my_hsv_image.tif")
         """
         filepath = Path(filepath)
         expected_property = f"Image.{cls._accessor_property_name}"
@@ -110,45 +128,126 @@ class HsvAccessor(ImageAccessorBase):
 
     @property
     def _subject_arr(self) -> np.ndarray:
+        """Compute and return the HSV representation of the parent image's RGB data.
+
+        This property computes the HSV color space representation on-demand from the
+        parent image's RGB data. The conversion assumes RGB values in the range [0, 1]
+        and produces an HSV array with shape (height, width, 3) where each channel
+        contains normalized values in [0, 1].
+
+        Returns:
+            np.ndarray: HSV array with shape (H, W, 3) where:
+                - [:, :, 0] contains hue values (0 to 1 representing 0-360 degrees)
+                - [:, :, 1] contains saturation values (0 to 1)
+                - [:, :, 2] contains value/brightness (0 to 1)
+
+        Raises:
+            AttributeError: If the parent image contains only grayscale data
+                and has no RGB channel available.
+        """
         if self._root_image.rgb.isempty():
             raise AttributeError('HSV is not available for grayscale images')
         else:
             return rgb2hsv(self._root_image.rgb[:])
 
     def __getitem__(self, key) -> np.ndarray:
+        """Retrieve a subset of HSV data using NumPy-style indexing.
+
+        Returns a read-only view of the HSV array with the specified indexing
+        applied. This enables NumPy-like slicing operations (e.g., [:, :, 0]
+        to extract hue channel, [10:50, 20:70] for spatial subsets).
+
+        Args:
+            key: NumPy-style index or slice. Examples:
+                - `:, :, 0` to get hue channel
+                - `10:50, 20:70` for spatial region
+                - `[row, col]` for single pixel
+
+        Returns:
+            np.ndarray: Read-only view of the indexed HSV data.
+        """
         view = self._subject_arr[key]
         view.flags.writeable = False
         return view
 
     def __setitem__(self, key, value):
+        """Prevent direct assignment to HSV data.
+
+        HSV data is computed on-demand from RGB data and cannot be directly modified.
+        To change HSV properties, modify the underlying RGB data in the parent image.
+
+        Args:
+            key: Index specification (unused).
+            value: Value to assign (unused).
+
+        Raises:
+            IllegalAssignmentError: Always raised to prevent data modification.
+        """
         raise IllegalAssignmentError('HSV')
 
     @property
     def shape(self) -> Optional[tuple[int, ...]]:
-        """Returns the shape of the image"""
+        """Return the shape of the HSV image array.
+
+        Returns the dimensions of the HSV array as a tuple (height, width, 3).
+        The third dimension always has size 3, representing the three HSV channels.
+
+        Returns:
+            Optional[tuple[int, ...]]: A tuple (H, W, 3) representing image height,
+                width, and number of channels. Returns None if the parent image
+                is empty (has no RGB data).
+        """
         return self._root_image._data.rgb.shape
 
     def copy(self) -> np.ndarray:
-        """Returns a copy of the image array"""
+        """Create and return an independent copy of the HSV array.
+
+        Returns a deep copy of the HSV data that can be safely modified without
+        affecting the original parent image's HSV representation. This is useful
+        for performing HSV-based operations that require array manipulation.
+
+        Returns:
+            np.ndarray: A copy of the HSV array with shape (H, W, 3) and dtype float64.
+        """
         return self._subject_arr.copy()
 
     def histogram(self, figsize: Tuple[int, int] = (10, 5), linewidth=1,
                   hue_bins: int = 1, hue_offset: float = 0.0):
-        """
-        Generates and displays histograms for hue, saturation, and brightness components of an image,
-        alongside the original image. The hue histogram is displayed as a radial plot with colored bins,
-        while saturation and brightness histograms remain as traditional line plots.
+        """Generate and display histograms for HSV channels with specialized hue visualization.
+
+        Creates a comprehensive visualization with four subplots:
+        1. Original RGB image (for reference)
+        2. Hue histogram as a polar/radial plot with color-coded bins
+        3. Saturation histogram as a standard line plot
+        4. Brightness (Value) histogram as a standard line plot
+
+        The hue histogram uses a polar coordinate system where each bin is colored
+        according to its hue angle, providing intuitive color distribution visualization.
+        Saturation and brightness use traditional Cartesian histograms.
 
         Args:
-            figsize (Tuple[int, int]): The size of the figure that contains all subplots, specified as
-                a tuple of width and height in inches.
-            linewidth (int): The width of the lines used in the histograms.
-            hue_bins (int): The bin size for the hue histogram in degrees. Default is 1 degree.
-            hue_offset (float): Offset to apply to hue values in degrees. Default is 0.0.
+            figsize (Tuple[int, int]): Size of the figure in inches as (width, height).
+                Defaults to (10, 5).
+            linewidth (int, optional): Width of lines in saturation and brightness histograms.
+                Defaults to 1.
+            hue_bins (int, optional): Bin size for hue histogram in degrees. Each bin
+                represents an angular range. Defaults to 1 (one degree per bin).
+                Use larger values (e.g., 5, 10, 30) for coarser binning and faster
+                rendering with large datasets.
+            hue_offset (float, optional): Rotation offset to apply to all hue values
+                in degrees. Useful for adjusting the starting angle of the polar plot.
+                Defaults to 0.0.
 
         Returns:
-            Tuple[Figure, ndarray]: A tuple containing the Matplotlib figure object and an ndarray
-                of axes, where the axes correspond to the subplots.
+            Tuple[plt.Figure, np.ndarray]: A tuple of:
+                - plt.Figure: The Matplotlib figure containing all subplots
+                - np.ndarray: Flattened array of Axes objects (axes[0] = image,
+                  axes[1] = hue polar, axes[2] = saturation, axes[3] = brightness)
+
+        Note:
+            The radial hue histogram uses 0 degrees at the top (north) with clockwise
+            direction. Angular gridlines appear every 30 degrees. Radial gridlines
+            show histogram bin counts.
         """
         import matplotlib.colors as mcolors
 
@@ -221,27 +320,31 @@ class HsvAccessor(ImageAccessorBase):
 
     def show(self, figsize: Tuple[int, int] = (10, 8),
              title: str = None, shrink=0.2) -> (plt.Figure, plt.Axes):
-        """
-        Displays the Hue, Saturation, and Brightness (HSV components) of the given
-        image data in a visualization using subplots. Each subplot corresponds to
-        one of the HSV channels, and color bars are included to help interpret the
-        values.
+        """Display HSV channels as color-mapped images with colorbars.
 
-        A color map is used for better visual distinction, with 'hsb' for Hue,
-        'viridis' for Saturation, and grayscale for Brightness. Provides an optional
-        title for the entire figure and flexibility in the sizing and shrink factor
-        of color bars.
+        Creates a visualization of all three HSV channels stacked vertically, with
+        appropriate colormaps and colorbars for each channel:
+        - Hue: HSB colormap showing color wheel (0-360 degrees)
+        - Saturation: Viridis colormap showing saturation level (0-1)
+        - Brightness: Grayscale colormap showing luminosity (0-1)
+
+        This is the primary visualization method for exploring HSV color distributions
+        across the entire image without segmentation mask constraints.
 
         Args:
-            figsize (Tuple[int, int]): Size of the figure in inches as a (width, height)
-                tuple. Defaults to (10, 8).
-            title (str): Title of the entire figure. If None, no title will be set.
-            shrink (float): Shrink factor for the color bar size displayed next to
-                subplots. Defaults to 0.6.
+            figsize (Tuple[int, int]): Size of the figure in inches as (width, height).
+                Defaults to (10, 8).
+            title (str, optional): Title for the entire figure. If None, no title is set.
+                Defaults to None.
+            shrink (float, optional): Shrink factor for colorbar width relative to
+                subplot size. Smaller values (e.g., 0.2) create narrower colorbars,
+                larger values (e.g., 0.8) create wider ones. Defaults to 0.2.
 
         Returns:
-            Tuple[plt.Figure, plt.Axes]: A tuple containing the created figure and axes
-            for further customization or display.
+            Tuple[plt.Figure, plt.Axes]: A tuple of:
+                - plt.Figure: The Matplotlib figure object
+                - np.ndarray: Array of three Axes objects for hue, saturation,
+                  and brightness subplots respectively
         """
         fig, axes = plt.subplots(nrows=3, figsize=figsize)
         ax = axes.ravel()
@@ -268,27 +371,34 @@ class HsvAccessor(ImageAccessorBase):
 
     def show_objects(self, figsize: Tuple[int, int] = (10, 8),
                      title: str = None, shrink=0.6) -> (plt.Figure, plt.Axes):
-        """
-        Displays the Hue, Saturation, and Brightness (HSV components) of the given
-        image data in a visualization using subplots. Each subplot corresponds to
-        one of the HSV channels, and color bars are included to help interpret the
-        values.
+        """Display HSV channels for segmented objects only, masked by object mask.
 
-        A color map is used for better visual distinction, with 'hsb' for Hue,
-        'viridis' for Saturation, and grayscale for Brightness. Provides an optional
-        title for the entire figure and flexibility in the sizing and shrink factor
-        of color bars.
+        Creates a visualization of all three HSV channels stacked vertically, with
+        appropriate colormaps and colorbars for each channel. Unlike show(), this
+        method applies the parent image's object mask, displaying HSV data only for
+        pixels belonging to segmented objects. Background pixels are masked out.
+
+        This method is useful for analyzing color properties of individual objects
+        (e.g., colonies on an agar plate) without interference from background variation.
 
         Args:
-            figsize (Tuple[int, int]): Size of the figure in inches as a (width, height)
-                tuple. Defaults to (10, 8).
-            title (str): Title of the entire figure. If None, no title will be set.
-            shrink (float): Shrink factor for the color bar size displayed next to
-                subplots. Defaults to 0.6.
+            figsize (Tuple[int, int]): Size of the figure in inches as (width, height).
+                Defaults to (10, 8).
+            title (str, optional): Title for the entire figure. If None, no title is set.
+                Defaults to None.
+            shrink (float, optional): Shrink factor for colorbar width relative to
+                subplot size. Smaller values (e.g., 0.2) create narrower colorbars,
+                larger values (e.g., 0.8) create wider ones. Defaults to 0.6.
 
         Returns:
-            Tuple[plt.Figure, plt.Axes]: A tuple containing the created figure and axes
-            for further customization or display.
+            Tuple[plt.Figure, plt.Axes]: A tuple of:
+                - plt.Figure: The Matplotlib figure object
+                - np.ndarray: Array of three Axes objects for masked hue, saturation,
+                  and brightness subplots respectively
+
+        Note:
+            Uses np.ma.array (masked arrays) to suppress visualization of background
+            pixels. Only pixels where the object mask is non-zero are displayed.
         """
         fig, axes = plt.subplots(nrows=3, figsize=figsize)
         ax = axes.ravel()
@@ -320,16 +430,33 @@ class HsvAccessor(ImageAccessorBase):
         return fig, ax
 
     def imsave(self, filepath: str | os.PathLike | Path) -> None:
-        """Save HSV color space data to TIFF file with PhenoTypic metadata embedded.
+        """Save HSV array to file with PhenoTypic metadata embedded.
 
-        HSV arrays can only be saved in TIFF format due to their floating-point nature.
-        Metadata is embedded in the ImageDescription tag.
+        HSV arrays are saved exclusively in TIFF format because their floating-point
+        values (range 0.0-1.0) require lossless compression. The method computes HSV
+        on-demand from RGB data, converts to float32 if needed for compatibility, and
+        embeds PhenoTypic metadata (version, source property, image metadata) in the
+        TIFF ImageDescription tag for later verification via load().
 
         Args:
-            filepath: Path to save the TIFF file.
+            filepath (str | os.PathLike | Path): Path for the output TIFF file.
+                The file extension must be .tif or .tiff (case-insensitive).
 
         Raises:
-            ValueError: If file extension is not .tif or .tiff.
+            ValueError: If file extension is not .tif or .tiff. The error message
+                specifies the invalid extension that was provided.
+
+        Note:
+            - Uses zlib compression for efficient storage of floating-point data
+            - Automatically converts float64 arrays to float32 if necessary
+            - Creates ImageDescription TIFF tag with JSON-formatted metadata
+            - The TIFF photometric interpretation is set to 'minisblack'
+
+        Examples:
+            .. dropdown:: Saving HSV data and verifying metadata
+
+                >>> image.color.hsv.imsave("output_hsv.tif")
+                >>> loaded_hsv = HsvAccessor.load("output_hsv.tif")  # Verify metadata
         """
         filepath = Path(filepath)
 

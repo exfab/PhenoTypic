@@ -1,4 +1,5 @@
 from __future__ import annotations
+import abc
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING: from phenotypic import GridImage
@@ -20,5 +21,6 @@ class GridRefiner(ObjectRefiner, GridOperation, ABC):
         output = super().apply(image=image, inplace=inplace)
         return output
 
+    @abc.abstractmethod
     def _operate(self, image: GridImage) -> GridImage:
         return image

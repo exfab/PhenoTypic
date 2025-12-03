@@ -40,9 +40,11 @@ class MinResidualErrorReducer(GridRefiner):
         (No public attributes)
 
     Examples:
-        >>> from phenotypic.refine import MinResidualErrorReducer
-        >>> op = MinResidualErrorReducer()
-        >>> image = op.apply(image, inplace=True)  # doctest: +SKIP
+        .. dropdown:: Reduce multi-detections per grid cell using residual error
+
+            >>> from phenotypic.refine import MinResidualErrorReducer
+            >>> op = MinResidualErrorReducer()
+            >>> image = op.apply(image, inplace=True)  # doctest: +SKIP
     """
 
     # TODO: Add a setting to retain a certain number of objects in the event of removal

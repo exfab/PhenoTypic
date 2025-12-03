@@ -1,4 +1,6 @@
 from __future__ import annotations
+
+import abc
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING: from phenotypic import GridImage
@@ -19,5 +21,6 @@ class GridObjectDetector(ObjectDetector, GridOperation, ABC):
         if not isinstance(image, GridImage): raise GridImageInputError
         return super().apply(image=image, inplace=inplace)
 
+    @abc.abstractmethod
     def _operate(self, image: GridImage) -> GridImage:
         return image

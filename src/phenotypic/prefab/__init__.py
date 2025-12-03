@@ -9,11 +9,13 @@ for tiled inputs, and grid-aware Gitter-style processing for dense arrays.
 from ._heavy_watershed_pipeline import HeavyWatershedPipeline
 from ._heavy_otsu_pipeline import HeavyOtsuPipeline
 from ._grid_section_pipeline import GridSectionPipeline
-from ._heavy_gitter_pipeline import HeavyGitterPipeline
+from ._heavy_round_peaks_pipeline import HeavyRoundPeaksPipeline
+from ._round_peaks_pipeline import RoundPeaksPipeline
 
 __all__ = [
     "HeavyWatershedPipeline",
     "HeavyOtsuPipeline",
     "GridSectionPipeline",
-    "HeavyGitterPipeline",
+    "HeavyRoundPeaksPipeline",
+    "RoundPeaksPipeline",
 ]

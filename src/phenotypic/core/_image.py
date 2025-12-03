@@ -30,42 +30,32 @@ class Image(ImageIOHandler):
     across multiple data representations. RGB and grayscale forms are kept synchronized,
     and additional representations (enhanced grayscale, object maps) support analysis workflows.
 
-    Attributes:
-        rgb (ImageRGB): RGB image accessor (empty for grayscale-only images).
-        gray (Grayscale): Grayscale image accessor (always present).
-        enh_gray (EnhancedGrayscale): Enhanced grayscale for preprocessing and detection.
-        objmask (ObjectMask): Binary mask indicating analyzed regions.
-        objmap (ObjectMap): Integer labels for detected objects.
-        metadata (MetadataAccessor): Protected, public, and imported metadata access.
-        color (ColorAccessor): Color space transformations (XYZ, Lab, HSV, etc.).
-        objects (ObjectsAccessor): Object-specific measurements and analysis.
-
     Notes:
         - 2-D input arrays are treated as grayscale; rgb form remains empty.
         - 3-D input arrays are treated as RGB; grayscale is computed automatically.
-        - Color space properties (gamma_encoding, illuminant, observer) are inherited.
+        - Color space properties (gamma_encoding, illuminant, _observer) are inherited.
         - Object detection and measurements require an ObjectDetector first.
         - HSV color space support added in v0.5.0.
 
     Examples:
-        Create from array:
+        .. dropdown:: Create from array
 
-        ```python
-        import numpy as np
-        from phenotypic import Image
+            .. code-block:: python
 
-        arr = np.random.randint(0, 256, (480, 640, 3), dtype=np.uint8)
-        img = Image(arr, name='sample')
-        img.show()
-        ```
+                import numpy as np
+                from phenotypic import Image
 
-        Load from file:
+                arr = np.random.randint(0, 256, (480, 640, 3), dtype=np.uint8)
+                img = Image(arr, name='sample')
+                img.show()
 
-        ```python
-        img = Image.imread('photo.jpg')
-        print(img.shape)  # Image dimensions
-        img.save2pickle('saved.pkl')
-        ```
+        .. dropdown:: Load from file
+
+            .. code-block:: python
+
+                img = Image.imread('photo.jpg')
+                print(img.shape)  # Image dimensions
+                img.save2pickle('saved.pkl')
     """
 
     def __init__(self,
@@ -74,8 +64,6 @@ class Image(ImageIOHandler):
                  bit_depth: Literal[8, 16] | None = None,
                  gamma_encoding: str | None = 'sRGB',
                  illuminant: str | None = 'D65',
-                 observer='CIE 1931 2 Degree Standard Observer'
-
                  ):
         """Initialize an Image instance with optional image data and color properties.
 
@@ -103,9 +91,6 @@ class Image(ImageIOHandler):
                 'D65': standard daylight illuminant (recommended)
                 'D50': standard illumination for imaging
                 Defaults to 'D65'.
-            observer (str): The CIE standard observer model used in color calculations.
-                Common value is 'CIE 1931 2 Degree Standard Observer' (standard).
-                Defaults to 'CIE 1931 2 Degree Standard Observer'.
 
         Raises:
             ValueError: If gamma_encoding is not 'sRGB' or None.
@@ -113,32 +98,32 @@ class Image(ImageIOHandler):
             TypeError: If arr is provided but is not a NumPy array or Image instance.
 
         Examples:
-            Create empty image:
+            .. dropdown:: Create empty image
 
-            ```python
-            img = Image(name='empty_image')
-            ```
+                .. code-block:: python
 
-            Create from grayscale array:
+                    img = Image(name='empty_image')
 
-            ```python
-            gray_arr = np.random.randint(0, 256, (480, 640), dtype=np.uint8)
-            img = Image(gray_arr, name='grayscale_photo')
-            ```
+            .. dropdown:: Create from grayscale array
 
-            Create from RGB array:
+                .. code-block:: python
 
-            ```python
-            rgb_arr = np.random.randint(0, 256, (480, 640, 3), dtype=np.uint8)
-            img = Image(rgb_arr, name='color_photo', gamma_encoding='sRGB')
-            ```
+                    gray_arr = np.random.randint(0, 256, (480, 640), dtype=np.uint8)
+                    img = Image(gray_arr, name='grayscale_photo')
 
-            Copy another image:
+            .. dropdown:: Create from RGB array
 
-            ```python
-            img1 = Image.imread('original.jpg')
-            img2 = Image(img1, name='copy_of_original')
-            ```
+                .. code-block:: python
+
+                    rgb_arr = np.random.randint(0, 256, (480, 640, 3), dtype=np.uint8)
+                    img = Image(rgb_arr, name='color_photo', gamma_encoding='sRGB')
+
+            .. dropdown:: Copy another image
+
+                .. code-block:: python
+
+                    img1 = Image.imread('original.jpg')
+                    img2 = Image(img1, name='copy_of_original')
         """
         super().__init__(
                 arr=arr,
@@ -146,5 +131,4 @@ class Image(ImageIOHandler):
                 bit_depth=bit_depth,
                 gamma_encoding=gamma_encoding,
                 illuminant=illuminant,
-                observer=observer,
         )

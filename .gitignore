@@ -20,9 +20,6 @@ docs/source/user_guide/auto_examples/
 .vscode/
 .idea/
 .zed/
-.cursor/
-.windsurf/
-.claude
 
 # macOS
 .DS_Store

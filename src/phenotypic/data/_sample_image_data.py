@@ -150,7 +150,10 @@ def load_synthetic_colony(mode: Literal['array', 'Image'] = 'array') -> Union[np
         ValueError: If the mode is neither 'array' nor 'Image'.
 
     Example:
-        img = make_synthetic_colony(h=384, w=384, bit_depth=16)
+        .. dropdown:: Load synthetic colony data as a NumPy array or Image object
+
+            >>> from phenotypic.data import load_synthetic_colony
+            >>> img = load_synthetic_colony(mode='array')
     """
     from phenotypic import Image
 
@@ -356,8 +359,9 @@ def load_lactose_series(mode: Literal['array', 'Image', 'GridImage'] = 'array') 
     return series
 
 
-def yield_sample_dataset(mode: Literal['array', 'Image', 'GridImage'] = 'array') -> iter[
-    Union[np.ndarray, Image, GridImage]]:
+def yield_sample_dataset(
+        mode: Literal['array', 'Image', 'GridImage'] = 'array'
+) -> Iterable[Union[np.ndarray, Image, GridImage]]:
     """Return a series of plate images across 6 time samples"""
     fnames = [x for x in os.listdir(__current_file_dir/'PhenoTypicSampleSubset') if x.endswith(".jpg")]
     fnames.sort()
@@ -392,3 +396,18 @@ def load_area_meas() -> pd.DataFrame:
 
 def load_imager_plate(mode: Literal['array', 'Image', 'GridImage'] = 'array') -> Union[np.ndarray, Image, GridImage]:
     return _image_loader(Path(os.path.relpath(__current_file_dir/"RHODOTORULA_RAW.cr3", Path.cwd())), mode=mode)
+
+
+def load_synthetic_detection_image():
+    """returns a phenotypic.GridImage of a synthetic plate with the colonies detected"""
+    import phenotypic
+    from skimage.io import imread
+
+    dirpath = Path(os.path.relpath(__current_file_dir/"synthetic_test_plate", Path.cwd()))
+
+    image = phenotypic.GridImage.imread(
+            filepath=dirpath/"circular_detect_plate_rgb.tif"
+    )
+    image.objmap[:] = imread(dirpath/"circular_detect_plate_objmap.png")
+    image.name = "Synthetic96PlateWithObjects"
+    return image

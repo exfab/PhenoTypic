@@ -50,9 +50,11 @@ class ColorSpaceAccessor(ImageAccessorBase):
             UserWarning: If metadata is missing or indicates the image was saved
                 from a different accessor type.
 
-        Example:
-            >>> from phenotypic.core._image_parts.color_space_accessors import CieLabAccessor
-            >>> lab_arr = CieLabAccessor.load("my_lab_image.tif")
+        Examples:
+            .. dropdown:: Load a Lab color space array from file
+
+                >>> from phenotypic.core._image_parts.color_space_accessors import CieLabAccessor
+                >>> lab_arr = CieLabAccessor.load("my_lab_image.tif")
         """
         filepath = Path(filepath)
         expected_property = f"Image.{cls._accessor_property_name}"

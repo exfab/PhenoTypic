@@ -7,10 +7,10 @@ This script allows for parallel processing of images, saving both measurements a
 visual quality control overlays.
 
 Usage:
-    python phenotypic-cli.py PIPELINE_JSON INPUT_DIR OUTPUT_DIR [OPTIONS]
+    python -m phenotypic PIPELINE_JSON INPUT_DIR OUTPUT_DIR [OPTIONS]
 
 Example:
-    python phenotypic-cli.py my_pipeline.json ./raw_images ./results --n-jobs 4
+    python -m phenotypic my_pipeline.json ./raw_images ./results --n-jobs 4
 """
 
 import sys
@@ -130,7 +130,7 @@ def main(pipeline_json: Path, input_dir: Path, output_dir: Path,
          image_type: str, nrows: int, ncols: int, bit_depth: Optional[int], n_jobs: int):
     """
     Execute a PhenoTypic pipeline on a directory of images.
-    
+
     PIPELINE_JSON: Path to the exported pipeline configuration file.
     INPUT_DIR: Directory containing the images to process.
     OUTPUT_DIR: Directory where results (CSVs and overlays) will be saved.
@@ -180,7 +180,7 @@ def main(pipeline_json: Path, input_dir: Path, output_dir: Path,
     # We use joblib to parallelize the processing
     results = Parallel(n_jobs=n_jobs)(
             delayed(process_single_image)(
-                    path, output_dir, pipeline, image_cls, read_kwargs
+                    path, meas_dir, overlay_dir, pipeline, image_cls, read_kwargs
             ) for path in image_paths
     )
 
