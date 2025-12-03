@@ -8,5 +8,5 @@ _pickleable_public = [(qualname, obj) for qualname, obj in _public
 
 
 @pytest.mark.parametrize("qualname,obj", _pickleable_public)
-def test_picklable(qualname, obj):
+def test_pickleable(qualname, obj):
     pickle.dumps(obj)  # will fail fast on the first bad object

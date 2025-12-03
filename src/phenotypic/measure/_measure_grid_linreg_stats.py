@@ -7,8 +7,31 @@ if TYPE_CHECKING: from phenotypic import GridImage
 import pandas as pd
 from scipy.spatial.distance import euclidean
 
-from phenotypic.abc_ import GridMeasureFeatures
-from phenotypic.tools.constants_ import GRID_LINREG_STATS_EXTRACTOR, OBJECT, BBOX, GRID
+from phenotypic.abc_ import GridMeasureFeatures, MeasurementInfo
+from phenotypic.tools.constants_ import OBJECT, BBOX, GRID
+
+
+class GRID_LINREG_STATS(MeasurementInfo):
+    """Constants for grid linear regression statistics extractor."""
+
+    @classmethod
+    def category(cls):
+        return 'GridLinReg'
+
+    ROW_LINREG_M = ('RowLinReg_M',
+                    'Slope coefficient from linear regression of row positions versus column indices. Represents the row-wise alignment trend in the grid.')
+    ROW_LINREG_B = ('RowLinReg_B',
+                    'Intercept coefficient from linear regression of row positions versus column indices. Represents the baseline row position offset.')
+    COL_LINREG_M = ('ColLinReg_M',
+                    'Slope coefficient from linear regression of column positions versus row indices. Represents the column-wise alignment trend in the grid.')
+    COL_LINREG_B = ('ColLinReg_B',
+                    'Intercept coefficient from linear regression of column positions versus row indices. Represents the baseline column position offset.')
+    PRED_RR = ('RowLinReg_PredRR',
+               'Predicted row position based on column-wise linear regression. Used to estimate expected colony centroid location in each row.')
+    PRED_CC = ('ColLinReg_PredCC',
+               'Predicted column position based on row-wise linear regression. Used to estimate expected colony centroid location in each column.')
+    RESIDUAL_ERR = ('LinReg_ResidualError',
+                    'Euclidean distance between actual colony centroid and predicted position from linear regression. Measures deviation from expected grid alignment.')
 
 
 class MeasureGridLinRegStats(GridMeasureFeatures):
@@ -37,15 +60,16 @@ class MeasureGridLinRegStats(GridMeasureFeatures):
             section_info = image.grid.info().reset_index(drop=False)
         else:
             grid_info = image.grid.info().reset_index(drop=False)
-            section_info = grid_info.loc[grid_info.loc[:, str(GRID.SECTION_NUM)] == self.section_num, :]
+            section_info = grid_info.loc[
+                grid_info.loc[:, str(GRID.SECTION_NUM)] == self.section_num, :]
 
         # Get the current row-wise linreg info
         row_m, row_b = image.grid.get_centroid_alignment_info(axis=0)
 
         # Convert arrays to dataframe for join operation
         row_linreg_info = pd.DataFrame(data={
-            GRID_LINREG_STATS_EXTRACTOR.ROW_LINREG_M: row_m,
-            GRID_LINREG_STATS_EXTRACTOR.ROW_LINREG_B: row_b,
+            GRID_LINREG_STATS.ROW_LINREG_M: row_m,
+            GRID_LINREG_STATS.ROW_LINREG_B: row_b,
         }, index=pd.Index(data=range(image.grid.nrows), name=str(GRID.ROW_NUM)))
 
         section_info = pd.merge(left=section_info,
@@ -54,18 +78,18 @@ class MeasureGridLinRegStats(GridMeasureFeatures):
                                 right_on=str(GRID.ROW_NUM))
 
         # NOTE: Row linear regression(CC) -> pred RR
-        section_info.loc[:, GRID_LINREG_STATS_EXTRACTOR.PRED_RR] = \
+        section_info.loc[:, GRID_LINREG_STATS.PRED_RR] = \
             section_info.loc[:, str(BBOX.CENTER_CC)] \
-            *section_info.loc[:, GRID_LINREG_STATS_EXTRACTOR.ROW_LINREG_M] \
-            + section_info.loc[:, GRID_LINREG_STATS_EXTRACTOR.ROW_LINREG_B]
+            *section_info.loc[:, GRID_LINREG_STATS.ROW_LINREG_M] \
+            + section_info.loc[:, GRID_LINREG_STATS.ROW_LINREG_B]
 
         # Get the current column linreg info
         col_m, col_b = image.grid.get_centroid_alignment_info(axis=1)
 
         # convert array to dataframe for join operation
         col_linreg_info = pd.DataFrame(data={
-            GRID_LINREG_STATS_EXTRACTOR.COL_LINREG_M: col_m,
-            GRID_LINREG_STATS_EXTRACTOR.COL_LINREG_B: col_b,
+            GRID_LINREG_STATS.COL_LINREG_M: col_m,
+            GRID_LINREG_STATS.COL_LINREG_B: col_b,
         }, index=pd.Index(data=range(image.grid.ncols), name=str(GRID.COL_NUM)))
 
         section_info = pd.merge(left=section_info,
@@ -74,19 +98,24 @@ class MeasureGridLinRegStats(GridMeasureFeatures):
                                 right_on=str(GRID.COL_NUM))
 
         # NOTE: Col linear regression(RR) -> pred CC
-        section_info.loc[:, GRID_LINREG_STATS_EXTRACTOR.PRED_CC] = (
+        section_info.loc[:, GRID_LINREG_STATS.PRED_CC] = (
                 section_info.loc[:, str(BBOX.CENTER_RR)]
-                *section_info.loc[:, GRID_LINREG_STATS_EXTRACTOR.COL_LINREG_M]
-                + section_info.loc[:, GRID_LINREG_STATS_EXTRACTOR.COL_LINREG_B]
+                *section_info.loc[:, GRID_LINREG_STATS.COL_LINREG_M]
+                + section_info.loc[:, GRID_LINREG_STATS.COL_LINREG_B]
         )
 
         # Calculate the distance each object is from it's predicted center. This is the residual error
-        section_info.loc[:, GRID_LINREG_STATS_EXTRACTOR.RESIDUAL_ERR] = section_info.apply(
+        section_info.loc[
+            :, GRID_LINREG_STATS.RESIDUAL_ERR] = section_info.apply(
                 lambda row: euclidean(
                         u=[row[str(BBOX.CENTER_CC)], row[str(BBOX.CENTER_RR)]],
-                        v=[row[GRID_LINREG_STATS_EXTRACTOR.PRED_CC], row[GRID_LINREG_STATS_EXTRACTOR.PRED_RR]],
+                        v=[row[GRID_LINREG_STATS.PRED_CC],
+                           row[GRID_LINREG_STATS.PRED_RR]],
                 )
                 , axis=1
         )
 
         return section_info.set_index(OBJECT.LABEL)
+
+
+MeasureGridLinRegStats.__doc__ = GRID_LINREG_STATS.append_rst_to_doc(MeasureGridLinRegStats)

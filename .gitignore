@@ -53,3 +53,4 @@ debug/*.log
 # Development tools
 .ropeproject/
 .git.backup/
+.coverage**

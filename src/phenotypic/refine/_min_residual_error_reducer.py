@@ -7,7 +7,7 @@ import numpy as np
 
 from phenotypic.abc_ import GridRefiner
 from phenotypic.measure import MeasureGridLinRegStats
-from phenotypic.tools.constants_ import GRID_LINREG_STATS_EXTRACTOR
+from phenotypic.measure._measure_grid_linreg_stats import GRID_LINREG_STATS
 
 
 class MinResidualErrorReducer(GridRefiner):
@@ -77,7 +77,8 @@ class MinResidualErrorReducer(GridRefiner):
             section_info = linreg_stat_extractor.measure(image)
 
             # Isolate the object id with the smallest residual error
-            min_err_obj_id = section_info.loc[:, GRID_LINREG_STATS_EXTRACTOR.RESIDUAL_ERR].idxmin()
+            min_err_obj_id = section_info.loc[
+                :, GRID_LINREG_STATS.RESIDUAL_ERR].idxmin()
 
             # Isolate which objects within the section should be dropped
             objects_to_drop = section_info.index.drop(min_err_obj_id).to_numpy()

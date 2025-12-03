@@ -54,7 +54,8 @@ def auto_profile_package(pkg):
     auto_profile_module(pkg)
     # Recursively import and profile all submodules
     if hasattr(pkg, "__path__"):
-        for _, module_name, _ in pkgutil.walk_packages(pkg.__path__, pkg.__name__ + "."):
+        for _, module_name, _ in pkgutil.walk_packages(pkg.__path__,
+                                                       pkg.__name__ + "."):
             module = importlib.import_module(module_name)
             auto_profile_module(module)
 
@@ -90,7 +91,8 @@ def walk_package_for_measurements(pkg):
         modules += [
             importlib.import_module(name)
             for _, name, _ in pkgutil.walk_packages(pkg.__path__, pkg.__name__ + ".") \
-            if not name.split(".")[-1].startswith("_")  # Skip modules with names starting with underscore
+            if not name.split(".")[-1].startswith("_")
+            # Skip modules with names starting with underscore
 
         ]
 
@@ -109,7 +111,7 @@ def walk_package_for_measurements(pkg):
             if not isinstance(obj, type):  # make sure object is a class object
                 continue
 
-            if not issubclass(obj, phenotypic.abstract.MeasureFeatures):
+            if not issubclass(obj, phenotypic.abc_.MeasureFeatures):
                 continue
 
             qualname = f"{mod.__name__}.{attr}"
@@ -151,7 +153,8 @@ def walk_package_for_operations(pkg):
         modules += [
             importlib.import_module(name)
             for _, name, _ in pkgutil.walk_packages(pkg.__path__, pkg.__name__ + ".") \
-            if not name.split(".")[-1].startswith("_")  # Skip modules with names starting with underscore
+            if not name.split(".")[-1].startswith("_")
+            # Skip modules with names starting with underscore
 
         ]
 
@@ -170,7 +173,7 @@ def walk_package_for_operations(pkg):
             if not isinstance(obj, type):  # make sure object is a class object
                 continue
 
-            if not issubclass(obj, phenotypic.abstract.ImageOperation):
+            if not issubclass(obj, phenotypic.abc_.ImageOperation):
                 continue
 
             qualname = f"{mod.__name__}.{attr}"

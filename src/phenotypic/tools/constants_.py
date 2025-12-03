@@ -141,12 +141,6 @@ class GRID(MeasurementInfo):
 
 # Feature extraction constants
 # TODO: Fix this constant access pattern
-class GRID_LINREG_STATS_EXTRACTOR:
-    """Constants for grid linear regression statistics extractor."""
-    ROW_LINREG_M, ROW_LINREG_B = 'RowLinReg_M', 'RowLinReg_B'
-    COL_LINREG_M, COL_LINREG_B = 'ColLinReg_M', 'ColLinReg_B'
-    PRED_RR, PRED_CC = 'RowLinReg_PredRR', 'ColLinReg_PredCC'
-    RESIDUAL_ERR = 'LinReg_ResidualError'
 
 
 # Metadata constants
