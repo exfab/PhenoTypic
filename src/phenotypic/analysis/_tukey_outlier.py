@@ -195,7 +195,8 @@ class TukeyOutlierRemover(SetAnalyzer):
              figsize: tuple[int, int] | None = None,
              max_groups: int = 20,
              collapsed: bool = True,
-             criteria: dict[str, any] | None = None
+             criteria: dict[str, any] | None = None,
+             **kwargs
              ) -> (plt.Figure, plt.Axes):
         """Visualize outlier detection results.
         
@@ -215,6 +216,16 @@ class TukeyOutlierRemover(SetAnalyzer):
                 When provided, only groups matching the criteria will be displayed.
                 Format: {'column_name': value} or {'column_name': [value1, value2]}.
                 Default is None (show all groups).
+            **kwargs: Additional matplotlib parameters to customize the plot. Common options include:
+                - dpi: Figure resolution (default 100)
+                - facecolor: Figure background color
+                - edgecolor: Figure edge color
+                - grid_alpha: Alpha value for grid lines (default 0.3)
+                - grid_axis: Which axis to apply grid to ('both', 'x', 'y')
+                - legend_loc: Legend location (default 'best')
+                - legend_fontsize: Font size for legend (default 8)
+                - marker_alpha: Alpha value for scatter plot markers
+                - line_width: Line width for box plots and fence lines
         
         Returns:
             Tuple of (Figure, Axes) containing the visualization.
@@ -306,13 +317,19 @@ class TukeyOutlierRemover(SetAnalyzer):
 
         # Branch based on visualization mode
         if collapsed:
-            return self._show_collapsed(data, groups, group_col, figsize)
+            return self._show_collapsed(data, groups, group_col, figsize, **kwargs)
         else:
-            return self._show_individual(data, groups, group_col, figsize)
+            return self._show_individual(data, groups, group_col, figsize, **kwargs)
 
     def _show_individual(self, data: pd.DataFrame, groups, group_col: str,
-                         figsize: tuple[int, int] | None) -> (plt.Figure, plt.Axes):
+                         figsize: tuple[int, int] | None, **kwargs) -> (plt.Figure, plt.Axes):
         """Create individual subplots for each group."""
+        # Extract figure-level kwargs
+        fig_kwargs = {k: v for k, v in kwargs.items() if k in ('dpi', 'facecolor', 'edgecolor')}
+        grid_alpha = kwargs.get('grid_alpha', 0.3)
+        grid_axis = kwargs.get('grid_axis', 'y')
+        legend_fontsize = kwargs.get('legend_fontsize', 8)
+
         # Calculate layout
         n_groups = len(groups)
         n_cols = min(3, n_groups)
@@ -322,7 +339,7 @@ class TukeyOutlierRemover(SetAnalyzer):
         if figsize is None:
             figsize = (5*n_cols, 4*n_rows)
 
-        fig, axes = plt.subplots(n_rows, n_cols, figsize=figsize, squeeze=False)
+        fig, axes = plt.subplots(n_rows, n_cols, figsize=figsize, squeeze=False, **fig_kwargs)
         axes = axes.flatten()
 
         total_outliers = 0
@@ -383,7 +400,7 @@ class TukeyOutlierRemover(SetAnalyzer):
                          fontsize=10, fontweight='bold')
             ax.set_ylabel(self.on, fontsize=9)
             ax.set_xticks([])
-            ax.grid(True, alpha=0.3, axis='y')
+            ax.grid(True, alpha=grid_alpha, axis=grid_axis)
 
             # Add legend only to first subplot
             if idx == 0:
@@ -391,7 +408,7 @@ class TukeyOutlierRemover(SetAnalyzer):
                 # Remove duplicate labels
                 by_label = dict(zip(labels, handles))
                 ax.legend(by_label.values(), by_label.keys(),
-                          loc='best', fontsize=8, framealpha=0.9)
+                          loc='best', fontsize=legend_fontsize, framealpha=0.9)
 
         # Hide unused subplots
         for idx in range(n_groups, len(axes)):
@@ -411,15 +428,20 @@ class TukeyOutlierRemover(SetAnalyzer):
         return fig, axes
 
     def _show_collapsed(self, data: pd.DataFrame, groups, group_col: str,
-                        figsize: tuple[int, int] | None) -> (plt.Figure, plt.Axes):
+                        figsize: tuple[int, int] | None, **kwargs) -> (plt.Figure, plt.Axes):
         """Create collapsed stacked view with all groups in single plot."""
+        # Extract figure-level kwargs
+        fig_kwargs = {k: v for k, v in kwargs.items() if k in ('dpi', 'facecolor', 'edgecolor')}
+        grid_alpha = kwargs.get('grid_alpha', 0.2)
+        legend_fontsize = kwargs.get('legend_fontsize', 9)
+
         n_groups = len(groups)
 
         # Set figure size
         if figsize is None:
             figsize = (10, max(6, 0.5*n_groups + 2))
 
-        fig, ax = plt.subplots(1, 1, figsize=figsize)
+        fig, ax = plt.subplots(1, 1, figsize=figsize, **fig_kwargs)
 
         total_outliers = 0
         total_count = 0
@@ -515,11 +537,11 @@ class TukeyOutlierRemover(SetAnalyzer):
         ax.set_yticklabels(groups[::-1])  # Reverse to match top-to-bottom order
         ax.set_xlabel(self.on, fontsize=11, fontweight='bold')
         ax.set_ylabel('Group', fontsize=11, fontweight='bold')
-        ax.grid(True, alpha=0.2, axis='x')
+        ax.grid(True, alpha=grid_alpha, axis='x')
         ax.set_ylim(0.5, n_groups + 0.5)
 
         # Add legend
-        ax.legend(loc='best', fontsize=9, framealpha=0.9)
+        ax.legend(loc='best', fontsize=legend_fontsize, framealpha=0.9)
 
         # Overall title
         outlier_pct = 100*total_outliers/total_count if total_count > 0 else 0

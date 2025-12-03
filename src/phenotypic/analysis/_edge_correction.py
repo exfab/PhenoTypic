@@ -365,7 +365,8 @@ class EdgeCorrector(SetAnalyzer):
              figsize: tuple[int, int] | None = None,
              max_groups: int = 20,
              collapsed: bool = True,
-             criteria: dict[str, any] | None = None
+             criteria: dict[str, any] | None = None,
+             **kwargs
              ) -> tuple[Figure, plt.Axes]:
         """Visualize edge correction results.
 
@@ -377,6 +378,15 @@ class EdgeCorrector(SetAnalyzer):
             max_groups: Maximum number of groups to display.
             collapsed: If True, show groups stacked vertically.
             criteria: Filtering criteria.
+            **kwargs: Additional matplotlib parameters to customize the plot. Common options include:
+                - dpi: Figure resolution (default 100)
+                - facecolor: Figure background color
+                - edgecolor: Figure edge color
+                - grid_alpha: Alpha value for grid lines
+                - legend_loc: Legend location (default 'best')
+                - legend_fontsize: Font size for legend (default 8 or 9)
+                - marker_alpha: Alpha value for scatter plot markers
+                - line_width: Line width for box plots and fence lines
 
         Returns:
             Tuple of (Figure, Axes).
@@ -405,17 +415,21 @@ class EdgeCorrector(SetAnalyzer):
             groups = groups[:max_groups]
 
         if collapsed:
-            return self._show_collapsed(data, groups, group_col, figsize)
+            return self._show_collapsed(data, groups, group_col, figsize, **kwargs)
         else:
-            return self._show_individual(data, groups, group_col, figsize)
+            return self._show_individual(data, groups, group_col, figsize, **kwargs)
 
     def _show_collapsed(self, data: pd.DataFrame, groups, group_col: str,
-                        figsize: tuple[int, int] | None) -> tuple[Figure, plt.Axes]:
+                        figsize: tuple[int, int] | None, **kwargs) -> tuple[Figure, plt.Axes]:
+        # Extract figure-level kwargs
+        fig_kwargs = {k: v for k, v in kwargs.items() if k in ('dpi', 'facecolor', 'edgecolor')}
+        legend_fontsize = kwargs.get('legend_fontsize', 9)
+
         n_groups = len(groups)
         if figsize is None:
             figsize = (10, max(6, 0.5*n_groups + 2))
 
-        fig, ax = plt.subplots(figsize=figsize)
+        fig, ax = plt.subplots(figsize=figsize, **fig_kwargs)
 
         added_labels = set()
 
@@ -524,12 +538,16 @@ class EdgeCorrector(SetAnalyzer):
         ax.set_yticklabels(groups[::-1])
         ax.set_xlabel(self.on)
         ax.set_title(f"Edge Correction (Top N={self.top_n}, p={self.pvalue})")
-        ax.legend(loc='best')
+        ax.legend(loc='best', fontsize=legend_fontsize)
         plt.tight_layout()
         return fig, ax
 
     def _show_individual(self, data: pd.DataFrame, groups, group_col: str,
-                         figsize: tuple[int, int] | None) -> tuple[Figure, plt.Axes]:
+                         figsize: tuple[int, int] | None, **kwargs) -> tuple[Figure, plt.Axes]:
+        # Extract figure-level kwargs
+        fig_kwargs = {k: v for k, v in kwargs.items() if k in ('dpi', 'facecolor', 'edgecolor')}
+        legend_fontsize = kwargs.get('legend_fontsize', 8)
+
         n_groups = len(groups)
         n_cols = min(3, n_groups)
         n_rows = (n_groups + n_cols - 1)//n_cols
@@ -537,7 +555,7 @@ class EdgeCorrector(SetAnalyzer):
         if figsize is None:
             figsize = (5*n_cols, 4*n_rows)
 
-        fig, axes = plt.subplots(n_rows, n_cols, figsize=figsize, squeeze=False)
+        fig, axes = plt.subplots(n_rows, n_cols, figsize=figsize, squeeze=False, **fig_kwargs)
         axes = axes.flatten()
 
         for idx, group_name in enumerate(groups):
@@ -594,7 +612,7 @@ class EdgeCorrector(SetAnalyzer):
             if idx == 0:
                 handles, labels = ax.get_legend_handles_labels()
                 by_label = dict(zip(labels, handles))
-                ax.legend(by_label.values(), by_label.keys(), loc='best', fontsize=8)
+                ax.legend(by_label.values(), by_label.keys(), loc='best', fontsize=legend_fontsize)
 
         for idx in range(n_groups, len(axes)):
             axes[idx].set_visible(False)

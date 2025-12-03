@@ -150,7 +150,8 @@ class LogGrowthModel(ModelFitter):
              figsize=(6, 4),
              cmap: str = 'tab20',
              legend=True,
-             ax: plt.Axes = None) -> Tuple[plt.Figure, plt.Axes]:
+             ax: plt.Axes = None,
+             **kwargs) -> Tuple[plt.Figure, plt.Axes]:
         """
         Visualizes model predictions alongside measurements, allowing optional
         filtering by specified criteria and plotting configuration.
@@ -170,6 +171,19 @@ class LogGrowthModel(ModelFitter):
                 displayed on the plot. Defaults to True.
             ax (plt.Axes, optional): A matplotlib Axes object on which to plot. If not
                 provided, a new figure and axes object will be created.
+            **kwargs: Additional matplotlib parameters to customize the plot. Common options include:
+                - dpi: Figure resolution (default 100)
+                - facecolor: Figure background color
+                - edgecolor: Figure edge color
+                - line_width: Line width for prediction lines
+                - marker_size: Size of data point markers
+                - elinewidth: Error bar line width
+                - capsize: Error bar cap size
+                - title: Custom figure title
+                - xlabel: Custom x-axis label
+                - ylabel: Custom y-axis label
+                - legend_loc: Legend location (default 'best')
+                - legend_fontsize: Font size for legend
 
         Returns:
             Tuple[plt.Figure, plt.Axes]: A tuple containing the matplotlib Figure and
@@ -179,8 +193,17 @@ class LogGrowthModel(ModelFitter):
             KeyError: If the group keys for model results and measurements do not
                 align, or if specified columns are missing from the input data.
         """
+        # Extract figure-level kwargs
+        fig_kwargs = {k: v for k, v in kwargs.items() if k in ('dpi', 'facecolor', 'edgecolor')}
+        line_width = kwargs.get('line_width', None)
+        marker_size = kwargs.get('marker_size', None)
+        elinewidth = kwargs.get('elinewidth', 1)
+        capsize = kwargs.get('capsize', 2)
+        legend_loc = kwargs.get('legend_loc', 'best')
+        legend_fontsize = kwargs.get('legend_fontsize', None)
+
         if ax is None:
-            fig, ax = plt.subplots(figsize=figsize)
+            fig, ax = plt.subplots(figsize=figsize, **fig_kwargs)
         else:
             fig = ax.get_figure()
 
@@ -232,7 +255,10 @@ class LogGrowthModel(ModelFitter):
                                      K=model_group[LOG_GROWTH_MODEL.K_FIT].iloc[0],
                                      N0=model_group[LOG_GROWTH_MODEL.N0_FIT].iloc[0],
                                      )
-            ax.plot(t, y_pred, color=curr_color)
+            plot_kwargs = {'color': curr_color}
+            if line_width is not None:
+                plot_kwargs['linewidth'] = line_width
+            ax.plot(t, y_pred, **plot_kwargs)
 
             curr_time_groups = curr_meas.groupby(by=self.time_label)
             curr_mean = curr_time_groups[self.on].mean()
@@ -240,20 +266,26 @@ class LogGrowthModel(ModelFitter):
             curr_stderr = curr_stddev/np.sqrt(curr_time_groups[self.on].count())
 
             # noinspection PyUnresolvedReferences
-            ax.errorbar(
-                    x=curr_mean.index.values,
-                    y=curr_mean.values,
-                    yerr=curr_stderr,
-                    fmt='o',
-                    color=curr_color,
-                    ecolor=curr_color,
-                    elinewidth=1,
-                    capsize=2,
-                    label=f'{model_key[0]}',
-            )
+            errorbar_kwargs = {
+                'x': curr_mean.index.values,
+                'y': curr_mean.values,
+                'yerr': curr_stderr,
+                'fmt': 'o',
+                'color': curr_color,
+                'ecolor': curr_color,
+                'elinewidth': elinewidth,
+                'capsize': capsize,
+                'label': f'{model_key[0]}',
+            }
+            if marker_size is not None:
+                errorbar_kwargs['markersize'] = marker_size
+            ax.errorbar(**errorbar_kwargs)
         if legend:
             # Create legend and check if it fits within the axes
-            legend_obj = ax.legend()
+            legend_kwargs = {'loc': legend_loc}
+            if legend_fontsize is not None:
+                legend_kwargs['fontsize'] = legend_fontsize
+            legend_obj = ax.legend(**legend_kwargs)
 
             # Draw to ensure bounding boxes are available
             fig.canvas.draw()
