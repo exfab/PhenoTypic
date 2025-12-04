@@ -11,7 +11,11 @@ from typing import Tuple, TYPE_CHECKING
 if TYPE_CHECKING:
     from phenotypic import Image, GridImage
 
-import exifread
+try:
+    import exifread
+except ImportError:
+    exifread = None
+
 import h5py
 import numpy as np
 import pickle
@@ -150,30 +154,31 @@ class ImageIOHandler(ImageColorSpace):
         """
         metadata = {}
 
-        # Use exifread for comprehensive EXIF parsing
-        try:
-            with open(filepath, "rb") as f:
-                tags = exifread.process_file(f, details=True)
-                for tag, value in tags.items():
-                    if tag.startswith("Thumbnail"):
-                        continue  # Skip thumbnail data
-                    normalized = ImageIOHandler._normalize_metadata_value(value)
-                    if normalized is not None:
-                        metadata[tag] = normalized
+        # Use exifread for comprehensive EXIF parsing (if available)
+        if exifread is not None:
+            try:
+                with open(filepath, "rb") as f:
+                    tags = exifread.process_file(f, details=True)
+                    for tag, value in tags.items():
+                        if tag.startswith("Thumbnail"):
+                            continue  # Skip thumbnail data
+                        normalized = ImageIOHandler._normalize_metadata_value(value)
+                        if normalized is not None:
+                            metadata[tag] = normalized
 
-                        # Check for PhenoTypic data in EXIF UserComment
-                        if tag == "EXIF UserComment" and isinstance(normalized, str):
-                            try:
-                                phenotypic_data = json.loads(normalized)
-                                if (
-                                    isinstance(phenotypic_data, dict)
-                                    and "phenotypic_version" in phenotypic_data
-                                ):
-                                    metadata["_phenotypic_data"] = phenotypic_data
-                            except json.JSONDecodeError:
-                                pass
-        except Exception:
-            pass  # File may not have EXIF data
+                            # Check for PhenoTypic data in EXIF UserComment
+                            if tag == "EXIF UserComment" and isinstance(normalized, str):
+                                try:
+                                    phenotypic_data = json.loads(normalized)
+                                    if (
+                                        isinstance(phenotypic_data, dict)
+                                        and "phenotypic_version" in phenotypic_data
+                                    ):
+                                        metadata["_phenotypic_data"] = phenotypic_data
+                                except json.JSONDecodeError:
+                                    pass
+            except Exception:
+                pass  # File may not have EXIF data or exifread failed
 
         # Also try PIL for additional info
         try:
