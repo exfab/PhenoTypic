@@ -30,17 +30,17 @@ class EdgeCorrector(SetAnalyzer):
     """
 
     def __init__(
-            self,
-            on: str,
-            groupby: list[str],
-            time_label: str = "Metadata_Time",
-            nrows: int = 8,
-            ncols: int = 12,
-            top_n: int = 3,
-            pvalue: float = 0.05,
-            connectivity: int = 4,
-            agg_func: str = 'mean',
-            num_workers: int = 1
+        self,
+        on: str,
+        groupby: list[str],
+        time_label: str = "Metadata_Time",
+        nrows: int = 8,
+        ncols: int = 12,
+        top_n: int = 3,
+        pvalue: float = 0.05,
+        connectivity: int = 4,
+        agg_func: str = "mean",
+        num_workers: int = 1,
     ):
         """
         Initializes the class with specified parameters to configure the state of the object.
@@ -65,12 +65,16 @@ class EdgeCorrector(SetAnalyzer):
             ValueError: If `nrows` or `ncols` are not positive integers.
             ValueError: If `top_n` is not a positive integer.
         """
-        super().__init__(on=on, groupby=groupby, agg_func=agg_func, num_workers=num_workers)
+        super().__init__(
+            on=on, groupby=groupby, agg_func=agg_func, num_workers=num_workers
+        )
 
         if connectivity not in (4, 8):
             raise ValueError(f"connectivity must be 4 or 8, got {connectivity}")
         if nrows <= 0 or ncols <= 0:
-            raise ValueError(f"nrows and ncols must be positive, got nrows={nrows}, ncols={ncols}")
+            raise ValueError(
+                f"nrows and ncols must be positive, got nrows={nrows}, ncols={ncols}"
+            )
         if top_n <= 0:
             raise ValueError(f"top_n must be positive, got {top_n}")
 
@@ -85,12 +89,12 @@ class EdgeCorrector(SetAnalyzer):
 
     @staticmethod
     def _surrounded_positions(
-            active_idx: np.ndarray | list[int],
-            shape: tuple[int, int],
-            connectivity: int = 4,
-            min_neighbors: int | None = None,
-            return_counts: bool = False,
-            dtype: np.dtype = np.int64,
+        active_idx: np.ndarray | list[int],
+        shape: tuple[int, int],
+        connectivity: int = 4,
+        min_neighbors: int | None = None,
+        return_counts: bool = False,
+        dtype: np.dtype = np.int64,
     ) -> np.ndarray | tuple[np.ndarray, np.ndarray]:
         """Find grid cells that are surrounded by active neighbors.
 
@@ -154,7 +158,7 @@ class EdgeCorrector(SetAnalyzer):
             raise ValueError(f"shape must be two positive integers, got {shape}")
 
         rows, cols = shape
-        total_cells = rows*cols
+        total_cells = rows * cols
 
         # Coerce active_idx to 1D unique array
         active_idx = np.asarray(active_idx, dtype=dtype).ravel()
@@ -164,8 +168,8 @@ class EdgeCorrector(SetAnalyzer):
         if len(active_idx) > 0:
             if active_idx.min() < 0 or active_idx.max() >= total_cells:
                 raise ValueError(
-                        f"All active_idx must be in [0, {total_cells}), "
-                        f"got range [{active_idx.min()}, {active_idx.max()}]"
+                    f"All active_idx must be in [0, {total_cells}), "
+                    f"got range [{active_idx.min()}, {active_idx.max()}]"
                 )
 
         # Determine max_neighbors and validate min_neighbors
@@ -175,7 +179,7 @@ class EdgeCorrector(SetAnalyzer):
         else:
             if not (1 <= min_neighbors <= max_neighbors):
                 raise ValueError(
-                        f"min_neighbors must be in [1, {max_neighbors}], got {min_neighbors}"
+                    f"min_neighbors must be in [1, {max_neighbors}], got {min_neighbors}"
                 )
 
         # Handle empty input
@@ -186,8 +190,8 @@ class EdgeCorrector(SetAnalyzer):
 
         # Build active mask
         active_mask = np.zeros((rows, cols), dtype=bool)
-        rows_idx = active_idx//cols
-        cols_idx = active_idx%cols
+        rows_idx = active_idx // cols
+        cols_idx = active_idx % cols
         active_mask[rows_idx, cols_idx] = True
 
         # Define neighbor offsets based on connectivity
@@ -195,8 +199,14 @@ class EdgeCorrector(SetAnalyzer):
             offsets = [(-1, 0), (1, 0), (0, -1), (0, 1)]
         else:  # connectivity == 8
             offsets = [
-                (-1, 0), (1, 0), (0, -1), (0, 1),  # cardinal
-                (-1, -1), (-1, 1), (1, -1), (1, 1)  # diagonal
+                (-1, 0),
+                (1, 0),
+                (0, -1),
+                (0, 1),  # cardinal
+                (-1, -1),
+                (-1, 1),
+                (1, -1),
+                (1, 1),  # diagonal
             ]
 
         # Accumulate neighbor counts using aligned slicing
@@ -228,14 +238,14 @@ class EdgeCorrector(SetAnalyzer):
 
         # Convert back to flattened indices
         selected_rows, selected_cols = np.where(selected_mask)
-        result_idx = (selected_rows*cols + selected_cols).astype(dtype)
+        result_idx = (selected_rows * cols + selected_cols).astype(dtype)
         result_idx = np.sort(result_idx)
 
         if return_counts:
             # Get counts for selected indices
             counts = neighbor_count[selected_rows, selected_cols].astype(dtype)
             # Sort counts to match sorted indices
-            sort_order = np.argsort(selected_rows*cols + selected_cols)
+            sort_order = np.argsort(selected_rows * cols + selected_cols)
             counts = counts[sort_order]
             return result_idx, counts
 
@@ -315,13 +325,13 @@ class EdgeCorrector(SetAnalyzer):
 
         # Prepare configuration for _apply2group_func
         config = {
-            'nrows'       : self.nrows,
-            'ncols'       : self.ncols,
-            'top_n'       : self.top_n,
-            'connectivity': self.connectivity,
-            'on'          : self.on,
-            'pvalue'      : self.pvalue,
-            'time_label'  : self.time_label,
+            "nrows": self.nrows,
+            "ncols": self.ncols,
+            "top_n": self.top_n,
+            "connectivity": self.connectivity,
+            "on": self.on,
+            "pvalue": self.pvalue,
+            "time_label": self.time_label,
         }
 
         # Build aggregation dictionary to preserve all columns
@@ -337,7 +347,7 @@ class EdgeCorrector(SetAnalyzer):
                 if col == self.on:
                     agg_dict[col] = self.agg_func
                 else:
-                    agg_dict[col] = 'first'
+                    agg_dict[col] = "first"
 
         agg_data = data.groupby(by=groupby_cols, as_index=False).agg(agg_dict)
 
@@ -348,9 +358,8 @@ class EdgeCorrector(SetAnalyzer):
         else:
             grouped = agg_data.groupby(by=self.groupby, as_index=False)
             corrected_data = Parallel(n_jobs=self.n_jobs)(
-                    delayed(self.__class__._apply2group_func)(
-                            group, **config
-                    ) for _, group in grouped
+                delayed(self.__class__._apply2group_func)(group, **config)
+                for _, group in grouped
             )
 
         # Store results
@@ -361,12 +370,14 @@ class EdgeCorrector(SetAnalyzer):
 
         return self._latest_measurements
 
-    def show(self,
-             figsize: tuple[int, int] | None = None,
-             max_groups: int = 20,
-             collapsed: bool = True,
-             criteria: dict[str, any] | None = None
-             ) -> tuple[Figure, plt.Axes]:
+    def show(
+        self,
+        figsize: tuple[int, int] | None = None,
+        max_groups: int = 20,
+        collapsed: bool = True,
+        criteria: dict[str, any] | None = None,
+        **kwargs,
+    ) -> tuple[Figure, plt.Axes]:
         """Visualize edge correction results.
 
         Displays the distribution of measurements for the last time point, highlighting
@@ -377,6 +388,15 @@ class EdgeCorrector(SetAnalyzer):
             max_groups: Maximum number of groups to display.
             collapsed: If True, show groups stacked vertically.
             criteria: Filtering criteria.
+            **kwargs: Additional matplotlib parameters to customize the plot. Common options include:
+                - dpi: Figure resolution (default 100)
+                - facecolor: Figure background color
+                - edgecolor: Figure edge color
+                - grid_alpha: Alpha value for grid lines
+                - legend_loc: Legend location (default 'best')
+                - legend_fontsize: Font size for legend (default 8 or 9)
+                - marker_alpha: Alpha value for scatter plot markers
+                - line_width: Line width for box plots and fence lines
 
         Returns:
             Tuple of (Figure, Axes).
@@ -396,26 +416,38 @@ class EdgeCorrector(SetAnalyzer):
             groups = data[self.groupby[0]].unique()
             group_col = self.groupby[0]
         else:
-            data['_group_key'] = data[self.groupby].astype(str).agg(' | '.join, axis=1)
-            groups = data['_group_key'].unique()
-            group_col = '_group_key'
+            data["_group_key"] = data[self.groupby].astype(str).agg(" | ".join, axis=1)
+            groups = data["_group_key"].unique()
+            group_col = "_group_key"
 
         if len(groups) > max_groups:
             print(f"Warning: Displaying first {max_groups} groups out of {len(groups)}")
             groups = groups[:max_groups]
 
         if collapsed:
-            return self._show_collapsed(data, groups, group_col, figsize)
+            return self._show_collapsed(data, groups, group_col, figsize, **kwargs)
         else:
-            return self._show_individual(data, groups, group_col, figsize)
+            return self._show_individual(data, groups, group_col, figsize, **kwargs)
 
-    def _show_collapsed(self, data: pd.DataFrame, groups, group_col: str,
-                        figsize: tuple[int, int] | None) -> tuple[Figure, plt.Axes]:
+    def _show_collapsed(
+        self,
+        data: pd.DataFrame,
+        groups,
+        group_col: str,
+        figsize: tuple[int, int] | None,
+        **kwargs,
+    ) -> tuple[Figure, plt.Axes]:
+        # Extract figure-level kwargs
+        fig_kwargs = {
+            k: v for k, v in kwargs.items() if k in ("dpi", "facecolor", "edgecolor")
+        }
+        legend_fontsize = kwargs.get("legend_fontsize", 9)
+
         n_groups = len(groups)
         if figsize is None:
-            figsize = (10, max(6, 0.5*n_groups + 2))
+            figsize = (10, max(6, 0.5 * n_groups + 2))
 
-        fig, ax = plt.subplots(figsize=figsize)
+        fig, ax = plt.subplots(figsize=figsize, **fig_kwargs)
 
         added_labels = set()
 
@@ -427,25 +459,33 @@ class EdgeCorrector(SetAnalyzer):
             if stats is None:
                 continue
 
-            lt_df = stats['last_time_df']
-            threshold = stats['threshold']
-            surrounded_mask = stats['surrounded_mask']
-            edge_mask = stats['edge_mask']
+            lt_df = stats["last_time_df"]
+            threshold = stats["threshold"]
+            surrounded_mask = stats["surrounded_mask"]
+            edge_mask = stats["edge_mask"]
 
             # Range line
             vals = lt_df[self.on].values
             if len(vals) > 0:
-                ax.hlines(y_pos, vals.min(), vals.max(), colors='lightgray', lw=1.5, zorder=1)
+                ax.hlines(
+                    y_pos, vals.min(), vals.max(), colors="lightgray", lw=1.5, zorder=1
+                )
 
             # Threshold
             if not np.isinf(threshold):
-                lbl = 'Threshold'
+                lbl = "Threshold"
                 if lbl not in added_labels:
                     added_labels.add(lbl)
                 else:
                     lbl = None
-                ax.plot([threshold, threshold], [y_pos - 0.2, y_pos + 0.2],
-                        color='#F4A261', lw=2.5, label=lbl, zorder=2)
+                ax.plot(
+                    [threshold, threshold],
+                    [y_pos - 0.2, y_pos + 0.2],
+                    color="#F4A261",
+                    lw=2.5,
+                    label=lbl,
+                    zorder=2,
+                )
 
             # Jitter
             y_jitter = np.random.normal(y_pos, 0.05, len(lt_df))
@@ -460,45 +500,63 @@ class EdgeCorrector(SetAnalyzer):
                         added_labels.add(lbl)
                     else:
                         lbl = None
-                    ax.scatter(lt_df.loc[mask, self.on], y_jitter[mask],
-                               c=color, marker=marker, s=30 if marker == 'o' else 40,
-                               alpha=0.6 if marker == 'o' else 0.8,
-                               label=lbl, zorder=3)
+                    ax.scatter(
+                        lt_df.loc[mask, self.on],
+                        y_jitter[mask],
+                        c=color,
+                        marker=marker,
+                        s=30 if marker == "o" else 40,
+                        alpha=0.6 if marker == "o" else 0.8,
+                        label=lbl,
+                        zorder=3,
+                    )
 
             # Inner Pass
-            add_scatter(surrounded_mask & (~is_clipped), '#2E86AB', 'o', 'Inner (Pass)')
+            add_scatter(surrounded_mask & (~is_clipped), "#2E86AB", "o", "Inner (Pass)")
             # Inner Clipped
-            add_scatter(surrounded_mask & is_clipped, '#2E86AB', 'x', 'Inner (Clipped)')
+            add_scatter(surrounded_mask & is_clipped, "#2E86AB", "x", "Inner (Clipped)")
             # Edge Pass
-            add_scatter(edge_mask & (~is_clipped), '#E63946', 'o', 'Edge (Pass)')
+            add_scatter(edge_mask & (~is_clipped), "#E63946", "o", "Edge (Pass)")
             # Edge Clipped
-            add_scatter(edge_mask & is_clipped, '#E63946', 'x', 'Edge (Clipped)')
+            add_scatter(edge_mask & is_clipped, "#E63946", "x", "Edge (Clipped)")
 
             # Means
             inner_vals = lt_df.loc[surrounded_mask, self.on]
             edge_vals = lt_df.loc[edge_mask, self.on]
 
             if len(inner_vals) > 0:
-                lbl = 'Inner Mean'
+                lbl = "Inner Mean"
                 if lbl not in added_labels:
                     added_labels.add(lbl)
                 else:
                     lbl = None
                 mean_val = inner_vals.mean()
-                ax.plot([mean_val, mean_val], [y_pos - 0.25, y_pos + 0.25],
-                        color='#2E86AB', linewidth=2.5, label=lbl, zorder=4,
-                        linestyle="--")
+                ax.plot(
+                    [mean_val, mean_val],
+                    [y_pos - 0.25, y_pos + 0.25],
+                    color="#2E86AB",
+                    linewidth=2.5,
+                    label=lbl,
+                    zorder=4,
+                    linestyle="--",
+                )
 
             if len(edge_vals) > 0:
-                lbl = 'Edge Mean'
+                lbl = "Edge Mean"
                 if lbl not in added_labels:
                     added_labels.add(lbl)
                 else:
                     lbl = None
                 mean_val = edge_vals.mean()
-                ax.plot([mean_val, mean_val], [y_pos - 0.25, y_pos + 0.25],
-                        color='#E63946', linewidth=2.5, label=lbl, zorder=4,
-                        linestyle="--")
+                ax.plot(
+                    [mean_val, mean_val],
+                    [y_pos - 0.25, y_pos + 0.25],
+                    color="#E63946",
+                    linewidth=2.5,
+                    label=lbl,
+                    zorder=4,
+                    linestyle="--",
+                )
 
             # P-value
             if self.pvalue != 0 and len(inner_vals) > 0 and len(edge_vals) > 0:
@@ -511,33 +569,62 @@ class EdgeCorrector(SetAnalyzer):
                 bracket_h = 0.05
 
                 # Draw bracket
-                ax.plot([mean_inner, mean_inner, mean_edge, mean_edge],
-                        [bracket_y, bracket_y + bracket_h, bracket_y + bracket_h, bracket_y],
-                        color='black', linewidth=1, zorder=5)
+                ax.plot(
+                    [mean_inner, mean_inner, mean_edge, mean_edge],
+                    [
+                        bracket_y,
+                        bracket_y + bracket_h,
+                        bracket_y + bracket_h,
+                        bracket_y,
+                    ],
+                    color="black",
+                    linewidth=1,
+                    zorder=5,
+                )
 
                 # Add p-value text
-                mid_x = (mean_inner + mean_edge)/2
-                ax.text(mid_x, bracket_y + bracket_h + 0.05, f"p={pval:.3f}",
-                        ha='center', va='bottom', fontsize=8)
+                mid_x = (mean_inner + mean_edge) / 2
+                ax.text(
+                    mid_x,
+                    bracket_y + bracket_h + 0.05,
+                    f"p={pval:.3f}",
+                    ha="center",
+                    va="bottom",
+                    fontsize=8,
+                )
 
         ax.set_yticks(range(1, n_groups + 1))
         ax.set_yticklabels(groups[::-1])
         ax.set_xlabel(self.on)
         ax.set_title(f"Edge Correction (Top N={self.top_n}, p={self.pvalue})")
-        ax.legend(loc='best')
+        ax.legend(loc="best", fontsize=legend_fontsize)
         plt.tight_layout()
         return fig, ax
 
-    def _show_individual(self, data: pd.DataFrame, groups, group_col: str,
-                         figsize: tuple[int, int] | None) -> tuple[Figure, plt.Axes]:
+    def _show_individual(
+        self,
+        data: pd.DataFrame,
+        groups,
+        group_col: str,
+        figsize: tuple[int, int] | None,
+        **kwargs,
+    ) -> tuple[Figure, plt.Axes]:
+        # Extract figure-level kwargs
+        fig_kwargs = {
+            k: v for k, v in kwargs.items() if k in ("dpi", "facecolor", "edgecolor")
+        }
+        legend_fontsize = kwargs.get("legend_fontsize", 8)
+
         n_groups = len(groups)
         n_cols = min(3, n_groups)
-        n_rows = (n_groups + n_cols - 1)//n_cols
+        n_rows = (n_groups + n_cols - 1) // n_cols
 
         if figsize is None:
-            figsize = (5*n_cols, 4*n_rows)
+            figsize = (5 * n_cols, 4 * n_rows)
 
-        fig, axes = plt.subplots(n_rows, n_cols, figsize=figsize, squeeze=False)
+        fig, axes = plt.subplots(
+            n_rows, n_cols, figsize=figsize, squeeze=False, **fig_kwargs
+        )
         axes = axes.flatten()
 
         for idx, group_name in enumerate(groups):
@@ -546,46 +633,81 @@ class EdgeCorrector(SetAnalyzer):
 
             stats = self._calculate_group_stats(group_data)
             if stats is None:
-                ax.text(0.5, 0.5, "Insufficient Data", ha='center')
+                ax.text(0.5, 0.5, "Insufficient Data", ha="center")
                 continue
 
-            lt_df = stats['last_time_df']
-            threshold = stats['threshold']
-            surrounded_mask = stats['surrounded_mask']
-            edge_mask = stats['edge_mask']
+            lt_df = stats["last_time_df"]
+            threshold = stats["threshold"]
+            surrounded_mask = stats["surrounded_mask"]
+            edge_mask = stats["edge_mask"]
 
             vals = lt_df[self.on].values
             is_clipped = lt_df[self.on] > threshold
 
-            ax.boxplot([vals], positions=[1], widths=0.3,
-                       patch_artist=True, showfliers=False,
-                       boxprops=dict(facecolor='lightgray', alpha=0.3))
+            ax.boxplot(
+                [vals],
+                positions=[1],
+                widths=0.3,
+                patch_artist=True,
+                showfliers=False,
+                boxprops=dict(facecolor="lightgray", alpha=0.3),
+            )
 
             x_jitter = np.random.normal(1, 0.04, len(lt_df))
 
             # Inner Pass
             mask_ip = surrounded_mask & (~is_clipped)
             if mask_ip.any():
-                ax.scatter(x_jitter[mask_ip], lt_df.loc[mask_ip, self.on],
-                           c='#2E86AB', marker='o', s=30, alpha=0.6, label='Inner (Pass)')
+                ax.scatter(
+                    x_jitter[mask_ip],
+                    lt_df.loc[mask_ip, self.on],
+                    c="#2E86AB",
+                    marker="o",
+                    s=30,
+                    alpha=0.6,
+                    label="Inner (Pass)",
+                )
             # Inner Clipped
             mask_ic = surrounded_mask & is_clipped
             if mask_ic.any():
-                ax.scatter(x_jitter[mask_ic], lt_df.loc[mask_ic, self.on],
-                           c='#2E86AB', marker='x', s=40, alpha=0.8, label='Inner (Clipped)')
+                ax.scatter(
+                    x_jitter[mask_ic],
+                    lt_df.loc[mask_ic, self.on],
+                    c="#2E86AB",
+                    marker="x",
+                    s=40,
+                    alpha=0.8,
+                    label="Inner (Clipped)",
+                )
             # Edge Pass
             mask_ep = edge_mask & (~is_clipped)
             if mask_ep.any():
-                ax.scatter(x_jitter[mask_ep], lt_df.loc[mask_ep, self.on],
-                           c='#E63946', marker='o', s=30, alpha=0.6, label='Edge (Pass)')
+                ax.scatter(
+                    x_jitter[mask_ep],
+                    lt_df.loc[mask_ep, self.on],
+                    c="#E63946",
+                    marker="o",
+                    s=30,
+                    alpha=0.6,
+                    label="Edge (Pass)",
+                )
             # Edge Clipped
             mask_ec = edge_mask & is_clipped
             if mask_ec.any():
-                ax.scatter(x_jitter[mask_ec], lt_df.loc[mask_ec, self.on],
-                           c='#E63946', marker='x', s=40, alpha=0.8, label='Edge (Clipped)')
+                ax.scatter(
+                    x_jitter[mask_ec],
+                    lt_df.loc[mask_ec, self.on],
+                    c="#E63946",
+                    marker="x",
+                    s=40,
+                    alpha=0.8,
+                    label="Edge (Clipped)",
+                )
 
             if not np.isinf(threshold):
-                ax.axhline(y=threshold, color='#F4A261', linestyle='--', label='Threshold')
+                ax.axhline(
+                    y=threshold, color="#F4A261", linestyle="--", label="Threshold"
+                )
 
             ax.set_title(group_name)
             ax.set_ylabel(self.on)
@@ -594,7 +716,12 @@ class EdgeCorrector(SetAnalyzer):
             if idx == 0:
                 handles, labels = ax.get_legend_handles_labels()
                 by_label = dict(zip(labels, handles))
-                ax.legend(by_label.values(), by_label.keys(), loc='best', fontsize=8)
+                ax.legend(
+                    by_label.values(),
+                    by_label.keys(),
+                    loc="best",
+                    fontsize=legend_fontsize,
+                )
 
         for idx in range(n_groups, len(axes)):
             axes[idx].set_visible(False)
@@ -619,11 +746,11 @@ class EdgeCorrector(SetAnalyzer):
 
         try:
             surrounded_idx = self._surrounded_positions(
-                    active_idx=active_indices,
-                    shape=(self.nrows, self.ncols),
-                    connectivity=self.connectivity,
-                    min_neighbors=None,
-                    return_counts=False
+                active_idx=active_indices,
+                shape=(self.nrows, self.ncols),
+                connectivity=self.connectivity,
+                min_neighbors=None,
+                return_counts=False,
             )
         except ValueError:
             return None
@@ -632,14 +759,16 @@ class EdgeCorrector(SetAnalyzer):
 
         if len(surrounded_idx_set) == 0:
             return {
-                'last_time_df'   : last_time_group,
-                'threshold'      : np.inf,
-                'surrounded_mask': pd.Series(False, index=last_time_group.index),
-                'edge_mask'      : pd.Series(True, index=last_time_group.index)
+                "last_time_df": last_time_group,
+                "threshold": np.inf,
+                "surrounded_mask": pd.Series(False, index=last_time_group.index),
+                "edge_mask": pd.Series(True, index=last_time_group.index),
             }
 
         surrounded_mask = last_time_group[GRID.SECTION_NUM].isin(surrounded_idx_set)
-        edge_mask = ~surrounded_mask & last_time_group[GRID.SECTION_NUM].isin(present_sections)
+        edge_mask = ~surrounded_mask & last_time_group[GRID.SECTION_NUM].isin(
+            present_sections
+        )
 
         if self.on not in group.columns:
             return None
@@ -652,11 +781,11 @@ class EdgeCorrector(SetAnalyzer):
             last_edge_values = last_time_group.loc[edge_mask, self.on]
             if len(last_edge_values) > 0 and len(last_inner_values) > 0:
                 perm_results = permutation_test(
-                        data=(last_inner_values, last_edge_values),
-                        statistic=lambda x, y: np.mean(x) - np.mean(y),
-                        permutation_type="independent",
-                        n_resamples=1000,
-                        alternative="two-sided",
+                    data=(last_inner_values, last_edge_values),
+                    statistic=lambda x, y: np.mean(x) - np.mean(y),
+                    permutation_type="independent",
+                    n_resamples=1000,
+                    alternative="two-sided",
                 )
                 if perm_results.pvalue > self.pvalue:
                     should_correct = False
@@ -668,10 +797,10 @@ class EdgeCorrector(SetAnalyzer):
                 threshold = top_values.mean()
 
         return {
-            'last_time_df'   : last_time_group,
-            'threshold'      : threshold,
-            'surrounded_mask': surrounded_mask,
-            'edge_mask'      : edge_mask
+            "last_time_df": last_time_group,
+            "threshold": threshold,
+            "surrounded_mask": surrounded_mask,
+            "edge_mask": edge_mask,
         }
 
     def results(self) -> pd.DataFrame:
@@ -703,15 +832,16 @@ class EdgeCorrector(SetAnalyzer):
         return self._latest_measurements
 
     @staticmethod
-    def _apply2group_func(group: pd.DataFrame,
-                          on: str,
-                          nrows: int,
-                          ncols: int,
-                          top_n: int,
-                          time_label: str,
-                          connectivity: int,
-                          pvalue: float
-                          ) -> pd.DataFrame:
+    def _apply2group_func(
+        group: pd.DataFrame,
+        on: str,
+        nrows: int,
+        ncols: int,
+        top_n: int,
+        time_label: str,
+        connectivity: int,
+        pvalue: float,
+    ) -> pd.DataFrame:
         """
         Note:
             - assumes "Grid_SectionNum" from a `GridFinder` is in the dataframe groups
@@ -749,11 +879,11 @@ class EdgeCorrector(SetAnalyzer):
         # Find fully-surrounded (interior) sections
         try:
             surrounded_idx = EdgeCorrector._surrounded_positions(
-                    active_idx=active_indices,
-                    shape=(nrows, ncols),
-                    connectivity=connectivity,
-                    min_neighbors=None,  # Require all neighbors (fully surrounded)
-                    return_counts=False
+                active_idx=active_indices,
+                shape=(nrows, ncols),
+                connectivity=connectivity,
+                min_neighbors=None,  # Require all neighbors (fully surrounded)
+                return_counts=False,
             )
         except ValueError:
             # If validation fails, return group unchanged
@@ -772,12 +902,14 @@ class EdgeCorrector(SetAnalyzer):
         if on not in group.columns:
             return group
 
-        last_inner_values: pd.Series = \
-            last_time_group.loc[last_time_group.loc[:, GRID.SECTION_NUM].isin(surrounded_idx), on]
+        last_inner_values: pd.Series = last_time_group.loc[
+            last_time_group.loc[:, GRID.SECTION_NUM].isin(surrounded_idx), on
+        ]
 
         if pvalue != 0:
-            last_edge_values: pd.Series = \
-                last_time_group.loc[last_time_group.loc[:, GRID.SECTION_NUM].isin(edge_idx), on]
+            last_edge_values: pd.Series = last_time_group.loc[
+                last_time_group.loc[:, GRID.SECTION_NUM].isin(edge_idx), on
+            ]
 
             # If difference is not statistically significant, don't apply correction
             if EdgeCorrector._perm_test(last_inner_values, last_edge_values) > pvalue:
@@ -800,11 +932,11 @@ class EdgeCorrector(SetAnalyzer):
     @staticmethod
     def _perm_test(surrounded, edge):
         return permutation_test(
-                data=(surrounded, edge),
-                statistic=lambda x, y: np.mean(x) - np.mean(y),
-                permutation_type="independent",
-                n_resamples=1000,
-                alternative="two-sided",
+            data=(surrounded, edge),
+            statistic=lambda x, y: np.mean(x) - np.mean(y),
+            permutation_type="independent",
+            n_resamples=1000,
+            alternative="two-sided",
         ).pvalue
 
 

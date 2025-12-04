@@ -11,7 +11,8 @@ import psutil
 from phenotypic.abc_ import ImageOperation, MeasureFeatures
 from phenotypic.tools.constants_ import PIPE_STATUS
 
-if TYPE_CHECKING: from phenotypic import Image, ImageSet, GridImage
+if TYPE_CHECKING:
+    from phenotypic import Image, ImageSet, GridImage
 
 import multiprocessing as _mp
 import threading
@@ -55,15 +56,16 @@ class ImagePipelineBatch(SerializablePipeline):
             multi-threaded execution.
     """
 
-    def __init__(self,
-                 ops: List[ImageOperation] | Dict[str, ImageOperation] | None = None,
-                 meas: List[MeasureFeatures] | Dict[str, MeasureFeatures] | None = None,
-                 njobs: int = -1,
-                 verbose: bool = True,
-                 memblock_factor=1.25,
-                 benchmark: bool = False,
-                 timeout: int | None = None,
-                 ):
+    def __init__(
+        self,
+        ops: List[ImageOperation] | Dict[str, ImageOperation] | None = None,
+        meas: List[MeasureFeatures] | Dict[str, MeasureFeatures] | None = None,
+        njobs: int = -1,
+        verbose: bool = True,
+        memblock_factor=1.25,
+        benchmark: bool = False,
+        timeout: int | None = None,
+    ):
         super().__init__(ops, meas, benchmark, verbose)
         # Fix: Set default n_jobs to CPU count if -1, ensuring valid multiprocessing
         if njobs == -1:
@@ -78,53 +80,66 @@ class ImagePipelineBatch(SerializablePipeline):
     # Public interface
     # ---------------------------------------------------------------------
     def apply(  # type: ignore[override]
-            self,
-            image: Union[Image, ImageSet],
-            inplace: bool = False,
-            reset: bool = True,
+        self,
+        image: Union[Image, ImageSet],
+        inplace: bool = False,
+        reset: bool = True,
     ) -> Union[GridImage, Image, None]:
         import phenotypic
 
         if isinstance(image, phenotypic.Image):
             return super().apply(image, inplace=inplace, reset=reset)
         if isinstance(image, ImageSet):
-            self._coordinator(image, mode=PipelineMode.APPLY, num_workers=self.num_workers, verbose=self.verbose)
+            self._coordinator(
+                image,
+                mode=PipelineMode.APPLY,
+                num_workers=self.num_workers,
+                verbose=self.verbose,
+            )
             return None
         raise TypeError("image must be Image or ImageSet")
 
     def measure(
-            self,
-            image: Union[Image, ImageSet],
-            include_metadata: bool = True,
-            verbose: bool = False,
+        self,
+        image: Union[Image, ImageSet],
+        include_metadata: bool = True,
+        verbose: bool = False,
     ) -> pd.DataFrame:
         import phenotypic
 
         if isinstance(image, phenotypic.Image):
             return super().measure(image, include_metadata=include_metadata)
         if isinstance(image, phenotypic.ImageSet):
-            return self._coordinator(image,
-                                     mode=PipelineMode.MEASURE,
-                                     num_workers=self.num_workers, )
+            return self._coordinator(
+                image,
+                mode=PipelineMode.MEASURE,
+                num_workers=self.num_workers,
+            )
         raise TypeError("image must be Image or ImageSet")
 
-    def apply_and_measure(self, image: Image | ImageSet,
-                          inplace: bool = False,
-                          reset: bool = True,
-                          include_metadata: bool = True) -> Union[pd.DataFrame, None]:
+    def apply_and_measure(
+        self,
+        image: Image | ImageSet,
+        inplace: bool = False,
+        reset: bool = True,
+        include_metadata: bool = True,
+    ) -> Union[pd.DataFrame, None]:
         import phenotypic as pt
 
         if isinstance(image, pt.Image):
             return super().apply_and_measure(
-                    image=image,
-                    inplace=inplace,
-                    reset=reset,
-                    include_metadata=include_metadata,
+                image=image,
+                inplace=inplace,
+                reset=reset,
+                include_metadata=include_metadata,
             )
         elif isinstance(image, pt.ImageSet):
-            return self._coordinator(image,
-                                     mode=PipelineMode.APPLY_MEASURE,
-                                     num_workers=self.num_workers, reset=reset)
+            return self._coordinator(
+                image,
+                mode=PipelineMode.APPLY_MEASURE,
+                num_workers=self.num_workers,
+                reset=reset,
+            )
         else:
             raise TypeError("image must be Image or ImageSet")
 
@@ -133,15 +148,16 @@ class ImagePipelineBatch(SerializablePipeline):
     # ----------------
 
     # TODO: Implement Pipeline apply on ImageSet metric
-    def _coordinator(self,
-                     image_set: ImageSet,
-                     *,
-                     mode: PipelineMode,
-                     num_workers: Optional[int] = None,
-                     reset: bool = True,
-                     ) -> Union[pd.DataFrame, None]:
-        assert self.num_workers >= 2, 'Not enough cores to run image set in parallel'
-        logger = logging.getLogger('ImagePipeline.coordinator')
+    def _coordinator(
+        self,
+        image_set: ImageSet,
+        *,
+        mode: PipelineMode,
+        num_workers: Optional[int] = None,
+        reset: bool = True,
+    ) -> Union[pd.DataFrame, None]:
+        assert self.num_workers >= 2, "Not enough cores to run image set in parallel"
+        logger = logging.getLogger("ImagePipeline.coordinator")
 
         """
         Step 1: Allocate space for writing since SWMR mode only allows appending
@@ -150,7 +166,7 @@ class ImagePipelineBatch(SerializablePipeline):
         if mode in {PipelineMode.MEASURE, PipelineMode.APPLY_MEASURE}:
             logger.info(f"allocating measurement datasets for {image_set.name}")
             self._allocate_measurement_datasets(image_set)
-            logger.debug(f'allocation done. ready to process images.')
+            logger.debug(f"allocation done. ready to process images.")
 
         """
         Step 2: spawn writer, producer, and worker processes.
@@ -171,18 +187,26 @@ class ImagePipelineBatch(SerializablePipeline):
         from threadpoolctl import threadpool_limits
 
         with threadpool_limits(limits=1):
-            parallel_logger = logging.getLogger(f'ImagePipeline.parallel')
-            parallel_logger.debug(f'_coordinator called with mode:{mode}, njobs: {num_workers}')
+            parallel_logger = logging.getLogger(f"ImagePipeline.parallel")
+            parallel_logger.debug(
+                f"_coordinator called with mode:{mode}, njobs: {num_workers}"
+            )
 
             try:
-                mp_context = _mp.get_context('spawn')
-                parallel_logger.info("Using spawn multiprocessing context for cross-platform compatibility")
+                mp_context = _mp.get_context("spawn")
+                parallel_logger.info(
+                    "Using spawn multiprocessing context for cross-platform compatibility"
+                )
             except RuntimeError:
                 # Fallback to the default context if spawn is not available
                 mp_context = _mp
-                parallel_logger.info("Using default multiprocessing context (spawn not available)")
+                parallel_logger.info(
+                    "Using default multiprocessing context (spawn not available)"
+                )
 
-            work_q: _mp.Queue[bytes | None] = mp_context.Queue(maxsize=self.num_workers*2)
+            work_q: _mp.Queue[bytes | None] = mp_context.Queue(
+                maxsize=self.num_workers * 2
+            )
             results_q: _mp.Queue[Tuple[str, bytes, bytes]] = mp_context.Queue()
             writer_access_event: threading.Event = threading.Event()
             thread_stop_event: threading.Event = threading.Event()
@@ -193,12 +217,14 @@ class ImagePipelineBatch(SerializablePipeline):
             Step 2.1: Spawn writer to start processing results and writing them back to HDF5
             """
             writer = threading.Thread(
-                    target=self._writer,
-                    kwargs=dict(image_set=image_set,
-                                results_q=results_q,
-                                writer_access_event=writer_access_event,
-                                stop_event=thread_stop_event),
-                    daemon=False,
+                target=self._writer,
+                kwargs=dict(
+                    image_set=image_set,
+                    results_q=results_q,
+                    writer_access_event=writer_access_event,
+                    stop_event=thread_stop_event,
+                ),
+                daemon=False,
             )
             writer.start()
 
@@ -206,12 +232,14 @@ class ImagePipelineBatch(SerializablePipeline):
             Step 2.2: Spawn Producer process to enqueue work items (image names)
             """
             producer = threading.Thread(
-                    target=self._producer,
-                    kwargs=dict(image_set=image_set,
-                                image_names=image_names,
-                                work_q=work_q,
-                                writer_access_event=writer_access_event,
-                                stop_event=thread_stop_event),
+                target=self._producer,
+                kwargs=dict(
+                    image_set=image_set,
+                    image_names=image_names,
+                    work_q=work_q,
+                    writer_access_event=writer_access_event,
+                    stop_event=thread_stop_event,
+                ),
             )
             producer.start()
 
@@ -222,35 +250,41 @@ class ImagePipelineBatch(SerializablePipeline):
             logger.debug("spawning %d workers", self.num_workers)
             workers = [
                 mp_context.Process(
-                        target=self._worker,
-                        kwargs=dict(ops=self._ops,
-                                    meas_ops=self._meas,
-                                    work_q=work_q,
-                                    results_q=results_q,
-                                    mode=mode,
-                                    reset=reset),
-                        daemon=False,
+                    target=self._worker,
+                    kwargs=dict(
+                        ops=self._ops,
+                        meas_ops=self._meas,
+                        work_q=work_q,
+                        results_q=results_q,
+                        mode=mode,
+                        reset=reset,
+                    ),
+                    daemon=False,
                 )
                 for _ in range(self.num_workers - 1)
             ]
             logger.debug("all workers spawned")
 
-            for w in workers: w.start()
-            logger.info('All worker processes started')
+            for w in workers:
+                w.start()
+            logger.info("All worker processes started")
 
-            for w in workers: w.join()
-            logger.info(f'All worker processes completed, joining writer...')
+            for w in workers:
+                w.join()
+            logger.info(f"All worker processes completed, joining writer...")
 
             thread_stop_event.set()
-            logger.info(f'Stop event set. Waiting on writer to complete...')
+            logger.info(f"Stop event set. Waiting on writer to complete...")
             producer.join(timeout=self.timeout)
             writer.join(timeout=self.timeout)
-            logger.info(f'Writer and producer joined successfully. Exiting coordinator.''')
+            logger.info(
+                f"Writer and producer joined successfully. Exiting coordinator."
+            )
 
         """
         Step 3: Check file handles are closed and concatenate results into a single dataframe if in measure mode
         """
-        logger.info('Cleaning up after processing and aggregating measurements...')
+        logger.info("Cleaning up after processing and aggregating measurements...")
         if mode in {PipelineMode.MEASURE, PipelineMode.APPLY_MEASURE}:
             return image_set.get_measurement()
         else:
@@ -261,44 +295,52 @@ class ImagePipelineBatch(SerializablePipeline):
     def _allocate_measurement_datasets(self, imageset: ImageSet) -> None:
         """Pre-allocate measurement datasets for SWMR compatibility.
 
-                    This method is called by the `ImagePipeline` class before the
-                    `ImagePipeline` is run.  It creates HDF5 datasets for each measurement in image
-                    in the `ImageSet` and stores them in the same HDF5 file.  This
-                    ensures that the HDF5 file is not closed during the processing of
-                    individual images, which would cause the file to be locked and
-                    prevent any further processing.
+        This method is called by the `ImagePipeline` class before the
+        `ImagePipeline` is run.  It creates HDF5 datasets for each measurement in image
+        in the `ImageSet` and stores them in the same HDF5 file.  This
+        ensures that the HDF5 file is not closed during the processing of
+        individual images, which would cause the file to be locked and
+        prevent any further processing.
 
-                    Note:
-                        - The image data is assumed to already be present
-                    """
-        logger = logging.getLogger('ImagePipeline')
+        Note:
+            - The image data is assumed to already be present
+        """
+        logger = logging.getLogger("ImagePipeline")
         sample_meas = self._get_measurements_dtypes_for_swmr(imageset.imtype)
-        logger.debug(f'allocating measurements with columns: {sample_meas.columns}')
+        logger.debug(f"allocating measurements with columns: {sample_meas.columns}")
         image_names = imageset.get_image_names()
         with imageset.hdf_.safe_writer() as writer:
             for image_name in image_names:
-                status_group = imageset.hdf_.get_status_subgroup(handle=writer, image_name=image_name)
+                status_group = imageset.hdf_.get_status_subgroup(
+                    handle=writer, image_name=image_name
+                )
 
                 status_group.attrs.modify(name=PIPE_STATUS.PROCESSED.label, value=False)
-                assert PIPE_STATUS.PROCESSED.label in status_group.attrs, "processed flag missing from status group attrs"
+                assert PIPE_STATUS.PROCESSED.label in status_group.attrs, (
+                    "processed flag missing from status group attrs"
+                )
 
                 status_group.attrs.modify(name=PIPE_STATUS.MEASURED.label, value=False)
-                assert PIPE_STATUS.MEASURED.label in status_group.attrs, "measured flag missing from status group attrs"
+                assert PIPE_STATUS.MEASURED.label in status_group.attrs, (
+                    "measured flag missing from status group attrs"
+                )
 
                 logger.debug(
-                        f'Allocating statuses for {image_name}: '
-                        f'{status_group.attrs.keys()} -> {status_group.attrs.values()}'
+                    f"Allocating statuses for {image_name}: "
+                    f"{status_group.attrs.keys()} -> {status_group.attrs.values()}"
                 )
-                meas_group = imageset.hdf_.get_image_measurement_subgroup(handle=writer, image_name=image_name)
+                meas_group = imageset.hdf_.get_image_measurement_subgroup(
+                    handle=writer, image_name=image_name
+                )
 
                 imageset.hdf_.preallocate_frame_layout(
-                        group=meas_group,
-                        dataframe=sample_meas,
-                        chunks=25,
-                        compression='gzip',
-                        preallocate=100,
-                        string_fixed_length=100,
-                        require_swmr=False,
+                    group=meas_group,
+                    dataframe=sample_meas,
+                    chunks=25,
+                    compression="gzip",
+                    preallocate=100,
+                    string_fixed_length=100,
+                    require_swmr=False,
                 )
         return
 
@@ -314,7 +356,7 @@ class ImagePipelineBatch(SerializablePipeline):
                 return image
 
         # Create test image matching the ImageSet's image type
-        array_data = load_synthetic_colony(mode='array')
+        array_data = load_synthetic_colony(mode="array")
         if imtype == "GridImage":
             test_image = GridImage(array_data)
         else:  # "Image" or default
@@ -333,108 +375,143 @@ class ImagePipelineBatch(SerializablePipeline):
 
         return meas
 
-    def _producer(self,
-                  image_set: ImageSet, image_names: List[str],
-                  work_q: _mp.Queue[bytes | None],
-                  writer_access_event: threading.Event,
-                  stop_event: threading.Event) -> None:
-        logging.getLogger('ImagePipeline.producer')
+    def _producer(
+        self,
+        image_set: ImageSet,
+        image_names: List[str],
+        work_q: _mp.Queue[bytes | None],
+        writer_access_event: threading.Event,
+        stop_event: threading.Event,
+    ) -> None:
+        logging.getLogger("ImagePipeline.producer")
 
         import phenotypic as pt
 
         while not writer_access_event.is_set():
             logger.info(f"producer waiting for access to {writer_access_event}")
             time.sleep(0.1)
-        logger.info('Writer completed access event, starting producer loop')
+        logger.info("Writer completed access event, starting producer loop")
         with image_set.hdf_.swmr_reader() as reader:
             while not stop_event.is_set():
-                logger.info(f'producer reading images...')
+                logger.info(f"producer reading images...")
                 for name in image_names:
-                    image_group = image_set.hdf_.get_image_group(handle=reader, image_name=name)
-                    image_footprint = image_set.hdf_.get_uncompressed_sizes_for_group(image_group)[1]
+                    image_group = image_set.hdf_.get_image_group(
+                        handle=reader, image_name=name
+                    )
+                    image_footprint = image_set.hdf_.get_uncompressed_sizes_for_group(
+                        image_group
+                    )[1]
 
                     # protect from out-of-memory error and release GIL
-                    while psutil.virtual_memory().available < image_footprint*self.memblock_factor:
+                    while (
+                        psutil.virtual_memory().available
+                        < image_footprint * self.memblock_factor
+                    ):
                         time.sleep(0.1)
 
-                    image = image_set._get_image(image_name=name, handle=image_group, **image_set.imparams)
+                    image = image_set._get_image(
+                        image_name=name, handle=image_group, **image_set.imparams
+                    )
 
-                    assert isinstance(image, (pt.Image, pt.GridImage)), f"Invalid Image type: {type(image)}"
+                    assert isinstance(image, (pt.Image, pt.GridImage)), (
+                        f"Invalid Image type: {type(image)}"
+                    )
                     image_pkl = pickle.dumps(image)
                     work_q.put(
-                            image_pkl,
+                        image_pkl,
                     )
                 for _ in range(self.num_workers - 1):
                     work_q.put(None)
                 break
 
-    def _writer(self, image_set: ImageSet, results_q: _mp.Queue[Tuple[str, bytes, bytes]],
-                writer_access_event: threading.Event, stop_event: threading.Event):
+    def _writer(
+        self,
+        image_set: ImageSet,
+        results_q: _mp.Queue[Tuple[str, bytes, bytes]],
+        writer_access_event: threading.Event,
+        stop_event: threading.Event,
+    ):
         import phenotypic as pht
 
-        logger = logging.getLogger(f'ImagePipeline.writer')
-        logger.info(f'Accessing hdf file')
+        logger = logging.getLogger(f"ImagePipeline.writer")
+        logger.info(f"Accessing hdf file")
 
         num_workers = self.num_workers - 1
         workers_done = 0
 
         with image_set.hdf_.swmr_writer() as writer:
             writer_access_event.set()
-            logger.info('Writer set access event, starting writer loop')
+            logger.info("Writer set access event, starting writer loop")
 
             while workers_done < num_workers and not stop_event.is_set():
                 try:
                     result = results_q.get(timeout=1)
                     if result == ("WORKER_DONE", None, None):
                         workers_done += 1
-                        logger.info(f'Worker completed. {workers_done}/{num_workers} workers done.')
+                        logger.info(
+                            f"Worker completed. {workers_done}/{num_workers} workers done."
+                        )
                         continue
 
                     image_name, image_bytes, meas_bytes = result
-                    status_group = image_set.hdf_.get_status_subgroup(handle=writer, image_name=image_name)
+                    status_group = image_set.hdf_.get_status_subgroup(
+                        handle=writer, image_name=image_name
+                    )
 
-                    logger.info(f'Saving image: {image_name}')
+                    logger.info(f"Saving image: {image_name}")
                     try:  # Save processed image if pipeline successfully executed
                         image = pickle.loads(image_bytes)
-                        if isinstance(image, pht.Image) or isinstance(image, pht.GridImage):
-                            logger.info('Got valid image from queue')
+                        if isinstance(image, pht.Image) or isinstance(
+                            image, pht.GridImage
+                        ):
+                            logger.info("Got valid image from queue")
                             image_group = image_set.hdf_.get_data_group(handle=writer)
                             image._save_image2hdfgroup(grp=image_group, overwrite=False)
                             status_group.attrs.modify(PIPE_STATUS.PROCESSED.label, True)
                     except KeyboardInterrupt:
                         raise KeyboardInterrupt
                     except Exception as e:
-                        tb_str = ''.join(traceback.format_exception(type(e), e, e.__traceback__))
+                        tb_str = "".join(
+                            traceback.format_exception(type(e), e, e.__traceback__)
+                        )
 
-                        logger.error(f'Error saving image {image_name}: {tb_str}')
+                        logger.error(f"Error saving image {image_name}: {tb_str}")
 
-                    logger.info(f'Starting measurement processing for: {image_name}')
+                    logger.info(f"Starting measurement processing for: {image_name}")
                     try:  # save measurements if pipeline successfully executed
                         meas = pickle.loads(meas_bytes)
                         if isinstance(meas, pd.DataFrame):
-                            logger.debug('Got valid DataFrame')
+                            logger.debug("Got valid DataFrame")
                             meas_group = image_set.hdf_.get_image_measurement_subgroup(
-                                    handle=writer,
-                                    image_name=image_name
+                                handle=writer, image_name=image_name
                             )
-                            image_set.hdf_.save_frame_update(meas_group, meas, start=0, require_swmr=True)
+                            image_set.hdf_.save_frame_update(
+                                meas_group, meas, start=0, require_swmr=True
+                            )
                             status_group.attrs.modify(PIPE_STATUS.MEASURED.label, True)
                     except KeyboardInterrupt:
                         raise KeyboardInterrupt
                     except Exception as e:
-                        tb_str = ''.join(traceback.format_exception(type(e), e, e.__traceback__))
-                        logger.error(f'Error saving measurements for {image_name}: {tb_str}')
+                        tb_str = "".join(
+                            traceback.format_exception(type(e), e, e.__traceback__)
+                        )
+                        logger.error(
+                            f"Error saving measurements for {image_name}: {tb_str}"
+                        )
 
                 except queue.Empty:  # release GIL if queue is empty
                     continue
 
     @classmethod
-    def _worker(cls, ops, meas_ops,
-                work_q: _mp.Queue[bytes | None],
-                results_q: _mp.Queue[Tuple[str, bytes, bytes]],
-                mode: PipelineMode,
-                reset: bool
-                ) -> None:
+    def _worker(
+        cls,
+        ops,
+        meas_ops,
+        work_q: _mp.Queue[bytes | None],
+        results_q: _mp.Queue[Tuple[str, bytes, bytes]],
+        mode: PipelineMode,
+        reset: bool,
+    ) -> None:
         logger = logging.getLogger(f"ImagePipeline._worker()")
         worker_pid = os.getpid()
         logger.info(f"Worker started - PID: {worker_pid}, Mode: {mode}")
@@ -448,37 +525,50 @@ class ImagePipelineBatch(SerializablePipeline):
             image = work_q.get()
             if image is None:  # Sentinel
                 logger.debug("Termination signal received. Exiting worker.")
-                results_q.put((f'WORKER_DONE', None, None))
+                results_q.put((f"WORKER_DONE", None, None))
                 break
 
             else:
                 image = pickle.loads(image)
 
                 # default image name and meas value
-                image_name, meas = image.name, b''
+                image_name, meas = image.name, b""
 
-                logger.info(f'Starting processing of image {image.name} (PID: {worker_pid})')
+                logger.info(
+                    f"Starting processing of image {image.name} (PID: {worker_pid})"
+                )
                 if mode in {PipelineMode.APPLY, PipelineMode.APPLY_MEASURE}:
                     try:
                         image = pipe.apply(image, inplace=True, reset=reset)
-                        logger.debug(f'Image {image_name} successfully processed.')
+                        logger.debug(f"Image {image_name} successfully processed.")
                     except KeyboardInterrupt:
                         raise KeyboardInterrupt
                     except Exception as e:
-                        tb_str = ''.join(traceback.format_exception(type(e), e, e.__traceback__))
-                        logger.error(f"Exception occurred during apply phase on image {image.name}: {tb_str}")
-                        image = b''  # If processing error occurs we pass an empty byte string so that nothing is overwritten
+                        tb_str = "".join(
+                            traceback.format_exception(type(e), e, e.__traceback__)
+                        )
+                        logger.error(
+                            f"Exception occurred during apply phase on image {image.name}: {tb_str}"
+                        )
+                        image = b""  # If processing error occurs we pass an empty byte string so that nothing is overwritten
 
-                if mode in {PipelineMode.MEASURE, PipelineMode.APPLY_MEASURE} and not isinstance(image, bytes):
+                if mode in {
+                    PipelineMode.MEASURE,
+                    PipelineMode.APPLY_MEASURE,
+                } and not isinstance(image, bytes):
                     try:
                         meas = pipe.measure(image, include_metadata=False)
-                        logger.debug(f'Measurements saved for image {image_name}')
+                        logger.debug(f"Measurements saved for image {image_name}")
                     except KeyboardInterrupt:
                         raise KeyboardInterrupt
                     except Exception as e:
-                        tb_str = ''.join(traceback.format_exception(type(e), e, e.__traceback__))
+                        tb_str = "".join(
+                            traceback.format_exception(type(e), e, e.__traceback__)
+                        )
 
-                        logger.error(f"Exception occurred during measure phase on image {image.name}: {tb_str}")
-                        meas = b''
+                        logger.error(
+                            f"Exception occurred during measure phase on image {image.name}: {tb_str}"
+                        )
+                        meas = b""
 
                 results_q.put((image_name, pickle.dumps(image), pickle.dumps(meas)))

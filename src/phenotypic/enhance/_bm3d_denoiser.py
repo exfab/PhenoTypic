@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Literal
 
-if TYPE_CHECKING: from phenotypic import Image
+if TYPE_CHECKING:
+    from phenotypic import Image
 import bm3d
 from bm3d.profiles import BM3DStages
 
@@ -60,10 +61,10 @@ class BM3DDenoiser(ImageEnhancer):
     """
 
     def __init__(
-            self,
-            sigma_psd: float = 0.02,
-            *,
-            stage_arg: Literal["all_stages", "hard_thresholding"] = "all_stages",
+        self,
+        sigma_psd: float = 0.02,
+        *,
+        stage_arg: Literal["all_stages", "hard_thresholding"] = "all_stages",
     ):
         """
         Parameters:
@@ -92,16 +93,15 @@ class BM3DDenoiser(ImageEnhancer):
         # enh_gray is guaranteed to be in [0, 1] range, which BM3D expects
 
         denoised = bm3d.bm3d(
-                image.enh_gray[:],
-                sigma_psd=self.sigma_psd,
-                stage_arg=self._convert_stage_arg(self.stage_arg),
+            image.enh_gray[:],
+            sigma_psd=self.sigma_psd,
+            stage_arg=self._convert_stage_arg(self.stage_arg),
         )
 
         image.enh_gray[:] = denoised
         return image
 
     def _convert_stage_arg(self, stage_arg: Literal["all_stages", "hard_thresholding"]):
-
         match stage_arg:
             case "hard_thresholding":
                 return BM3DStages.HARD_THRESHOLDING

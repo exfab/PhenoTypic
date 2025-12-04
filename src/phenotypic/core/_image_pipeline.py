@@ -28,4 +28,5 @@ class ImagePipeline(SerializablePipeline):
             >>> pipe = pt.ImagePipeline(ops=[OtsuDetector()], meas=[MeasureShape(), MeasureIntensity()])
 
     """
+
     pass

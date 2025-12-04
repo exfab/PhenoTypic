@@ -1,12 +1,16 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
 
-if TYPE_CHECKING: pass
+if TYPE_CHECKING:
+    pass
 
 import numpy as np
 
 from phenotypic.core._image_parts.accessor_abstracts import SingleChannelAccessor
-from phenotypic.tools.exceptions_ import ArrayKeyValueShapeMismatchError, EmptyImageError
+from phenotypic.tools.exceptions_ import (
+    ArrayKeyValueShapeMismatchError,
+    EmptyImageError,
+)
 
 
 class EnhancedGrayscale(SingleChannelAccessor):
@@ -117,7 +121,8 @@ class EnhancedGrayscale(SingleChannelAccessor):
             pass
         else:
             raise TypeError(
-                    f'Unsupported type for setting the gray. Value should be scalar or a numpy array: {type(value)}')
+                f"Unsupported type for setting the gray. Value should be scalar or a numpy array: {type(value)}"
+            )
 
         self._root_image._data.enh_gray[key] = value
         self._root_image.objmap.reset()

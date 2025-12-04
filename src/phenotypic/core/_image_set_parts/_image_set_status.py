@@ -1,7 +1,8 @@
 from __future__ import annotations
 from typing import Any, Dict, TYPE_CHECKING, Literal, List
 
-if TYPE_CHECKING: from phenotypic import Image
+if TYPE_CHECKING:
+    from phenotypic import Image
 
 import pandas as pd
 from os import PathLike
@@ -20,16 +21,23 @@ class ImageSetStatus(ImageSetCore):
 
     """
 
-    def __init__(self,
-                 name: str,
-                 outpath: PathLike | str | None = None,
-                 imtype: Literal["Image", "GridImage"] = "Image",
-                 imparams: Dict[str, Any] | None = None,
-                 default_mode: Literal['temp', 'cwd'] = 'temp',
-                 overwrite: bool = False,
-                 ):
-        super().__init__(name=name, outpath=outpath, imtype=imtype,
-                         imparams=imparams, default_mode=default_mode, overwrite=overwrite)
+    def __init__(
+        self,
+        name: str,
+        outpath: PathLike | str | None = None,
+        imtype: Literal["Image", "GridImage"] = "Image",
+        imparams: Dict[str, Any] | None = None,
+        default_mode: Literal["temp", "cwd"] = "temp",
+        overwrite: bool = False,
+    ):
+        super().__init__(
+            name=name,
+            outpath=outpath,
+            imtype=imtype,
+            imparams=imparams,
+            default_mode=default_mode,
+            overwrite=overwrite,
+        )
         # Note: reset_status() is called later after images are imported
         # Calling it here would fail because the HDF5 file structure isn't initialized yet
 
@@ -53,13 +61,17 @@ class ImageSetStatus(ImageSetCore):
         if image_names is None:
             image_names = self.get_image_names()
         else:
-            assert isinstance(image_names, (str, list)), 'image_names must be a list of image names or a str.'
+            assert isinstance(image_names, (str, list)), (
+                "image_names must be a list of image names or a str."
+            )
             if isinstance(image_names, str):
                 image_names = [image_names]
 
         with self.hdf_.strict_writer() as handle:
             for name in image_names:
-                status_group = self.hdf_.get_status_subgroup(handle=handle, image_name=name)
+                status_group = self.hdf_.get_status_subgroup(
+                    handle=handle, image_name=name
+                )
                 for stat in PIPE_STATUS:
                     # Statuses are worded in a way that they should be initially false
                     status_group.attrs[stat.label] = False
@@ -68,21 +80,21 @@ class ImageSetStatus(ImageSetCore):
         if image_names is None:
             image_names = self.get_image_names()
         else:
-            assert isinstance(image_names, (str, list)), 'image_names must be a list of image names or a str.'
+            assert isinstance(image_names, (str, list)), (
+                "image_names must be a list of image names or a str."
+            )
             if isinstance(image_names, str):
                 image_names = [image_names]
 
         with self.hdf_.swmr_reader() as handle:
             status = []
             for name in image_names:
-                status_group = self.hdf_.get_status_subgroup(handle=handle, image_name=name)
-                status.append(
-                        [status_group.attrs[x.label] for x in PIPE_STATUS]
+                status_group = self.hdf_.get_status_subgroup(
+                    handle=handle, image_name=name
                 )
+                status.append([status_group.attrs[x.label] for x in PIPE_STATUS])
         return pd.DataFrame(
-                data=status,
-                index=image_names,
-                columns=PIPE_STATUS.get_headers()
+            data=status, index=image_names, columns=PIPE_STATUS.get_headers()
         )
 
     def _add_image2group(self, group, image: Image, overwrite: bool):

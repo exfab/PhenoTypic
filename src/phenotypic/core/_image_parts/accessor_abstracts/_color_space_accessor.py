@@ -16,11 +16,11 @@ from ._image_accessor_base import ImageAccessorBase
 
 class ColorSpaceAccessor(ImageAccessorBase):
     """Base class for color space accessors.
-    
+
     Provides read-only access to color space transformations of the parent image.
     Color space accessors compute transformed representations on-the-fly and prevent
     direct modification to maintain data integrity.
-    
+
     Attributes:
         _root_image (Image): The parent image object that this accessor transforms.
         _accessor_property_name (str): Name of the property on Image that returns this accessor.
@@ -61,8 +61,8 @@ class ColorSpaceAccessor(ImageAccessorBase):
 
         if filepath.suffix.lower() not in IO.TIFF_EXTENSIONS:
             raise ValueError(
-                'Color space arrays can only be loaded from TIFF format (.tif, .tiff). '
-                f'File extension is: {filepath.suffix.lower()}'
+                "Color space arrays can only be loaded from TIFF format (.tif, .tiff). "
+                f"File extension is: {filepath.suffix.lower()}"
             )
 
         # Load using tifffile for float array support
@@ -75,7 +75,7 @@ class ColorSpaceAccessor(ImageAccessorBase):
         if desc:
             try:
                 data = json.loads(desc)
-                if 'phenotypic_version' in data:
+                if "phenotypic_version" in data:
                     phenotypic_data = data
             except json.JSONDecodeError:
                 pass
@@ -85,16 +85,16 @@ class ColorSpaceAccessor(ImageAccessorBase):
                 f"No PhenoTypic metadata found in '{filepath.name}'. "
                 f"Cannot verify this image was saved from {expected_property}. "
                 "Loading anyway, but this may lead to undefined behavior.",
-                UserWarning
+                UserWarning,
             )
         else:
-            saved_property = phenotypic_data.get('phenotypic_image_property', 'unknown')
+            saved_property = phenotypic_data.get("phenotypic_image_property", "unknown")
             if saved_property != expected_property:
                 warnings.warn(
                     f"Metadata mismatch: Image was saved from '{saved_property}' "
                     f"but being loaded as '{expected_property}'. "
                     "This may lead to undefined behavior.",
-                    UserWarning
+                    UserWarning,
                 )
 
         return arr
@@ -107,11 +107,11 @@ class ColorSpaceAccessor(ImageAccessorBase):
 
     def __setitem__(self, key, value):
         """Prevent direct modification of color space data.
-        
+
         Args:
             key: Index or slice for rgb access.
             value: Value to assign (not allowed).
-            
+
         Raises:
             IllegalAssignmentError: Always raised as color space data is read-only.
         """
@@ -136,8 +136,8 @@ class ColorSpaceAccessor(ImageAccessorBase):
 
         if filepath.suffix.lower() not in IO.TIFF_EXTENSIONS:
             raise ValueError(
-                'Color space arrays can only be saved in TIFF format (.tif, .tiff). '
-                f'File extension is: {filepath.suffix.lower()}'
+                "Color space arrays can only be saved in TIFF format (.tif, .tiff). "
+                f"File extension is: {filepath.suffix.lower()}"
             )
 
         # Build metadata JSON
@@ -154,6 +154,6 @@ class ColorSpaceAccessor(ImageAccessorBase):
             filepath,
             arr,
             description=metadata_json,
-            compression='zlib',
-            photometric='minisblack'
+            compression="zlib",
+            photometric="minisblack",
         )

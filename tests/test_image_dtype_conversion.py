@@ -20,6 +20,7 @@ from .resources.TestHelper import timeit
 # Fixtures
 # ============================================================================================
 
+
 @pytest.fixture
 def uint8_rgb_array():
     """Create a sample uint8 RGB array (0-255 range)."""
@@ -84,6 +85,7 @@ def single_channel_3d_array():
 # Test Bit Depth Inference (ImageDataManager._infer_bit_depth)
 # ============================================================================================
 
+
 class TestBitDepthInference:
     """Tests for bit depth inference from array dtype."""
 
@@ -135,6 +137,7 @@ class TestBitDepthInference:
 # ============================================================================================
 # Test Float Array Conversion (ImageDataManager._convert_float_array_to_int)
 # ============================================================================================
+
 
 class TestFloatArrayConversion:
     """Tests for conversion of float arrays to integer arrays."""
@@ -218,6 +221,7 @@ class TestFloatArrayConversion:
 # Test Image Format Detection (ImageDataManager._guess_image_format)
 # ============================================================================================
 
+
 class TestImageFormatDetection:
     """Tests for image format detection from array shape."""
 
@@ -297,6 +301,7 @@ class TestImageFormatDetection:
 # ============================================================================================
 # Test Image Initialization with Various Dtypes
 # ============================================================================================
+
 
 class TestImageInitializationDtypes:
     """Integration tests for Image initialization with various dtypes."""
@@ -414,6 +419,7 @@ class TestImageInitializationDtypes:
 # Test Array Input Handling Edge Cases
 # ============================================================================================
 
+
 class TestArrayInputHandling:
     """Tests for _handle_array_input method and related logic."""
 
@@ -462,6 +468,7 @@ class TestArrayInputHandling:
 # ============================================================================================
 # Test Error Handling
 # ============================================================================================
+
 
 class TestErrorHandling:
     """Tests for error handling in dtype conversion and input validation."""
@@ -547,6 +554,7 @@ class TestErrorHandling:
 # ============================================================================================
 # Test Gray Array Derivation from RGB
 # ============================================================================================
+
 
 class TestGrayArrayDerivation:
     """Tests for grayscale array derivation from RGB inputs."""

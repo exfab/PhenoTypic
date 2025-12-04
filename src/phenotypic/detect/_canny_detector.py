@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-if TYPE_CHECKING: from phenotypic import Image, GridImage
+if TYPE_CHECKING:
+    from phenotypic import Image, GridImage
 
 import numpy as np
 from skimage import feature, morphology
@@ -152,7 +153,9 @@ class CannyDetector(ThresholdDetector):
             regions = edges
 
         # Label connected components
-        objmap, _ = ndimage.label(regions, structure=ndimage.generate_binary_structure(2, self.connectivity))
+        objmap, _ = ndimage.label(
+            regions, structure=ndimage.generate_binary_structure(2, self.connectivity)
+        )
 
         # Remove small objects
         objmap = morphology.remove_small_objects(objmap, min_size=self.min_size)

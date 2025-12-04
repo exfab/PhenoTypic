@@ -28,9 +28,10 @@ def walk_package_for_class(pkg, cls):
     if hasattr(pkg, "__path__"):  # add all sub‑modules
         modules += [
             importlib.import_module(name)
-            for _, name, _ in pkgutil.walk_packages(pkg.__path__, pkg.__name__ + ".") \
-            if not name.split(".")[-1].startswith("_")  # Skip modules with names starting with underscore
-
+            for _, name, _ in pkgutil.walk_packages(pkg.__path__, pkg.__name__ + ".")
+            if not name.split(".")[-1].startswith(
+                "_"
+            )  # Skip modules with names starting with underscore
         ]
 
     seen = set()
@@ -42,10 +43,12 @@ def walk_package_for_class(pkg, cls):
                 continue
 
             obj = getattr(mod, attr)
-            if (inspect.ismodule(obj)
-                    or inspect.isabstract(obj)
-                    or not isinstance(obj, type)
-                    or not issubclass(obj, cls)):
+            if (
+                inspect.ismodule(obj)
+                or inspect.isabstract(obj)
+                or not isinstance(obj, type)
+                or not issubclass(obj, cls)
+            ):
                 continue
 
             qualname = f"{mod.__name__}.{attr}"

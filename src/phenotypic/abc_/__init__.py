@@ -16,7 +16,7 @@ from ._object_refiner import ObjectRefiner
 from ._threshold_detector import ThresholdDetector
 from ._grid_operation import GridOperation
 from ._grid_corrector import GridCorrector
-from ._grid_map_modifier import GridRefiner
+from ._grid_object_refiner import GridObjectRefiner
 from ._grid_measure import GridMeasureFeatures
 from ._grid_finder import GridFinder
 from ._base_operation import BaseOperation
@@ -34,9 +34,9 @@ __all__ = [
     "GridOperation",
     "GridFinder",
     "GridCorrector",
-    "GridRefiner",
+    "GridObjectRefiner",
     "GridMeasureFeatures",
-    'BaseOperation',
+    "BaseOperation",
     "MeasurementInfo",
     "GridObjectDetector",
     "PrefabPipeline",

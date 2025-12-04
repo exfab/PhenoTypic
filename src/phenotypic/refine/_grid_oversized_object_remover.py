@@ -2,15 +2,16 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-if TYPE_CHECKING: from phenotypic import GridImage
+if TYPE_CHECKING:
+    from phenotypic import GridImage
 
 import numpy as np
 
-from phenotypic.abc_ import GridRefiner
+from phenotypic.abc_ import GridObjectRefiner
 from phenotypic.tools.constants_ import BBOX, OBJECT
 
 
-class GridOversizedObjectRemover(GridRefiner):
+class GridOversizedObjectRemover(GridObjectRefiner):
     """Remove objects that are larger than their grid cell allows.
 
     Intuition:
@@ -70,19 +71,20 @@ class GridOversizedObjectRemover(GridRefiner):
         max_height = max(row_edges[1:] - row_edges[:-1])
 
         # Calculate the width and height of each object
-        grid_info.loc[:, 'width'] = grid_info.loc[:, str(BBOX.MAX_CC)] \
-                                    - grid_info.loc[:, str(BBOX.MIN_CC)]
+        grid_info.loc[:, "width"] = (
+            grid_info.loc[:, str(BBOX.MAX_CC)] - grid_info.loc[:, str(BBOX.MIN_CC)]
+        )
 
-        grid_info.loc[:, 'height'] = grid_info.loc[:, str(BBOX.MAX_RR)] \
-                                     - grid_info.loc[:, str(BBOX.MIN_RR)]
+        grid_info.loc[:, "height"] = (
+            grid_info.loc[:, str(BBOX.MAX_RR)] - grid_info.loc[:, str(BBOX.MIN_RR)]
+        )
 
         # Find objects that are past the max height & width
-        over_width_obj = grid_info.loc[:, 'width'] >= max_width
+        over_width_obj = grid_info.loc[:, "width"] >= max_width
 
-        over_height_obj = grid_info.loc[:, 'height'] >= max_height
+        over_height_obj = grid_info.loc[:, "height"] >= max_height
         oversized_obj_labels = grid_info.loc[
-            over_width_obj | over_height_obj,
-            OBJECT.LABEL
+            over_width_obj | over_height_obj, OBJECT.LABEL
         ].unique()
 
         # Set the target objects to the background val of 0

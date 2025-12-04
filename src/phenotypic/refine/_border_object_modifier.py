@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-if TYPE_CHECKING: from phenotypic import Image
+if TYPE_CHECKING:
+    from phenotypic import Image
 
 import numpy as np
 from typing import Optional, Union
@@ -76,20 +77,23 @@ class BorderObjectRemover(ObjectRefiner):
 
     def _operate(self, image: Image) -> Image:
         if self.border_size is None:
-            edge_size = int(np.min(image.shape[[1, 2]])*0.01)
+            edge_size = int(np.min(image.shape[[1, 2]]) * 0.01)
         elif type(self.border_size) == float and 0.0 < self.border_size < 1.0:
-            edge_size = int(np.min(image.shape)*self.border_size)
+            edge_size = int(np.min(image.shape) * self.border_size)
         elif isinstance(self.border_size, (int, float)):
             edge_size = self.border_size
         else:
-            raise TypeError('Invalid edge size. Should be int, float, or None to use default edge size.')
+            raise TypeError(
+                "Invalid edge size. Should be int, float, or None to use default edge size."
+            )
 
         obj_map = image.objmap[:]
-        edges = [obj_map[:edge_size - 1, :].ravel(),
-                 obj_map[-edge_size:, :].ravel(),
-                 obj_map[:, :edge_size - 1].ravel(),
-                 obj_map[:, -edge_size:].ravel()
-                 ]
+        edges = [
+            obj_map[: edge_size - 1, :].ravel(),
+            obj_map[-edge_size:, :].ravel(),
+            obj_map[:, : edge_size - 1].ravel(),
+            obj_map[:, -edge_size:].ravel(),
+        ]
         edge_labels = np.unique(np.concatenate(edges))
         for label in edge_labels:
             obj_map[obj_map == label] = 0

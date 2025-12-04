@@ -10,6 +10,7 @@ from ._sample_image_data import *
 
 __all__ = [
     "load_synthetic_colony",
+    "load_synthetic_detection_image",
     "make_synthetic_colony",
     "make_synthetic_plate",
     "load_plate_12hr",

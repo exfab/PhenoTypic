@@ -5,7 +5,8 @@ from typing import Literal, TYPE_CHECKING
 import colour
 import numpy as np
 
-if TYPE_CHECKING: from phenotypic import Image
+if TYPE_CHECKING:
+    from phenotypic import Image
 
 from ._image_parts._image_io_handler import ImageIOHandler
 
@@ -58,13 +59,14 @@ class Image(ImageIOHandler):
                 img.save2pickle('saved.pkl')
     """
 
-    def __init__(self,
-                 arr: np.ndarray | Image | None = None,
-                 name: str | None = None,
-                 bit_depth: Literal[8, 16] | None = None,
-                 gamma_encoding: str | None = 'sRGB',
-                 illuminant: str | None = 'D65',
-                 ):
+    def __init__(
+        self,
+        arr: np.ndarray | Image | None = None,
+        name: str | None = None,
+        bit_depth: Literal[8, 16] | None = None,
+        gamma_encoding: str | None = "sRGB",
+        illuminant: str | None = "D65",
+    ):
         """Initialize an Image instance with optional image data and color properties.
 
         Creates a new Image with complete initialization of all data management, color space,
@@ -126,9 +128,9 @@ class Image(ImageIOHandler):
                     img2 = Image(img1, name='copy_of_original')
         """
         super().__init__(
-                arr=arr,
-                name=name,
-                bit_depth=bit_depth,
-                gamma_encoding=gamma_encoding,
-                illuminant=illuminant,
+            arr=arr,
+            name=name,
+            bit_depth=bit_depth,
+            gamma_encoding=gamma_encoding,
+            illuminant=illuminant,
         )

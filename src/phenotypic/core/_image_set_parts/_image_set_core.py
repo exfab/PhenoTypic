@@ -4,7 +4,8 @@ import tempfile
 import weakref
 from typing import Any, Dict, Literal, TYPE_CHECKING
 
-if TYPE_CHECKING: from phenotypic import Image
+if TYPE_CHECKING:
+    from phenotypic import Image
 
 import os
 import posixpath
@@ -43,13 +44,15 @@ class ImageSetCore:
         _hdf5_set_group_key (str): The group path in the HDF5 file where the image set is stored.
     """
 
-    def __init__(self,
-                 name: str,
-                 outpath: PathLike | str | None = None,
-                 imtype: Literal["Image", "GridImage"] = "Image",
-                 imparams: Dict[str, Any] | None = None,
-                 default_mode: Literal['temp', 'cwd'] = 'temp',
-                 overwrite: bool = False, ):
+    def __init__(
+        self,
+        name: str,
+        outpath: PathLike | str | None = None,
+        imtype: Literal["Image", "GridImage"] = "Image",
+        imparams: Dict[str, Any] | None = None,
+        default_mode: Literal["temp", "cwd"] = "temp",
+        overwrite: bool = False,
+    ):
         """
         Initializes an image set for bulk processing of images.
 
@@ -86,27 +89,31 @@ class ImageSetCore:
         if outpath:
             outpath = Path(outpath)
         else:  # if outpath is None
-            if self.default_mode == 'cwd':
-                outpath = Path.cwd()/f'{self.name}.hdf5'
-            elif self.default_mode == 'temp':
+            if self.default_mode == "cwd":
+                outpath = Path.cwd() / f"{self.name}.hdf5"
+            elif self.default_mode == "temp":
                 # Create a temporary file path we own and can clean up later.
-                fd, tmp = tempfile.mkstemp(suffix='.h5', prefix=f'{self.name}_')
+                fd, tmp = tempfile.mkstemp(suffix=".h5", prefix=f"{self.name}_")
                 os.close(fd)  # Close OS-level fd; HDF will reopen as needed
                 outpath = Path(tmp)
                 owns_outpath = True
 
         if outpath.is_dir():
-            outpath = outpath/f'{self.name}.hdf5'
+            outpath = outpath / f"{self.name}.hdf5"
         else:
             if not outpath.suffix in HDF.EXT:
-                raise ValueError(f'Invalid output file extension: {outpath.suffix}')
+                raise ValueError(f"Invalid output file extension: {outpath.suffix}")
 
         # Track whether this instance owns the outpath and should delete it on GC
         self._owns_outpath = owns_outpath
-        self._out_finalizer = weakref.finalize(self, self._cleanup_outpath, outpath) if self._owns_outpath else None
+        self._out_finalizer = (
+            weakref.finalize(self, self._cleanup_outpath, outpath)
+            if self._owns_outpath
+            else None
+        )
 
         self.name, self._out_path = str(name), outpath
-        self.hdf_ = HDF(filepath=outpath, name=self.name, mode='set')
+        self.hdf_ = HDF(filepath=outpath, name=self.name, mode="set")
 
         self._overwrite = overwrite
 
@@ -119,34 +126,44 @@ class ImageSetCore:
             fin()
 
     def _get_template(self):
-        if self.imtype == 'GridImage':
+        if self.imtype == "GridImage":
             return pht.GridImage
-        elif self.imtype == 'Image':
+        elif self.imtype == "Image":
             return pht.Image
         else:
-            raise ValueError(f'Image type {self.imtype} is not supported.')
+            raise ValueError(f"Image type {self.imtype} is not supported.")
 
     def import_images(self, images: List[Image]) -> None:
-        assert all(isinstance(x, pht.Image) for x in images), 'images must be a list of Image objects.'
+        assert all(isinstance(x, pht.Image) for x in images), (
+            "images must be a list of Image objects."
+        )
         with self.hdf_.safe_writer() as writer:
             data_grp = self.hdf_.get_data_group(writer)
             for image in images:
-                image._save_image2hdfgroup(grp=data_grp, compression="gzip", compression_opts=4)
+                image._save_image2hdfgroup(
+                    grp=data_grp, compression="gzip", compression_opts=4
+                )
 
         return
 
     def import_dir(self, dirpath: Path) -> None:
         dirpath = Path(dirpath)
-        if not dirpath.is_dir(): raise ValueError(f'{dirpath} is not a directory.')
-        filepaths = [dirpath/x for x in os.listdir(dirpath)
-                     if x.endswith(IO.ACCEPTED_FILE_EXTENSIONS + IO.RAW_FILE_EXTENSIONS)]
+        if not dirpath.is_dir():
+            raise ValueError(f"{dirpath} is not a directory.")
+        filepaths = [
+            dirpath / x
+            for x in os.listdir(dirpath)
+            if x.endswith(IO.ACCEPTED_FILE_EXTENSIONS + IO.RAW_FILE_EXTENSIONS)
+        ]
         filepaths.sort()
         with self.hdf_.safe_writer() as writer:
             data_group = self.hdf_.get_data_group(writer)
             template = self._get_template()
             for fpath in filepaths:
                 image = template.imread(fpath, **self.imparams)
-                image._save_image2hdfgroup(grp=data_group, compression="gzip", compression_opts=4)
+                image._save_image2hdfgroup(
+                    grp=data_group, compression="gzip", compression_opts=4
+                )
 
         return
 
@@ -160,9 +177,13 @@ class ImageSetCore:
     def _add_image2group(self, group, image: Image, overwrite: bool):
         """Helper function to add an image to a group that allows for reusing file handlers"""
         if image.name in group and overwrite is False:
-            raise ValueError(f'Image named {image.name} already exists in ImageSet {self.name}.')
+            raise ValueError(
+                f"Image named {image.name} already exists in ImageSet {self.name}."
+            )
         else:
-            image._save_image2hdfgroup(grp=group, compression="gzip", compression_opts=4)
+            image._save_image2hdfgroup(
+                grp=group, compression="gzip", compression_opts=4
+            )
 
     def add_image(self, image: Image, overwrite: bool | None = None):
         """
@@ -184,7 +205,11 @@ class ImageSetCore:
         """
         with self.hdf_.strict_writer() as writer:
             set_group = self.hdf_.get_data_group(writer)
-            self._add_image2group(group=set_group, image=image, overwrite=overwrite if overwrite else self._overwrite)
+            self._add_image2group(
+                group=set_group,
+                image=image,
+                overwrite=overwrite if overwrite else self._overwrite,
+            )
 
     @staticmethod
     def _get_hdf5_group(handler, name):
@@ -210,7 +235,9 @@ class ImageSetCore:
             names = list(set_group.keys())
         return names
 
-    def _get_image(self, image_name: str, handle: h5py.File | h5py.Group, **kwargs) -> Image:
+    def _get_image(
+        self, image_name: str, handle: h5py.File | h5py.Group, **kwargs
+    ) -> Image:
         """
         Fetches an image object from an HDF5 group given the image name and handle.
 
@@ -239,24 +266,31 @@ class ImageSetCore:
                 (h5py.File or h5py.Group).
         """
         return self._get_template()._load_from_hdf5_group(
-                group=self.hdf_.get_image_group(handle=handle, image_name=image_name),
-                **kwargs
+            group=self.hdf_.get_image_group(handle=handle, image_name=image_name),
+            **kwargs,
         )
 
     def get_image(self, image_name: str) -> Image:
-
         with self.hdf_.swmr_reader() as reader:
             image_group = self.hdf_.get_data_group(reader)
             if image_name in image_group:
-                image = self._get_template()._load_from_hdf5_group(image_group[image_name], **self.imparams)
+                image = self._get_template()._load_from_hdf5_group(
+                    image_group[image_name], **self.imparams
+                )
             else:
-                raise ValueError(f'Image named {image_name} not found in ImageSet {self.name}.')
+                raise ValueError(
+                    f"Image named {image_name} not found in ImageSet {self.name}."
+                )
         return image
 
     def iter_images(self) -> iter:
         for image_name in self.get_image_names():
-            with h5py.File(self._out_path, mode='r', libver='latest', swmr=True) as out_handler:
-                image_group = self._get_hdf5_group(out_handler, posixpath.join(self.hdf_.set_data_posix, image_name))
+            with h5py.File(
+                self._out_path, mode="r", libver="latest", swmr=True
+            ) as out_handler:
+                image_group = self._get_hdf5_group(
+                    out_handler, posixpath.join(self.hdf_.set_data_posix, image_name)
+                )
 
                 template = self._get_template()
 

@@ -6,12 +6,19 @@ from phenotypic.abc_ import PrefabPipeline
 from phenotypic.correction import GridAligner
 from phenotypic.detect import WatershedDetector
 from phenotypic.enhance import CLAHE, GaussianBlur, MedianFilter
-from phenotypic.measure import MeasureColor, MeasureIntensity, MeasureShape, MeasureTexture
-from phenotypic.refine import (BorderObjectRemover,
-                               MaskFill,
-                               LowCircularityRemover,
-                               GridOversizedObjectRemover,
-                               MinResidualErrorReducer)
+from phenotypic.measure import (
+    MeasureColor,
+    MeasureIntensity,
+    MeasureShape,
+    MeasureTexture,
+)
+from phenotypic.refine import (
+    BorderObjectRemover,
+    MaskFill,
+    LowCircularityRemover,
+    GridOversizedObjectRemover,
+    MinResidualErrorReducer,
+)
 
 
 class HeavyWatershedPipeline(PrefabPipeline):
@@ -29,21 +36,24 @@ class HeavyWatershedPipeline(PrefabPipeline):
 
     """
 
-    def __init__(self,
-                 gaussian_sigma: int = 5,
-                 gaussian_mode: str = 'reflect',
-                 gaussian_truncate: float = 4.0,
-                 watershed_footprint: Literal['auto'] | np.ndarray | int | None = None,
-                 watershed_min_size: int = 50,
-                 watershed_compactness: float = 0.001,
-                 watershed_connectivity: int = 1,
-                 watershed_relabel: bool = True,
-                 watershed_ignore_zeros: bool = True,
-                 border_remover_size: int = 25,
-                 circularity_cutoff: float = 0.5,
-                 texture_scale: int = 5,
-                 texture_warn: bool = False,
-                 benchmark: bool = False, **kwargs):
+    def __init__(
+        self,
+        gaussian_sigma: int = 5,
+        gaussian_mode: str = "reflect",
+        gaussian_truncate: float = 4.0,
+        watershed_footprint: Literal["auto"] | np.ndarray | int | None = None,
+        watershed_min_size: int = 50,
+        watershed_compactness: float = 0.001,
+        watershed_connectivity: int = 1,
+        watershed_relabel: bool = True,
+        watershed_ignore_zeros: bool = True,
+        border_remover_size: int = 25,
+        circularity_cutoff: float = 0.5,
+        texture_scale: int = 5,
+        texture_warn: bool = False,
+        benchmark: bool = False,
+        **kwargs,
+    ):
         """
         Initializes an image processing pipeline for various image analysis tasks such as object detection,
         segmentation, and measurement. This pipeline uses a combination of operations, including filtering,
@@ -80,14 +90,21 @@ class HeavyWatershedPipeline(PrefabPipeline):
             **kwargs: Additional keyword arguments for parent class initialization.
         """
 
-        watershed_detector = WatershedDetector(footprint=watershed_footprint, min_size=watershed_min_size,
-                                               compactness=watershed_compactness, connectivity=watershed_connectivity,
-                                               relabel=watershed_relabel, ignore_zeros=watershed_ignore_zeros)
+        watershed_detector = WatershedDetector(
+            footprint=watershed_footprint,
+            min_size=watershed_min_size,
+            compactness=watershed_compactness,
+            connectivity=watershed_connectivity,
+            relabel=watershed_relabel,
+            ignore_zeros=watershed_ignore_zeros,
+        )
         border_remover = BorderObjectRemover(border_size=border_remover_size)
         min_residual_reducer = MinResidualErrorReducer()
 
         ops = [
-            GaussianBlur(sigma=gaussian_sigma, mode=gaussian_mode, truncate=gaussian_truncate),
+            GaussianBlur(
+                sigma=gaussian_sigma, mode=gaussian_mode, truncate=gaussian_truncate
+            ),
             CLAHE(),
             MedianFilter(),
             watershed_detector,
@@ -101,7 +118,7 @@ class HeavyWatershedPipeline(PrefabPipeline):
             min_residual_reducer,
             border_remover,
             LowCircularityRemover(cutoff=circularity_cutoff),
-            MaskFill()
+            MaskFill(),
         ]
 
         meas = [

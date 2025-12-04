@@ -6,7 +6,8 @@ import numpy as np
 
 from phenotypic.tools.constants_ import OBJECT
 
-if TYPE_CHECKING: from phenotypic import Image, GridImage
+if TYPE_CHECKING:
+    from phenotypic import Image, GridImage
 
 import pandas as pd
 from typing import Dict, List
@@ -39,12 +40,13 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
             from images.
     """
 
-    def __init__(self,
-                 ops: List[ImageOperation] | Dict[str, ImageOperation] | None = None,
-                 meas: List[MeasureFeatures] | Dict[str, MeasureFeatures] | None = None,
-                 benchmark: bool = False,
-                 verbose: bool = False
-                 ):
+    def __init__(
+        self,
+        ops: List[ImageOperation] | Dict[str, ImageOperation] | None = None,
+        meas: List[MeasureFeatures] | Dict[str, MeasureFeatures] | None = None,
+        benchmark: bool = False,
+        verbose: bool = False,
+    ):
         """
         This class represents a processing and measurement abc_ for Image operations
         and feature extraction. It initializes operational and measurement queues based
@@ -64,10 +66,12 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
         """
         # If ops is a list of operations convert to a dictionary
         self._ops: Dict[str, ImageOperation] = {}
-        if ops is not None: self.set_ops(ops)
+        if ops is not None:
+            self.set_ops(ops)
 
         self._meas: Dict[str, MeasureFeatures] = {}
-        if meas is not None: self.set_meas(meas)
+        if meas is not None:
+            self.set_meas(meas)
 
         # Store benchmark and verbose flags
         self._benchmark = benchmark
@@ -100,9 +104,11 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
         elif isinstance(ops, dict):
             self._ops = ops
         else:
-            raise TypeError(f'ops must be a list or a dictionary, got {type(ops)}')
+            raise TypeError(f"ops must be a list or a dictionary, got {type(ops)}")
 
-    def set_meas(self, measurements: List[MeasureFeatures] | Dict[str, MeasureFeatures]):
+    def set_meas(
+        self, measurements: List[MeasureFeatures] | Dict[str, MeasureFeatures]
+    ):
         """
         Sets the measurements to be used for further computation. The input can be either
         a list of `MeasureFeatures` objects or a dictionary with string keys and `MeasureFeatures`
@@ -122,13 +128,21 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
             TypeError: If the `measurements` argument is neither a list nor a dictionary.
         """
         if isinstance(measurements, list):
-            measurement_names = [x.__class__.__name__ for x in measurements if isinstance(x, MeasureFeatures)]
+            measurement_names = [
+                x.__class__.__name__
+                for x in measurements
+                if isinstance(x, MeasureFeatures)
+            ]
             measurement_names = self.__make_unique(measurement_names)
-            self._meas = {measurement_names[i]: measurements[i] for i in range(len(measurements))}
+            self._meas = {
+                measurement_names[i]: measurements[i] for i in range(len(measurements))
+            }
         elif isinstance(measurements, dict):
             self._meas = measurements
         else:
-            raise TypeError(f'measurements must be a list or a dictionary, got {type(measurements)}')
+            raise TypeError(
+                f"measurements must be a list or a dictionary, got {type(measurements)}"
+            )
 
     @staticmethod
     def __make_unique(class_names):
@@ -164,7 +178,9 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
 
         return result
 
-    def apply(self, image: Image, inplace: bool = False, reset: bool = True) -> Union[GridImage, Image]:
+    def apply(
+        self, image: Image, inplace: bool = False, reset: bool = True
+    ) -> Union[GridImage, Image]:
         """
         The class provides an abc_ to process and apply a series of operations on
         an Image. The operations are maintained in a queue and executed sequentially
@@ -180,7 +196,8 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
             reset (bool): Whether to reset the image before applying the pipeline
         """
         img = image if inplace else image.copy()
-        if reset: image.reset()
+        if reset:
+            image.reset()
 
         # Reset operation times for new apply run if benchmarking is enabled
         if self._benchmark:
@@ -193,7 +210,9 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
 
                 # Create a tqdm instance without items to manually update it
                 total_ops = len(self._ops)
-                pbar = tqdm(total=total_ops, desc="Applying operations", file=sys.stdout)
+                pbar = tqdm(
+                    total=total_ops, desc="Applying operations", file=sys.stdout
+                )
                 has_tqdm = True
             except ImportError:
                 # If tqdm is not available, fall back to simple printing
@@ -212,16 +231,19 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
                         print(f"  Applying operation: {key}")
 
                 # Measure execution time if benchmarking is enabled
-                if self._benchmark: start_time = time.time()
+                if self._benchmark:
+                    start_time = time.time()
 
                 sig = inspect.signature(operation.apply)
 
                 apply_params = {}
-                if 'inplace' in sig.parameters:
-                    apply_params['inplace'] = True
+                if "inplace" in sig.parameters:
+                    apply_params["inplace"] = True
 
-                if 'reset' in sig.parameters:
-                    apply_params['reset'] = False  # Prevents intermediate pipelines from resetting progress
+                if "reset" in sig.parameters:
+                    apply_params["reset"] = (
+                        False  # Prevents intermediate pipelines from resetting progress
+                    )
 
                 operation.apply(img, **apply_params)
 
@@ -235,11 +257,15 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
                             pbar.set_postfix(time=f"{self._operation_times[key]:.4f}s")
                             pbar.update(1)
                         else:
-                            print(f"    Completed in {self._operation_times[key]:.4f} seconds")
+                            print(
+                                f"    Completed in {self._operation_times[key]:.4f} seconds"
+                            )
             except Exception as e:
                 if self._benchmark and self._verbose and has_tqdm:
                     pbar.close()
-                raise Exception(f'Failed to apply {operation} during step {key} to Image {img.name}: {e}') from e
+                raise Exception(
+                    f"Failed to apply {operation} during step {key} to Image {img.name}: {e}"
+                ) from e
 
         # Close the progress bar if it exists
         if self._benchmark and self._verbose and has_tqdm:
@@ -281,15 +307,17 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
         if self._benchmark:
             start_time = time.time()
             measurements = [image.info(include_metadata=include_metadata)]
-            self._measurement_times['image_info'] = time.time() - start_time
+            self._measurement_times["image_info"] = time.time() - start_time
 
             # Print execution time if verbose and benchmark are enabled
             if self._verbose:
-                print(f"  Image info: {self._measurement_times['image_info']:.4f} seconds")
+                print(
+                    f"  Image info: {self._measurement_times['image_info']:.4f} seconds"
+                )
         else:
             measurements = [
                 image.grid.info(include_metadata=include_metadata)
-                if hasattr(image, 'grid')
+                if hasattr(image, "grid")
                 else image.objects.info(include_metadata=include_metadata)
             ]
 
@@ -300,7 +328,11 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
 
                 # Create a tqdm instance without items to manually update it
                 total_measurements = len(self._meas)
-                pbar = tqdm(total=total_measurements, desc="Applying measurements", file=sys.stdout)
+                pbar = tqdm(
+                    total=total_measurements,
+                    desc="Applying measurements",
+                    file=sys.stdout,
+                )
                 has_tqdm = True
             except ImportError:
                 # If tqdm is not available, fall back to simple printing
@@ -330,10 +362,14 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
                     # Print execution time if verbose and benchmark are enabled
                     if self._verbose:
                         if has_tqdm:
-                            pbar.set_postfix(time=f"{self._measurement_times[key]:.4f}s")
+                            pbar.set_postfix(
+                                time=f"{self._measurement_times[key]:.4f}s"
+                            )
                             pbar.update(1)
                         else:
-                            print(f"    Completed in {self._measurement_times[key]:.4f} seconds")
+                            print(
+                                f"    Completed in {self._measurement_times[key]:.4f} seconds"
+                            )
                 else:
                     measurements.append(measurement.measure(image))
             except Exception as e:
@@ -347,8 +383,13 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
 
         return self._merge_on_object_labels(measurements)
 
-    def apply_and_measure(self, image: Image, inplace: bool = False, reset: bool = True,
-                          include_metadata: bool = True) -> pd.DataFrame:
+    def apply_and_measure(
+        self,
+        image: Image,
+        inplace: bool = False,
+        reset: bool = True,
+        include_metadata: bool = True,
+    ) -> pd.DataFrame:
         """
         Applies processing to the given image and measures the results.
 
@@ -388,33 +429,43 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
 
         # Add operation times
         for op_name, op_time in self._operation_times.items():
-            data.append({
-                'Process Type'      : 'Operation',
-                'Process Name'      : op_name,
-                'Execution Time (s)': op_time
-            })
+            data.append(
+                {
+                    "Process Type": "Operation",
+                    "Process Name": op_name,
+                    "Execution Time (s)": op_time,
+                }
+            )
 
         # Add measurement times
         for measure_name, measure_time in self._measurement_times.items():
-            data.append({
-                'Process Type'      : 'Measurement',
-                'Process Name'      : measure_name,
-                'Execution Time (s)': measure_time
-            })
+            data.append(
+                {
+                    "Process Type": "Measurement",
+                    "Process Name": measure_name,
+                    "Execution Time (s)": measure_time,
+                }
+            )
 
         # Create DataFrame
         if not data:
-            return pd.DataFrame(columns=['Process Type', 'Process Name', 'Execution Time (s)'])
+            return pd.DataFrame(
+                columns=["Process Type", "Process Name", "Execution Time (s)"]
+            )
 
         df = pd.DataFrame(data)
 
         # Calculate total time
-        total_time = df['Execution Time (s)'].sum()
-        total_row = pd.DataFrame([{
-            'Process Type'      : 'Total',
-            'Process Name'      : 'All Processes',
-            'Execution Time (s)': total_time
-        }])
+        total_time = df["Execution Time (s)"].sum()
+        total_row = pd.DataFrame(
+            [
+                {
+                    "Process Type": "Total",
+                    "Process Name": "All Processes",
+                    "Execution Time (s)": total_time,
+                }
+            ]
+        )
         df = pd.concat([df, total_row], ignore_index=True)
 
         return df
@@ -433,23 +484,29 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
         Raises:
             ValueError: If no DataFrames are provided or if no matching index names are found
         """
-        if not dataframes_list or not all([isinstance(x, pd.DataFrame) for x in dataframes_list]):
+        if not dataframes_list or not all(
+            [isinstance(x, pd.DataFrame) for x in dataframes_list]
+        ):
             raise ValueError("No DataFrames provided")
         new_df = dataframes_list[0]
-        if new_df.index.name == OBJECT.LABEL: new_df = new_df.reset_index(drop=False)
+        if new_df.index.name == OBJECT.LABEL:
+            new_df = new_df.reset_index(drop=False)
 
         if len(dataframes_list) > 1:
             for df in dataframes_list[1:]:
-                if df.index.name == OBJECT.LABEL: df = df.reset_index(drop=False)
+                if df.index.name == OBJECT.LABEL:
+                    df = df.reset_index(drop=False)
 
                 cols_to_merge_on = [OBJECT.LABEL]  # Resets each new other df
 
                 for col_new_df in new_df.columns:
                     if col_new_df != OBJECT.LABEL:  # skip the object label
                         for col_other_df in df.columns:
-                            if col_new_df == col_other_df and np.all(df[col_new_df] == df[col_other_df]):
+                            if col_new_df == col_other_df and np.all(
+                                df[col_new_df] == df[col_other_df]
+                            ):
                                 cols_to_merge_on.append(col_other_df)
 
-                new_df = new_df.merge(df, on=cols_to_merge_on, suffixes=('', '_merged'))
+                new_df = new_df.merge(df, on=cols_to_merge_on, suffixes=("", "_merged"))
 
         return new_df

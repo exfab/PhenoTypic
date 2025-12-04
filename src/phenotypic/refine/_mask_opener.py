@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from typing import Literal, TYPE_CHECKING
 
-if TYPE_CHECKING: from phenotypic import Image
+if TYPE_CHECKING:
+    from phenotypic import Image
 
 from phenotypic.abc_ import ObjectRefiner
 
@@ -70,8 +71,10 @@ class MaskOpener(ObjectRefiner):
         self.footprint: Literal["auto"] | np.ndarray | int | None = footprint
 
     def _operate(self, image: Image) -> Image:
-        if self.footprint == 'auto':
-            footprint = self._make_footprint("diamond", radius=max(3, round(np.min(image.shape)*0.005)))
+        if self.footprint == "auto":
+            footprint = self._make_footprint(
+                "diamond", radius=max(3, round(np.min(image.shape) * 0.005))
+            )
         elif isinstance(self.footprint, np.ndarray):
             footprint = self.footprint
         elif isinstance(self.footprint, (int, float)):
@@ -79,7 +82,7 @@ class MaskOpener(ObjectRefiner):
         elif not self.footprint:
             footprint = self.footprint
         else:
-            raise AttributeError('Invalid footprint type')
+            raise AttributeError("Invalid footprint type")
 
         image.objmask[:] = binary_opening(image.objmask[:], footprint=footprint)
         return image

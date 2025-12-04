@@ -18,10 +18,10 @@ import warnings
 warnings.warn(
     "phenotypic-cli.py is deprecated. Please use 'python -m phenotypic' instead.",
     DeprecationWarning,
-    stacklevel=2
+    stacklevel=2,
 )
 
 from phenotypic.phenotypic_cli import main
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

@@ -52,15 +52,15 @@ def test_pipeline_widget_creation(pipe):
     # Let's just check if child widgets were created for operations
 
     # Since _create_widgets recursively calls widget(), OpA and OpB should have widgets now
-    op_a = pipe._ops['OpA']
-    op_b = pipe._ops['OpB']
+    op_a = pipe._ops["OpA"]
+    op_b = pipe._ops["OpB"]
 
-    assert hasattr(op_a, '_ui') and op_a._ui is not None
-    assert 'val_a' in op_a._param_widgets
+    assert hasattr(op_a, "_ui") and op_a._ui is not None
+    assert "val_a" in op_a._param_widgets
 
-    assert hasattr(op_b, '_ui') and op_b._ui is not None
-    assert 'val_b' in op_b._param_widgets
-    assert 'toggle' in op_b._param_widgets
+    assert hasattr(op_b, "_ui") and op_b._ui is not None
+    assert "val_b" in op_b._param_widgets
+    assert "toggle" in op_b._param_widgets
 
 
 def test_recursive_widget_structure(pipe):
@@ -74,12 +74,12 @@ def test_recursive_widget_structure(pipe):
     widget = parent_pipe.widget(show=False)
 
     # Parent pipe should have widget for 'ImagePipeline' (the child pipe)
-    child_pipe_op = parent_pipe._ops['ImagePipeline']
+    child_pipe_op = parent_pipe._ops["ImagePipeline"]
     assert child_pipe_op is pipe
     assert child_pipe_op._ui is not None
 
     # And grandchild ops
-    op_a = child_pipe_op._ops['OpA']
+    op_a = child_pipe_op._ops["OpA"]
     assert op_a._ui is not None
 
 
@@ -93,8 +93,8 @@ def test_pipeline_viz_update(pipe, image):
     pipe.widget(image=image, show=False)
 
     # Mock apply
-    with patch.object(ImagePipeline, 'apply', wraps=pipe.apply) as mock_apply:
-        with patch('matplotlib.pyplot.show'):
+    with patch.object(ImagePipeline, "apply", wraps=pipe.apply) as mock_apply:
+        with patch("matplotlib.pyplot.show"):
             pipe._on_update_view_click(None)
 
             assert mock_apply.called

@@ -77,6 +77,9 @@ dev = [
     "ipykernel;sys_platform!='win32'",
     "notebook;sys_platform!='win32'",
     "ipywidgets",
+    "black>=25.11.0",
+    "ruff>=0.14.7",
+    "isort>=7.0.0",
 ]
 docs = [
     "sphinx",

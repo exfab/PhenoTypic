@@ -11,55 +11,83 @@ import phenotypic
 
 
 def param2array(tag):
-    from phenotypic.data import load_early_colony, load_colony, load_plate_12hr, load_plate_72hr
+    from phenotypic.data import (
+        load_early_colony,
+        load_colony,
+        load_plate_12hr,
+        load_plate_72hr,
+    )
 
     match tag:
-        case 'km-plate-12hr':
+        case "km-plate-12hr":
             return load_plate_12hr()
-        case 'km-plate-72hr':
+        case "km-plate-72hr":
             return load_plate_72hr()
-        case 'km-colony-12hr':
+        case "km-colony-12hr":
             return load_early_colony()
-        case 'km-colony-72hr':
+        case "km-colony-72hr":
             return load_colony()
-        case 'black-square':
+        case "black-square":
             return np.full(shape=(100, 100), fill_value=0.0)
-        case 'white-square':
+        case "white-square":
             return np.full(shape=(100, 100), fill_value=1.0)
         case _:
-            raise ValueError(f'Invalid tag: {tag}')
+            raise ValueError(f"Invalid tag: {tag}")
 
 
 def param2array_plus_imformat(tag):
-    from phenotypic.data import load_early_colony, load_colony, load_plate_12hr, load_plate_72hr
+    from phenotypic.data import (
+        load_early_colony,
+        load_colony,
+        load_plate_12hr,
+        load_plate_72hr,
+    )
 
     match tag:
-        case 'km-plate-12hr':
-            return load_plate_12hr(), None, 'RGB'
-        case 'km-plate-72hr':
-            return load_plate_72hr(), 'RGB', 'RGB'
-        case 'km-colony-12hr':
-            return load_early_colony(), 'RGB', 'RGB'
-        case 'km-colony-72hr':
-            return load_colony(), 'RGB', 'RGB'
-        case 'black-square':
-            return np.full(shape=(100, 100), fill_value=0.0), None, 'Grayscale'
-        case 'white-square':
-            return np.full(shape=(100, 100), fill_value=1.0), 'Grayscale', 'Grayscale'
+        case "km-plate-12hr":
+            return load_plate_12hr(), None, "RGB"
+        case "km-plate-72hr":
+            return load_plate_72hr(), "RGB", "RGB"
+        case "km-colony-12hr":
+            return load_early_colony(), "RGB", "RGB"
+        case "km-colony-72hr":
+            return load_colony(), "RGB", "RGB"
+        case "black-square":
+            return np.full(shape=(100, 100), fill_value=0.0), None, "Grayscale"
+        case "white-square":
+            return np.full(shape=(100, 100), fill_value=1.0), "Grayscale", "Grayscale"
         case _:
-            raise ValueError(f'Invalid tag: {tag}')
+            raise ValueError(f"Invalid tag: {tag}")
 
 
 @pytest.fixture(
-        scope='session',
-        params=[
-            pytest.param('km-plate-12hr', id='Plate-None-RGB', ),
-            pytest.param('km-plate-72hr', id='Plate-RGB-RGB', ),
-            pytest.param('km-colony-12hr', id='Colony-RGB-RGB', ),
-            pytest.param('km-colony-72hr', id='Colony-RGB-RGB', ),
-            pytest.param('black-square', id='Black-Square-Grayscale', ),
-            pytest.param('white-square', id='White-Square-Grayscale', )
-        ]
+    scope="session",
+    params=[
+        pytest.param(
+            "km-plate-12hr",
+            id="Plate-None-RGB",
+        ),
+        pytest.param(
+            "km-plate-72hr",
+            id="Plate-RGB-RGB",
+        ),
+        pytest.param(
+            "km-colony-12hr",
+            id="Colony-RGB-RGB",
+        ),
+        pytest.param(
+            "km-colony-72hr",
+            id="Colony-RGB-RGB",
+        ),
+        pytest.param(
+            "black-square",
+            id="Black-Square-Grayscale",
+        ),
+        pytest.param(
+            "white-square",
+            id="White-Square-Grayscale",
+        ),
+    ],
 )
 def sample_image_array_with_imformat(request):
     """Fixture that returns (image_array, input_imformat, true_imformat)"""
@@ -68,15 +96,33 @@ def sample_image_array_with_imformat(request):
 
 
 @pytest.fixture(
-        scope='session',
-        params=[
-            pytest.param('km-plate-12hr', id='Plate-None-RGB', ),
-            pytest.param('km-plate-72hr', id='Plate-RGB-RGB', ),
-            pytest.param('km-colony-12hr', id='Colony-RGB-RGB', ),
-            pytest.param('km-colony-72hr', id='Colony-RGB-RGB', ),
-            pytest.param('black-square', id='Black-Square-Grayscale', ),
-            pytest.param('white-square', id='White-Square-Grayscale', )
-        ]
+    scope="session",
+    params=[
+        pytest.param(
+            "km-plate-12hr",
+            id="Plate-None-RGB",
+        ),
+        pytest.param(
+            "km-plate-72hr",
+            id="Plate-RGB-RGB",
+        ),
+        pytest.param(
+            "km-colony-12hr",
+            id="Colony-RGB-RGB",
+        ),
+        pytest.param(
+            "km-colony-72hr",
+            id="Colony-RGB-RGB",
+        ),
+        pytest.param(
+            "black-square",
+            id="Black-Square-Grayscale",
+        ),
+        pytest.param(
+            "white-square",
+            id="White-Square-Grayscale",
+        ),
+    ],
 )
 def sample_image_array(request):
     """Fixture that returns (image_array, input_imformat, true_imformat)"""
@@ -99,11 +145,17 @@ def temp_hdf5_file():
 
 
 @pytest.fixture(
-        scope='session',
-        params=[
-            pytest.param('km-plate-12hr', id='km-plate-12hr-GridImage', ),
-            pytest.param('km-plate-72hr', id='km-plate-72hr-GridImage', )
-        ]
+    scope="session",
+    params=[
+        pytest.param(
+            "km-plate-12hr",
+            id="km-plate-12hr-GridImage",
+        ),
+        pytest.param(
+            "km-plate-72hr",
+            id="km-plate-72hr-GridImage",
+        ),
+    ],
 )
 def plate_grid_images(request):
     import phenotypic
@@ -112,12 +164,19 @@ def plate_grid_images(request):
     return phenotypic.GridImage(array)
 
 
-@pytest.fixture(scope='session',
-                params=[
-                    pytest.param('km-plate-12hr', id='km-plate-12hr-GridImage-detected', ),
-                    pytest.param('km-plate-72hr', id='km-plate-72hr-GridImage-detected', )
-                ]
-                )
+@pytest.fixture(
+    scope="session",
+    params=[
+        pytest.param(
+            "km-plate-12hr",
+            id="km-plate-12hr-GridImage-detected",
+        ),
+        pytest.param(
+            "km-plate-72hr",
+            id="km-plate-72hr-GridImage-detected",
+        ),
+    ],
+)
 def plate_grid_images_with_detection(request):
     import phenotypic
 
@@ -132,9 +191,10 @@ def walk_package(pkg):
     if hasattr(pkg, "__path__"):  # add all sub‑modules
         modules += [
             importlib.import_module(name)
-            for _, name, _ in pkgutil.walk_packages(pkg.__path__, pkg.__name__ + ".") \
-            if not name.split(".")[-1].startswith("_")  # Skip modules with names starting with underscore
-
+            for _, name, _ in pkgutil.walk_packages(pkg.__path__, pkg.__name__ + ".")
+            if not name.split(".")[-1].startswith(
+                "_"
+            )  # Skip modules with names starting with underscore
         ]
 
     seen = set()
@@ -166,9 +226,10 @@ def walk_package_for_class(pkg, target_class):
     if hasattr(pkg, "__path__"):  # add all sub‑modules
         modules += [
             importlib.import_module(name)
-            for _, name, _ in pkgutil.walk_packages(pkg.__path__, pkg.__name__ + ".") \
-            if not name.split(".")[-1].startswith("_")  # Skip modules with names starting with underscore
-
+            for _, name, _ in pkgutil.walk_packages(pkg.__path__, pkg.__name__ + ".")
+            if not name.split(".")[-1].startswith(
+                "_"
+            )  # Skip modules with names starting with underscore
         ]
 
     seen = set()
@@ -181,10 +242,12 @@ def walk_package_for_class(pkg, target_class):
                 continue
 
             obj = getattr(mod, attr)
-            if (inspect.ismodule(obj)
-                    or inspect.isabstract(obj)
-                    or not isinstance(obj, type)
-                    or not issubclass(obj, target_class)):
+            if (
+                inspect.ismodule(obj)
+                or inspect.isabstract(obj)
+                or not isinstance(obj, type)
+                or not issubclass(obj, target_class)
+            ):
                 continue
 
             qualname = f"{mod.__name__}.{attr}"
@@ -200,9 +263,10 @@ def walk_package_for_operations(pkg):
     if hasattr(pkg, "__path__"):  # add all sub‑modules
         modules += [
             importlib.import_module(name)
-            for _, name, _ in pkgutil.walk_packages(pkg.__path__, pkg.__name__ + ".") \
-            if not name.split(".")[-1].startswith("_")  # Skip modules with names starting with underscore
-
+            for _, name, _ in pkgutil.walk_packages(pkg.__path__, pkg.__name__ + ".")
+            if not name.split(".")[-1].startswith(
+                "_"
+            )  # Skip modules with names starting with underscore
         ]
 
     seen = set()
@@ -214,10 +278,12 @@ def walk_package_for_operations(pkg):
                 continue
 
             obj = getattr(mod, attr)
-            if (inspect.ismodule(obj)
-                    or inspect.isabstract(obj)
-                    or not isinstance(obj, type)
-                    or not issubclass(obj, phenotypic.abc_.ImageOperation)):
+            if (
+                inspect.ismodule(obj)
+                or inspect.isabstract(obj)
+                or not isinstance(obj, type)
+                or not issubclass(obj, phenotypic.abc_.ImageOperation)
+            ):
                 continue
 
             qualname = f"{mod.__name__}.{attr}"
@@ -236,9 +302,10 @@ def walk_package_for_measurements(pkg):
     if hasattr(pkg, "__path__"):  # add all sub‑modules
         modules += [
             importlib.import_module(name)
-            for _, name, _ in pkgutil.walk_packages(pkg.__path__, pkg.__name__ + ".") \
-            if not name.split(".")[-1].startswith("_")  # Skip modules with names starting with underscore
-
+            for _, name, _ in pkgutil.walk_packages(pkg.__path__, pkg.__name__ + ".")
+            if not name.split(".")[-1].startswith(
+                "_"
+            )  # Skip modules with names starting with underscore
         ]
 
     seen = set()
@@ -253,11 +320,13 @@ def walk_package_for_measurements(pkg):
                 continue
 
             obj = getattr(mod, attr)
-            if (inspect.ismodule(obj)
-                    or inspect.isabstract(obj)
-                    or not isinstance(obj, type)
-                    or not issubclass(obj, phenotypic.abc_.MeasureFeatures)
-                    or attr in skip_classes):
+            if (
+                inspect.ismodule(obj)
+                or inspect.isabstract(obj)
+                or not isinstance(obj, type)
+                or not issubclass(obj, phenotypic.abc_.MeasureFeatures)
+                or attr in skip_classes
+            ):
                 continue
 
             qualname = f"{mod.__name__}.{attr}"

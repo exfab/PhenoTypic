@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-if TYPE_CHECKING: from phenotypic import Image
+if TYPE_CHECKING:
+    from phenotypic import Image
 
 import numpy as np
 from skimage.morphology import white_tophat
@@ -51,7 +52,7 @@ class WhiteTophatModifier(ObjectRefiner):
             >>> image = op.apply(image, inplace=True)  # doctest: +SKIP
     """
 
-    def __init__(self, footprint_shape='disk', footprint_radius: int = None):
+    def __init__(self, footprint_shape="disk", footprint_radius: int = None):
         """Initialize the modifier.
 
         Args:
@@ -73,17 +74,17 @@ class WhiteTophatModifier(ObjectRefiner):
 
     def _operate(self, image: Image) -> Image:
         white_tophat_results = white_tophat(
-                image.objmask[:],
-                footprint=self._make_footprint(
-                        shape=self.footprint_shape,
-                        radius=self._get_footprint_radius(array=image.objmask[:])
-                )
+            image.objmask[:],
+            footprint=self._make_footprint(
+                shape=self.footprint_shape,
+                radius=self._get_footprint_radius(array=image.objmask[:]),
+            ),
         )
         image.objmask[:] = image.objmask[:] & ~white_tophat_results
         return image
 
     def _get_footprint_radius(self, array: np.ndarray) -> int:
         if self.footprint_radius is None:
-            return int(np.min(array.shape)*0.004)
+            return int(np.min(array.shape) * 0.004)
         else:
             return self.footprint_radius

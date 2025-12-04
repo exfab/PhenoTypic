@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-if TYPE_CHECKING: from phenotypic import Image
+if TYPE_CHECKING:
+    from phenotypic import Image
 from skimage.filters import gaussian
 
 from ..abc_ import ImageEnhancer
@@ -46,11 +47,9 @@ class GaussianBlur(ImageEnhancer):
             truncated beyond this distance.
     """
 
-    def __init__(self, sigma: int = 2,
-                 *,
-                 mode: str = 'reflect',
-                 cval=0.0,
-                 truncate: float = 4.0):
+    def __init__(
+        self, sigma: int = 2, *, mode: str = "reflect", cval=0.0, truncate: float = 4.0
+    ):
         """
         Parameters:
             sigma (int): Blur strength; start near 1–3 for high-resolution scans.
@@ -64,9 +63,9 @@ class GaussianBlur(ImageEnhancer):
         if isinstance(sigma, int):
             self.sigma = sigma
         else:
-            raise TypeError('sigma must be an integer')
+            raise TypeError("sigma must be an integer")
 
-        if mode in ['reflect', 'constant', 'nearest']:
+        if mode in ["reflect", "constant", "nearest"]:
             self.mode = mode
         else:
             raise ValueError('mode must be one of "reflect", "constant", "nearest"')
@@ -77,11 +76,11 @@ class GaussianBlur(ImageEnhancer):
 
     def _operate(self, image: Image) -> Image:
         image.enh_gray[:] = gaussian(
-                image=image.enh_gray[:],
-                sigma=self.sigma,
-                mode=self.mode,
-                truncate=self.truncate,
-                cval=self.cval,
-                channel_axis=-1
+            image=image.enh_gray[:],
+            sigma=self.sigma,
+            mode=self.mode,
+            truncate=self.truncate,
+            cval=self.cval,
+            channel_axis=-1,
         )
         return image

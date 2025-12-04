@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-if TYPE_CHECKING: from phenotypic import Image
+if TYPE_CHECKING:
+    from phenotypic import Image
 
 import numpy as np
 from skimage.morphology import white_tophat, cube, ball
@@ -40,7 +41,8 @@ class WhiteTophatEnhancer(ImageEnhancer):
         radius (int | None): Footprint radius in pixels; if None, a small default
             is derived from the image size.
     """
-    def __init__(self, shape: str = 'diamond', radius: int = None):
+
+    def __init__(self, shape: str = "diamond", radius: int = None):
         """
         Parameters:
             shape (str): Footprint geometry controlling which bright features are
@@ -57,10 +59,10 @@ class WhiteTophatEnhancer(ImageEnhancer):
 
     def _operate(self, image: Image) -> Image:
         white_tophat_results = white_tophat(
-                image.enh_gray[:],
-                footprint=self._get_footprint(
-                        self._get_footprint_radius(detection_matrix=image.enh_gray[:]),
-                ),
+            image.enh_gray[:],
+            footprint=self._get_footprint(
+                self._get_footprint_radius(detection_matrix=image.enh_gray[:]),
+            ),
         )
         image.enh_gray[:] = image.enh_gray[:] - white_tophat_results
 
@@ -68,17 +70,17 @@ class WhiteTophatEnhancer(ImageEnhancer):
 
     def _get_footprint_radius(self, detection_matrix: np.ndarray) -> int:
         if self.radius is None:
-            return int(np.min(detection_matrix.shape)*0.004)
+            return int(np.min(detection_matrix.shape) * 0.004)
         else:
             return self.radius
 
     def _get_footprint(self, radius: int) -> np.ndarray:
         match self.shape:
             # Use shared ImageEnhancer utility for common 2D shapes
-            case 'disk' | 'square' | 'diamond':
+            case "disk" | "square" | "diamond":
                 return self._make_footprint(shape=self.shape, radius=radius)
             # Preserve volumetric alternatives
-            case 'sphere':
+            case "sphere":
                 return ball(radius)
-            case 'cube':
-                return cube(radius*2)
+            case "cube":
+                return cube(radius * 2)

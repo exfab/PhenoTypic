@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-if TYPE_CHECKING: from phenotypic import Image
+if TYPE_CHECKING:
+    from phenotypic import Image
 
 # this is a dummy variable so annotation's in ImageOperation, MeasureFeatures classes don't cause integrity check to throw an exception
 Image: Any
@@ -18,7 +19,11 @@ from phenotypic.tools.constants_ import VALIDATE_OPS
 
 
 def is_binary_mask(arr: np.ndarray):
-    return True if (arr.ndim == 2 or arr.ndim == 3) and np.all((arr == 0) | (arr == 1)) else False
+    return (
+        True
+        if (arr.ndim == 2 or arr.ndim == 3) and np.all((arr == 0) | (arr == 1))
+        else False
+    )
 
 
 def timed_execution(func):
@@ -30,7 +35,9 @@ def timed_execution(func):
         start_time = time.time()  # Record the start time
         result = func(*args, **kwargs)  # Execute the wrapped function
         end_time = time.time()  # Record the end time
-        print(f"Function '{func.__name__}' executed in {end_time - start_time:.4f} seconds")
+        print(
+                f"Function '{func.__name__}' executed in {end_time - start_time:.4f} seconds"
+        )
         return result
 
     return wrapper
@@ -85,22 +92,17 @@ def validate_operation_integrity(*targets: str):
             eff_targets = list(targets)
         else:
             # Otherwise use default targets, but ensure 'image' parameter exists
-            if 'image' not in sig.parameters:
+            if "image" not in sig.parameters:
                 raise AttributeError(
                         f"{func.__name__}: no 'image' parameter and no targets given",
                 )
             # Default attributes to check on the image object
-            eff_targets = [
-                'image.rgb',
-                'image.gray',
-                'image.enh_gray',
-                'image.objmap'
-            ]
+            eff_targets = ["image.rgb", "image.gray", "image.enh_gray", "image.objmap"]
 
         # Helper function to retrieve a NumPy array from an object by attribute path
         def _get_array(bound_args, target: str) -> np.ndarray:
             # Split the target path (e.g., 'image.rgb' -> ['image', 'rgb'])
-            parts = target.split('.')
+            parts = target.split(".")
             # Get the root object from function arguments
             obj: Image = bound_args.arguments.get(parts[0])
             if obj is None:
@@ -131,9 +133,10 @@ def validate_operation_integrity(*targets: str):
             # Step 4: Calculate hash values for all target arrays before function execution
             # This creates a dictionary mapping each target to its hash value
             if VALIDATE_OPS:
-                pre_hashes = {tgt: murmur3_array_signature(_get_array(bound, tgt))
-                              for tgt in eff_targets
-                              }
+                pre_hashes = {
+                    tgt: murmur3_array_signature(_get_array(bound, tgt))
+                    for tgt in eff_targets
+                }
 
             # Step 5: Execute the original function
             result = func(*args, **kwargs)
@@ -142,23 +145,27 @@ def validate_operation_integrity(*targets: str):
             # For each target, calculate a new hash and compare with the original
             if VALIDATE_OPS:
                 for tgt, old_hash in pre_hashes.items():
-                    parts = tgt.split('.')
+                    parts = tgt.split(".")
                     # Start with the result object returned by the function
                     obj = result
                     # Navigate through the attribute chain on the result object
                     for attr in parts[1:]:
+                        if not hasattr(obj, attr):
+                            raise AttributeError(f"{obj} has no attribute '{attr}'")
                         obj = getattr(obj, attr)[:]
                     # Ensure the attribute is still a NumPy array
                     if not isinstance(obj, np.ndarray):
                         raise RuntimeError(
                                 f"{func.__name__}: '{tgt}' is not a NumPy rgb on result",
-
                         )
                     # Calculate new hash and compare with original
                     new_hash = murmur3_array_signature(obj)
                     # If hashes don't match, the array was modified - raise an error
                     if new_hash != old_hash:
-                        raise OperationIntegrityError(opname=f'{func.__name__}', component=f'{tgt}', )
+                        raise OperationIntegrityError(
+                                opname=f"{func.__name__}",
+                                component=f"{tgt}",
+                        )
 
             # Step 7: Return the original function's result if integrity check passes
             return result
@@ -194,29 +201,25 @@ def validate_measure_integrity(*targets: str):
             eff_targets = list(targets)
         else:
             # apply only to methods with an 'image' parameter
-            if 'image' not in sig.parameters:
+            if "image" not in sig.parameters:
                 raise OperationIntegrityError(
                         f"{func.__name__}: no 'image' parameter and no targets given",
                 )
-            eff_targets = [
-                'image.rgb',
-                'image.gray',
-                'image.enh_gray',
-                'image.objmap'
-            ]
+            eff_targets = ["image.rgb", "image.gray", "image.enh_gray", "image.objmap"]
 
         def _get_array(bound_args, target: str) -> np.ndarray:
             # e.g. target = 'image.rgb'
-            obj = bound_args.arguments.get(target.split('.')[0])
+            obj = bound_args.arguments.get(target.split(".")[0])
             if obj is None:
                 raise OperationIntegrityError(
                         f"{func.__name__}: cannot find parameter '{target.split('.')[0]}'",
                 )
-            for attr in target.split('.')[1:]:
+            for attr in target.split(".")[1:]:
                 obj = getattr(obj, attr)[:]
             if not isinstance(obj, np.ndarray):
                 raise OperationIntegrityError(
-                        f"{func.__name__}: '{target}' is not a NumPy array")
+                        f"{func.__name__}: '{target}' is not a NumPy array"
+                )
             return obj
 
         @wraps(func)
@@ -226,9 +229,10 @@ def validate_measure_integrity(*targets: str):
 
             # hash each target before the call
             if VALIDATE_OPS:
-                pre_hashes = {tgt: murmur3_array_signature(_get_array(bound, tgt))
-                              for tgt in eff_targets
-                              }
+                pre_hashes = {
+                    tgt: murmur3_array_signature(_get_array(bound, tgt))
+                    for tgt in eff_targets
+                }
 
             # execute the original method
             result = func(*args, **kwargs)
@@ -238,7 +242,9 @@ def validate_measure_integrity(*targets: str):
                 for tgt, old in pre_hashes.items():
                     new = murmur3_array_signature(_get_array(bound, tgt))
                     if new != old:
-                        raise OperationIntegrityError(opname=f'{func.__name__}', component=f'{tgt}')
+                        raise OperationIntegrityError(
+                                opname=f"{func.__name__}", component=f"{tgt}"
+                        )
 
             return result
 
@@ -284,6 +290,8 @@ def normalize_rgb_bitdepth(image: np.ndarray) -> np.ndarray:
         elif 255 < m <= (65535.0 + tol):
             return (img.astype(np.float32)/65535.0).clip(0, 1)
         else:
-            raise ValueError(f'Invalid range: min={img.min():.02f} max={img.max():.02f}')
+            raise ValueError(
+                    f"Invalid range: min={img.min():.02f} max={img.max():.02f}"
+            )
     else:
         raise TypeError(f"Unsupported dtype: {img.dtype}")

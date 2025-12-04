@@ -4,7 +4,8 @@ from typing import TYPE_CHECKING
 
 from ...tools.exceptions_ import IllegalAssignmentError, NoObjectsError
 
-if TYPE_CHECKING: from phenotypic import Image
+if TYPE_CHECKING:
+    from phenotypic import Image
 
 import numpy as np
 
@@ -29,10 +30,12 @@ class ImageObjectsHandler(ImageHandler):
             ObjectsAccessor instance for object-specific operations.
     """
 
-    def __init__(self,
-                 arr: np.ndarray | Image | None = None,
-                 name: str | None = None,
-                 bit_depth: int | None = None, ):
+    def __init__(
+        self,
+        arr: np.ndarray | Image | None = None,
+        name: str | None = None,
+        bit_depth: int | None = None,
+    ):
         """Initialize ImageObjectsHandler with object detection support.
 
         Args:
@@ -81,4 +84,4 @@ class ImageObjectsHandler(ImageHandler):
 
     @objects.setter
     def objects(self, objects):
-        raise IllegalAssignmentError('objects')
+        raise IllegalAssignmentError("objects")

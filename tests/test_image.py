@@ -91,8 +91,9 @@ def test_image_matrix_access(sample_image_array_with_imformat):
     input_image, input_imformat, true_imformat = sample_image_array_with_imformat
     ps_image = phenotypic.Image(arr=input_image)
     if not ps_image.rgb.isempty():
-        assert np.array_equal(ps_image.gray[:], skimage.color.rgb2gray(input_image)), \
-            f'Image.gray and skimage.color.rgb2gray do not match at {np.unique(ps_image.gray[:] != skimage.color.rgb2gray(input_image), return_counts=True)}'
+        assert np.array_equal(ps_image.gray[:], skimage.color.rgb2gray(input_image)), (
+            f"Image.gray and skimage.color.rgb2gray do not match at {np.unique(ps_image.gray[:] != skimage.color.rgb2gray(input_image), return_counts=True)}"
+        )
         # assert np.allclose(ps_image.gray[:], skimage.color.rgb2gray(arr), atol=1.0 / np.finfo(ps_image.gray[:].dtype).max),\
         #     f'Image.gray and skimage.color.rgb2gray do not match at {np.unique(ps_image.gray[:] != skimage.color.rgb2gray(arr), return_counts=True)}'
     else:
@@ -108,17 +109,24 @@ def test_image_matrix_change(sample_image_array_with_imformat):
         altered_image = skimage.color.rgb2gray(input_image)
         altered_image[10:10, 10:10] = 0
 
-        assert np.allclose(ps_image.gray[:], altered_image, atol=1.0/np.finfo(ps_image.gray[:].dtype).max), \
-            f'Image.gray and skimage.color.rgb2gray do not match at {np.unique(ps_image.gray[:] != altered_image, return_counts=True)}'
+        assert np.allclose(
+            ps_image.gray[:],
+            altered_image,
+            atol=1.0 / np.finfo(ps_image.gray[:].dtype).max,
+        ), (
+            f"Image.gray and skimage.color.rgb2gray do not match at {np.unique(ps_image.gray[:] != altered_image, return_counts=True)}"
+        )
 
-        assert np.array_equal(ps_image.rgb[:],
-                              input_image), 'Image.rgb was altered and color information was changed'
+        assert np.array_equal(ps_image.rgb[:], input_image), (
+            "Image.rgb was altered and color information was changed"
+        )
 
     else:
         altered_image = input_image.copy()
         altered_image[10:10, 10:10] = 0
-        assert np.array_equal(ps_image.gray[:], altered_image), \
-            f'Image.gray and arr do not match at {np.unique(ps_image.gray[:] != altered_image, return_counts=True)}'
+        assert np.array_equal(ps_image.gray[:], altered_image), (
+            f"Image.gray and arr do not match at {np.unique(ps_image.gray[:] != altered_image, return_counts=True)}"
+        )
 
 
 @timeit
@@ -138,12 +146,16 @@ def test_image_object_mask_access(sample_image_array_with_imformat):
     ps_image = phenotypic.Image(arr=input_image)
 
     # When no objects in _root_image
-    assert np.array_equal(ps_image.objmask[:], np.full(shape=ps_image.gray.shape, fill_value=False))
+    assert np.array_equal(
+        ps_image.objmask[:], np.full(shape=ps_image.gray.shape, fill_value=False)
+    )
 
     ps_image.objmask[:10, :10] = 0
     ps_image.objmask[-10:, -10:] = 1
 
-    assert not np.array_equal(ps_image.objmask[:], np.full(shape=ps_image.gray.shape, fill_value=False))
+    assert not np.array_equal(
+        ps_image.objmask[:], np.full(shape=ps_image.gray.shape, fill_value=False)
+    )
 
 
 @timeit
@@ -152,13 +164,19 @@ def test_image_object_map_access(sample_image_array_with_imformat):
     ps_image = phenotypic.Image(arr=input_image)
 
     # When no objects in _root_image
-    assert np.array_equal(ps_image.objmap[:], np.full(shape=ps_image.gray.shape, fill_value=0, dtype=np.uint32))
+    assert np.array_equal(
+        ps_image.objmap[:],
+        np.full(shape=ps_image.gray.shape, fill_value=0, dtype=np.uint32),
+    )
     assert ps_image.num_objects == 0
 
     ps_image.objmap[:10, :10] = 1
     ps_image.objmap[-10:, -10:] = 2
 
-    assert not np.array_equal(ps_image.objmap[:], np.full(shape=ps_image.gray.shape, fill_value=0, dtype=np.uint32))
+    assert not np.array_equal(
+        ps_image.objmap[:],
+        np.full(shape=ps_image.gray.shape, fill_value=0, dtype=np.uint32),
+    )
     assert ps_image.num_objects > 0
     assert ps_image.objects.num_objects > 0
 
@@ -190,11 +208,21 @@ def test_slicing(sample_image_array_with_imformat):
     row_slice, col_slice = 10, 10
     sliced_ps_image = ps_image[:row_slice, :col_slice]
     if not ps_image.rgb.isempty():
-        assert np.array_equal(sliced_ps_image.rgb[:], ps_image.rgb[:row_slice, :col_slice])
-    assert np.array_equal(sliced_ps_image.gray[:], ps_image.gray[:row_slice, :col_slice])
-    assert np.array_equal(sliced_ps_image.enh_gray[:], ps_image.enh_gray[:row_slice, :col_slice])
-    assert np.array_equal(sliced_ps_image.objmask[:], ps_image.objmask[:row_slice, :col_slice])
-    assert np.array_equal(sliced_ps_image.objmap[:], ps_image.objmap[:row_slice, :col_slice])
+        assert np.array_equal(
+            sliced_ps_image.rgb[:], ps_image.rgb[:row_slice, :col_slice]
+        )
+    assert np.array_equal(
+        sliced_ps_image.gray[:], ps_image.gray[:row_slice, :col_slice]
+    )
+    assert np.array_equal(
+        sliced_ps_image.enh_gray[:], ps_image.enh_gray[:row_slice, :col_slice]
+    )
+    assert np.array_equal(
+        sliced_ps_image.objmask[:], ps_image.objmask[:row_slice, :col_slice]
+    )
+    assert np.array_equal(
+        sliced_ps_image.objmap[:], ps_image.objmap[:row_slice, :col_slice]
+    )
 
 
 @timeit
@@ -220,78 +248,82 @@ def test_image_object_label_consistency_with_skimage(sample_image_array_with_imf
     ps_image.objmap[-10:, -10:] = 2
 
     assert ps_image.objects.labels2series().equals(
-            pd.Series(skimage.measure.regionprops_table(ps_image.objmap[:], properties=['label'])['label']),
+        pd.Series(
+            skimage.measure.regionprops_table(ps_image.objmap[:], properties=["label"])[
+                "label"
+            ]
+        ),
     )
 
 
 @timeit
 def test_rgb_imsave_jpg(tmp_path):
-    out = tmp_path/"out.jpg"
+    out = tmp_path / "out.jpg"
 
-    image = phenotypic.data.load_colony(mode='Image')
+    image = phenotypic.data.load_colony(mode="Image")
     image.rgb.imsave(out)
     assert out.exists(), f"RGB JPEG file was not created at {out}"
 
 
 @timeit
 def test_rgb_imsave_png(tmp_path):
-    out = tmp_path/"out.png"
-    image = phenotypic.data.load_colony(mode='Image')
+    out = tmp_path / "out.png"
+    image = phenotypic.data.load_colony(mode="Image")
     image.rgb.imsave(out)
     assert out.exists(), f"RGB PNG file was not created at {out}"
 
 
 @timeit
 def test_rgb_imsave_tiff(tmp_path):
-    out = tmp_path/"out.tiff"
-    image = phenotypic.data.load_colony(mode='Image')
+    out = tmp_path / "out.tiff"
+    image = phenotypic.data.load_colony(mode="Image")
     image.rgb.imsave(out)
     assert out.exists(), f"RGB TIFF file was not created at {out}"
 
 
 @timeit
 def test_gray_imsave_jpg(tmp_path):
-    out = tmp_path/"out_gray.jpg"
-    image = phenotypic.data.load_colony(mode='Image')
+    out = tmp_path / "out_gray.jpg"
+    image = phenotypic.data.load_colony(mode="Image")
     image.gray.imsave(out)
     assert out.exists(), f"Gray JPEG file was not created at {out}"
 
 
 @timeit
 def test_gray_imsave_png(tmp_path):
-    out = tmp_path/"out_gray.png"
-    image = phenotypic.data.load_colony(mode='Image')
+    out = tmp_path / "out_gray.png"
+    image = phenotypic.data.load_colony(mode="Image")
     image.gray.imsave(out)
     assert out.exists(), f"Gray PNG file was not created at {out}"
 
 
 @timeit
 def test_gray_imsave_tiff(tmp_path):
-    out = tmp_path/"out_gray.tiff"
-    image = phenotypic.data.load_colony(mode='Image')
+    out = tmp_path / "out_gray.tiff"
+    image = phenotypic.data.load_colony(mode="Image")
     image.gray.imsave(out)
     assert out.exists(), f"Gray TIFF file was not created at {out}"
 
 
 @timeit
 def test_enh_gray_imsave_jpg(tmp_path):
-    out = tmp_path/"out_enh_gray.jpg"
-    image = phenotypic.data.load_colony(mode='Image')
+    out = tmp_path / "out_enh_gray.jpg"
+    image = phenotypic.data.load_colony(mode="Image")
     image.enh_gray.imsave(out)
     assert out.exists(), f"Enhanced Gray JPEG file was not created at {out}"
 
 
 @timeit
 def test_enh_gray_imsave_png(tmp_path):
-    out = tmp_path/"out_enh_gray.png"
-    image = phenotypic.data.load_colony(mode='Image')
+    out = tmp_path / "out_enh_gray.png"
+    image = phenotypic.data.load_colony(mode="Image")
     image.enh_gray.imsave(out)
     assert out.exists(), f"Enhanced Gray PNG file was not created at {out}"
 
 
 @timeit
 def test_enh_gray_imsave_tiff(tmp_path):
-    out = tmp_path/"out_enh_gray.tiff"
-    image = phenotypic.data.load_colony(mode='Image')
+    out = tmp_path / "out_enh_gray.tiff"
+    image = phenotypic.data.load_colony(mode="Image")
     image.enh_gray.imsave(out)
     assert out.exists(), f"Enhanced Gray TIFF file was not created at {out}"

@@ -8,13 +8,16 @@ import numpy as np
 from collections.abc import Iterable
 from typing import Any, Mapping
 
-if TYPE_CHECKING: from phenotypic import ImageSet
-
 
 class SetAnalyzer(abc.ABC):
-
-    def __init__(self, on: str, groupby: List[str],
-                 agg_func: Callable | str | list | dict | None = 'mean', *, num_workers=1):
+    def __init__(
+        self,
+        on: str,
+        groupby: List[str],
+        agg_func: Callable | str | list | dict | None = "mean",
+        *,
+        num_workers=1,
+    ):
         self.groupby = groupby
         self.agg_func = agg_func
         self.on = on
@@ -39,11 +42,13 @@ class SetAnalyzer(abc.ABC):
         pass
 
     @staticmethod
-    def _filter_by(df: pd.DataFrame,
-                   criteria: Mapping[str, Any],
-                   *,
-                   copy: bool = True,
-                   match_na: bool = False) -> pd.DataFrame:
+    def _filter_by(
+        df: pd.DataFrame,
+        criteria: Mapping[str, Any],
+        *,
+        copy: bool = True,
+        match_na: bool = False,
+    ) -> pd.DataFrame:
         """Row-wise filter by column-value criteria.
 
         This helper builds a boolean mask across rows using an "AND across columns"
@@ -163,11 +168,11 @@ class SetAnalyzer(abc.ABC):
         k = arr.dtype.kind
 
         # Already numeric
-        if k in {'i', 'u', 'f', 'c'}:
+        if k in {"i", "u", "f", "c"}:
             return arr.astype(float)
 
         # String or object with strings
-        if k in {'U', 'S', 'O'}:
+        if k in {"U", "S", "O"}:
             return SetAnalyzer.__smart_float_convert(arr)
 
         raise TypeError(f"Unsupported array dtype: {arr.dtype}")

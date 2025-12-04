@@ -7,7 +7,11 @@ import skimage
 
 from phenotypic.core._image_parts.accessor_abstracts import MultiChannelAccessor
 from phenotypic.tools.constants_ import IMAGE_MODE
-from phenotypic.tools.exceptions_ import ArrayKeyValueShapeMismatchError, NoArrayError, EmptyImageError
+from phenotypic.tools.exceptions_ import (
+    ArrayKeyValueShapeMismatchError,
+    NoArrayError,
+    EmptyImageError,
+)
 
 
 class ImageRGB(MultiChannelAccessor):
@@ -158,17 +162,20 @@ class ImageRGB(MultiChannelAccessor):
         """
         if pd.api.types.is_scalar(value):  # handle scalar values
             if not isinstance(value, (int, float, np.number)):  # assert numeric value
-                raise TypeError('Array values must be a numeric scalar or np.array')
+                raise TypeError("Array values must be a numeric scalar or np.array")
 
         elif isinstance(value, np.ndarray):  # handle numpy arrays
             if not np.issubdtype(value.dtype, np.number):  # assert numeric numpy value
-                raise TypeError('Array values must be a numeric scalar or np.array')
-            if value.shape != self._root_image._data.rgb[key].shape:  # assert window shape equals value shape
+                raise TypeError("Array values must be a numeric scalar or np.array")
+            if (
+                value.shape != self._root_image._data.rgb[key].shape
+            ):  # assert window shape equals value shape
                 raise ArrayKeyValueShapeMismatchError
 
         else:
             raise ValueError(
-                    f'Unsupported type for setting the array. Value should be scalar or a numpy array: {type(value)}')
+                f"Unsupported type for setting the array. Value should be scalar or a numpy array: {type(value)}"
+            )
 
         self._root_image._data.rgb[key] = value
         self._root_image._set_from_array(self._root_image._data.rgb)

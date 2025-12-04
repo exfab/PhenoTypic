@@ -8,7 +8,8 @@ from datetime import datetime
 from fractions import Fraction
 from typing import Tuple, TYPE_CHECKING
 
-if TYPE_CHECKING: from phenotypic import Image, GridImage
+if TYPE_CHECKING:
+    from phenotypic import Image, GridImage
 
 import exifread
 import h5py
@@ -57,9 +58,9 @@ class ImageIOHandler(ImageColorSpace):
             >>> loaded = ImageIOHandler.load_hdf5('output.h5', 'photo')
     """
 
-    def __init__(self,
-                 arr: np.ndarray | Image | None = None,
-                 name: str | None = None, **kwargs):
+    def __init__(
+        self, arr: np.ndarray | Image | None = None, name: str | None = None, **kwargs
+    ):
         """Initialize ImageIOHandler with I/O capabilities.
 
         Args:
@@ -110,7 +111,7 @@ class ImageIOHandler(ImageColorSpace):
             return value
         if isinstance(value, bytes):
             try:
-                return value.decode('utf-8', errors='replace')
+                return value.decode("utf-8", errors="replace")
             except Exception:
                 return str(value)
         if isinstance(value, Fraction):
@@ -127,11 +128,11 @@ class ImageIOHandler(ImageColorSpace):
                 return ImageIOHandler._normalize_metadata_value(value.item())
             return str(value.tolist())
         # For exifread IfdTag objects
-        if hasattr(value, 'values'):
+        if hasattr(value, "values"):
             vals = value.values
             if isinstance(vals, (list, tuple)) and len(vals) == 1:
                 return ImageIOHandler._normalize_metadata_value(vals[0])
-            if hasattr(value, 'printable'):
+            if hasattr(value, "printable"):
                 return str(value.printable)
             return str(vals)
         # Fallback to string
@@ -151,21 +152,24 @@ class ImageIOHandler(ImageColorSpace):
 
         # Use exifread for comprehensive EXIF parsing
         try:
-            with open(filepath, 'rb') as f:
+            with open(filepath, "rb") as f:
                 tags = exifread.process_file(f, details=True)
                 for tag, value in tags.items():
-                    if tag.startswith('Thumbnail'):
+                    if tag.startswith("Thumbnail"):
                         continue  # Skip thumbnail data
                     normalized = ImageIOHandler._normalize_metadata_value(value)
                     if normalized is not None:
                         metadata[tag] = normalized
 
                         # Check for PhenoTypic data in EXIF UserComment
-                        if tag == 'EXIF UserComment' and isinstance(normalized, str):
+                        if tag == "EXIF UserComment" and isinstance(normalized, str):
                             try:
                                 phenotypic_data = json.loads(normalized)
-                                if isinstance(phenotypic_data, dict) and 'phenotypic_version' in phenotypic_data:
-                                    metadata['_phenotypic_data'] = phenotypic_data
+                                if (
+                                    isinstance(phenotypic_data, dict)
+                                    and "phenotypic_version" in phenotypic_data
+                                ):
+                                    metadata["_phenotypic_data"] = phenotypic_data
                             except json.JSONDecodeError:
                                 pass
         except Exception:
@@ -175,22 +179,25 @@ class ImageIOHandler(ImageColorSpace):
         try:
             with PIL_Image.open(filepath) as img:
                 # Get basic image info
-                if hasattr(img, 'info') and img.info:
+                if hasattr(img, "info") and img.info:
                     for key, value in img.info.items():
-                        if key == 'exif':
+                        if key == "exif":
                             continue  # Already handled by exifread
                         # Check for PhenoTypic PNG tEXt chunk
                         if key == IO.PHENOTYPIC_METADATA_KEY:
                             try:
                                 phenotypic_data = json.loads(value)
-                                if isinstance(phenotypic_data, dict) and 'phenotypic_version' in phenotypic_data:
-                                    metadata['_phenotypic_data'] = phenotypic_data
+                                if (
+                                    isinstance(phenotypic_data, dict)
+                                    and "phenotypic_version" in phenotypic_data
+                                ):
+                                    metadata["_phenotypic_data"] = phenotypic_data
                             except json.JSONDecodeError:
                                 pass
                             continue
                         normalized = ImageIOHandler._normalize_metadata_value(value)
                         if normalized is not None:
-                            metadata[f'PIL:{key}'] = normalized
+                            metadata[f"PIL:{key}"] = normalized
 
                 # Try to get EXIF UserComment for PhenoTypic data (JPEG)
                 exif_data = img.getexif()
@@ -202,15 +209,20 @@ class ImageIOHandler(ImageColorSpace):
                             # UserComment may have encoding prefix
                             if isinstance(user_comment, bytes):
                                 # Skip encoding prefix if present (first 8 bytes)
-                                if user_comment.startswith(b'ASCII\x00\x00\x00'):
+                                if user_comment.startswith(b"ASCII\x00\x00\x00"):
                                     user_comment = user_comment[8:]
-                                elif user_comment.startswith(b'UNICODE\x00'):
-                                    user_comment = user_comment[8:].decode('utf-16')
+                                elif user_comment.startswith(b"UNICODE\x00"):
+                                    user_comment = user_comment[8:].decode("utf-16")
                                 else:
-                                    user_comment = user_comment.decode('utf-8', errors='replace')
+                                    user_comment = user_comment.decode(
+                                        "utf-8", errors="replace"
+                                    )
                             phenotypic_data = json.loads(user_comment)
-                            if isinstance(phenotypic_data, dict) and 'phenotypic_version' in phenotypic_data:
-                                metadata['_phenotypic_data'] = phenotypic_data
+                            if (
+                                isinstance(phenotypic_data, dict)
+                                and "phenotypic_version" in phenotypic_data
+                            ):
+                                metadata["_phenotypic_data"] = phenotypic_data
                         except (json.JSONDecodeError, UnicodeDecodeError):
                             pass
         except Exception:
@@ -233,22 +245,25 @@ class ImageIOHandler(ImageColorSpace):
         try:
             with PIL_Image.open(filepath) as img:
                 # Get TIFF tags
-                if hasattr(img, 'tag_v2') and img.tag_v2:
+                if hasattr(img, "tag_v2") and img.tag_v2:
                     for tag_id, value in img.tag_v2.items():
-                        tag_name = TIFF_TAGS.get(tag_id, f'Tag_{tag_id}')
+                        tag_name = TIFF_TAGS.get(tag_id, f"Tag_{tag_id}")
                         normalized = ImageIOHandler._normalize_metadata_value(value)
                         if normalized is not None:
-                            metadata[f'TIFF:{tag_name}'] = normalized
+                            metadata[f"TIFF:{tag_name}"] = normalized
 
                 # Check ImageDescription (tag 270) for PhenoTypic JSON
-                if hasattr(img, 'tag_v2') and 270 in img.tag_v2:
+                if hasattr(img, "tag_v2") and 270 in img.tag_v2:
                     desc = img.tag_v2[270]
                     if isinstance(desc, bytes):
-                        desc = desc.decode('utf-8', errors='replace')
+                        desc = desc.decode("utf-8", errors="replace")
                     try:
                         phenotypic_data = json.loads(desc)
-                        if isinstance(phenotypic_data, dict) and 'phenotypic_version' in phenotypic_data:
-                            metadata['_phenotypic_data'] = phenotypic_data
+                        if (
+                            isinstance(phenotypic_data, dict)
+                            and "phenotypic_version" in phenotypic_data
+                        ):
+                            metadata["_phenotypic_data"] = phenotypic_data
                     except json.JSONDecodeError:
                         pass  # Not JSON, keep as regular metadata
         except Exception:
@@ -269,23 +284,23 @@ class ImageIOHandler(ImageColorSpace):
         metadata = {}
 
         # Try exiftool first (more comprehensive)
-        if shutil.which('exiftool'):
+        if shutil.which("exiftool"):
             try:
                 result = subprocess.run(
-                        ['exiftool', '-json', '-n', str(filepath)],
-                        capture_output=True,
-                        text=True,
-                        timeout=30
+                    ["exiftool", "-json", "-n", str(filepath)],
+                    capture_output=True,
+                    text=True,
+                    timeout=30,
                 )
                 if result.returncode == 0:
                     exif_data = json.loads(result.stdout)
                     if exif_data and isinstance(exif_data, list):
                         for key, value in exif_data[0].items():
-                            if key == 'SourceFile':
+                            if key == "SourceFile":
                                 continue
                             normalized = ImageIOHandler._normalize_metadata_value(value)
                             if normalized is not None:
-                                metadata[f'EXIF:{key}'] = normalized
+                                metadata[f"EXIF:{key}"] = normalized
                     return metadata
             except (subprocess.TimeoutExpired, json.JSONDecodeError, Exception):
                 pass  # Fall through to rawpy
@@ -295,33 +310,43 @@ class ImageIOHandler(ImageColorSpace):
             try:
                 with rawpy.imread(str(filepath)) as raw:
                     # Extract available rawpy metadata attributes
-                    metadata['rawpy:camera_whitebalance'] = str(list(raw.camera_whitebalance))
-                    metadata['rawpy:daylight_whitebalance'] = str(list(raw.daylight_whitebalance))
-                    metadata['rawpy:num_colors'] = int(raw.num_colors)
-                    metadata['rawpy:color_desc'] = raw.color_desc.decode('utf-8') if raw.color_desc else None
-                    metadata['rawpy:raw_type'] = str(raw.raw_type)
+                    metadata["rawpy:camera_whitebalance"] = str(
+                        list(raw.camera_whitebalance)
+                    )
+                    metadata["rawpy:daylight_whitebalance"] = str(
+                        list(raw.daylight_whitebalance)
+                    )
+                    metadata["rawpy:num_colors"] = int(raw.num_colors)
+                    metadata["rawpy:color_desc"] = (
+                        raw.color_desc.decode("utf-8") if raw.color_desc else None
+                    )
+                    metadata["rawpy:raw_type"] = str(raw.raw_type)
 
                     if raw.sizes:
-                        metadata['rawpy:raw_height'] = int(raw.sizes.raw_height)
-                        metadata['rawpy:raw_width'] = int(raw.sizes.raw_width)
-                        metadata['rawpy:height'] = int(raw.sizes.height)
-                        metadata['rawpy:width'] = int(raw.sizes.width)
+                        metadata["rawpy:raw_height"] = int(raw.sizes.raw_height)
+                        metadata["rawpy:raw_width"] = int(raw.sizes.raw_width)
+                        metadata["rawpy:height"] = int(raw.sizes.height)
+                        metadata["rawpy:width"] = int(raw.sizes.width)
 
                     # Black and white levels
-                    if hasattr(raw, 'black_level_per_channel') and raw.black_level_per_channel is not None:
-                        metadata['rawpy:black_level_per_channel'] = str(list(raw.black_level_per_channel))
-                    if hasattr(raw, 'white_level') and raw.white_level is not None:
-                        metadata['rawpy:white_level'] = int(raw.white_level)
+                    if (
+                        hasattr(raw, "black_level_per_channel")
+                        and raw.black_level_per_channel is not None
+                    ):
+                        metadata["rawpy:black_level_per_channel"] = str(
+                            list(raw.black_level_per_channel)
+                        )
+                    if hasattr(raw, "white_level") and raw.white_level is not None:
+                        metadata["rawpy:white_level"] = int(raw.white_level)
             except Exception:
                 pass
 
         return metadata
 
     @classmethod
-    def imread(cls,
-               filepath: PathLike,
-               rawpy_params: dict | None = None,
-               **kwargs) -> Image:
+    def imread(
+        cls, filepath: PathLike, rawpy_params: dict | None = None, **kwargs
+    ) -> Image:
         """
         imread is a class method responsible for reading an image file from the specified
         path and performing necessary preprocessing based on the file format and additional
@@ -355,42 +380,48 @@ class ImageIOHandler(ImageColorSpace):
 
         suffix = filepath.suffix.lower()
         if suffix in IO.ACCEPTED_FILE_EXTENSIONS:  # normal images
-
             arr = ski.io.imread(fname=filepath)
 
-        elif suffix in IO.RAW_FILE_EXTENSIONS and rawpy is not None:  # raw sensor data handling
-            use_auto_wb = rawpy_params.pop('use_auto_wb', False)
-            use_camera_wb = rawpy_params.pop('use_camera_wb', False)
+        elif (
+            suffix in IO.RAW_FILE_EXTENSIONS and rawpy is not None
+        ):  # raw sensor data handling
+            use_auto_wb = rawpy_params.pop("use_auto_wb", False)
+            use_camera_wb = rawpy_params.pop("use_camera_wb", False)
 
-            no_auto_scale = rawpy_params.pop('no_auto_scale', False)  # TODO: implement calibration schema
-            no_auto_bright = rawpy_params.pop('no_auto_bright', False)  # TODO: implement calibration schema
+            no_auto_scale = rawpy_params.pop(
+                "no_auto_scale", False
+            )  # TODO: implement calibration schema
+            no_auto_bright = rawpy_params.pop(
+                "no_auto_bright", False
+            )  # TODO: implement calibration schema
 
             if rawpy.DemosaicAlgorithm.AMAZE.isSupported:
                 default_demosaic = rawpy.DemosaicAlgorithm.AMAZE
             else:
                 default_demosaic = rawpy.DemosaicAlgorithm.AHD
 
-            demosaic_algorithm = rawpy_params.pop('demosaic_algorithm', default_demosaic)
-            gamma = rawpy_params.pop('gamma', (1, 1))
+            demosaic_algorithm = rawpy_params.pop(
+                "demosaic_algorithm", default_demosaic
+            )
+            gamma = rawpy_params.pop("gamma", (1, 1))
             with rawpy.imread(str(filepath)) as raw:
                 arr = raw.postprocess(
-                        demosaic_algorithm=demosaic_algorithm,
-                        use_camera_wb=use_camera_wb,
-                        use_auto_wb=use_auto_wb,
-                        no_auto_scale=no_auto_scale,
-                        no_auto_bright=no_auto_bright,
-
-                        gamma=gamma,
-                        median_filter_passes=0,
-                        output_bps=16,  # Preserve as much detail as possible
-                        output_color=rawpy.ColorSpace.sRGB,
-                        **rawpy_params,
+                    demosaic_algorithm=demosaic_algorithm,
+                    use_camera_wb=use_camera_wb,
+                    use_auto_wb=use_auto_wb,
+                    no_auto_scale=no_auto_scale,
+                    no_auto_bright=no_auto_bright,
+                    gamma=gamma,
+                    median_filter_passes=0,
+                    output_bps=16,  # Preserve as much detail as possible
+                    output_color=rawpy.ColorSpace.sRGB,
+                    **rawpy_params,
                 )
 
         else:
             raise UnsupportedFileTypeError(filepath.suffix)
 
-        bit_depth = kwargs.pop('bit_depth', None)
+        bit_depth = kwargs.pop("bit_depth", None)
         if suffix in IO.JPEG_FILE_EXTENSIONS:
             bit_depth = 8
 
@@ -409,19 +440,19 @@ class ImageIOHandler(ImageColorSpace):
             imported_metadata = {}
 
         # Handle PhenoTypic round-trip data if present
-        if '_phenotypic_data' in imported_metadata:
-            phenotypic_data = imported_metadata.pop('_phenotypic_data')
+        if "_phenotypic_data" in imported_metadata:
+            phenotypic_data = imported_metadata.pop("_phenotypic_data")
             # Only restore protected/public metadata if saved from rgb or gray property
             # (not from color space accessors or enh_gray which are derived views)
-            source_property = phenotypic_data.get('phenotypic_image_property', '')
-            if source_property in ('Image.rgb', 'Image.gray'):
-                if 'protected' in phenotypic_data:
-                    for key, value in phenotypic_data['protected'].items():
+            source_property = phenotypic_data.get("phenotypic_image_property", "")
+            if source_property in ("Image.rgb", "Image.gray"):
+                if "protected" in phenotypic_data:
+                    for key, value in phenotypic_data["protected"].items():
                         # Don't overwrite critical protected fields
                         if key not in (METADATA.UUID, METADATA.IMAGE_NAME):
                             image._metadata.protected[key] = value
-                if 'public' in phenotypic_data:
-                    image._metadata.public.update(phenotypic_data['public'])
+                if "public" in phenotypic_data:
+                    image._metadata.public.update(phenotypic_data["public"])
 
         # Store remaining imported metadata
         image._metadata.imported.update(imported_metadata)
@@ -446,7 +477,7 @@ class ImageIOHandler(ImageColorSpace):
         if name in handler:
             return handler[name]
         elif file_handler.swmr_mode is True:
-            raise ValueError('hdf5 handler in SWMR mode cannot create group')
+            raise ValueError("hdf5 handler in SWMR mode cannot create group")
         else:
             return handler.create_group(name)
 
@@ -479,14 +510,21 @@ class ImageIOHandler(ImageColorSpace):
                 dataset[:] = array
             elif file_handler.swmr_mode is True:
                 raise ValueError(
-                        'Shape does not match existing dataset shape and cannot be changed because file handler is in SWMR mode')
+                    "Shape does not match existing dataset shape and cannot be changed because file handler is in SWMR mode"
+                )
             else:
                 del group[name]
                 group.create_dataset(name, data=array, dtype=array.dtype, **kwargs)
         else:
             group.create_dataset(name, data=array, dtype=array.dtype, **kwargs)
 
-    def _save_image2hdfgroup(self, grp, compression='gzip', compression_opts=4, overwrite=False, ):
+    def _save_image2hdfgroup(
+        self,
+        grp,
+        compression="gzip",
+        compression_opts=4,
+        overwrite=False,
+    ):
         """Saves the image as a new group into the input hdf5 group."""
         if overwrite and self.name in grp:
             del grp[self.name]
@@ -497,30 +535,42 @@ class ImageIOHandler(ImageColorSpace):
         if not self.rgb.isempty():
             array = self.rgb[:]
             HDF.save_array2hdf5(
-                    group=image_group, array=array, name="rgb",
-                    dtype=array.dtype,
-                    compression=compression, compression_opts=compression_opts,
+                group=image_group,
+                array=array,
+                name="rgb",
+                dtype=array.dtype,
+                compression=compression,
+                compression_opts=compression_opts,
             )
 
         matrix = self.gray[:]
         HDF.save_array2hdf5(
-                group=image_group, array=matrix, name="gray",
-                dtype=matrix.dtype,
-                compression=compression, compression_opts=compression_opts,
+            group=image_group,
+            array=matrix,
+            name="gray",
+            dtype=matrix.dtype,
+            compression=compression,
+            compression_opts=compression_opts,
         )
 
         enh_matrix = self.enh_gray[:]
         HDF.save_array2hdf5(
-                group=image_group, array=enh_matrix, name="enh_gray",
-                dtype=enh_matrix.dtype,
-                compression=compression, compression_opts=compression_opts,
+            group=image_group,
+            array=enh_matrix,
+            name="enh_gray",
+            dtype=enh_matrix.dtype,
+            compression=compression,
+            compression_opts=compression_opts,
         )
 
         objmap = self.objmap[:]
         HDF.save_array2hdf5(
-                group=image_group, array=objmap, name="objmap",
-                dtype=objmap.dtype,
-                compression=compression, compression_opts=compression_opts,
+            group=image_group,
+            array=objmap,
+            name="objmap",
+            dtype=objmap.dtype,
+            compression=compression,
+            compression_opts=compression_opts,
         )
 
         # 3) Store version info
@@ -536,7 +586,9 @@ class ImageIOHandler(ImageColorSpace):
         for key, val in self._metadata.public.items():
             pub.attrs.modify(key, str(val))
 
-    def save2hdf5(self, filename, compression="gzip", compression_opts=4, overwrite=False):
+    def save2hdf5(
+        self, filename, compression="gzip", compression_opts=4, overwrite=False
+    ):
         """Save the image to an HDF5 file with all data and metadata.
 
         Stores the complete image data (RGB, gray, enhanced gray, object map) and
@@ -579,18 +631,26 @@ class ImageIOHandler(ImageColorSpace):
         """
         with h5py.File(filename, mode="a") as filehandler:
             # 1) Create image group if it doesnt already exist & sets grp obj
-            parent_grp = self._get_hdf5_group(filehandler, IO.SINGLE_IMAGE_HDF5_PARENT_GROUP)
-            if 'version' in parent_grp.attrs:
-                if parent_grp.attrs['version'] != phenotypic.__version__:
-                    raise warnings.warn(f"Version mismatch: {parent_grp.attrs['version']} != {phenotypic.__version__}")
+            parent_grp = self._get_hdf5_group(
+                filehandler, IO.SINGLE_IMAGE_HDF5_PARENT_GROUP
+            )
+            if "version" in parent_grp.attrs:
+                if parent_grp.attrs["version"] != phenotypic.__version__:
+                    raise warnings.warn(
+                        f"Version mismatch: {parent_grp.attrs['version']} != {phenotypic.__version__}"
+                    )
             else:
-                parent_grp.attrs['version'] = phenotypic.__version__
+                parent_grp.attrs["version"] = phenotypic.__version__
 
             grp = self._get_hdf5_group(filehandler, IO.SINGLE_IMAGE_HDF5_PARENT_GROUP)
 
             # 2) Save large arrays as datasets with chunking & compression
-            self._save_image2hdfgroup(grp=grp, compression=compression, compression_opts=compression_opts,
-                                      overwrite=overwrite, )
+            self._save_image2hdfgroup(
+                grp=grp,
+                compression=compression,
+                compression_opts=compression_opts,
+                overwrite=overwrite,
+            )
 
     @classmethod
     def _load_from_hdf5_group(cls, group, **kwargs) -> Image:
@@ -617,11 +677,15 @@ class ImageIOHandler(ImageColorSpace):
         # 3) Restore metadata
         prot = group["protected_metadata"].attrs
         img._metadata.protected.clear()
-        img._metadata.protected.update({k: int(prot[k]) if prot[k].isdigit() else prot[k] for k in prot})
+        img._metadata.protected.update(
+            {k: int(prot[k]) if prot[k].isdigit() else prot[k] for k in prot}
+        )
 
         pub = group["public_metadata"].attrs
         img._metadata.public.clear()
-        img._metadata.public.update({k: int(pub[k]) if pub[k].isdigit() else pub[k] for k in pub})
+        img._metadata.public.update(
+            {k: int(pub[k]) if pub[k].isdigit() else pub[k] for k in pub}
+        )
         return img
 
     @classmethod
@@ -630,7 +694,7 @@ class ImageIOHandler(ImageColorSpace):
         Load an ImageHandler instance from an HDF5 file at the default hdf5 location
         """
         with h5py.File(filename, "r") as filehandler:
-            grp = filehandler[str(IO.SINGLE_IMAGE_HDF5_PARENT_GROUP/image_name)]
+            grp = filehandler[str(IO.SINGLE_IMAGE_HDF5_PARENT_GROUP / image_name)]
             img = cls._load_from_hdf5_group(grp)
 
         return img
@@ -660,18 +724,18 @@ class ImageIOHandler(ImageColorSpace):
                 >>> img.save2pickle('image.pkl')
                 >>> loaded = Image.load_pickle('image.pkl')
         """
-        with open(filename, 'wb') as filehandler:
+        with open(filename, "wb") as filehandler:
             data2save = {
-                "_data.rgb"         : self._data.rgb,
-                '_data.gray'        : self._data.gray,
-                '_data.enh_gray'    : self._data.enh_gray,
-                'objmap'            : self.objmap[:],
+                "_data.rgb": self._data.rgb,
+                "_data.gray": self._data.gray,
+                "_data.enh_gray": self._data.enh_gray,
+                "objmap": self.objmap[:],
                 "protected_metadata": self._metadata.protected,
-                "public_metadata"   : self._metadata.public,
+                "public_metadata": self._metadata.public,
             }
 
             if hasattr(self, "grid_finder"):
-                data2save['grid_finder'] = self.grid_finder
+                data2save["grid_finder"] = self.grid_finder
 
             pickle.dump(data2save, filehandler)
 
@@ -704,7 +768,7 @@ class ImageIOHandler(ImageColorSpace):
                 >>> loaded = Image.load_pickle('image.pkl')
                 >>> print(loaded.shape)
         """
-        with open(filename, 'rb') as f:
+        with open(filename, "rb") as f:
             loaded = pickle.load(f)
 
         # Determine format from available data

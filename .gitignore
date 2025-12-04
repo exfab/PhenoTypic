@@ -53,3 +53,5 @@ debug/*.log
 # Development tools
 .ropeproject/
 .git.backup/
+AGENTS.md
+CLAUDE.md
