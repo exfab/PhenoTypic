@@ -26,8 +26,9 @@ class LOG_GROWTH_MODEL(MeasurementInfo):
     K_FIT = "K", "The carrying capacity"
     N0_FIT = "N0", "The initial number of the colony size metric being fitted"
     LAM = (
-        "lamda",
-        "The regularization factor applied to the max specific growth rate and initial population size",
+        "lambda",
+        "The regularization factor applied to the max specific growth rate "
+        "and initial population size",
     )
     ALPHA = (
         "alpha",

@@ -22,8 +22,12 @@ DESCRIPTION:
   directories.
 
 REQUIRED ARGUMENTS:
-  -d, --directories <dirs_file>    File with directory paths (one per line) or "auto" for auto-discovery
-  -o, --outdir <path>              Output directory for results
+  -d, --directories <dirs_file>    File with directory paths (one per line) or "auto" for auto-discovery.
+                                   Auto-discovery mode (use "auto") scans OUTDIR for immediate subdirectories
+                                   and processes them sequentially in alphabetical order. This is useful when
+                                   image data is already organized as subdirectories under a common parent.
+  -o, --outdir <path>              Output directory for results. When using auto-discovery, this is also
+                                   the parent directory scanned for subdirectories containing images.
   -v, --venv <path>                Path to virtual environment
   -s, --script <path>              Path to phenotypic.pipeline JSON (used by inline Python)
 
@@ -52,6 +56,29 @@ EXAMPLES:
   # With custom SLURM settings
   process_images_chain.sh -d dirs.txt -o ~/data -v ~/.venv -s ./my_pipeline.json \
     -c 8 -m 20G -t 4:00:00 -p long --nrows 8 --ncols 12
+
+AUTO-DISCOVERY BEHAVIOR:
+  When using -d auto, the script scans OUTDIR for immediate subdirectories only.
+
+  Example directory structure:
+    ~/data/
+    ├── exp_2024_01_a/  <-- DISCOVERED (immediate subdirectory)
+    │   ├── plate_001.jpg
+    │   └── plate_002.jpg
+    ├── exp_2024_01_b/  <-- DISCOVERED (immediate subdirectory)
+    │   └── plate_001.jpg
+    └── exp_2024_02_a/  <-- DISCOVERED (immediate subdirectory)
+        ├── plate_001.jpg
+        └── plate_002.jpg
+
+  Processing order: exp_2024_01_a → exp_2024_01_b → exp_2024_02_a (alphabetical)
+
+  IMPORTANT NOTES:
+  • Auto-discovery only finds ONE level deep (immediate subdirectories)
+  • Nested subdirectories are NOT scanned for images (e.g., exp_2024_01_a/nested_folder/)
+  • Directories are processed in alphabetical order for consistency
+  • Use manual directory file if you need non-alphabetical ordering or nested subdirectories
+  • OUTDIR must exist before running with auto-discovery (it will fail if it doesn't exist)
 EOF
     exit 1
 }

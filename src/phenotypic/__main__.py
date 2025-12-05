@@ -8,7 +8,7 @@ Example:
     python -m phenotypic my_pipeline.json ./raw_images ./results --n-jobs 4
 """
 
-from phenotypic.phenotypic_cli import main
+from phenotypic.phenotypicCLI import main
 
 if __name__ == "__main__":
     main()

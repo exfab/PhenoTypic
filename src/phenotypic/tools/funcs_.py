@@ -5,9 +5,6 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from phenotypic import Image
 
-# this is a dummy variable so annotation's in ImageOperation, MeasureFeatures classes don't cause integrity check to throw an exception
-Image: Any
-
 import numpy as np
 import time
 import inspect
@@ -15,7 +12,10 @@ import mmh3
 from functools import wraps
 
 from phenotypic.tools.exceptions_ import OperationIntegrityError
-from phenotypic.tools.constants_ import VALIDATE_OPS
+from phenotypic.settings_ import VALIDATE_OPS
+
+# this is a dummy variable so annotation's in ImageOperation, MeasureFeatures classes don't cause integrity check to throw an exception
+Image: Any
 
 
 def is_binary_mask(arr: np.ndarray):

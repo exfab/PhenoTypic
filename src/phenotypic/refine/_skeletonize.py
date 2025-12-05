@@ -55,7 +55,7 @@ class Skeletonize(ObjectRefiner):
 
             >>> from phenotypic.refine import Skeletonize
             >>> op = Skeletonize(method="zhang")
-            >>> image = op.apply(image, inplace=True)  # doctest: +SKIP
+            >>> image = op.apply(image, inplace=True) # doctest: +SKIP
 
     Raises:
         ValueError: If an invalid ``method`` is provided (checked during operation).

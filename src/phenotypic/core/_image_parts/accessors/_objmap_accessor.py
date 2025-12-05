@@ -328,12 +328,12 @@ class ObjectMap(SingleChannelAccessor):
         return self._backend.tocoo()
 
     def show(
-        self,
-        figsize=None,
-        title=None,
-        cmap: str = "nipy_spectral",
-        ax: None | plt.Axes = None,
-        mpl_params: None | dict = None,
+            self,
+            figsize=None,
+            title=None,
+            cmap: str = "nipy_spectral",
+            ax: None | plt.Axes = None,
+            mpl_params: None | dict = None,
     ) -> (plt.Figure, plt.Axes):
         """Display the object map using matplotlib's imshow.
 
@@ -385,12 +385,12 @@ class ObjectMap(SingleChannelAccessor):
                     image.gray.show(ax=ax[1])
         """
         return self._plot(
-            arr=self._backend.toarray(),
-            figsize=figsize,
-            title=title,
-            ax=ax,
-            cmap=cmap,
-            mpl_settings=mpl_params,
+                arr=self._backend.toarray(),
+                figsize=figsize,
+                title=title,
+                ax=ax,
+                cmap=cmap,
+                mpl_settings=mpl_params,
         )
 
     def reset(self) -> None:
@@ -414,10 +414,10 @@ class ObjectMap(SingleChannelAccessor):
                     assert image.objmap[:].max() == 0
         """
         self._root_image._data.sparse_object_map = self._dense_to_sparse(
-            self._root_image.gray.shape
+                self._root_image.gray.shape
         )
 
-    def relabel(self, connectivity: int = 1):
+    def relabel(self, connectivity: int = 2):
         """Relabel all connected components in the object map.
 
         This method reassigns labels to all connected components in the current

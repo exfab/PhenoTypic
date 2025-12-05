@@ -47,10 +47,10 @@ class ImageHandler(ImageDataManager):
     """
 
     def __init__(
-        self,
-        arr: np.ndarray | Image | None = None,
-        name: str | None = None,
-        bit_depth: Literal[8, 16] | None = None,
+            self,
+            arr: np.ndarray | Image | None = None,
+            name: str | None = None,
+            bit_depth: Literal[8, 16] | None = None,
     ):
         """Initialize ImageHandler with accessors and optional image data.
 
@@ -124,13 +124,13 @@ class ImageHandler(ImageDataManager):
 
         # Sections can only be set to another Image class
         if isinstance(other_image, self.__class__) or issubclass(
-            type(other_image), ImageHandler
+                type(other_image), ImageHandler
         ):
             # Handle the rgb case
             if not other_image.rgb.isempty() and not self.rgb.isempty():
                 if np.array_equal(self.rgb[key].shape, other_image.rgb.shape) is False:
                     raise ValueError(
-                        "The image being set must be of the same shape as the image elements being accessed.",
+                            "The image being set must be of the same shape as the image elements being accessed.",
                     )
                 else:
                     self._data.rgb[key] = other_image._data.rgb[:]
@@ -138,7 +138,7 @@ class ImageHandler(ImageDataManager):
             # handle other cases
             if np.array_equal(self.gray[key].shape, other_image.gray.shape) is False:
                 raise ValueError(
-                    "The image being set must be of the same shape as the image elements being accessed.",
+                        "The image being set must be of the same shape as the image elements being accessed.",
                 )
             else:
                 self._data.gray[key] = other_image._data.gray[:]
@@ -171,15 +171,15 @@ class ImageHandler(ImageDataManager):
         other_has_rgb = not other.rgb.isempty()
 
         rgb_check = (self_has_rgb == other_has_rgb) and (
-            not self_has_rgb or np.array_equal(self.rgb[:], other.rgb[:])
+                not self_has_rgb or np.array_equal(self.rgb[:], other.rgb[:])
         )
 
         return (
-            format_match
-            and rgb_check
-            and np.array_equal(self.gray[:], other.gray[:])
-            and np.array_equal(self.enh_gray[:], other.enh_gray[:])
-            and np.array_equal(self.objmap[:], other.objmap[:])
+                format_match
+                and rgb_check
+                and np.array_equal(self.gray[:], other.gray[:])
+                and np.array_equal(self.enh_gray[:], other.enh_gray[:])
+                and np.array_equal(self.objmap[:], other.objmap[:])
         )
 
     def __ne__(self, other):
@@ -236,7 +236,9 @@ class ImageHandler(ImageDataManager):
 
     @property
     def rgb(self) -> ImageRGB:
-        """Returns the ImageArray accessor; An image rgb represents the multichannel information
+        """Returns the ImageArray accessor; An image rgb represents the color
+        information with a range either between [0-255] or [0-65536] depending
+        on the bit-depth.
 
         Note:
             - rgb/gray element data is synced
@@ -626,9 +628,9 @@ class ImageHandler(ImageDataManager):
 
         """
         return ski.measure.regionprops(
-            label_image=np.full(shape=self.shape, fill_value=1),
-            intensity_image=self._data.gray,
-            cache=False,
+                label_image=np.full(shape=self.shape, fill_value=1),
+                intensity_image=self._data.gray,
+                cache=False,
         )
 
     @property
@@ -662,7 +664,7 @@ class ImageHandler(ImageDataManager):
         self._accessors.objmap.reset()
 
     def show(
-        self, ax: plt.Axes = None, figsize: Tuple[int, int] | None = None, **kwargs
+            self, ax: plt.Axes = None, figsize: Tuple[int, int] | None = None, **kwargs
     ) -> (plt.Figure, plt.Axes):
         """
         Displays the image data using matplotlib.
@@ -691,16 +693,16 @@ class ImageHandler(ImageDataManager):
             return self.gray.show(ax=ax, figsize=figsize, **kwargs)
 
     def show_overlay(
-        self,
-        object_label: Optional[int] = None,
-        figsize: Tuple[int, int] = (10, 5),
-        title: str | None = None,
-        show_labels: bool = False,
-        ax: plt.Axes = None,
-        *,
-        label_settings: None | dict = None,
-        overlay_settings: None | dict = None,
-        imshow_settings: None | dict = None,
+            self,
+            object_label: Optional[int] = None,
+            figsize: Tuple[int, int] = (10, 5),
+            title: str | None = None,
+            show_labels: bool = False,
+            ax: plt.Axes = None,
+            *,
+            label_settings: None | dict = None,
+            overlay_settings: None | dict = None,
+            imshow_settings: None | dict = None,
     ) -> (plt.Figure, plt.Axes):
         """
         Displays an overlay of the provided object label and image using the specified settings.
@@ -735,34 +737,34 @@ class ImageHandler(ImageDataManager):
 
         if not self.rgb.isempty():
             return self.rgb.show_overlay(
-                object_label=object_label,
-                figsize=figsize,
-                title=title,
-                show_labels=show_labels,
-                ax=ax,
-                label_settings=label_settings,
-                overlay_settings=overlay_settings,
-                imshow_settings=imshow_settings,
+                    object_label=object_label,
+                    figsize=figsize,
+                    title=title,
+                    show_labels=show_labels,
+                    ax=ax,
+                    label_settings=label_settings,
+                    overlay_settings=overlay_settings,
+                    imshow_settings=imshow_settings,
             )
         else:
             return self.gray.show_overlay(
-                object_label=object_label,
-                figsize=figsize,
-                title=title,
-                show_labels=show_labels,
-                ax=ax,
-                label_settings=label_settings,
-                overlay_settings=overlay_settings,
-                imshow_settings=imshow_settings,
+                    object_label=object_label,
+                    figsize=figsize,
+                    title=title,
+                    show_labels=show_labels,
+                    ax=ax,
+                    label_settings=label_settings,
+                    overlay_settings=overlay_settings,
+                    imshow_settings=imshow_settings,
             )
 
     def rotate(
-        self,
-        angle_of_rotation: int,
-        mode: str = "constant",
-        cval=0,
-        order=0,
-        preserve_range=True,
+            self,
+            angle_of_rotation: int,
+            mode: str = "constant",
+            cval=0,
+            order=0,
+            preserve_range=True,
     ) -> None:
         """
         Rotates various data attributes of the object by a specified angle.
@@ -785,44 +787,44 @@ class ImageHandler(ImageDataManager):
         """
         if not self.rgb.isempty():
             self._data.rgb = skimage_rotate(
-                image=self._data.rgb,
+                    image=self._data.rgb,
+                    angle=angle_of_rotation,
+                    mode=mode,
+                    clip=True,
+                    cval=cval,
+                    order=order,
+                    preserve_range=preserve_range,
+            )
+
+        self._data.gray = skimage_rotate(
+                image=self._data.gray,
                 angle=angle_of_rotation,
                 mode=mode,
                 clip=True,
                 cval=cval,
                 order=order,
                 preserve_range=preserve_range,
-            )
-
-        self._data.gray = skimage_rotate(
-            image=self._data.gray,
-            angle=angle_of_rotation,
-            mode=mode,
-            clip=True,
-            cval=cval,
-            order=order,
-            preserve_range=preserve_range,
         )
 
         self._data.enh_gray = skimage_rotate(
-            image=self._data.enh_gray,
-            angle=angle_of_rotation,
-            mode=mode,
-            clip=True,
-            cval=cval,
-            order=order,
-            preserve_range=preserve_range,
+                image=self._data.enh_gray,
+                angle=angle_of_rotation,
+                mode=mode,
+                clip=True,
+                cval=cval,
+                order=order,
+                preserve_range=preserve_range,
         )
 
         # Rotate the object map while preserving the details and using nearest-neighbor interpolation
         # This one must be nearest-neighbor
         self.objmap[:] = ndimage.rotate(
-            input=self.objmap[:],
-            angle=angle_of_rotation,
-            mode="constant",
-            cval=0,
-            order=0,
-            reshape=False,
+                input=self.objmap[:],
+                angle=angle_of_rotation,
+                mode="constant",
+                cval=0,
+                order=0,
+                reshape=False,
         )
 
     def reset(self) -> Type[Image]:

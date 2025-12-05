@@ -15,16 +15,6 @@ from enum import Enum
 from packaging.version import Version
 from pathlib import Path
 
-DEFAULT_MPL_IMAGE_FIGSIZE = (8, 6)
-
-VALIDATE_OPS = True
-
-
-class MPL:
-    """Holds defaults for matplotlib parameters"""
-
-    FIGSIZE = (8, 6)
-
 
 # Image format constants
 class IMAGE_MODE(Enum):
@@ -93,7 +83,7 @@ class IO:
     JPEG_FILE_EXTENSIONS = (".jpeg", ".JPEG", ".jpg")
     TIFF_EXTENSIONS = (".tif", ".tiff")
     ACCEPTED_FILE_EXTENSIONS = (
-        PNG_FILE_EXTENSIONS + JPEG_FILE_EXTENSIONS + TIFF_EXTENSIONS
+            PNG_FILE_EXTENSIONS + JPEG_FILE_EXTENSIONS + TIFF_EXTENSIONS
     )
 
     # Key used for PhenoTypic metadata container in image files

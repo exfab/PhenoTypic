@@ -4,7 +4,7 @@ import json
 import shutil
 import subprocess
 from pathlib import Path
-from typing import Tuple, TYPE_CHECKING
+from typing import Tuple, TYPE_CHECKING, Literal
 
 import pandas as pd
 
@@ -18,7 +18,8 @@ import numpy as np
 from PIL import Image as PIL_Image
 
 import phenotypic
-from phenotypic.tools.constants_ import MPL, METADATA, IO
+from phenotypic.tools.constants_ import METADATA, IO
+from phenotypic.settings_ import MPL
 import warnings
 from phenotypic.tools.funcs_ import normalize_rgb_bitdepth
 from abc import ABC
@@ -26,17 +27,30 @@ from abc import ABC
 
 class ImageAccessorBase(ABC):
     """
-    The base for classes that provides access to details and functionalities of a parent image.
+    Provides an abstract base class for image accessor operations.
 
-    The ImageAccessorBase class serves as a base class for interacting with a parent image
-    object. It requires an instance of the parent image for initialization to
-    enable seamless operations on the image's properties and data.
+    The `ImageAccessorBase` class serves as a foundational abstract base class
+    to standardize the handling and manipulation of image data. It provides
+    attributes and methods for image loading, property enforcement, and shape
+    management for image data, supporting both access and processing functionalities.
+
+    This class is particularly useful for processing and analyzing images of
+    microbe colonies grown on solid media agar. By ensuring consistent handling
+    of image formats, metadata validation, and structured array management, this
+    class helps streamline image analysis workflows, maintain metadata integrity,
+    and enable reproducible results.
 
     Attributes:
-        image (Image): The parent image object that this accessor interacts
-            with.
-        _accessor_property_name (str): Name of the property on Image that returns this accessor.
-            Override in subclasses (e.g., "gray", "rgb", "enh_gray").
+        _accessor_property_name (str): Internal property describing the type of
+            accessor (e.g., "gray", "rgb"). Changing this attribute to an
+            incorrect value can lead to loading images with mismatched metadata,
+            potentially resulting in erroneous downstream processing or analysis
+            inconsistencies.
+        _root_image (Image): The root image object from which operations derive.
+            Modifying this can change the basis of calculations or operations
+            performed within accessor methods. For example, a grayscale `_root_image`
+            might yield entirely different results when compared to an RGB image
+            for colony segmentation or measurement.
     """
 
     _accessor_property_name: str = "unknown"
@@ -79,19 +93,19 @@ class ImageAccessorBase(ABC):
 
         if phenotypic_data is None:
             warnings.warn(
-                f"No PhenoTypic metadata found in '{filepath.name}'. "
-                f"Cannot verify this image was saved from {expected_property}. "
-                "Loading anyway, but this may lead to undefined behavior.",
-                UserWarning,
+                    f"No PhenoTypic metadata found in '{filepath.name}'. "
+                    f"Cannot verify this image was saved from {expected_property}. "
+                    "Loading anyway, but this may lead to undefined behavior.",
+                    UserWarning,
             )
         else:
             saved_property = phenotypic_data.get("phenotypic_image_property", "unknown")
             if saved_property != expected_property:
                 warnings.warn(
-                    f"Metadata mismatch: Image was saved from '{saved_property}' "
-                    f"but being loaded as '{expected_property}'. "
-                    "This may lead to undefined behavior.",
-                    UserWarning,
+                        f"Metadata mismatch: Image was saved from '{saved_property}' "
+                        f"but being loaded as '{expected_property}'. "
+                        "This may lead to undefined behavior.",
+                        UserWarning,
                 )
 
         return arr
@@ -119,10 +133,10 @@ class ImageAccessorBase(ABC):
                 # Try exiftool for JPEG UserComment
                 if shutil.which("exiftool"):
                     result = subprocess.run(
-                        ["exiftool", "-json", "-UserComment", str(filepath)],
-                        capture_output=True,
-                        text=True,
-                        timeout=30,
+                            ["exiftool", "-json", "-UserComment", str(filepath)],
+                            capture_output=True,
+                            text=True,
+                            timeout=30,
                     )
                     if result.returncode == 0:
                         exif_data = json.loads(result.stdout)
@@ -166,7 +180,7 @@ class ImageAccessorBase(ABC):
             np.ndarray: A NumPy ndarray object with shape (r, c, ...).
         """
         raise NotImplementedError(
-            "This property is abc_ and must be implemented in a derived class."
+                "This property is abc_ and must be implemented in a derived class."
         )
 
     def __array__(self, dtype=None, copy=None):
@@ -283,12 +297,12 @@ class ImageAccessorBase(ABC):
         return foreground
 
     def histogram(
-        self,
-        figsize: Tuple[int, int] = (10, 5),
-        *,
-        cmap="gray",
-        linewidth=1,
-        channel_names: list | None = None,
+            self,
+            figsize: Tuple[int, int] = (10, 5),
+            *,
+            cmap="gray",
+            linewidth=1,
+            channel_names: list | None = None,
     ) -> Tuple[plt.Figure, plt.Axes]:
         """
         Plots the histogram(s) of an image along with the image itself. The behavior depends on
@@ -324,7 +338,7 @@ class ImageAccessorBase(ABC):
             arr_max = arr.max()
             if arr_min < 0.0 or arr_max > 1.0:
                 raise ValueError(
-                    f"Float image arrays must be within [0.0, 1.0]. Found range [{arr_min}, {arr_max}]."
+                        f"Float image arrays must be within [0.0, 1.0]. Found range [{arr_min}, {arr_max}]."
                 )
             x_limits = (0.0, 1.0)
         elif np.issubdtype(dtype, np.bool_):
@@ -340,15 +354,15 @@ class ImageAccessorBase(ABC):
                 fig, axes = plt.subplots(nrows=1, ncols=2, figsize=figsize)
                 axes = axes.ravel()
                 axes[0] = self._plot(
-                    arr=self._subject_arr,
-                    figsize=figsize,
-                    title=self._root_image.name,
-                    cmap=cmap,
-                    ax=axes[0],
+                        arr=self._subject_arr,
+                        figsize=figsize,
+                        title=self._root_image.name,
+                        cmap=cmap,
+                        ax=axes[0],
                 )
                 hist, histc = ski.exposure.histogram(
-                    image=self._subject_arr[:],
-                    nbins=2 ** self._root_image.metadata[METADATA.BIT_DEPTH],
+                        image=self._subject_arr[:],
+                        nbins=2 ** self._root_image.metadata[METADATA.BIT_DEPTH],
                 )
                 axes[1].plot(histc, hist, lw=linewidth)
                 axes[1].set_xlim(x_limits)
@@ -359,36 +373,37 @@ class ImageAccessorBase(ABC):
                 for idx, ax in enumerate(axes.flat):
                     if idx == 0:
                         self._plot(
-                            arr=self._subject_arr[:],
-                            figsize=figsize,
-                            title=self._root_image.name,
-                            ax=ax,
+                                arr=self._subject_arr[:],
+                                figsize=figsize,
+                                title=self._root_image.name,
+                                ax=ax,
                         )
                     else:
                         hist, histc = ski.exposure.histogram(
-                            image=self._subject_arr[:, :, idx - 1],
-                            nbins=2 ** self._root_image.metadata[METADATA.BIT_DEPTH],
+                                image=self._subject_arr[:, :, idx - 1],
+                                nbins=2 ** self._root_image.metadata[
+                                    METADATA.BIT_DEPTH],
                         )
                         ax.plot(histc, hist, lw=linewidth)
                         ax.set_title(
-                            f"Channel-{channel_names[idx - 1] if channel_names else idx}"
+                                f"Channel-{channel_names[idx - 1] if channel_names else idx}"
                         )
                         ax.set_xlim(x_limits)
 
             case _:
                 raise ValueError(
-                    f"Unsupported array dimension: {self._subject_arr.ndim}"
+                        f"Unsupported array dimension: {self._subject_arr.ndim}"
                 )
         return fig, axes
 
     def _plot(
-        self,
-        arr: np.ndarray,
-        figsize: Tuple[int, int] | None = None,
-        title: str | bool | None = None,
-        cmap: str = "gray",
-        ax: plt.Axes | None = None,
-        mpl_settings: dict | None = None,
+            self,
+            arr: np.ndarray,
+            figsize: Tuple[int, int] | None = None,
+            title: str | bool | None = None,
+            cmap: str = "gray",
+            ax: plt.Axes | None = None,
+            mpl_settings: dict | None = None,
     ) -> tuple[plt.Figure, plt.Axes]:
         """
         Plots an image array using Matplotlib.
@@ -414,15 +429,24 @@ class ImageAccessorBase(ABC):
         fig, ax = (ax.get_figure(), ax) if ax else plt.subplots(figsize=figsize)
 
         mpl_settings = mpl_settings if mpl_settings else {}
-        cmap = mpl_settings.get("cmap", cmap)
+        cmap = mpl_settings.pop("cmap", cmap)
 
         # matplotlib.imshow can only handle ranges 0-1 or 0-255
         # this adds handling for higher bit-depth images
-        plot_arr = normalize_rgb_bitdepth(arr)
+        plot_arr = normalize_rgb_bitdepth(arr) if arr.ndim == 3 else arr
+        if np.issubdtype(plot_arr.dtype, np.integer):
+            vmax = np.iinfo(plot_arr.dtype).max
+        elif np.issubdtype(plot_arr.dtype, np.floating):
+            vmax = 1.0
+        else:
+            vmax = 1
+        vmax = mpl_settings.pop("vmax", vmax)
 
         ax.imshow(
-            plot_arr, cmap=cmap, **mpl_settings
-        ) if plot_arr.ndim == 2 else ax.imshow(plot_arr, **mpl_settings)
+                plot_arr, cmap=cmap, **mpl_settings
+        ) if plot_arr.ndim == 2 else ax.imshow(plot_arr,
+                                               vmax=vmax,
+                                               **mpl_settings)
 
         ax.grid(False)
 
@@ -441,13 +465,13 @@ class ImageAccessorBase(ABC):
         return fig, ax
 
     def _plot_obj_labels(
-        self,
-        ax: plt.Axes,
-        color: str,
-        size: int,
-        facecolor: str,
-        object_label: None | int,
-        **kwargs,
+            self,
+            ax: plt.Axes,
+            color: str,
+            size: int,
+            facecolor: str,
+            object_label: None | int,
+            **kwargs,
     ):
         """
         Adds labels to objects in an image plot. This method overlays numerical labels onto
@@ -486,48 +510,48 @@ class ImageAccessorBase(ABC):
             if object_label is None:
                 text_rr, text_cc = props[i].centroid
                 ax.text(
-                    x=text_cc,
-                    y=text_rr,
-                    s=f"{label}",
-                    color=color,
-                    fontsize=size,
-                    bbox=dict(
-                        facecolor=facecolor,
-                        edgecolor="none",
-                        alpha=0.6,
-                        boxstyle="round",
-                    ),
-                    **kwargs,
+                        x=text_cc,
+                        y=text_rr,
+                        s=f"{label}",
+                        color=color,
+                        fontsize=size,
+                        bbox=dict(
+                                facecolor=facecolor,
+                                edgecolor="none",
+                                alpha=0.6,
+                                boxstyle="round",
+                        ),
+                        **kwargs,
                 )
             elif object_label == label:
                 text_rr, text_cc = props[i].centroid
                 ax.text(
-                    x=text_cc,
-                    y=text_rr,
-                    s=f"{label}",
-                    color=color,
-                    fontsize=size,
-                    bbox=dict(
-                        facecolor=facecolor,
-                        edgecolor="none",
-                        alpha=0.6,
-                        boxstyle="round",
-                    ),
-                    **kwargs,
+                        x=text_cc,
+                        y=text_rr,
+                        s=f"{label}",
+                        color=color,
+                        fontsize=size,
+                        bbox=dict(
+                                facecolor=facecolor,
+                                edgecolor="none",
+                                alpha=0.6,
+                                boxstyle="round",
+                        ),
+                        **kwargs,
                 )
         return ax
 
     def _plot_overlay(
-        self,
-        arr: np.ndarray,
-        objmap: np.ndarray,
-        figsize: (int, int) = (8, 6),
-        title: str | bool | None = None,
-        cmap: str = "gray",
-        ax: plt.Axes = None,
-        *,
-        overlay_settings: dict | None = None,
-        mpl_settings: dict | None = None,
+            self,
+            arr: np.ndarray,
+            objmap: np.ndarray,
+            figsize: (int, int) = (8, 6),
+            title: str | bool | None = None,
+            cmap: str = "gray",
+            ax: plt.Axes = None,
+            *,
+            overlay_settings: dict | None = None,
+            mpl_settings: dict | None = None,
     ) -> (plt.Figure, plt.Axes):
         """
         Plots an array with optional object map overlay and customization options.
@@ -560,31 +584,32 @@ class ImageAccessorBase(ABC):
         overlay_settings = overlay_settings if overlay_settings else {}
         overlay_alpha = overlay_settings.get("alpha", 0.15)
         overlay_arr = ski.color.label2rgb(
-            label=objmap, image=arr, bg_label=0, alpha=overlay_alpha, **overlay_settings
+                label=objmap, image=arr, bg_label=0, alpha=overlay_alpha,
+                **overlay_settings
         )
 
         fig, ax = self._plot(
-            arr=overlay_arr,
-            figsize=figsize,
-            title=title,
-            cmap=cmap,
-            ax=ax,
-            mpl_settings=mpl_settings,
+                arr=overlay_arr,
+                figsize=figsize,
+                title=title,
+                cmap=cmap,
+                ax=ax,
+                mpl_settings=mpl_settings,
         )
 
         return fig, ax
 
     def show_overlay(
-        self,
-        object_label: None | int = None,
-        figsize: tuple[int, int] | None = None,
-        title: str | None = None,
-        show_labels: bool = False,
-        ax: plt.Axes = None,
-        *,
-        label_settings: None | dict = None,
-        overlay_settings: None | dict = None,
-        imshow_settings: None | dict = None,
+            self,
+            object_label: None | int = None,
+            figsize: tuple[int, int] | None = None,
+            title: str | None = None,
+            show_labels: bool = False,
+            ax: plt.Axes = None,
+            *,
+            label_settings: None | dict = None,
+            overlay_settings: None | dict = None,
+            imshow_settings: None | dict = None,
     ) -> tuple[plt.Figure, plt.Axes]:
         """
         Displays an overlay of the object map on the parent image with optional annotations.
@@ -623,22 +648,22 @@ class ImageAccessorBase(ABC):
             label_settings = {}
 
         fig, ax = self._plot_overlay(
-            arr=self._subject_arr,
-            objmap=objmap,
-            ax=ax,
-            figsize=figsize,
-            title=title,
-            mpl_settings=imshow_settings,
-            overlay_settings=overlay_settings,
+                arr=self._subject_arr,
+                objmap=objmap,
+                ax=ax,
+                figsize=figsize,
+                title=title,
+                mpl_settings=imshow_settings,
+                overlay_settings=overlay_settings,
         )
 
         if show_labels:
             ax = self._plot_obj_labels(
-                ax=ax,
-                color=label_settings.get("color", "white"),
-                size=label_settings.get("size", 12),
-                facecolor=label_settings.get("facecolor", "red"),
-                object_label=object_label,
+                    ax=ax,
+                    color=label_settings.get("color", "white"),
+                    size=label_settings.get("size", 12),
+                    facecolor=label_settings.get("facecolor", "red"),
+                    object_label=object_label,
             )
         return fig, ax
 
@@ -660,10 +685,10 @@ class ImageAccessorBase(ABC):
                 public[str(key)] = value
 
         return {
-            "phenotypic_version": phenotypic.__version__,
+            "phenotypic_version"       : phenotypic.__version__,
             "phenotypic_image_property": f"Image.{self._accessor_property_name}",
-            "protected": protected,
-            "public": public,
+            "protected"                : protected,
+            "public"                   : public,
         }
 
     @staticmethod
@@ -682,23 +707,23 @@ class ImageAccessorBase(ABC):
         if shutil.which("exiftool"):
             try:
                 subprocess.run(
-                    [
-                        "exiftool",
-                        "-overwrite_original",
-                        f"-UserComment={metadata_json}",
-                        str(filepath),
-                    ],
-                    capture_output=True,
-                    text=True,
-                    timeout=30,
-                    check=True,
+                        [
+                            "exiftool",
+                            "-overwrite_original",
+                            f"-UserComment={metadata_json}",
+                            str(filepath),
+                        ],
+                        capture_output=True,
+                        text=True,
+                        timeout=30,
+                        check=True,
                 )
             except (subprocess.TimeoutExpired, subprocess.CalledProcessError) as e:
                 warnings.warn(f"Failed to write EXIF metadata to JPEG: {e}")
         else:
             warnings.warn(
-                "exiftool not found. JPEG metadata will not be saved. "
-                "Install exiftool for full metadata support."
+                    "exiftool not found. JPEG metadata will not be saved. "
+                    "Install exiftool for full metadata support."
             )
 
     @staticmethod
@@ -728,22 +753,54 @@ class ImageAccessorBase(ABC):
         # TIFF ImageDescription tag is 270
         pil_image.save(filepath, tiffinfo={270: metadata_json})
 
-    def imsave(self, filepath: str | Path | None = None) -> None:
-        """Save the image array to a file with PhenoTypic metadata embedded.
+    def imsave(self,
+               filepath: str | Path | None = None,
+               bit_depth: Literal[8, 16] | None = None) -> None:
+        """
+        Saves an array representing a microbe colony image to a specified file format while preserving or adjusting
+        metadata and pixel depth as needed. Supports JPEG, PNG, and TIFF formats.
 
-        Metadata is embedded in format-specific locations:
-        - JPEG: EXIF UserComment tag
-        - PNG: tEXt chunk with key 'phenotypic'
-        - TIFF: ImageDescription tag (270)
+        The behavior of the function is context-sensitive based on the file format's restrictions and array properties.
+        For microbe colony images on agar media, proper file format selection and bit depth adjustment can have an impact
+        on the accuracy of image analysis and preservation of data integrity.
 
         Args:
-            filepath: Path to save the image file. Extension determines format.
+            filepath (str | Path | None): The destination file path where the image will be saved. The extension of the
+                file path determines the image format (e.g., .jpeg, .png, .tiff). Changing the file format influences how
+                the image data is handled during saving:
+                    1. `.jpeg`: Compression or loss of data may occur. Maximal value limit (255) for uint8 pixel
+                       depth affects the fidelity of rich intensity details in microbe colonies.
+                    2. `.png`: Retains high-quality output but supports only 8-bit or 16-bit images. Conversions may
+                       occur if the array has a different data type, which could result in data loss.
+                    3. `.tiff`: Ideal for high-bit-depth precision and analysis preservation; best for maintaining
+                       intricate morphological details of microbial colonies.
+
+            bit_depth (Literal[8, 16] | None, optional): Specifies the bit depth of the saved image (either 8-bit or
+                16-bit). The provided bit depth must align with the file format's capabilities. Misalignment could
+                trigger conversion with possible data truncation or rounding. For example:
+                    - 8-bit: Useful for efficiently representing intensity when detail is moderate, suitable for JPEG
+                      or simple PNG outputs.
+                    - 16-bit: Allows for higher intensity ranges, especially valuable for preserving subtle
+                      morphological gradient differentiation when analyzing colonies.
 
         Raises:
-            ValueError: If file extension is not supported.
+            ValueError: An error occurs when an unsupported file extension is provided in `filepath`.
+
+        Warns:
+            UserWarnings: Warnings are issued under the following conditions:
+                - Saving a 16-bit or floating-point array as JPEG, as these conversions may cause information loss due
+                  to format restrictions.
+                - Saving a floating-point array as PNG when conversions to 8-bit or 16-bit integers might lead to truncated
+                  or altered pixel intensity values.
         """
-        filepath = Path(filepath)
         from PIL import Image as PIL_Image
+
+        if bit_depth is None:
+            bit_depth = self._root_image.bit_depth
+        elif bit_depth not in [8, 16]:
+            raise ValueError(f"Unsupported bit depth: {bit_depth}")
+
+        filepath = Path(filepath)
 
         arr2save = self._subject_arr
 
@@ -758,12 +815,12 @@ class ImageAccessorBase(ABC):
                         pass
                     case np.uint16:
                         warnings.warn(
-                            "Saving a 16 bit array as a jpeg will result in information loss if the max value is higher than 255"
+                                "Saving a 16 bit array as a jpeg will result in information loss if the max value is higher than 255"
                         )
                         arr2save = ski.util.img_as_ubyte(arr2save)
                     case dt if np.issubdtype(dt, np.floating):
                         warnings.warn(
-                            "Saving a float array as a jpeg will result in information loss if the max value is higher than 255"
+                                "Saving a float array as a jpeg will result in information loss if the max value is higher than 255"
                         )
                         arr2save = ski.util.img_as_ubyte(arr2save)
                 pil_img = PIL_Image.fromarray(arr2save)
@@ -775,12 +832,13 @@ class ImageAccessorBase(ABC):
                         pass
                     case dt if np.issubdtype(dt, np.floating):
                         warnings.warn(
-                            ".png images only accept 8 bit ana 16 bit integer arrays. "
-                            "Converting this array may cause information loss"
+                                ".png images only accept 8 bit and 16 bit "
+                                "integer arrays. Converting this array may cause "
+                                "information loss"
                         )
                         arr2save = (
                             ski.util.img_as_ubyte(arr2save)
-                            if self._root_image.bit_depth == 8
+                            if bit_depth == 8
                             else ski.util.img_as_uint(arr2save)
                         )
                 pil_img = PIL_Image.fromarray(arr2save)

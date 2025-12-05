@@ -7,6 +7,7 @@ import skimage
 
 from phenotypic.core._image_parts.accessor_abstracts import MultiChannelAccessor
 from phenotypic.tools.constants_ import IMAGE_MODE
+from phenotypic.tools.funcs_ import normalize_rgb_bitdepth
 from phenotypic.tools.exceptions_ import (
     ArrayKeyValueShapeMismatchError,
     NoArrayError,
@@ -168,13 +169,13 @@ class ImageRGB(MultiChannelAccessor):
             if not np.issubdtype(value.dtype, np.number):  # assert numeric numpy value
                 raise TypeError("Array values must be a numeric scalar or np.array")
             if (
-                value.shape != self._root_image._data.rgb[key].shape
+                    value.shape != self._root_image._data.rgb[key].shape
             ):  # assert window shape equals value shape
                 raise ArrayKeyValueShapeMismatchError
 
         else:
             raise ValueError(
-                f"Unsupported type for setting the array. Value should be scalar or a numpy array: {type(value)}"
+                    f"Unsupported type for setting the array. Value should be scalar or a numpy array: {type(value)}"
             )
 
         self._root_image._data.rgb[key] = value
@@ -201,4 +202,11 @@ class ImageRGB(MultiChannelAccessor):
             returned array do not affect the parent image. Use the indexing interface
             (image.rgb[key] = value) to modify the image.
         """
-        return self._root_image._data.rgb.copy()
+        view = self._root_image._data.rgb
+        view.flags.writeable = False
+        return view
+
+    @property
+    def normalized(self) -> np.ndarray:
+        """Return a copy of the normalized RGB image array."""
+        return normalize_rgb_bitdepth(self._subject_arr.copy())

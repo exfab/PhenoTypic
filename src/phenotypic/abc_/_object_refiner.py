@@ -580,6 +580,7 @@ class ObjectRefiner(ImageOperation, ABC):
                 print(f"Detected and cleaned: {len(colonies)} colonies")
                 print(f"Color measurements: {measurements.shape}")
     """
+    _footprint_shapes = {"square", "diamond", "disk"}
 
     @validate_operation_integrity("image.rgb", "image.gray", "image.enh_gray")
     def apply(self, image: Image, inplace: bool = False) -> Image:
@@ -587,49 +588,53 @@ class ObjectRefiner(ImageOperation, ABC):
 
     @staticmethod
     def _make_footprint(
-        shape: Literal["square", "diamond", "disk"], radius: int
+            shape: Literal["square", "diamond", "disk"] | np.ndarray, radius: int
     ) -> np.ndarray:
         """
-        Creates a morphological footprint for image processing.
+        Generates a binary footprint (structuring element) for morphological operations.
 
-        This static utility method generates a structuring element (footprint) useful
-        for morphological operations like dilation and erosion. It supports different
-        shapes such as square, diamond, and disk, which are often used in image analysis
-        tasks. These morphological tools are particularly helpful in analyzing colonies
-        of microbes on solid media agar.
+        A footprint is a binary array that defines the neighborhood used in processing elements
+        in an image during morphological operations. It can be generated as a predefined shape
+        such as square, diamond, or disk, or can be manually specified using a custom numpy
+        array. This function is typically used for tasks such as dilating or eroding features
+        in images of microbe colonies on solid media agar.
+
+        By adjusting the shape and radius of the footprint, users can influence the scale
+        and connectivity of morphological processing in the context of image analysis. Larger
+        radii result in operations affecting wider regions in the image, and the specific shape
+        affects how colonies with irregular or complex structures are processed.
 
         Args:
-            shape (Literal["square", "diamond", "disk"]): The shape of the footprint to create.
-                Adjusting the shape changes the way the morphological operations interact
-                with the image. For example:
-                - "square" creates a square footprint, which may emphasize features with
-                  sharp edges.
-                - "diamond" creates a diamond-shaped footprint, which may enhance diagonal
-                  connections while being less sensitive to orthogonal edges.
-                - "disk" generates a circular footprint, which may better preserve rounded
-                  microbial colony shapes.
-
-            radius (int): The radius of the footprint. This defines the size of the
-                structuring element. Larger radii will lead to broader morphological
-                effects, which could impact the resolution of small colonies but can help
-                to merge fragmented edges or clean noise.
+            shape: Literal["square", "diamond", "disk"] | np.ndarray
+                Defines the shape of the footprint. Options include:
+                - "square": Creates a square-shaped footprint of width `2 * radius`.
+                - "diamond": Creates a diamond-shaped footprint with radius `radius`.
+                - "disk": Creates a disk-shaped footprint with radius `radius`.
+                - np.ndarray: A custom binary array can be directly passed for specific applications.
+                  Suitable for advanced cases where predefined shapes are insufficient.
+            radius: int
+                The radius of the footprint for the selected shape. A higher radius results in
+                a larger footprint, increasing the size of regions affected by processing.
+                For analyzing microbe colonies, it can determine how closely neighboring
+                colonies are treated as connected.
 
         Returns:
-            np.ndarray: A binary numpy array representing the generated footprint. The
-            footprint will be used for convolutional operations over the microbial colony
-            image. The specific shape and radius passed as arguments dictate the size
-            and morphology of this array.
+            np.ndarray: A binary array representing the footprint. Shape and size depend
+                on the `shape` and `radius` parameters.
 
         Raises:
-            ValueError: If an unsupported shape type is passed to the function.
+            ValueError: If an unsupported shape value is provided.
         """
-        radius = int(radius)
-        match shape:
-            case "square":
-                return square(width=radius * 2)
-            case "diamond":
-                return diamond(radius=radius)
-            case "disk":
-                return disk(radius=radius)
-            case _:
-                raise ValueError(f"Unknown shape: {shape}")
+        if isinstance(shape, np.ndarray):
+            return shape
+        else:
+            radius = int(radius)
+            match shape:
+                case "square":
+                    return square(width=radius*2)
+                case "diamond":
+                    return diamond(radius=radius)
+                case "disk":
+                    return disk(radius=radius)
+                case _:
+                    raise ValueError(f"Unknown shape: {shape}")

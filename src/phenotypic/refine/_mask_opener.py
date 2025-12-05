@@ -52,7 +52,12 @@ class MaskOpener(ObjectRefiner):
             during operation).
     """
 
-    def __init__(self, footprint: Literal["auto"] | np.ndarray | int | None = None):
+    def __init__(
+            self,
+            footprint: Literal[
+                           "auto", "square", "diamond", "disk"] | np.ndarray | None = None,
+            radius: int = 5
+    ):
         """Initialize the opener.
 
         Args:
@@ -73,12 +78,12 @@ class MaskOpener(ObjectRefiner):
     def _operate(self, image: Image) -> Image:
         if self.footprint == "auto":
             footprint = self._make_footprint(
-                "diamond", radius=max(3, round(np.min(image.shape) * 0.005))
+                    "diamond", radius=max(3, round(np.min(image.shape)*0.005))
             )
         elif isinstance(self.footprint, np.ndarray):
             footprint = self.footprint
-        elif isinstance(self.footprint, (int, float)):
-            footprint = self._make_footprint("diamond", radius=int(self.footprint))
+        elif self.footprint in self._footprint_shapes:
+            footprint = self._make_footprint(self.footprint, radius=int(self.footprint))
         elif not self.footprint:
             footprint = self.footprint
         else:

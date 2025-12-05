@@ -2,7 +2,7 @@
 
 Implements thresholding- and edge-based approaches to turn enhanced grayscale images
 into binary colony masks, with options suited to faint growth, uneven agar, or dense plates.
-Includes global histogram methods (Otsu, Li, Yen, Isodata, Triangle, Mean, Minimum),
+Includes global histogram methods (Otsu, Li, Yen, Isodata, Triangle, Mean, Minimum, Manual),
 edge-aware variants (Canny), grid-aware detection (Gitter), and watershed-based
 segmentation for clustered colonies.
 """
@@ -11,6 +11,7 @@ from ._canny_detector import CannyDetector
 from ._round_peaks_detector import RoundPeaksDetector
 from ._isodata_detector import IsodataDetector
 from ._li_detector import LiDetector
+from ._manual_detector import ManualDetector
 from ._mean_detector import MeanDetector
 from ._minimum_detector import MinimumDetector
 from ._otsu_detector import OtsuDetector
@@ -23,6 +24,7 @@ __all__ = [
     "RoundPeaksDetector",
     "IsodataDetector",
     "LiDetector",
+    "ManualDetector",
     "MeanDetector",
     "MinimumDetector",
     "OtsuDetector",
