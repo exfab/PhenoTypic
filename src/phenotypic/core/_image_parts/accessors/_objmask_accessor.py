@@ -61,6 +61,10 @@ class ObjectMask(SingleChannelAccessor):
     """
 
     @property
+    def _accessor_property_name(self) -> str:
+        return "objmask"
+
+    @property
     def _backend(self):
         """Return the sparse matrix backend of the object mask.
 
@@ -213,7 +217,7 @@ class ObjectMask(SingleChannelAccessor):
 
         # Relabel the mask and update the backend atomically
         # This is where the relabeling occurs to maintain consistent object IDs
-        relabeled = label(mask)
+        relabeled = label(mask > 0)
         new_sparse = self._root_image.objmap._dense_to_sparse(relabeled)
         new_sparse.eliminate_zeros()
         self._root_image._data.sparse_object_map = new_sparse
@@ -284,11 +288,11 @@ class ObjectMask(SingleChannelAccessor):
         self._root_image.objmap.reset()
 
     def show(
-        self,
-        ax: plt.Axes | None = None,
-        figsize: tuple[int, int] | None = None,
-        cmap: str = "gray",
-        title: str | None = None,
+            self,
+            ax: plt.Axes | None = None,
+            figsize: tuple[int, int] | None = None,
+            cmap: str = "gray",
+            title: str | None = None,
     ) -> tuple[plt.Figure, plt.Axes]:
         """Display the binary object mask as a Matplotlib image.
 
@@ -327,8 +331,10 @@ class ObjectMask(SingleChannelAccessor):
                     objmask.show(ax=ax1, title='Mask')
                     image.gray.show(ax=ax2, title='Original')
         """
+        cmap = plt.get_cmap(cmap)
+        cmap.set_bad(color="black")
         return self._plot(
-            arr=self._subject_arr, figsize=figsize, ax=ax, title=title, cmap=cmap
+                arr=self._subject_arr, figsize=figsize, ax=ax, title=title, cmap=cmap
         )
 
     def _create_foreground(self, array: np.ndarray, bg_label: int = 0) -> np.ndarray:
@@ -375,6 +381,23 @@ class ObjectMask(SingleChannelAccessor):
         array[~mask] = bg_label
         return array
 
+    def vmax(self) -> int:
+        """Returns the maximum value for the object mask data type.
+
+        Object masks are stored as uint16 arrays where values represent binary mask
+        (0 for background, 1 for foreground). This returns the theoretical maximum
+        value that the uint16 dtype can represent.
+        """
+        return np.iinfo(self._subject_arr.dtype).max
+
+    def vmin(self) -> int:
+        """Returns the minimum value for the object mask data type.
+
+        Object masks are stored as uint16 arrays where 0 represents background.
+        This returns the theoretical minimum value that the uint16 dtype can represent.
+        """
+        return np.iinfo(self._subject_arr.dtype).min
+
     @property
     def _subject_arr(self) -> np.ndarray:
         """Return the dense binary representation of the object mask.
@@ -396,4 +419,4 @@ class ObjectMask(SingleChannelAccessor):
         # ``uint16`` array here, objmask images will be written as 16-bit where
         # possible, and automatically converted to 8-bit for JPEGs. This matches
         # the behaviour of ``ObjectMap`` whose backend is already ``uint16``.
-        return (self._backend.toarray() > 0).astype(np.uint16)
+        return (self._backend.toarray() > 0).astype(np.bool_)

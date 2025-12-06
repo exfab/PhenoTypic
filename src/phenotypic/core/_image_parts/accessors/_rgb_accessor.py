@@ -55,7 +55,9 @@ class ImageRGB(MultiChannelAccessor):
                 fig, ax = rgb_accessor.show()
     """
 
-    _accessor_property_name: str = "rgb"
+    @property
+    def _accessor_property_name(self) -> str:
+        return "rgb"
 
     def __getitem__(self, key) -> np.ndarray:
         """Return a read-only view of the RGB subregion specified by the given key.
@@ -210,3 +212,13 @@ class ImageRGB(MultiChannelAccessor):
     def normalized(self) -> np.ndarray:
         """Return a copy of the normalized RGB image array."""
         return normalize_rgb_bitdepth(self._subject_arr.copy())
+
+    def vmax(self) -> int:
+        """Returns the maximum value in the RGB image array. The max value depends
+        on the image bit depth. 8 bit-depth->255 and 16 bit-depth->65536"""
+        return np.iinfo(self._subject_arr.dtype).max
+
+    def vmin(self) -> int:
+        """Returns the minimum value in the RGB image array.
+        For RGB arrays, this is 0"""
+        return np.iinfo(self._subject_arr.dtype).min

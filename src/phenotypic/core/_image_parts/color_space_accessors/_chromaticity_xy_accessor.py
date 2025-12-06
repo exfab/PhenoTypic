@@ -33,7 +33,9 @@ class xyChromaticityAccessor(ColorSpaceAccessor):
                 shape = image.color.xy.shape  # (height, width, 2)
     """
 
-    _accessor_property_name: str = "color.xy"
+    @property
+    def _accessor_property_name(self) -> str:
+        return "color.xy"
 
     @property
     def _subject_arr(self) -> np.ndarray:

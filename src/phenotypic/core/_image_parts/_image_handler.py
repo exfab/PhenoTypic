@@ -758,6 +758,76 @@ class ImageHandler(ImageDataManager):
                     imshow_settings=imshow_settings,
             )
 
+    def show_data(self,
+                  mode: Literal["objmap", "overlay"] = "objmap",
+                  figsize: Tuple[int, int] | None = (12, 8), **kwargs):
+        """
+        Displays multiple data representations in a single figure.
+
+        The `show_data` method generates a matplotlib figure containing multiple
+        representations of the image data, which can help analyze microbe colonies
+        cultured on solid media agar. By visualizing various properties such as
+        grayscale images, processed (enhanced) images, object maps, or overlays,
+        the user can better understand and interpret spatial patterns, colony size,
+        and distribution. The choice of `mode` and adjustments to `figsize` can
+        significantly impact how information is displayed, affecting the clarity
+        and detail available for inspection.
+
+        Args:
+            mode (Literal["objmap", "overlay"]): Defines the type of data to display
+                in the final subplot.
+                - "objmap": Displays the object map, which can highlight detected
+                  regions of interest such as individual colonies or features
+                  extracted from the image.
+                - "overlay": Adds an overlay of detected features on top of the
+                  base image, helping to contextualize detected objects.
+
+                The selected mode alters how colony regions or boundaries are
+                visualized, potentially making some aspects of the colonies more
+                or less prominent.
+
+            figsize (Tuple[int, int] | None): Specifies the dimensions of the
+                entire rendered figure. Larger values yield a more spread-out
+                figure, which can enhance visibility of fine details, such as
+                small colonies or intricate boundary structures. Smaller values
+                create a compact layout that may be faster to interpret but could
+                reduce visibility of intricate features.
+
+            **kwargs: Additional keyword arguments passed to the underlying
+                visualization methods. These could customize aspects like
+                colormap, scaling, or annotation settings. Precise customization
+                ensures better fit for varying experiment conditions or specific
+                analysis goals.
+
+        Returns:
+            Tuple[matplotlib.figure.Figure, ndarray]: A tuple containing:
+                - The matplotlib `Figure` instance representing the generated
+                  visualization.
+                - The axes array (`ndarray`) associated with the figure, which
+                  can be used for further customization or additional plotting.
+
+        """
+        if self.rgb.isempty():
+            fig, axes = plt.subplots(nrows=3, ncols=1, figsize=figsize)
+            ax = axes.ravel()
+            idxer_helper = 1
+        else:
+            fig, axes = plt.subplots(nrows=2, ncols=2, figsize=figsize)
+            idxer_helper = 0
+            ax = axes.ravel()
+            self.rgb.show(ax=ax[0], **kwargs)
+
+        self.gray.show(ax=ax[1 - idxer_helper], **kwargs)
+        self.enh_gray.show(ax=ax[2 - idxer_helper], **kwargs)
+
+        match mode:
+            case "overlay":
+                self.show_overlay(ax=ax[3 - idxer_helper], **kwargs)
+            case "objmap":
+                self.objmap.show(ax=ax[3 - idxer_helper], **kwargs)
+
+        return fig, axes
+
     def rotate(
             self,
             angle_of_rotation: int,

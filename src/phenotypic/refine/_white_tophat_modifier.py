@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import Literal, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from phenotypic import Image
@@ -11,7 +11,7 @@ from skimage.morphology import white_tophat
 from phenotypic.abc_ import ObjectRefiner
 
 
-class WhiteTophatModifier(ObjectRefiner):
+class WhiteTophat(ObjectRefiner):
     """Suppress small bright structures in the mask using white tophat.
 
     Intuition:
@@ -37,54 +37,64 @@ class WhiteTophatModifier(ObjectRefiner):
         - If the footprint is too small, bright artifacts may remain.
 
     Attributes:
-        footprint_shape (str): Shape for the footprint used in the tophat
+        footprint (str): Shape for the footprint used in the tophat
             transform. Supported: 'disk', 'square'. Disk tends to preserve
             round features, while square can be more aggressive along axes.
-        footprint_radius (int | None): Radius of the footprint. Larger values
+        radius (int | None): Radius of the footprint. Larger values
             remove broader bright features but risk shrinking thin colony
             appendages. ``None`` auto-scales with image size.
 
     Examples:
         .. dropdown:: Suppress small bright structures in the mask using white tophat
 
-            >>> from phenotypic.refine import WhiteTophatModifier
-            >>> op = WhiteTophatModifier(shape='disk', radius=5)
+            >>> from phenotypic.refine import WhiteTophat
+            >>> op = WhiteTophat(footprint='disk', radius=5)
             >>> image = op.apply(image, inplace=True)  # doctest: +SKIP
     """
 
-    def __init__(self, footprint_shape="disk", footprint_radius: int = None):
-        """Initialize the modifier.
-
-        Args:
-            footprint_shape (str): Footprint geometry for white tophat.
-                - 'disk': Balanced in all directions; gentle on round colonies.
-                - 'square': Slightly stronger along rows/columns; may remove
-                  more rectilinear glare or sensor artifacts.
-            footprint_radius (int | None): Radius in pixels. Increasing removes
-                larger bright structures and can improve background suppression,
-                but may thin colony edges. ``None`` auto-selects ~0.4% of the
-                smaller image dimension.
-
-        Raises:
-            ValueError: If ``shape`` is not one of the supported
-                values (raised during operation).
+    def __init__(self,
+                 footprint: Literal["disk", "square", "diamond"] | np.ndarray = "disk",
+                 radius: int | None = None):
         """
-        self.footprint_shape = footprint_shape
-        self.footprint_radius = footprint_radius
+        Represents a structural element used to analyze and process images, specifically useful for microbial
+        colony analysis on solid media agar.
+
+        The class encapsulates the shape and size of the structural element. Structural elements are commonly
+        used in morphological image processing tasks such as dilations, erosions, opening, and closing. These
+        operations can enhance or isolate features of microbe colonies on agar plates, such as determining
+        colony size, spacing, or detecting connections between colonies.
+
+        Attributes:
+            shape (Literal["disk", "square", "diamond"] | np.ndarray):
+                Defines the shape of the structural element. Choosing "disk" may help preserve the rounded
+                geometry of typical microbial colonies. "Square" and "diamond" shapes may be more useful for
+                colonies that form irregular or grid-based patterns. Supplying a custom numpy array (np.ndarray)
+                allows for complete customization of the structural element, which could be beneficial for non-
+                standard colony morphologies.
+
+            radius (int | None):
+                Specifies the size of the structural element by defining the radius. Larger radii will create
+                structural elements that can encompass larger colonies or areas of colonies, potentially aiding
+                in operations designed to merge close colonies. Smaller radii will result in more localized
+                structural elements, which can preserve fine details and delineate smaller colonies. A None
+                value assumes a default or minimal size.
+        """
+        self.footprint = footprint
+        self.radius = radius
 
     def _operate(self, image: Image) -> Image:
         white_tophat_results = white_tophat(
-            image.objmask[:],
-            footprint=self._make_footprint(
-                shape=self.footprint_shape,
-                radius=self._get_footprint_radius(array=image.objmask[:]),
-            ),
+                image.objmask[:],
+                footprint=self._make_footprint(
+                        shape=self.footprint,
+                        radius=self._get_footprint_radius(array=image.objmask[:]),
+                ),
         )
         image.objmask[:] = image.objmask[:] & ~white_tophat_results
         return image
 
     def _get_footprint_radius(self, array: np.ndarray) -> int:
-        if self.footprint_radius is None:
-            return int(np.min(array.shape) * 0.004)
+        if self.radius is None:
+            return int(np.min(array.shape)*0.004)
         else:
-            return self.footprint_radius
+            return self.radius

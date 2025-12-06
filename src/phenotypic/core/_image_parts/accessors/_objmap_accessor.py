@@ -42,6 +42,10 @@ class ObjectMap(SingleChannelAccessor):
     """
 
     @property
+    def _accessor_property_name(self) -> str:
+        return "objmap"
+
+    @property
     def _backend(self):
         """Return the current sparse backend reference.
 
@@ -331,7 +335,7 @@ class ObjectMap(SingleChannelAccessor):
             self,
             figsize=None,
             title=None,
-            cmap: str = "nipy_spectral",
+            cmap: str = "tab10",
             ax: None | plt.Axes = None,
             mpl_params: None | dict = None,
     ) -> (plt.Figure, plt.Axes):
@@ -384,8 +388,11 @@ class ObjectMap(SingleChannelAccessor):
                     image.objmap.show(ax=ax[0])
                     image.gray.show(ax=ax[1])
         """
+        cmap = plt.get_cmap(cmap)
+        cmap.set_bad(color="black")
         return self._plot(
-                arr=self._backend.toarray(),
+                # Use masked array to make background black
+                arr=np.ma.masked_equal(self._backend.toarray(), value=0),
                 figsize=figsize,
                 title=title,
                 ax=ax,
@@ -467,6 +474,22 @@ class ObjectMap(SingleChannelAccessor):
         mask = self._backend.toarray() > 0
         relabeled = label(mask, connectivity=connectivity)
         self._root_image._data.sparse_object_map = self._dense_to_sparse(relabeled)
+
+    def vmax(self) -> int:
+        """Returns the maximum value for the object map data type.
+
+        Object maps are stored as uint16 arrays where values represent object labels.
+        This returns the theoretical maximum value that the uint16 dtype can represent.
+        """
+        return np.iinfo(self._subject_arr.dtype).max
+
+    def vmin(self) -> int:
+        """Returns the minimum value for the object map data type.
+
+        Object maps are stored as uint16 arrays where 0 represents background.
+        This returns the theoretical minimum value that the uint16 dtype can represent.
+        """
+        return np.iinfo(self._subject_arr.dtype).min
 
     @staticmethod
     def _dense_to_sparse(arg) -> csc_matrix:

@@ -49,7 +49,9 @@ class CieLabAccessor(ColorSpaceAccessor):
                 fig, axes = image.color.Lab.histogram(channel_names=["L*", "a*", "b*"])
     """
 
-    _accessor_property_name: str = "color.Lab"
+    @property
+    def _accessor_property_name(self) -> str:
+        return "color.Lab"
 
     @property
     def _subject_arr(self) -> np.ndarray:

@@ -257,10 +257,10 @@ class ManualDetector(ThresholdDetector):
     """
 
     def __init__(
-        self,
-        threshold: float,
-        ignore_zeros: bool = True,
-        ignore_borders: bool = True
+            self,
+            threshold: float = 0.5,
+            ignore_zeros: bool = True,
+            ignore_borders: bool = True
     ):
         self.threshold = threshold
         self.ignore_zeros = ignore_zeros

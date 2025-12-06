@@ -1,8 +1,6 @@
 from __future__ import annotations
 
-import json
 import os
-import warnings
 from pathlib import Path
 from typing import TYPE_CHECKING, Tuple, Optional
 
@@ -10,19 +8,14 @@ if TYPE_CHECKING:
     from phenotypic import Image
 
 import numpy as np
-import tifffile
 from matplotlib import pyplot as plt
 from skimage.color import rgb2hsv
 from skimage.exposure import histogram
-import skimage.io
 
-import phenotypic
-from phenotypic.core._image_parts.accessor_abstracts import ImageAccessorBase
-from phenotypic.tools.constants_ import IMAGE_MODE, IO
-from phenotypic.tools.exceptions_ import IllegalAssignmentError
+from phenotypic.core._image_parts.accessor_abstracts import ColorSpaceAccessor
 
 
-class HsvAccessor(ImageAccessorBase):
+class HsvAccessor(ColorSpaceAccessor):
     """Access and analyze HSV (Hue, Saturation, Value) color space data from image objects.
 
     This accessor class provides comprehensive functionality for working with the HSV color
@@ -54,78 +47,9 @@ class HsvAccessor(ImageAccessorBase):
         accessing HSV data raises an AttributeError.
     """
 
-    _accessor_property_name: str = "color.hsv"
-
-    @classmethod
-    def load(cls, filepath: str | os.PathLike | Path) -> np.ndarray:
-        """Load an HSV array from a TIFF file and verify it was saved from this accessor type.
-
-        HSV arrays are stored as float32 TIFF files. This method checks if the
-        image contains PhenoTypic metadata indicating it was saved from the HSV
-        accessor. If metadata doesn't match or is missing, a warning is raised
-        but the array is still loaded.
-
-        Args:
-            filepath: Path to the TIFF file to load.
-
-        Returns:
-            np.ndarray: The loaded HSV array (float32) with shape (H, W, 3).
-
-        Raises:
-            ValueError: If file extension is not .tif or .tiff.
-
-        Warns:
-            UserWarning: If metadata is missing or indicates the image was saved
-                from a different accessor type.
-
-        Examples:
-            .. dropdown:: Loading an HSV array from a TIFF file
-
-                >>> from phenotypic.core._image_parts.accessors import HsvAccessor
-                >>> hsv_arr = HsvAccessor.load("my_hsv_image.tif")
-        """
-        filepath = Path(filepath)
-        expected_property = f"Image.{cls._accessor_property_name}"
-
-        if filepath.suffix.lower() not in IO.TIFF_EXTENSIONS:
-            raise ValueError(
-                "HSV arrays can only be loaded from TIFF format (.tif, .tiff). "
-                f"File extension is: {filepath.suffix.lower()}"
-            )
-
-        # Load using tifffile for float array support
-        with tifffile.TiffFile(filepath) as tif:
-            arr = tif.asarray()
-            desc = tif.pages[0].description if tif.pages else None
-
-        # Check metadata
-        phenotypic_data = None
-        if desc:
-            try:
-                data = json.loads(desc)
-                if "phenotypic_version" in data:
-                    phenotypic_data = data
-            except json.JSONDecodeError:
-                pass
-
-        if phenotypic_data is None:
-            warnings.warn(
-                f"No PhenoTypic metadata found in '{filepath.name}'. "
-                f"Cannot verify this image was saved from {expected_property}. "
-                "Loading anyway, but this may lead to undefined behavior.",
-                UserWarning,
-            )
-        else:
-            saved_property = phenotypic_data.get("phenotypic_image_property", "unknown")
-            if saved_property != expected_property:
-                warnings.warn(
-                    f"Metadata mismatch: Image was saved from '{saved_property}' "
-                    f"but being loaded as '{expected_property}'. "
-                    "This may lead to undefined behavior.",
-                    UserWarning,
-                )
-
-        return arr
+    @property
+    def _accessor_property_name(self) -> str:
+        return "color.hsv"
 
     @property
     def _subject_arr(self) -> np.ndarray:
@@ -150,41 +74,6 @@ class HsvAccessor(ImageAccessorBase):
             raise AttributeError("HSV is not available for grayscale images")
         else:
             return rgb2hsv(self._root_image.rgb[:])
-
-    def __getitem__(self, key) -> np.ndarray:
-        """Retrieve a subset of HSV data using NumPy-style indexing.
-
-        Returns a read-only view of the HSV array with the specified indexing
-        applied. This enables NumPy-like slicing operations (e.g., [:, :, 0]
-        to extract hue channel, [10:50, 20:70] for spatial subsets).
-
-        Args:
-            key: NumPy-style index or slice. Examples:
-                - `:, :, 0` to get hue channel
-                - `10:50, 20:70` for spatial region
-                - `[row, col]` for single pixel
-
-        Returns:
-            np.ndarray: Read-only view of the indexed HSV data.
-        """
-        view = self._subject_arr[key]
-        view.flags.writeable = False
-        return view
-
-    def __setitem__(self, key, value):
-        """Prevent direct assignment to HSV data.
-
-        HSV data is computed on-demand from RGB data and cannot be directly modified.
-        To change HSV properties, modify the underlying RGB data in the parent image.
-
-        Args:
-            key: Index specification (unused).
-            value: Value to assign (unused).
-
-        Raises:
-            IllegalAssignmentError: Always raised to prevent data modification.
-        """
-        raise IllegalAssignmentError("HSV")
 
     @property
     def shape(self) -> Optional[tuple[int, ...]]:
@@ -213,11 +102,11 @@ class HsvAccessor(ImageAccessorBase):
         return self._subject_arr.copy()
 
     def histogram(
-        self,
-        figsize: Tuple[int, int] = (10, 5),
-        linewidth=1,
-        hue_bins: int = 1,
-        hue_offset: float = 0.0,
+            self,
+            figsize: Tuple[int, int] = (10, 5),
+            linewidth=1,
+            hue_bins: int = 1,
+            hue_offset: float = 0.0,
     ):
         """Generate and display histograms for HSV channels with specialized hue visualization.
 
@@ -258,7 +147,7 @@ class HsvAccessor(ImageAccessorBase):
         import matplotlib.colors as mcolors
 
         fig, axes = plt.subplots(
-            nrows=2, ncols=2, figsize=figsize, subplot_kw={"projection": None}
+                nrows=2, ncols=2, figsize=figsize, subplot_kw={"projection": None}
         )
         axes_ = axes.ravel()
 
@@ -272,14 +161,14 @@ class HsvAccessor(ImageAccessorBase):
         axes_[1] = fig.add_subplot(2, 2, 2, projection="polar")
 
         # Get hue data and apply offset
-        hue_data = (self._subject_arr[:, :, 0] * 360 + hue_offset) % 360
+        hue_data = (self._subject_arr[:, :, 0]*360 + hue_offset)%360
 
         # Create bins
         bin_edges = np.arange(0, 360 + hue_bins, hue_bins)
         hist_counts, _ = np.histogram(hue_data.flatten(), bins=bin_edges)
 
         # Convert bin edges to radians and get bin centers
-        bin_centers_deg = (bin_edges[:-1] + bin_edges[1:]) / 2
+        bin_centers_deg = (bin_edges[:-1] + bin_edges[1:])/2
         bin_centers_rad = np.deg2rad(bin_centers_deg)
         bin_width_rad = np.deg2rad(hue_bins)
 
@@ -288,14 +177,15 @@ class HsvAccessor(ImageAccessorBase):
         colors = []
         for hue_deg in bin_centers_deg:
             # Create HSV color (hue/360, saturation=1, value=1)
-            hsv_color = np.array([hue_deg / 360, 1.0, 1.0])
+            hsv_color = np.array([hue_deg/360, 1.0, 1.0])
             # Convert to RGB
             rgb_color = mcolors.hsv_to_rgb(hsv_color)
             colors.append(rgb_color)
 
         # Create the radial histogram
         bars = axes_[1].bar(
-            bin_centers_rad, hist_counts, width=bin_width_rad, color=colors, alpha=0.8
+                bin_centers_rad, hist_counts, width=bin_width_rad, color=colors,
+                alpha=0.8
         )
 
         # Set radial gridlines for count values
@@ -327,7 +217,7 @@ class HsvAccessor(ImageAccessorBase):
         return fig, axes
 
     def show(
-        self, figsize: Tuple[int, int] = (10, 8), title: str = None, shrink=0.2
+            self, figsize: Tuple[int, int] = (10, 8), title: str = None, shrink=0.2
     ) -> (plt.Figure, plt.Axes):
         """Display HSV channels as color-mapped images with colorbars.
 
@@ -359,21 +249,21 @@ class HsvAccessor(ImageAccessorBase):
         ax = axes.ravel()
 
         hue = ax[0].imshow(
-            self._subject_arr[:, :, 0] * 360, cmap="hsb", vmin=0, vmax=360
+                self._subject_arr[:, :, 0]*360, cmap="hsb", vmin=0, vmax=360
         )
         ax[0].set_title("Hue")
         ax[0].grid(False)
         fig.colorbar(mappable=hue, ax=ax[0], shrink=shrink)
 
         saturation = ax[1].imshow(
-            self._subject_arr[:, :, 1], cmap="viridis", vmin=0, vmax=1
+                self._subject_arr[:, :, 1], cmap="viridis", vmin=0, vmax=1
         )
         ax[1].set_title("Saturation")
         ax[1].grid(False)
         fig.colorbar(mappable=saturation, ax=ax[1], shrink=shrink)
 
         brightness = ax[2].imshow(
-            self._subject_arr[:, :, 2], cmap="gray", vmin=0, vmax=1
+                self._subject_arr[:, :, 2], cmap="gray", vmin=0, vmax=1
         )
         ax[2].set_title("Brightness")
         ax[2].grid(False)
@@ -386,7 +276,7 @@ class HsvAccessor(ImageAccessorBase):
         return fig, ax
 
     def show_objects(
-        self, figsize: Tuple[int, int] = (10, 8), title: str = None, shrink=0.6
+            self, figsize: Tuple[int, int] = (10, 8), title: str = None, shrink=0.6
     ) -> (plt.Figure, plt.Axes):
         """Display HSV channels for segmented objects only, masked by object mask.
 
@@ -421,32 +311,35 @@ class HsvAccessor(ImageAccessorBase):
         ax = axes.ravel()
 
         hue = ax[0].imshow(
-            np.ma.array(
-                self._subject_arr[:, :, 0] * 360, mask=~self._root_image.objmask[:]
-            ),
-            cmap="hsb",
-            vmin=0,
-            vmax=360,
+                np.ma.array(
+                        self._subject_arr[:, :, 0]*360,
+                        mask=~self._root_image.objmask[:]
+                ),
+                cmap="hsb",
+                vmin=0,
+                vmax=360,
         )
         ax[0].set_title("Hue")
         ax[0].grid(False)
         fig.colorbar(mappable=hue, ax=ax[0], shrink=shrink)
 
         saturation = ax[1].imshow(
-            np.ma.array(self._subject_arr[:, :, 1], mask=~self._root_image.objmask[:]),
-            cmap="viridis",
-            vmin=0,
-            vmax=1,
+                np.ma.array(self._subject_arr[:, :, 1],
+                            mask=~self._root_image.objmask[:]),
+                cmap="viridis",
+                vmin=0,
+                vmax=1,
         )
         ax[1].set_title("Saturation")
         ax[1].grid(False)
         fig.colorbar(mappable=saturation, ax=ax[1], shrink=shrink)
 
         brightness = ax[2].imshow(
-            np.ma.array(self._subject_arr[:, :, 2], mask=~self._root_image.objmask[:]),
-            cmap="gray",
-            vmin=0,
-            vmax=1,
+                np.ma.array(self._subject_arr[:, :, 2],
+                            mask=~self._root_image.objmask[:]),
+                cmap="gray",
+                vmin=0,
+                vmax=1,
         )
         ax[2].set_title("Brightness")
         ax[2].grid(False)
@@ -457,58 +350,3 @@ class HsvAccessor(ImageAccessorBase):
             ax.set_title(title)
 
         return fig, ax
-
-    def imsave(self, filepath: str | os.PathLike | Path) -> None:
-        """Save HSV array to file with PhenoTypic metadata embedded.
-
-        HSV arrays are saved exclusively in TIFF format because their floating-point
-        values (range 0.0-1.0) require lossless compression. The method computes HSV
-        on-demand from RGB data, converts to float32 if needed for compatibility, and
-        embeds PhenoTypic metadata (version, source property, image metadata) in the
-        TIFF ImageDescription tag for later verification via load().
-
-        Args:
-            filepath (str | os.PathLike | Path): Path for the output TIFF file.
-                The file extension must be .tif or .tiff (case-insensitive).
-
-        Raises:
-            ValueError: If file extension is not .tif or .tiff. The error message
-                specifies the invalid extension that was provided.
-
-        Note:
-            - Uses zlib compression for efficient storage of floating-point data
-            - Automatically converts float64 arrays to float32 if necessary
-            - Creates ImageDescription TIFF tag with JSON-formatted metadata
-            - The TIFF photometric interpretation is set to 'minisblack'
-
-        Examples:
-            .. dropdown:: Saving HSV data and verifying metadata
-
-                >>> image.color.hsv.imsave("output_hsv.tif")
-                >>> loaded_hsv = HsvAccessor.load("output_hsv.tif")  # Verify metadata
-        """
-        filepath = Path(filepath)
-
-        if filepath.suffix.lower() not in IO.TIFF_EXTENSIONS:
-            raise ValueError(
-                "HSV arrays can only be saved in TIFF format (.tif, .tiff). "
-                f"File extension is: {filepath.suffix.lower()}"
-            )
-
-        # Build metadata JSON
-        phenotypic_metadata = self._build_phenotypic_metadata()
-        metadata_json = json.dumps(phenotypic_metadata, ensure_ascii=False)
-
-        # Get array and ensure it's float32 for TIFF compatibility
-        arr = self._subject_arr
-        if arr.dtype == np.float64:
-            arr = arr.astype(np.float32)
-
-        # Use tifffile directly for float array support
-        tifffile.imwrite(
-            filepath,
-            arr,
-            description=metadata_json,
-            compression="zlib",
-            photometric="minisblack",
-        )

@@ -11,7 +11,7 @@ from skimage.morphology import white_tophat, cube, ball
 from phenotypic.abc_ import ImageEnhancer
 
 
-class WhiteTophatEnhancer(ImageEnhancer):
+class WhiteTophatSubtract(ImageEnhancer):
     """
     White top-hat transform to suppress small bright structures.
 
@@ -59,10 +59,10 @@ class WhiteTophatEnhancer(ImageEnhancer):
 
     def _operate(self, image: Image) -> Image:
         white_tophat_results = white_tophat(
-            image.enh_gray[:],
-            footprint=self._get_footprint(
-                self._get_footprint_radius(detection_matrix=image.enh_gray[:]),
-            ),
+                image.enh_gray[:],
+                footprint=self._get_footprint(
+                        self._get_footprint_radius(detection_matrix=image.enh_gray[:]),
+                ),
         )
         image.enh_gray[:] = image.enh_gray[:] - white_tophat_results
 
@@ -70,7 +70,7 @@ class WhiteTophatEnhancer(ImageEnhancer):
 
     def _get_footprint_radius(self, detection_matrix: np.ndarray) -> int:
         if self.radius is None:
-            return int(np.min(detection_matrix.shape) * 0.004)
+            return int(np.min(detection_matrix.shape)*0.004)
         else:
             return self.radius
 
@@ -83,4 +83,4 @@ class WhiteTophatEnhancer(ImageEnhancer):
             case "sphere":
                 return ball(radius)
             case "cube":
-                return cube(radius * 2)
+                return cube(radius*2)

@@ -75,6 +75,10 @@ class GridAccessor(ImageAccessorBase):
         self._root_image: GridImage = root_image
 
     @property
+    def _accessor_property_name(self) -> str:
+        return "grid"
+
+    @property
     def nrows(self) -> int:
         """Get the number of rows in the grid.
 

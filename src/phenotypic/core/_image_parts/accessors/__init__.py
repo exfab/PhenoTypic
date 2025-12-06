@@ -110,7 +110,7 @@ The ``accessors`` submodule is designed for developers and researchers working o
 
 """
 
-from ._array_accessor import ImageRGB
+from ._rgb_accessor import ImageRGB
 from ._grayscale_accessor import Grayscale
 from ._enh_grayscale_accessor import EnhancedGrayscale
 from ._objmap_accessor import ObjectMap
@@ -121,7 +121,7 @@ from ._objects_accessor import ObjectsAccessor
 # from ._measurement_container_interface import MeasurementAccessor
 from ._metadata_accessor import MetadataAccessor
 
-from ._hsv_accessor import HsvAccessor
+from ..color_space_accessors._hsv_accessor import HsvAccessor
 from ._grid_accessor import GridAccessor
 from ._color_accessor import ColorAccessor
 

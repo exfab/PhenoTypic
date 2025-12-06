@@ -48,7 +48,9 @@ class Grayscale(SingleChannelAccessor):
                 fig, ax = img.gray.show_overlay(show_labels=True)
     """
 
-    _accessor_property_name: str = "gray"
+    @property
+    def _accessor_property_name(self) -> str:
+        return "gray"
 
     def __getitem__(self, key) -> np.ndarray:
         """Retrieve a read-only view or slice of the grayscale image data.
@@ -144,12 +146,22 @@ class Grayscale(SingleChannelAccessor):
             assert 0 <= value <= 1, "gray values must be between 0 and 1"
         else:
             raise TypeError(
-                f"Unsupported type for setting the gray. Value should be scalar or a numpy array: {type(value)}"
+                    f"Unsupported type for setting the gray. Value should be scalar or a numpy array: {type(value)}"
             )
 
         self._root_image._data.gray[key] = value
         self._root_image.enh_gray.reset()
         self._root_image.objmap.reset()
+
+    def vmax(self) -> float:
+        """Returns the maximum grayscale value in the image. Since the grayscale is
+        normalized to [0.0, 1.0], it returns 1.0."""
+        return 1.0
+
+    def vmin(self) -> float:
+        """Returns the minimum grayscale value in the image. Since the grayscale is
+        normalized to [0.0, 1.0], it returns 0.0."""
+        return 0.0
 
     @property
     def _subject_arr(self) -> np.ndarray:

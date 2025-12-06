@@ -49,7 +49,9 @@ class XyzAccessor(ColorSpaceAccessor):
           on the image's illuminant and observer settings.
     """
 
-    _accessor_property_name: str = "color.XYZ"
+    @property
+    def _accessor_property_name(self) -> str:
+        return "color.XYZ"
 
     @property
     def _subject_arr(self) -> np.ndarray:

@@ -74,6 +74,7 @@ class MaskOpener(ObjectRefiner):
         """
         super().__init__()
         self.footprint: Literal["auto"] | np.ndarray | int | None = footprint
+        self.radius = radius
 
     def _operate(self, image: Image) -> Image:
         if self.footprint == "auto":
@@ -83,7 +84,7 @@ class MaskOpener(ObjectRefiner):
         elif isinstance(self.footprint, np.ndarray):
             footprint = self.footprint
         elif self.footprint in self._footprint_shapes:
-            footprint = self._make_footprint(self.footprint, radius=int(self.footprint))
+            footprint = self._make_footprint(self.footprint, radius=int(self.radius))
         elif not self.footprint:
             footprint = self.footprint
         else:

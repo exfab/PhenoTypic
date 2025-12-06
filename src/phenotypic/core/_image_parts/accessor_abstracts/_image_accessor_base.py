@@ -3,26 +3,25 @@ from __future__ import annotations
 import json
 import shutil
 import subprocess
+import warnings
+from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Tuple, TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Literal, Tuple
 
+import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
+import skimage as ski
+from PIL import Image as PIL_Image
+from matplotlib.ticker import MultipleLocator
+
+import phenotypic
+from phenotypic.settings_ import MPL
+from phenotypic.tools.constants_ import IO, METADATA
+from phenotypic.tools.funcs_ import normalize_rgb_bitdepth
 
 if TYPE_CHECKING:
     from phenotypic import Image
-
-import skimage as ski
-import matplotlib.pyplot as plt
-from matplotlib.ticker import MultipleLocator
-import numpy as np
-from PIL import Image as PIL_Image
-
-import phenotypic
-from phenotypic.tools.constants_ import METADATA, IO
-from phenotypic.settings_ import MPL
-import warnings
-from phenotypic.tools.funcs_ import normalize_rgb_bitdepth
-from abc import ABC
 
 
 class ImageAccessorBase(ABC):
@@ -41,11 +40,6 @@ class ImageAccessorBase(ABC):
     and enable reproducible results.
 
     Attributes:
-        _accessor_property_name (str): Internal property describing the type of
-            accessor (e.g., "gray", "rgb"). Changing this attribute to an
-            incorrect value can lead to loading images with mismatched metadata,
-            potentially resulting in erroneous downstream processing or analysis
-            inconsistencies.
         _root_image (Image): The root image object from which operations derive.
             Modifying this can change the basis of calculations or operations
             performed within accessor methods. For example, a grayscale `_root_image`
@@ -53,7 +47,17 @@ class ImageAccessorBase(ABC):
             for colony segmentation or measurement.
     """
 
-    _accessor_property_name: str = "unknown"
+    @property
+    @abstractmethod
+    def _accessor_property_name(self) -> str:
+        """Name of the Image property that surfaces this accessor."""
+        raise NotImplementedError
+
+    @classmethod
+    def _accessor_property_name_value(cls) -> str:
+        """Retrieve accessor property name from the subclass' property without instantiation."""
+        return cls._accessor_property_name.fget(
+            object.__new__(cls))  # type: ignore[attr-defined]
 
     def __init__(self, root_image: Image):
         self._root_image = root_image
@@ -83,7 +87,7 @@ class ImageAccessorBase(ABC):
                 >>> arr = Grayscale.load("my_gray_image.png")
         """
         filepath = Path(filepath)
-        expected_property = f"Image.{cls._accessor_property_name}"
+        expected_property = f"Image.{cls._accessor_property_name_value()}"
 
         # Load the array
         arr = ski.io.imread(str(filepath))
@@ -753,62 +757,32 @@ class ImageAccessorBase(ABC):
         # TIFF ImageDescription tag is 270
         pil_image.save(filepath, tiffinfo={270: metadata_json})
 
-    def imsave(self,
-               filepath: str | Path | None = None,
-               bit_depth: Literal[8, 16] | None = None) -> None:
-        """
-        Saves an array representing a microbe colony image to a specified file format while preserving or adjusting
-        metadata and pixel depth as needed. Supports JPEG, PNG, and TIFF formats.
-
-        The behavior of the function is context-sensitive based on the file format's restrictions and array properties.
-        For microbe colony images on agar media, proper file format selection and bit depth adjustment can have an impact
-        on the accuracy of image analysis and preservation of data integrity.
+    def _save_image(
+            self,
+            filepath: Path,
+            arr: np.ndarray,
+            bit_depth: Literal[8, 16],
+            metadata_json: str,
+    ) -> None:
+        """Save an image array to disk with embedded PhenoTypic metadata.
 
         Args:
-            filepath (str | Path | None): The destination file path where the image will be saved. The extension of the
-                file path determines the image format (e.g., .jpeg, .png, .tiff). Changing the file format influences how
-                the image data is handled during saving:
-                    1. `.jpeg`: Compression or loss of data may occur. Maximal value limit (255) for uint8 pixel
-                       depth affects the fidelity of rich intensity details in microbe colonies.
-                    2. `.png`: Retains high-quality output but supports only 8-bit or 16-bit images. Conversions may
-                       occur if the array has a different data type, which could result in data loss.
-                    3. `.tiff`: Ideal for high-bit-depth precision and analysis preservation; best for maintaining
-                       intricate morphological details of microbial colonies.
-
-            bit_depth (Literal[8, 16] | None, optional): Specifies the bit depth of the saved image (either 8-bit or
-                16-bit). The provided bit depth must align with the file format's capabilities. Misalignment could
-                trigger conversion with possible data truncation or rounding. For example:
-                    - 8-bit: Useful for efficiently representing intensity when detail is moderate, suitable for JPEG
-                      or simple PNG outputs.
-                    - 16-bit: Allows for higher intensity ranges, especially valuable for preserving subtle
-                      morphological gradient differentiation when analyzing colonies.
+            filepath: Destination file path including extension.
+            arr: Image data to save.
+            bit_depth: Target bit depth used when coercing float arrays for PNG.
+            metadata_json: JSON string containing PhenoTypic metadata to embed.
 
         Raises:
-            ValueError: An error occurs when an unsupported file extension is provided in `filepath`.
+            ValueError: If the file extension is not supported.
 
         Warns:
-            UserWarnings: Warnings are issued under the following conditions:
-                - Saving a 16-bit or floating-point array as JPEG, as these conversions may cause information loss due
-                  to format restrictions.
-                - Saving a floating-point array as PNG when conversions to 8-bit or 16-bit integers might lead to truncated
-                  or altered pixel intensity values.
+            UserWarning: When saving arrays that require downcasting and may lose
+                information (e.g., float or 16-bit arrays to JPEG, float arrays to PNG).
         """
-        from PIL import Image as PIL_Image
+        arr2save = arr
+        suffix = filepath.suffix.lower()
 
-        if bit_depth is None:
-            bit_depth = self._root_image.bit_depth
-        elif bit_depth not in [8, 16]:
-            raise ValueError(f"Unsupported bit depth: {bit_depth}")
-
-        filepath = Path(filepath)
-
-        arr2save = self._subject_arr
-
-        # Build metadata JSON
-        phenotypic_metadata = self._build_phenotypic_metadata()
-        metadata_json = json.dumps(phenotypic_metadata, ensure_ascii=False)
-
-        match filepath.suffix.lower():
+        match suffix:
             case x if x in IO.JPEG_FILE_EXTENSIONS:
                 match arr2save.dtype:
                     case np.uint8:
@@ -850,3 +824,63 @@ class ImageAccessorBase(ABC):
 
             case _:
                 raise ValueError(f"unknown file extension for saving:{filepath.suffix}")
+
+    def imsave(self,
+               filepath: str | Path | None = None,
+               bit_depth: Literal[8, 16] | None = None) -> None:
+        """
+        Saves an array representing a microbe colony image to a specified file format while preserving or adjusting
+        metadata and pixel depth as needed. Supports JPEG, PNG, and TIFF formats.
+
+        The behavior of the function is context-sensitive based on the file format's restrictions and array properties.
+        For microbe colony images on agar media, proper file format selection and bit depth adjustment can have an impact
+        on the accuracy of image analysis and preservation of data integrity.
+
+        Args:
+            filepath (str | Path | None): The destination file path where the image will be saved. The extension of the
+                file path determines the image format (e.g., .jpeg, .png, .tiff). Changing the file format influences how
+                the image data is handled during saving:
+                    1. `.jpeg`: Compression or loss of data may occur. Maximal value limit (255) for uint8 pixel
+                       depth affects the fidelity of rich intensity details in microbe colonies.
+                    2. `.png`: Retains high-quality output but supports only 8-bit or 16-bit images. Conversions may
+                       occur if the array has a different data type, which could result in data loss.
+                    3. `.tiff`: Ideal for high-bit-depth precision and analysis preservation; best for maintaining
+                       intricate morphological details of microbial colonies.
+
+            bit_depth (Literal[8, 16] | None, optional): Specifies the bit depth of the saved image (either 8-bit or
+                16-bit). The provided bit depth must align with the file format's capabilities. Misalignment could
+                trigger conversion with possible data truncation or rounding. For example:
+                    - 8-bit: Useful for efficiently representing intensity when detail is moderate, suitable for JPEG
+                      or simple PNG outputs.
+                    - 16-bit: Allows for higher intensity ranges, especially valuable for preserving subtle
+                      morphological gradient differentiation when analyzing colonies.
+
+        Raises:
+            ValueError: An error occurs when an unsupported file extension is provided in `filepath`.
+
+        Warns:
+            UserWarnings: Warnings are issued under the following conditions:
+                - Saving a 16-bit or floating-point array as JPEG, as these conversions may cause information loss due
+                  to format restrictions.
+                - Saving a floating-point array as PNG when conversions to 8-bit or 16-bit integers might lead to truncated
+                  or altered pixel intensity values.
+        """
+        if bit_depth is None:
+            bit_depth = self._root_image.bit_depth
+        elif bit_depth not in [8, 16]:
+            raise ValueError(f"Unsupported bit depth: {bit_depth}")
+
+        filepath = Path(filepath)
+
+        arr2save = self._subject_arr
+
+        # Build metadata JSON
+        phenotypic_metadata = self._build_phenotypic_metadata()
+        metadata_json = json.dumps(phenotypic_metadata, ensure_ascii=False)
+
+        self._save_image(
+                filepath=filepath,
+                arr=arr2save,
+                bit_depth=bit_depth,
+                metadata_json=metadata_json,
+        )

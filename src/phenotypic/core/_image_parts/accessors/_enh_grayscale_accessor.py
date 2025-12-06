@@ -10,28 +10,29 @@ from phenotypic.core._image_parts.accessor_abstracts import SingleChannelAccesso
 from phenotypic.tools.exceptions_ import (
     ArrayKeyValueShapeMismatchError,
     EmptyImageError,
+    GrayscaleOutOfRangeError
 )
 
 
 class EnhancedGrayscale(SingleChannelAccessor):
-    """Accessor for manipulating and visualizing enhanced grayscale image data.
+    """
+    Provides an enhanced grayscale channel accessor for image data.
 
-    EnhancedGrayscale provides access to a mutable copy of the original grayscale matrix
-    that can be modified for enhancement operations without compromising the integrity of
-    the original grayscale data or object detection results. This class enables retrieval
-    and modification of enhanced grayscale data, resetting to original values, and accessing
-    visualization and analysis methods inherited from SingleChannelAccessor.
+    The EnhancedGrayscale class represents an accessor for managing and manipulating
+    enhanced grayscale image data for an entire image or specific regions. This class
+    extends SingleChannelAccessor to include special behaviors and restrictions when
+    working with a normalized grayscale representation of microbial colony images on
+    solid media agar. Enhanced grayscale values are typically normalized to range between
+    0.0 and 1.0.
 
-    The enhanced grayscale representation is useful for applying non-destructive filters,
-    adjustments, or transformations that should not affect the parent image's core data
-    or segmentation results.
+    This accessor facilitates retrieving and modifying grayscale values for both visualization
+    and computational purposes while enforcing integrity checks to avoid data inconsistency.
 
-    Attributes:
-        _accessor_property_name (str): The property name on the Image object that returns
-            this accessor. Set to "enh_gray".
     """
 
-    _accessor_property_name: str = "enh_gray"
+    @property
+    def _accessor_property_name(self) -> str:
+        return "enh_gray"
 
     def __getitem__(self, key) -> np.ndarray:
         """Return a non-writeable view of the enhanced grayscale data for the given index.
@@ -70,6 +71,7 @@ class EnhancedGrayscale(SingleChannelAccessor):
         else:
             view = self._root_image._data.enh_gray[key]
             view.flags.writeable = False
+
             return view
 
     def __setitem__(self, key, value):
@@ -121,11 +123,21 @@ class EnhancedGrayscale(SingleChannelAccessor):
             pass
         else:
             raise TypeError(
-                f"Unsupported type for setting the gray. Value should be scalar or a numpy array: {type(value)}"
+                    f"Unsupported type for setting the gray. Value should be scalar or a numpy array: {type(value)}"
             )
 
         self._root_image._data.enh_gray[key] = value
         self._root_image.objmap.reset()
+
+    def vmax(self) -> float:
+        """Returns the maximum grayscale value in the image. Since the grayscale is
+        normalized to [0.0, 1.0], it returns 1.0."""
+        return 1.0
+
+    def vmin(self) -> float:
+        """Returns the minimum grayscale value in the image. Since the grayscale is
+        normalized to [0.0, 1.0], it returns 0.0."""
+        return 0.0
 
     @property
     def _subject_arr(self) -> np.ndarray:

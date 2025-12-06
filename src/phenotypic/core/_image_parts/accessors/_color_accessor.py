@@ -9,7 +9,7 @@ from ..color_space_accessors._xyz_accessor import XyzAccessor
 from ..color_space_accessors._xyz_d65_accessor import XyzD65Accessor
 from ..color_space_accessors._cielab_accessor import CieLabAccessor
 from ..color_space_accessors._chromaticity_xy_accessor import xyChromaticityAccessor
-from ._hsv_accessor import HsvAccessor
+from ..color_space_accessors._hsv_accessor import HsvAccessor
 
 
 class ColorAccessor:

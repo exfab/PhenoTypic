@@ -40,7 +40,9 @@ class XyzD65Accessor(ColorSpaceAccessor):
                 # For images with D50 illuminant, applies Bradford chromatic adaptation
     """
 
-    _accessor_property_name: str = "color.XYZ_D65"
+    @property
+    def _accessor_property_name(self) -> str:
+        return "color.XYZ_D65"
 
     @property
     def _subject_arr(self) -> np.ndarray:
