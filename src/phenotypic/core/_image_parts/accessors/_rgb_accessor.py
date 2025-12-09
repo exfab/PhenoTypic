@@ -208,9 +208,8 @@ class ImageRGB(MultiChannelAccessor):
         view.flags.writeable = False
         return view
 
-    @property
-    def normalized(self) -> np.ndarray:
-        """Return a copy of the normalized RGB image array."""
+    def normed(self) -> np.ndarray:
+        """Return a copy of the RGB image array normalized between 0 and 1."""
         return normalize_rgb_bitdepth(self._subject_arr.copy())
 
     def vmax(self) -> int:

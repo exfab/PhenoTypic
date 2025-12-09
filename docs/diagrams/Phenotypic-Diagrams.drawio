@@ -334,13 +334,13 @@
         <mxCell id="kQ2yV8AIbiC1aDz_2Qq--110" value="+- show_objects(figsize, title, shrink)" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" parent="kQ2yV8AIbiC1aDz_2Qq--101" vertex="1">
           <mxGeometry y="239.9230769230769" width="442" height="29" as="geometry" />
         </mxCell>
-        <mxCell id="kQ2yV8AIbiC1aDz_2Qq--111" value="+- get_foreground_hue(bg_color, normalized)" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" parent="kQ2yV8AIbiC1aDz_2Qq--101" vertex="1">
+        <mxCell id="kQ2yV8AIbiC1aDz_2Qq--111" value="+- get_foreground_hue(bg_color, normed)" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" parent="kQ2yV8AIbiC1aDz_2Qq--101" vertex="1">
           <mxGeometry y="268.9230769230769" width="442" height="29" as="geometry" />
         </mxCell>
-        <mxCell id="kQ2yV8AIbiC1aDz_2Qq--112" value="+- get_foreground_saturation(bg_color, normalized)" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" parent="kQ2yV8AIbiC1aDz_2Qq--101" vertex="1">
+        <mxCell id="kQ2yV8AIbiC1aDz_2Qq--112" value="+- get_foreground_saturation(bg_color, normed)" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" parent="kQ2yV8AIbiC1aDz_2Qq--101" vertex="1">
           <mxGeometry y="297.9230769230769" width="442" height="29" as="geometry" />
         </mxCell>
-        <mxCell id="kQ2yV8AIbiC1aDz_2Qq--113" value="+- get_foreground_brightness(bg_color, normalized)" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" parent="kQ2yV8AIbiC1aDz_2Qq--101" vertex="1">
+        <mxCell id="kQ2yV8AIbiC1aDz_2Qq--113" value="+- get_foreground_brightness(bg_color, normed)" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" parent="kQ2yV8AIbiC1aDz_2Qq--101" vertex="1">
           <mxGeometry y="326.9230769230769" width="442" height="29" as="geometry" />
         </mxCell>
         <mxCell id="kQ2yV8AIbiC1aDz_2Qq--114" value="+- extract_obj(bg_color)" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" parent="kQ2yV8AIbiC1aDz_2Qq--101" vertex="1">

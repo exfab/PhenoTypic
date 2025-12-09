@@ -12,68 +12,153 @@ from .abc_ import SetAnalyzer
 
 
 class EDGE_CORRECTION(MeasurementInfo):
+    """Measurement info container for edge correction analysis results.
+
+    Provides metadata for measurement values produced by the EdgeCorrector,
+    organizing corrected colony measurements under the "EdgeCorrection" category.
+    """
+
     @classmethod
     def category(cls) -> str:
         return "EdgeCorrection"
 
-    CORRECTED_CAP = "CorrectedCap", "The carrying capacity for the target measurement"
+    CORRECTED_CAP = "Cap", "The carrying capacity for the target measurement"
+    NEW_VAL = "NewVal", "The new value of the target measurement"
 
 
 class EdgeCorrector(SetAnalyzer):
-    """Analyzer for detecting and correcting edge effects in colony detection.
+    """Analyzer for detecting and correcting edge effects in arrayed colony growth.
 
     This class identifies colonies at grid edges (missing orthogonal neighbors) and
-    caps their measurement values to prevent edge effects in growth assays. Edge
-    colonies often show artificially inflated measurements due to lack of competition
-    for resources.
+    caps their measurement values to prevent edge effects in high-throughput phenotyping
+    assays. Edge colonies often show artificially inflated measurements (larger areas,
+    higher color intensity) due to lack of competition for resources from missing
+    neighbors. The corrector uses permutation testing to determine if edge and interior
+    colonies are statistically different before applying correction.
 
+    **Intuition:** In plate-based assays (96-well, 384-well), colonies at grid edges
+    experience fundamentally different growth conditions: they lack orthogonal neighbors
+    that would otherwise compete for nutrients and space. This causes edge colonies to
+    appear larger/brighter than interior colonies under identical conditions, biasing
+    downstream analyses. EdgeCorrector detects this asymmetry and caps measurements to
+    a threshold derived from top interior colonies, preventing this systematic bias.
+
+    **Use cases:**
+        - High-throughput phenotyping on standard plate layouts (8x12, 16x24, etc.)
+        - Growth assays where colony size/intensity is a fitness proxy
+        - Comparing genotypes across plates with multiple replicates per condition
+        - Any analysis where spatial position should not correlate with phenotype
+
+    **Caveats:**
+        - Requires multiple interior colonies to establish a reliable threshold
+        - Edge correction assumes interior and edge colonies *should* have similar
+          distributions; this may not hold in some experimental designs
+        - If too many wells are empty or dead, surrounded position detection may fail
+        - Permutation testing requires adequate sample sizes for statistical power
+        - All measurements (not just edge colonies) are capped when correction is applied
+
+    Attributes:
+        nrows (int): Number of rows in the grid layout.
+        ncols (int): Number of columns in the grid layout.
+        top_n (int): Number of top-valued interior colonies to use for threshold calculation.
+        connectivity (int): Neighbor pattern: 4 (orthogonal) or 8 (with diagonals).
+        time_label (str): Column name containing time point information.
+        pvalue (float): P-value threshold for permutation test (0.0 disables test).
+        on (str): Name of measurement column to analyze and correct.
+        groupby (list[str]): Column names for grouping data by experiment/plate/condition.
     """
 
     def __init__(
-        self,
-        on: str,
-        groupby: list[str],
-        time_label: str = "Metadata_Time",
-        nrows: int = 8,
-        ncols: int = 12,
-        top_n: int = 3,
-        pvalue: float = 0.05,
-        connectivity: int = 4,
-        agg_func: str = "mean",
-        num_workers: int = 1,
+            self,
+            on: str,
+            groupby: list[str],
+            time_label: str = "Metadata_Time",
+            nrows: int = 8,
+            ncols: int = 12,
+            top_n: int = 3,
+            pvalue: float = 0.05,
+            connectivity: int = 4,
+            agg_func: str = "mean",
+            num_workers: int = 1,
     ):
-        """
-        Initializes the class with specified parameters to configure the state of the object.
-        The class is aimed at processing and analyzing connectivity data with multiple grouping
-        and aggregation options, while ensuring input validation.
+        """Initialize EdgeCorrector with grid layout and correction parameters.
 
         Args:
-            on (str): The dataset column to analyze or process.
-            groupby (list[str]): List of column names for grouping the data.
-            time_label (str): Specific time reference column, defaulting to "Metadata_Time".
-            nrows (int): Number of rows in the dataset, must be positive.
-            ncols (int): Number of columns in the dataset, must be positive.
-            top_n (int): Number of top results to analyze. Must be a positive integer.
-            pvalue (float): Statistical threshold for significance testing between the surrounded and edge colonies.
-                defaults to 0.05. Set to 0.0 to apply to all plates.
-            connectivity (int): The connectivity mode to use. Must be either 4 or 8.
-            agg_func (str): Aggregation function to apply, defaulting to 'mean'.
-            num_workers (int): Number of workers for parallel processing.
+            on (str): Name of the measurement column to analyze (e.g., 'Area', 'Intensity').
+                Corrected values will be placed in a new column EDGE_CORRECTION.NEW_VAL-{on}.
+                Original column is preserved unchanged.
+            groupby (list[str]): Column names for grouping data independently (e.g.,
+                ['ImageName', 'Condition']). Each group gets its own threshold calculation.
+            time_label (str, optional): Column name containing time point information.
+                Defaults to "Metadata_Time". The maximum time point per group is used
+                to identify interior vs. edge colonies.
+            nrows (int, optional): Number of rows in the grid layout. Defaults to 8
+                (standard 96-well plate). Must be positive. Affects edge detection logic.
+            ncols (int, optional): Number of columns in the grid layout. Defaults to 12
+                (standard 96-well plate). Must be positive. Affects edge detection logic.
+            top_n (int, optional): Number of top-valued interior colonies to use for
+                threshold calculation. Defaults to 3. The threshold is the mean of the
+                top_n interior colonies; larger values give more stable thresholds but
+                may miss subtle edge effects.
+            pvalue (float, optional): P-value threshold for permutation test comparing
+                interior vs. edge distributions. Defaults to 0.05. Set to 0.0 to disable
+                statistical testing and apply correction to all groups. Values are passed
+                to scipy.stats.permutation_test with 1000 resamples.
+            connectivity (int, optional): Neighbor pattern for interior cell detection.
+                Defaults to 4 (orthogonal: North, South, East, West). Set to 8 to include
+                diagonal neighbors. Affects how strictly "surrounded" is defined.
+            agg_func (str, optional): Aggregation function for multiple measurements per
+                section (well). Defaults to "mean". See pandas.DataFrame.agg for options.
+            num_workers (int, optional): Number of parallel workers for group processing.
+                Defaults to 1 (serial). Use -1 for all CPU cores via joblib.Parallel.
 
         Raises:
-            ValueError: If `connectivity` is not 4 or 8.
-            ValueError: If `nrows` or `ncols` are not positive integers.
-            ValueError: If `top_n` is not a positive integer.
+            ValueError: If connectivity is not 4 or 8.
+            ValueError: If nrows or ncols are not positive integers.
+            ValueError: If top_n is not a positive integer.
+
+        Examples:
+            .. dropdown:: Basic initialization with 96-well plate defaults
+
+                >>> from phenotypic.analysis import EdgeCorrector
+                >>> corrector = EdgeCorrector(
+                ...     on='Area',
+                ...     groupby=['ImageName'],
+                ...     top_n=3,
+                ...     pvalue=0.05
+                ... )
+                >>> # nrows=8, ncols=12 are defaults for 96-well format
+
+            .. dropdown:: Custom grid layout (384-well format, 16x24)
+
+                >>> corrector = EdgeCorrector(
+                ...     on='ColonyIntensity',
+                ...     groupby=['Plate', 'Condition'],
+                ...     nrows=16,
+                ...     ncols=24,
+                ...     top_n=3,
+                ...     connectivity=8,  # Include diagonal neighbors
+                ...     num_workers=4
+                ... )
+
+            .. dropdown:: Aggressive correction (no statistical test)
+
+                >>> corrector = EdgeCorrector(
+                ...     on='Area',
+                ...     groupby=['ImageName'],
+                ...     pvalue=0.0,  # Apply to all groups regardless of stats
+                ...     top_n=1  # Use single top value as threshold
+                ... )
         """
         super().__init__(
-            on=on, groupby=groupby, agg_func=agg_func, num_workers=num_workers
+                on=on, groupby=groupby, agg_func=agg_func, num_workers=num_workers
         )
 
         if connectivity not in (4, 8):
             raise ValueError(f"connectivity must be 4 or 8, got {connectivity}")
         if nrows <= 0 or ncols <= 0:
             raise ValueError(
-                f"nrows and ncols must be positive, got nrows={nrows}, ncols={ncols}"
+                    f"nrows and ncols must be positive, got nrows={nrows}, ncols={ncols}"
             )
         if top_n <= 0:
             raise ValueError(f"top_n must be positive, got {top_n}")
@@ -89,12 +174,12 @@ class EdgeCorrector(SetAnalyzer):
 
     @staticmethod
     def _surrounded_positions(
-        active_idx: np.ndarray | list[int],
-        shape: tuple[int, int],
-        connectivity: int = 4,
-        min_neighbors: int | None = None,
-        return_counts: bool = False,
-        dtype: np.dtype = np.int64,
+            active_idx: np.ndarray | list[int],
+            shape: tuple[int, int],
+            connectivity: int = 4,
+            min_neighbors: int | None = None,
+            return_counts: bool = False,
+            dtype: np.dtype = np.int64,
     ) -> np.ndarray | tuple[np.ndarray, np.ndarray]:
         """Find grid cells that are surrounded by active neighbors.
 
@@ -158,7 +243,7 @@ class EdgeCorrector(SetAnalyzer):
             raise ValueError(f"shape must be two positive integers, got {shape}")
 
         rows, cols = shape
-        total_cells = rows * cols
+        total_cells = rows*cols
 
         # Coerce active_idx to 1D unique array
         active_idx = np.asarray(active_idx, dtype=dtype).ravel()
@@ -168,8 +253,8 @@ class EdgeCorrector(SetAnalyzer):
         if len(active_idx) > 0:
             if active_idx.min() < 0 or active_idx.max() >= total_cells:
                 raise ValueError(
-                    f"All active_idx must be in [0, {total_cells}), "
-                    f"got range [{active_idx.min()}, {active_idx.max()}]"
+                        f"All active_idx must be in [0, {total_cells}), "
+                        f"got range [{active_idx.min()}, {active_idx.max()}]"
                 )
 
         # Determine max_neighbors and validate min_neighbors
@@ -179,7 +264,7 @@ class EdgeCorrector(SetAnalyzer):
         else:
             if not (1 <= min_neighbors <= max_neighbors):
                 raise ValueError(
-                    f"min_neighbors must be in [1, {max_neighbors}], got {min_neighbors}"
+                        f"min_neighbors must be in [1, {max_neighbors}], got {min_neighbors}"
                 )
 
         # Handle empty input
@@ -190,8 +275,8 @@ class EdgeCorrector(SetAnalyzer):
 
         # Build active mask
         active_mask = np.zeros((rows, cols), dtype=bool)
-        rows_idx = active_idx // cols
-        cols_idx = active_idx % cols
+        rows_idx = active_idx//cols
+        cols_idx = active_idx%cols
         active_mask[rows_idx, cols_idx] = True
 
         # Define neighbor offsets based on connectivity
@@ -238,14 +323,14 @@ class EdgeCorrector(SetAnalyzer):
 
         # Convert back to flattened indices
         selected_rows, selected_cols = np.where(selected_mask)
-        result_idx = (selected_rows * cols + selected_cols).astype(dtype)
+        result_idx = (selected_rows*cols + selected_cols).astype(dtype)
         result_idx = np.sort(result_idx)
 
         if return_counts:
             # Get counts for selected indices
             counts = neighbor_count[selected_rows, selected_cols].astype(dtype)
             # Sort counts to match sorted indices
-            sort_order = np.argsort(selected_rows * cols + selected_cols)
+            sort_order = np.argsort(selected_rows*cols + selected_cols)
             counts = counts[sort_order]
             return result_idx, counts
 
@@ -255,56 +340,99 @@ class EdgeCorrector(SetAnalyzer):
         """Analyze and apply edge correction to grid-based colony measurements.
 
         This method processes the input DataFrame by grouping according to specified
-        columns and applying edge correction to each group independently. Edge colonies
-        (those missing orthogonal neighbors) have their measurements capped to prevent
-        artificially inflated values.
+        columns and applying edge correction to each group independently. For each group,
+        it identifies edge colonies (those missing orthogonal neighbors at the final time
+        point), compares their distributions to interior colonies via permutation test,
+        and caps all measurements to a threshold derived from top interior colonies.
+
+        Edge correction assumes that interior and edge colonies under identical conditions
+        should have similar phenotypic distributions. When they differ significantly
+        (p < pvalue threshold), measurements are capped to prevent edge-driven bias in
+        downstream analyses.
 
         Args:
-            data: DataFrame containing grid section numbers (GRID.SECTION_NUM) and
-                measurement data. Must include all columns specified in self.groupby
-                and self.on.
+            data (pd.DataFrame): Input DataFrame containing grid measurements. Must include:
+                - GRID.SECTION_NUM (str): Column with well/section indices (0-indexed
+                  flattened position: row * ncols + col)
+                - self.on (str): Measurement column to analyze and correct
+                - All columns in self.groupby: For independent group processing
+                - self.time_label (str, optional): Time point column if not all observations
+                  are at the same time
 
         Returns:
-            DataFrame with corrected measurement values. Original structure is preserved
-            with only the measurement column modified for edge-affected rows.
+            pd.DataFrame: Measurements with two new correction columns added:
+                - EdgeCorrection_Size-{on}: Capped measurement values (clipped
+                  to threshold where edge effect detected)
+                - EdgeCorrection_-{self.on}: Threshold value used for correction
+                Original measurement column (self.on) remains unchanged. All other columns
+                preserved from input. One row per well per group.
 
         Raises:
-            KeyError: If required columns are missing from input DataFrame.
-            ValueError: If data is empty or malformed.
+            KeyError: If required columns (GRID.SECTION_NUM, self.on, or any in
+                self.groupby) are missing.
+            ValueError: If data is empty or has zero rows.
+
+        Notes:
+            - Stores original data in self._original_data for later visualization
+            - Stores corrected data in self._latest_measurements for retrieval via results()
+            - Groups are processed independently via joblib.Parallel if num_workers > 1
+            - Aggregation (default: mean) is applied to multiple measurements per well
+            - Edge correction is only applied if permutation test p-value < self.pvalue
+            - If pvalue=0.0, correction is applied to all groups regardless of statistics
 
         Examples:
-            .. dropdown:: Applying edge correction to a 96-well plate dataset
+            .. dropdown:: Basic edge correction on 96-well data
 
                 >>> import pandas as pd
                 >>> import numpy as np
                 >>> from phenotypic.analysis import EdgeCorrector
                 >>> from phenotypic.tools.constants_ import GRID
                 >>>
-                >>> # Create sample grid data with measurements
+                >>> # Create sample 96-well data (8 rows x 12 cols)
                 >>> np.random.seed(42)
                 >>> data = pd.DataFrame({
                 ...     'ImageName': ['img1'] * 96,
                 ...     GRID.SECTION_NUM: range(96),
+                ...     'Metadata_Time': [1] * 96,
                 ...     'Area': np.random.uniform(100, 500, 96)
                 ... })
                 >>>
-                >>> # Apply edge correction
+                >>> # Edge colonies (row/col 0 or 7/11) have larger areas
+                >>> edge_idx = [i for i in range(96) if i//12 in (0,7) or i%12 in (0,11)]
+                >>> data.loc[edge_idx, 'Area'] *= 1.5
+                >>>
+                >>> # Apply correction
                 >>> corrector = EdgeCorrector(
                 ...     on='Area',
                 ...     groupby=['ImageName'],
-                ...     nrows=8,
-                ...     ncols=12,
-                ...     top_n=10
+                ...     top_n=5,
+                ...     pvalue=0.05
                 ... )
                 >>> corrected = corrector.analyze(data)
-                >>>
-                >>> # Check results
-                >>> results = corrector.results()
+                >>> # New columns created:
+                >>> # - 'EdgeCorrection_NewVal-Area': Capped area values at threshold
+                >>> # - 'EdgeCorrection_Cap-Area': Threshold value used
+                >>> # Original 'Area' column unchanged
 
-        Notes:
-            - Stores original data in self._original_data for comparison
-            - Stores corrected data in self._latest_measurements for retrieval
-            - Groups are processed independently with their own thresholds
+            .. dropdown:: Multi-group edge correction (multiple plates and conditions)
+
+                >>> # Data from multiple plates and conditions
+                >>> data = pd.DataFrame({
+                ...     'Plate': ['P1']*96 + ['P2']*96,
+                ...     'Condition': ['WT']*48 + ['KO']*48 + ['WT']*48 + ['KO']*48,
+                ...     GRID.SECTION_NUM: list(range(96))*2,
+                ...     'Metadata_Time': [1]*192,
+                ...     'Area': np.random.uniform(100, 500, 192)
+                ... })
+                >>>
+                >>> corrector = EdgeCorrector(
+                ...     on='Area',
+                ...     groupby=['Plate', 'Condition'],  # 4 independent corrections
+                ...     nrows=8, ncols=12,
+                ...     num_workers=4
+                ... )
+                >>> corrected = corrector.analyze(data)
+                >>> # Each plate-condition combo gets its own threshold
         """
         from phenotypic.tools.constants_ import GRID
 
@@ -325,13 +453,13 @@ class EdgeCorrector(SetAnalyzer):
 
         # Prepare configuration for _apply2group_func
         config = {
-            "nrows": self.nrows,
-            "ncols": self.ncols,
-            "top_n": self.top_n,
+            "nrows"       : self.nrows,
+            "ncols"       : self.ncols,
+            "top_n"       : self.top_n,
             "connectivity": self.connectivity,
-            "on": self.on,
-            "pvalue": self.pvalue,
-            "time_label": self.time_label,
+            "on"          : self.on,
+            "pvalue"      : self.pvalue,
+            "time_label"  : self.time_label,
         }
 
         # Build aggregation dictionary to preserve all columns
@@ -358,8 +486,8 @@ class EdgeCorrector(SetAnalyzer):
         else:
             grouped = agg_data.groupby(by=self.groupby, as_index=False)
             corrected_data = Parallel(n_jobs=self.n_jobs)(
-                delayed(self.__class__._apply2group_func)(group, **config)
-                for _, group in grouped
+                    delayed(self.__class__._apply2group_func)(group, **config)
+                    for _, group in grouped
             )
 
         # Store results
@@ -371,35 +499,80 @@ class EdgeCorrector(SetAnalyzer):
         return self._latest_measurements
 
     def show(
-        self,
-        figsize: tuple[int, int] | None = None,
-        max_groups: int = 20,
-        collapsed: bool = True,
-        criteria: dict[str, any] | None = None,
-        **kwargs,
+            self,
+            figsize: tuple[int, int] | None = None,
+            max_groups: int = 20,
+            collapsed: bool = True,
+            criteria: dict[str, any] | None = None,
+            **kwargs,
     ) -> tuple[Figure, plt.Axes]:
-        """Visualize edge correction results.
+        """Visualize edge correction results with interior/edge colony comparisons.
 
-        Displays the distribution of measurements for the last time point, highlighting
-        surrounded vs. edge colonies and the calculated correction threshold.
+        Displays the distribution of measurements for the last time point per group,
+        highlighting interior (surrounded) vs. edge colonies. Shows the calculated
+        correction threshold and permutation test p-values. Interior colonies are shown
+        in blue, edge colonies in red. Circles indicate measurements passing the threshold,
+        X's indicate capped measurements.
 
         Args:
-            figsize: Figure size (width, height).
-            max_groups: Maximum number of groups to display.
-            collapsed: If True, show groups stacked vertically.
-            criteria: Filtering criteria.
-            **kwargs: Additional matplotlib parameters to customize the plot. Common options include:
-                - dpi: Figure resolution (default 100)
-                - facecolor: Figure background color
-                - edgecolor: Figure edge color
-                - grid_alpha: Alpha value for grid lines
-                - legend_loc: Legend location (default 'best')
-                - legend_fontsize: Font size for legend (default 8 or 9)
-                - marker_alpha: Alpha value for scatter plot markers
-                - line_width: Line width for box plots and fence lines
+            figsize (tuple[int, int], optional): Figure size as (width, height) in inches.
+                If None, auto-sized based on number of groups (single-group: 10x6,
+                many groups: 10x max(6, 0.5*ngroups+2)).
+            max_groups (int, optional): Maximum number of groups to display. Defaults to 20.
+                If data has more groups, a warning is printed and only the first 20 are shown.
+            collapsed (bool, optional): If True (default), show all groups stacked vertically
+                on a single axis with y-offsets. If False, create a grid of subplots with
+                one group per subplot.
+            criteria (dict[str, any], optional): Filter groups before visualization using
+                column-value criteria (e.g., {'Plate': 'P1', 'Condition': ['WT', 'KO']}).
+                Filtering uses SetAnalyzer._filter_by with AND logic across criteria.
+            **kwargs: Additional matplotlib parameters:
+                - dpi (int): Figure resolution, passed to plt.subplots()
+                - facecolor (str): Figure background color
+                - edgecolor (str): Figure edge color
+                - legend_fontsize (int): Font size for legend (default 9 for collapsed,
+                  8 for individual)
 
         Returns:
-            Tuple of (Figure, Axes).
+            tuple[Figure, plt.Axes]: Tuple of (matplotlib Figure, Axes object(s)):
+                - If collapsed=True: (Figure, single Axes)
+                - If collapsed=False: (Figure, array of Axes)
+
+        Raises:
+            RuntimeError: If analyze() has not been called (no results to display).
+            ValueError: If criteria filter leaves no matching data.
+
+        Notes:
+            - Interior colonies are those with all orthogonal neighbors present (4-connectivity)
+            - Edge colonies are detected but lack all orthogonal neighbors
+            - Threshold line (orange) is derived from top interior colonies
+            - P-values displayed between interior and edge means (if pvalue != 0)
+            - Permutation test uses 1000 resamples with two-sided alternative
+            - Call analyze() before show()
+
+        Examples:
+            .. dropdown:: Basic visualization of edge correction results
+
+                >>> corrector = EdgeCorrector(on='Area', groupby=['ImageName'])
+                >>> corrected = corrector.analyze(data)
+                >>> fig, ax = corrector.show()
+                >>> # Single collapsed plot with all groups stacked vertically
+
+            .. dropdown:: Individual subplots per group
+
+                >>> fig, axes = corrector.show(
+                ...     collapsed=False,
+                ...     figsize=(15, 10)
+                ... )
+                >>> # Grid of subplots, max 3 columns
+
+            .. dropdown:: Filtered visualization for specific plate
+
+                >>> fig, ax = corrector.show(
+                ...     criteria={'Plate': 'P1'},
+                ...     max_groups=10,
+                ...     figsize=(12, 8)
+                ... )
         """
         if self._original_data.empty:
             raise RuntimeError("No results to display. Call analyze() first.")
@@ -430,13 +603,36 @@ class EdgeCorrector(SetAnalyzer):
             return self._show_individual(data, groups, group_col, figsize, **kwargs)
 
     def _show_collapsed(
-        self,
-        data: pd.DataFrame,
-        groups,
-        group_col: str,
-        figsize: tuple[int, int] | None,
-        **kwargs,
+            self,
+            data: pd.DataFrame,
+            groups,
+            group_col: str,
+            figsize: tuple[int, int] | None,
+            **kwargs,
     ) -> tuple[Figure, plt.Axes]:
+        """Helper method to create collapsed visualization (all groups on one axis).
+
+        Internal method used by show() to display all groups stacked vertically on
+        a single matplotlib axis. Each group is offset vertically, with interior
+        colonies in blue circles, edge colonies in red circles, and capped values
+        marked with X's.
+
+        Args:
+            data (pd.DataFrame): Original (uncorrected) measurement data.
+            groups (array-like): Unique group identifiers to display.
+            group_col (str): Column name containing group labels.
+            figsize (tuple[int, int] | None): Figure size as (width, height).
+            **kwargs: Matplotlib figure parameters (dpi, facecolor, edgecolor,
+                legend_fontsize).
+
+        Returns:
+            tuple[Figure, plt.Axes]: (Figure object, Axes object)
+
+        Notes:
+            - Groups are displayed from top to bottom (groups[::-1] order)
+            - Y-axis has positions 1 to n_groups; y_pos = n_groups - idx
+            - Threshold line is orange; interior means are blue dashed; edge means are red dashed
+        """
         # Extract figure-level kwargs
         fig_kwargs = {
             k: v for k, v in kwargs.items() if k in ("dpi", "facecolor", "edgecolor")
@@ -445,7 +641,7 @@ class EdgeCorrector(SetAnalyzer):
 
         n_groups = len(groups)
         if figsize is None:
-            figsize = (10, max(6, 0.5 * n_groups + 2))
+            figsize = (10, max(6, 0.5*n_groups + 2))
 
         fig, ax = plt.subplots(figsize=figsize, **fig_kwargs)
 
@@ -468,7 +664,8 @@ class EdgeCorrector(SetAnalyzer):
             vals = lt_df[self.on].values
             if len(vals) > 0:
                 ax.hlines(
-                    y_pos, vals.min(), vals.max(), colors="lightgray", lw=1.5, zorder=1
+                        y_pos, vals.min(), vals.max(), colors="lightgray", lw=1.5,
+                        zorder=1
                 )
 
             # Threshold
@@ -479,12 +676,12 @@ class EdgeCorrector(SetAnalyzer):
                 else:
                     lbl = None
                 ax.plot(
-                    [threshold, threshold],
-                    [y_pos - 0.2, y_pos + 0.2],
-                    color="#F4A261",
-                    lw=2.5,
-                    label=lbl,
-                    zorder=2,
+                        [threshold, threshold],
+                        [y_pos - 0.2, y_pos + 0.2],
+                        color="#F4A261",
+                        lw=2.5,
+                        label=lbl,
+                        zorder=2,
                 )
 
             # Jitter
@@ -501,14 +698,14 @@ class EdgeCorrector(SetAnalyzer):
                     else:
                         lbl = None
                     ax.scatter(
-                        lt_df.loc[mask, self.on],
-                        y_jitter[mask],
-                        c=color,
-                        marker=marker,
-                        s=30 if marker == "o" else 40,
-                        alpha=0.6 if marker == "o" else 0.8,
-                        label=lbl,
-                        zorder=3,
+                            lt_df.loc[mask, self.on],
+                            y_jitter[mask],
+                            c=color,
+                            marker=marker,
+                            s=30 if marker == "o" else 40,
+                            alpha=0.6 if marker == "o" else 0.8,
+                            label=lbl,
+                            zorder=3,
                     )
 
             # Inner Pass
@@ -532,13 +729,13 @@ class EdgeCorrector(SetAnalyzer):
                     lbl = None
                 mean_val = inner_vals.mean()
                 ax.plot(
-                    [mean_val, mean_val],
-                    [y_pos - 0.25, y_pos + 0.25],
-                    color="#2E86AB",
-                    linewidth=2.5,
-                    label=lbl,
-                    zorder=4,
-                    linestyle="--",
+                        [mean_val, mean_val],
+                        [y_pos - 0.25, y_pos + 0.25],
+                        color="#2E86AB",
+                        linewidth=2.5,
+                        label=lbl,
+                        zorder=4,
+                        linestyle="--",
                 )
 
             if len(edge_vals) > 0:
@@ -549,13 +746,13 @@ class EdgeCorrector(SetAnalyzer):
                     lbl = None
                 mean_val = edge_vals.mean()
                 ax.plot(
-                    [mean_val, mean_val],
-                    [y_pos - 0.25, y_pos + 0.25],
-                    color="#E63946",
-                    linewidth=2.5,
-                    label=lbl,
-                    zorder=4,
-                    linestyle="--",
+                        [mean_val, mean_val],
+                        [y_pos - 0.25, y_pos + 0.25],
+                        color="#E63946",
+                        linewidth=2.5,
+                        label=lbl,
+                        zorder=4,
+                        linestyle="--",
                 )
 
             # P-value
@@ -570,27 +767,27 @@ class EdgeCorrector(SetAnalyzer):
 
                 # Draw bracket
                 ax.plot(
-                    [mean_inner, mean_inner, mean_edge, mean_edge],
-                    [
-                        bracket_y,
-                        bracket_y + bracket_h,
-                        bracket_y + bracket_h,
-                        bracket_y,
-                    ],
-                    color="black",
-                    linewidth=1,
-                    zorder=5,
+                        [mean_inner, mean_inner, mean_edge, mean_edge],
+                        [
+                            bracket_y,
+                            bracket_y + bracket_h,
+                            bracket_y + bracket_h,
+                            bracket_y,
+                        ],
+                        color="black",
+                        linewidth=1,
+                        zorder=5,
                 )
 
                 # Add p-value text
-                mid_x = (mean_inner + mean_edge) / 2
+                mid_x = (mean_inner + mean_edge)/2
                 ax.text(
-                    mid_x,
-                    bracket_y + bracket_h + 0.05,
-                    f"p={pval:.3f}",
-                    ha="center",
-                    va="bottom",
-                    fontsize=8,
+                        mid_x,
+                        bracket_y + bracket_h + 0.05,
+                        f"p={pval:.3f}",
+                        ha="center",
+                        va="bottom",
+                        fontsize=8,
                 )
 
         ax.set_yticks(range(1, n_groups + 1))
@@ -602,13 +799,40 @@ class EdgeCorrector(SetAnalyzer):
         return fig, ax
 
     def _show_individual(
-        self,
-        data: pd.DataFrame,
-        groups,
-        group_col: str,
-        figsize: tuple[int, int] | None,
-        **kwargs,
+            self,
+            data: pd.DataFrame,
+            groups,
+            group_col: str,
+            figsize: tuple[int, int] | None,
+            **kwargs,
     ) -> tuple[Figure, plt.Axes]:
+        """Helper method to create individual subplots for each group.
+
+        Internal method used by show() to display each group in a separate subplot.
+        Creates a grid of subplots (max 3 columns) with box plots and scatter overlays.
+        Interior colonies shown in blue, edge colonies in red. Capped measurements
+        marked with X's.
+
+        Args:
+            data (pd.DataFrame): Original (uncorrected) measurement data.
+            groups (array-like): Unique group identifiers to display.
+            group_col (str): Column name containing group labels.
+            figsize (tuple[int, int] | None): Figure size as (width, height). If None,
+                auto-calculated as (5*ncols, 4*nrows) where ncols=min(3, len(groups)).
+            **kwargs: Matplotlib figure parameters (dpi, facecolor, edgecolor,
+                legend_fontsize).
+
+        Returns:
+            tuple[Figure, np.ndarray[plt.Axes]]: (Figure object, array of Axes)
+                Array shape is (nrows, ncols) with empty subplots hidden.
+
+        Notes:
+            - One group per subplot with title showing group name
+            - Box plots show overall data distribution (light gray)
+            - X-axis not used (x-jitter adds visual separation)
+            - Legend shown only on first subplot to avoid clutter
+            - Unused subplot axes are hidden (set_visible(False))
+        """
         # Extract figure-level kwargs
         fig_kwargs = {
             k: v for k, v in kwargs.items() if k in ("dpi", "facecolor", "edgecolor")
@@ -617,13 +841,13 @@ class EdgeCorrector(SetAnalyzer):
 
         n_groups = len(groups)
         n_cols = min(3, n_groups)
-        n_rows = (n_groups + n_cols - 1) // n_cols
+        n_rows = (n_groups + n_cols - 1)//n_cols
 
         if figsize is None:
-            figsize = (5 * n_cols, 4 * n_rows)
+            figsize = (5*n_cols, 4*n_rows)
 
         fig, axes = plt.subplots(
-            n_rows, n_cols, figsize=figsize, squeeze=False, **fig_kwargs
+                n_rows, n_cols, figsize=figsize, squeeze=False, **fig_kwargs
         )
         axes = axes.flatten()
 
@@ -645,12 +869,12 @@ class EdgeCorrector(SetAnalyzer):
             is_clipped = lt_df[self.on] > threshold
 
             ax.boxplot(
-                [vals],
-                positions=[1],
-                widths=0.3,
-                patch_artist=True,
-                showfliers=False,
-                boxprops=dict(facecolor="lightgray", alpha=0.3),
+                    [vals],
+                    positions=[1],
+                    widths=0.3,
+                    patch_artist=True,
+                    showfliers=False,
+                    boxprops=dict(facecolor="lightgray", alpha=0.3),
             )
 
             x_jitter = np.random.normal(1, 0.04, len(lt_df))
@@ -659,54 +883,54 @@ class EdgeCorrector(SetAnalyzer):
             mask_ip = surrounded_mask & (~is_clipped)
             if mask_ip.any():
                 ax.scatter(
-                    x_jitter[mask_ip],
-                    lt_df.loc[mask_ip, self.on],
-                    c="#2E86AB",
-                    marker="o",
-                    s=30,
-                    alpha=0.6,
-                    label="Inner (Pass)",
+                        x_jitter[mask_ip],
+                        lt_df.loc[mask_ip, self.on],
+                        c="#2E86AB",
+                        marker="o",
+                        s=30,
+                        alpha=0.6,
+                        label="Inner (Pass)",
                 )
             # Inner Clipped
             mask_ic = surrounded_mask & is_clipped
             if mask_ic.any():
                 ax.scatter(
-                    x_jitter[mask_ic],
-                    lt_df.loc[mask_ic, self.on],
-                    c="#2E86AB",
-                    marker="x",
-                    s=40,
-                    alpha=0.8,
-                    label="Inner (Clipped)",
+                        x_jitter[mask_ic],
+                        lt_df.loc[mask_ic, self.on],
+                        c="#2E86AB",
+                        marker="x",
+                        s=40,
+                        alpha=0.8,
+                        label="Inner (Clipped)",
                 )
             # Edge Pass
             mask_ep = edge_mask & (~is_clipped)
             if mask_ep.any():
                 ax.scatter(
-                    x_jitter[mask_ep],
-                    lt_df.loc[mask_ep, self.on],
-                    c="#E63946",
-                    marker="o",
-                    s=30,
-                    alpha=0.6,
-                    label="Edge (Pass)",
+                        x_jitter[mask_ep],
+                        lt_df.loc[mask_ep, self.on],
+                        c="#E63946",
+                        marker="o",
+                        s=30,
+                        alpha=0.6,
+                        label="Edge (Pass)",
                 )
             # Edge Clipped
             mask_ec = edge_mask & is_clipped
             if mask_ec.any():
                 ax.scatter(
-                    x_jitter[mask_ec],
-                    lt_df.loc[mask_ec, self.on],
-                    c="#E63946",
-                    marker="x",
-                    s=40,
-                    alpha=0.8,
-                    label="Edge (Clipped)",
+                        x_jitter[mask_ec],
+                        lt_df.loc[mask_ec, self.on],
+                        c="#E63946",
+                        marker="x",
+                        s=40,
+                        alpha=0.8,
+                        label="Edge (Clipped)",
                 )
 
             if not np.isinf(threshold):
                 ax.axhline(
-                    y=threshold, color="#F4A261", linestyle="--", label="Threshold"
+                        y=threshold, color="#F4A261", linestyle="--", label="Threshold"
                 )
 
             ax.set_title(group_name)
@@ -717,10 +941,10 @@ class EdgeCorrector(SetAnalyzer):
                 handles, labels = ax.get_legend_handles_labels()
                 by_label = dict(zip(labels, handles))
                 ax.legend(
-                    by_label.values(),
-                    by_label.keys(),
-                    loc="best",
-                    fontsize=legend_fontsize,
+                        by_label.values(),
+                        by_label.keys(),
+                        loc="best",
+                        fontsize=legend_fontsize,
                 )
 
         for idx in range(n_groups, len(axes)):
@@ -730,6 +954,33 @@ class EdgeCorrector(SetAnalyzer):
         return fig, axes
 
     def _calculate_group_stats(self, group: pd.DataFrame):
+        """Calculate statistics for edge correction visualization of a single group.
+
+        Helper method for show() that computes interior/edge classifications and
+        correction threshold for a single group. Identifies fully surrounded colonies
+        at the maximum time point, performs permutation testing if enabled, and
+        calculates threshold from top interior values.
+
+        Args:
+            group (pd.DataFrame): Subset of data for a single group (e.g., single plate).
+                Must contain GRID.SECTION_NUM, self.on, and self.time_label columns.
+
+        Returns:
+            dict | None: Dictionary with keys:
+                - 'last_time_df' (pd.DataFrame): Rows at maximum time point
+                - 'threshold' (float): Correction threshold (np.inf if no correction)
+                - 'surrounded_mask' (pd.Series[bool]): Interior colony indicators
+                - 'edge_mask' (pd.Series[bool]): Edge colony indicators
+            Returns None if group is empty, lacks colonies, or lacks measurement column.
+
+        Notes:
+            - Uses maximum time point per group for interior/edge identification
+            - Interior = all orthogonal neighbors present (4-connectivity)
+            - Edge = present but not fully surrounded
+            - Permutation test compares inner vs edge distributions (scipy.stats.permutation_test)
+            - If p-value > self.pvalue, threshold = np.inf (no correction applied)
+            - Threshold = mean of top_n interior values if correction applies
+        """
         from phenotypic.tools.constants_ import GRID
 
         if len(group) == 0:
@@ -746,11 +997,11 @@ class EdgeCorrector(SetAnalyzer):
 
         try:
             surrounded_idx = self._surrounded_positions(
-                active_idx=active_indices,
-                shape=(self.nrows, self.ncols),
-                connectivity=self.connectivity,
-                min_neighbors=None,
-                return_counts=False,
+                    active_idx=active_indices,
+                    shape=(self.nrows, self.ncols),
+                    connectivity=self.connectivity,
+                    min_neighbors=None,
+                    return_counts=False,
             )
         except ValueError:
             return None
@@ -759,15 +1010,15 @@ class EdgeCorrector(SetAnalyzer):
 
         if len(surrounded_idx_set) == 0:
             return {
-                "last_time_df": last_time_group,
-                "threshold": np.inf,
+                "last_time_df"   : last_time_group,
+                "threshold"      : np.inf,
                 "surrounded_mask": pd.Series(False, index=last_time_group.index),
-                "edge_mask": pd.Series(True, index=last_time_group.index),
+                "edge_mask"      : pd.Series(True, index=last_time_group.index),
             }
 
         surrounded_mask = last_time_group[GRID.SECTION_NUM].isin(surrounded_idx_set)
         edge_mask = ~surrounded_mask & last_time_group[GRID.SECTION_NUM].isin(
-            present_sections
+                present_sections
         )
 
         if self.on not in group.columns:
@@ -781,11 +1032,11 @@ class EdgeCorrector(SetAnalyzer):
             last_edge_values = last_time_group.loc[edge_mask, self.on]
             if len(last_edge_values) > 0 and len(last_inner_values) > 0:
                 perm_results = permutation_test(
-                    data=(last_inner_values, last_edge_values),
-                    statistic=lambda x, y: np.mean(x) - np.mean(y),
-                    permutation_type="independent",
-                    n_resamples=1000,
-                    alternative="two-sided",
+                        data=(last_inner_values, last_edge_values),
+                        statistic=lambda x, y: np.mean(x) - np.mean(y),
+                        permutation_type="independent",
+                        n_resamples=1000,
+                        alternative="two-sided",
                 )
                 if perm_results.pvalue > self.pvalue:
                     should_correct = False
@@ -797,21 +1048,26 @@ class EdgeCorrector(SetAnalyzer):
                 threshold = top_values.mean()
 
         return {
-            "last_time_df": last_time_group,
-            "threshold": threshold,
+            "last_time_df"   : last_time_group,
+            "threshold"      : threshold,
             "surrounded_mask": surrounded_mask,
-            "edge_mask": edge_mask,
+            "edge_mask"      : edge_mask,
         }
 
     def results(self) -> pd.DataFrame:
-        """Return the corrected measurement DataFrame.
+        """Return the corrected measurement DataFrame from the last analyze() call.
 
-        Returns the DataFrame with edge-corrected measurements from the most recent
-        call to analyze(). This allows retrieval of results after processing.
+        Retrieves the DataFrame with edge-corrected measurements produced by the most
+        recent call to analyze(). Provides convenient access to results without retaining
+        a local reference.
 
         Returns:
-            DataFrame with corrected measurements. If analyze() has not been called,
-            returns an empty DataFrame.
+            pd.DataFrame: Edge-corrected measurements with original data plus two new
+                correction columns:
+                - EDGE_CORRECTION.NEW_VAL-{self.on}: Capped measurement values
+                - EDGE_CORRECTION.CORRECTED_CAP-{self.on}: Threshold value used
+                Original measurement column (self.on) is preserved unchanged. If analyze()
+                has not been called, returns an empty DataFrame.
 
         Examples:
             .. dropdown:: Retrieving corrected measurements after analysis
@@ -821,32 +1077,89 @@ class EdgeCorrector(SetAnalyzer):
                 ...     groupby=['ImageName']
                 ... )
                 >>> corrected = corrector.analyze(data)
-                >>> results = corrector.results()  # Same as corrected
+                >>> results = corrector.results()
                 >>> assert results.equals(corrected)
+                >>> # Access corrected values
+                >>> corrected_areas = results['Size-Area']
+                >>> thresholds = results['Cap-Area']
+                >>> # Original 'Area' column also available for comparison
+                >>> original_areas = results['Area']
 
         Notes:
             - Returns the DataFrame stored in self._latest_measurements
-            - Contains the same structure as input but with corrected values
-            - Use this method to retrieve results after calling analyze()
+            - Same as the return value of analyze()
+            - Always use this method rather than direct attribute access
         """
         return self._latest_measurements
 
     @staticmethod
     def _apply2group_func(
-        group: pd.DataFrame,
-        on: str,
-        nrows: int,
-        ncols: int,
-        top_n: int,
-        time_label: str,
-        connectivity: int,
-        pvalue: float,
+            group: pd.DataFrame,
+            on: str,
+            nrows: int,
+            ncols: int,
+            top_n: int,
+            time_label: str,
+            connectivity: int,
+            pvalue: float,
     ) -> pd.DataFrame:
-        """
-        Note:
-            - assumes "Grid_SectionNum" from a `GridFinder` is in the dataframe groups
-            = applies permutation test on the last time-point to see if theres a statistically significant difference
-            - caps clips all the data to the last time point
+        """Apply edge correction logic to a single group of measurements.
+
+        Static method called by analyze() via joblib.Parallel to process each group
+        independently. Identifies interior colonies, performs permutation testing, and
+        creates new corrected columns. Original measurement column remains unchanged.
+        Called once per group.
+
+        Args:
+            group (pd.DataFrame): Measurement data for a single group. Must contain:
+                - GRID.SECTION_NUM: Flattened well indices (row*ncols + col)
+                - on: Measurement column to correct
+                - time_label: Time point column (optional)
+            on (str): Name of measurement column to analyze. Used as basis for new
+                corrected columns: EDGE_CORRECTION.NEW_VAL-{on} and
+                EDGE_CORRECTION.CORRECTED_CAP-{on}.
+            nrows (int): Grid rows (e.g., 8 for 96-well).
+            ncols (int): Grid columns (e.g., 12 for 96-well).
+            top_n (int): Number of top interior values for threshold.
+            time_label (str): Time point column name.
+            connectivity (int): 4 or 8 neighbor connectivity.
+            pvalue (float): P-value threshold for permutation test. If interior and
+                edge distributions differ significantly (p < pvalue), apply correction.
+                Set to 0.0 to apply to all groups.
+
+        Returns:
+            pd.DataFrame: Input group with two new correction columns added:
+                - EDGE_CORRECTION.NEW_VAL-{on}: Capped measurement values at threshold
+                  (clipped if correction applied, original otherwise)
+                - EDGE_CORRECTION.CORRECTED_CAP-{on}: Threshold value computed
+                Original measurement column (on) is preserved unchanged. All rows get
+                corrected values (not just edge wells) for consistency and reproducibility.
+
+        Notes:
+            - Interior = all orthogonal neighbors present (4-connectivity determined by grid)
+            - Edge = detected but missing >= 1 orthogonal neighbor
+            - Uses last time point per group to identify interior/edge classification
+            - Permutation test: scipy.stats.permutation_test with 1000 resamples
+            - Threshold = mean of top_n interior values at last time point
+            - If no interior colonies exist, returns group with new columns set to original values
+            - If interior/edge difference not significant (p > pvalue), returns with new columns
+              set to original values (threshold = inf)
+            - New columns always created for consistency, even if no correction applied
+
+        Examples:
+            .. dropdown:: Direct use in batch processing
+
+                >>> from phenotypic.analysis import EdgeCorrector
+                >>> group_data = data[data['Plate'] == 'P1']
+                >>> corrected = EdgeCorrector._apply2group_func(
+                ...     group_data,
+                ...     on='Area',
+                ...     nrows=8, ncols=12,
+                ...     top_n=5,
+                ...     time_label='Time',
+                ...     connectivity=4,
+                ...     pvalue=0.05
+                ... )
         """
         from phenotypic.tools.constants_ import GRID
 
@@ -879,11 +1192,11 @@ class EdgeCorrector(SetAnalyzer):
         # Find fully-surrounded (interior) sections
         try:
             surrounded_idx = EdgeCorrector._surrounded_positions(
-                active_idx=active_indices,
-                shape=(nrows, ncols),
-                connectivity=connectivity,
-                min_neighbors=None,  # Require all neighbors (fully surrounded)
-                return_counts=False,
+                    active_idx=active_indices,
+                    shape=(nrows, ncols),
+                    connectivity=connectivity,
+                    min_neighbors=None,  # Require all neighbors (fully surrounded)
+                    return_counts=False,
             )
         except ValueError:
             # If validation fails, return group unchanged
@@ -926,17 +1239,41 @@ class EdgeCorrector(SetAnalyzer):
         threshold = top_values.mean()
 
         # Apply correction: cap ALL values that exceed for fairness
-        group.loc[:, on] = np.clip(group.loc[:, on], a_min=0, a_max=threshold)
+        group.loc[:, f"{EDGE_CORRECTION.NEW_VAL}-{on}"] = np.clip(group.loc[:, on],
+                                                                  a_min=0,
+                                                                  a_max=threshold)
+        group.loc[:, f"{EDGE_CORRECTION.CORRECTED_CAP}-{on}"] = threshold
         return group
 
     @staticmethod
     def _perm_test(surrounded, edge):
+        """Perform permutation test comparing interior vs. edge colony distributions.
+
+        Determines if interior (surrounded) and edge colonies have statistically
+        significantly different measurements using permutation testing. Tests the
+        null hypothesis that distributions are identical.
+
+        Args:
+            surrounded (array-like): Measurements for interior colonies.
+            edge (array-like): Measurements for edge colonies.
+
+        Returns:
+            float: Two-sided p-value from permutation test (range [0, 1]).
+                Small p-values indicate significant difference between distributions.
+
+        Notes:
+            - Uses scipy.stats.permutation_test with 1000 resamples
+            - Test statistic: mean(surrounded) - mean(edge)
+            - Two-sided alternative: tests if means differ in either direction
+            - Returns p-value >= 0.05 suggests no significant edge effect
+            - Returns p-value < 0.05 suggests colonies ARE significantly different
+        """
         return permutation_test(
-            data=(surrounded, edge),
-            statistic=lambda x, y: np.mean(x) - np.mean(y),
-            permutation_type="independent",
-            n_resamples=1000,
-            alternative="two-sided",
+                data=(surrounded, edge),
+                statistic=lambda x, y: np.mean(x) - np.mean(y),
+                permutation_type="independent",
+                n_resamples=1000,
+                alternative="two-sided",
         ).pvalue
 
 

@@ -315,18 +315,14 @@ def load_plate_12hr(
     mode: Literal["array", "Image", "GridImage"] = "array",
 ) -> Union[np.ndarray, Image, GridImage]:
     """Returns a plate image of a K. Marxianus colony 96 array plate at 12 hrs"""
-    return _image_loader(
-        Path(os.path.relpath(__current_file_dir / "StandardDay1.jpg", Path.cwd())), mode
-    )
+    return _image_loader(__current_file_dir / "StandardDay1.jpg", mode)
 
 
 def load_plate_72hr(
     mode: Literal["array", "Image", "GridImage"] = "array",
 ) -> Union[np.ndarray, Image, GridImage]:
     """Return a image of a k. marxianus colony 96 array plate at 72 hrs"""
-    return _image_loader(
-        Path(os.path.relpath(__current_file_dir / "StandardDay6.jpg", Path.cwd())), mode
-    )
+    return _image_loader(__current_file_dir / "StandardDay6.jpg", mode)
 
 
 def load_plate_series(
@@ -337,9 +333,7 @@ def load_plate_series(
     fnames = os.listdir(__current_file_dir / "PlateSeries")
     fnames.sort()
     for fname in fnames:
-        filepath = Path(
-            os.path.relpath(__current_file_dir / "PlateSeries" / fname, Path.cwd())
-        )
+        filepath = __current_file_dir / "PlateSeries" / fname
         series.append(_image_loader(filepath, mode))
     return series
 
@@ -348,50 +342,35 @@ def load_early_colony(
     mode: Literal["array", "Image", "GridImage"] = "array",
 ) -> Union[np.ndarray, Image, GridImage]:
     """Returns a colony image array of K. Marxianus at 12 hrs"""
-    return _image_loader(
-        Path(os.path.relpath(__current_file_dir / "early_colony.png", Path.cwd())), mode
-    )
+    return _image_loader(__current_file_dir / "early_colony.png", mode)
 
 
 def load_faint_early_colony(
     mode: Literal["array", "Image", "GridImage"] = "array",
 ) -> Union[np.ndarray, Image, GridImage]:
     """Returns a faint colony image array of K. Marxianus at 12 hrs"""
-    return _image_loader(
-        Path(
-            os.path.relpath(__current_file_dir / "early_colony_faint.png", Path.cwd())
-        ),
-        mode,
-    )
+    return _image_loader(__current_file_dir / "early_colony_faint.png", mode)
 
 
 def load_colony(
     mode: Literal["array", "Image", "GridImage"] = "array",
 ) -> Union[np.ndarray, Image, GridImage]:
     """Returns a colony image array of K. Marxianus at 72 hrs"""
-    return _image_loader(
-        Path(os.path.relpath(__current_file_dir / "later_colony.png", Path.cwd())), mode
-    )
+    return _image_loader(__current_file_dir / "later_colony.png", mode)
 
 
 def load_smear_plate_12hr(
     mode: Literal["array", "Image", "GridImage"] = "array",
 ) -> Union[np.ndarray, Image, GridImage]:
     """Returns a plate image array of K. Marxianus that contains noise such as smears"""
-    return _image_loader(
-        Path(os.path.relpath(__current_file_dir / "difficult/1_1S_16.jpg", Path.cwd())),
-        mode,
-    )
+    return _image_loader(__current_file_dir / "difficult/1_1S_16.jpg", mode)
 
 
 def load_smear_plate_24hr(
     mode: Literal["array", "Image", "GridImage"] = "array",
 ) -> Union[np.ndarray, Image, GridImage]:
     """Returns a plate image array of K. Marxianus that contains noise such as smears"""
-    return _image_loader(
-        Path(os.path.relpath(__current_file_dir / "difficult/2_2Y_6.jpg", Path.cwd())),
-        mode,
-    )
+    return _image_loader(__current_file_dir / "difficult/2_2Y_6.jpg", mode)
 
 
 def load_lactose_series(
@@ -402,9 +381,7 @@ def load_lactose_series(
     fnames = os.listdir(__current_file_dir / "lactose")
     fnames.sort()
     for fname in fnames:
-        filepath = Path(
-            os.path.relpath(__current_file_dir / "lactose" / fname, Path.cwd())
-        )
+        filepath = __current_file_dir / "lactose" / fname
         series.append(_image_loader(filepath, mode))
     return series
 
@@ -420,11 +397,7 @@ def yield_sample_dataset(
     ]
     fnames.sort()
     for fname in fnames:
-        filepath = Path(
-            os.path.relpath(
-                __current_file_dir / "PhenoTypicSampleSubset" / fname, Path.cwd()
-            )
-        )
+        filepath = __current_file_dir / "PhenoTypicSampleSubset" / fname
         yield _image_loader(filepath, mode)
 
 
@@ -435,20 +408,12 @@ def load_meas() -> pd.DataFrame:
     Returns:
         pd.DataFrame: A DataFrame containing the loaded measurement data.
     """
-    return pd.read_csv(
-        Path(os.path.relpath(__current_file_dir / "meas/all_meas.csv", Path.cwd())),
-        index_col=0,
-    )
+    return pd.read_csv(__current_file_dir / "meas/all_meas.csv", index_col=0)
 
 
 def load_quickstart_meas() -> pd.DataFrame:
     return pd.read_csv(
-        Path(
-            os.path.relpath(
-                __current_file_dir / "meas/GettingStartedMeas.csv", Path.cwd()
-            )
-        ),
-        index_col=0,
+        __current_file_dir / "meas/GettingStartedMeas.csv", index_col=0
     )
 
 
@@ -459,19 +424,13 @@ def load_area_meas() -> pd.DataFrame:
     Returns:
         pd.DataFrame: A DataFrame containing the sample area measurement data.
     """
-    return pd.read_csv(
-        Path(os.path.relpath(__current_file_dir / "meas/area_meas.csv", Path.cwd())),
-        index_col=0,
-    )
+    return pd.read_csv(__current_file_dir / "meas/area_meas.csv", index_col=0)
 
 
 def load_imager_plate(
     mode: Literal["array", "Image", "GridImage"] = "array",
 ) -> Union[np.ndarray, Image, GridImage]:
-    return _image_loader(
-        Path(os.path.relpath(__current_file_dir / "RHODOTORULA_RAW.cr3", Path.cwd())),
-        mode=mode,
-    )
+    return _image_loader(__current_file_dir / "RHODOTORULA_RAW.cr3", mode=mode)
 
 
 def load_synthetic_detection_image():
@@ -479,9 +438,7 @@ def load_synthetic_detection_image():
     import phenotypic
     from skimage.io import imread
 
-    dirpath = Path(
-        os.path.relpath(__current_file_dir / "synthetic_test_plate", Path.cwd())
-    )
+    dirpath = __current_file_dir / "synthetic_test_plate"
 
     image = phenotypic.GridImage.imread(
         filepath=dirpath / "circular_detect_plate_rgb.tif"

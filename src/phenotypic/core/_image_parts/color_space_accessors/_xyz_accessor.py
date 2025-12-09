@@ -111,50 +111,49 @@ class XyzAccessor(ColorSpaceAccessor):
         """
         if self._root_image.rgb.isempty():
             raise AttributeError("XYZ conversion is not available for grayscale images")
-        norm_rgb = normalize_rgb_bitdepth(self._root_image.rgb[:])
         match (self._root_image.gamma_encoding, self._root_image.illuminant):
             case ("sRGB", "D50"):
                 sRGB_D50.whitepoint = colour.CCS_ILLUMINANTS[
                     self._root_image._observer
                 ]["D50"]
                 return colour.RGB_to_XYZ(
-                    RGB=norm_rgb,
-                    colourspace=sRGB_D50,
-                    illuminant=sRGB_D50.whitepoint,
-                    cctf_decoding=True,
+                        RGB=self._root_image.rgb.normed(),
+                        colourspace=sRGB_D50,
+                        illuminant=sRGB_D50.whitepoint,
+                        cctf_decoding=True,
                 )
             case ("sRGB", "D65"):
                 return colour.RGB_to_XYZ(
-                    RGB=norm_rgb,
-                    colourspace=colour.RGB_COLOURSPACES["sRGB"],
-                    illuminant=colour.CCS_ILLUMINANTS[self._root_image._observer][
-                        "D65"
-                    ],
-                    cctf_decoding=True,
+                        RGB=self._root_image.rgb.normed(),
+                        colourspace=colour.RGB_COLOURSPACES["sRGB"],
+                        illuminant=colour.CCS_ILLUMINANTS[self._root_image._observer][
+                            "D65"
+                        ],
+                        cctf_decoding=True,
                 )
             case (None, "D50"):
                 sRGB_D50.whitepoint = colour.CCS_ILLUMINANTS[
                     self._root_image._observer
                 ]["D50"]
                 return colour.RGB_to_XYZ(
-                    rgb=norm_rgb,
-                    colourspace=colour.RGB_COLOURSPACES["sRGB"],
-                    illuminant=sRGB_D50.whitepoint,
-                    cctf_decoding=False,
+                        rgb=self._root_image.rgb.normed(),
+                        colourspace=colour.RGB_COLOURSPACES["sRGB"],
+                        illuminant=sRGB_D50.whitepoint,
+                        cctf_decoding=False,
                 )
             case (None, "D65"):
                 return colour.RGB_to_XYZ(
-                    rgb=norm_rgb,
-                    colourspace=colour.RGB_COLOURSPACES["sRGB"],
-                    illuminant=colour.CCS_ILLUMINANTS[self._root_image._observer][
-                        "D65"
-                    ],
-                    cctf_decoding=False,
+                        rgb=self._root_image.rgb.normed(),
+                        colourspace=colour.RGB_COLOURSPACES["sRGB"],
+                        illuminant=colour.CCS_ILLUMINANTS[self._root_image._observer][
+                            "D65"
+                        ],
+                        cctf_decoding=False,
                 )
             case _:
                 raise ValueError(
-                    f"Unknown color_profile: {self._root_image.gamma_encoding} "
-                    f"or illuminant: {self._root_image.illuminant}"
+                        f"Unknown color_profile: {self._root_image.gamma_encoding} "
+                        f"or illuminant: {self._root_image.illuminant}"
                 )
 
     def __setitem__(self, key, value):

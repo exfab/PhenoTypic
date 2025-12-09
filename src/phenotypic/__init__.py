@@ -37,6 +37,7 @@ from . import (
     refine,
     tools,
     prefab,
+    settings_
 )
 
 __all__ = [
@@ -55,4 +56,5 @@ __all__ = [
     "correction",
     "enhance",
     "tools",
+    "settings_",
 ]
