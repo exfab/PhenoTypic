@@ -57,7 +57,7 @@ class ImageAccessorBase(ABC):
     def _accessor_property_name_value(cls) -> str:
         """Retrieve accessor property name from the subclass' property without instantiation."""
         return cls._accessor_property_name.fget(
-            object.__new__(cls))  # type: ignore[attr-defined]
+                object.__new__(cls))  # type: ignore[attr-defined]
 
     def __init__(self, root_image: Image):
         self._root_image = root_image
@@ -586,7 +586,7 @@ class ImageAccessorBase(ABC):
             the display. If an existing Axes is provided, its corresponding Figure is returned.
         """
         overlay_settings = overlay_settings if overlay_settings else {}
-        overlay_alpha = overlay_settings.get("alpha", 0.15)
+        overlay_alpha = overlay_settings.get("beta", 0.15)
         overlay_arr = ski.color.label2rgb(
                 label=objmap, image=arr, bg_label=0, alpha=overlay_alpha,
                 **overlay_settings

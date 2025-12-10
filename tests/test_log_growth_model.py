@@ -14,12 +14,12 @@ class TestLogGrowthModel:
     def measurement_data(self):
         """Load measurement data for testing."""
         data_path = (
-            Path(__file__).parent.parent
-            / "src"
-            / "phenotypic"
-            / "data"
-            / "meas"
-            / "area_meas.csv"
+                Path(__file__).parent.parent
+                /"src"
+                /"phenotypic"
+                /"data"
+                /"meas"
+                /"area_meas.csv"
         )
         df = pd.read_csv(data_path)  # Load all rows from area_meas.csv
         return df
@@ -28,12 +28,12 @@ class TestLogGrowthModel:
     def expected_results(self):
         """Load expected fitted results for validation."""
         data_path = (
-            Path(__file__).parent.parent
-            / "src"
-            / "phenotypic"
-            / "data"
-            / "meas"
-            / "growth-rates-area.csv"
+                Path(__file__).parent.parent
+                /"src"
+                /"phenotypic"
+                /"data"
+                /"meas"
+                /"growth-rates-area.csv"
         )
         df = pd.read_csv(data_path)
         return df
@@ -52,19 +52,19 @@ class TestLogGrowthModel:
         size_data = []
 
         for t in time_points:
-            size = K_true / (1 + (K_true - N0_true) / N0_true * np.exp(-r_true * t))
-            size_noisy = size + np.random.normal(0, size * 0.05)  # 5% noise
-            t_data.extend([t] * 3)  # 3 replicates per time point
-            size_data.extend([size_noisy] * 3)
+            size = K_true/(1 + (K_true - N0_true)/N0_true*np.exp(-r_true*t))
+            size_noisy = size + np.random.normal(0, size*0.05)  # 5% noise
+            t_data.extend([t]*3)  # 3 replicates per time point
+            size_data.extend([size_noisy]*3)
 
         df = pd.DataFrame(
-            {
-                "Metadata_Time": t_data,
-                "Shape_Area": size_data,
-                "Metadata_Dataset": ["Test"] * len(t_data),
-                "Metadata_Strain": ["Strain1"] * len(t_data),
-                "Metadata_Replicate": list(range(len(t_data))),
-            }
+                {
+                    "Metadata_Time"     : t_data,
+                    "Shape_Area"        : size_data,
+                    "Metadata_Dataset"  : ["Test"]*len(t_data),
+                    "Metadata_Strain"   : ["Strain1"]*len(t_data),
+                    "Metadata_Replicate": list(range(len(t_data))),
+                }
         )
 
         return df
@@ -73,7 +73,7 @@ class TestLogGrowthModel:
         """Test LogGrowthModel initialization with various parameters."""
         # Test basic initialization
         model = LogGrowthModel(
-            on="Shape_Area", groupby=["Metadata_Dataset", "Metadata_Strain"]
+                on="Shape_Area", groupby=["Metadata_Dataset", "Metadata_Strain"]
         )
 
         assert model.on == "Shape_Area"
@@ -81,22 +81,22 @@ class TestLogGrowthModel:
         assert model.time_label == "Metadata_Time"
         assert model.Kmax_label is None
         assert model.lam == 1.2
-        assert model.alpha == 2
+        assert model.beta == 2
         assert model.loss == "linear"
         assert not model.verbose
         assert model.n_jobs == 1
 
         # Test custom parameters
         model_custom = LogGrowthModel(
-            on="Area",
-            groupby=["Dataset", "Strain"],
-            time_label="Time",
-            Kmax_label="Max_Capacity",
-            lam=2.0,
-            alpha=10,
-            loss="linear",
-            verbose=True,
-            n_jobs=2,
+                on="Area",
+                groupby=["Dataset", "Strain"],
+                time_label="Time",
+                Kmax_label="Max_Capacity",
+                lam=2.0,
+                beta=10,
+                loss="linear",
+                verbose=True,
+                n_jobs=2,
         )
 
         assert model_custom.on == "Area"
@@ -104,16 +104,16 @@ class TestLogGrowthModel:
         assert model_custom.time_label == "Time"
         assert model_custom.Kmax_label == "Max_Capacity"
         assert model_custom.lam == 2.0
-        assert model_custom.alpha == 10
+        assert model_custom.beta == 10
         assert model_custom.verbose
         assert model_custom.n_jobs == 2
 
     def test_analyze_basic(self, sample_data):
         """Test basic model analysis functionality."""
         model = LogGrowthModel(
-            on="Shape_Area",
-            groupby=["Metadata_Dataset", "Metadata_Strain"],
-            verbose=False,
+                on="Shape_Area",
+                groupby=["Metadata_Dataset", "Metadata_Strain"],
+                verbose=False,
         )
 
         results = model.analyze(sample_data)
@@ -148,9 +148,10 @@ class TestLogGrowthModel:
         # Check that growth rate is calculated correctly (r * K / 4)
         r_values = results[LOG_GROWTH_MODEL.R_FIT]
         k_values = results[LOG_GROWTH_MODEL.K_FIT]
-        growth_rate_calc = (r_values * k_values) / 4
+        growth_rate_calc = (r_values*k_values)/4
         pd.testing.assert_series_equal(
-            results[LOG_GROWTH_MODEL.GROWTH_RATE], growth_rate_calc, check_names=False
+                results[LOG_GROWTH_MODEL.GROWTH_RATE], growth_rate_calc,
+                check_names=False
         )
 
     def test_analyze_with_kmax_label(self, sample_data):
@@ -160,9 +161,9 @@ class TestLogGrowthModel:
         sample_data_with_kmax["Kmax_Value"] = 1200  # Higher than actual max
 
         model = LogGrowthModel(
-            on="Shape_Area",
-            groupby=["Metadata_Dataset", "Metadata_Strain"],
-            Kmax_label="Kmax_Value",
+                on="Shape_Area",
+                groupby=["Metadata_Dataset", "Metadata_Strain"],
+                Kmax_label="Kmax_Value",
         )
 
         results = model.analyze(sample_data_with_kmax)
@@ -173,27 +174,29 @@ class TestLogGrowthModel:
     def test_parallel_processing(self, sample_data):
         """Test parallel processing functionality."""
         model_parallel = LogGrowthModel(
-            on="Shape_Area", groupby=["Metadata_Dataset", "Metadata_Strain"], n_jobs=2
+                on="Shape_Area", groupby=["Metadata_Dataset", "Metadata_Strain"],
+                n_jobs=2
         )
 
         results_parallel = model_parallel.analyze(sample_data)
 
         # Compare with single-threaded results
         model_single = LogGrowthModel(
-            on="Shape_Area", groupby=["Metadata_Dataset", "Metadata_Strain"], n_jobs=1
+                on="Shape_Area", groupby=["Metadata_Dataset", "Metadata_Strain"],
+                n_jobs=1
         )
 
         results_single = model_single.analyze(sample_data)
 
         # Results should be very similar (allowing for numerical differences)
         pd.testing.assert_frame_equal(
-            results_parallel.sort_index(), results_single.sort_index(), atol=1e-10
+                results_parallel.sort_index(), results_single.sort_index(), atol=1e-10
         )
 
     def test_results_method(self, sample_data):
         """Test the results() method."""
         model = LogGrowthModel(
-            on="Shape_Area", groupby=["Metadata_Dataset", "Metadata_Strain"]
+                on="Shape_Area", groupby=["Metadata_Dataset", "Metadata_Strain"]
         )
 
         # Should return empty DataFrame if analyze hasn't been called
@@ -211,7 +214,7 @@ class TestLogGrowthModel:
     def test_show_method(self, sample_data):
         """Test the show() method for visualization."""
         model = LogGrowthModel(
-            on="Shape_Area", groupby=["Metadata_Dataset", "Metadata_Strain"]
+                on="Shape_Area", groupby=["Metadata_Dataset", "Metadata_Strain"]
         )
 
         model.analyze(sample_data)
@@ -223,7 +226,7 @@ class TestLogGrowthModel:
 
         # Test plotting with more specific criteria
         fig2, ax2 = model.show(
-            criteria={"Metadata_Dataset": "Test", "Metadata_Strain": "Strain1"}
+                criteria={"Metadata_Dataset": "Test", "Metadata_Strain": "Strain1"}
         )
         assert isinstance(fig2, plt.Figure)
         assert isinstance(ax2, plt.Axes)
@@ -240,7 +243,7 @@ class TestLogGrowthModel:
         combined_data = pd.concat([multi_strain_data, strain2_data], ignore_index=True)
 
         model = LogGrowthModel(
-            on="Shape_Area", groupby=["Metadata_Dataset", "Metadata_Strain"]
+                on="Shape_Area", groupby=["Metadata_Dataset", "Metadata_Strain"]
         )
 
         model.analyze(combined_data)
@@ -294,8 +297,8 @@ class TestLogGrowthModel:
         data_missing_col = sample_data.drop(columns=[missing_column])
 
         model = LogGrowthModel(
-            on="Shape_Area" if missing_column != "Shape_Area" else "Missing_Column",
-            groupby=["Metadata_Dataset", "Metadata_Strain"],
+                on="Shape_Area" if missing_column != "Shape_Area" else "Missing_Column",
+                groupby=["Metadata_Dataset", "Metadata_Strain"],
         )
 
         with pytest.raises(KeyError):
@@ -304,16 +307,16 @@ class TestLogGrowthModel:
     def test_empty_data(self):
         """Test behavior with empty DataFrame."""
         empty_df = pd.DataFrame(
-            columns=[
-                "Metadata_Time",
-                "Shape_Area",
-                "Metadata_Dataset",
-                "Metadata_Strain",
-            ]
+                columns=[
+                    "Metadata_Time",
+                    "Shape_Area",
+                    "Metadata_Dataset",
+                    "Metadata_Strain",
+                ]
         )
 
         model = LogGrowthModel(
-            on="Shape_Area", groupby=["Metadata_Dataset", "Metadata_Strain"]
+                on="Shape_Area", groupby=["Metadata_Dataset", "Metadata_Strain"]
         )
 
         with pytest.raises((ValueError, KeyError)):
@@ -322,16 +325,16 @@ class TestLogGrowthModel:
     def test_single_timepoint(self):
         """Test behavior with insufficient data (single timepoint)."""
         single_point_df = pd.DataFrame(
-            {
-                "Metadata_Time": [0],
-                "Shape_Area": [100],
-                "Metadata_Dataset": ["Test"],
-                "Metadata_Strain": ["Strain1"],
-            }
+                {
+                    "Metadata_Time"   : [0],
+                    "Shape_Area"      : [100],
+                    "Metadata_Dataset": ["Test"],
+                    "Metadata_Strain" : ["Strain1"],
+                }
         )
 
         model = LogGrowthModel(
-            on="Shape_Area", groupby=["Metadata_Dataset", "Metadata_Strain"]
+                on="Shape_Area", groupby=["Metadata_Dataset", "Metadata_Strain"]
         )
 
         # Should handle gracefully, possibly returning NaN values
@@ -346,13 +349,13 @@ class TestLogGrowthModel:
         real_subset = measurement_data[
             (measurement_data["Metadata_Condition"] == "30C")
             & (measurement_data["Metadata_Strain"] == "CBS11445")
-        ].copy()
+            ].copy()
 
         if not real_subset.empty:
             model = LogGrowthModel(
-                on="Shape_Area",
-                groupby=["Metadata_Condition", "Metadata_Strain"],
-                verbose=False,
+                    on="Shape_Area",
+                    groupby=["Metadata_Condition", "Metadata_Strain"],
+                    verbose=False,
             )
 
             results = model.analyze(real_subset)
@@ -368,9 +371,9 @@ class TestLogGrowthModel:
     def test_verbose_output(self, sample_data, capsys):
         """Test verbose output functionality."""
         model = LogGrowthModel(
-            on="Shape_Area",
-            groupby=["Metadata_Dataset", "Metadata_Strain"],
-            verbose=True,
+                on="Shape_Area",
+                groupby=["Metadata_Dataset", "Metadata_Strain"],
+                verbose=True,
         )
 
         model.analyze(sample_data)
@@ -386,19 +389,19 @@ class TestLogGrowthModel:
         t = np.linspace(0, 10, 20)
         # Reasonable initial size
         N0_reasonable = 10
-        y = 1000 / (1 + (1000 - N0_reasonable) / N0_reasonable * np.exp(-0.5 * t))
+        y = 1000/(1 + (1000 - N0_reasonable)/N0_reasonable*np.exp(-0.5*t))
 
         df = pd.DataFrame(
-            {
-                "Metadata_Time": t,
-                "Shape_Area": y,
-                "Metadata_Dataset": ["Test"] * len(t),
-                "Metadata_Strain": ["Strain1"] * len(t),
-            }
+                {
+                    "Metadata_Time"   : t,
+                    "Shape_Area"      : y,
+                    "Metadata_Dataset": ["Test"]*len(t),
+                    "Metadata_Strain" : ["Strain1"]*len(t),
+                }
         )
 
         model = LogGrowthModel(
-            on="Shape_Area", groupby=["Metadata_Dataset", "Metadata_Strain"]
+                on="Shape_Area", groupby=["Metadata_Dataset", "Metadata_Strain"]
         )
 
         results = model.analyze(df)
@@ -418,18 +421,18 @@ class TestLogGrowthModel:
         """Test different aggregation functions."""
         # Test with mean aggregation (default)
         model_mean = LogGrowthModel(
-            on="Shape_Area",
-            groupby=["Metadata_Dataset", "Metadata_Strain"],
-            agg_func="mean",
+                on="Shape_Area",
+                groupby=["Metadata_Dataset", "Metadata_Strain"],
+                agg_func="mean",
         )
 
         results_mean = model_mean.analyze(sample_data)
 
         # Test with median aggregation
         model_median = LogGrowthModel(
-            on="Shape_Area",
-            groupby=["Metadata_Dataset", "Metadata_Strain"],
-            agg_func="median",
+                on="Shape_Area",
+                groupby=["Metadata_Dataset", "Metadata_Strain"],
+                agg_func="median",
         )
 
         results_median = model_median.analyze(sample_data)

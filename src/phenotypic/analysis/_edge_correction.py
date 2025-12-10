@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import warnings
+
 import numpy as np
 import pandas as pd
 from joblib import delayed, Parallel
@@ -394,16 +396,16 @@ class EdgeCorrector(SetAnalyzer):
                 ...     'ImageName': ['img1'] * 96,
                 ...     GRID.SECTION_NUM: range(96),
                 ...     'Metadata_Time': [1] * 96,
-                ...     'Area': np.random.uniform(100, 500, 96)
+                ...     'Shape_Area': np.random.uniform(100, 500, 96)
                 ... })
                 >>>
                 >>> # Edge colonies (row/col 0 or 7/11) have larger areas
                 >>> edge_idx = [i for i in range(96) if i//12 in (0,7) or i%12 in (0,11)]
-                >>> data.loc[edge_idx, 'Area'] *= 1.5
+                >>> data.loc[edge_idx, 'Shape_Area'] *= 1.5
                 >>>
                 >>> # Apply correction
                 >>> corrector = EdgeCorrector(
-                ...     on='Area',
+                ...     on='Shape_Area',
                 ...     groupby=['ImageName'],
                 ...     top_n=5,
                 ...     pvalue=0.05
@@ -756,7 +758,8 @@ class EdgeCorrector(SetAnalyzer):
                 )
 
             # P-value
-            if self.pvalue != 0 and len(inner_vals) > 0 and len(edge_vals) > 0:
+            # permutation test requires at least 2 observations per side
+            if self.pvalue != 0 and len(inner_vals) >= 2 and len(edge_vals) >= 2:
                 pval = self._perm_test(inner_vals, edge_vals)
                 mean_inner = inner_vals.mean()
                 mean_edge = edge_vals.mean()

@@ -383,7 +383,7 @@ class TestImageInitializationDtypes:
         """Test that RGBA array is converted to RGB."""
         img = Image(arr=rgba_array)
 
-        # Image should have RGB data with alpha dropped
+        # Image should have RGB data with beta dropped
         assert not img.rgb.isempty()
         assert img.rgb[:].shape == (100, 100, 3)
         # Verify it's the same as skimage's RGBA→RGB conversion

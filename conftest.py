@@ -3,9 +3,9 @@ import logging
 
 
 def pytest_configure(config):
-    import phenotypic.settings_.VALIDATE_OPS
+    from phenotypic.settings_ import VALIDATE_OPS
 
-    phenotypic.settings_.VALIDATE_OPS = True
+    VALIDATE_OPS = True
 
     # Enable specific loggers
     logging.getLogger("ImagePipeline").setLevel(logging.DEBUG)
