@@ -6,7 +6,7 @@ import subprocess
 import warnings
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import TYPE_CHECKING, Literal, Tuple
+from typing import TYPE_CHECKING, Literal, Tuple, Union, overload
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -18,9 +18,19 @@ from matplotlib.ticker import MultipleLocator
 import phenotypic
 from phenotypic.settings_ import MPL
 from phenotypic.tools.constants_ import IO, METADATA
-from phenotypic.tools.funcs_ import normalize_rgb_bitdepth
+from .._plotting_backends import (
+    validate_backend,
+    plot_image_matplotlib,
+    plot_image_plotly,
+    plot_overlay_plotly,
+    add_scatter_annotations_plotly,
+    PlotReturn,
+    MatplotlibReturn,
+    PlotlyReturn,
+)
 
 if TYPE_CHECKING:
+    import plotly.graph_objects as go
     from phenotypic import Image
 
 
@@ -300,40 +310,72 @@ class ImageAccessorBase(ABC):
         foreground[self._root_image.objmask[:] == 0] = 0
         return foreground
 
+    @overload
     def histogram(
             self,
             figsize: Tuple[int, int] = (10, 5),
             *,
-            cmap="gray",
-            linewidth=1,
+            cmap: str = "gray",
+            linewidth: int = 1,
             channel_names: list | None = None,
-    ) -> Tuple[plt.Figure, plt.Axes]:
+            backend: Literal["matplotlib"] = "matplotlib",
+    ) -> MatplotlibReturn:
+        ...
+
+    @overload
+    def histogram(
+            self,
+            figsize: Tuple[int, int] = (10, 5),
+            *,
+            cmap: str = "gray",
+            linewidth: int = 1,
+            channel_names: list | None = None,
+            backend: Literal["plotly"],
+    ) -> PlotlyReturn:
+        ...
+
+    def histogram(
+            self,
+            figsize: Tuple[int, int] = (10, 5),
+            *,
+            cmap: str = "gray",
+            linewidth: int = 1,
+            channel_names: list | None = None,
+            backend: Literal["matplotlib", "plotly"] = "matplotlib",
+    ) -> PlotReturn:
         """
-        Plots the histogram(s) of an image along with the image itself. The behavior depends on
-        the dimensionality of the image array (2D or 3D). In the case of 2D, a single image and
-        its histogram are produced. For 3D (multi-channel images), histograms for each channel
-        are created alongside the image. This method supports customization such as figure size,
-        colormap, line width of histograms, and labeling of channels.
+        Plot histogram(s) of image alongside image data using selected backend.
+
+        Creates side-by-side visualization of image and intensity distribution(s).
+        Behavior depends on array dimensionality (2D vs 3D).
 
         Args:
-            figsize (Tuple[int, int]): The size of the figure to create. Default is (10, 5).
-            cmap (str): Colormap used to render the image when the data is single channel. Default is 'gray'.
-            linewidth (int): Line width of the plotted histograms. Default is 1.
-            channel_names (list | None): Optional names for the channels in 3D data. These are
-                used as titles for channel-specific histograms. If None, channels are instead
-                labeled numerically.
+            figsize (Tuple[int, int], optional): Figure size in inches.
+                Defaults to (10, 5).
+            cmap (str, optional): Colormap for single-channel images.
+                Defaults to 'gray'.
+            linewidth (int, optional): Line width for histogram plots.
+                Defaults to 1.
+            channel_names (list | None, optional): Names for 3D channels.
+                If None, uses numeric labels. Defaults to None.
+            backend (Literal["matplotlib", "plotly"], optional): Backend to use.
+                Defaults to "matplotlib".
 
         Returns:
-            Tuple[plt.Figure, plt.Axes]: The Matplotlib figure and axes objects representing the
-            plotted image and its histograms.
+            PlotReturn:
+                - If backend="matplotlib": tuple[plt.Figure, plt.Axes]
+                - If backend="plotly": plotly.graph_objects.Figure
 
         Raises:
-            ValueError: If the dimensionality of the input image array is unsupported.
+            ValueError: If unsupported array dimensionality or backend.
+            TypeError: If unsupported image dtype.
+            ImportError: If plotly requested but not installed.
 
         Notes:
-            This method uses `skimage.exposure.histogram <https://scikit-image.org/docs/stable/api/skimage.exposure.html#skimage.exposure.histogram>`_
-            for computing the histogram data.
+            Uses skimage.exposure.histogram for computing histogram data.
         """
+        backend = validate_backend(backend)
+
         arr = self._subject_arr
         dtype = arr.dtype
 
@@ -342,7 +384,8 @@ class ImageAccessorBase(ABC):
             arr_max = arr.max()
             if arr_min < 0.0 or arr_max > 1.0:
                 raise ValueError(
-                        f"Float image arrays must be within [0.0, 1.0]. Found range [{arr_min}, {arr_max}]."
+                    f"Float image arrays must be within [0.0, 1.0]. "
+                    f"Found range [{arr_min}, {arr_max}]."
                 )
             x_limits = (0.0, 1.0)
         elif np.issubdtype(dtype, np.bool_):
@@ -351,54 +394,186 @@ class ImageAccessorBase(ABC):
             dtype_info = np.iinfo(dtype)
             x_limits = (dtype_info.min, dtype_info.max)
         else:
-            raise TypeError(f"Unsupported image dtype for histogram plotting: {dtype}")
+            raise TypeError(
+                f"Unsupported image dtype for histogram plotting: {dtype}"
+            )
 
-        match self.ndim:
-            case 2:
-                fig, axes = plt.subplots(nrows=1, ncols=2, figsize=figsize)
-                axes = axes.ravel()
-                axes[0] = self._plot(
+        if backend == "matplotlib":
+            match self.ndim:
+                case 2:
+                    fig, axes = plt.subplots(nrows=1, ncols=2, figsize=figsize)
+                    axes = axes.ravel()
+                    self._plot(
                         arr=self._subject_arr,
                         figsize=figsize,
                         title=self._root_image.name,
                         cmap=cmap,
                         ax=axes[0],
-                )
-                hist, histc = ski.exposure.histogram(
+                        backend="matplotlib",
+                    )
+                    hist, histc = ski.exposure.histogram(
                         image=self._subject_arr[:],
-                        nbins=2 ** self._root_image.metadata[METADATA.BIT_DEPTH],
-                )
-                axes[1].plot(histc, hist, lw=linewidth)
-                axes[1].set_xlim(x_limits)
+                        nbins=2
+                        ** self._root_image.metadata[METADATA.BIT_DEPTH],
+                    )
+                    axes[1].plot(histc, hist, lw=linewidth)
+                    axes[1].set_xlim(x_limits)
 
-            case 3:
-                fig, axes = plt.subplots(nrows=2, ncols=2, figsize=figsize)
+                case 3:
+                    fig, axes = plt.subplots(nrows=2, ncols=2, figsize=figsize)
 
-                for idx, ax in enumerate(axes.flat):
-                    if idx == 0:
-                        self._plot(
+                    for idx, ax in enumerate(axes.flat):
+                        if idx == 0:
+                            self._plot(
                                 arr=self._subject_arr[:],
                                 figsize=figsize,
                                 title=self._root_image.name,
                                 ax=ax,
-                        )
-                    else:
-                        hist, histc = ski.exposure.histogram(
+                                backend="matplotlib",
+                            )
+                        else:
+                            hist, histc = ski.exposure.histogram(
                                 image=self._subject_arr[:, :, idx - 1],
-                                nbins=2 ** self._root_image.metadata[
-                                    METADATA.BIT_DEPTH],
-                        )
-                        ax.plot(histc, hist, lw=linewidth)
-                        ax.set_title(
+                                nbins=2
+                                ** self._root_image.metadata[
+                                    METADATA.BIT_DEPTH
+                                ],
+                            )
+                            ax.plot(histc, hist, lw=linewidth)
+                            ax.set_title(
                                 f"Channel-{channel_names[idx - 1] if channel_names else idx}"
-                        )
-                        ax.set_xlim(x_limits)
+                            )
+                            ax.set_xlim(x_limits)
 
-            case _:
-                raise ValueError(
+                case _:
+                    raise ValueError(
                         f"Unsupported array dimension: {self._subject_arr.ndim}"
-                )
-        return fig, axes
+                    )
+            return fig, axes
+
+        else:  # backend == "plotly"
+            import plotly.graph_objects as go
+            from plotly.subplots import make_subplots
+
+            match self.ndim:
+                case 2:
+                    # 1x2 subplot: image + histogram
+                    fig = make_subplots(
+                        rows=1,
+                        cols=2,
+                        subplot_titles=(self._root_image.name, "Histogram"),
+                    )
+
+                    # Add image (as heatmap for 2D)
+                    fig.add_trace(
+                        go.Heatmap(
+                            z=self._subject_arr,
+                            colorscale=translate_colormap(cmap, "plotly"),
+                            showscale=False,
+                        ),
+                        row=1,
+                        col=1,
+                    )
+
+                    # Add histogram
+                    hist, histc = ski.exposure.histogram(
+                        image=self._subject_arr[:],
+                        nbins=2
+                        ** self._root_image.metadata[METADATA.BIT_DEPTH],
+                    )
+                    fig.add_trace(
+                        go.Scatter(
+                            x=histc,
+                            y=hist,
+                            mode="lines",
+                            line=dict(width=linewidth),
+                            showlegend=False,
+                        ),
+                        row=1,
+                        col=2,
+                    )
+
+                case 3:
+                    # 2x2 subplot: image + 3 channel histograms
+                    fig = make_subplots(
+                        rows=2,
+                        cols=2,
+                        subplot_titles=(
+                            self._root_image.name,
+                            f"Channel-{channel_names[0] if channel_names else 0}",
+                            f"Channel-{channel_names[1] if channel_names else 1}",
+                            f"Channel-{channel_names[2] if channel_names else 2}",
+                        ),
+                    )
+
+                    # Add RGB image
+                    plot_arr = self._subject_arr
+                    if plot_arr.dtype in (np.float32, np.float64):
+                        plot_arr = (plot_arr * 255).astype(np.uint8)
+                    fig.add_trace(go.Image(z=plot_arr), row=1, col=1)
+
+                    # Add channel histograms
+                    positions = [(1, 2), (2, 1), (2, 2)]
+                    for channel_idx, (row, col) in enumerate(positions):
+                        hist, histc = ski.exposure.histogram(
+                            image=self._subject_arr[:, :, channel_idx],
+                            nbins=2
+                            ** self._root_image.metadata[
+                                METADATA.BIT_DEPTH
+                            ],
+                        )
+                        fig.add_trace(
+                            go.Scatter(
+                                x=histc,
+                                y=hist,
+                                mode="lines",
+                                line=dict(width=linewidth),
+                                showlegend=False,
+                            ),
+                            row=row,
+                            col=col,
+                        )
+
+                case _:
+                    raise ValueError(
+                        f"Unsupported array dimension: {self._subject_arr.ndim}"
+                    )
+
+            # Configure layout
+            width_px = int(figsize[0] * 100)
+            height_px = int(figsize[1] * 100)
+            fig.update_layout(width=width_px, height=height_px, showlegend=False)
+
+            return fig
+
+    @overload
+    def _plot(
+            self,
+            arr: np.ndarray,
+            figsize: Tuple[int, int] | None = None,
+            title: str | bool | None = None,
+            cmap: str = "gray",
+            ax: plt.Axes | None = None,
+            mpl_settings: dict | None = None,
+            *,
+            backend: Literal["matplotlib"] = "matplotlib",
+    ) -> MatplotlibReturn:
+        ...
+
+    @overload
+    def _plot(
+            self,
+            arr: np.ndarray,
+            figsize: Tuple[int, int] | None = None,
+            title: str | bool | None = None,
+            cmap: str = "gray",
+            ax: None = None,
+            mpl_settings: dict | None = None,
+            *,
+            backend: Literal["plotly"],
+            plotly_settings: dict | None = None,
+    ) -> PlotlyReturn:
+        ...
 
     def _plot(
             self,
@@ -408,65 +583,89 @@ class ImageAccessorBase(ABC):
             cmap: str = "gray",
             ax: plt.Axes | None = None,
             mpl_settings: dict | None = None,
-    ) -> tuple[plt.Figure, plt.Axes]:
+            *,
+            backend: Literal["matplotlib", "plotly"] = "matplotlib",
+            plotly_settings: dict | None = None,
+    ) -> PlotReturn:
         """
-        Plots an image array using Matplotlib.
+        Plot an image array using matplotlib or plotly backend.
 
-        This method is designed to render an image array using the `matplotlib.pyplot` module. It provides
-        flexible options for color mapping, figure size, title customization, and additional Matplotlib
-        parameters, which enable detailed control over the plot appearance.
+        Renders an image array with flexible backend selection for both static
+        (matplotlib) and interactive (plotly) visualization.
 
         Args:
-            arr (np.ndarray): The image data to plot. Can be 2D or 3D array representing the image.
-            figsize ((int, int), optional): A tuple specifying the figure size. Defaults to (8, 6).
-            title (None | str, optional): Plot title. If None, defaults to the name of the parent image. Defaults to None.
-            cmap (str, optional): The colormap to be applied when the array is 2D. Defaults to 'gray'.
-            ax (None | plt.Axes, optional): Existing Matplotlib axes to plot into. If None, a new figure is created. Defaults to None.
-            mpl_settings (dict | None, optional): Additional Matplotlib keyword arguments for customization. Defaults to None.
+            arr (np.ndarray): The image data to plot. Can be 2D or 3D array.
+            figsize ((int, int), optional): Figure size in inches.
+                Defaults to settings_.MPL.FIGSIZE.
+            title (None | str | bool, optional): Plot title. If True, uses
+                parent image name. If str, uses that string. If None/False,
+                no title. Defaults to None.
+            cmap (str, optional): Colormap for 2D arrays. Defaults to 'gray'.
+            ax (None | plt.Axes, optional): Existing matplotlib axes. Only
+                valid for matplotlib backend. Defaults to None.
+            mpl_settings (dict | None, optional): Additional matplotlib
+                imshow kwargs. Only used with matplotlib backend.
+                Defaults to None.
+            backend (Literal["matplotlib", "plotly"], optional): Backend to use.
+                Defaults to "matplotlib".
+            plotly_settings (dict | None, optional): Additional plotly trace
+                kwargs. Only used with plotly backend. Defaults to None.
 
         Returns:
-            tuple[plt.Figure, plt.Axes]: A tuple containing the created or passed Matplotlib `Figure` and `Axes` objects.
+            PlotReturn:
+                - If backend="matplotlib": tuple[plt.Figure, plt.Axes]
+                - If backend="plotly": plotly.graph_objects.Figure
 
+        Raises:
+            ValueError: If backend not supported or ax provided with plotly.
+            ImportError: If plotly requested but not installed.
+
+        Examples:
+            >>> # Matplotlib backend (default)
+            >>> fig, ax = image.gray._plot(image.gray[:])
+
+            >>> # Plotly backend
+            >>> fig = image.gray._plot(image.gray[:], backend="plotly")
+            >>> fig.show()
         """
+        # Validate backend
+        backend = validate_backend(backend)
+
+        # Handle title
+        if title is True:
+            title = self._root_image.name
+        elif title is False:
+            title = None
+
+        # Set default figsize
         figsize = figsize if figsize else MPL.FIGSIZE
 
-        fig, ax = (ax.get_figure(), ax) if ax else plt.subplots(figsize=figsize)
+        # Route to appropriate backend
+        if backend == "matplotlib":
+            return plot_image_matplotlib(
+                arr=arr,
+                figsize=figsize,
+                title=title,
+                cmap=cmap,
+                ax=ax,
+                mpl_settings=mpl_settings,
+            )
 
-        mpl_settings = mpl_settings if mpl_settings else {}
-        cmap = mpl_settings.pop("cmap", cmap)
+        else:  # backend == "plotly"
+            if ax is not None:
+                raise ValueError(
+                    "The 'ax' parameter is not supported with plotly backend. "
+                    "Plotly creates standalone figures and cannot plot on existing "
+                    "matplotlib axes. To use existing axes, switch to backend='matplotlib'."
+                )
 
-        # matplotlib.imshow can only handle ranges 0-1 or 0-255
-        # this adds handling for higher bit-depth images
-        plot_arr = normalize_rgb_bitdepth(arr) if arr.ndim == 3 else arr
-        if np.issubdtype(plot_arr.dtype, np.integer):
-            vmax = np.iinfo(plot_arr.dtype).max
-        elif np.issubdtype(plot_arr.dtype, np.floating):
-            vmax = 1.0
-        else:
-            vmax = 1
-        vmax = mpl_settings.pop("vmax", vmax)
-
-        ax.imshow(
-                plot_arr, cmap=cmap, **mpl_settings
-        ) if plot_arr.ndim == 2 else ax.imshow(plot_arr,
-                                               vmax=vmax,
-                                               **mpl_settings)
-
-        ax.grid(False)
-
-        # arr_shape = arr.shape
-        # if arr_shape[0] > 500:
-        #     ax.yaxis.set_minor_locator(MultipleLocator(100))
-        #
-        # if arr_shape[1] > 500:
-        #     ax.xaxis.set_minor_locator(MultipleLocator(100))
-
-        if title is True:
-            ax.set_title(self._root_image.name)
-        elif title:
-            ax.set_title(title)
-
-        return fig, ax
+            return plot_image_plotly(
+                arr=arr,
+                figsize=figsize,
+                title=title,
+                cmap=cmap,
+                plotly_settings=plotly_settings,
+            )
 
     def _plot_obj_labels(
             self,
@@ -545,113 +744,229 @@ class ImageAccessorBase(ABC):
                 )
         return ax
 
+    @overload
     def _plot_overlay(
             self,
             arr: np.ndarray,
             objmap: np.ndarray,
-            figsize: (int, int) = (8, 6),
+            figsize: Tuple[int, int] = (8, 6),
             title: str | bool | None = None,
             cmap: str = "gray",
-            ax: plt.Axes = None,
+            ax: plt.Axes | None = None,
             *,
             overlay_settings: dict | None = None,
             mpl_settings: dict | None = None,
-    ) -> (plt.Figure, plt.Axes):
-        """
-        Plots an array with optional object map overlay and customization options.
+            backend: Literal["matplotlib"] = "matplotlib",
+    ) -> MatplotlibReturn:
+        ...
 
-        Note:
-            - If ax is None, a new figure and axes are created.
+    @overload
+    def _plot_overlay(
+            self,
+            arr: np.ndarray,
+            objmap: np.ndarray,
+            figsize: Tuple[int, int] = (8, 6),
+            title: str | bool | None = None,
+            cmap: str = "gray",
+            ax: None = None,
+            *,
+            overlay_settings: dict | None = None,
+            mpl_settings: dict | None = None,
+            backend: Literal["plotly"],
+            plotly_settings: dict | None = None,
+    ) -> PlotlyReturn:
+        ...
+
+    def _plot_overlay(
+            self,
+            arr: np.ndarray,
+            objmap: np.ndarray,
+            figsize: Tuple[int, int] = (8, 6),
+            title: str | bool | None = None,
+            cmap: str = "gray",
+            ax: plt.Axes | None = None,
+            *,
+            overlay_settings: dict | None = None,
+            mpl_settings: dict | None = None,
+            backend: Literal["matplotlib", "plotly"] = "matplotlib",
+            plotly_settings: dict | None = None,
+    ) -> PlotReturn:
+        """
+        Plot array with optional object map overlay using selected backend.
+
+        Renders an image with colored object labels overlaid on top, supporting
+        both matplotlib and plotly backends.
 
         Args:
-            arr (np.ndarray): The primary array to be displayed as an image.
-            objmap (np.ndarray, optional): An array containing labels for an object map to
-                overlay on top of the image. Defaults to None.
-            figsize (tuple[int, int], optional): The size of the figure as a tuple of
-                (width, height). Defaults to (8, 6).
-            title (str, optional): Title of the plot to be displayed. If not provided,
-                defaults to the name of the self.image.
-            cmap (str, optional): Colormap to apply to the image. Defaults to 'gray'. Only used if arr arr is 2D.
-            ax (plt.Axes, optional): An existing Matplotlib Axes instance for rendering
-                the image. If None, a new figure and axes are created. Defaults to None.
-            overlay_settings (dict | None, optional): Parameters passed to the
-                `skimage.color.label2rgb` function for overlay customization.
-                Defaults to None.
-            mpl_settings (dict | None, optional): Additional parameters for the
-                `ax.imshow` Matplotlib function to control image rendering.
-                Defaults to None.
+            arr (np.ndarray): The primary array to be displayed as image.
+            objmap (np.ndarray): Array containing labels for object map overlay.
+            figsize (Tuple[int, int], optional): Figure size (width, height) in inches.
+                Defaults to (8, 6).
+            title (str | bool | None, optional): Plot title. If True, uses parent
+                image name. Defaults to None.
+            cmap (str, optional): Colormap for 2D arrays. Defaults to 'gray'.
+            ax (plt.Axes | None, optional): Existing matplotlib axes. Only valid
+                for matplotlib backend. Defaults to None.
+            overlay_settings (dict | None, optional): Parameters for
+                skimage.color.label2rgb overlay customization. Defaults to None.
+            mpl_settings (dict | None, optional): Additional matplotlib imshow
+                kwargs. Only used with matplotlib backend. Defaults to None.
+            backend (Literal["matplotlib", "plotly"], optional): Backend to use.
+                Defaults to "matplotlib".
+            plotly_settings (dict | None, optional): Additional plotly trace kwargs.
+                Only used with plotly backend. Defaults to None.
 
         Returns:
-            tuple[plt.Figure, plt.Axes]: The Matplotlib Figure and Axes objects used for
-            the display. If an existing Axes is provided, its corresponding Figure is returned.
+            PlotReturn:
+                - If backend="matplotlib": tuple[plt.Figure, plt.Axes]
+                - If backend="plotly": plotly.graph_objects.Figure
+
+        Raises:
+            ValueError: If backend invalid or ax with plotly backend.
+            ImportError: If plotly requested but not installed.
         """
+        backend = validate_backend(backend)
+
         overlay_settings = overlay_settings if overlay_settings else {}
         overlay_alpha = overlay_settings.get("beta", 0.15)
-        overlay_arr = ski.color.label2rgb(
+
+        if backend == "matplotlib":
+            overlay_arr = ski.color.label2rgb(
                 label=objmap, image=arr, bg_label=0, alpha=overlay_alpha,
                 **overlay_settings
-        )
+            )
 
-        fig, ax = self._plot(
+            return self._plot(
                 arr=overlay_arr,
                 figsize=figsize,
                 title=title,
                 cmap=cmap,
                 ax=ax,
                 mpl_settings=mpl_settings,
-        )
+                backend="matplotlib",
+            )
 
-        return fig, ax
+        else:  # backend == "plotly"
+            if ax is not None:
+                raise ValueError(
+                    "The 'ax' parameter is not supported with plotly backend."
+                )
 
+            return plot_overlay_plotly(
+                arr=arr,
+                objmap=objmap,
+                figsize=figsize,
+                title=title,
+                overlay_alpha=overlay_alpha,
+                plotly_settings=plotly_settings,
+            )
+
+    @overload
     def show_overlay(
             self,
             object_label: None | int = None,
-            figsize: tuple[int, int] | None = None,
+            figsize: Tuple[int, int] | None = None,
             title: str | None = None,
             show_labels: bool = False,
-            ax: plt.Axes = None,
+            ax: plt.Axes | None = None,
             *,
             label_settings: None | dict = None,
             overlay_settings: None | dict = None,
             imshow_settings: None | dict = None,
-    ) -> tuple[plt.Figure, plt.Axes]:
-        """
-        Displays an overlay of the object map on the parent image with optional annotations.
+            backend: Literal["matplotlib"] = "matplotlib",
+    ) -> MatplotlibReturn:
+        ...
 
-        This method enables visualization by overlaying object regions on the parent image. It
-                provides options for customization, including the ability to show_labels specific objects
-        and adjust visual styles like figure size, colors, and annotation properties.
+    @overload
+    def show_overlay(
+            self,
+            object_label: None | int = None,
+            figsize: Tuple[int, int] | None = None,
+            title: str | None = None,
+            show_labels: bool = False,
+            ax: None = None,
+            *,
+            label_settings: None | dict = None,
+            overlay_settings: None | dict = None,
+            imshow_settings: None | dict = None,
+            backend: Literal["plotly"],
+            plotly_settings: None | dict = None,
+    ) -> PlotlyReturn:
+        ...
+
+    def show_overlay(
+            self,
+            object_label: None | int = None,
+            figsize: Tuple[int, int] | None = None,
+            title: str | None = None,
+            show_labels: bool = False,
+            ax: plt.Axes | None = None,
+            *,
+            label_settings: None | dict = None,
+            overlay_settings: None | dict = None,
+            imshow_settings: None | dict = None,
+            backend: Literal["matplotlib", "plotly"] = "matplotlib",
+            plotly_settings: None | dict = None,
+    ) -> PlotReturn:
+        """
+        Display overlay of object map on parent image with optional annotations.
+
+        Visualizes object regions overlaid on the parent image with customization
+        options for figure size, colors, and annotation properties. Supports both
+        matplotlib and plotly backends.
 
         Args:
-            object_label (None | int): Specific object label to be highlighted. If None,
-                all objects are displayed.
-            figsize (tuple[int, int]): Size of the figure in inches (width, height).
-            title (None | str): Title for the plot. If None, the parent image's name
-                is used.
-            show_labels (bool): If True, displays annotations for object labels on the
-                object centroids.
-            label_settings (None | dict): Additional parameters for customization of the
-                object annotations. Defaults: size=12, color='white', facecolor='red'. Other kwargs
-                are passed to the matplotlib.axes.text () method.
-            ax (plt.Axes): Optional Matplotlib Axes object. If None, a new Axes is
-                created.
-            overlay_settings (None | dict): Additional parameters for customization of the
-                overlay.
-            imshow_settings (None|dict): Additional Matplotlib imshow configuration parameters
-                for customization. If None, default Matplotlib settings will apply.
+            object_label (None | int, optional): Specific object label to highlight.
+                If None, all objects displayed. Defaults to None.
+            figsize (Tuple[int, int] | None, optional): Figure size in inches
+                (width, height). Defaults to None.
+            title (str | None, optional): Plot title. If None, uses parent image
+                name. Defaults to None.
+            show_labels (bool, optional): If True, display annotations for object
+                labels at centroids. Defaults to False.
+            ax (plt.Axes | None, optional): Existing matplotlib axes. Only valid
+                for matplotlib backend. Defaults to None.
+            label_settings (dict | None, optional): Label annotation customization.
+                Defaults: size=12, color='white', facecolor='red'. Defaults to None.
+            overlay_settings (dict | None, optional): Overlay customization params.
+                Defaults to None.
+            imshow_settings (dict | None, optional): Matplotlib imshow kwargs.
+                Only used with matplotlib backend. Defaults to None.
+            backend (Literal["matplotlib", "plotly"], optional): Backend to use.
+                Defaults to "matplotlib".
+            plotly_settings (dict | None, optional): Plotly-specific settings.
+                Only used with plotly backend. Defaults to None.
 
         Returns:
-            tuple[plt.Figure, plt.Axes]: Matplotlib Figure and Axes objects containing
-            the generated plot.
+            PlotReturn:
+                - If backend="matplotlib": tuple[plt.Figure, plt.Axes]
+                - If backend="plotly": plotly.graph_objects.Figure
 
+        Raises:
+            ValueError: If backend invalid or ax with plotly backend.
+            ImportError: If plotly requested but not installed.
+
+        Examples:
+            >>> # Matplotlib overlay with labels
+            >>> fig, ax = image.gray.show_overlay(show_labels=True)
+
+            >>> # Plotly interactive overlay
+            >>> fig = image.gray.show_overlay(
+            ...     backend="plotly",
+            ...     show_labels=True
+            ... )
+            >>> fig.show()
         """
+        backend = validate_backend(backend)
+
         objmap = self._root_image.objmap[:]
         if object_label is not None:
             objmap[objmap != object_label] = 0
         if label_settings is None:
             label_settings = {}
 
-        fig, ax = self._plot_overlay(
+        if backend == "matplotlib":
+            fig, ax = self._plot_overlay(
                 arr=self._subject_arr,
                 objmap=objmap,
                 ax=ax,
@@ -659,17 +974,61 @@ class ImageAccessorBase(ABC):
                 title=title,
                 mpl_settings=imshow_settings,
                 overlay_settings=overlay_settings,
-        )
+                backend="matplotlib",
+            )
 
-        if show_labels:
-            ax = self._plot_obj_labels(
+            if show_labels:
+                ax = self._plot_obj_labels(
                     ax=ax,
                     color=label_settings.get("color", "white"),
                     size=label_settings.get("size", 12),
                     facecolor=label_settings.get("facecolor", "red"),
                     object_label=object_label,
+                )
+            return fig, ax
+
+        else:  # backend == "plotly"
+            if ax is not None:
+                raise ValueError(
+                    "The 'ax' parameter is not supported with plotly backend."
+                )
+
+            fig = self._plot_overlay(
+                arr=self._subject_arr,
+                objmap=objmap,
+                figsize=figsize,
+                title=title,
+                overlay_settings=overlay_settings,
+                backend="plotly",
+                plotly_settings=plotly_settings,
             )
-        return fig, ax
+
+            if show_labels:
+                # Extract centroids and labels for annotation
+                props = self._root_image.objects.props
+                labels = self._root_image.objects.labels
+
+                if object_label is None:
+                    centroids = [prop.centroid for prop in props]
+                    label_values = labels
+                else:
+                    idx = np.where(labels == object_label)[0]
+                    if len(idx) > 0:
+                        centroids = [props[idx[0]].centroid]
+                        label_values = [object_label]
+                    else:
+                        centroids = []
+                        label_values = []
+
+                fig = add_scatter_annotations_plotly(
+                    fig=fig,
+                    labels=label_values,
+                    centroids=centroids,
+                    color=label_settings.get("color", "white"),
+                    size=label_settings.get("size", 12),
+                )
+
+            return fig
 
     def _build_phenotypic_metadata(self) -> dict:
         """Build PhenoTypic metadata dictionary for embedding in saved images.

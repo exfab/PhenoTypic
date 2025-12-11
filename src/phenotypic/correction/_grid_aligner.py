@@ -57,7 +57,7 @@ class GridAligner(GridCorrector):
         grid_info = image.grid.info()
 
         # Collect aligned X positions of the vertices
-        grouped = (grid_info.groupby(x_group, observed=True)
+        grouped = (grid_info.groupby(x_group, observed=True)[x_val]
                    .agg(["min", "max"])
                    .to_numpy())
 
@@ -104,19 +104,20 @@ class GridAligner(GridCorrector):
         theta_sign = y_0 - y_1
         theta = theta*(np.divide(theta_sign, abs(theta_sign), where=theta_sign != 0))
 
-        def find_angle_of_rot(x):
-            new_theta = theta + x
-            err = np.mean(new_theta ** 2)
-            return err
-
         largest_angle = np.abs(theta).max()
         optimal_angle = minimize_scalar(
-                fun=find_angle_of_rot,
+                fun=self._find_angle_of_rot,
                 bounds=(-largest_angle, largest_angle),
+                args=theta
         )
 
         image.rotate(angle_of_rotation=optimal_angle.x, mode=self.mode)
         return image
+
+    def _find_angle_of_rot(self, X, theta):
+        new_theta = theta + X
+        err = np.mean(new_theta ** 2)
+        return err
 
     @staticmethod
     def _find_hyp_dist(row):

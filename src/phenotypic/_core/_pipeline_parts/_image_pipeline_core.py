@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import traceback
 from typing import TYPE_CHECKING, Union
 
 import numpy as np
@@ -41,11 +42,11 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
     """
 
     def __init__(
-        self,
-        ops: List[ImageOperation] | Dict[str, ImageOperation] | None = None,
-        meas: List[MeasureFeatures] | Dict[str, MeasureFeatures] | None = None,
-        benchmark: bool = False,
-        verbose: bool = False,
+            self,
+            ops: List[ImageOperation] | Dict[str, ImageOperation] | None = None,
+            meas: List[MeasureFeatures] | Dict[str, MeasureFeatures] | None = None,
+            benchmark: bool = False,
+            verbose: bool = False,
     ):
         """
         This class represents a processing and measurement abc_ for Image operations
@@ -107,7 +108,7 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
             raise TypeError(f"ops must be a list or a dictionary, got {type(ops)}")
 
     def set_meas(
-        self, measurements: List[MeasureFeatures] | Dict[str, MeasureFeatures]
+            self, measurements: List[MeasureFeatures] | Dict[str, MeasureFeatures]
     ):
         """
         Sets the measurements to be used for further computation. The input can be either
@@ -141,7 +142,7 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
             self._meas = measurements
         else:
             raise TypeError(
-                f"measurements must be a list or a dictionary, got {type(measurements)}"
+                    f"measurements must be a list or a dictionary, got {type(measurements)}"
             )
 
     @staticmethod
@@ -179,7 +180,7 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
         return result
 
     def apply(
-        self, image: Image, inplace: bool = False, reset: bool = True
+            self, image: Image, inplace: bool = False, reset: bool = True
     ) -> Union[GridImage, Image]:
         """
         The class provides an abc_ to process and apply a series of operations on
@@ -211,7 +212,7 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
                 # Create a tqdm instance without items to manually update it
                 total_ops = len(self._ops)
                 pbar = tqdm(
-                    total=total_ops, desc="Applying operations", file=sys.stdout
+                        total=total_ops, desc="Applying operations", file=sys.stdout
                 )
                 has_tqdm = True
             except ImportError:
@@ -258,14 +259,16 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
                             pbar.update(1)
                         else:
                             print(
-                                f"    Completed in {self._operation_times[key]:.4f} seconds"
+                                    f"    Completed in {self._operation_times[key]:.4f} seconds"
                             )
             except Exception as e:
                 if self._benchmark and self._verbose and has_tqdm:
                     pbar.close()
-                raise Exception(
-                    f"Failed to apply {operation} during step {key} to Image {img.name}: {e}"
-                ) from e
+                exc_type, exc_val, exc_tb = sys.exc_info()
+                # You can inspect or log:
+                traceback.print_tb(exc_tb)
+                # Re-raise later:
+                raise exc_val.with_traceback(exc_tb)
 
         # Close the progress bar if it exists
         if self._benchmark and self._verbose and has_tqdm:
@@ -312,7 +315,7 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
             # Print execution time if verbose and benchmark are enabled
             if self._verbose:
                 print(
-                    f"  Image info: {self._measurement_times['image_info']:.4f} seconds"
+                        f"  Image info: {self._measurement_times['image_info']:.4f} seconds"
                 )
         else:
             measurements = [
@@ -329,9 +332,9 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
                 # Create a tqdm instance without items to manually update it
                 total_measurements = len(self._meas)
                 pbar = tqdm(
-                    total=total_measurements,
-                    desc="Applying measurements",
-                    file=sys.stdout,
+                        total=total_measurements,
+                        desc="Applying measurements",
+                        file=sys.stdout,
                 )
                 has_tqdm = True
             except ImportError:
@@ -363,12 +366,12 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
                     if self._verbose:
                         if has_tqdm:
                             pbar.set_postfix(
-                                time=f"{self._measurement_times[key]:.4f}s"
+                                    time=f"{self._measurement_times[key]:.4f}s"
                             )
                             pbar.update(1)
                         else:
                             print(
-                                f"    Completed in {self._measurement_times[key]:.4f} seconds"
+                                    f"    Completed in {self._measurement_times[key]:.4f} seconds"
                             )
                 else:
                     measurements.append(measurement.measure(image))
@@ -384,11 +387,11 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
         return self._merge_on_object_labels(measurements)
 
     def apply_and_measure(
-        self,
-        image: Image,
-        inplace: bool = False,
-        reset: bool = True,
-        include_metadata: bool = True,
+            self,
+            image: Image,
+            inplace: bool = False,
+            reset: bool = True,
+            include_metadata: bool = True,
     ) -> pd.DataFrame:
         """
         Applies processing to the given image and measures the results.
@@ -430,27 +433,27 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
         # Add operation times
         for op_name, op_time in self._operation_times.items():
             data.append(
-                {
-                    "Process Type": "Operation",
-                    "Process Name": op_name,
-                    "Execution Time (s)": op_time,
-                }
+                    {
+                        "Process Type"      : "Operation",
+                        "Process Name"      : op_name,
+                        "Execution Time (s)": op_time,
+                    }
             )
 
         # Add measurement times
         for measure_name, measure_time in self._measurement_times.items():
             data.append(
-                {
-                    "Process Type": "Measurement",
-                    "Process Name": measure_name,
-                    "Execution Time (s)": measure_time,
-                }
+                    {
+                        "Process Type"      : "Measurement",
+                        "Process Name"      : measure_name,
+                        "Execution Time (s)": measure_time,
+                    }
             )
 
         # Create DataFrame
         if not data:
             return pd.DataFrame(
-                columns=["Process Type", "Process Name", "Execution Time (s)"]
+                    columns=["Process Type", "Process Name", "Execution Time (s)"]
             )
 
         df = pd.DataFrame(data)
@@ -458,13 +461,13 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
         # Calculate total time
         total_time = df["Execution Time (s)"].sum()
         total_row = pd.DataFrame(
-            [
-                {
-                    "Process Type": "Total",
-                    "Process Name": "All Processes",
-                    "Execution Time (s)": total_time,
-                }
-            ]
+                [
+                    {
+                        "Process Type"      : "Total",
+                        "Process Name"      : "All Processes",
+                        "Execution Time (s)": total_time,
+                    }
+                ]
         )
         df = pd.concat([df, total_row], ignore_index=True)
 
@@ -485,7 +488,7 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
             ValueError: If no DataFrames are provided or if no matching index names are found
         """
         if not dataframes_list or not all(
-            [isinstance(x, pd.DataFrame) for x in dataframes_list]
+                [isinstance(x, pd.DataFrame) for x in dataframes_list]
         ):
             raise ValueError("No DataFrames provided")
         new_df = dataframes_list[0]
@@ -503,7 +506,7 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
                     if col_new_df != OBJECT.LABEL:  # skip the object label
                         for col_other_df in df.columns:
                             if col_new_df == col_other_df and np.all(
-                                df[col_new_df] == df[col_other_df]
+                                    df[col_new_df] == df[col_other_df]
                             ):
                                 cols_to_merge_on.append(col_other_df)
 
