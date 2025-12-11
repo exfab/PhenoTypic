@@ -9,7 +9,7 @@ if TYPE_CHECKING:
 
 import numpy as np
 
-from phenotypic.core._image_parts.accessors import ObjectsAccessor
+from phenotypic._core._image_parts.accessors import ObjectsAccessor
 from ._image_handler import ImageHandler
 
 
@@ -31,10 +31,10 @@ class ImageObjectsHandler(ImageHandler):
     """
 
     def __init__(
-        self,
-        arr: np.ndarray | Image | None = None,
-        name: str | None = None,
-        bit_depth: int | None = None,
+            self,
+            arr: np.ndarray | Image | None = None,
+            name: str | None = None,
+            bit_depth: int | None = None,
     ):
         """Initialize ImageObjectsHandler with object detection support.
 

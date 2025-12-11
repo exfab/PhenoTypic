@@ -1153,7 +1153,7 @@ class EdgeCorrector(SetAnalyzer):
             .. dropdown:: Direct use in batch processing
 
                 >>> from phenotypic.analysis import EdgeCorrector
-                >>> group_data = data[data['Plate'] == 'P1']
+                >>> group_data = data[data['Plate'] == 'P1'] #doctest: +SKIP
                 >>> corrected = EdgeCorrector._apply2group_func(
                 ...     group_data,
                 ...     on='Area',
@@ -1167,6 +1167,12 @@ class EdgeCorrector(SetAnalyzer):
         from phenotypic.tools.constants_ import GRID
 
         section_col = GRID.SECTION_NUM
+
+        # Set base case
+        group.loc[:, f"{EDGE_CORRECTION.NEW_VAL}-{on}"] = group.loc[:, on]
+
+        # TODO: Should this be the max or np.inf
+        group.loc[:, f"{EDGE_CORRECTION.CORRECTED_CAP}-{on}"] = group.loc[:, on].max()
 
         # Handle empty groups
         if len(group) == 0:

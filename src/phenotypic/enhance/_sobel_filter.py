@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from phenotypic import Image
 
-from skimage.filters import sobel
+import skimage.filters
 
 from phenotypic.abc_ import ImageEnhancer
 
@@ -35,5 +35,7 @@ class SobelFilter(ImageEnhancer):
     """
 
     def _operate(self, image: Image) -> Image:
-        image.enh_gray[:] = sobel(image=image.enh_gray[:])
+        image.enh_gray[:] = skimage.filters.sobel(
+                image=image.enh_gray[:]
+        )
         return image

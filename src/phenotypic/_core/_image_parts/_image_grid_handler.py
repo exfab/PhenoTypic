@@ -7,7 +7,7 @@ import pandas as pd
 from matplotlib.patches import Rectangle
 
 from phenotypic.abc_ import GridFinder
-from phenotypic.core._image_parts.accessors import GridAccessor
+from phenotypic._core._image_parts.accessors import GridAccessor
 from phenotypic.grid import AutoGridFinder
 from phenotypic.measure import MeasureBounds
 from phenotypic.tools.constants_ import IMAGE_TYPES, BBOX, METADATA
@@ -44,13 +44,13 @@ class ImageGridHandler(Image):
     """
 
     def __init__(
-        self,
-        arr: Optional[Union[np.ndarray, Image]] = None,
-        name: str = None,
-        grid_finder: Optional[GridFinder] = None,
-        nrows: int = 8,
-        ncols: int = 12,
-        **kwargs,
+            self,
+            arr: Optional[Union[np.ndarray, Image]] = None,
+            name: str = None,
+            grid_finder: Optional[GridFinder] = None,
+            nrows: int = 8,
+            ncols: int = 12,
+            **kwargs,
     ):
         """
         Initializes the instance with the given image, format, grid finding
@@ -264,14 +264,14 @@ class ImageGridHandler(Image):
         return subimage
 
     def show_overlay(
-        self,
-        object_label: Optional[int] = None,
-        show_gridlines: bool = True,
-        show_linreg: bool = False,
-        figsize: Tuple[int, int] = (9, 10),
-        show_labels: bool = False,
-        label_settings: None | dict = None,
-        ax: plt.Axes = None,
+            self,
+            object_label: Optional[int] = None,
+            show_gridlines: bool = True,
+            show_linreg: bool = False,
+            figsize: Tuple[int, int] = (9, 10),
+            show_labels: bool = False,
+            label_settings: None | dict = None,
+            ax: plt.Axes = None,
     ) -> (plt.Figure, plt.Axes):
         """
         Displays an overlay of data with optional annotations, linear regression lines, and gridlines on a
@@ -293,11 +293,11 @@ class ImageGridHandler(Image):
             Tuple[plt.Figure, plt.Axes]: Modified figure and axis containing the rendered overlay.
         """
         fig, ax = super().show_overlay(
-            object_label=object_label,
-            ax=ax,
-            figsize=figsize,
-            show_labels=show_labels,
-            label_settings=label_settings,
+                object_label=object_label,
+                ax=ax,
+                figsize=figsize,
+                show_labels=show_labels,
+                label_settings=label_settings,
         )
 
         if show_gridlines and self.num_objects > 0:
@@ -309,7 +309,7 @@ class ImageGridHandler(Image):
             secax_x = ax.secondary_xaxis("top")
             secax_x.set_xlabel("Grid Column Number")
 
-            col_centers = ((upper_col_edges - lower_col_edges) // 2) + lower_col_edges
+            col_centers = ((upper_col_edges - lower_col_edges)//2) + lower_col_edges
             secax_x.set_xticks(col_centers)
             secax_x.set_xticklabels(np.arange(self.ncols))
 
@@ -321,24 +321,24 @@ class ImageGridHandler(Image):
             secax_y = ax.secondary_yaxis("right")
             secax_y.set_ylabel("Grid Row Number", rotation=270, labelpad=10)
 
-            row_centers = ((upper_row_edges - lower_row_edges) // 2) + lower_row_edges
+            row_centers = ((upper_row_edges - lower_row_edges)//2) + lower_row_edges
             secax_y.set_yticks(row_centers)
             secax_y.set_yticklabels(np.arange(self.nrows))
 
             # Draw grid lines
             ax.vlines(
-                x=col_edges,
-                ymin=row_edges.min(),
-                ymax=row_edges.max(),
-                colors="c",
-                linestyles="--",
+                    x=col_edges,
+                    ymin=row_edges.min(),
+                    ymax=row_edges.max(),
+                    colors="c",
+                    linestyles="--",
             )
             ax.hlines(
-                y=row_edges,
-                xmin=col_edges.min(),
-                xmax=col_edges.max(),
-                color="c",
-                linestyles="--",
+                    y=row_edges,
+                    xmin=col_edges.min(),
+                    xmax=col_edges.max(),
+                    color="c",
+                    linestyles="--",
             )
 
             cmap = plt.get_cmap("tab20")
@@ -359,13 +359,13 @@ class ImageGridHandler(Image):
                 height = max_rr - min_rr
 
                 ax.add_patch(
-                    Rectangle(
-                        (min_cc, min_rr),
-                        width=width,
-                        height=height,
-                        edgecolor=next(cmap_cycle),
-                        facecolor="none",
-                    ),
+                        Rectangle(
+                                (min_cc, min_rr),
+                                width=width,
+                                height=height,
+                                edgecolor=next(cmap_cycle),
+                                facecolor="none",
+                        ),
                 )
 
         return fig, ax

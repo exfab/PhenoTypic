@@ -11,7 +11,7 @@ import pytest
 from skimage.color import rgba2rgb
 
 from phenotypic import Image
-from phenotypic.core._image_parts._image_data_manager import ImageDataManager
+from phenotypic._core._image_parts._image_data_manager import ImageDataManager
 from phenotypic.tools.constants_ import IMAGE_MODE
 from .resources.TestHelper import timeit
 

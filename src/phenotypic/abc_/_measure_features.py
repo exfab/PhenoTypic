@@ -236,7 +236,7 @@ class MeasureFeatures(BaseOperation, ABC):
                     MeasureShape,
                     MeasureColor
                 )
-                from phenotypic.core import ImagePipeline
+                from phenotypic._core import ImagePipeline
 
                 # Create pipeline combining detectors and measurers
                 pipeline = ImagePipeline(
@@ -357,10 +357,10 @@ class MeasureFeatures(BaseOperation, ABC):
 
         except Exception as e:
             raise OperationFailedError(
-                operation=self.__class__.__name__,
-                image_name=image.name,
-                err_type=type(e),
-                message=str(e),
+                    operation=self.__class__.__name__,
+                    image_name=image.name,
+                    err_type=type(e),
+                    message=str(e),
             )
 
     @staticmethod
@@ -485,7 +485,7 @@ class MeasureFeatures(BaseOperation, ABC):
         else:
             indexes = None
         return MeasureFeatures._ensure_array(
-            scipy.ndimage.center_of_mass(array, objmap, index=indexes)
+                scipy.ndimage.center_of_mass(array, objmap, index=indexes)
         )
 
     @staticmethod
@@ -529,7 +529,7 @@ class MeasureFeatures(BaseOperation, ABC):
         else:
             indexes = None
         return MeasureFeatures._ensure_array(
-            scipy.ndimage.maximum(array, objmap, index=indexes)
+                scipy.ndimage.maximum(array, objmap, index=indexes)
         )
 
     @staticmethod
@@ -575,7 +575,7 @@ class MeasureFeatures(BaseOperation, ABC):
         else:
             indexes = None
         return MeasureFeatures._ensure_array(
-            scipy.ndimage.mean(array, objmap, index=indexes)
+                scipy.ndimage.mean(array, objmap, index=indexes)
         )
 
     @staticmethod
@@ -620,7 +620,7 @@ class MeasureFeatures(BaseOperation, ABC):
         else:
             indexes = None
         return MeasureFeatures._ensure_array(
-            scipy.ndimage.median(array, objmap, index=indexes)
+                scipy.ndimage.median(array, objmap, index=indexes)
         )
 
     @staticmethod
@@ -664,7 +664,7 @@ class MeasureFeatures(BaseOperation, ABC):
         else:
             indexes = None
         return MeasureFeatures._ensure_array(
-            scipy.ndimage.minimum(array, objmap, index=indexes)
+                scipy.ndimage.minimum(array, objmap, index=indexes)
         )
 
     @staticmethod
@@ -711,7 +711,7 @@ class MeasureFeatures(BaseOperation, ABC):
         else:
             indexes = None
         return MeasureFeatures._ensure_array(
-            scipy.ndimage.standard_deviation(array, objmap, index=indexes)
+                scipy.ndimage.standard_deviation(array, objmap, index=indexes)
         )
 
     @staticmethod
@@ -762,7 +762,7 @@ class MeasureFeatures(BaseOperation, ABC):
         else:
             indexes = None
         return MeasureFeatures._ensure_array(
-            scipy.ndimage.sum_labels(array, objmap, index=indexes)
+                scipy.ndimage.sum_labels(array, objmap, index=indexes)
         )
 
     @staticmethod
@@ -807,7 +807,7 @@ class MeasureFeatures(BaseOperation, ABC):
         else:
             indexes = None
         return MeasureFeatures._ensure_array(
-            scipy.ndimage.variance(array, objmap, index=indexes)
+                scipy.ndimage.variance(array, objmap, index=indexes)
         )
 
     @staticmethod
@@ -862,9 +862,9 @@ class MeasureFeatures(BaseOperation, ABC):
             unique_labels, unique_counts = np.unique(objmap, return_counts=True)
             unique_counts = unique_counts[unique_labels != 0]
             biased_cv = MeasureFeatures._calculate_stddev(
-                array, objmap
-            ) / MeasureFeatures._calculate_mean(array, objmap)
-            result = (1 + (1 / unique_counts)) * biased_cv
+                    array, objmap
+            )/MeasureFeatures._calculate_mean(array, objmap)
+            result = (1 + (1/unique_counts))*biased_cv
         else:
             # For the case when objmap is None, we can't calculate the coefficient of variation
             # because we need the counts of each label
@@ -897,7 +897,7 @@ class MeasureFeatures(BaseOperation, ABC):
         else:
             indexes = None
         min_extrema, max_extrema, min_pos, max_pos = MeasureFeatures._ensure_array(
-            scipy.ndimage.extrema(array, objmap, index=indexes)
+                scipy.ndimage.extrema(array, objmap, index=indexes)
         )
         return (
             MeasureFeatures._ensure_array(min_extrema),
@@ -998,12 +998,12 @@ class MeasureFeatures(BaseOperation, ABC):
 
     @staticmethod
     def _funcmap2objects(
-        func: Callable,
-        out_dtype: np.dtype,
-        array: np.ndarray,
-        objmap: ArrayLike = None,
-        default: int | float | np.nan = np.nan,
-        pass_positions: bool = False,
+            func: Callable,
+            out_dtype: np.dtype,
+            array: np.ndarray,
+            objmap: ArrayLike = None,
+            default: int | float | np.nan = np.nan,
+            pass_positions: bool = False,
     ):
         """Apply a custom function to each labeled region in an array (advanced helper).
 
@@ -1111,15 +1111,15 @@ class MeasureFeatures(BaseOperation, ABC):
             index = None
 
         return MeasureFeatures._ensure_array(
-            scipy.ndimage.labeled_comprehension(
-                input=array,
-                labels=objmap,
-                index=index,
-                func=func,
-                out_dtype=out_dtype,
-                pass_positions=pass_positions,
-                default=default,
-            ),
+                scipy.ndimage.labeled_comprehension(
+                        input=array,
+                        labels=objmap,
+                        index=index,
+                        func=func,
+                        out_dtype=out_dtype,
+                        pass_positions=pass_positions,
+                        default=default,
+                ),
         )
 
     @staticmethod
@@ -1148,12 +1148,12 @@ class MeasureFeatures(BaseOperation, ABC):
         """
         find_q1 = partial(np.quantile, q=0.25, method=method)
         q1 = MeasureFeatures._funcmap2objects(
-            func=find_q1,
-            out_dtype=array.dtype,
-            array=array,
-            objmap=objmap,
-            default=np.nan,
-            pass_positions=False,
+                func=find_q1,
+                out_dtype=array.dtype,
+                array=array,
+                objmap=objmap,
+                default=np.nan,
+                pass_positions=False,
         )
         return MeasureFeatures._ensure_array(q1)
 
@@ -1182,19 +1182,19 @@ class MeasureFeatures(BaseOperation, ABC):
         """
         find_q3 = partial(np.quantile, q=0.75, method=method)
         q3 = MeasureFeatures._funcmap2objects(
-            func=find_q3,
-            out_dtype=array.dtype,
-            array=array,
-            objmap=objmap,
-            default=np.nan,
-            pass_positions=False,
+                func=find_q3,
+                out_dtype=array.dtype,
+                array=array,
+                objmap=objmap,
+                default=np.nan,
+                pass_positions=False,
         )
         return MeasureFeatures._ensure_array(q3)
 
     @staticmethod
     @catch_warnings_decorator
     def _calculate_iqr(
-        array, objmap=None, method: str = "linear", nan_policy: str = "omit"
+            array, objmap=None, method: str = "linear", nan_policy: str = "omit"
     ):
         """Calculate the interquartile range (Q3 - Q1) for each object.
 
@@ -1232,15 +1232,15 @@ class MeasureFeatures(BaseOperation, ABC):
                     # IQR > 100: rough, textured growth
         """
         find_iqr = partial(
-            scipy.stats.iqr, axis=None, nan_policy=nan_policy, interpolation=method
+                scipy.stats.iqr, axis=None, nan_policy=nan_policy, interpolation=method
         )
         return MeasureFeatures._ensure_array(
-            MeasureFeatures._funcmap2objects(
-                func=find_iqr,
-                out_dtype=array.dtype,
-                array=array,
-                objmap=objmap,
-                default=np.nan,
-                pass_positions=False,
-            ),
+                MeasureFeatures._funcmap2objects(
+                        func=find_iqr,
+                        out_dtype=array.dtype,
+                        array=array,
+                        objmap=objmap,
+                        default=np.nan,
+                        pass_positions=False,
+                ),
         )

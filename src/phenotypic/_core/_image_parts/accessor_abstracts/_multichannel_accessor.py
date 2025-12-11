@@ -11,7 +11,7 @@ from PIL import Image as PIL_Image
 from PIL import PngImagePlugin
 
 import phenotypic
-from phenotypic.core._image_parts.accessor_abstracts import ImageAccessorBase
+from phenotypic._core._image_parts.accessor_abstracts import ImageAccessorBase
 from phenotypic.tools.constants_ import METADATA, IO
 
 
@@ -56,7 +56,7 @@ class MultiChannelAccessor(ImageAccessorBase):
                     arr = ski.util.img_as_uint(arr)
                 case _:
                     raise AttributeError(
-                        f"Unsupported bit depth: {self._root_image.metadata[METADATA.BIT_DEPTH]}"
+                            f"Unsupported bit depth: {self._root_image.metadata[METADATA.BIT_DEPTH]}"
                     )
 
         # Build metadata JSON
@@ -69,7 +69,7 @@ class MultiChannelAccessor(ImageAccessorBase):
             # Convert 16-bit to 8-bit for JPEG
             if arr.dtype == np.uint16:
                 warnings.warn(
-                    "Saving 16-bit RGB as JPEG will result in information loss"
+                        "Saving 16-bit RGB as JPEG will result in information loss"
                 )
                 arr = ski.util.img_as_ubyte(arr)
             pil_img = PIL_Image.fromarray(arr)
@@ -88,14 +88,14 @@ class MultiChannelAccessor(ImageAccessorBase):
             ski.io.imsave(fname=fname, arr=arr, check_contrast=False)
 
     def show(
-        self,
-        figsize: tuple[int, int] | None = None,
-        title: str | None = None,
-        ax: plt.Axes | None = None,
-        channel: int | None = None,
-        foreground_only: bool = False,
-        *,
-        mpl_settings: dict | None = None,
+            self,
+            figsize: tuple[int, int] | None = None,
+            title: str | None = None,
+            ax: plt.Axes | None = None,
+            channel: int | None = None,
+            foreground_only: bool = False,
+            *,
+            mpl_settings: dict | None = None,
     ) -> tuple[plt.Figure, plt.Axes]:
         """
         Displays the image data, with the option to customize its visualization
@@ -122,7 +122,8 @@ class MultiChannelAccessor(ImageAccessorBase):
         arr = self[:] if not foreground_only else self.foreground()
         if channel is None:
             return self._plot(
-                arr=arr, ax=ax, figsize=figsize, title=title, mpl_settings=mpl_settings
+                    arr=arr, ax=ax, figsize=figsize, title=title,
+                    mpl_settings=mpl_settings
             )
 
         else:
@@ -132,9 +133,9 @@ class MultiChannelAccessor(ImageAccessorBase):
                 else f"{title} - Channel {channel}"
             )
             return self._plot(
-                arr=arr[:, :, channel],
-                ax=ax,
-                figsize=figsize,
-                title=title,
-                mpl_settings=mpl_settings,
+                    arr=arr[:, :, channel],
+                    ax=ax,
+                    figsize=figsize,
+                    title=title,
+                    mpl_settings=mpl_settings,
             )

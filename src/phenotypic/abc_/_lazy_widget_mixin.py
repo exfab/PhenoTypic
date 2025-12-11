@@ -43,9 +43,9 @@ class LazyWidgetMixin:
             from IPython.display import display
         except ImportError as e:
             raise ImportError(
-                "The 'ipywidgets' and 'IPython' packages are required for the widget interface. "
-                "Please install the 'jupyter' optional dependency group: "
-                "pip install 'phenotypic[jupyter]'"
+                    "The 'ipywidgets' and 'IPython' packages are required for the widget interface. "
+                    "Please install the 'jupyter' optional dependency group: "
+                    "pip install 'phenotypic[jupyter]'"
             ) from e
 
         # Store image reference for visualization
@@ -157,9 +157,9 @@ class LazyWidgetMixin:
 
             for param_name, param in sig.parameters.items():
                 if (
-                    param_name == "self"
-                    or param_name == "args"
-                    or param_name == "kwargs"
+                        param_name == "self"
+                        or param_name == "args"
+                        or param_name == "kwargs"
                 ):
                     continue
 
@@ -180,7 +180,7 @@ class LazyWidgetMixin:
 
                 # Determine widget type
                 widget = self._create_widget_for_param(
-                    param_name, hints.get(param_name, Any), current_val
+                        param_name, hints.get(param_name, Any), current_val
                 )
                 if widget:
                     self._param_widgets[param_name] = widget
@@ -190,12 +190,12 @@ class LazyWidgetMixin:
                         help_text = doc_params[param_name]
                         # Create help label
                         help_label = widgets.HTML(
-                            value=f"<span style='color: #666; font-size: 0.85em; font-style: italic; margin-left: 2px;'>{help_text}</span>"
+                                value=f"<span style='color: #666; font-size: 0.85em; font-style: italic; margin-left: 2px;'>{help_text}</span>"
                         )
                         # Wrap widget and help in VBox
                         control_group = widgets.VBox(
-                            [widget, help_label],
-                            layout=widgets.Layout(margin="0px 0px 8px 0px"),
+                                [widget, help_label],
+                                layout=widgets.Layout(margin="0px 0px 8px 0px"),
                         )
                         controls.append(control_group)
                     else:
@@ -223,7 +223,7 @@ class LazyWidgetMixin:
             if op_accordions:
                 # Add operations section to controls
                 ops_container = widgets.VBox(
-                    op_accordions, layout=widgets.Layout(margin="10px 0px 0px 0px")
+                        op_accordions, layout=widgets.Layout(margin="10px 0px 0px 0px")
                 )
                 controls.append(ops_container)
 
@@ -238,21 +238,21 @@ class LazyWidgetMixin:
             self._ui = widgets.VBox(controls)
 
     def _create_widget_for_param(
-        self, name: str, type_hint: Any, value: Any
+            self, name: str, type_hint: Any, value: Any
     ) -> Optional[Widget]:
         import types
         from typing import Union
 
         origin = get_origin(type_hint)
         if origin is Union or (
-            hasattr(types, "UnionType") and origin is types.UnionType
+                hasattr(types, "UnionType") and origin is types.UnionType
         ):
             return self._create_union_widget(name, type_hint, value)
 
         return self._create_simple_widget(name, type_hint, value)
 
     def _create_union_widget(
-        self, name: str, type_hint: Any, value: Any
+            self, name: str, type_hint: Any, value: Any
     ) -> Optional[Widget]:
         import ipywidgets as widgets
         import traitlets
@@ -283,9 +283,9 @@ class LazyWidgetMixin:
                 self._ignore_updates = False
 
                 self.selector = widgets.Dropdown(
-                    options=list(type_map.keys()),
-                    description=f"{name} type:",
-                    style={"description_width": "initial"},
+                        options=list(type_map.keys()),
+                        description=f"{name} type:",
+                        style={"description_width": "initial"},
                 )
 
                 self.inner_container = widgets.VBox()
@@ -331,7 +331,7 @@ class LazyWidgetMixin:
                         value = opts[0] if opts else None
 
                 self.inner_widget = self.mixin_ref._create_simple_widget(
-                    self.name, type_cls, value
+                        self.name, type_cls, value
                 )
 
                 if self.inner_widget:
@@ -412,7 +412,7 @@ class LazyWidgetMixin:
                             self._create_inner_widget(target_type, val)
                         else:
                             if self.inner_widget is None and target_type is not type(
-                                None
+                                    None
                             ):
                                 self._create_inner_widget(target_type, val)
 
@@ -427,7 +427,7 @@ class LazyWidgetMixin:
         return UnionWidget(name, type_map, value, self)
 
     def _create_simple_widget(
-        self, name: str, type_hint: Any, value: Any
+            self, name: str, type_hint: Any, value: Any
     ) -> Optional[Widget]:
         import ipywidgets as widgets
 
@@ -435,10 +435,10 @@ class LazyWidgetMixin:
         if get_origin(type_hint) is Literal:
             options = get_args(type_hint)
             return widgets.Dropdown(
-                options=options,
-                value=value,
-                description=name,
-                style={"description_width": "initial"},
+                    options=options,
+                    value=value,
+                    description=name,
+                    style={"description_width": "initial"},
             )
 
         # Basic types
@@ -446,15 +446,18 @@ class LazyWidgetMixin:
             return widgets.Checkbox(value=value, description=name)
         elif isinstance(value, int):
             return widgets.IntText(
-                value=value, description=name, style={"description_width": "initial"}
+                    value=value, description=name,
+                    style={"description_width": "initial"}
             )
         elif isinstance(value, float):
             return widgets.FloatText(
-                value=value, description=name, style={"description_width": "initial"}
+                    value=value, description=name,
+                    style={"description_width": "initial"}
             )
         elif isinstance(value, str):
             return widgets.Text(
-                value=value, description=name, style={"description_width": "initial"}
+                    value=value, description=name,
+                    style={"description_width": "initial"}
             )
 
         # Fallback for known types if value is None but hint exists?
@@ -484,7 +487,7 @@ class LazyWidgetMixin:
         # Regex patterns
         # Google: "Args:", "Attributes:", "Parameters:"
         section_header_re = re.compile(
-            r"^\s*(Args|Attributes|Parameters)\s*:\s*$", re.IGNORECASE
+                r"^\s*(Args|Attributes|Parameters)\s*:\s*$", re.IGNORECASE
         )
         # NumPy: "Parameters\n----------"
         numpy_header_re = re.compile(r"^\s*Parameters\s*$", re.IGNORECASE)
@@ -538,10 +541,10 @@ class LazyWidgetMixin:
                 # End of section detection
                 # Heuristic: if line is unindented and not empty, and doesn't match param pattern, section might be over
                 if (
-                    line
-                    and not line[0].isspace()
-                    and not google_param_re.match(line)
-                    and not numpy_param_re.match(line)
+                        line
+                        and not line[0].isspace()
+                        and not google_param_re.match(line)
+                        and not numpy_param_re.match(line)
                 ):
                     in_param_section = False
                     if current_param:
@@ -590,13 +593,13 @@ class LazyWidgetMixin:
         import ipywidgets as widgets
 
         self._view_dropdown = widgets.Dropdown(
-            options=["overlay", "rgb", "gray", "enh_gray", "objmap", "objmask"],
-            value="overlay",
-            description="View:",
+                options=["overlay", "rgb", "gray", "enh_gray", "objmap", "objmask"],
+                value="overlay",
+                description="View:",
         )
 
         self._update_button = widgets.Button(
-            description="Update View", button_style="info", icon="refresh"
+                description="Update View", button_style="info", icon="refresh"
         )
         self._update_button.on_click(self._on_update_view_click)
 
@@ -688,7 +691,7 @@ class LazyWidgetMixin:
                 b.description = original_desc
                 b.disabled = False
 
-    def sync_widgets_from_state(self) -> None:
+    def _sync_widgets_from_state(self) -> None:
         """Push internal state into widgets."""
         if not hasattr(self, "_param_widgets"):
             return
@@ -698,7 +701,7 @@ class LazyWidgetMixin:
             if val is not None:
                 widget.value = val
 
-    def dispose_widgets(self) -> None:
+    def _dispose_widgets(self) -> None:
         """Drop references to the UI widgets."""
         self._ui = None
         self._param_widgets = {}
@@ -710,8 +713,8 @@ class LazyWidgetMixin:
         # Propagate to children in _ops if they exist (e.g. for ImagePipeline)
         if hasattr(self, "_ops") and isinstance(self._ops, dict):
             for op in self._ops.values():
-                if hasattr(op, "dispose_widgets") and callable(op.dispose_widgets):
-                    op.dispose_widgets()
+                if hasattr(op, "dispose_widgets") and callable(op._dispose_widgets):
+                    op._dispose_widgets()
 
     def __getstate__(self):
         """
@@ -724,5 +727,5 @@ class LazyWidgetMixin:
             This method modifies the object state by calling dispose_widgets().
             Any active widgets will be detached from the object.
         """
-        self.dispose_widgets()
+        self._dispose_widgets()
         return self.__dict__

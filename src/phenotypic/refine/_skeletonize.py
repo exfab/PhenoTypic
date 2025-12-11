@@ -17,7 +17,7 @@ class Skeletonize(ObjectRefiner):
     Intuition:
         Skeletonization compresses object regions to their medial axes (centerlines),
         preserving topological structure while reducing to 1-pixel width. On agar plates,
-        this distills colony morphology to its core branching structure, useful for
+        this distills colony morphology to its _core branching structure, useful for
         analyzing filamentous or spreading phenotypes without boundary noise. The method
         efficiently extracts the 'backbone' of colony shape.
 

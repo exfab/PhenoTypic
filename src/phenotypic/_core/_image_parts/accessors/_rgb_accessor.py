@@ -5,7 +5,7 @@ from typing import Optional
 import pandas as pd
 import skimage
 
-from phenotypic.core._image_parts.accessor_abstracts import MultiChannelAccessor
+from phenotypic._core._image_parts.accessor_abstracts import MultiChannelAccessor
 from phenotypic.tools.constants_ import IMAGE_MODE
 from phenotypic.tools.funcs_ import normalize_rgb_bitdepth
 from phenotypic.tools.exceptions_ import (

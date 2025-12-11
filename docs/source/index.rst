@@ -122,8 +122,7 @@ Welcome to Phenotypic's documentation. Here you'll find comprehensive guides and
 
       +++
 
-      .. button-ref:: https://github.com/exfab/PhenoTypic/issues
-         :ref-type: url
+      .. button-link:: https://github.com/exfab/PhenoTypic/issues
          :click-parent:
          :color: secondary
          :expand:

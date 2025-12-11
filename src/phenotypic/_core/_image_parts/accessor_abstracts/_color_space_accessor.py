@@ -54,7 +54,7 @@ class ColorSpaceAccessor(ImageAccessorBase):
         Examples:
             .. dropdown:: Load a Lab color space array from file
 
-                >>> from phenotypic.core._image_parts.color_space_accessors import CieLabAccessor
+                >>> from phenotypic._core._image_parts.color_space_accessors import CieLabAccessor
                 >>> lab_arr = CieLabAccessor.load("my_lab_image.tif")
         """
         filepath = Path(filepath)

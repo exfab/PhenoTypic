@@ -181,8 +181,17 @@ class TestThresholdCalculation:
         # We can't directly test the threshold, but we can verify behavior
         corrected = corrector.analyze(data)
 
+        new_val_cols = corrected.columns[
+            corrected.columns.str.contains(EDGE_CORRECTION.NEW_VAL)
+        ]
+        msg = (f"NewVal not found. Columns with MeasurementInfo: "
+               f"{new_val_cols}"
+               )
+        assert f"{EDGE_CORRECTION.NEW_VAL}-Area" in corrected.columns, str(msg)
+
         # All corrected values should be <= max of original
-        assert corrected[f"{EDGE_CORRECTION.NEW_VAL}-Area"].max() <= data["Area"].max()
+        assert corrected[f"{EDGE_CORRECTION.NEW_VAL}-Area"].max() <= data[
+            "Area"].max()
 
     def test_fewer_than_top_n_values(self):
         """Test behavior when fewer than top_n values are available."""

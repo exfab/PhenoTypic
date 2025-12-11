@@ -60,13 +60,15 @@ class HeavyRoundPeaksPipeline(PrefabPipeline):
         median_radius: int = 5,
         # detection settings
         detector_thresh_method: Literal[
-            "gitter", "otsu", "mean", "local", "triangle", "minimum", "isodata"
-        ] = "gitter",
+            "otsu", "mean", "local", "triangle", "minimum", "isodata"
+        ] = "otsu",
         detector_subtract_background: bool = True,
-        detector_remove_noise: bool = False,
-        detector_fast_resize: int | None = 1000,
-        detector_fixed_square: float = 2.0,
-        detector_expf: float = 1.5,
+        detector_remove_noise: bool = True,
+        detector_footprint_radius: int = 3,
+        detector_smoothing_sigma: float = 2.0,
+        detector_min_peak_distance: int | None = None,
+        detector_peak_prominence: float | None = None,
+        detector_edge_refinement: bool = True,
         # Morphology / refinement
         mask_opener_footprint: Literal["auto"] | int | np.ndarray | None = "auto",
         border_remover_size: int = 1,
@@ -103,22 +105,28 @@ class HeavyRoundPeaksPipeline(PrefabPipeline):
                 textural differences, whereas larger radii smooth broader regions, potentially
                 affecting the precise detection of small colonies.
             detector_thresh_method: Specifies the thresholding method for binary segmentation.
-                "gitter" uses iterative thresholding from the original algorithm, robust to uneven
-                illumination. "otsu" or "triangle" focus on global thresholding, suitable for
-                uniform backgrounds. "local" adapts to background variations but may increase runtime.
-            detector_subtract_background: Toggles background normalization during the detection stage.
-                Enabling this helps standardize varying lighting or agar density but may also
-                obscure genuine gradients or subtle ring colonies.
-            detector_remove_noise: Sets whether small noisy objects are removed during detection.
-                True ensures a cleaner output but may falsely discard tiny colonies. False retains
-                all details, which can increase false-positive noise levels.
-            detector_fast_resize: Downsample height used during background correction; larger
-                values better preserve small colonies at the cost of speed. None disables downsampling.
-            detector_fixed_square: Fallback box multiplier when the center pixel is 0; raise
-                for hollow or frayed colonies so bounding boxes still capture area.
-            detector_expf: Expansion factor for rectangles around detected peaks; increase
-                if colonies sprawl or have halos, decrease to reduce spillover into
-                neighbors on dense plates.
+                "otsu" (default) applies global thresholding, "mean" uses mean-based threshold,
+                "local" adapts to background variations, and "triangle", "minimum", "isodata"
+                offer alternative thresholding strategies.
+            detector_subtract_background: Toggles white tophat background subtraction before
+                thresholding. Enabling this helps standardize varying lighting or agar density but
+                may also obscure genuine gradients or subtle ring colonies.
+            detector_remove_noise: Sets whether morphological opening is applied to remove small
+                noise artifacts. True ensures a cleaner output but may falsely discard tiny colonies.
+                False retains all details, which can increase false-positive noise levels.
+            detector_footprint_radius: Radius in pixels for morphological operations (noise removal
+                and background subtraction). Larger values remove larger noise but may erode colony
+                edges.
+            detector_smoothing_sigma: Standard deviation for Gaussian smoothing of intensity
+                profiles before peak detection. Higher values increase robustness to noise but may
+                merge nearby peaks. Set to 0 to disable smoothing.
+            detector_min_peak_distance: Minimum distance between detected peaks in pixels. If None,
+                automatically estimated from grid dimensions. Prevents detection of spurious peaks
+                too close together.
+            detector_peak_prominence: Minimum prominence of peaks for detection. If None,
+                automatically estimated from signal statistics. Higher values are more selective.
+            detector_edge_refinement: Whether to refine grid edges using local intensity profiles.
+                Improves accuracy but adds computational cost.
             mask_opener_footprint: Describes the morphological footprint for noise removal or
                 mask refinement. "auto" lets the system adapt, while specifying values allows
                 control over the scale of mask cleanup or preservation of detailed structures.
@@ -145,9 +153,11 @@ class HeavyRoundPeaksPipeline(PrefabPipeline):
             thresh_method=detector_thresh_method,
             subtract_background=detector_subtract_background,
             remove_noise=detector_remove_noise,
-            fast_resize=detector_fast_resize,
-            fixed_square=detector_fixed_square,
-            expf=detector_expf,
+            footprint_radius=detector_footprint_radius,
+            smoothing_sigma=detector_smoothing_sigma,
+            min_peak_distance=detector_min_peak_distance,
+            peak_prominence=detector_peak_prominence,
+            edge_refinement=detector_edge_refinement,
         )
 
         ops = [

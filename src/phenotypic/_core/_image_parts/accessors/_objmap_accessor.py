@@ -10,7 +10,7 @@ from scipy.sparse import csc_matrix, coo_matrix
 import matplotlib.pyplot as plt
 from skimage.measure import label
 
-from phenotypic.core._image_parts.accessor_abstracts import SingleChannelAccessor
+from phenotypic._core._image_parts.accessor_abstracts import SingleChannelAccessor
 from phenotypic.tools.exceptions_ import (
     ArrayKeyValueShapeMismatchError,
     InvalidMapValueError,

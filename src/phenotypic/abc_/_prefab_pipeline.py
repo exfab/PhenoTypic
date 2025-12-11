@@ -1,4 +1,4 @@
-from ..core._image_pipeline import ImagePipeline
+from .._core._image_pipeline import ImagePipeline
 
 
 class PrefabPipeline(ImagePipeline):

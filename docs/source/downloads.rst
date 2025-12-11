@@ -29,6 +29,14 @@ Downloadable Notebooks
 .. grid:: 1 1 2 2
     :gutter: 3
 
+    .. grid-item-card:: 2. Using `ImagePipeline`s to process batches
+        :shadow: md
+
+        Learn to tune and use prefabricated image processing pipelines, then deploy them at scale.
+
+        +++
+        :download:`Download notebook <user_guide/tutorial/notebooks/BatchProcessing.ipynb>`
+
     .. grid-item-card:: 1. Getting Started
         :shadow: md
 
@@ -37,10 +45,10 @@ Downloadable Notebooks
         +++
         :download:`Download notebook <user_guide/tutorial/notebooks/GettingStarted.ipynb>`
 
-    .. grid-item-card:: 4. Working with GridImage: Grid-Specific Features
+    .. grid-item-card:: Prerequisites
         :shadow: md
 
-        This tutorial focuses on `GridImage` - a specialized class for analyzing arrayed microbe colonies on solid media agar plates.
+        **Before starting this tutorial**, please complete the {doc} `Image` to understand the core `Image` class features (rgb, gray, enh_gray, objmap, objects, etc.).
 
         +++
         :download:`Download notebook <user_guide/tutorial/notebooks/GridImages.ipynb>`
@@ -64,15 +72,7 @@ Downloadable Notebooks
     .. grid-item-card:: 3. Understanding the Image Class: Data Components and Accessors
         :shadow: md
 
-        This tutorial provides a comprehensive guide to the PhenoTypic `Image` class architecture, focusing on its main data components and how they interact with detection and analysis modules.
+        A comprehensive guide to the PhenoTypic `Image` class architecture, focusing on its main data components and how they interact with detection and analysis modules.
 
         +++
         :download:`Download notebook <user_guide/tutorial/notebooks/Images.ipynb>`
-
-    .. grid-item-card:: 2. Using `ImagePipeline`s to process batches
-        :shadow: md
-
-        Learn to tune and use prefabricated image processing pipelines, then deploy them at scale.
-
-        +++
-        :download:`Download notebook <user_guide/tutorial/notebooks/LongerStart.ipynb>`

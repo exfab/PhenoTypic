@@ -42,7 +42,7 @@ dependencies = [
     "pillow",
     "tqdm",
     "mmh3",
-    "plotly-express>=0.4.1",
+    "plotly-express[plotly]>=0.4.1",
     "psutil>=7.0.0",
     "colour-science>=0.4.6",
     "rawpy;sys_platform!='win32'",
@@ -51,6 +51,7 @@ dependencies = [
     "exifread>=3.5.1",
     "click>=8.3.0",
     "bm3d>=4.0.3",
+    "plotly[plotly]>=6.5.0",
 ]
 
 [project.urls]
@@ -60,6 +61,10 @@ Repository = "https://github.com/Wheeldon-Lab/PhenoTypic"
 jupyter = [
     "ipywidgets>=8.1.7",
     "jupyter>=1.1.1",
+]
+plotly = [
+    "plotly>=6.5.0",
+    "plotly-express>=0.4.1",
 ]
 
 [project.scripts]
@@ -80,6 +85,7 @@ dev = [
     "black>=25.11.0",
     "ruff>=0.14.7",
     "isort>=7.0.0",
+    "scipy-stubs>=1.15.3.0",
 ]
 docs = [
     "sphinx",

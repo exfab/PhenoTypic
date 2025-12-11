@@ -3,7 +3,7 @@ import pytest
 from unittest.mock import MagicMock, patch
 import numpy as np
 from phenotypic import Image
-from phenotypic.core._image_pipeline import ImagePipeline
+from phenotypic._core._image_pipeline import ImagePipeline
 from phenotypic.abc_ import ImageOperation
 
 

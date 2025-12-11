@@ -4,5 +4,5 @@
 
 .. autoclass:: {{ objname }}
    :members:
-   :show-inheritance:
    :member-order: groupwise
+   :exclude-members: __getstate__, __del__

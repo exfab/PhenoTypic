@@ -57,58 +57,58 @@ class TestMetadataNormalization:
     """Tests for the _normalize_metadata_value helper."""
 
     def test_normalize_int(self):
-        from phenotypic.core._image_parts._image_io_handler import ImageIOHandler
+        from phenotypic._core._image_parts._image_io_handler import ImageIOHandler
 
         assert ImageIOHandler._normalize_metadata_value(42) == 42
         assert isinstance(ImageIOHandler._normalize_metadata_value(42), int)
 
     def test_normalize_float(self):
-        from phenotypic.core._image_parts._image_io_handler import ImageIOHandler
+        from phenotypic._core._image_parts._image_io_handler import ImageIOHandler
 
         assert ImageIOHandler._normalize_metadata_value(3.14) == 3.14
         assert isinstance(ImageIOHandler._normalize_metadata_value(3.14), float)
 
     def test_normalize_bool(self):
-        from phenotypic.core._image_parts._image_io_handler import ImageIOHandler
+        from phenotypic._core._image_parts._image_io_handler import ImageIOHandler
 
         assert ImageIOHandler._normalize_metadata_value(True) is True
         assert ImageIOHandler._normalize_metadata_value(False) is False
 
     def test_normalize_string(self):
-        from phenotypic.core._image_parts._image_io_handler import ImageIOHandler
+        from phenotypic._core._image_parts._image_io_handler import ImageIOHandler
 
         assert ImageIOHandler._normalize_metadata_value("test") == "test"
 
     def test_normalize_bytes(self):
-        from phenotypic.core._image_parts._image_io_handler import ImageIOHandler
+        from phenotypic._core._image_parts._image_io_handler import ImageIOHandler
 
         assert ImageIOHandler._normalize_metadata_value(b"test") == "test"
 
     def test_normalize_none(self):
-        from phenotypic.core._image_parts._image_io_handler import ImageIOHandler
+        from phenotypic._core._image_parts._image_io_handler import ImageIOHandler
 
         assert ImageIOHandler._normalize_metadata_value(None) is None
 
     def test_normalize_numpy_int(self):
-        from phenotypic.core._image_parts._image_io_handler import ImageIOHandler
+        from phenotypic._core._image_parts._image_io_handler import ImageIOHandler
 
         assert ImageIOHandler._normalize_metadata_value(np.int64(42)) == 42
         assert isinstance(ImageIOHandler._normalize_metadata_value(np.int64(42)), int)
 
     def test_normalize_numpy_float(self):
-        from phenotypic.core._image_parts._image_io_handler import ImageIOHandler
+        from phenotypic._core._image_parts._image_io_handler import ImageIOHandler
 
         result = ImageIOHandler._normalize_metadata_value(np.float64(3.14))
         assert abs(result - 3.14) < 1e-10
         assert isinstance(result, float)
 
     def test_normalize_list_single_element(self):
-        from phenotypic.core._image_parts._image_io_handler import ImageIOHandler
+        from phenotypic._core._image_parts._image_io_handler import ImageIOHandler
 
         assert ImageIOHandler._normalize_metadata_value([42]) == 42
 
     def test_normalize_list_multiple_elements(self):
-        from phenotypic.core._image_parts._image_io_handler import ImageIOHandler
+        from phenotypic._core._image_parts._image_io_handler import ImageIOHandler
 
         result = ImageIOHandler._normalize_metadata_value([1, 2, 3])
         assert result == "[1, 2, 3]"
@@ -386,13 +386,14 @@ class TestAccessorPropertyNames:
 
     def test_grayscale_accessor_property_name(self):
         """Test Grayscale accessor has correct property name."""
-        from phenotypic.core._image_parts.accessors._grayscale_accessor import Grayscale
+        from phenotypic._core._image_parts.accessors._grayscale_accessor import \
+            Grayscale
 
         assert Grayscale._accessor_property_name_value() == "gray"
 
     def test_enhanced_grayscale_accessor_property_name(self):
         """Test EnhancedGrayscale accessor has correct property name."""
-        from phenotypic.core._image_parts.accessors._enh_grayscale_accessor import (
+        from phenotypic._core._image_parts.accessors._enh_grayscale_accessor import (
             EnhancedGrayscale,
         )
 
@@ -400,14 +401,13 @@ class TestAccessorPropertyNames:
 
     def test_rgb_accessor_property_name(self):
         """Test ImageRGB accessor has correct property name."""
-        from phenotypic.core._image_parts.accessors._rgb_accessor import ImageRGB
+        from phenotypic._core._image_parts.accessors._rgb_accessor import ImageRGB
 
         assert ImageRGB._accessor_property_name_value() == "rgb"
 
-
     def test_xyz_accessor_property_name(self):
         """Test XyzAccessor has correct property name."""
-        from phenotypic.core._image_parts.color_space_accessors._xyz_accessor import (
+        from phenotypic._core._image_parts.color_space_accessors._xyz_accessor import (
             XyzAccessor,
         )
 
@@ -415,7 +415,7 @@ class TestAccessorPropertyNames:
 
     def test_xyz_d65_accessor_property_name(self):
         """Test XyzD65Accessor has correct property name."""
-        from phenotypic.core._image_parts.color_space_accessors._xyz_d65_accessor import (
+        from phenotypic._core._image_parts.color_space_accessors._xyz_d65_accessor import (
             XyzD65Accessor,
         )
 
@@ -423,7 +423,7 @@ class TestAccessorPropertyNames:
 
     def test_cielab_accessor_property_name(self):
         """Test CieLabAccessor has correct property name."""
-        from phenotypic.core._image_parts.color_space_accessors._cielab_accessor import (
+        from phenotypic._core._image_parts.color_space_accessors._cielab_accessor import (
             CieLabAccessor,
         )
 
@@ -431,7 +431,7 @@ class TestAccessorPropertyNames:
 
     def test_chromaticity_xy_accessor_property_name(self):
         """Test xyChromaticityAccessor has correct property name."""
-        from phenotypic.core._image_parts.color_space_accessors._chromaticity_xy_accessor import (
+        from phenotypic._core._image_parts.color_space_accessors._chromaticity_xy_accessor import (
             xyChromaticityAccessor,
         )
 
@@ -439,13 +439,14 @@ class TestAccessorPropertyNames:
 
     def test_hsv_accessor_property_name(self):
         """Test HsvAccessor has correct property name."""
-        from phenotypic.core._image_parts.color_space_accessors._hsv_accessor import HsvAccessor
+        from phenotypic._core._image_parts.color_space_accessors._hsv_accessor import \
+            HsvAccessor
 
         assert HsvAccessor._accessor_property_name_value() == "color.hsv"
 
     def test_color_space_accessor_base_property_name(self):
         """Test ColorSpaceAccessor has default property name."""
-        from phenotypic.core._image_parts.accessor_abstracts._color_space_accessor import (
+        from phenotypic._core._image_parts.accessor_abstracts._color_space_accessor import (
             ColorSpaceAccessor,
         )
 
@@ -530,7 +531,8 @@ class TestAccessorLoad:
 
     def test_grayscale_load_success(self, sample_gray_image, temp_image_dir):
         """Test Grayscale.load() with matching metadata."""
-        from phenotypic.core._image_parts.accessors._grayscale_accessor import Grayscale
+        from phenotypic._core._image_parts.accessors._grayscale_accessor import \
+            Grayscale
 
         filepath = temp_image_dir/"test_gray.png"
         sample_gray_image.gray.imsave(filepath)
@@ -551,7 +553,8 @@ class TestAccessorLoad:
 
     def test_grayscale_load_mismatch_warning(self, sample_rgb_image, temp_image_dir):
         """Test Grayscale.load() warns when metadata doesn't match."""
-        from phenotypic.core._image_parts.accessors._grayscale_accessor import Grayscale
+        from phenotypic._core._image_parts.accessors._grayscale_accessor import \
+            Grayscale
 
         filepath = temp_image_dir/"test_rgb.png"
         # Save from RGB accessor
@@ -565,7 +568,7 @@ class TestAccessorLoad:
 
     def test_rgb_load_success(self, sample_rgb_image, temp_image_dir):
         """Test ImageRGB.load() with matching metadata."""
-        from phenotypic.core._image_parts.accessors._rgb_accessor import ImageRGB
+        from phenotypic._core._image_parts.accessors._rgb_accessor import ImageRGB
 
         filepath = temp_image_dir/"test_rgb.png"
         sample_rgb_image.rgb.imsave(filepath)
@@ -585,7 +588,8 @@ class TestAccessorLoad:
 
     def test_load_missing_metadata_warning(self, temp_image_dir):
         """Test load warns when no PhenoTypic metadata exists."""
-        from phenotypic.core._image_parts.accessors._grayscale_accessor import Grayscale
+        from phenotypic._core._image_parts.accessors._grayscale_accessor import \
+            Grayscale
 
         # Create a plain image without PhenoTypic metadata
         filepath = temp_image_dir/"plain_image.png"
@@ -600,7 +604,7 @@ class TestAccessorLoad:
     def test_color_space_load_success(self, sample_rgb_image, temp_image_dir):
         """Test ColorSpaceAccessor.load() with matching metadata."""
         import tifffile
-        from phenotypic.core._image_parts.color_space_accessors._cielab_accessor import (
+        from phenotypic._core._image_parts.color_space_accessors._cielab_accessor import (
             CieLabAccessor,
         )
 
@@ -622,10 +626,10 @@ class TestAccessorLoad:
 
     def test_color_space_load_mismatch_warning(self, sample_rgb_image, temp_image_dir):
         """Test ColorSpaceAccessor.load() warns when metadata doesn't match."""
-        from phenotypic.core._image_parts.color_space_accessors._xyz_accessor import (
+        from phenotypic._core._image_parts.color_space_accessors._xyz_accessor import (
             XyzAccessor,
         )
-        from phenotypic.core._image_parts.color_space_accessors._cielab_accessor import (
+        from phenotypic._core._image_parts.color_space_accessors._cielab_accessor import (
             CieLabAccessor,
         )
 
@@ -641,7 +645,7 @@ class TestAccessorLoad:
 
     def test_color_space_load_rejects_non_tiff(self, temp_image_dir):
         """Test ColorSpaceAccessor.load() raises error for non-TIFF."""
-        from phenotypic.core._image_parts.color_space_accessors._cielab_accessor import (
+        from phenotypic._core._image_parts.color_space_accessors._cielab_accessor import (
             CieLabAccessor,
         )
 
@@ -651,7 +655,8 @@ class TestAccessorLoad:
 
     def test_hsv_load_success(self, sample_rgb_image, temp_image_dir):
         """Test HsvAccessor.load() with matching metadata."""
-        from phenotypic.core._image_parts.color_space_accessors._hsv_accessor import HsvAccessor
+        from phenotypic._core._image_parts.color_space_accessors._hsv_accessor import \
+            HsvAccessor
 
         filepath = temp_image_dir/"test_hsv.tif"
         sample_rgb_image.color.hsv.imsave(filepath)

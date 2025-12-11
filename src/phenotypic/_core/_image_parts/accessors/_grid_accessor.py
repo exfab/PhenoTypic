@@ -12,7 +12,7 @@ import pandas as pd
 from skimage.color import label2rgb
 
 import phenotypic
-from phenotypic.core._image_parts.accessor_abstracts import ImageAccessorBase
+from phenotypic._core._image_parts.accessor_abstracts import ImageAccessorBase
 from phenotypic.tools.constants_ import METADATA, IMAGE_TYPES, BBOX, GRID, OBJECT
 from phenotypic.tools.exceptions_ import NoObjectsError
 
@@ -197,7 +197,7 @@ class GridAccessor(ImageAccessorBase):
                 [7, 11] = 95 (bottom-right).
         """
         return np.reshape(
-            np.arange(self.nrows * self.ncols), newshape=(self.nrows, self.ncols)
+                np.arange(self.nrows*self.ncols), newshape=(self.nrows, self.ncols)
         )
 
     def __getitem__(self, idx: int | tuple[int, int]) -> phenotypic.Image:
@@ -259,7 +259,7 @@ class GridAccessor(ImageAccessorBase):
         if isinstance(idx, tuple):
             if len(idx) != 2:
                 raise IndexError(
-                    "Grid section index tuple must have length 2: (row, col)."
+                        "Grid section index tuple must have length 2: (row, col)."
                 )
             row_idx, col_idx = idx
             # This will naturally raise IndexError for out-of-range indices
@@ -271,7 +271,7 @@ class GridAccessor(ImageAccessorBase):
             max_rr, max_cc = max_coords
 
             section_image = phenotypic.Image(
-                self._root_image[int(min_rr) : int(max_rr), int(min_cc) : int(max_cc)]
+                    self._root_image[int(min_rr): int(max_rr), int(min_cc): int(max_cc)]
             )
 
             # Remove objects that don't belong in that grid section from the subimage
@@ -368,11 +368,11 @@ class GridAccessor(ImageAccessorBase):
             y = grid_info.loc[grid_info.loc[:, x_group] == idx, y_val].to_numpy()
             y_mean = np.mean(y) if y.size > 0 else np.nan
 
-            covariance = ((x - x_mean) * (y - y_mean)).sum()
+            covariance = ((x - x_mean)*(y - y_mean)).sum()
             variance = ((x - x_mean) ** 2).sum()
             if variance != 0:
-                m_slope[idx] = covariance / variance
-                b_intercept[idx] = y_mean - m_slope[idx] * x_mean
+                m_slope[idx] = covariance/variance
+                b_intercept[idx] = y_mean - m_slope[idx]*x_mean
             else:
                 m_slope[idx] = 0
                 b_intercept[idx] = y_mean if axis == 0 else x_mean
@@ -458,25 +458,25 @@ class GridAccessor(ImageAccessorBase):
         grid_info = self.info()
         col_map = self._root_image.objmap[:].copy()
         for n, col_bidx in enumerate(
-            np.sort(grid_info.loc[:, str(GRID.COL_NUM)].unique())
+                np.sort(grid_info.loc[:, str(GRID.COL_NUM)].unique())
         ):
             subtable = grid_info.loc[grid_info.loc[:, str(GRID.COL_NUM)] == col_bidx, :]
 
             # Edit the new map's objects to equal the column number
             col_map[
                 np.isin(
-                    element=self._root_image.objmap[:],
-                    test_elements=subtable[OBJECT.LABEL].to_numpy(),
+                        element=self._root_image.objmap[:],
+                        test_elements=subtable[OBJECT.LABEL].to_numpy(),
                 )
             ] = n + 1
         return col_map
 
     def show_column_overlay(
-        self,
-        use_enhanced: bool = False,
-        show_gridlines: bool = True,
-        ax: plt.Axes | None = None,
-        figsize: tuple[int, int] = (9, 10),
+            self,
+            use_enhanced: bool = False,
+            show_gridlines: bool = True,
+            ax: plt.Axes | None = None,
+            figsize: tuple[int, int] = (9, 10),
     ) -> tuple[plt.Figure, plt.Axes]:
         """Visualize colonies with column-based color coding and optional grid overlay.
 
@@ -534,22 +534,23 @@ class GridAccessor(ImageAccessorBase):
 
         if use_enhanced:
             func_ax.imshow(
-                label2rgb(label=self.get_col_map(), image=self._root_image.enh_gray[:])
+                    label2rgb(label=self.get_col_map(),
+                              image=self._root_image.enh_gray[:])
             )
         else:
             func_ax.imshow(
-                label2rgb(label=self.get_col_map(), image=self._root_image.gray[:])
+                    label2rgb(label=self.get_col_map(), image=self._root_image.gray[:])
             )
 
         if show_gridlines:
             col_edges = self.get_col_edges()
             row_edges = self.get_row_edges()
             func_ax.vlines(
-                x=col_edges,
-                ymin=row_edges.min(),
-                ymax=row_edges.max(),
-                colors="c",
-                linestyles="--",
+                    x=col_edges,
+                    ymin=row_edges.min(),
+                    ymax=row_edges.max(),
+                    colors="c",
+                    linestyles="--",
             )
 
         return fig, ax
@@ -633,25 +634,25 @@ class GridAccessor(ImageAccessorBase):
         grid_info = self.info()
         row_map = self._root_image.objmap[:].copy()
         for n, col_bidx in enumerate(
-            np.sort(grid_info.loc[:, str(GRID.ROW_NUM)].unique())
+                np.sort(grid_info.loc[:, str(GRID.ROW_NUM)].unique())
         ):
             subtable = grid_info.loc[grid_info.loc[:, str(GRID.ROW_NUM)] == col_bidx, :]
 
             # Edit the new map's objects to equal the column number
             row_map[
                 np.isin(
-                    element=self._root_image.objmap[:],
-                    test_elements=subtable[OBJECT.LABEL].to_numpy(),
+                        element=self._root_image.objmap[:],
+                        test_elements=subtable[OBJECT.LABEL].to_numpy(),
                 )
             ] = n + 1
         return row_map
 
     def show_row_overlay(
-        self,
-        use_enhanced: bool = False,
-        show_gridlines: bool = True,
-        ax: plt.Axes | None = None,
-        figsize: tuple[int, int] = (9, 10),
+            self,
+            use_enhanced: bool = False,
+            show_gridlines: bool = True,
+            ax: plt.Axes | None = None,
+            figsize: tuple[int, int] = (9, 10),
     ) -> tuple[plt.Figure, plt.Axes]:
         """Visualize colonies with row-based color coding and optional grid overlay.
 
@@ -710,22 +711,23 @@ class GridAccessor(ImageAccessorBase):
 
         if use_enhanced:
             func_ax.imshow(
-                label2rgb(label=self.get_row_map(), image=self._root_image.enh_gray[:])
+                    label2rgb(label=self.get_row_map(),
+                              image=self._root_image.enh_gray[:])
             )
         else:
             func_ax.imshow(
-                label2rgb(label=self.get_row_map(), image=self._root_image.gray[:])
+                    label2rgb(label=self.get_row_map(), image=self._root_image.gray[:])
             )
 
         if show_gridlines:
             col_edges = self.get_col_edges()
             row_edges = self.get_row_edges()
             func_ax.hlines(
-                y=row_edges,
-                xmin=col_edges.min(),
-                xmax=col_edges.max(),
-                colors="c",
-                linestyles="--",
+                    y=row_edges,
+                    xmin=col_edges.min(),
+                    xmax=col_edges.max(),
+                    colors="c",
+                    linestyles="--",
             )
 
         if ax is None:
@@ -783,8 +785,8 @@ class GridAccessor(ImageAccessorBase):
             subtable = grid_info.loc[grid_info.loc[:, GRID.SECTION_NUM] == bidx, :]
             section_map[
                 np.isin(
-                    element=self._root_image.objmap[:],
-                    test_elements=subtable.loc[:, OBJECT.LABEL].to_numpy(),
+                        element=self._root_image.objmap[:],
+                        test_elements=subtable.loc[:, OBJECT.LABEL].to_numpy(),
                 )
             ] = n + 1
 
@@ -847,7 +849,7 @@ class GridAccessor(ImageAccessorBase):
         )
 
     def get_info_by_section(
-        self, section_number: int | tuple[int, int]
+            self, section_number: int | tuple[int, int]
     ) -> pd.DataFrame:
         """Get grid information for colonies in a specific grid section.
 
@@ -905,7 +907,7 @@ class GridAccessor(ImageAccessorBase):
                 grid_info.loc[:, str(GRID.SECTION_NUM)] == section_number, :
             ]
         elif (
-            isinstance(section_number, tuple) and len(section_number) == 2
+                isinstance(section_number, tuple) and len(section_number) == 2
         ):  # Access by row and col number
             grid_info = self.info()
             grid_info = grid_info.loc[
@@ -918,7 +920,7 @@ class GridAccessor(ImageAccessorBase):
             raise ValueError("Section index should be int or a tuple of label_subset")
 
     def _naive_get_grid_section_slices(
-        self, idx: int
+            self, idx: int
     ) -> tuple[tuple[float, float], tuple[float, float]]:
         """Internal method: get pixel slices for a grid section based on grid edges.
 
@@ -945,7 +947,7 @@ class GridAccessor(ImageAccessorBase):
         return (min_rr, min_cc), (max_rr, max_cc)
 
     def _adv_get_grid_section_slices(
-        self, idx: int
+            self, idx: int
     ) -> tuple[tuple[float, float], tuple[float, float]]:
         """Internal method: get pixel slices for a grid section accounting for object boundaries.
 

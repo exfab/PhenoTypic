@@ -19,7 +19,7 @@ from phenotypic.tools.constants_ import IMAGE_MODE, METADATA, IMAGE_TYPES
 
 @dataclass
 class ImageData:
-    """Container for core image data representations."""
+    """Container for _core image data representations."""
 
     rgb: np.ndarray | None = None
     gray: np.ndarray | None = None
@@ -58,13 +58,13 @@ class ImageMetadata:
 
     private: dict[str, Any] = field(default_factory=dict)
     protected: dict[str, Union[int, str, float, bool, np.nan]] = field(
-        default_factory=dict
+            default_factory=dict
     )
     public: dict[str, Union[int, str, float, bool, np.nan]] = field(
-        default_factory=dict
+            default_factory=dict
     )
     imported: dict[str, Union[int, str, float, bool, np.nan]] = field(
-        default_factory=dict
+            default_factory=dict
     )
 
     def clear(self) -> None:
@@ -77,7 +77,7 @@ class ImageDataManager:
     """Manages image data initialization, storage, and format handling.
 
     This class is the foundational layer for image data management, responsible for:
-    - Initializing and managing core data structures (RGB, grayscale, enhanced grayscale, object maps)
+    - Initializing and managing _core data structures (RGB, grayscale, enhanced grayscale, object maps)
     - Detecting and converting between different image formats (grayscale, RGB, RGBA)
     - Handling metadata storage with private, protected, public, and imported categories
     - Setting images from various input types (NumPy arrays, Image class instances)
@@ -98,7 +98,7 @@ class ImageDataManager:
     _OBJMAP_DTYPE = np.uint16
 
     def __init__(
-        self, name: str | None = None, bit_depth: Literal[8, 16] | None = None
+            self, name: str | None = None, bit_depth: Literal[8, 16] | None = None
     ):
         """
         Initializes a class instance to manage the image data and metadata.
@@ -118,14 +118,14 @@ class ImageDataManager:
 
         # Initialize metadata structure
         self._metadata = ImageMetadata(
-            private={METADATA.UUID: uuid.uuid4()},
-            protected={
-                METADATA.IMAGE_NAME: name,
-                METADATA.IMAGE_TYPE: IMAGE_TYPES.BASE.value,
-                METADATA.BIT_DEPTH: bit_depth,
-            },
-            public={},
-            imported={},
+                private={METADATA.UUID: uuid.uuid4()},
+                protected={
+                    METADATA.IMAGE_NAME: name,
+                    METADATA.IMAGE_TYPE: IMAGE_TYPES.BASE.value,
+                    METADATA.BIT_DEPTH : bit_depth,
+                },
+                public={},
+                imported={},
         )
 
     @property
@@ -172,7 +172,7 @@ class ImageDataManager:
                 self._set_from_class_instance(x)
             case _:
                 raise ValueError(
-                    f"Input must be a NumPy array, Image instance. Got {type(input_image)}"
+                        f"Input must be a NumPy array, Image instance. Got {type(input_image)}"
                 )
 
     def _handle_array_input(self, arr: np.ndarray):
@@ -204,8 +204,8 @@ class ImageDataManager:
                 return 16
             case _:
                 warnings.warn(
-                    "Input image has unknown dtype, bit_depth could not be guessed. "
-                    "Defaulting to 16"
+                        "Input image has unknown dtype, bit_depth could not be guessed. "
+                        "Defaulting to 16"
                 )
                 return 16
 
@@ -213,7 +213,7 @@ class ImageDataManager:
     def _is_image_handler(obj) -> bool:
         """Check if object is an ImageHandler instance."""
         try:
-            from phenotypic.core._image_parts._image_handler import ImageHandler
+            from phenotypic._core._image_parts._image_handler import ImageHandler
 
             return isinstance(obj, ImageHandler) or issubclass(type(obj), ImageHandler)
         except ImportError:
@@ -250,7 +250,7 @@ class ImageDataManager:
         self._data.gray = matrix
         self._data.enh_gray = matrix.copy()
         self._data.sparse_object_map = csc_matrix(
-            np.zeros(matrix.shape, dtype=self._OBJMAP_DTYPE)
+                np.zeros(matrix.shape, dtype=self._OBJMAP_DTYPE)
         )
 
     def _set_from_rgb(self, rgb_array: np.ndarray):
@@ -323,7 +323,7 @@ class ImageDataManager:
 
     @staticmethod
     def _convert_float_array_to_int(
-        float_array: np.ndarray, bit_depth: Literal[8, 16]
+            float_array: np.ndarray, bit_depth: Literal[8, 16]
     ) -> np.ndarray:
         """Convert normalized float array to integer array.
 
@@ -343,8 +343,8 @@ class ImageDataManager:
 
         if np.any(float_array < 0) or np.any(float_array > 1):
             raise ValueError(
-                f"Float array contains values outside [0, 1] range. "
-                f"Min: {float_array.min()}, Max: {float_array.max()}"
+                    f"Float array contains values outside [0, 1] range. "
+                    f"Min: {float_array.min()}, Max: {float_array.max()}"
             )
 
         if bit_depth == 8:
@@ -354,4 +354,4 @@ class ImageDataManager:
             target_dtype = np.uint16
             max_value = 65535
 
-        return (float_array * max_value).astype(target_dtype)
+        return (float_array*max_value).astype(target_dtype)

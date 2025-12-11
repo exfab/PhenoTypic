@@ -61,7 +61,8 @@ class TestBasicSerialization:
     def test_multiple_operations_serialization(self):
         """Test serialization with multiple operations."""
         pipe = ImagePipeline(
-            ops=[GaussianBlur(sigma=2), OtsuDetector(), SmallObjectRemover(min_size=50)]
+                ops=[GaussianBlur(sigma=2), OtsuDetector(),
+                     SmallObjectRemover(min_size=50)]
         )
         json_str = pipe.to_json()
 
@@ -89,7 +90,7 @@ class TestParameterSerialization:
     def test_boolean_parameters(self):
         """Test serialization of boolean parameters."""
         pipe = ImagePipeline(
-            ops=[OtsuDetector(ignore_zeros=True, ignore_borders=False)]
+                ops=[OtsuDetector(ignore_zeros=True, ignore_borders=False)]
         )
         json_str = pipe.to_json()
 
@@ -101,12 +102,12 @@ class TestParameterSerialization:
     def test_numeric_parameters(self):
         """Test serialization of int and float parameters."""
         pipe = ImagePipeline(
-            ops=[
-                GaussianBlur(sigma=3),
-                OtsuDetector(),
-                SmallObjectRemover(min_size=100),
-            ],
-            meas=[MeasureShape()],
+                ops=[
+                    GaussianBlur(sigma=3),
+                    OtsuDetector(),
+                    SmallObjectRemover(min_size=100),
+                ],
+                meas=[MeasureShape()],
         )
         json_str = pipe.to_json()
 
@@ -147,7 +148,7 @@ class TestParameterSerialization:
     def test_dict_parameters(self):
         """Test serialization with dict-style operations input."""
         pipe = ImagePipeline(
-            ops={"blur": GaussianBlur(sigma=2), "detect": OtsuDetector()}
+                ops={"blur": GaussianBlur(sigma=2), "detect": OtsuDetector()}
         )
         json_str = pipe.to_json()
 
@@ -182,15 +183,15 @@ class TestRoundtripFunctionality:
     def test_complex_pipeline_roundtrip(self):
         """Test roundtrip with a complex pipeline."""
         pipe = ImagePipeline(
-            ops=[
-                GaussianBlur(sigma=2),
-                OtsuDetector(ignore_zeros=True),
-                SmallObjectRemover(min_size=25),
-                BorderObjectRemover(border_size=10),
-            ],
-            meas=[MeasureShape(), MeasureIntensity(), MeasureColor()],
-            benchmark=True,
-            verbose=False,
+                ops=[
+                    GaussianBlur(sigma=2),
+                    OtsuDetector(ignore_zeros=True),
+                    SmallObjectRemover(min_size=25),
+                    BorderObjectRemover(border_size=10),
+                ],
+                meas=[MeasureShape(), MeasureIntensity(), MeasureColor()],
+                benchmark=True,
+                verbose=False,
         )
 
         # Test with actual image
@@ -221,7 +222,7 @@ class TestFileIO:
         pipe = ImagePipeline(ops=[OtsuDetector()], meas=[MeasureShape()])
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            filepath = Path(tmpdir) / "pipeline.json"
+            filepath = Path(tmpdir)/"pipeline.json"
             pipe.to_json(filepath)
 
             # Verify file exists and contains valid JSON
@@ -235,7 +236,7 @@ class TestFileIO:
         pipe = ImagePipeline(ops=[OtsuDetector()], meas=[MeasureShape()])
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            filepath = Path(tmpdir) / "pipeline.json"
+            filepath = Path(tmpdir)/"pipeline.json"
             pipe.to_json(filepath)
 
             # Load from file
@@ -248,7 +249,7 @@ class TestFileIO:
         pipe = ImagePipeline(ops=[OtsuDetector()])
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            filepath = str(Path(tmpdir) / "pipeline.json")
+            filepath = str(Path(tmpdir)/"pipeline.json")
             pipe.to_json(filepath)
 
             # Load using string path
@@ -258,12 +259,12 @@ class TestFileIO:
     def test_roundtrip_through_file(self):
         """Test complete roundtrip through file."""
         original_pipe = ImagePipeline(
-            ops=[GaussianBlur(sigma=2), OtsuDetector()],
-            meas=[MeasureShape(), MeasureIntensity()],
+                ops=[GaussianBlur(sigma=2), OtsuDetector()],
+                meas=[MeasureShape(), MeasureIntensity()],
         )
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            filepath = Path(tmpdir) / "pipeline.json"
+            filepath = Path(tmpdir)/"pipeline.json"
             original_pipe.to_json(filepath)
             loaded_pipe = ImagePipeline.from_json(filepath)
 
@@ -301,7 +302,8 @@ class TestEdgeCases:
     def test_duplicate_operation_names(self):
         """Test handling of duplicate operation names."""
         pipe = ImagePipeline(
-            ops=[GaussianBlur(sigma=1), GaussianBlur(sigma=2), GaussianBlur(sigma=3)]
+                ops=[GaussianBlur(sigma=1), GaussianBlur(sigma=2),
+                     GaussianBlur(sigma=3)]
         )
         json_str = pipe.to_json()
 
@@ -368,10 +370,10 @@ class TestErrorHandling:
     def test_missing_class(self):
         """Test error when a class cannot be found."""
         config = {
-            "ops": {"fake": {"class": "NonExistentClass", "params": {}}},
-            "meas": {},
+            "ops"      : {"fake": {"class": "NonExistentClass", "params": {}}},
+            "meas"     : {},
             "benchmark": False,
-            "verbose": False,
+            "verbose"  : False,
         }
         json_str = json.dumps(config)
 
@@ -402,13 +404,13 @@ class TestBatchPipelineSerialization:
 
     def test_batch_pipeline_serialization(self):
         """Test that ImagePipelineBatch can also be serialized."""
-        from phenotypic.core._pipeline_parts._image_pipeline_batch import (
+        from phenotypic._core._pipeline_parts._image_pipeline_batch import (
             ImagePipelineBatch,
         )
 
         pipe = ImagePipelineBatch(ops=[OtsuDetector()], meas=[MeasureShape()], njobs=2)
 
-        # Should only serialize core parameters, not batch-specific ones
+        # Should only serialize _core parameters, not batch-specific ones
         json_str = pipe.to_json()
         config = json.loads(json_str)
 
@@ -420,13 +422,13 @@ class TestBatchPipelineSerialization:
         assert "njobs" not in config
 
     def test_batch_pipeline_roundtrip(self):
-        """Test roundtrip of ImagePipelineBatch preserves core functionality."""
-        from phenotypic.core._pipeline_parts._image_pipeline_batch import (
+        """Test roundtrip of ImagePipelineBatch preserves _core functionality."""
+        from phenotypic._core._pipeline_parts._image_pipeline_batch import (
             ImagePipelineBatch,
         )
 
         pipe = ImagePipelineBatch(
-            ops=[OtsuDetector()], meas=[MeasureShape()], njobs=2, benchmark=True
+                ops=[OtsuDetector()], meas=[MeasureShape()], njobs=2, benchmark=True
         )
 
         json_str = pipe.to_json()

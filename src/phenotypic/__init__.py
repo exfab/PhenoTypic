@@ -18,12 +18,12 @@ __version__ = "0.12.0"
 __author__ = "Alexander Nguyen"
 __email__ = "anguy344@ucr.edu"
 
-from .core._grid_image import GridImage
-from .core._image import Image
-from .core._image_pipeline import ImagePipeline
+from ._core._grid_image import GridImage
+from ._core._image import Image
+from ._core._image_pipeline import ImagePipeline
 
 # commented out until complete
-# from .core._image_set import ImageSet
+# from ._core._image_set import ImageSet
 
 from . import (
     abc_,
@@ -41,8 +41,8 @@ from . import (
 )
 
 __all__ = [
-    "Image",  # Class imported from core
-    "GridImage",  # Class imported from core
+    "Image",  # Class imported from _core
+    "GridImage",  # Class imported from _core
     "ImagePipeline",
     # "ImageSet",
     "abc_",

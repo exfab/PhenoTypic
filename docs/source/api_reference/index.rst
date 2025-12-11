@@ -44,6 +44,16 @@ GridImage
 
     GridImage.grid
 
+ImagePipeline
+---------
+.. currentmodule:: phenotypic
+.. autosummary::
+    :toctree: api/
+    :caption: ImagePipeline
+    :template: image_pipeline.rst
+
+    ImagePipeline
+
 Modules
 -------
 .. currentmodule:: phenotypic

@@ -89,14 +89,14 @@ class CannyDetector(ThresholdDetector):
     """
 
     def __init__(
-        self,
-        sigma: float = 1.0,
-        low_threshold: float = 0.1,
-        high_threshold: float = 0.2,
-        use_quantiles: bool = True,
-        min_size: int = 50,
-        invert_edges: bool = True,
-        connectivity: int = 1,
+            self,
+            sigma: float = 1.0,
+            low_threshold: float = 0.1,
+            high_threshold: float = 0.2,
+            use_quantiles: bool = True,
+            min_size: int = 50,
+            invert_edges: bool = True,
+            connectivity: int = 1,
     ):
         """
         Parameters:
@@ -133,17 +133,16 @@ class CannyDetector(ThresholdDetector):
         self.connectivity = connectivity
 
     def _operate(self, image: Image | GridImage) -> Image:
-        from phenotypic import Image, GridImage
 
         enhanced_matrix = image.enh_gray[:]
 
         # Apply Canny edge detection
         edges = feature.canny(
-            image=enhanced_matrix,
-            sigma=self.sigma,
-            low_threshold=self.low_threshold,
-            high_threshold=self.high_threshold,
-            use_quantiles=self.use_quantiles,
+                image=enhanced_matrix,
+                sigma=self.sigma,
+                low_threshold=self.low_threshold,
+                high_threshold=self.high_threshold,
+                use_quantiles=self.use_quantiles,
         )
 
         # Invert edges to get regions (colonies) if requested
@@ -154,7 +153,8 @@ class CannyDetector(ThresholdDetector):
 
         # Label connected components
         objmap, _ = ndimage.label(
-            regions, structure=ndimage.generate_binary_structure(2, self.connectivity)
+                regions,
+                structure=ndimage.generate_binary_structure(2, self.connectivity)
         )
 
         # Remove small objects

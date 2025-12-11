@@ -12,7 +12,7 @@ from matplotlib import pyplot as plt
 from skimage.color import rgb2hsv
 from skimage.exposure import histogram
 
-from phenotypic.core._image_parts.accessor_abstracts import ColorSpaceAccessor
+from phenotypic._core._image_parts.accessor_abstracts import ColorSpaceAccessor
 
 
 class HsvAccessor(ColorSpaceAccessor):

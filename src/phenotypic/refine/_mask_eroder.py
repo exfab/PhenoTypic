@@ -19,13 +19,13 @@ class MaskEroder(ObjectRefiner):
         effectively eliminating thin protrusions, small isolated specks, and
         faint boundary pixels. On agar plates, this removes dust, sensor noise,
         condensation artifacts, and uneven staining artifacts while preserving
-        the core structure of well-formed colonies.
+        the _core structure of well-formed colonies.
 
     Why this is useful for agar plates:
         Colony boundaries detected via thresholding often include noise pixels,
         thin speckles from uneven illumination, and uncertain boundary pixels
         from soft edges. Erosion strips away these artifacts, leaving a more
-        robust core colony footprint. This is useful for reducing false-positive
+        robust _core colony footprint. This is useful for reducing false-positive
         signal and improving measurement precision.
 
     Use cases:

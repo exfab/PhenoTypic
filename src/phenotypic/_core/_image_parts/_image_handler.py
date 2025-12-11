@@ -12,8 +12,8 @@ from skimage.transform import rotate as skimage_rotate
 import scipy.ndimage as ndimage
 from types import SimpleNamespace
 
-from phenotypic.core._image_parts._image_data_manager import ImageDataManager
-from phenotypic.core._image_parts.accessors import (
+from phenotypic._core._image_parts._image_data_manager import ImageDataManager
+from phenotypic._core._image_parts.accessors import (
     ImageRGB,
     Grayscale,
     EnhancedGrayscale,
@@ -154,7 +154,7 @@ class ImageHandler(ImageDataManager):
         (`rgb`, `gray`, `enh_gray`, `objmap`) are element-wise identical.
 
         Note:
-            - Only checks core image data, and not any other attributes such as metadata.
+            - Only checks _core image data, and not any other attributes such as metadata.
 
         Args:
             other: The object to compare with the current instance.

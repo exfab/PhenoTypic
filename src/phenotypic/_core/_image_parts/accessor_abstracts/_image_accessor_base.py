@@ -83,7 +83,7 @@ class ImageAccessorBase(ABC):
         Examples:
             .. dropdown:: Load a grayscale image from file
 
-                >>> from phenotypic.core._image_parts.accessors import Grayscale
+                >>> from phenotypic._core._image_parts.accessors import Grayscale
                 >>> arr = Grayscale.load("my_gray_image.png")
         """
         filepath = Path(filepath)
