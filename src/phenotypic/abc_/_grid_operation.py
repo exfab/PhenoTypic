@@ -176,7 +176,7 @@ class GridOperation(ImageOperation, ABC):
                 from phenotypic.enhance import GaussianBlur
                 from phenotypic.detect import GridObjectDetector
 
-                image = Image.from_image_path('generic.jpg')  # Plain Image
+                image = Image('generic.jpg')  # Plain Image
                 grid_image = GridImage('plate.jpg')           # GridImage
 
                 # ImageOperation (GaussianBlur) accepts both

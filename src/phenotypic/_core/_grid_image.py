@@ -31,15 +31,15 @@ class GridImage(ImageGridHandler):
     """
 
     def __init__(
-        self,
-        arr: np.ndarray | Image | PathLike | Path | str | None = None,
-        name: str | None = None,
-        grid_finder: Optional[GridFinder] = None,
-        nrows: int = 8,
-        ncols: int = 12,
-        bit_depth: Literal[8, 16] | None = None,
-        illuminant: str | None = "D65",
-        gamma_encoding: Literal["sRGB"] | None = "sRGB",
+            self,
+            arr: np.ndarray | Image | PathLike | Path | str | None = None,
+            name: str | None = None,
+            grid_finder: Optional[GridFinder] = None,
+            nrows: int = 8,
+            ncols: int = 12,
+            bit_depth: Literal[8, 16] | None = None,
+            illuminant: str | None = "D65",
+            gamma: Literal["sRGB"] | None = "sRGB",
     ):
         """Initialize a GridImage with grid-based processing capabilities.
 
@@ -67,13 +67,13 @@ class GridImage(ImageGridHandler):
             illuminant (str | None): Reference illuminant for color calculations.
                 'D65' (standard daylight) or 'D50' (imaging illuminant).
                 Defaults to 'D65'.
-            gamma_encoding (Literal["sRGB"] | None): Gamma encoding for color correction.
+            gamma (Literal["sRGB"] | None): Gamma encoding for color correction.
                 'sRGB' for gamma-corrected images, None for linear RGB.
                 Defaults to 'sRGB'.
 
         Raises:
             ValueError: If illuminant is not 'D65' or 'D50'.
-            ValueError: If gamma_encoding is not 'sRGB' or None.
+            ValueError: If gamma is not 'sRGB' or None.
             TypeError: If arr is provided but is not a valid image type.
 
         Examples:
@@ -99,12 +99,12 @@ class GridImage(ImageGridHandler):
                     print(grid_img.nrows, grid_img.ncols)  # Output: 16 24
         """
         super().__init__(
-            arr=arr,
-            name=name,
-            grid_finder=grid_finder,
-            nrows=nrows,
-            ncols=ncols,
-            bit_depth=bit_depth,
-            illuminant=illuminant,
-            gamma_encoding=gamma_encoding,
+                arr=arr,
+                name=name,
+                grid_finder=grid_finder,
+                nrows=nrows,
+                ncols=ncols,
+                bit_depth=bit_depth,
+                illuminant=illuminant,
+                gamma=gamma,
         )

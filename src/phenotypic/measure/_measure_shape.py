@@ -158,7 +158,7 @@ class MeasureShape(MeasureFeatures):
                 from phenotypic.measure import MeasureShape
 
                 # Load plate with multiple morphotype colonies
-                image = Image.from_image_path("morphotype_plate.jpg")
+                image = Image.imread("morphotype_plate.jpg")
                 detector = OtsuDetector()
                 image = detector.operate(image)
 

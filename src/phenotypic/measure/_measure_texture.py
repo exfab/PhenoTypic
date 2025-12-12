@@ -218,7 +218,7 @@ class MeasureTexture(MeasureFeatures):
                 from phenotypic.measure import MeasureTexture
 
                 # Load plate with smooth and wrinkled colonies
-                image = Image.from_image_path("morphotype_plate.jpg")
+                image = Image.imread("morphotype_plate.jpg")
                 detector = OtsuDetector()
                 image = detector.operate(image)
 

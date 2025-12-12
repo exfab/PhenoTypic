@@ -70,7 +70,7 @@ class NearestNeighborMerger(ObjectRefiner):
             >>> from phenotypic.refine import NearestNeighborMerger
             >>> from phenotypic import Image
             >>> from phenotypic.detect import OtsuDetector
-            >>> image = Image.from_image_path('noisy_plate.jpg')
+            >>> image = Image('noisy_plate.jpg')
             >>> detected = OtsuDetector().apply(image)
             >>> # Merge only objects smaller than 50 pixels to their nearest colony
             >>> merger = NearestNeighborMerger(

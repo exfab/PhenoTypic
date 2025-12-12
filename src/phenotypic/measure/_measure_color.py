@@ -423,7 +423,7 @@ class MeasureColor(MeasureFeatures):
                 from phenotypic.measure import MeasureColor
 
                 # Load image of colonies (may include pigmented and non-pigmented strains)
-                image = Image.from_image_path("mixed_pigment_plate.jpg")
+                image = Image.imread("mixed_pigment_plate.jpg")
                 detector = OtsuDetector()
                 image = detector.operate(image)
 

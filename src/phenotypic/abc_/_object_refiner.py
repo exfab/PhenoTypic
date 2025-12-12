@@ -294,7 +294,7 @@ class ObjectRefiner(ImageOperation, ABC):
         pipeline.add(LowCircularityRemover(cutoff=0.75))        # Remove elongated artifacts
 
         # Apply to detected image
-        image = Image.from_image_path('plate.jpg')
+        image = Image.imread('plate.jpg')
         from phenotypic.detect import OtsuDetector
         detected = OtsuDetector().apply(image)
 
@@ -387,7 +387,7 @@ class ObjectRefiner(ImageOperation, ABC):
                 # Usage
                 from phenotypic.detect import OtsuDetector
 
-                image = Image.from_image_path('plate.jpg')
+                image = Image.imread('plate.jpg')
                 detected = OtsuDetector().apply(image)
 
                 # Remove noise below 100 pixels
@@ -439,7 +439,7 @@ class ObjectRefiner(ImageOperation, ABC):
                         return image
 
                 # Usage
-                image = Image.from_image_path('plate.jpg')
+                image = Image.imread('plate.jpg')
                 from phenotypic.detect import OtsuDetector
                 detected = OtsuDetector().apply(image)
 
@@ -482,7 +482,7 @@ class ObjectRefiner(ImageOperation, ABC):
                         return image
 
                 # Usage
-                image = Image.from_image_path('plate.jpg')
+                image = Image.imread('plate.jpg')
                 from phenotypic.detect import OtsuDetector
                 detected = OtsuDetector().apply(image)
 
@@ -529,7 +529,7 @@ class ObjectRefiner(ImageOperation, ABC):
                         return image
 
                 # Usage
-                image = Image.from_image_path('plate.jpg')
+                image = Image.imread('plate.jpg')
                 from phenotypic.detect import OtsuDetector
                 detected = OtsuDetector().apply(image)
 
@@ -569,7 +569,7 @@ class ObjectRefiner(ImageOperation, ABC):
                 pipeline.add(MeasureColor())
 
                 # Load images and process
-                image = Image.from_image_path('plate.jpg')
+                image = Image.imread('plate.jpg')
                 results = pipeline.operate([image])
                 final = results[0]
 

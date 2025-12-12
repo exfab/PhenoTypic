@@ -52,7 +52,7 @@ class MaskCloser(ObjectRefiner):
             >>> from phenotypic.refine import MaskCloser
             >>> from phenotypic import Image
             >>> from phenotypic.detect import OtsuDetector
-            >>> image = Image.from_image_path("colony_plate.jpg")  # doctest: +SKIP
+            >>> image = Image.imread("colony_plate.jpg")  # doctest: +SKIP
             >>> detected = OtsuDetector().apply(image)  # doctest: +SKIP
             >>> # Fill gaps from uneven staining with auto-scaled footprint
             >>> refiner = MaskCloser(footprint='auto')  # doctest: +SKIP

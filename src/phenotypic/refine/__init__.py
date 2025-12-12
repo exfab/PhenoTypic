@@ -22,7 +22,7 @@ from ._mask_eroder import MaskEroder
 from ._mask_fill import MaskFill
 from ._mask_gradient import MaskGradient
 from ._mask_opener import MaskOpener
-from ._min_residual_error_reducer import MinResidualErrorReducer
+from ._min_residual_error_reducer import ReduceMultipleGridObjects
 from ._nearest_neighbor_merger import NearestNeighborMerger
 from ._residual_outlier_remover import ResidualOutlierRemover
 from ._skeletonize import Skeletonize
@@ -43,7 +43,7 @@ __all__ = [
     "MaskFill",
     "MaskGradient",
     "MaskOpener",
-    "MinResidualErrorReducer",
+    "ReduceMultipleGridObjects",
     "NearestNeighborMerger",
     "ResidualOutlierRemover",
     "Skeletonize",

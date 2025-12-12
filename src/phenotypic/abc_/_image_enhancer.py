@@ -235,7 +235,7 @@ class ImageEnhancer(ImageOperation, ABC):
         pipeline.add(OtsuDetector())
 
         # Process a batch of images with automatic parallelization
-        images = [Image.from_image_path(f) for f in plate_scans]
+        images = [Image.imread(f) for f in plate_scans]
         results = pipeline.operate(images)
 
     **Methods and Attributes**
@@ -306,7 +306,7 @@ class ImageEnhancer(ImageOperation, ABC):
                 from phenotypic import Image
                 from phenotypic.detect import OtsuDetector
 
-                image = Image.from_image_path('agar_plate.jpg')
+                image = Image.imread('agar_plate.jpg')
                 enhancer = CustomGaussianEnhancer(sigma=2.0)
                 enhanced = enhancer.apply(image)  # Original unchanged
                 detected = OtsuDetector().apply(enhanced)  # Detect in enhanced data
@@ -384,7 +384,7 @@ class ImageEnhancer(ImageOperation, ABC):
 
                 # Process a batch of plate images
                 image_paths = ['plate1.tif', 'plate2.tif', 'plate3.tif']
-                images = [Image.from_image_path(p) for p in image_paths]
+                images = [Image.imread(p) for p in image_paths]
                 results = pipeline.operate(images)
 
                 # Each result has cleaned detection results
@@ -427,7 +427,7 @@ class ImageEnhancer(ImageOperation, ABC):
                         return image
 
                 # Usage with different shapes
-                image = Image.from_image_path('plate.jpg')
+                image = Image.imread('plate.jpg')
 
                 # Isotropic smoothing (preserves round colony shapes)
                 result1 = SelectiveMedianEnhancer(shape='disk', radius=3).apply(image)

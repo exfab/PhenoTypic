@@ -1,8 +1,8 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, Literal, overload
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    import plotly.graph_objects as go
+    pass
 
 import numpy as np
 
@@ -11,13 +11,6 @@ import matplotlib.pyplot as plt
 from skimage.measure import label
 
 from phenotypic._core._image_parts.accessor_abstracts import SingleChannelAccessor
-from phenotypic._core._image_parts._plotting_backends import (
-    PlotReturn,
-    MatplotlibReturn,
-    PlotlyReturn,
-    translate_colormap,
-    plot_image_plotly,
-)
 from phenotypic.tools.exceptions_ import (
     ArrayKeyValueShapeMismatchError,
     InvalidMapValueError,
@@ -338,7 +331,6 @@ class ObjectMap(SingleChannelAccessor):
         """
         return self._backend.tocoo()
 
-    @overload
     def show(
             self,
             figsize=None,
@@ -346,67 +338,36 @@ class ObjectMap(SingleChannelAccessor):
             cmap: str = "tab10",
             ax: None | plt.Axes = None,
             mpl_params: None | dict = None,
-            *,
-            backend: Literal["matplotlib"] = "matplotlib",
-    ) -> MatplotlibReturn:
-        ...
+    ) -> (plt.Figure, plt.Axes):
+        """Display the object map using matplotlib's imshow.
 
-    @overload
-    def show(
-            self,
-            figsize=None,
-            title=None,
-            cmap: str = "tab10",
-            ax: None = None,
-            mpl_params: None | dict = None,
-            *,
-            backend: Literal["plotly"],
-            plotly_settings: None | dict = None,
-    ) -> PlotlyReturn:
-        ...
-
-    def show(
-            self,
-            figsize=None,
-            title=None,
-            cmap: str = "tab10",
-            ax: None | plt.Axes = None,
-            mpl_params: None | dict = None,
-            *,
-            backend: Literal["matplotlib", "plotly"] = "matplotlib",
-            plotly_settings: None | dict = None,
-    ) -> PlotReturn:
-        """Display object map using selected backend.
-
-        Visualizes the labeled object map with each unique label assigned
-        a distinct color. Supports both matplotlib and plotly backends.
+        This method visualizes the labeled object map using matplotlib. Each
+        unique label is assigned a distinct color from the specified colormap,
+        allowing visual distinction between labeled objects. The background
+        (label 0) is typically shown in a neutral color.
 
         Args:
-            figsize (tuple[int, int] | None, optional): Figure size in inches
-                (width, height). If None, uses default. Defaults to None.
-            title (str | None, optional): Plot title. If None, no title
+            figsize (tuple[int, int], optional): Tuple specifying the figure size
+                in inches (width, height). If None, uses the default matplotlib
+                figure size. Defaults to None.
+            title (str, optional): Title text for the plot. If None, no title is
                 displayed. Defaults to None.
-            cmap (str, optional): Colormap name for rendering labels.
-                Diverse colormaps like 'nipy_spectral' recommended for many
-                objects. Defaults to 'tab10'.
-            ax (plt.Axes | None, optional): Existing Matplotlib Axes. Only
-                valid for matplotlib backend. If None, new axes created.
+            cmap (str, optional): The colormap name used for rendering the labeled
+                object map. A diverse colormap like 'nipy_spectral' is recommended
+                for clearly distinguishing between many objects. Defaults to
+                'nipy_spectral'.
+            ax (plt.Axes, optional): Existing Matplotlib Axes object where the
+                object map will be plotted. If None, a new figure and axes are
+                created. Defaults to None.
+            mpl_params (dict, optional): Additional parameters passed to matplotlib's
+                imshow function for plot customization (e.g., interpolation,
+                normalization). If None, no extra parameters are applied.
                 Defaults to None.
-            mpl_params (dict | None, optional): Additional matplotlib imshow
-                kwargs. Only used with matplotlib backend. Defaults to None.
-            backend (Literal["matplotlib", "plotly"], optional): Backend to use.
-                Defaults to "matplotlib".
-            plotly_settings (dict | None, optional): Plotly-specific settings.
-                Only used with plotly backend. Defaults to None.
 
         Returns:
-            PlotReturn:
-                - If backend="matplotlib": tuple[plt.Figure, plt.Axes]
-                - If backend="plotly": plotly.graph_objects.Figure
-
-        Raises:
-            ValueError: If backend invalid or ax with plotly backend.
-            ImportError: If plotly requested but not installed.
+            tuple[plt.Figure, plt.Axes]: A tuple containing the matplotlib Figure
+                and Axes objects where the object map is rendered. If an existing
+                axes was provided, its parent figure is returned.
 
         Examples:
             .. dropdown:: Displaying the object map with various options
@@ -426,44 +387,18 @@ class ObjectMap(SingleChannelAccessor):
                     fig, ax = plt.subplots(1, 2, figsize=(12, 5))
                     image.objmap.show(ax=ax[0])
                     image.gray.show(ax=ax[1])
-
-                    # Interactive plotly backend
-                    fig = image.objmap.show(backend="plotly")
-                    fig.show()
         """
-        if backend == "matplotlib":
-            cmap_obj = plt.get_cmap(cmap)
-            cmap_obj.set_bad(color="black")
-            return self._plot(
+        cmap = plt.get_cmap(cmap)
+        cmap.set_bad(color="black")
+        return self._plot(
                 # Use masked array to make background black
                 arr=np.ma.masked_equal(self._backend.toarray(), value=0),
                 figsize=figsize,
                 title=title,
                 ax=ax,
-                cmap=cmap_obj,
-                mpl_settings=mpl_params,
-                backend="matplotlib",
-            )
-
-        else:  # backend == "plotly"
-            if ax is not None:
-                raise ValueError(
-                    "The 'ax' parameter is not supported with plotly backend."
-                )
-
-            objmap_arr = self._backend.toarray()
-            # Use NaN to mask background (value 0) for plotly
-            objmap_arr = np.where(
-                objmap_arr > 0, objmap_arr, np.nan
-            ).astype(np.float64)
-
-            return plot_image_plotly(
-                arr=objmap_arr,
-                figsize=figsize if figsize else (8, 6),
-                title=title,
                 cmap=cmap,
-                plotly_settings=plotly_settings,
-            )
+                mpl_settings=mpl_params,
+        )
 
     def reset(self) -> None:
         """Reset the object map to an empty state with no labeled objects.

@@ -28,7 +28,7 @@ class ImageColorSpace(ImageObjectsHandler):
     computed on-demand through the color accessor to minimize memory overhead.
 
     Attributes:
-        gamma_encoding (str | None): The gamma encoding applied to the image
+        gamma (str | None): The gamma encoding applied to the image
             ('sRGB' for gamma-corrected, None for linear RGB). Defaults to 'sRGB'.
         _observer (str): The CIE standard observer model for color calculations
             (default: 'CIE 1931 2 Degree Standard Observer').
@@ -48,7 +48,7 @@ class ImageColorSpace(ImageObjectsHandler):
             name: str | None = None,
             bit_depth: Literal[8, 16] | None = 8,
             *,
-            gamma_encoding: Literal["sRGB"] | None = "sRGB",
+            gamma: Literal["sRGB"] | None = "sRGB",
             illuminant: Literal["D65", "D50"] = "D65",
     ):
         """Initialize ImageColorSpace with color properties and representations.
@@ -63,7 +63,7 @@ class ImageColorSpace(ImageObjectsHandler):
             name (str | None): Optional name for the image. Defaults to None.
             bit_depth (Literal[8, 16] | None): The bit depth of the image (8 or 16 bits).
                 Defaults to 8.
-            gamma_encoding (Literal["sRGB"] | None): The gamma encoding applied to the image.
+            gamma (Literal["sRGB"] | None): The gamma encoding applied to the image.
                 'sRGB' applies gamma correction for display, None assumes linear RGB.
                 Only 'sRGB' and None are supported. Defaults to 'sRGB'.
             illuminant (Literal["D65", "D50"]): The reference illuminant for color calculations.
@@ -71,19 +71,20 @@ class ImageColorSpace(ImageObjectsHandler):
                 for imaging. Defaults to 'D65'.
 
         Raises:
-            ValueError: If gamma_encoding is not 'sRGB' or None.
+            ValueError: If gamma is not 'sRGB' or None.
             ValueError: If illuminant is not 'D65' or 'D50'.
         """
-        if (gamma_encoding != "sRGB") and (gamma_encoding is not None):
+        if (gamma != "sRGB") and (gamma is not None):
             raise ValueError(
-                    f"only sRGB or None for linear is supported for gamma encoding: got {gamma_encoding}"
+                    f"only sRGB or None for linear is supported for gamma encoding: got {gamma}"
             )
         if illuminant not in ["D65", "D50"]:
             raise ValueError('illuminant must be "D65" or "D50"')
 
-        self.gamma_encoding = gamma_encoding
-        self._observer: str = "CIE 1931 2 Degree Standard Observer"
+        self.gamma = gamma
         self.illuminant: Literal["D50", "D65"] = illuminant
+
+        self._observer: str = "CIE 1931 2 Degree Standard Observer"
         super().__init__(arr=arr, name=name, bit_depth=bit_depth)
 
         # Initialize color accessor

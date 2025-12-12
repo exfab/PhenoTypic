@@ -34,7 +34,7 @@ class Image(ImageIOHandler):
     Notes:
         - 2-D input arrays are treated as grayscale; rgb form remains empty.
         - 3-D input arrays are treated as RGB; grayscale is computed automatically.
-        - Color space properties (gamma_encoding, illuminant, _observer) are inherited.
+        - Color space properties (gamma, illuminant, _observer) are inherited.
         - Object detection and measurements require an ObjectDetector first.
         - HSV color space support added in v0.5.0.
 
@@ -60,12 +60,12 @@ class Image(ImageIOHandler):
     """
 
     def __init__(
-        self,
-        arr: np.ndarray | Image | None = None,
-        name: str | None = None,
-        bit_depth: Literal[8, 16] | None = None,
-        gamma_encoding: str | None = "sRGB",
-        illuminant: str | None = "D65",
+            self,
+            arr: np.ndarray | Image | None = None,
+            name: str | None = None,
+            bit_depth: Literal[8, 16] | None = None,
+            gamma: str | None = "sRGB",
+            illuminant: str | None = "D65",
     ):
         """Initialize an Image instance with optional image data and color properties.
 
@@ -85,7 +85,7 @@ class Image(ImageIOHandler):
             bit_depth (Literal[8, 16] | None): The bit depth of the image data (8 or 16 bits).
                 If not specified and arr is provided, bit depth is automatically inferred
                 from the array dtype. Defaults to None.
-            gamma_encoding (str | None): The gamma encoding used for color correction.
+            gamma (str | None): The gamma encoding used for color correction.
                 'sRGB': applies sRGB gamma correction (standard display gamma)
                 None: assumes linear RGB data
                 Only 'sRGB' and None are supported. Defaults to 'sRGB'.
@@ -95,7 +95,7 @@ class Image(ImageIOHandler):
                 Defaults to 'D65'.
 
         Raises:
-            ValueError: If gamma_encoding is not 'sRGB' or None.
+            ValueError: If gamma is not 'sRGB' or None.
             ValueError: If illuminant is not 'D65' or 'D50'.
             TypeError: If arr is provided but is not a NumPy array or Image instance.
 
@@ -118,7 +118,7 @@ class Image(ImageIOHandler):
                 .. code-block:: python
 
                     rgb_arr = np.random.randint(0, 256, (480, 640, 3), dtype=np.uint8)
-                    img = Image(rgb_arr, name='color_photo', gamma_encoding='sRGB')
+                    img = Image(rgb_arr, name='color_photo', gamma='sRGB')
 
             .. dropdown:: Copy another image
 
@@ -128,9 +128,9 @@ class Image(ImageIOHandler):
                     img2 = Image(img1, name='copy_of_original')
         """
         super().__init__(
-            arr=arr,
-            name=name,
-            bit_depth=bit_depth,
-            gamma_encoding=gamma_encoding,
-            illuminant=illuminant,
+                arr=arr,
+                name=name,
+                bit_depth=bit_depth,
+                gamma=gamma,
+                illuminant=illuminant,
         )

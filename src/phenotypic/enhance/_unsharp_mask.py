@@ -72,7 +72,7 @@ class UnsharpMask(ImageEnhancer):
                 from phenotypic.detect import OtsuDetector
 
                 # Load image of low-contrast plate (e.g., translucent yeasts)
-                image = Image.from_image_path("yeast_plate.jpg")
+                image = Image("yeast_plate.jpg")
 
                 # Apply unsharp masking with moderate settings
                 sharpener = UnsharpMask(radius=2.0, amount=1.2)
@@ -110,7 +110,7 @@ class UnsharpMask(ImageEnhancer):
                 pipeline.add(OtsuDetector())
 
                 # Process a batch of images
-                images = [Image.from_image_path(f) for f in image_paths]
+                images = [Image(f) for f in image_paths]
                 results = pipeline.operate(images)
 
                 for i, result in enumerate(results):
@@ -126,7 +126,7 @@ class UnsharpMask(ImageEnhancer):
                 # For extremely low-contrast colonies (e.g., slow-growing mutants,
                 # low-turbidity liquid culture plates), use higher amount
 
-                image = Image.from_image_path("faint_colonies.jpg")
+                image = Image("faint_colonies.jpg")
 
                 # Aggressive parameters: larger radius for broader features,
                 # higher amount for stronger enhancement

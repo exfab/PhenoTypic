@@ -11,7 +11,7 @@ from phenotypic.measure import MeasureGridLinRegStats
 from phenotypic.measure._measure_grid_linreg_stats import GRID_LINREG_STATS
 
 
-class MinResidualErrorReducer(GridObjectRefiner):
+class ReduceMultipleGridObjects(GridObjectRefiner):
     """Reduce multi-detections per grid cell by keeping objects closest to a
     linear-regression prediction of expected positions.
 
@@ -43,8 +43,8 @@ class MinResidualErrorReducer(GridObjectRefiner):
     Examples:
         .. dropdown:: Reduce multi-detections per grid cell using residual error
 
-            >>> from phenotypic.refine import MinResidualErrorReducer
-            >>> op = MinResidualErrorReducer()
+            >>> from phenotypic.refine import ReduceMultipleGridObjects
+            >>> op = ReduceMultipleGridObjects()
             >>> image = op.apply(image, inplace=True)  # doctest: +SKIP
     """
 
@@ -54,7 +54,7 @@ class MinResidualErrorReducer(GridObjectRefiner):
     def _operate(image: GridImage) -> GridImage:
         # Get the section objects in order of most amount. More objects in a section means
         # more potential spread that can affect linreg results.
-        max_iter = (image.grid.nrows * image.grid.ncols) * 4
+        max_iter = (image.grid.nrows*image.grid.ncols)*4
 
         # Initialize extractor here to save obj construction time
         linreg_stat_extractor = MeasureGridLinRegStats()

@@ -212,7 +212,7 @@ class ImageCorrector(ImageOperation, ABC):
             from phenotypic.correction import GridAligner
 
             # Load plate image
-            image = Image.from_image_path('colony_plate.jpg')
+            image = Image.imread('colony_plate.jpg')
 
             # Detect colonies in original orientation
             detected = RoundPeaksDetector().apply(image)

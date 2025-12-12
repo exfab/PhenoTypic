@@ -57,7 +57,7 @@ class MeasureBounds(MeasureFeatures):
                 from phenotypic.measure import MeasureBounds
 
                 # Load image and detect colonies
-                image = Image.from_image_path("colony_plate.jpg")
+                image = Image.imread("colony_plate.jpg")
                 detector = OtsuDetector()
                 image = detector.operate(image)
 

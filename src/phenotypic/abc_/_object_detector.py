@@ -336,7 +336,7 @@ class ObjectDetector(ImageOperation, ABC):
         pipeline.add(ClearBorderRefiner())  # Remove edge-touching objects
         pipeline.add(RemoveSmallObjectsRefiner(min_size=100))  # Filter noise
 
-        image = Image.from_image_path("plate.jpg")
+        image = Image("plate.jpg")
         result = pipeline.operate([image])[0]
         # result now has clean, labeled colonies ready for measurement
 
@@ -377,7 +377,7 @@ class ObjectDetector(ImageOperation, ABC):
                 from phenotypic.detect import OtsuDetector
 
                 # Load a plate image
-                plate = Image.from_image_path("agar_plate.jpg")
+                plate = Image("agar_plate.jpg")
 
                 # Apply detection
                 detector = OtsuDetector()
@@ -451,7 +451,7 @@ class ObjectDetector(ImageOperation, ABC):
                 pipeline.add(MeasureColor())  # Downstream analysis
 
                 # Load image and process
-                image = Image.from_image_path("plate.jpg")
+                image = Image("plate.jpg")
                 result = pipeline.operate([image])[0]
 
                 # Results include enhanced image, detected/refined colonies, and measurements

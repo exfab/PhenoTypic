@@ -2,25 +2,17 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import TYPE_CHECKING, Tuple, Optional, Literal, overload
+from typing import TYPE_CHECKING, Tuple, Optional
 
 if TYPE_CHECKING:
     from phenotypic import Image
-    import plotly.graph_objects as go
 
 import numpy as np
 from matplotlib import pyplot as plt
 from skimage.color import rgb2hsv
 from skimage.exposure import histogram
-import matplotlib.colors as mcolors
 
 from phenotypic._core._image_parts.accessor_abstracts import ColorSpaceAccessor
-from phenotypic._core._image_parts._plotting_backends import (
-    PlotReturn,
-    MatplotlibReturn,
-    PlotlyReturn,
-    translate_colormap,
-)
 
 
 class HsvAccessor(ColorSpaceAccessor):
@@ -109,39 +101,13 @@ class HsvAccessor(ColorSpaceAccessor):
         """
         return self._subject_arr.copy()
 
-    @overload
     def histogram(
             self,
             figsize: Tuple[int, int] = (10, 5),
             linewidth=1,
             hue_bins: int = 1,
             hue_offset: float = 0.0,
-            *,
-            backend: Literal["matplotlib"] = "matplotlib",
-    ) -> MatplotlibReturn:
-        ...
-
-    @overload
-    def histogram(
-            self,
-            figsize: Tuple[int, int] = (10, 5),
-            linewidth=1,
-            hue_bins: int = 1,
-            hue_offset: float = 0.0,
-            *,
-            backend: Literal["plotly"],
-    ) -> PlotlyReturn:
-        ...
-
-    def histogram(
-            self,
-            figsize: Tuple[int, int] = (10, 5),
-            linewidth=1,
-            hue_bins: int = 1,
-            hue_offset: float = 0.0,
-            *,
-            backend: Literal["matplotlib", "plotly"] = "matplotlib",
-    ) -> PlotReturn:
+    ):
         """Generate and display histograms for HSV channels with specialized hue visualization.
 
         Creates a comprehensive visualization with four subplots:
@@ -166,24 +132,19 @@ class HsvAccessor(ColorSpaceAccessor):
             hue_offset (float, optional): Rotation offset to apply to all hue values
                 in degrees. Useful for adjusting the starting angle of the polar plot.
                 Defaults to 0.0.
-            backend (Literal["matplotlib", "plotly"], optional): Backend to use.
-                Currently only "matplotlib" is supported. Defaults to "matplotlib".
 
         Returns:
-            PlotReturn:
-                - If backend="matplotlib": tuple[plt.Figure, np.ndarray]
-                - If backend="plotly": plotly.graph_objects.Figure
+            Tuple[plt.Figure, np.ndarray]: A tuple of:
+                - plt.Figure: The Matplotlib figure containing all subplots
+                - np.ndarray: Flattened array of Axes objects (axes[0] = image,
+                  axes[1] = hue polar, axes[2] = saturation, axes[3] = brightness)
 
         Note:
             The radial hue histogram uses 0 degrees at the top (north) with clockwise
             direction. Angular gridlines appear every 30 degrees. Radial gridlines
-            show histogram bin counts. Plotly support is currently experimental.
+            show histogram bin counts.
         """
-        if backend != "matplotlib":
-            raise NotImplementedError(
-                f"Plotly backend for HSV histogram not yet implemented. "
-                f"Use backend='matplotlib' instead."
-            )
+        import matplotlib.colors as mcolors
 
         fig, axes = plt.subplots(
                 nrows=2, ncols=2, figsize=figsize, subplot_kw={"projection": None}

@@ -77,7 +77,7 @@ class SmallToLargeMerger(ObjectRefiner):
             >>> from phenotypic.refine import SmallToLargeMerger
             >>> from phenotypic import Image
             >>> from phenotypic.detect import OtsuDetector
-            >>> image = Image.from_image_path('fragmented_plate.jpg')
+            >>> image = Image('fragmented_plate.jpg')
             >>> detected = OtsuDetector().apply(image)
             >>> # Merge fragments <100px into nearby colonies >100px
             >>> merger = SmallToLargeMerger(

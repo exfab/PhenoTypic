@@ -177,7 +177,7 @@ class GridObjectRefiner(ObjectRefiner, GridOperation, ABC):
 
                 # Usage on gridded plate image
                 from phenotypic.detect import OtsuDetector
-                image = GridImage.from_image_path('plate.jpg', nrows=8, ncols=12)
+                image = GridImage.imread('plate.jpg', nrows=8, ncols=12)
                 detected = OtsuDetector().apply(image)
                 cleaned = OversizedObjectRemover().apply(detected)
 
@@ -196,7 +196,7 @@ class GridObjectRefiner(ObjectRefiner, GridOperation, ABC):
                 pipeline.add(GridOversizedObjectRemover())          # Grid-aware filter
 
                 # Apply to gridded plate
-                image = GridImage.from_image_path('plate.jpg', nrows=8, ncols=12)
+                image = GridImage.imread('plate.jpg', nrows=8, ncols=12)
                 results = pipeline.operate([image])
                 refined_image = results[0]
 

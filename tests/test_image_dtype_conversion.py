@@ -536,11 +536,11 @@ class TestErrorHandling:
 
     @timeit
     def test_invalid_gamma_encoding_raises_valueerror(self):
-        """Test that invalid gamma_encoding raises ValueError."""
+        """Test that invalid gamma raises ValueError."""
         uint8_array = np.random.randint(0, 255, (100, 100, 3), dtype=np.uint8)
 
         with pytest.raises(ValueError):
-            Image(arr=uint8_array, gamma_encoding="InvalidGamma")
+            Image(arr=uint8_array, gamma="InvalidGamma")
 
     @timeit
     def test_invalid_illuminant_raises_valueerror(self):

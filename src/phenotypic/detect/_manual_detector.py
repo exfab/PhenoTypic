@@ -93,7 +93,7 @@ class ManualDetector(ThresholdDetector):
         import numpy as np
         import matplotlib.pyplot as plt
 
-        image = Image.from_image_path("test_plate.jpg")
+        image = Image("test_plate.jpg")
         enh = image.enh_gray[:]
 
     2. Inspect the intensity histogram::
@@ -174,7 +174,7 @@ class ManualDetector(ThresholdDetector):
                 from phenotypic.detect import ManualDetector
 
                 # Load a plate image
-                plate = Image.from_image_path("agar_plate.jpg")
+                plate = Image("agar_plate.jpg")
 
                 # Apply manual threshold (tuned via histogram inspection)
                 detector = ManualDetector(threshold=120, ignore_zeros=True)
@@ -193,7 +193,7 @@ class ManualDetector(ThresholdDetector):
                 from phenotypic.detect import OtsuDetector, ManualDetector
                 import matplotlib.pyplot as plt
 
-                plate = Image.from_image_path("agar_plate.jpg")
+                plate = Image("agar_plate.jpg")
 
                 # Automatic Otsu threshold
                 otsu_result = OtsuDetector().apply(plate)
@@ -218,7 +218,7 @@ class ManualDetector(ThresholdDetector):
                 import numpy as np
                 import matplotlib.pyplot as plt
 
-                plate = Image.from_image_path("agar_plate.jpg")
+                plate = Image("agar_plate.jpg")
                 enh = plate.enh_gray[:]
 
                 # Plot histogram to identify threshold
@@ -252,7 +252,7 @@ class ManualDetector(ThresholdDetector):
 
                 # Process standardized plate images
                 from phenotypic import Image
-                plates = [Image.from_image_path(f"plate_{i}.jpg") for i in range(10)]
+                plates = [Image(f"plate_{i}.jpg") for i in range(10)]
                 results = pipeline.operate(plates)
     """
 

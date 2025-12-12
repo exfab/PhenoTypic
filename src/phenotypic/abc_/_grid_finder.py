@@ -138,7 +138,7 @@ class GridFinder(GridMeasureFeatures, ABC):
                 from phenotypic.detect import OtsuDetector
 
                 # Load image of 96-well plate
-                image = Image.from_image_path("plate_scan.jpg")
+                image = Image("plate_scan.jpg")
 
                 # Detect colonies
                 detector = OtsuDetector()
@@ -169,7 +169,7 @@ class GridFinder(GridMeasureFeatures, ABC):
                 from phenotypic.detect import OtsuDetector
 
                 # Load and detect colonies
-                image = Image.from_image_path("rotated_plate.jpg")
+                image = Image("rotated_plate.jpg")
                 detector = OtsuDetector()
                 image_with_objects = detector.operate(image)
 

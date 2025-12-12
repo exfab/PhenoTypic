@@ -181,7 +181,7 @@ class MeasureFeatures(BaseOperation, ABC):
 
             # Usage:
             from phenotypic import Image
-            image = Image.from_image_path('colony_plate.jpg')
+            image = Image('colony_plate.jpg')
             # (After detection...)
             measurer = MeasureCustom(intensity_threshold=150)
             measurements = measurer.measure(image)  # Returns DataFrame
@@ -212,7 +212,7 @@ class MeasureFeatures(BaseOperation, ABC):
                 from phenotypic.measure import MeasureSize
 
                 # Load and detect colonies
-                image = Image.from_image_path('plate_image.jpg')
+                image = Image('plate_image.jpg')
                 from phenotypic.detect import OtsuDetector
                 detector = OtsuDetector()
                 image = detector.operate(image)
@@ -322,7 +322,7 @@ class MeasureFeatures(BaseOperation, ABC):
                     from phenotypic.detect import OtsuDetector
 
                     # Load and detect
-                    image = Image.from_image_path('plate.jpg')
+                    image = Image('plate.jpg')
                     image = OtsuDetector().operate(image)
 
                     # Extract measurements

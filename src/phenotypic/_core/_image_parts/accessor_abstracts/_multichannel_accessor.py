@@ -3,7 +3,6 @@ import shutil
 import subprocess
 import warnings
 from pathlib import Path
-from typing import Literal, overload, TYPE_CHECKING
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -13,15 +12,7 @@ from PIL import PngImagePlugin
 
 import phenotypic
 from phenotypic._core._image_parts.accessor_abstracts import ImageAccessorBase
-from phenotypic._core._image_parts._plotting_backends import (
-    PlotReturn,
-    MatplotlibReturn,
-    PlotlyReturn,
-)
 from phenotypic.tools.constants_ import METADATA, IO
-
-if TYPE_CHECKING:
-    import plotly.graph_objects as go
 
 
 class MultiChannelAccessor(ImageAccessorBase):
@@ -96,7 +87,6 @@ class MultiChannelAccessor(ImageAccessorBase):
             # Fallback to skimage without metadata
             ski.io.imsave(fname=fname, arr=arr, check_contrast=False)
 
-    @overload
     def show(
             self,
             figsize: tuple[int, int] | None = None,
@@ -106,80 +96,34 @@ class MultiChannelAccessor(ImageAccessorBase):
             foreground_only: bool = False,
             *,
             mpl_settings: dict | None = None,
-            backend: Literal["matplotlib"] = "matplotlib",
-    ) -> MatplotlibReturn:
-        ...
-
-    @overload
-    def show(
-            self,
-            figsize: tuple[int, int] | None = None,
-            title: str | None = None,
-            ax: None = None,
-            channel: int | None = None,
-            foreground_only: bool = False,
-            *,
-            mpl_settings: dict | None = None,
-            backend: Literal["plotly"],
-            plotly_settings: dict | None = None,
-    ) -> PlotlyReturn:
-        ...
-
-    def show(
-            self,
-            figsize: tuple[int, int] | None = None,
-            title: str | None = None,
-            ax: plt.Axes | None = None,
-            channel: int | None = None,
-            foreground_only: bool = False,
-            *,
-            mpl_settings: dict | None = None,
-            backend: Literal["matplotlib", "plotly"] = "matplotlib",
-            plotly_settings: dict | None = None,
-    ) -> PlotReturn:
+    ) -> tuple[plt.Figure, plt.Axes]:
         """
-        Display image with optional backend selection and customization.
-
-        Visualizes image data with flexible options for channel selection,
-        foreground filtering, and backend choice.
+        Displays the image data, with the option to customize its visualization
+        and plot settings.
 
         Args:
-            figsize (tuple[int, int] | None, optional): Figure size in inches
-                (width, height). If None, uses default. Defaults to None.
-            title (str | None, optional): Plot title. If None, auto-generated
-                from image name and channel. Defaults to None.
-            ax (plt.Axes | None, optional): Matplotlib Axes object. Only valid
-                for matplotlib backend. If None, new axis created. Defaults to None.
-            channel (int | None, optional): Specific channel index to plot.
-                If None, all channels displayed. Defaults to None.
-            foreground_only (bool, optional): If True, display only foreground.
-                If False, show entire image. Defaults to False.
-            mpl_settings (dict | None, optional): Matplotlib settings. Only used
-                with matplotlib backend. Defaults to None.
-            backend (Literal["matplotlib", "plotly"], optional): Backend to use.
-                Defaults to "matplotlib".
-            plotly_settings (dict | None, optional): Plotly-specific settings.
-                Only used with plotly backend. Defaults to None.
+            figsize (tuple[int, int] | None): Size of the figure in inches (width, height).
+                If None, a default size is used.
+            title (str | None): Title of the plot. If None, a default title is
+                generated based on the image and channel.
+            ax (plt.Axes | None): Matplotlib Axes object. If provided, the image
+                is plotted on this axis. If None, a new axis is created.
+            channel (int | None): Specific channel index to plot. If None, all
+                channels in the image are displayed.
+            foreground_only (bool): If True, only the foreground portion of the
+                image is displayed. If False, the entire image is shown.
+            mpl_settings (dict | None): Optional Matplotlib settings. Allows
+                customization of plot parameters.
 
         Returns:
-            PlotReturn:
-                - If backend="matplotlib": tuple[plt.Figure, plt.Axes]
-                - If backend="plotly": plotly.graph_objects.Figure
-
-        Raises:
-            ValueError: If backend invalid or ax with plotly backend.
-            ImportError: If plotly requested but not installed.
+            tuple[plt.Figure, plt.Axes]: A tuple containing the Matplotlib Figure
+            and Axes objects used for plotting the image.
         """
         arr = self[:] if not foreground_only else self.foreground()
         if channel is None:
             return self._plot(
-                arr=arr,
-                ax=ax,
-                figsize=figsize,
-                title=title,
-                mpl_settings=mpl_settings,
-                backend=backend,
-                plotly_settings=plotly_settings,
+                    arr=arr, ax=ax, figsize=figsize, title=title,
+                    mpl_settings=mpl_settings
             )
 
         else:
@@ -189,11 +133,9 @@ class MultiChannelAccessor(ImageAccessorBase):
                 else f"{title} - Channel {channel}"
             )
             return self._plot(
-                arr=arr[:, :, channel],
-                ax=ax,
-                figsize=figsize,
-                title=title,
-                mpl_settings=mpl_settings,
-                backend=backend,
-                plotly_settings=plotly_settings,
+                    arr=arr[:, :, channel],
+                    ax=ax,
+                    figsize=figsize,
+                    title=title,
+                    mpl_settings=mpl_settings,
             )

@@ -77,7 +77,7 @@ class MeasureGridSpread(GridMeasureFeatures):
                 from phenotypic.measure import MeasureGridSpread
 
                 # Load a plate with grid
-                grid_image = GridImage.from_image_path("plate_384well.jpg", grid_shape=(16, 24))
+                grid_image = GridImage.imread("plate_384well.jpg", nrows=16, ncols=24)
 
                 # Detect colonies
                 detector = OtsuDetector()

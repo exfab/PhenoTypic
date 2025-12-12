@@ -134,7 +134,7 @@ class GridCorrector(ImageCorrector, GridOperation, ABC):
                 from phenotypic.correction import GridAligner
 
                 # Load and detect colonies
-                image = Image.from_image_path('plate.jpg')
+                image = Image('plate.jpg')
                 image = RoundPeaksDetector().operate(image)
 
                 # Create GridImage with grid structure

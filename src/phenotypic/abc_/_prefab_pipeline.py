@@ -71,7 +71,7 @@ class PrefabPipeline(ImagePipeline):
         from phenotypic.prefab import HeavyOtsuPipeline
 
         # Load image(s)
-        image = GridImage.from_image_path('plate.jpg', nrows=8, ncols=12)
+        image = GridImage.imread('plate.jpg', nrows=8, ncols=12)
 
         # Instantiate and apply pipeline
         pipeline = HeavyOtsuPipeline()
@@ -199,7 +199,7 @@ class PrefabPipeline(ImagePipeline):
                 from phenotypic.prefab import HeavyOtsuPipeline
 
                 # Load a 96-well plate image
-                image = GridImage.from_image_path('agar_plate.jpg', nrows=8, ncols=12)
+                image = GridImage.imread('agar_plate.jpg', nrows=8, ncols=12)
 
                 # Use the pre-built, validated pipeline
                 pipeline = HeavyOtsuPipeline()
@@ -219,7 +219,7 @@ class PrefabPipeline(ImagePipeline):
 
                 # Load multiple plate images
                 image_paths = glob.glob('batch_*.jpg')
-                images = [GridImage.from_image_path(p, nrows=8, ncols=12)
+                images = [GridImage.imread(p, nrows=8, ncols=12)
                           for p in image_paths]
 
                 # Create pipeline (reusable for all images)
@@ -240,7 +240,7 @@ class PrefabPipeline(ImagePipeline):
                 from phenotypic import GridImage
                 from phenotypic.prefab import HeavyOtsuPipeline
 
-                image = GridImage.from_image_path('noisy_plate.jpg', nrows=8, ncols=12)
+                image = GridImage.imread('noisy_plate.jpg', nrows=8, ncols=12)
 
                 # Increase smoothing and noise removal for difficult images
                 pipeline = HeavyOtsuPipeline(
@@ -261,7 +261,7 @@ class PrefabPipeline(ImagePipeline):
                 from phenotypic.detect import CannyDetector
                 from phenotypic.refine import SmallObjectRemover
 
-                image = GridImage.from_image_path('plate.jpg', nrows=8, ncols=12)
+                image = GridImage.imread('plate.jpg', nrows=8, ncols=12)
 
                 # Option 1: Use pre-built validated pipeline
                 prefab = HeavyOtsuPipeline()

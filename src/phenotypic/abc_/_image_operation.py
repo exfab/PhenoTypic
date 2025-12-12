@@ -357,7 +357,7 @@ class ImageOperation(BaseOperation, LazyWidgetMixin, ABC):
                 from phenotypic.enhance import GaussianBlur
                 from phenotypic import Image
 
-                image = Image.from_image_path('colony_plate.jpg')
+                image = Image.imread('colony_plate.jpg')
                 enhancer = GaussianBlur(sigma=2.0)
 
                 # Default: inplace=False (safe, creates copy)
@@ -381,7 +381,7 @@ class ImageOperation(BaseOperation, LazyWidgetMixin, ABC):
                 from phenotypic.grid import GridFinder
 
                 # Load image
-                image = Image.from_image_path('colony_plate.jpg')
+                image = Image.imread('colony_plate.jpg')
 
                 # Sequential chaining
                 enhanced = GaussianBlur(sigma=2).apply(image)
@@ -395,7 +395,7 @@ class ImageOperation(BaseOperation, LazyWidgetMixin, ABC):
                 pipeline.add(GridFinder())
 
                 # Process multiple images with automatic parallelization
-                images = [Image.from_image_path(f) for f in image_files]
+                images = [Image.imread(f) for f in image_files]
                 results = pipeline.operate(images)
                 # Results are fully processed images
 

@@ -31,6 +31,7 @@ class CenterDeviationReducer(ObjectRefiner):
         - Single-colony crops from a grid plate where occasional debris is picked
           up near edges.
         - Automated pipelines that assume one colony per field-of-view.
+        - Use in conjunction with `phenotypic.grid.GridApply`.
 
     Caveats:
         - If the true colony is notably off-center (misalignment, drift), this
@@ -47,18 +48,18 @@ class CenterDeviationReducer(ObjectRefiner):
     """
 
     def _operate(self, image: Image):
-        img_center_cc = image.shape[1] // 2
-        img_center_rr = image.shape[0] // 2
+        img_center_cc = image.shape[1]//2
+        img_center_rr = image.shape[0]//2
 
         bound_info = image.objects.info()
 
         # Add a column to the bound info for center deviation
         bound_info.loc[:, "Measurement_CenterDeviation"] = bound_info.apply(
-            lambda row: euclidean(
-                u=[row[str(BBOX.CENTER_CC)], row[str(BBOX.CENTER_RR)]],
-                v=[img_center_cc, img_center_rr],
-            ),
-            axis=1,
+                lambda row: euclidean(
+                        u=[row[str(BBOX.CENTER_CC)], row[str(BBOX.CENTER_RR)]],
+                        v=[img_center_cc, img_center_rr],
+                ),
+                axis=1,
         )
 
         # Get the label of the obj w/ the least deviation

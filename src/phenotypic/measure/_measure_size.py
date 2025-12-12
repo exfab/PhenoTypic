@@ -79,7 +79,7 @@ class MeasureSize(MeasureFeatures):
                 from phenotypic.measure import MeasureSize
 
                 # Load and detect colonies
-                image = Image.from_image_path("colony_plate.jpg")
+                image = Image("colony_plate.jpg")
                 detector = OtsuDetector()
                 image = detector.operate(image)
 
@@ -112,7 +112,7 @@ class MeasureSize(MeasureFeatures):
                 growth_data = []
                 for timepoint_h in [0, 6, 12, 24, 48]:
                     img_path = f"plate_t{timepoint_h}h.jpg"
-                    image = Image.from_image_path(img_path)
+                    image = Image(img_path)
                     image = detector.operate(image)
                     sizes = sizer.operate(image)
                     sizes['TimePoint_h'] = timepoint_h

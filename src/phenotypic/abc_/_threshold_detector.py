@@ -147,7 +147,7 @@ class ThresholdDetector(ObjectDetector, ABC):
                 from phenotypic.detect import OtsuDetector
 
                 # Load a plate image
-                plate = Image.from_image_path("agar_plate.jpg")
+                plate = Image.imread("agar_plate.jpg")
 
                 # Apply Otsu threshold detection
                 detector = OtsuDetector(ignore_zeros=True, ignore_borders=True)
@@ -172,7 +172,7 @@ class ThresholdDetector(ObjectDetector, ABC):
                     OtsuDetector, LiDetector, YenDetector, TriangleDetector
                 )
 
-                plate = Image.from_image_path("agar_plate.jpg")
+                plate = Image.imread("agar_plate.jpg")
 
                 # Test multiple threshold strategies
                 detectors = {
@@ -203,7 +203,7 @@ class ThresholdDetector(ObjectDetector, ABC):
                 pipeline.add(RemoveSmallObjectsRefiner(min_size=50))  # Cleanup
 
                 # Process image
-                plate = Image.from_image_path("agar_plate.jpg")
+                plate = Image.imread("agar_plate.jpg")
                 result = pipeline.operate([plate])[0]
 
                 print(f"Final colonies: {result.objmap[:].max()}")

@@ -105,7 +105,7 @@ class MeasureIntensity(MeasureFeatures):
                 from phenotypic.measure import MeasureIntensity
 
                 # Load and process plate image
-                image = Image.from_image_path("colony_plate_t24h.jpg")
+                image = Image.imread("colony_plate_t24h.jpg")
                 detector = OtsuDetector()
                 image = detector.operate(image)
 

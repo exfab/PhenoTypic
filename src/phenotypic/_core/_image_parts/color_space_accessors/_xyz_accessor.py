@@ -44,7 +44,7 @@ class XyzAccessor(ColorSpaceAccessor):
         function with the following behavior:
         - For sRGB gamma-encoded images: CCTF (color component transfer function)
           decoding is applied.
-        - For linear RGB (gamma_encoding=None): No CCTF decoding is applied.
+        - For linear RGB (gamma=None): No CCTF decoding is applied.
         - The appropriate standard RGB colorspace and whitepoint are selected based
           on the image's illuminant and observer settings.
     """
@@ -65,7 +65,7 @@ class XyzAccessor(ColorSpaceAccessor):
         The conversion process follows these steps:
         1. Check that the image has RGB data (not grayscale).
         2. Normalize RGB bitdepth to [0, 1] using normalize_rgb_bitdepth().
-        3. Select appropriate colorspace and illuminant based on gamma_encoding
+        3. Select appropriate colorspace and illuminant based on gamma
            and illuminant attributes.
         4. For D50 illuminant: configure observer-specific D50 whitepoint from
            colour.CCS_ILLUMINANTS.
@@ -78,7 +78,7 @@ class XyzAccessor(ColorSpaceAccessor):
 
         Raises:
             AttributeError: If the parent image is grayscale (RGB data is empty).
-            ValueError: If gamma_encoding or illuminant combination is not one of:
+            ValueError: If gamma or illuminant combination is not one of:
                 ('sRGB', 'D50'), ('sRGB', 'D65'), (None, 'D50'), (None, 'D65').
 
         Notes:
@@ -86,7 +86,7 @@ class XyzAccessor(ColorSpaceAccessor):
               by colour.RGB_to_XYZ.
             - For sRGB images: cctf_decoding=True applies inverse OECF to convert
               from sRGB's perceptually-encoded values to linear RGB.
-            - For linear RGB (gamma_encoding=None): cctf_decoding=False treats
+            - For linear RGB (gamma=None): cctf_decoding=False treats
               RGB values as already linear.
             - D50 whitepoint is dynamically set based on self._root_image.observer
               to ensure chromatic adaptation consistency.
@@ -111,7 +111,7 @@ class XyzAccessor(ColorSpaceAccessor):
         """
         if self._root_image.rgb.isempty():
             raise AttributeError("XYZ conversion is not available for grayscale images")
-        match (self._root_image.gamma_encoding, self._root_image.illuminant):
+        match (self._root_image.gamma, self._root_image.illuminant):
             case ("sRGB", "D50"):
                 sRGB_D50.whitepoint = colour.CCS_ILLUMINANTS[
                     self._root_image._observer
@@ -152,7 +152,7 @@ class XyzAccessor(ColorSpaceAccessor):
                 )
             case _:
                 raise ValueError(
-                        f"Unknown color_profile: {self._root_image.gamma_encoding} "
+                        f"Unknown color_profile: {self._root_image.gamma} "
                         f"or illuminant: {self._root_image.illuminant}"
                 )
 

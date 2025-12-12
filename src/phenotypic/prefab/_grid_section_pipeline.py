@@ -4,12 +4,12 @@ from phenotypic.abc_ import PrefabPipeline
 from phenotypic import ImagePipeline
 from phenotypic.enhance import CLAHE, GaussianBlur, MedianFilter, ContrastStretching
 from phenotypic.detect import OtsuDetector
-from phenotypic.util import GridApply
+from phenotypic.grid import GridApply
 from phenotypic.refine import (
     BorderObjectRemover,
     SmallObjectRemover,
     LowCircularityRemover,
-    MinResidualErrorReducer,
+    ReduceMultipleGridObjects,
     ResidualOutlierRemover,
 )
 from phenotypic.correction import GridAligner
@@ -126,12 +126,12 @@ class GridSectionPipeline(PrefabPipeline):
                     ignore_zeros=otsu_ignore_zeros, ignore_borders=otsu_ignore_borders
             ),
             "border_removal"                  : BorderObjectRemover(
-                border_size=border_remover_size),
+                    border_size=border_remover_size),
             "low circularity remover"         : LowCircularityRemover(
-                cutoff=circularity_cutoff),
+                    cutoff=circularity_cutoff),
             "small object remover"            : SmallObjectRemover(
-                min_size=small_object_min_size),
-            "Reduce by section residual error": MinResidualErrorReducer(),
+                    min_size=small_object_min_size),
+            "Reduce by section residual error": ReduceMultipleGridObjects(),
             "outlier removal"                 : ResidualOutlierRemover(
                     axis=outlier_axis,
                     stddev_multiplier=outlier_stddev_multiplier,
@@ -166,7 +166,7 @@ class GridSectionPipeline(PrefabPipeline):
             "small object remover 2"          : SmallObjectRemover(
                     min_size=small_object_min_size_2
             ),
-            "grid_reduction"                  : MinResidualErrorReducer(),
+            "grid_reduction"                  : ReduceMultipleGridObjects(),
         }
         meas = {
             "MeasureColor"    : MeasureColor(

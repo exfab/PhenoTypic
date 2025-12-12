@@ -170,7 +170,7 @@ class GridObjectDetector(ObjectDetector, GridOperation, ABC):
                         return image
 
                 # Usage
-                image = Image.from_image_path('plate.jpg')
+                image = Image.imread('plate.jpg')
                 grid_image = GridImage(image)
                 grid_image.detect_grid()
 

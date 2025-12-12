@@ -105,7 +105,7 @@ class MeasureGridLinRegStats(GridMeasureFeatures):
                 from phenotypic.measure import MeasureGridLinRegStats
 
                 # Load a plate image with grid information
-                grid_image = GridImage.from_image_path("plate_96well.jpg", grid_shape=(8, 12))
+                grid_image = GridImage.imread("plate_96well.jpg", nrows=8, ncols=12)
 
                 # Detect colonies
                 detector = OtsuDetector()

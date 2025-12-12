@@ -89,7 +89,7 @@ class BilateralDenoise(ImageEnhancer):
                 from phenotypic.detect import OtsuDetector
 
                 # Load a noisy scan (e.g., high-ISO smartphone image or old scanner)
-                image = Image.from_image_path("noisy_plate.jpg")
+                image = Image("noisy_plate.jpg")
 
                 # Apply bilateral denoising with moderate settings
                 denoiser = BilateralDenoise(sigma_color=0.1, sigma_spatial=15)
@@ -125,7 +125,7 @@ class BilateralDenoise(ImageEnhancer):
                 # Step 3: Detect
                 pipeline.add(OtsuDetector())
 
-                images = [Image.from_image_path(f) for f in image_paths]
+                images = [Image(f) for f in image_paths]
                 results = pipeline.operate(images)
 
         .. dropdown:: Heavy denoising for very grainy plates with large colonies
@@ -138,7 +138,7 @@ class BilateralDenoise(ImageEnhancer):
                 # For large-colony plates (e.g., petri dishes, sparse growth) with heavy
                 # scanner noise or texture, use larger sigma_spatial to smooth broader regions
 
-                image = Image.from_image_path("sparse_grainy_plate.jpg")
+                image = Image("sparse_grainy_plate.jpg")
 
                 # Heavy denoising: large spatial neighborhood, moderate color tolerance
                 heavy_denoiser = BilateralDenoise(
@@ -160,7 +160,7 @@ class BilateralDenoise(ImageEnhancer):
                 # For high-resolution 384-well plates with tiny colonies, small sigma_spatial
                 # preserves fine structure while removing only local speckles
 
-                image = Image.from_image_path("dense_hires_plate.jpg")
+                image = Image("dense_hires_plate.jpg")
 
                 # Conservative denoising: small spatial neighborhood, strict color matching
                 conservative_denoiser = BilateralDenoise(

@@ -110,7 +110,7 @@ class GridMeasureFeatures(MeasureFeatures, ABC):
                 from phenotypic import Image
                 from phenotypic.detect import OtsuDetector
 
-                image = Image.from_image_path('plate.jpg')
+                image = Image('plate.jpg')
                 image = OtsuDetector().operate(image)
 
                 grid_image = GridImage(image)

@@ -57,7 +57,7 @@ class MaskEroder(ObjectRefiner):
             >>> from phenotypic.refine import MaskEroder
             >>> from phenotypic import Image
             >>> from phenotypic.detect import OtsuDetector
-            >>> image = Image.from_image_path("colony_plate.jpg")  # doctest: +SKIP
+            >>> image = Image.imread("colony_plate.jpg")  # doctest: +SKIP
             >>> detected = OtsuDetector().apply(image)  # doctest: +SKIP
             >>> # Erode with auto-scaled footprint to remove specks
             >>> refiner = MaskEroder(footprint='auto')  # doctest: +SKIP
