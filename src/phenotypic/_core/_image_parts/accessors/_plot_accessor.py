@@ -93,7 +93,7 @@ class PlotAccessor:
         This visualization is essential for selecting optimal morphological parameters
         in colony detection pipelines. By observing when small colonies vanish
         (erosion too aggressive), when nearby colonies merge (dilation too large),
-        or when gaps fill in unexpectedly (closing radius too big), you can
+        or when gaps fill in unexpectedly (closing width too big), you can
         empirically determine the appropriate kernel sizes for your specific imaging
         conditions.
 
@@ -239,24 +239,28 @@ class PlotAccessor:
         # Process each kernel size
         for idx, k_size in enumerate(kernel_sizes):
             # Create structuring element
-            if shape == "disk":
-                selem = disk(k_size)
-            elif shape == "square":
-                selem = square(2*k_size + 1)
-            elif shape == "diamond":
-                selem = diamond(k_size)
+            match shape:
+                case "disk":
+                    selem = disk(k_size)
+                case "square":
+                    selem = square(2*k_size + 1)
+                case "diamond":
+                    selem = diamond(k_size)
+                case _:
+                    raise ValueError(f"Unknown kernel shape: {shape}")
 
             # Apply morphological operation
-            if operation == "opening":
-                result = binary_opening(mask, footprint=selem)
-            elif operation == "closing":
-                result = binary_closing(mask, footprint=selem)
-            elif operation == "erosion":
-                result = binary_erosion(mask, footprint=selem)
-            elif operation == "dilation":
-                result = binary_dilation(mask, footprint=selem)
-            else:
-                raise ValueError(f"Unknown operation: {operation}")
+            match operation:
+                case "opening":
+                    result = binary_opening(mask, footprint=selem)
+                case "closing":
+                    result = binary_closing(mask, footprint=selem)
+                case "erosion":
+                    result = binary_erosion(mask, footprint=selem)
+                case "dilation":
+                    result = binary_dilation(mask, footprint=selem)
+                case _:
+                    raise ValueError(f"Unknown operation: {operation}")
 
             # Extract boundary (result - erosion of result)
             if result.any():
@@ -778,12 +782,11 @@ class PlotAccessor:
 
     def size_distribution(
             self,
-            interactive: bool = False,
             thresholds: Optional[list[int]] = None,
             figsize: Tuple[int, int] = (15, 10),
             log_scale: bool = True,
-    ) -> Union[Tuple[plt.Figure, np.ndarray], Tuple[plt.Figure, np.ndarray, Any]]:
-        """Visualize object size distribution with filtering preview panels.
+    ) -> Tuple[plt.Figure, np.ndarray]:
+        """Visualize object size distribution with filtering preview panels (static version).
 
         Displays comprehensive size distribution statistics with preview panels showing
         the effects of different size thresholds on colony detection. This visualization
@@ -791,28 +794,19 @@ class PlotAccessor:
         (dust, debris, scratches) while retaining biologically relevant colonies.
 
         The multi-panel layout enables data-driven threshold selection by showing both
-        statistical summaries (histogram, CDF) and spatial previews of filtering outcomes.
-        Interactive mode (if ipywidgets available) allows real-time threshold adjustment
-        with live preview updates.
+        statistical summaries (histogram, CDF) and spatial previews of filtering outcomes
+        at predetermined size thresholds.
 
         Args:
-            interactive: If True and ipywidgets is installed, creates an interactive
-                slider for threshold selection with live preview. If False or ipywidgets
-                unavailable, generates static plots at predetermined thresholds.
-            thresholds: List of size thresholds (pixels) to preview in static mode.
+            thresholds: List of size thresholds (pixels) to preview.
                 If None, automatically selects 5th, 50th, and 95th percentile sizes.
-                Ignored in interactive mode.
             figsize: Figure size as (width, height) in inches.
             log_scale: If True (default), uses log scale for x-axis in histogram
                 and threshold sensitivity plots. Recommended when size distribution
                 spans multiple orders of magnitude (common in noisy plates).
 
         Returns:
-            If interactive=False or ipywidgets unavailable:
-                Tuple of (fig, axes) where axes is 2D array of subplots
-            If interactive=True and ipywidgets available:
-                Tuple of (fig, axes, widget_container) where widget_container
-                is the ipywidgets HBox/VBox with interactive controls
+            Tuple of (fig, axes) where axes is 2D array of subplots
 
         Raises:
             ValueError: If no labeled objects detected.
@@ -872,33 +866,17 @@ class PlotAccessor:
                     detected = OtsuDetector().apply(image)
 
                     # Visualize size distribution
-                    fig, axes = detected.plot.size_distribution(
-                        interactive=False,
+                    fig, axes = detected.plot.size_distribution_static(
                         thresholds=None,  # Auto-select percentiles
                         log_scale=True
                     )
 
                     # Examine histogram: look for gap between dust peak (small)
                     # and colony peak (larger). Set threshold in the gap.
-
-            .. dropdown:: Interactive threshold selection with live preview
-
-                .. code-block:: python
-
-                    # Requires ipywidgets (install with: pip install ipywidgets)
-                    fig, axes, widgets = detected.plot.size_distribution(
-                        interactive=True
-                    )
-
-                    # Use slider to adjust threshold and see immediate effect
-                    # on preview images. Find value that removes artifacts
-                    # while preserving all real colonies.
-
-                    # Note: Interactive mode works best in Jupyter notebooks
         """
         # Check for labeled objects
         objmap = self._root_image.objmap[:]
-        if objmap.max() == 0:
+        if self._root_image.num_objects == 0:
             raise ValueError(
                     "No labeled objects detected. Apply an ObjectDetector first."
             )
@@ -927,15 +905,6 @@ class PlotAccessor:
                 percentile_values[4],  # 50th percentile (median)
                 percentile_values[7],  # 95th percentile
             ]
-
-        # Check for interactive mode
-        use_interactive = interactive and HAS_WIDGETS
-
-        if not use_interactive and interactive:
-            warnings.warn(
-                    "ipywidgets not available. Falling back to static visualization. "
-                    "Install with: pip install ipywidgets"
-            )
 
         # Create static visualization
         fig = plt.figure(figsize=figsize)
@@ -1023,16 +992,17 @@ class PlotAccessor:
         # Panels D-F: Filtered previews
         gray = self._root_image.gray[:]
 
+        # Create label->size lookup for efficient filtering
+        label_to_size = dict(zip(props["label"], sizes))
+
         for idx, threshold in enumerate(thresholds[:3]):  # Max 3 previews
             ax_prev = fig.add_subplot(gs[1, idx])
 
-            # Create filtered mask
+            # Create filtered mask efficiently using lookup
             filtered_objmap = objmap.copy()
-            for label in np.unique(objmap):
-                if label == 0:
-                    continue
-                if np.sum(objmap == label) < threshold:
-                    filtered_objmap[objmap == label] = 0
+            labels_to_remove = [lbl for lbl, size in label_to_size.items() if
+                                size < threshold]
+            filtered_objmap[np.isin(objmap, labels_to_remove)] = 0
 
             # Create overlay
             ax_prev.imshow(gray, cmap="gray")
@@ -1052,7 +1022,8 @@ class PlotAccessor:
                                                    0.2]  # Red, very transparent
                 ax_prev.imshow(overlay_rejected)
 
-            n_accepted = len(np.unique(filtered_objmap)) - 1  # Exclude background
+            n_accepted = len(labels_to_remove)
+            n_accepted = len(sizes) - n_accepted  # Count kept, not removed
             ax_prev.set_title(
                     f"Threshold: {int(threshold)} px\n"
                     f"Retained: {n_accepted}/{len(sizes)} objects"
@@ -1062,74 +1033,147 @@ class PlotAccessor:
         plt.suptitle("Object Size Distribution Analysis", fontsize=14,
                      fontweight="bold")
 
-        # Create interactive widgets if requested and available
-        widget_container = None
-        if use_interactive:
-            # Create slider
-            slider = widgets.IntSlider(
-                    value=int(np.median(sizes)),
-                    min=int(sizes.min()),
-                    max=int(sizes.max()),
-                    step=1,
-                    description="Threshold:",
-                    continuous_update=False,
-            )
-
-            # Create output for live preview
-            output = widgets.Output()
-
-            def update_preview(change):
-                with output:
-                    output.clear_output(wait=True)
-                    threshold = change["new"]
-
-                    # Create filtered mask
-                    filtered_objmap = objmap.copy()
-                    for label in np.unique(objmap):
-                        if label == 0:
-                            continue
-                        if np.sum(objmap == label) < threshold:
-                            filtered_objmap[objmap == label] = 0
-
-                    # Display preview
-                    fig_preview, ax_preview = plt.subplots(figsize=(8, 6))
-                    ax_preview.imshow(gray, cmap="gray")
-
-                    mask_accepted = filtered_objmap > 0
-                    if mask_accepted.any():
-                        overlay = np.zeros((*gray.shape, 4))
-                        overlay[mask_accepted] = [0, 1, 0, 0.4]
-                        ax_preview.imshow(overlay)
-
-                    mask_rejected = (objmap > 0) & ~mask_accepted
-                    if mask_rejected.any():
-                        overlay_rejected = np.zeros((*gray.shape, 4))
-                        overlay_rejected[mask_rejected] = [1, 0, 0, 0.2]
-                        ax_preview.imshow(overlay_rejected)
-
-                    n_accepted = len(np.unique(filtered_objmap)) - 1
-                    ax_preview.set_title(
-                            f"Interactive Preview: {threshold} px threshold\n"
-                            f"Retained: {n_accepted}/{len(sizes)} objects"
-                    )
-                    ax_preview.axis("off")
-                    plt.tight_layout()
-                    plt.show()
-
-            slider.observe(update_preview, names="value")
-
-            widget_container = widgets.VBox([slider, output])
-            display(widget_container)
-
-            # Trigger initial update
-            update_preview({"new": slider.value})
-
         axes = fig.axes
 
-        if widget_container is not None:
-            return fig, axes, widget_container
-        else:
-            return fig, axes
+        return fig, axes
+
+    def size_viewer(
+            self,
+            figsize: Tuple[int, int] = (15, 10),
+    ) -> Tuple[plt.Figure, np.ndarray, Any]:
+        """Visualize object size distribution with interactive threshold selection.
+
+        Displays comprehensive size distribution statistics with preview panels showing
+        the effects of different size thresholds on colony detection, with an interactive
+        slider for real-time threshold adjustment. This visualization is essential for
+        selecting minimum/maximum size thresholds to remove artifacts (dust, debris,
+        scratches) while retaining biologically relevant colonies.
+
+        Requires ipywidgets to be installed for interactive functionality. The slider
+        allows real-time adjustment of the size threshold with live preview updates.
+
+        Args:
+            thresholds: Not used in interactive mode (slider controls threshold dynamically).
+                Kept for API consistency with static version.
+            figsize: Figure size as (width, height) in inches.
+            log_scale: If True (default), uses log scale for x-axis in histogram
+                and threshold sensitivity plots. Recommended when size distribution
+                spans multiple orders of magnitude (common in noisy plates).
+
+        Returns:
+            Tuple of (fig, axes, widget_container) where widget_container
+            is the ipywidgets VBox with interactive controls
+
+        Raises:
+            ValueError: If no labeled objects detected or ipywidgets not available.
+
+        Examples:
+            .. dropdown:: Interactive threshold selection with live preview
+
+                .. code-block:: python
+
+                    from phenotypic import Image
+                    from phenotypic.detect import OtsuDetector
+
+                    # Detect colonies on a noisy plate
+                    image = Image.imread('dusty_plate.jpg')
+                    detected = OtsuDetector().apply(image)
+
+                    # Interactive size distribution (requires ipywidgets)
+                    fig, axes, widgets = detected.plot.size_distribution_interactive()
+
+                    # Use slider to adjust threshold and see immediate effect
+                    # on preview images. Find value that removes artifacts
+                    # while preserving all real colonies.
+
+                    # Note: Interactive mode works best in Jupyter notebooks
+        """
+        # Check for ipywidgets availability
+        if not HAS_WIDGETS:
+            raise ValueError(
+                    "Interactive size distribution requires ipywidgets. "
+                    "Install with: pip install ipywidgets"
+            )
+
+        # Check for labeled objects
+        objmap = self._root_image.objmap[:]
+        if self._root_image.num_objects == 0:
+            raise ValueError(
+                    "No labeled objects detected. Apply an ObjectDetector first."
+            )
+
+        # Extract object sizes using regionprops
+        props = regionprops_table(objmap, properties=["label", "area"])
+        sizes = props["area"]
+
+        if len(sizes) == 0:
+            raise ValueError("No objects found in object map.")
+
+        # Placeholder for interactive previews
+        gray = self._root_image.gray[:]
+
+        # Create label->size lookup for efficient filtering
+        label_to_size = dict(zip(props["label"], sizes))
+
+        # Create interactive widgets
+        # Create slider
+        slider = widgets.IntSlider(
+                value=int(np.median(sizes)),
+                min=int(sizes.min()),
+                max=int(sizes.max()),
+                step=1,
+                description="Threshold:",
+                continuous_update=False,
+        )
+
+        # Create output for live preview
+        output = widgets.Output()
+
+        def update_preview(change):
+            with output:
+                output.clear_output(wait=True)
+                threshold = change["new"]
+
+                # Create filtered mask efficiently using lookup
+                filtered_objmap = objmap.copy()
+                labels_to_remove = [lbl for lbl, size in label_to_size.items()
+                                    if size < threshold]
+                filtered_objmap[np.isin(filtered_objmap, labels_to_remove)] = 0
+
+                # Display preview
+                fig_preview, ax_preview = plt.subplots(figsize=figsize)
+                ax_preview.imshow(gray, cmap="gray")
+
+                mask_accepted = filtered_objmap > 0
+                if mask_accepted.any():
+                    overlay = np.zeros((*gray.shape, 4))
+                    overlay[mask_accepted] = [0, 1, 0, 0.4]
+                    ax_preview.imshow(overlay)
+
+                mask_rejected = (objmap > 0) & ~mask_accepted
+                if mask_rejected.any():
+                    overlay_rejected = np.zeros((*gray.shape, 4))
+                    overlay_rejected[mask_rejected] = [1, 0, 0, 0.2]
+                    ax_preview.imshow(overlay_rejected)
+
+                n_accepted = len(sizes) - len(labels_to_remove)
+                ax_preview.set_title(
+                        f"Interactive Preview: {threshold} px threshold\n"
+                        f"Retained: {n_accepted}/{len(sizes)} objects"
+                )
+                ax_preview.axis("off")
+                plt.tight_layout()
+                plt.show()
+
+        slider.observe(update_preview, names="value")
+
+        widget_container = widgets.VBox([slider, output])
+        display(widget_container)
+
+        # Trigger initial update
+        update_preview({"new": slider.value})
+
+        return widget_container
 
     def spatial_size_map(
             self,
@@ -1240,12 +1284,12 @@ class PlotAccessor:
 
             **Metadata usage:**
             The returned metadata dictionary enables programmatic analysis:
-
-            >>> fig, axes, meta = image.plot.spatial_size_map()
-            >>> if meta['fraction_below'] > 0.7:
-            >>>     print("Warning: Most colonies undersized—check growth conditions")
-            >>> if meta['std_size'] > meta['mean_size'] * 0.5:
-            >>>     print("High size variability—check for contamination or gradient")
+            .. code-block:: python
+                fig, axes, meta = image.plot.spatial_size_map()
+                if meta['fraction_below'] > 0.7:
+                    print("Warning: Most colonies undersized—check growth conditions")
+                if meta['std_size'] > meta['mean_size'] * 0.5:
+                print("High size variability—check for contamination or gradient")
 
         Examples:
             .. dropdown:: Detect illumination gradient affecting detection
@@ -1358,9 +1402,11 @@ class PlotAccessor:
         vmax = sizes.max()
 
         # Create pseudo-color image
-        size_map = np.zeros_like(objmap, dtype=float)
-        for label, size in zip(labels, sizes):
-            size_map[objmap == label] = size
+        vals, inv, unique_counts = np.unique(objmap,
+                                             return_inverse=True,
+                                             return_counts=True)
+        size_map = unique_counts[inv].reshape(objmap.shape)
+        size_map[objmap == 0] = 0
 
         # Mask background
         size_map_masked = np.ma.masked_where(objmap == 0, size_map)

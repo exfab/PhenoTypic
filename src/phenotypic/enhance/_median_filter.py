@@ -27,7 +27,7 @@ class MedianFilter(ImageEnhancer):
     Tuning and effects:
     - Footprint: This implementation uses the library default footprint when none
       is provided (a small neighborhood). For stronger denoising, prefer
-      `RankMedianEnhancer` where you can set shape and radius explicitly.
+      `RankMedianEnhancer` where you can set shape and width explicitly.
     - mode/cval: Control how borders are handled. 'reflect' or 'nearest' avoids
       artificial artifacts at the plate boundary; 'constant' uses `cval` as fill.
 
@@ -44,15 +44,16 @@ class MedianFilter(ImageEnhancer):
     """
 
     def __init__(
-        self,
-        mode: Literal["nearest", "reflect", "constant", "mirror", "wrap"] = "nearest",
-        shape: Literal["disk", "square", "diamond"] | None = None,
-        radius: int = 5,
-        cval: float = 0.0,
+            self,
+            mode: Literal[
+                "nearest", "reflect", "constant", "mirror", "wrap"] = "nearest",
+            shape: Literal["disk", "square", "diamond"] | None = None,
+            width: int = 5,
+            cval: float = 0.0,
     ):
         """
         This class is designed to facilitate image processing tasks, particularly for analyzing microbe
-        colonies on solid media agar. By adjusting the mode, footprint, radius, and cval attributes,
+        colonies on solid media agar. By adjusting the mode, footprint, width, and cval attributes,
         users can modify the processing behavior and results to suit their specific requirements for
         studying spatial arrangements, colony boundaries, and other morphological features.
 
@@ -70,10 +71,10 @@ class MedianFilter(ImageEnhancer):
                 well for circular colonies, whereas "square" gives a grid-like neighborhood.
                 This can directly impact how structures are identified or segmented.
 
-            radius (int):
-                Size of the structuring element. Larger radii result in broader neighborhoods
+            width (int):
+                Size of the structuring element. Larger widths result in broader neighborhoods
                 being considered, which may smooth or connect distant colonies, while smaller
-                radii preserve finer details but may miss larger structural relationships. Only
+                widths preserve finer details but may miss larger structural relationships. Only
                 if shape is not None.
 
             cval (float):
@@ -84,23 +85,23 @@ class MedianFilter(ImageEnhancer):
         if mode in ["nearest", "reflect", "constant", "mirror", "wrap"]:
             self.mode = mode
             self.shape = shape
-            self.radius = radius
+            self.width = width
             self.cval = cval
         else:
             raise ValueError(
-                'mode must be one of "nearest","reflect","constant","mirror","wrap"'
+                    'mode must be one of "nearest","reflect","constant","mirror","wrap"'
             )
 
     def _operate(self, image: Image) -> Image:
         image.enh_gray[:] = median(
-            image=image.enh_gray[:],
-            behavior="ndimage",
-            footprint=(
-                self.shape
-                if self.shape is None
-                else self._make_footprint(shape=self.shape, radius=self.radius)
-            ),
-            mode=self.mode,
-            cval=self.cval,
+                image=image.enh_gray[:],
+                behavior="ndimage",
+                footprint=(
+                    self.shape
+                    if self.shape is None
+                    else self._make_footprint(shape=self.shape, width=self.width)
+                ),
+                mode=self.mode,
+                cval=self.cval,
         )
         return image

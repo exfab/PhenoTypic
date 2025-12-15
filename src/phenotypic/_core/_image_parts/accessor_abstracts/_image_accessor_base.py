@@ -83,8 +83,10 @@ class ImageAccessorBase(ABC):
         Examples:
             .. dropdown:: Load a grayscale image from file
 
-                >>> from phenotypic._core._image_parts.accessors import Grayscale
-                >>> arr = Grayscale.load("my_gray_image.png")
+                >>> from phenotypic import Image
+                >>> image = Image(arr)
+                >>> # load an object map you saved or hand-graded
+                >>> image.objmap.load("path/to/map.png")
         """
         filepath = Path(filepath)
         expected_property = f"Image.{cls._accessor_property_name_value()}"
@@ -762,7 +764,7 @@ class ImageAccessorBase(ABC):
             filepath: Path,
             arr: np.ndarray,
             bit_depth: Literal[8, 16],
-            metadata_json: str,
+            metadata_json: str | None,
     ) -> None:
         """Save an image array to disk with embedded PhenoTypic metadata.
 
@@ -789,16 +791,19 @@ class ImageAccessorBase(ABC):
                         pass
                     case np.uint16:
                         warnings.warn(
-                                "Saving a 16 bit array as a jpeg will result in information loss if the max value is higher than 255"
+                                "Saving a 16 bit array as a jpeg will potentially "
+                                "result in information loss during conversion"
                         )
                         arr2save = ski.util.img_as_ubyte(arr2save)
                     case dt if np.issubdtype(dt, np.floating):
                         warnings.warn(
-                                "Saving a float array as a jpeg will result in information loss if the max value is higher than 255"
+                                "Saving a float array as a jpeg will potentially"
+                                "result in information loss during conversion"
                         )
                         arr2save = ski.util.img_as_ubyte(arr2save)
                 pil_img = PIL_Image.fromarray(arr2save)
-                self._write_jpeg_metadata(filepath, pil_img, metadata_json)
+                if metadata_json:
+                    self._write_jpeg_metadata(filepath, pil_img, metadata_json)
 
             case x if x in IO.PNG_FILE_EXTENSIONS:
                 match arr2save.dtype:
@@ -816,11 +821,13 @@ class ImageAccessorBase(ABC):
                             else ski.util.img_as_uint(arr2save)
                         )
                 pil_img = PIL_Image.fromarray(arr2save)
-                self._write_png_metadata(filepath, pil_img, metadata_json)
+                if metadata_json:
+                    self._write_png_metadata(filepath, pil_img, metadata_json)
 
             case x if x in IO.TIFF_EXTENSIONS:
                 pil_img = PIL_Image.fromarray(arr2save)
-                self._write_tiff_metadata(filepath, pil_img, metadata_json)
+                if metadata_json:
+                    self._write_tiff_metadata(filepath, pil_img, metadata_json)
 
             case _:
                 raise ValueError(f"unknown file extension for saving:{filepath.suffix}")
@@ -832,9 +839,10 @@ class ImageAccessorBase(ABC):
         Saves an array representing a microbe colony image to a specified file format while preserving or adjusting
         metadata and pixel depth as needed. Supports JPEG, PNG, and TIFF formats.
 
-        The behavior of the function is context-sensitive based on the file format's restrictions and array properties.
-        For microbe colony images on agar media, proper file format selection and bit depth adjustment can have an impact
-        on the accuracy of image analysis and preservation of data integrity.
+        The behavior of the function is context-sensitive based on the
+        file format's restrictions and array properties. Proper file format selection
+        and bit depth adjustment can have an impact on the accuracy of image analysis
+        and preservation of data integrity.
 
         Args:
             filepath (str | Path | None): The destination file path where the image will be saved. The extension of the
@@ -865,10 +873,7 @@ class ImageAccessorBase(ABC):
                 - Saving a floating-point array as PNG when conversions to 8-bit or 16-bit integers might lead to truncated
                   or altered pixel intensity values.
         """
-        if bit_depth is None:
-            bit_depth = self._root_image.bit_depth
-        elif bit_depth not in [8, 16]:
-            raise ValueError(f"Unsupported bit depth: {bit_depth}")
+        bit_depth = self._check_bit_depth(bit_depth)
 
         filepath = Path(filepath)
 
@@ -884,3 +889,11 @@ class ImageAccessorBase(ABC):
                 bit_depth=bit_depth,
                 metadata_json=metadata_json,
         )
+
+    def _check_bit_depth(self, bit_depth: int | None) -> Literal[8, 16]:
+        if bit_depth is None:
+            bit_depth = self._root_image.bit_depth
+        elif bit_depth not in [8, 16]:
+            raise ValueError(f"Unsupported bit depth: {bit_depth}")
+
+        return bit_depth

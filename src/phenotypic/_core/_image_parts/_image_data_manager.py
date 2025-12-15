@@ -5,7 +5,7 @@ import warnings
 from copy import deepcopy
 from dataclasses import dataclass, field
 from types import SimpleNamespace
-from typing import Any, Literal, TYPE_CHECKING, Union
+from typing import Any, Literal, Sequence, TYPE_CHECKING, Union
 
 import numpy as np
 from scipy.sparse import csc_matrix
@@ -151,20 +151,82 @@ class ImageDataManager:
         self._metadata.clear()
         return
 
-    def set_image(self, input_image: Image | np.ndarray) -> None:
+    def _allocate_data(self, shape: Sequence[int]):
+        """
+        Allocates and initializes the required data structures for storing image
+        and analysis-related data. This function dynamically allocates memory
+        for the RGB data, grayscale images, enhanced grayscale images, and
+        sparse object maps, which are key for processing and analyzing 
+        microbe colony images on agar plates.
+
+        The allocation and data quality directly affect downstream image 
+        processing and analysis tasks. For instance, changing the bit depth 
+        may influence the precision of pixel intensity calculations, which can 
+        subsequently alter colony detection and quantification. Additionally, 
+        modifying the shape parameter can determine how much image data is 
+        processed, which can constrain the computational load or the resolution 
+        of observed features.
+
+        Args:
+            shape (Sequence[int]): A sequence specifying the dimensions of the
+                image (height, width, and optionally color channels). The shape's 
+                size and structure dictate the resolution of image data. For example, 
+                using a smaller spatial shape reduces computational requirements but 
+                might miss intricate colony details. Including a third dimension for 
+                color channels enables RGB processing but increases memory usage. If 
+                the length of `shape` is not 3, a default empty RGB setup is used.
+
+        Attributes:
+            bit_depth (int): The bit depth of the image, which affects the data type
+                used for storing pixel intensities. Higher bit depths such as 16-bit 
+                allow for finer intensity gradation and thus higher image fidelity.
+                This can enhance the detection of subtle features in colonies, but 
+                comes at higher memory usage and computational costs during analysis.
+
+            _data (ImageData): A container for storing the allocated data, which 
+                includes:
+                - `rgb`: The RGB image array for storing color data of the microbe 
+                  colonies. If the shape is not 3-dimensional, this defaults to a 
+                  placeholder empty array of RGB data.
+                - `gray`: A 2D array representing the grayscale version of the image,
+                  useful for colony detection without color distractions.
+                - `enh_gray`: Enhanced grayscale data for improved visibility of 
+                  microbial colonies. Enhancement methods may influence colony 
+                  identification results.
+                - `sparse_object_map`: A sparse matrix used for representing and 
+                  analyzing segmented objects (e.g., separate colonies) in the image.
+                  The sparsity provides computational efficiency for large images 
+                  or when colonies sparsely populate the agar plate.
+        """
+        if len(shape) == 3:
+            rgb = np.empty(shape=shape,
+                           dtype=self._ARRAY8_DTYPE
+                           if self.bit_depth == 8
+                           else self._ARRAY16_DTYPE)
+        else:
+            rgb = np.empty(shape=(0, 3), dtype=self._ARRAY8_DTYPE)
+
+        self._data = ImageData(
+                rgb=rgb,
+                gray=np.empty(shape=shape[:2], dtype=np.float32),
+                enh_gray=np.empty(shape=shape[:2], dtype=np.float32),
+                sparse_object_map=csc_matrix(shape[:2], dtype=self._OBJMAP_DTYPE)
+        )
+
+    def set_image(self, im: Image | np.ndarray) -> None:
         """
         Sets the image for the object by processing the provided input, which can be either
         a NumPy array or an instance of the Image class. If the input type is unsupported,
         an exception is raised to notify the user.
 
         Args:
-            input_image: A NumPy array or an instance of the Image class representing
+            im: A NumPy array or an instance of the Image class representing
                 the image to be set.
 
         Raises:
             ValueError: If the input is not a NumPy array or an Image instance.
         """
-        match input_image:
+        match im:
             case x if isinstance(x, np.ndarray):
                 self._handle_array_input(x)
 
@@ -172,7 +234,7 @@ class ImageDataManager:
                 self._set_from_class_instance(x)
             case _:
                 raise ValueError(
-                        f"Input must be a NumPy array, Image instance. Got {type(input_image)}"
+                        f"Input must be a NumPy array, Image instance. Got {type(im)}"
                 )
 
     def _handle_array_input(self, arr: np.ndarray):
@@ -219,7 +281,7 @@ class ImageDataManager:
         except ImportError:
             return False
 
-    def _set_from_class_instance(self, input_cls):
+    def _set_from_class_instance(self, input_cls) -> None:
         """Copy data from another Image instance.
 
         Args:
@@ -240,18 +302,36 @@ class ImageDataManager:
 
         self._metadata.protected = deepcopy(input_cls._metadata.protected)
         self._metadata.public = deepcopy(input_cls._metadata.public)
+        return
 
-    def _set_from_matrix(self, matrix: np.ndarray):
-        """Initialize 2-D image components from a matrix.
+    def _set_from_array(self, arr: np.ndarray) -> None:
+        """Initialize all components from an array.
 
         Args:
-            matrix (np.ndarray): A 2-D array form of an image.
+            arr (np.ndarray): Input image array.
         """
-        self._data.gray = matrix
-        self._data.enh_gray = matrix.copy()
-        self._data.sparse_object_map = csc_matrix(
-                np.zeros(matrix.shape, dtype=self._OBJMAP_DTYPE)
-        )
+        # Guess format from array shape
+        format_enum = self._guess_image_format(arr)
+        self._allocate_data(shape=arr.shape)
+
+        # Process based on detected format
+        match format_enum:
+            case IMAGE_MODE.GRAYSCALE | IMAGE_MODE.GRAYSCALE_SINGLE_CHANNEL:
+                self._set_from_matrix(arr if arr.ndim == 2 else arr[:, :, 0])
+
+            case IMAGE_MODE.RGB | IMAGE_MODE.RGB_OR_BGR:
+                self._set_from_rgb(arr)
+
+            case IMAGE_MODE.LINEAR_RGB:
+                self._set_from_rgb(arr)
+
+            case IMAGE_MODE.RGBA | IMAGE_MODE.RGBA_OR_BGRA:
+                self._set_from_rgb(rgba2rgb(arr))
+
+            case _:
+                raise ValueError(f"Unsupported image format: {format_enum}")
+
+        return
 
     def _set_from_rgb(self, rgb_array: np.ndarray):
         """Initialize all components from an RGB array.
@@ -259,34 +339,20 @@ class ImageDataManager:
         Args:
             rgb_array (np.ndarray): RGB image array.
         """
-        self._data.rgb = rgb_array.copy()
+        self._data.rgb[...] = rgb_array[...]
         self._set_from_matrix(rgb2gray(rgb_array))
 
-    def _set_from_array(self, imarr: np.ndarray) -> None:
-        """Initialize all components from an array.
+    def _set_from_matrix(self, matrix: np.ndarray):
+        """Initialize 2-D image components from a matrix.
 
         Args:
-            imarr (np.ndarray): Input image array.
+            matrix (np.ndarray): A 2-D array form of an image.
         """
-        # Guess format from array shape
-        format_enum = self._guess_image_format(imarr)
-
-        # Process based on detected format
-        match format_enum:
-            case IMAGE_MODE.GRAYSCALE | IMAGE_MODE.GRAYSCALE_SINGLE_CHANNEL:
-                self._set_from_matrix(imarr if imarr.ndim == 2 else imarr[:, :, 0])
-
-            case IMAGE_MODE.RGB | IMAGE_MODE.RGB_OR_BGR:
-                self._set_from_rgb(imarr)
-
-            case IMAGE_MODE.LINEAR_RGB:
-                self._set_from_rgb(imarr)
-
-            case IMAGE_MODE.RGBA | IMAGE_MODE.RGBA_OR_BGRA:
-                self._set_from_rgb(rgba2rgb(imarr))
-
-            case _:
-                raise ValueError(f"Unsupported image format: {format_enum}")
+        self._data.gray[...] = matrix[...]
+        self._data.enh_gray[...] = self._data.gray[...]
+        self._data.sparse_object_map = csc_matrix(
+                np.zeros(matrix.shape, dtype=self._OBJMAP_DTYPE)
+        )
 
     @staticmethod
     def _guess_image_format(img: np.ndarray) -> IMAGE_MODE:
@@ -323,7 +389,8 @@ class ImageDataManager:
 
     @staticmethod
     def _convert_float_array_to_int(
-            float_array: np.ndarray, bit_depth: Literal[8, 16]
+            float_array: np.ndarray,
+            bit_depth: Literal[8, 16]
     ) -> np.ndarray:
         """Convert normalized float array to integer array.
 

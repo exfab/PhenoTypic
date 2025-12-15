@@ -40,7 +40,7 @@ class WhiteTophat(ObjectRefiner):
         footprint (str): Shape for the footprint used in the tophat
             transform. Supported: 'disk', 'square'. Disk tends to preserve
             round features, while square can be more aggressive along axes.
-        radius (int | None): Radius of the footprint. Larger values
+        width (int | None): Width of the footprint. Larger values
             remove broader bright features but risk shrinking thin colony
             appendages. ``None`` auto-scales with image size.
 
@@ -48,13 +48,13 @@ class WhiteTophat(ObjectRefiner):
         .. dropdown:: Suppress small bright structures in the mask using white tophat
 
             >>> from phenotypic.refine import WhiteTophat
-            >>> op = WhiteTophat(footprint='disk', radius=5)
+            >>> op = WhiteTophat(footprint='disk', width=5)
             >>> image = op.apply(image, inplace=True)  # doctest: +SKIP
     """
 
     def __init__(self,
                  footprint: Literal["disk", "square", "diamond"] | np.ndarray = "disk",
-                 radius: int | None = None):
+                 width: int | None = None):
         """
         Represents a structural element used to analyze and process images, specifically useful for microbial
         colony analysis on solid media agar.
@@ -72,29 +72,29 @@ class WhiteTophat(ObjectRefiner):
                 allows for complete customization of the structural element, which could be beneficial for non-
                 standard colony morphologies.
 
-            radius (int | None):
-                Specifies the size of the structural element by defining the radius. Larger radii will create
+            width (int | None):
+                Specifies the size of the structural element by defining the width. Larger widths will create
                 structural elements that can encompass larger colonies or areas of colonies, potentially aiding
-                in operations designed to merge close colonies. Smaller radii will result in more localized
+                in operations designed to merge close colonies. Smaller widths will result in more localized
                 structural elements, which can preserve fine details and delineate smaller colonies. A None
                 value assumes a default or minimal size.
         """
         self.footprint = footprint
-        self.radius = radius
+        self.width = width
 
     def _operate(self, image: Image) -> Image:
         white_tophat_results = white_tophat(
                 image.objmask[:],
                 footprint=self._make_footprint(
                         shape=self.footprint,
-                        radius=self._get_footprint_radius(array=image.objmask[:]),
+                        width=self._get_footprint_width(array=image.objmask[:]),
                 ),
         )
         image.objmask[:] = image.objmask[:] & ~white_tophat_results
         return image
 
-    def _get_footprint_radius(self, array: np.ndarray) -> int:
-        if self.radius is None:
+    def _get_footprint_width(self, array: np.ndarray) -> int:
+        if self.width is None:
             return int(np.min(array.shape)*0.004)
         else:
-            return self.radius
+            return self.width

@@ -33,7 +33,7 @@ class TestCircularDetectorInitialization:
 
     @timeit
     @pytest.mark.parametrize(
-        "thresh_method", ["otsu", "mean", "local", "triangle", "minimum", "isodata"]
+            "thresh_method", ["otsu", "mean", "local", "triangle", "minimum", "isodata"]
     )
     def test_initialization_with_thresh_methods(self, thresh_method):
         """Test initialization with different thresholding methods."""
@@ -44,14 +44,14 @@ class TestCircularDetectorInitialization:
     def test_initialization_with_custom_parameters(self):
         """Test initialization with custom parameters."""
         detector = RoundPeaksDetector(
-            thresh_method="triangle",
-            subtract_background=False,
-            remove_noise=False,
-            footprint_radius=5,
-            smoothing_sigma=3.0,
-            min_peak_distance=10,
-            peak_prominence=0.2,
-            edge_refinement=False,
+                thresh_method="triangle",
+                subtract_background=False,
+                remove_noise=False,
+                footprint_radius=5,
+                smoothing_sigma=3.0,
+                min_peak_distance=10,
+                peak_prominence=0.2,
+                edge_refinement=False,
         )
         assert detector.thresh_method == "triangle"
         assert detector.subtract_background is False
@@ -149,7 +149,7 @@ class TestCircularDetectorParameters:
 
     @timeit
     @pytest.mark.parametrize(
-        "thresh_method", ["otsu", "mean", "triangle", "minimum", "isodata"]
+            "thresh_method", ["otsu", "mean", "triangle", "minimum", "isodata"]
     )
     def test_different_thresholding_methods(self, thresh_method):
         """Test that different thresholding methods all work."""
@@ -224,7 +224,7 @@ class TestCircularDetectorParameters:
         assert result.num_objects > 0
 
     @timeit
-    @pytest.mark.parametrize("radius", [1, 3, 5, 7])
+    @pytest.mark.parametrize("width", [1, 3, 5, 7])
     def test_different_footprint_radius(self, radius):
         """Test detection with different footprint radii."""
         image = phenotypic.GridImage(load_plate_12hr())
@@ -328,13 +328,13 @@ class TestCircularDetectorHelperMethods:
 
     @timeit
     @pytest.mark.parametrize(
-        "nrows,ncols",
-        [
-            (8, 12),  # 96-well plate
-            (16, 24),  # 384-well plate
-            (32, 48),  # 1536-well plate
-            (4, 6),  # Small grid
-        ],
+            "nrows,ncols",
+            [
+                (8, 12),  # 96-well plate
+                (16, 24),  # 384-well plate
+                (32, 48),  # 1536-well plate
+                (4, 6),  # Small grid
+            ],
     )
     def test_infer_grid_shape_with_synthetic_data(self, nrows, ncols):
         """Test grid shape inference with synthetic gridded data."""
@@ -344,16 +344,16 @@ class TestCircularDetectorHelperMethods:
         height, width = 200, 300
         binary_image = np.zeros((height, width), dtype=bool)
 
-        row_spacing = height // nrows
-        col_spacing = width // ncols
+        row_spacing = height//nrows
+        col_spacing = width//ncols
 
         for r in range(nrows):
             for c in range(ncols):
                 # Add a small colony at each grid position
-                r_center = r * row_spacing + row_spacing // 2
-                c_center = c * col_spacing + col_spacing // 2
+                r_center = r*row_spacing + row_spacing//2
+                c_center = c*col_spacing + col_spacing//2
                 binary_image[
-                    r_center - 3 : r_center + 3, c_center - 3 : c_center + 3
+                    r_center - 3: r_center + 3, c_center - 3: c_center + 3
                 ] = True
 
         inferred_rows, inferred_cols = detector._infer_grid_shape(binary_image)
@@ -370,7 +370,7 @@ class TestCircularDetectorEdgeCases:
     def test_empty_image(self):
         """Test detection on an empty/blank image."""
         # Create blank image (RGB for GridImage compatibility)
-        blank_array = np.ones((100, 100, 3), dtype=np.uint8) * 255
+        blank_array = np.ones((100, 100, 3), dtype=np.uint8)*255
         image = phenotypic.GridImage(blank_array)
         detector = RoundPeaksDetector()
         result = detector.apply(image, inplace=False)
@@ -416,7 +416,7 @@ class TestCircularDetectorEdgeCases:
 
     @timeit
     def test_large_footprint_radius(self):
-        """Test with footprint radius larger than typical colony size."""
+        """Test with footprint width larger than typical colony size."""
         image = phenotypic.GridImage(load_plate_12hr())
         detector = RoundPeaksDetector(footprint_radius=20)
         result = detector.apply(image, inplace=False)
@@ -477,12 +477,12 @@ class TestCircularDetectorOutputConsistency:
         image2 = phenotypic.GridImage(load_plate_12hr())
 
         detector = RoundPeaksDetector(
-            thresh_method="otsu",
-            subtract_background=True,
-            remove_noise=True,
-            footprint_radius=3,
-            smoothing_sigma=2.0,
-            edge_refinement=True,
+                thresh_method="otsu",
+                subtract_background=True,
+                remove_noise=True,
+                footprint_radius=3,
+                smoothing_sigma=2.0,
+                edge_refinement=True,
         )
 
         result1 = detector.apply(image1, inplace=False)
@@ -516,7 +516,7 @@ class TestCircularDetectorComparisonWithOtherDetectors:
 
         # Numbers don't need to match exactly, but should be in similar range
         # Allow up to 50% difference
-        ratio = result_gitter.num_objects / max(result_watershed.num_objects, 1)
+        ratio = result_gitter.num_objects/max(result_watershed.num_objects, 1)
         assert 0.5 <= ratio <= 2.0, (
             f"RoundPeaksDetector found {result_gitter.num_objects} objects, WatershedDetector found {result_watershed.num_objects}"
         )

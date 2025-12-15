@@ -19,7 +19,8 @@
     "objects": "ObjectsAccessor",
     "grid": "GridAccessor",
     "metadata": "MetadataAccessor",
-    "color": "ColorAccessor"
+    "color": "ColorAccessor",
+    "plot": "PlotAccessor"
 } %}
 
 {% if accessor_class in class_map %}

@@ -232,7 +232,7 @@ class ObjectRefiner(ImageOperation, ABC):
     .. code-block:: python
 
         @staticmethod
-        def _make_footprint(shape: Literal["square", "diamond", "disk"], radius: int) -> np.ndarray:
+        def _make_footprint(shape: Literal["square", "diamond", "disk"], width: int) -> np.ndarray:
             '''Creates a binary morphological footprint for image processing.'''
 
     **Footprint Shapes and When to Use Each**
@@ -249,9 +249,9 @@ class ObjectRefiner(ImageOperation, ABC):
       cross-like neighborhood pattern. Use for: specialized cases where diagonal connections should
       be de-emphasized; less common in practice.
 
-    **The radius parameter** controls the neighborhood size (in pixels). Larger radii affect more
+    **The width parameter** controls the neighborhood size (in pixels). Larger radii affect more
     neighbors and produce broader morphological effects (merge more fragments, remove larger noise,
-    but risk bridging adjacent colonies). Choose radius smaller than minimum inter-colony spacing
+    but risk bridging adjacent colonies). Choose width smaller than minimum inter-colony spacing
     to avoid creating false merges.
 
     **Common Morphological Refinement Patterns**
@@ -264,7 +264,7 @@ class ObjectRefiner(ImageOperation, ABC):
         from skimage.morphology import binary_closing, binary_opening
         from phenotypic.abc_ import ObjectRefiner
 
-        disk_fp = ObjectRefiner._make_footprint('disk', radius=3)
+        disk_fp = ObjectRefiner._make_footprint('disk', width=3)
 
         # Dilation: expand object regions (merge fragmented colonies)
         dilated_mask = binary_dilation(binary_mask, structure=disk_fp)
@@ -317,7 +317,7 @@ class ObjectRefiner(ImageOperation, ABC):
 
     Attributes:
         None at the ObjectRefiner level; subclasses define refinement parameters
-        as instance attributes (e.g., min_size, cutoff, radius).
+        as instance attributes (e.g., min_size, cutoff, width).
 
     Methods:
         apply(image, inplace=False): Applies the refinement to an image. Returns a modified
@@ -326,7 +326,7 @@ class ObjectRefiner(ImageOperation, ABC):
         _operate(image, **kwargs): Abstract static method implemented by subclasses.
             Performs the actual refinement algorithm. Parameters are automatically matched
             to instance attributes.
-        _make_footprint(shape, radius): Static utility that creates a binary morphological
+        _make_footprint(shape, width): Static utility that creates a binary morphological
             footprint (disk, square, or diamond) for use in morphological operations.
 
     Notes:
@@ -599,7 +599,7 @@ class ObjectRefiner(ImageOperation, ABC):
         array. This function is typically used for tasks such as dilating or eroding features
         in images of microbe colonies on solid media agar.
 
-        By adjusting the shape and radius of the footprint, users can influence the scale
+        By adjusting the shape and width of the footprint, users can influence the scale
         and connectivity of morphological processing in the context of image analysis. Larger
         radii result in operations affecting wider regions in the image, and the specific shape
         affects how colonies with irregular or complex structures are processed.
@@ -607,20 +607,20 @@ class ObjectRefiner(ImageOperation, ABC):
         Args:
             shape: Literal["square", "diamond", "disk"] | np.ndarray
                 Defines the shape of the footprint. Options include:
-                - "square": Creates a square-shaped footprint of width `2 * radius`.
-                - "diamond": Creates a diamond-shaped footprint with radius `radius`.
-                - "disk": Creates a disk-shaped footprint with radius `radius`.
+                - "square": Creates a square-shaped footprint of width `2 * width`.
+                - "diamond": Creates a diamond-shaped footprint with width `width`.
+                - "disk": Creates a disk-shaped footprint with width `width`.
                 - np.ndarray: A custom binary array can be directly passed for specific applications.
                   Suitable for advanced cases where predefined shapes are insufficient.
             radius: int
-                The radius of the footprint for the selected shape. A higher radius results in
+                The width of the footprint for the selected shape. A higher width results in
                 a larger footprint, increasing the size of regions affected by processing.
                 For analyzing microbe colonies, it can determine how closely neighboring
                 colonies are treated as connected.
 
         Returns:
             np.ndarray: A binary array representing the footprint. Shape and size depend
-                on the `shape` and `radius` parameters.
+                on the `shape` and `width` parameters.
 
         Raises:
             ValueError: If an unsupported shape value is provided.

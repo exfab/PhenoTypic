@@ -56,7 +56,7 @@ class MaskOpener(ObjectRefiner):
             self,
             footprint: Literal[
                            "auto", "square", "diamond", "disk"] | np.ndarray | None = None,
-            radius: int = 5
+            width: int = 5
     ):
         """Initialize the opener.
 
@@ -64,27 +64,27 @@ class MaskOpener(ObjectRefiner):
             footprint (Literal["auto"] | np.ndarray | int | None): Structuring
                 element for opening. Use:
                 - "auto" to select a diamond footprint scaled to image size
-                  (larger plates → slightly larger radius),
+                  (larger plates → slightly larger width),
                 - a NumPy array to pass a custom footprint,
-                - an ``int`` radius to build a diamond footprint of that size,
+                - an ``int`` width to build a diamond footprint of that size,
                 - or ``None`` to use the library default.
 
-                Larger radii disconnect wider bridges and suppress more
+                Larger widths disconnect wider bridges and suppress more
                 speckles, but erode edges and can remove small colonies.
         """
         super().__init__()
         self.footprint: Literal["auto"] | np.ndarray | int | None = footprint
-        self.radius = radius
+        self.width = width
 
     def _operate(self, image: Image) -> Image:
         if self.footprint == "auto":
             footprint = self._make_footprint(
-                    "diamond", radius=max(3, round(np.min(image.shape)*0.005))
+                    "diamond", width=max(3, round(np.min(image.shape)*0.005))
             )
         elif isinstance(self.footprint, np.ndarray):
             footprint = self.footprint
         elif self.footprint in self._footprint_shapes:
-            footprint = self._make_footprint(self.footprint, radius=int(self.radius))
+            footprint = self._make_footprint(self.footprint, width=int(self.width))
         elif not self.footprint:
             footprint = self.footprint
         else:

@@ -49,7 +49,7 @@ class MaskGradient(ObjectRefiner):
         footprint (Literal["auto", "square", "diamond", "disk"] | np.ndarray | None):
             Structuring element used for gradient computation. Controls edge
             thickness and neighborhood size.
-        radius (int): Footprint radius in pixels. Larger values produce thicker,
+        width (int): Footprint width in pixels. Larger values produce thicker,
             less precise boundaries.
 
     Examples:
@@ -63,8 +63,8 @@ class MaskGradient(ObjectRefiner):
             >>> # Extract edges with auto-scaled footprint
             >>> refiner = MaskGradient(footprint='auto')  # doctest: +SKIP
             >>> edges = refiner.apply(detected)  # doctest: +SKIP
-            >>> # Or use a small disk footprint (radius 1) for thin, precise edges
-            >>> refiner = MaskGradient(footprint='disk', radius=1)  # doctest: +SKIP
+            >>> # Or use a small disk footprint (width 1) for thin, precise edges
+            >>> refiner = MaskGradient(footprint='disk', width=1)  # doctest: +SKIP
             >>> edges = refiner.apply(detected, inplace=False)  # doctest: +SKIP
 
     Raises:
@@ -76,7 +76,7 @@ class MaskGradient(ObjectRefiner):
             self,
             footprint: Literal[
                            "auto", "square", "diamond", "disk"] | np.ndarray | None = None,
-            radius: int = 1
+            width: int = 1
     ):
         """Initialize the gradient extractor.
 
@@ -86,27 +86,27 @@ class MaskGradient(ObjectRefiner):
                 - "auto" to select a disk footprint scaled to image size,
                 - a NumPy array to pass a custom footprint,
                 - one of the named shapes ("disk", "square", "diamond") with
-                  a specified radius,
+                  a specified width,
                 - or ``None`` to use the library default.
 
-                Larger radii produce thicker boundaries with less precision but
+                Larger widths produce thicker boundaries with less precision but
                 more robustness to noise.
-            radius (int): Footprint radius in pixels when using named shapes
+            width (int): Footprint width in pixels when using named shapes
                 or auto-scaling. Default: 1 pixel (thin, precise boundaries).
         """
         super().__init__()
         self.footprint = footprint
-        self.radius = radius
+        self.width = width
 
     def _operate(self, image: Image) -> Image:
         if self.footprint == "auto":
             footprint = self._make_footprint(
-                    "disk", radius=max(1, round(np.min(image.shape)*0.002))
+                    "disk", width=max(1, round(np.min(image.shape)*0.002))
             )
         elif isinstance(self.footprint, np.ndarray):
             footprint = self.footprint
         elif self.footprint in self._footprint_shapes:
-            footprint = self._make_footprint(self.footprint, radius=self.radius)
+            footprint = self._make_footprint(self.footprint, width=self.width)
         elif not self.footprint:
             footprint = None
         else:

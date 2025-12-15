@@ -43,7 +43,7 @@ class MaskCloser(ObjectRefiner):
         footprint (Literal["auto", "square", "diamond", "disk"] | np.ndarray | None):
             Structuring element used for closing. A larger or denser footprint fills
             wider gaps but risks merging adjacent colonies.
-        radius (int): Footprint radius in pixels. Larger values fill bigger gaps
+        width (int): Footprint width in pixels. Larger values fill bigger gaps
             but risk over-connecting separate objects.
 
     Examples:
@@ -57,8 +57,8 @@ class MaskCloser(ObjectRefiner):
             >>> # Fill gaps from uneven staining with auto-scaled footprint
             >>> refiner = MaskCloser(footprint='auto')  # doctest: +SKIP
             >>> refined = refiner.apply(detected)  # doctest: +SKIP
-            >>> # Or use a fixed disk footprint with radius 3
-            >>> refiner = MaskCloser(footprint='disk', radius=3)  # doctest: +SKIP
+            >>> # Or use a fixed disk footprint with width 3
+            >>> refiner = MaskCloser(footprint='disk', width=3)  # doctest: +SKIP
             >>> refined = refiner.apply(detected, inplace=False)  # doctest: +SKIP
 
     Raises:
@@ -70,7 +70,7 @@ class MaskCloser(ObjectRefiner):
             self,
             footprint: Literal[
                            "auto", "square", "diamond", "disk"] | np.ndarray | None = None,
-            radius: int = 5
+            width: int = 5
     ):
         """Initialize the closer.
 
@@ -78,30 +78,30 @@ class MaskCloser(ObjectRefiner):
             footprint (Literal["auto", "square", "diamond", "disk"] | np.ndarray | None):
                 Structuring element for closing. Use:
                 - "auto" to select a disk footprint scaled to image size
-                  (larger plates → slightly larger radius),
+                  (larger plates → slightly larger width),
                 - a NumPy array to pass a custom footprint,
                 - one of the named shapes ("disk", "square", "diamond") with
-                  a specified radius,
+                  a specified width,
                 - or ``None`` to use the library default.
 
-                Larger radii fill wider gaps and smoother colony boundaries,
+                Larger widths fill wider gaps and smoother colony boundaries,
                 but risk merging adjacent colonies and losing edge sharpness.
-            radius (int): Footprint radius in pixels when using named shapes
+            width (int): Footprint width in pixels when using named shapes
                 or auto-scaling. Default: 5 pixels (moderate gap-filling).
         """
         super().__init__()
         self.footprint = footprint
-        self.radius = radius
+        self.width = width
 
     def _operate(self, image: Image) -> Image:
         if self.footprint == "auto":
             footprint = self._make_footprint(
-                    "disk", radius=max(3, round(np.min(image.shape)*0.005))
+                    "disk", width=max(3, round(np.min(image.shape)*0.005))
             )
         elif isinstance(self.footprint, np.ndarray):
             footprint = self.footprint
         elif self.footprint in self._footprint_shapes:
-            footprint = self._make_footprint(self.footprint, radius=self.radius)
+            footprint = self._make_footprint(self.footprint, width=self.width)
         elif not self.footprint:
             footprint = None
         else:

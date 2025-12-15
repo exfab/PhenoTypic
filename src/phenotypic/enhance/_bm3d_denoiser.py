@@ -50,10 +50,10 @@ class BM3DDenoiser(ImageEnhancer):
     - May slightly blur very fine colony features if sigma_psd is too high.
 
     Attributes:
-        sigma_psd (float | None): Noise standard deviation in [0, 1] normalized
-            scale. If None, BM3D auto-estimates from the image. Typical values:
-            0.01-0.05 for moderate noise (e.g., 8-bit with σ=5-15), 0.05-0.15
-            for heavy noise. 16-bit images typically have lower relative noise.
+        sigma_psd (float): Noise standard deviation in [0, 1] normalized
+            scale. Typical values: 0.01-0.05 for moderate noise
+            (e.g., 8-bit with σ=5-15), 0.05-0.15 for heavy noise. 16-bit images
+            typically have lower relative noise.
         stage_arg (Literal["all_stages", "hard_thresholding"]): Processing mode.
             'all_stages' applies both hard thresholding and Wiener filtering
             (slower, highest quality); 'hard_thresholding' runs only the first
@@ -61,17 +61,16 @@ class BM3DDenoiser(ImageEnhancer):
     """
 
     def __init__(
-        self,
-        sigma_psd: float = 0.02,
-        *,
-        stage_arg: Literal["all_stages", "hard_thresholding"] = "all_stages",
+            self,
+            sigma_psd: float = 0.02,
+            *,
+            stage_arg: Literal["all_stages", "hard_thresholding"] = "all_stages",
     ):
         """
         Parameters:
             sigma_psd (float): Noise level estimate in [0, 1] normalized
-                scale. None for auto-estimation; otherwise specify as standard
-                deviation matching the normalized image range. Start with 0.02-0.05
-                for typical scanner noise on plates (equivalent to σ=5-12 on 8-bit).
+                scale. Start with 0.02-0.05 for typical scanner noise on
+                plates (equivalent to σ=5-12 on 8-bit).
                 Higher value -> more noise.
             stage_arg (Literal["all_stages", "hard_thresholding"]): Denoising
                 stages to run. 'all_stages' gives best quality at the cost of
@@ -93,12 +92,12 @@ class BM3DDenoiser(ImageEnhancer):
         # enh_gray is guaranteed to be in [0, 1] range, which BM3D expects
 
         denoised = bm3d.bm3d(
-            image.enh_gray[:],
-            sigma_psd=self.sigma_psd,
-            stage_arg=self._convert_stage_arg(self.stage_arg),
+                image.enh_gray[:],
+                sigma_psd=self.sigma_psd,
+                stage_arg=self._convert_stage_arg(self.stage_arg),
         )
 
-        image.enh_gray[:] = denoised
+        image.enh_gray[:] = denoised.clip(0.0, 1.0)
         return image
 
     def _convert_stage_arg(self, stage_arg: Literal["all_stages", "hard_thresholding"]):

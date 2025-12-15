@@ -80,7 +80,7 @@ class ImageHandler(ImageDataManager):
 
         # Handle non-empty inputs
         if arr is not None:
-            self.set_image(input_image=arr)
+            self.set_image(im=arr)
 
     def __getitem__(self, key) -> Image:
         """Returns a new subimage from the current object based on the provided key. The subimage is initialized
@@ -635,17 +635,29 @@ class ImageHandler(ImageDataManager):
 
     @property
     def num_objects(self) -> int:
-        """Returns the number of objects in the image
-        Note:
+        """
+        Gets the number of distinct objects identified in the sparse object map.
+
+
+
+        Returns:
+            int: The number of unique objects detected in the object map. A higher
+            count typically reflects a higher number of microbe colonies in the
+            processed image. Adjusting preprocessing steps, segmentation thresholds, or
+            filtering of the input image could significantly influence this result, as
+            these parameters determine what the algorithm considers a distinct object.
         """
         self._data.sparse_object_map.eliminate_zeros()
-        object_labels = np.unique(self._data.sparse_object_map.data)
-        return len(object_labels[object_labels != 0])
+        return int(np.count_nonzero(
+                np.unique(
+                        self._data.sparse_object_map.data),
+                axis=None))
 
     def copy(self):
         """Creates a copy of the current Image instance, excluding the UUID.
         Note:
-            - The new instance is only informationally a copy. The UUID of the new instance is different.
+            - The new instance is only informationally a copy. The UUID of the new
+                instance is different.
 
         Returns:
             Image: A copy of the current Image instance.
@@ -913,37 +925,3 @@ class ImageHandler(ImageDataManager):
         self.enh_gray.reset()
         self.objmap.reset()
         return self
-
-    def _norm2dtypeMatrix(self, normalized_value: np.ndarray) -> np.ndarray:
-        """
-        Converts a normalized gray with values between 0 and 1 to a specified data type with the
-        appropriate scaling. The method ensures that all values are clipped to the range [0, 1]
-        before scaling them to the data type's maximum other_image.
-
-        Args:
-            normalized_value: A 2D NumPy array where all values are assumed to be in the range
-                [0, 1]. These values will be converted using the specified data type scale.
-
-        Returns:
-            numpy.ndarray: A 2D NumPy array of the same shape as `normalized_matrix`, converted
-            to the target data type with scaled values.
-        """
-        return normalized_value
-
-    @staticmethod
-    def _dtype2normMatrix(matrix: np.ndarray) -> np.ndarray:
-        """
-        Normalizes the given gray to have values between 0.0 and 1.0 based on its data type.
-
-        The method checks the data type of the input gray against the expected data
-        type. If the data type does not match, a warning is issued. The gray is
-        then normalized by dividing its values by the maximum possible other_image for its
-        data type, ensuring all elements remain within the range of [0.0, 1.0].
-
-        Args:
-            matrix (np.ndarray): The input gray to be normalized.
-
-        Returns:
-            np.ndarray: A normalized gray where all values are within [0.0, 1.0].
-        """
-        return matrix

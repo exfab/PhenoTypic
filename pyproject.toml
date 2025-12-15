@@ -42,7 +42,6 @@ dependencies = [
     "pillow",
     "tqdm",
     "mmh3",
-    "plotly-express[plotly]>=0.4.1",
     "psutil>=7.0.0",
     "colour-science>=0.4.6",
     "rawpy;sys_platform!='win32'",
@@ -51,7 +50,6 @@ dependencies = [
     "exifread>=3.5.1",
     "click>=8.3.0",
     "bm3d>=4.0.3",
-    "plotly[plotly]>=6.5.0",
 ]
 
 [project.urls]

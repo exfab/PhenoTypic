@@ -46,7 +46,7 @@ class MaskDilator(ObjectRefiner):
         footprint (Literal["auto", "square", "diamond", "disk"] | np.ndarray | None):
             Structuring element used for dilation. A larger footprint expands
             objects more aggressively but risks merging adjacent colonies.
-        radius (int): Footprint radius in pixels. Larger values bridge bigger gaps
+        width (int): Footprint width in pixels. Larger values bridge bigger gaps
             but risk over-connecting separate objects.
 
     Examples:
@@ -60,8 +60,8 @@ class MaskDilator(ObjectRefiner):
             >>> # Dilate with auto-scaled footprint to bridge nearby fragments
             >>> refiner = MaskDilator(footprint='auto')  # doctest: +SKIP
             >>> dilated = refiner.apply(detected)  # doctest: +SKIP
-            >>> # Or use a fixed disk footprint with radius 2 for moderate expansion
-            >>> refiner = MaskDilator(footprint='disk', radius=2)  # doctest: +SKIP
+            >>> # Or use a fixed disk footprint with width 2 for moderate expansion
+            >>> refiner = MaskDilator(footprint='disk', width=2)  # doctest: +SKIP
             >>> dilated = refiner.apply(detected, inplace=False)  # doctest: +SKIP
 
     Raises:
@@ -73,7 +73,7 @@ class MaskDilator(ObjectRefiner):
             self,
             footprint: Literal["auto", "square", "diamond", "disk"] |
                        np.ndarray[int] | None = None,
-            radius: int = 3
+            width: int = 3
     ):
         """Initialize the dilator.
 
@@ -81,32 +81,32 @@ class MaskDilator(ObjectRefiner):
             footprint (Literal["auto", "square", "diamond", "disk"] | np.ndarray | None):
                 Structuring element for dilation. Use:
                 - "auto" to select a disk footprint scaled to image size
-                  (larger plates → slightly larger radius),
+                  (larger plates → slightly larger width),
                 - a NumPy array to pass a custom footprint,
                 - one of the named shapes ("disk", "square", "diamond") with
-                  a specified radius,
+                  a specified width,
                 - or ``None`` to use the library default.
 
-                Larger radii expand objects more and bridge wider gaps, but
+                Larger widths expand objects more and bridge wider gaps, but
                 risk merging distinct colonies and inflating size measurements
                 beyond recovery.
-            radius (int): Footprint radius in pixels when using named shapes
+            width (int): Footprint width in pixels when using named shapes
                 or auto-scaling. Default: 3 pixels (moderate expansion).
         """
         super().__init__()
         self.footprint = footprint
-        self.radius = radius
+        self.width = width
 
     def _operate(self, image: Image) -> Image:
         if self.footprint == "auto":
             footprint = self._make_footprint(
-                    shape="diamond", radius=max(2, round(np.min(image.shape)*0.003))
+                    shape="diamond", width=max(2, round(np.min(image.shape)*0.003))
             )
         elif isinstance(self.footprint, np.ndarray):
             footprint = self.footprint
         elif self.footprint in self._footprint_shapes:
             footprint = self._make_footprint(shape=self.footprint,
-                                             radius=self.radius)
+                                             width=self.width)
         elif not self.footprint:
             footprint = None
         else:

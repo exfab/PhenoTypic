@@ -9,7 +9,8 @@ from ._image_operation import ImageOperation
 
 from phenotypic.tools.funcs_ import validate_operation_integrity
 from abc import ABC
-from skimage.morphology import disk, square, diamond
+from skimage.morphology import disk, diamond
+from skimage import morphology
 
 
 class ImageEnhancer(ImageOperation, ABC):
@@ -152,7 +153,7 @@ class ImageEnhancer(ImageOperation, ABC):
     .. code-block:: python
 
         @staticmethod
-        def _make_footprint(shape: Literal["square", "diamond", "disk"], radius: int) -> np.ndarray:
+        def _make_footprint(shape: Literal["square", "diamond", "disk"], width: int) -> np.ndarray:
             '''Creates a binary morphological footprint for image processing.'''
 
     **Footprint Shapes and When to Use Each**
@@ -169,9 +170,9 @@ class ImageEnhancer(ImageOperation, ABC):
       cross-like neighborhood pattern. Use for: specialized cases where diagonal connections should
       be de-emphasized; less common in practice.
 
-    **The radius parameter** controls the neighborhood size (in pixels). Larger radii affect more
+    **The width parameter** controls the neighborhood size (in pixels). Larger radii affect more
     neighbors and produce broader effects (more noise suppression, but potential colony merging).
-    Choose radius smaller than the minimum colony diameter to avoid destroying fine details.
+    Choose width smaller than the minimum colony diameter to avoid destroying fine details.
 
     **Common Morphological Patterns**
 
@@ -182,7 +183,7 @@ class ImageEnhancer(ImageOperation, ABC):
         from scipy.ndimage import binary_dilation, binary_erosion
         from phenotypic.abc_ import ImageEnhancer
 
-        disk_fp = ImageEnhancer._make_footprint('disk', radius=5)
+        disk_fp = ImageEnhancer._make_footprint('disk', width=5)
 
         # Erosion: shrink bright regions (removes small colonies/noise)
         eroded = binary_erosion(binary_image, structure=disk_fp)
@@ -198,7 +199,7 @@ class ImageEnhancer(ImageOperation, ABC):
 
         # Example pipeline: handle uneven illumination + noise
         # Step 1: Remove background gradients
-        result = RollingBallRemoveBG(radius=50).apply(image)
+        result = RollingBallRemoveBG(width=50).apply(image)
 
         # Step 2: Boost local contrast for faint colonies
         result = CLAHE(kernel_size=50, clip_limit=0.02).apply(result)
@@ -229,7 +230,7 @@ class ImageEnhancer(ImageOperation, ABC):
         from phenotypic.detect import OtsuDetector
 
         pipeline = ImagePipeline()
-        pipeline.add(RollingBallRemoveBG(radius=50))
+        pipeline.add(RollingBallRemoveBG(width=50))
         pipeline.add(CLAHE(kernel_size=50, clip_limit=0.02))
         pipeline.add(GaussianBlur(sigma=2))
         pipeline.add(OtsuDetector())
@@ -251,7 +252,7 @@ class ImageEnhancer(ImageOperation, ABC):
         _operate(image, **kwargs): Abstract static method implemented by subclasses.
             Performs the actual enhancement algorithm. Parameters are automatically matched
             to instance attributes.
-        _make_footprint(shape, radius): Static utility that creates a binary morphological
+        _make_footprint(shape, width): Static utility that creates a binary morphological
             footprint (disk, square, or diamond) for use in morphological operations.
 
     Notes:
@@ -325,16 +326,16 @@ class ImageEnhancer(ImageOperation, ABC):
                 class MorphologicalEnhancer(ImageEnhancer):
                     '''Enhance by applying morphological closing/opening to fill holes and remove noise.'''
 
-                    def __init__(self, operation: str = 'closing', radius: int = 3):
+                    def __init__(self, operation: str = 'closing', width: int = 3):
                         super().__init__()
                         self.operation = operation  # 'closing' or 'opening'
-                        self.radius = radius
+                        self.width = width
 
                     @staticmethod
-                    def _operate(image: Image, operation: str = 'closing', radius: int = 3) -> Image:
+                    def _operate(image: Image, operation: str = 'closing', width: int = 3) -> Image:
                         enh = image.enh_gray[:]
                         # Create a disk footprint for isotropic processing
-                        footprint = ImageEnhancer._make_footprint('disk', radius)
+                        footprint = ImageEnhancer._make_footprint('disk', width)
 
                         # Apply morphological operation to binary image
                         binary = enh > enh.mean()
@@ -352,7 +353,7 @@ class ImageEnhancer(ImageOperation, ABC):
                         return image
 
                 # Usage
-                enhancer = MorphologicalEnhancer(operation='closing', radius=5)
+                enhancer = MorphologicalEnhancer(operation='closing', width=5)
                 result = enhancer.apply(image)
 
         .. dropdown:: Chaining multiple enhancements to handle complex agar plate imaging conditions
@@ -371,7 +372,7 @@ class ImageEnhancer(ImageOperation, ABC):
                 pipeline = ImagePipeline()
 
                 # Step 1: Remove illumination gradient (vignetting)
-                pipeline.add(RollingBallRemoveBG(radius=80))
+                pipeline.add(RollingBallRemoveBG(width=80))
 
                 # Step 2: Boost local contrast for faint colonies
                 pipeline.add(CLAHE(kernel_size=50, clip_limit=0.02))
@@ -405,17 +406,17 @@ class ImageEnhancer(ImageOperation, ABC):
                 class SelectiveMedianEnhancer(ImageEnhancer):
                     '''Enhance by applying median filtering with configurable footprint shape.'''
 
-                    def __init__(self, shape: str = 'disk', radius: int = 3):
+                    def __init__(self, shape: str = 'disk', width: int = 3):
                         super().__init__()
                         self.shape = shape  # 'disk', 'square', or 'diamond'
-                        self.radius = radius
+                        self.width = width
 
                     @staticmethod
-                    def _operate(image: Image, shape: str = 'disk', radius: int = 3) -> Image:
+                    def _operate(image: Image, shape: str = 'disk', width: int = 3) -> Image:
                         enh = image.enh_gray[:]
 
                         # Create footprint with specified shape
-                        footprint = ImageEnhancer._make_footprint(shape, radius)
+                        footprint = ImageEnhancer._make_footprint(shape, width)
 
                         # Apply median filter (rank filter)
                         # Convert to uint8 for rank filter compatibility
@@ -430,10 +431,10 @@ class ImageEnhancer(ImageOperation, ABC):
                 image = Image.imread('plate.jpg')
 
                 # Isotropic smoothing (preserves round colony shapes)
-                result1 = SelectiveMedianEnhancer(shape='disk', radius=3).apply(image)
+                result1 = SelectiveMedianEnhancer(shape='disk', width=3).apply(image)
 
                 # Grid-aligned smoothing (for hardware artifacts)
-                result2 = SelectiveMedianEnhancer(shape='square', radius=3).apply(image)
+                result2 = SelectiveMedianEnhancer(shape='square', width=3).apply(image)
 
                 # Both preserve original image.rgb and image.gray
                 assert np.array_equal(image.gray[:], result1.gray[:])
@@ -447,7 +448,7 @@ class ImageEnhancer(ImageOperation, ABC):
 
     @staticmethod
     def _make_footprint(
-            shape: Literal["square", "diamond", "disk"], radius: int
+            shape: Literal["square", "diamond", "disk"], width: int
     ) -> np.ndarray:
         """
         Creates a morphological footprint for image processing.
@@ -469,8 +470,8 @@ class ImageEnhancer(ImageOperation, ABC):
                 - "disk" generates a circular footprint, which may better preserve rounded
                   microbial colony shapes.
 
-            radius (int): The radius of the footprint. This defines the size of the
-                structuring element. Larger radii will lead to broader morphological
+            width (int): The width of the footprint. This defines the size of the
+                structuring element. Larger width will lead to broader morphological
                 effects, which could impact the resolution of small colonies but can help
                 to merge fragmented edges or clean noise.
 
@@ -483,13 +484,13 @@ class ImageEnhancer(ImageOperation, ABC):
         Raises:
             ValueError: If an unsupported shape type is passed to the function.
         """
-        radius = int(radius)
+        width = int(width)
         match shape:
             case "square":
-                return square(width=radius*2)
+                return morphology.footprint_rectangle(shape=(width, width))
             case "diamond":
-                return diamond(radius=radius)
+                return diamond(radius=width//2)
             case "disk":
-                return disk(radius=radius)
+                return disk(radius=width//2)
             case _:
                 raise ValueError(f"Unknown shape: {shape}")

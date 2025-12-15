@@ -25,7 +25,7 @@ class ImageGridHandler(Image):
     to determine grid structure and assign/overlay it effectively on the image.
 
     Args:
-            arr (Optional[Union[np.ndarray, Type[Image]]]): The input_image
+            arr (Optional[Union[np.ndarray, Type[Image]]]): The im
                 image, which can be a NumPy array or an image-like object. If
                 this parameter is not provided, it defaults to None.
             grid_finder (Optional[GridFinder]): An optional GridFinder instance

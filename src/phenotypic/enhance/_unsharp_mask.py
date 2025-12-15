@@ -29,10 +29,10 @@ class UnsharpMask(ImageEnhancer):
     - Improving edge definition when scanner or lens causes slight blurring
 
     Tuning and effects:
-    - radius: Controls the scale of features enhanced. Small values (0.5–2) sharpen
+    - width: Controls the scale of features enhanced. Small values (0.5–2) sharpen
       fine details like small colony boundaries and surface texture; larger values
       (5–15+) enhance broader features and colony-background contrast. For fungal
-      colonies, keep radius smaller than the minimum colony radius to avoid creating
+      colonies, keep width smaller than the minimum colony width to avoid creating
       visible halos or merging adjacent colonies. Start at 2.0 for general-purpose
       enhancement.
     - amount: Determines the magnitude of edge enhancement (how much darker/brighter
@@ -48,7 +48,7 @@ class UnsharpMask(ImageEnhancer):
     - Amplifies noise: In noisy images, unsharp masking sharpens both signal
       (colony edges) and noise artifacts. Consider denoising first (e.g., with
       GaussianBlur, BilateralDenoise, or MedianFilter) on very grainy agar scans.
-    - Halo artifacts: Excessive radius or amount creates bright/dark rims around
+    - Halo artifacts: Excessive width or amount creates bright/dark rims around
       colonies, which can be mistaken for separate objects or cause thresholding
       to fail.
     - Already-sharp images: Applying unsharp mask to crisp, high-contrast colonies
@@ -75,7 +75,7 @@ class UnsharpMask(ImageEnhancer):
                 image = Image("yeast_plate.jpg")
 
                 # Apply unsharp masking with moderate settings
-                sharpener = UnsharpMask(radius=2.0, amount=1.2)
+                sharpener = UnsharpMask(width=2.0, amount=1.2)
                 sharpened = sharpener.apply(image)
 
                 # Detect colonies in sharpened enhanced grayscale
@@ -86,7 +86,7 @@ class UnsharpMask(ImageEnhancer):
                 colonies = detected.objects
                 print(f"Detected {len(colonies)} colonies")
 
-        .. dropdown:: Tuning radius and amount for dense high-throughput plates
+        .. dropdown:: Tuning width and amount for dense high-throughput plates
 
             .. code-block:: python
 
@@ -95,16 +95,16 @@ class UnsharpMask(ImageEnhancer):
                 from phenotypic.detect import OtsuDetector
 
                 # For high-resolution 384-well plate scans with tiny colonies,
-                # use small radius to avoid merging adjacent growth
+                # use small width to avoid merging adjacent growth
 
                 pipeline = ImagePipeline()
 
                 # Step 1: Light blur to reduce scanner noise
                 pipeline.add(GaussianBlur(sigma=1))
 
-                # Step 2: Enhance edges with small radius for dense plates
-                # radius=1.0 emphasizes only fine features (individual colonies)
-                pipeline.add(UnsharpMask(radius=1.0, amount=1.5))
+                # Step 2: Enhance edges with small width for dense plates
+                # width=1.0 emphasizes only fine features (individual colonies)
+                pipeline.add(UnsharpMask(width=1.0, amount=1.5))
 
                 # Step 3: Detect in enhanced grayscale
                 pipeline.add(OtsuDetector())
@@ -128,9 +128,9 @@ class UnsharpMask(ImageEnhancer):
 
                 image = Image("faint_colonies.jpg")
 
-                # Aggressive parameters: larger radius for broader features,
+                # Aggressive parameters: larger width for broader features,
                 # higher amount for stronger enhancement
-                aggressive_sharpener = UnsharpMask(radius=5.0, amount=2.5)
+                aggressive_sharpener = UnsharpMask(width=5.0, amount=2.5)
                 enhanced = aggressive_sharpener.apply(image)
 
                 # Inspect result for artifacts (halos); adjust if needed
@@ -139,10 +139,10 @@ class UnsharpMask(ImageEnhancer):
     """
 
     def __init__(
-        self,
-        radius: float = 2.0,
-        amount: float = 1.0,
-        preserve_range: bool = False,
+            self,
+            radius: float = 2.0,
+            amount: float = 1.0,
+            preserve_range: bool = False,
     ):
         """
         Parameters:
@@ -151,7 +151,7 @@ class UnsharpMask(ImageEnhancer):
                 fine details (thin colony edges, small morphologies); larger values
                 (5–15) enhance broad features (large colonies, colony-background
                 separation). Must be > 0. For fungal colonies, keep below the typical
-                colony radius to avoid merging adjacent colonies. Recommended: 2.0–3.0
+                colony width to avoid merging adjacent colonies. Recommended: 2.0–3.0
                 for general-purpose use, 1.0 for high-density plates, 5.0+ for
                 emphasizing large-scale features on low-resolution images.
             amount (float): Amplification factor for the sharpening effect. Controls
@@ -166,7 +166,7 @@ class UnsharpMask(ImageEnhancer):
                 Keep as False for consistency with other enhancers.
         """
         if radius <= 0:
-            raise ValueError("radius must be > 0")
+            raise ValueError("width must be > 0")
 
         self.radius = float(radius)
         self.amount = float(amount)
@@ -175,10 +175,10 @@ class UnsharpMask(ImageEnhancer):
     def _operate(self, image: Image) -> Image:
         """Apply unsharp masking to enhance colony edges in the enhanced grayscale channel."""
         image.enh_gray[:] = unsharp_mask(
-            image=image.enh_gray[:],
-            radius=self.radius,
-            amount=self.amount,
-            preserve_range=self.preserve_range,
-            channel_axis=None,
+                image=image.enh_gray[:],
+                radius=self.radius,
+                amount=self.amount,
+                preserve_range=self.preserve_range,
+                channel_axis=None,
         )
         return image

@@ -120,7 +120,7 @@ class BilateralDenoise(ImageEnhancer):
                 pipeline.add(BilateralDenoise(sigma_color=0.08, sigma_spatial=15))
 
                 # Step 2: Sharpen remaining edges for better segmentation
-                pipeline.add(UnsharpMask(radius=2.0, amount=1.5))
+                pipeline.add(UnsharpMask(width=2.0, amount=1.5))
 
                 # Step 3: Detect
                 pipeline.add(OtsuDetector())
@@ -174,12 +174,13 @@ class BilateralDenoise(ImageEnhancer):
     """
 
     def __init__(
-        self,
-        sigma_color: float | None = None,
-        sigma_spatial: float = 15,
-        win_size: int | None = None,
-        mode: str = "constant",
-        cval: float = 0,
+            self,
+            sigma_color: float | None = None,
+            sigma_spatial: float = 15,
+            *,
+            win_size: int | None = None,
+            mode: str = "constant",
+            cval: float = 0,
     ):
         """
         Parameters:
@@ -221,8 +222,8 @@ class BilateralDenoise(ImageEnhancer):
 
         if mode not in ["constant", "edge", "symmetric", "reflect", "wrap"]:
             raise ValueError(
-                f'mode must be one of "constant", "edge", "symmetric", "reflect", '
-                f'"wrap"; got {mode!r}'
+                    f'mode must be one of "constant", "edge", "symmetric", "reflect", '
+                    f'"wrap"; got {mode!r}'
             )
 
         self.sigma_color = sigma_color
@@ -235,12 +236,12 @@ class BilateralDenoise(ImageEnhancer):
         """Apply bilateral denoising to reduce noise while preserving colony edges in the enhanced grayscale channel."""
         # denoise_bilateral may require a writable array, so create a copy
         image.enh_gray[:] = denoise_bilateral(
-            image=image.enh_gray[:].copy(),
-            sigma_color=self.sigma_color,
-            sigma_spatial=self.sigma_spatial,
-            win_size=self.win_size,
-            mode=self.mode,
-            cval=self.cval,
-            channel_axis=None,
-        )
+                image=image.enh_gray[:].copy(),
+                sigma_color=self.sigma_color,
+                sigma_spatial=self.sigma_spatial,
+                win_size=self.win_size,
+                mode=self.mode,
+                cval=self.cval,
+                channel_axis=None,
+        ).clip(0.0, 1.0)
         return image

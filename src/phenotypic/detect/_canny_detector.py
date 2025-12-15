@@ -102,7 +102,7 @@ class CannyDetector(ThresholdDetector):
         Parameters:
             sigma (float): Gaussian smoothing strength before edge detection. Start
                 with 1-2 for clean images; increase for noisy scans to suppress
-                spurious edges. Keep below typical colony radius to avoid merging.
+                spurious edges. Keep below typical colony width to avoid merging.
             low_threshold (float): Lower hysteresis threshold. If use_quantiles=True,
                 a fraction (e.g., 0.1 = retain edges stronger than 10% of gradients).
                 If False, an absolute gradient magnitude. Increase to suppress weak

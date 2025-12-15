@@ -101,7 +101,7 @@ class HeavyRoundPeaksPipeline(PrefabPipeline):
                 median filtering. The choice impacts how texture and artifacts are smoothed.
                 For instance, "disk" may preserve radial features, whereas "square" provides
                 edge-focused filtering.
-            median_radius: Dictates the radius for median filtering. Smaller values enhance fine
+            median_radius: Dictates the width for median filtering. Smaller values enhance fine
                 textural differences, whereas larger radii smooth broader regions, potentially
                 affecting the precise detection of small colonies.
             detector_thresh_method: Specifies the thresholding method for binary segmentation.

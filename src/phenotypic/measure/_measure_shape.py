@@ -41,7 +41,7 @@ class SHAPE(MeasurementInfo):
     )
     MEDIAN_RADIUS = (
         "MedianRadius",
-        "Median distance from colony center to edge across all directions. Provides a robust measure of typical colony size that is less sensitive to outliers than mean radius. Particularly useful for colonies with uneven growth or sectoring.",
+        "Median distance from colony center to edge across all directions. Provides a robust measure of typical colony size that is less sensitive to outliers than mean width. Particularly useful for colonies with uneven growth or sectoring.",
     )
     MEAN_RADIUS = (
         "MeanRadius",
@@ -97,7 +97,7 @@ class MeasureShape(MeasureFeatures):
     r"""Measure morphological characteristics of detected microbial colonies.
 
     This class extracts comprehensive geometric metrics from colony shapes, including area, perimeter,
-    circularity, convex hull properties, radius-based measures, Feret diameters, elongation (eccentricity),
+    circularity, convex hull properties, width-based measures, Feret diameters, elongation (eccentricity),
     and ellipse fitting parameters. These measurements quantify colony morphology, growth patterns, and
     spatial organization on agar plates.
 
@@ -126,8 +126,8 @@ class MeasureShape(MeasureFeatures):
       and reduce circularity. Consider smoothing or filtering for robust estimates.
     - Feret diameters and convex hull computation are sensitive to boundary artifacts; outlier or
       misdetected pixels at the edge disproportionately affect these metrics.
-    - Radius-based measures (mean, median, max radius) depend on centroid accuracy; off-center centroids
-      from irregular shapes can yield biased radius values.
+    - Radius-based measures (mean, median, max width) depend on centroid accuracy; off-center centroids
+      from irregular shapes can yield biased width values.
     - Eccentricity ranges 0–1 (circle to line); values near 0 and 1 are rare for biological objects.
       Interpret eccentricity alongside aspect ratio and orientation for robust shape classification.
 
@@ -180,7 +180,7 @@ class MeasureShape(MeasureFeatures):
 
             .. code-block:: python
 
-                # Use eccentricity and max radius to find elongated colonies
+                # Use eccentricity and max width to find elongated colonies
                 shapes = shaper.operate(image)
 
                 elongated = shapes[shapes['Shape_Eccentricity'] > 0.7]
@@ -255,7 +255,7 @@ class MeasureShape(MeasureFeatures):
             if feature != SHAPE.CATEGORY
         }
 
-        # Calculate radius-based measurements using distance transform
+        # Calculate width-based measurements using distance transform
         # Distance transform gives the distance from each object pixel to the nearest background pixel
         dist_matrix = distance_transform_edt(image.objmap[:])
         measurements[str(SHAPE.MEAN_RADIUS)] = self._calculate_mean(

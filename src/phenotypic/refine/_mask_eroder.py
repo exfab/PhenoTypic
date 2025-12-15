@@ -48,7 +48,7 @@ class MaskEroder(ObjectRefiner):
             Structuring element used for erosion. A larger footprint removes
             more boundary pixels and thin features but risks shrinking colonies
             too aggressively.
-        radius (int): Footprint radius in pixels. Larger values erode more deeply
+        width (int): Footprint width in pixels. Larger values erode more deeply
             but risk eliminating small colonies entirely.
 
     Examples:
@@ -62,8 +62,8 @@ class MaskEroder(ObjectRefiner):
             >>> # Erode with auto-scaled footprint to remove specks
             >>> refiner = MaskEroder(footprint='auto')  # doctest: +SKIP
             >>> eroded = refiner.apply(detected)  # doctest: +SKIP
-            >>> # Or use a small fixed disk footprint (radius 1) for gentle erosion
-            >>> refiner = MaskEroder(footprint='disk', radius=1)  # doctest: +SKIP
+            >>> # Or use a small fixed disk footprint (width 1) for gentle erosion
+            >>> refiner = MaskEroder(footprint='disk', width=1)  # doctest: +SKIP
             >>> eroded = refiner.apply(detected, inplace=True)  # doctest: +SKIP
 
     Raises:
@@ -75,7 +75,7 @@ class MaskEroder(ObjectRefiner):
             self,
             footprint: Literal[
                            "auto", "square", "diamond", "disk"] | np.ndarray | None = None,
-            radius: int = 3
+            width: int = 3
     ):
         """Initialize the eroder.
 
@@ -83,31 +83,31 @@ class MaskEroder(ObjectRefiner):
             footprint (Literal["auto", "square", "diamond", "disk"] | np.ndarray | None):
                 Structuring element for erosion. Use:
                 - "auto" to select a disk footprint scaled to image size
-                  (larger plates → slightly larger radius),
+                  (larger plates → slightly larger width),
                 - a NumPy array to pass a custom footprint,
                 - one of the named shapes ("disk", "square", "diamond") with
-                  a specified radius,
+                  a specified width,
                 - or ``None`` to use the library default.
 
-                Larger radii erode more aggressively, removing larger features
+                Larger widths erode more aggressively, removing larger features
                 but risking elimination of small colonies and over-shrinkage
                 of area measurements.
-            radius (int): Footprint radius in pixels when using named shapes
+            width (int): Footprint width in pixels when using named shapes
                 or auto-scaling. Default: 3 pixels (moderate erosion).
         """
         super().__init__()
         self.footprint = footprint
-        self.radius = radius
+        self.width = width
 
     def _operate(self, image: Image) -> Image:
         if self.footprint == "auto":
             footprint = self._make_footprint(
-                    "disk", radius=max(2, round(np.min(image.shape)*0.003))
+                    "disk", width=max(2, round(np.min(image.shape)*0.003))
             )
         elif isinstance(self.footprint, np.ndarray):
             footprint = self.footprint
         elif self.footprint in self._footprint_shapes:
-            footprint = self._make_footprint(self.footprint, radius=self.radius)
+            footprint = self._make_footprint(self.footprint, width=self.width)
         elif not self.footprint:
             footprint = None
         else:
