@@ -6,7 +6,7 @@ import subprocess
 import warnings
 from datetime import datetime
 from fractions import Fraction
-from typing import Tuple, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from phenotypic import Image, GridImage
@@ -22,7 +22,6 @@ import pickle
 from os import PathLike
 from pathlib import Path
 from PIL import Image as PIL_Image
-from PIL.ExifTags import TAGS as EXIF_TAGS
 from PIL.TiffTags import TAGS as TIFF_TAGS
 
 try:
@@ -34,7 +33,7 @@ import skimage as ski
 
 import phenotypic
 from phenotypic.tools.exceptions_ import UnsupportedFileTypeError
-from phenotypic.tools.constants_ import IMAGE_MODE, IO, METADATA
+from phenotypic.tools.constants_ import IO, METADATA
 from phenotypic.tools.hdf_ import HDF
 from ._image_color_handler import ImageColorSpace
 

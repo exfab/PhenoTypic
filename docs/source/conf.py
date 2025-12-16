@@ -43,7 +43,6 @@ from pygments.lexers import get_lexer_by_name
 
 try:
     # Try to register ipython2 as ipython3
-    from pygments.lexers import PythonLexer
     from sphinx.highlighting import lexers
 
     lexers["ipython2"] = get_lexer_by_name("ipython3")
@@ -474,7 +473,7 @@ def generate_downloadables_rst(app):
 
         # Add card
         content.append(f"    .. grid-item-card:: {title}")
-        content.append(f"        :shadow: md")
+        content.append("        :shadow: md")
         content.append("")
         content.append(f"        {description}")
         content.append("")

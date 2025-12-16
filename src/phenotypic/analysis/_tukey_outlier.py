@@ -4,7 +4,6 @@ import numpy as np
 import pandas as pd
 from joblib import delayed, Parallel
 import matplotlib.pyplot as plt
-from matplotlib.figure import Figure
 
 from .abc_ import SetAnalyzer
 

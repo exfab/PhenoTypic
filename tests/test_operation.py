@@ -1,6 +1,5 @@
 import pytest
 
-from phenotypic.abc_ import ImageOperation
 
 import phenotypic
 from phenotypic.data import load_synthetic_detection_image

@@ -11,10 +11,7 @@ import pytest
 from phenotypic import Image, ImagePipeline
 from phenotypic.abc_ import MeasureFeatures, ObjectDetector
 from phenotypic.data import load_plate_12hr
-from phenotypic.detect import OtsuDetector
-from phenotypic.refine import BorderObjectRemover
 from .resources.TestHelper import timeit
-from .test_fixtures import temp_hdf5_file
 
 
 class SumObjects(MeasureFeatures):

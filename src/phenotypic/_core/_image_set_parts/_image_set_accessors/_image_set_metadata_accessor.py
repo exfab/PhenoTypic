@@ -1,16 +1,13 @@
 from __future__ import annotations
 
-from typing import Dict, Tuple, Set, Any, Callable, Union, List, Optional, TYPE_CHECKING
+from typing import Dict, Set, Any, Callable, List, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from phenotypic import ImageSet
 
 import pandas as pd
 import numpy as np
-import h5py
-import posixpath
 import inspect
-from collections.abc import Mapping
 
 
 class ImageSetMetadataAccessor:

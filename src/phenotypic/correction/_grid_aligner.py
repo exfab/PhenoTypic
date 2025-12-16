@@ -9,7 +9,7 @@ from scipy.spatial.distance import euclidean
 from scipy.optimize import minimize_scalar
 
 from phenotypic.abc_ import GridCorrector
-from phenotypic.tools.constants_ import OBJECT, BBOX, GRID
+from phenotypic.tools.constants_ import BBOX, GRID
 
 
 class GridAligner(GridCorrector):

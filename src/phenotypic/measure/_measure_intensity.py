@@ -2,14 +2,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import numpy as np
 
 from phenotypic.tools.constants_ import OBJECT
 
 if TYPE_CHECKING:
     from phenotypic import Image
-from enum import Enum
-from functools import partial
 
 import pandas as pd
 

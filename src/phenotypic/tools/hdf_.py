@@ -45,11 +45,11 @@ class HDF:
     """
 
     if Version(phenotypic.__version__) < Version("0.7.1"):
-        SINGLE_IMAGE_ROOT_POSIX = f"/phenotypic/"
+        SINGLE_IMAGE_ROOT_POSIX = "/phenotypic/"
     else:
-        SINGLE_IMAGE_ROOT_POSIX = f"/phenotypic/images/"
+        SINGLE_IMAGE_ROOT_POSIX = "/phenotypic/images/"
 
-    IMAGE_SET_ROOT_POSIX = f"/phenotypic/image_sets/"
+    IMAGE_SET_ROOT_POSIX = "/phenotypic/image_sets/"
     IMAGE_SET_DATA_POSIX = "data"  # The image and individual measurement group
 
     # measurements and status are stored within in each image's group

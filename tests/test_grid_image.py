@@ -7,7 +7,6 @@ from phenotypic.tools.exceptions_ import IllegalAssignmentError
 
 from .resources.TestHelper import timeit
 
-from .test_fixtures import plate_grid_images_with_detection, sample_image_array
 
 
 @timeit

@@ -7,16 +7,14 @@ from phenotypic.enhance import (
     CLAHE,
     GaussianBlur,
     MedianFilter,
-    ContrastStretching,
     SobelFilter,
 )
-from phenotypic.detect import OtsuDetector, WatershedDetector
+from phenotypic.detect import OtsuDetector
 from phenotypic.correction import GridAligner
 from phenotypic.refine import ReduceMultipleGridObjects, GridOversizedObjectRemover
 from phenotypic.refine import (
     BorderObjectRemover,
     SmallObjectRemover,
-    LowCircularityRemover,
 )
 from phenotypic.refine import MaskFill, MaskOpener
 from phenotypic.measure import (

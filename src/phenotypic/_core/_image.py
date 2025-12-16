@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import Literal, TYPE_CHECKING
 
-import colour
 import numpy as np
 
 if TYPE_CHECKING:

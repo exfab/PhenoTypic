@@ -20,7 +20,6 @@ from phenotypic.refine import (
 )
 from phenotypic.grid import GridApply
 from .resources.TestHelper import timeit
-from .test_fixtures import plate_grid_images
 
 # Configure logging to see all debug information
 logging.basicConfig(

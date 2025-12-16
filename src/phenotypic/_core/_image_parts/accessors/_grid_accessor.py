@@ -6,18 +6,16 @@ if TYPE_CHECKING:
     from phenotypic import GridImage
 
 import numpy as np
-from typing import Tuple
 import matplotlib.pyplot as plt
 import pandas as pd
 from skimage.color import label2rgb
 
 import phenotypic
-from phenotypic._core._image_parts.accessor_abstracts import ImageAccessorBase
 from phenotypic.tools.constants_ import METADATA, IMAGE_TYPES, BBOX, GRID, OBJECT
 from phenotypic.tools.exceptions_ import NoObjectsError
 
 
-class GridAccessor(ImageAccessorBase):
+class GridAccessor:
     """Provides grid-based access and analysis for microbial colony arrays on agar plates.
 
     This class facilitates operations on grid structures within a GridImage, enabling analysis
@@ -71,7 +69,6 @@ class GridAccessor(ImageAccessorBase):
     """
 
     def __init__(self, root_image: GridImage):
-        super().__init__(root_image)
         self._root_image: GridImage = root_image
 
     @property
@@ -716,7 +713,8 @@ class GridAccessor(ImageAccessorBase):
             )
         else:
             func_ax.imshow(
-                    label2rgb(label=self.get_row_map(), image=self._root_image.gray[:])
+                    label2rgb(label=self.get_row_map(),
+                              image=self._root_image.gray[:])
             )
 
         if show_gridlines:

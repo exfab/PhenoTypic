@@ -1,15 +1,12 @@
-from abc import ABC
-from typing import Tuple, Optional
+from abc import ABC, abstractmethod
 
-import numpy as np
 
-from skimage.exposure import histogram
 import matplotlib.pyplot as plt
 
 from phenotypic._core._image_parts.accessor_abstracts import ImageAccessorBase
 
 
-class SingleChannelAccessor(ImageAccessorBase):
+class SingleChannelAccessor(ImageAccessorBase, ABC):
     """
     Handles interaction with Image 2-d gray data by providing access to Image attributes and data.
 
@@ -23,6 +20,14 @@ class SingleChannelAccessor(ImageAccessorBase):
         _main_arr (Any): Main array storing the Image-related data.
         _dtype (Any): Data type of the Image data stored in the target array.
     """
+
+    @abstractmethod
+    def __getitem__(self, item):
+        raise NotImplementedError
+
+    @abstractmethod
+    def __setitem__(self, key, value):
+        raise NotImplementedError
 
     def show(
             self,

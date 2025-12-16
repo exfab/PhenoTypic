@@ -5,7 +5,6 @@ in JPEG, PNG, and TIFF formats, including PhenoTypic-specific metadata.
 """
 
 import json
-import os
 import shutil
 import subprocess
 import tempfile
@@ -603,7 +602,6 @@ class TestAccessorLoad:
 
     def test_color_space_load_success(self, sample_rgb_image, temp_image_dir):
         """Test ColorSpaceAccessor.load() with matching metadata."""
-        import tifffile
         from phenotypic._core._image_parts.color_space_accessors._cielab_accessor import (
             CieLabAccessor,
         )
@@ -626,9 +624,6 @@ class TestAccessorLoad:
 
     def test_color_space_load_mismatch_warning(self, sample_rgb_image, temp_image_dir):
         """Test ColorSpaceAccessor.load() warns when metadata doesn't match."""
-        from phenotypic._core._image_parts.color_space_accessors._xyz_accessor import (
-            XyzAccessor,
-        )
         from phenotypic._core._image_parts.color_space_accessors._cielab_accessor import (
             CieLabAccessor,
         )

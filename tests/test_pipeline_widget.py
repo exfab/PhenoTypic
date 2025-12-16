@@ -1,6 +1,5 @@
-import sys
 import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 import numpy as np
 from phenotypic import Image
 from phenotypic._core._image_pipeline import ImagePipeline

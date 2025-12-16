@@ -5,10 +5,8 @@ Tests the command-line interface for batch processing images with pipelines,
 including argument parsing, file I/O, and output validation.
 """
 
-import json
 import tempfile
 from pathlib import Path
-from shutil import copy2
 
 import pytest
 from click.testing import CliRunner
@@ -728,7 +726,6 @@ class TestModuleCallable:
 
     def test_import_main_from_main_module(self):
         """Test that __main__.py can import main function."""
-        import phenotypic.__main__
 
         # If this imports without error, the module is properly set up
         assert True

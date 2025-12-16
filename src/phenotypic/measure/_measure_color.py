@@ -7,7 +7,6 @@ if TYPE_CHECKING:
 
 import numpy as np
 import pandas as pd
-import colour
 import logging
 
 from phenotypic.abc_ import MeasureFeatures, MeasurementInfo

@@ -9,8 +9,7 @@ import numpy as np
 from phenotypic._core._image_parts.accessor_abstracts import SingleChannelAccessor
 from phenotypic.tools.exceptions_ import (
     ArrayKeyValueShapeMismatchError,
-    EmptyImageError,
-    GrayscaleOutOfRangeError
+    EmptyImageError
 )
 
 

@@ -4,7 +4,6 @@ import uuid
 import warnings
 from copy import deepcopy
 from dataclasses import dataclass, field
-from types import SimpleNamespace
 from typing import Any, Literal, Sequence, TYPE_CHECKING, Union
 
 import numpy as np
@@ -339,7 +338,7 @@ class ImageDataManager:
         Args:
             rgb_array (np.ndarray): RGB image array.
         """
-        self._data.rgb[...] = rgb_array[...]
+        self._data.rgb = rgb_array
         self._set_from_matrix(rgb2gray(rgb_array))
 
     def _set_from_matrix(self, matrix: np.ndarray):
@@ -348,8 +347,8 @@ class ImageDataManager:
         Args:
             matrix (np.ndarray): A 2-D array form of an image.
         """
-        self._data.gray[...] = matrix[...]
-        self._data.enh_gray[...] = self._data.gray[...]
+        self._data.gray = matrix
+        self._data.enh_gray = self._data.gray
         self._data.sparse_object_map = csc_matrix(
                 np.zeros(matrix.shape, dtype=self._OBJMAP_DTYPE)
         )

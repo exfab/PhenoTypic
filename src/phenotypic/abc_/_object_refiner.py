@@ -7,11 +7,6 @@ if TYPE_CHECKING:
 import numpy as np
 
 from ._image_operation import ImageOperation
-from phenotypic.tools.exceptions_ import (
-    OperationFailedError,
-    InterfaceError,
-    DataIntegrityError,
-)
 from phenotypic.tools.funcs_ import validate_operation_integrity
 from abc import ABC
 from skimage.morphology import disk, square, diamond

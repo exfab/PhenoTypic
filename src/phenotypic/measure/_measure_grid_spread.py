@@ -8,7 +8,7 @@ from phenotypic.abc_ import GridMeasureFeatures, MeasurementInfo
 import pandas as pd
 import numpy as np
 from scipy.spatial import distance_matrix
-from phenotypic.tools.constants_ import OBJECT, BBOX, GRID
+from phenotypic.tools.constants_ import BBOX, GRID
 
 
 class GRID_SPREAD(MeasurementInfo):

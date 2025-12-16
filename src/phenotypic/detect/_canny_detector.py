@@ -5,7 +5,6 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from phenotypic import Image, GridImage
 
-import numpy as np
 from skimage import feature, morphology
 from scipy import ndimage
 

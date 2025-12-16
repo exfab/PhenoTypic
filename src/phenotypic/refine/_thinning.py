@@ -5,7 +5,6 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from phenotypic import Image
 
-import numpy as np
 from skimage.morphology import thin
 
 from phenotypic.abc_ import ObjectRefiner

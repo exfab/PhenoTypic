@@ -1,11 +1,9 @@
 from __future__ import annotations
 
-import os
-from pathlib import Path
 from typing import TYPE_CHECKING, Tuple, Optional
 
 if TYPE_CHECKING:
-    from phenotypic import Image
+    pass
 
 import numpy as np
 from matplotlib import pyplot as plt

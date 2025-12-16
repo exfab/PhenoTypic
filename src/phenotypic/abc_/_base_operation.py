@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import inspect
-from typing import TYPE_CHECKING, Callable
-import functools, types
+from typing import TYPE_CHECKING
+import functools
+import types
 
 if TYPE_CHECKING:
-    from phenotypic import Image
+    pass
 
 import logging
 import tracemalloc

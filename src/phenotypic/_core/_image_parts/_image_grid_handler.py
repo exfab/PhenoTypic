@@ -1,5 +1,5 @@
 from itertools import cycle
-from typing import Union, Tuple, Type, Optional
+from typing import Union, Tuple, Optional
 
 import matplotlib.pyplot as plt
 import numpy as np

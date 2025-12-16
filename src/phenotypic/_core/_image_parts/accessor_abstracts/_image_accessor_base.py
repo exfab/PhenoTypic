@@ -13,7 +13,7 @@ import numpy as np
 import pandas as pd
 import skimage as ski
 from PIL import Image as PIL_Image
-from matplotlib.ticker import MultipleLocator
+import napari
 
 import phenotypic
 from phenotypic.settings_ import MPL
@@ -22,6 +22,9 @@ from phenotypic.tools.funcs_ import normalize_rgb_bitdepth
 
 if TYPE_CHECKING:
     from phenotypic import Image
+
+# Global napari viewer instance for persistent Jupyter notebook workflows
+_global_napari_viewer: napari.Viewer | None = None
 
 
 class ImageAccessorBase(ABC):
@@ -58,6 +61,11 @@ class ImageAccessorBase(ABC):
         """Retrieve accessor property name from the subclass' property without instantiation."""
         return cls._accessor_property_name.fget(
                 object.__new__(cls))  # type: ignore[attr-defined]
+
+    @property
+    @abstractmethod
+    def _subject_arr(self) -> np.ndarray:
+        raise NotImplementedError
 
     def __init__(self, root_image: Image):
         self._root_image = root_image
@@ -897,3 +905,88 @@ class ImageAccessorBase(ABC):
             raise ValueError(f"Unsupported bit depth: {bit_depth}")
 
         return bit_depth
+
+    def napari(self, name: str | None = None, reset: bool = False) -> napari.Viewer:
+        """Add image to a persistent global napari viewer for Jupyter workflows.
+
+        Creates or reuses a single napari viewer instance that persists across
+        multiple method calls. This is particularly useful in Jupyter notebooks
+        where multiple accessors can contribute layers to the same viewer,
+        enabling interactive comparison of different image transformations
+        (e.g., grayscale, RGB, binary masks) on the same data.
+
+        The viewer is automatically displayed in Jupyter environments and
+        recreated if it has been closed externally.
+
+        Args:
+            name: Optional custom name for the image layer. If provided, the layer
+                will be named ``{accessor}_{name}``. If not provided, defaults to
+                using the image's name attribute.
+            reset: If True, closes the current napari viewer and creates a fresh
+                one. This is useful for starting a new visualization session
+                without lingering layers from previous calls. Defaults to False.
+
+        Returns:
+            napari.Viewer: The global napari viewer instance with the current
+                image added as a new layer.
+
+        Examples:
+            .. dropdown:: View multiple image transformations in one viewer
+
+                >>> from phenotypic import Image
+                >>> img = Image(arr)
+                >>> # Add grayscale version to viewer
+                >>> viewer = img.gray.napari()
+                >>> # Add RGB version to same viewer
+                >>> viewer = img.rgb.napari()
+                >>> # Add binary segmentation with custom name
+                >>> viewer = img.objmask.napari(name="segmentation_v2")
+
+            .. dropdown:: Using custom names for comparison
+
+                >>> viewer = img.gray.napari(name="raw_grayscale")
+                >>> viewer = img.objmask.napari(name="segmentation_v2")
+
+            .. dropdown:: Resetting the viewer for a fresh session
+
+                >>> viewer = img.gray.napari()
+                >>> viewer = img.rgb.napari()  # Same viewer, added layer
+                >>> viewer = img.gray.napari(reset=True)  # Fresh viewer, old layers gone
+
+        Note:
+            Layers are named using the pattern ``{accessor}_{image_name}`` to
+            ensure descriptive identification. If a layer with the same name
+            already exists, it is replaced with the new image data. This allows
+            for easy updates and comparison of different processing stages.
+        """
+        global _global_napari_viewer
+
+        # Reset viewer if requested
+        if reset and _global_napari_viewer is not None:
+            if hasattr(_global_napari_viewer, "window") and _global_napari_viewer.window is not None:
+                _global_napari_viewer.close()
+            _global_napari_viewer = None
+
+        # Check if viewer exists and is still valid (window open)
+        if (
+                _global_napari_viewer is None
+                or not hasattr(_global_napari_viewer, "window")
+                or _global_napari_viewer.window is None
+        ):
+            _global_napari_viewer = napari.Viewer()
+
+        # Generate descriptive layer name
+        if name is not None:
+            image_name = name
+        else:
+            image_name = getattr(self._root_image, "name", "image")
+        layer_name = f"{self._accessor_property_name}_{image_name}"
+
+        # Replace layer if it exists, otherwise add new layer
+        try:
+            existing_layer = _global_napari_viewer.layers[layer_name]
+            existing_layer.data = self._subject_arr
+        except KeyError:
+            _global_napari_viewer.add_image(self._subject_arr, name=layer_name)
+
+        return _global_napari_viewer

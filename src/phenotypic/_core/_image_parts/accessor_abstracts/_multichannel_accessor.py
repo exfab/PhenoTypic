@@ -1,6 +1,4 @@
 import json
-import shutil
-import subprocess
 import warnings
 from pathlib import Path
 
@@ -8,14 +6,12 @@ import matplotlib.pyplot as plt
 import numpy as np
 import skimage as ski
 from PIL import Image as PIL_Image
-from PIL import PngImagePlugin
-
-import phenotypic
+from abc import ABC, abstractmethod
 from phenotypic._core._image_parts.accessor_abstracts import ImageAccessorBase
 from phenotypic.tools.constants_ import METADATA, IO
 
 
-class MultiChannelAccessor(ImageAccessorBase):
+class MultiChannelAccessor(ImageAccessorBase, ABC):
     """
     Handles interaction with Image data by providing access to Image attributes and data.
 
@@ -29,6 +25,14 @@ class MultiChannelAccessor(ImageAccessorBase):
         _main_arr (Any): Main array storing the Image-related data.
         _dtype (Any): Data type of the Image data stored in the target array.
     """
+
+    @abstractmethod
+    def __getitem__(self, item):
+        raise NotImplementedError
+
+    @abstractmethod
+    def __setitem__(self, key, value):
+        raise NotImplementedError
 
     def imsave(self, fname: str | Path) -> None:
         """Save the multichannel image array to a file with PhenoTypic metadata embedded.

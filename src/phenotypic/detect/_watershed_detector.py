@@ -9,7 +9,6 @@ import gc
 
 import numpy as np
 import numpy.ma as ma
-import scipy.ndimage as ndimage
 from scipy.ndimage import distance_transform_edt
 from skimage import feature, filters, morphology, segmentation
 

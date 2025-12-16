@@ -1,4 +1,5 @@
-import pickle, pytest
+import pickle
+import pytest
 
 from .test_fixtures import _public
 

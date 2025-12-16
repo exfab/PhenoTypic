@@ -50,6 +50,7 @@ dependencies = [
     "exifread>=3.5.1",
     "click>=8.3.0",
     "bm3d>=4.0.3",
+    "napari[all]>=0.5.4",
 ]
 
 [project.urls]
@@ -80,9 +81,7 @@ dev = [
     "ipykernel;sys_platform!='win32'",
     "notebook;sys_platform!='win32'",
     "ipywidgets",
-    "black>=25.11.0",
     "ruff>=0.14.7",
-    "isort>=7.0.0",
     "scipy-stubs>=1.15.3.0",
 ]
 docs = [

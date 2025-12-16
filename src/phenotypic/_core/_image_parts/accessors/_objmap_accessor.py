@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Literal, Optional, TYPE_CHECKING, Union
+from typing import Literal, TYPE_CHECKING
 
 if TYPE_CHECKING:
     pass

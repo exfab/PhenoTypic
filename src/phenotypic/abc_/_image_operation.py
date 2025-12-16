@@ -1,15 +1,12 @@
 from __future__ import annotations
 
-import inspect
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from phenotypic import Image
 
-import numpy as np
 from ._base_operation import BaseOperation
 from ._lazy_widget_mixin import LazyWidgetMixin
-from ..tools.exceptions_ import InterfaceError, OperationIntegrityError
 
 from abc import ABC, abstractmethod
 

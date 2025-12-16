@@ -20,9 +20,8 @@ import matplotlib
 import matplotlib.pyplot as plt
 from pathlib import Path
 from joblib import Parallel, delayed
-from typing import Optional, Type, Dict, Any, List
+from typing import Optional, Type, Dict, Any
 
-import phenotypic
 from phenotypic import Image, GridImage, ImagePipeline
 from phenotypic.tools.constants_ import IO
 

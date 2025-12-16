@@ -1,10 +1,9 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, Literal, List
+from typing import TYPE_CHECKING, List
 
 if TYPE_CHECKING:
     from phenotypic import Image
 
-import pandas as pd
 from os import PathLike
 from ._image_set_measurements import ImageSetMeasurements
 from ._image_set_accessors._image_set_metadata_accessor import ImageSetMetadataAccessor

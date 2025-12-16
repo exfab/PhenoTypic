@@ -166,7 +166,7 @@ class ImagePipelineBatch(SerializablePipeline):
         if mode in {PipelineMode.MEASURE, PipelineMode.APPLY_MEASURE}:
             logger.info(f"allocating measurement datasets for {image_set.name}")
             self._allocate_measurement_datasets(image_set)
-            logger.debug(f"allocation done. ready to process images.")
+            logger.debug("allocation done. ready to process images.")
 
         """
         Step 2: spawn writer, producer, and worker processes.
@@ -187,7 +187,7 @@ class ImagePipelineBatch(SerializablePipeline):
         from threadpoolctl import threadpool_limits
 
         with threadpool_limits(limits=1):
-            parallel_logger = logging.getLogger(f"ImagePipeline.parallel")
+            parallel_logger = logging.getLogger("ImagePipeline.parallel")
             parallel_logger.debug(
                 f"_coordinator called with mode:{mode}, njobs: {num_workers}"
             )
@@ -271,14 +271,14 @@ class ImagePipelineBatch(SerializablePipeline):
 
             for w in workers:
                 w.join()
-            logger.info(f"All worker processes completed, joining writer...")
+            logger.info("All worker processes completed, joining writer...")
 
             thread_stop_event.set()
-            logger.info(f"Stop event set. Waiting on writer to complete...")
+            logger.info("Stop event set. Waiting on writer to complete...")
             producer.join(timeout=self.timeout)
             writer.join(timeout=self.timeout)
             logger.info(
-                f"Writer and producer joined successfully. Exiting coordinator."
+                "Writer and producer joined successfully. Exiting coordinator."
             )
 
         """
@@ -393,7 +393,7 @@ class ImagePipelineBatch(SerializablePipeline):
         logger.info("Writer completed access event, starting producer loop")
         with image_set.hdf_.swmr_reader() as reader:
             while not stop_event.is_set():
-                logger.info(f"producer reading images...")
+                logger.info("producer reading images...")
                 for name in image_names:
                     image_group = image_set.hdf_.get_image_group(
                         handle=reader, image_name=name
@@ -433,8 +433,8 @@ class ImagePipelineBatch(SerializablePipeline):
     ):
         import phenotypic as pht
 
-        logger = logging.getLogger(f"ImagePipeline.writer")
-        logger.info(f"Accessing hdf file")
+        logger = logging.getLogger("ImagePipeline.writer")
+        logger.info("Accessing hdf file")
 
         num_workers = self.num_workers - 1
         workers_done = 0
@@ -512,7 +512,7 @@ class ImagePipelineBatch(SerializablePipeline):
         mode: PipelineMode,
         reset: bool,
     ) -> None:
-        logger = logging.getLogger(f"ImagePipeline._worker()")
+        logger = logging.getLogger("ImagePipeline._worker()")
         worker_pid = os.getpid()
         logger.info(f"Worker started - PID: {worker_pid}, Mode: {mode}")
 
@@ -525,7 +525,7 @@ class ImagePipelineBatch(SerializablePipeline):
             image = work_q.get()
             if image is None:  # Sentinel
                 logger.debug("Termination signal received. Exiting worker.")
-                results_q.put((f"WORKER_DONE", None, None))
+                results_q.put(("WORKER_DONE", None, None))
                 break
 
             else:

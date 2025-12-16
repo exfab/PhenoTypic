@@ -21,7 +21,6 @@ from skimage.morphology import (
     binary_closing,
 )
 from skimage.measure import regionprops_table
-import warnings
 
 # Optional interactive widgets
 try:
@@ -1104,7 +1103,8 @@ class PlotAccessor:
 
         # Extract object sizes using regionprops
         props = regionprops_table(objmap, properties=["label", "area"])
-        sizes = props["area"]
+        sizes = np.asarray(props["area"])
+        labels = np.asarray(props["label"])
 
         if len(sizes) == 0:
             raise ValueError("No objects found in object map.")
@@ -1136,8 +1136,7 @@ class PlotAccessor:
 
                 # Create filtered mask efficiently using lookup
                 filtered_objmap = objmap.copy()
-                labels_to_remove = [lbl for lbl, size in label_to_size.items()
-                                    if size < threshold]
+                labels_to_remove = labels[sizes < threshold]
                 filtered_objmap[np.isin(filtered_objmap, labels_to_remove)] = 0
 
                 # Display preview

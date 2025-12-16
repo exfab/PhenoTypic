@@ -1,6 +1,6 @@
 import sys
 import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 import numpy as np
 from phenotypic.abc_._image_operation import ImageOperation
 from phenotypic import Image

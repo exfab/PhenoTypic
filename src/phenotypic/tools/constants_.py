@@ -90,11 +90,11 @@ class IO:
     PHENOTYPIC_METADATA_KEY = "phenotypic"
 
     if Version(phenotypic.__version__) < Version("0.7.1"):
-        SINGLE_IMAGE_HDF5_PARENT_GROUP = Path(f"phenotypic/")
+        SINGLE_IMAGE_HDF5_PARENT_GROUP = Path("phenotypic/")
     else:
-        SINGLE_IMAGE_HDF5_PARENT_GROUP = f"/phenotypic/images/"
+        SINGLE_IMAGE_HDF5_PARENT_GROUP = "/phenotypic/images/"
 
-    IMAGE_SET_HDF5_PARENT_GROUP = f"/phenotypic/image_sets/"
+    IMAGE_SET_HDF5_PARENT_GROUP = "/phenotypic/image_sets/"
 
     IMAGE_MEASUREMENT_IMAGE_SUBGROUP_KEY = "measurements"
     IMAGE_STATUS_SUBGROUP_KEY = "status"

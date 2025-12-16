@@ -5,7 +5,6 @@ inference logic in ImageDataManager, which is critical for proper image initiali
 and metadata tracking in microbe colony phenotyping workflows.
 """
 
-import warnings
 import numpy as np
 import pytest
 from skimage.color import rgba2rgb

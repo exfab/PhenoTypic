@@ -4,12 +4,11 @@ from pathlib import Path
 
 import pytest
 import pandas as pd
-import numpy as np
 
 from phenotypic import ImagePipeline, Image
 from phenotypic.data import load_colony
 from phenotypic.detect import OtsuDetector
-from phenotypic.enhance import GaussianBlur, CLAHE, MedianFilter
+from phenotypic.enhance import GaussianBlur, CLAHE
 from phenotypic.measure import MeasureShape, MeasureIntensity, MeasureColor
 from phenotypic.refine import SmallObjectRemover, BorderObjectRemover
 

@@ -261,7 +261,7 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
                             print(
                                     f"    Completed in {self._operation_times[key]:.4f} seconds"
                             )
-            except Exception as e:
+            except Exception:
                 if self._benchmark and self._verbose and has_tqdm:
                     pbar.close()
                 exc_type, exc_val, exc_tb = sys.exc_info()

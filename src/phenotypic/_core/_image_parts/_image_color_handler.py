@@ -9,7 +9,6 @@ import numpy as np
 
 from .accessors._color_accessor import ColorAccessor
 from ._image_plot_handler import ImagePlotHandler
-import colour
 
 
 class ImageColorSpace(ImagePlotHandler):

@@ -17,6 +17,7 @@ from ._gaussian_blur import GaussianBlur
 from ._gaussian_subtract import GaussianSubtract
 from ._laplace_enhancer import LaplaceEnhancer
 from ._median_filter import MedianFilter
+from ._non_local_means import NonLocalMeansDenoiser
 from ._rank_median_enhancer import RankMedianEnhancer
 from ._rolling_ball_remove_bg import RollingBallRemoveBG
 from ._sobel_filter import SobelFilter
@@ -32,6 +33,7 @@ __all__ = [
     "GaussianSubtract",
     "LaplaceEnhancer",
     "MedianFilter",
+    "NonLocalMeansDenoiser",
     "RankMedianEnhancer",
     "RollingBallRemoveBG",
     "SobelFilter",

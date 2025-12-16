@@ -19,33 +19,48 @@ arrayed colony phenotyping on solid media.
 
 ## Overview
 
-PhenoTypic provides a modular toolkit designed to simplify and accelerate the development of reusable bio-image analysis
-pipelines. PhenoTypic provides bio-image analysis tools built-in, but has a streamlined development method
+PhenoTypic provides a modular toolkit designed to simplify and accelerate the
+development of reusable bio-image analysis
+pipelines. PhenoTypic provides bio-image analysis tools built-in, but has a streamlined
+development method
 to integrate new tools.
 
 # Installation
 
 ## uv (recommended)
 
-To download the base package (recommended if running on a cluster)
+**See more** on
+<u>[installing uv](https://docs.astral.sh/uv/getting-started/installation/)</u>
+
+**Regular Install** (recommended when deploying on a cluster)
 
 ```bash
 uv add phenotypic
 ```
 
-To download the base package plus prototyping environment (recommended for pipeline development)
+**Pipeline Development Install** (recommended for pipeline
+development locally)
 
 ```bash
-uv add phenotypic --extras jupyter
+uv add "phenotypic[jupyter]"
 ```
 
 ## Pip
 
-```
+**Regular Install**
+
+```bash
 pip install phenotypic
 ```
 
-Note: may not always be the latest version. Install from repo when latest update is needed
+**Pipeline Development Install**
+
+```bash
+pip install phenotypic[jupyter]
+```
+
+Note: may not always be the latest version. Install from repo when latest update is
+needed
 
 ## Manual Installation (For latest updates)
 
@@ -57,6 +72,8 @@ uv pip install -e .
 
 ## Dev Installation
 
+For extending PhenoTypic.
+
 ```  
 git clone https://github.com/exfab/PhenoTypic.git
 cd PhenoTypic
@@ -65,9 +82,12 @@ uv sync --group dev
 
 ## Optional Installation
 
-To extract metadata from raw images, PhenoTypic uses the `PyExifTool` module. This requires an external software called
-ExifTool. You can install ExifTool here: https://exiftool.org/install.html. If you don't use it, some metadata from raw
-files may not be able to be imported. Read more here: https://pypi.org/project/PyExifTool/#pyexiftool-dependencies
+To extract metadata from raw images, PhenoTypic uses the `PyExifTool` module. This
+requires an external software called
+ExifTool. You can install ExifTool here: https://exiftool.org/install.html. If you don't
+use it, some metadata from raw
+files may not be able to be imported. Read more
+here: https://pypi.org/project/PyExifTool/#pyexiftool-dependencies
 
 # Module Overview
 

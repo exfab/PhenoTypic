@@ -3,7 +3,6 @@
 import numpy as np
 import pytest
 
-from phenotypic import Image
 from phenotypic.detect import ManualDetector
 from phenotypic.data import load_plate_12hr
 

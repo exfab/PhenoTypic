@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import importlib
 from pathlib import Path
-from typing import Dict, List, Union, Optional
+from typing import Dict, Union, Optional
 
 import pandas as pd
 
@@ -190,7 +190,6 @@ class SerializablePipeline(ImagePipelineCore):
             ImportError: If a required class cannot be imported.
             AttributeError: If a class cannot be found in phenotypic namespace.
         """
-        import phenotypic
 
         operations = {}
 

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import abc
-from typing import TYPE_CHECKING, Callable, List
+from typing import Callable, List
 
 import pandas as pd
 import numpy as np

@@ -1,17 +1,12 @@
 from __future__ import annotations
 
-from os import PathLike
-from typing import Any, Dict, List, Literal, TYPE_CHECKING
+from typing import List, TYPE_CHECKING
 
-from phenotypic.abc_ import GridFinder
 
 if TYPE_CHECKING:
-    from phenotypic import Image
+    pass
 
 import pandas as pd
-from ._image_set_accessors._image_set_measurements_accessor import (
-    SetMeasurementAccessor,
-)
 from phenotypic.tools.constants_ import PIPE_STATUS
 from ._image_set_status import ImageSetStatus
 
@@ -22,7 +17,7 @@ class ImageSetMeasurements(ImageSetStatus):
     ) -> pd.DataFrame:
         import logging
 
-        logger = logging.getLogger(f"ImageSet.get_measurement")
+        logger = logging.getLogger("ImageSet.get_measurement")
 
         if image_names is None:
             image_names = self.get_image_names()

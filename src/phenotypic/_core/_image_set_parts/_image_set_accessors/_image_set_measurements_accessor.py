@@ -1,20 +1,11 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, Dict
+from typing import TYPE_CHECKING
 
-import h5py
-import numpy as np
 
 if TYPE_CHECKING:
     from phenotypic import ImageSet
 
 import pandas as pd
-from pandas.api.types import (
-    pandas_dtype,
-    is_extension_array_dtype,
-    is_integer_dtype,
-    is_bool_dtype,
-)
-from phenotypic.tools.constants_ import IO
 
 
 # TODO: Not fully integrated yet

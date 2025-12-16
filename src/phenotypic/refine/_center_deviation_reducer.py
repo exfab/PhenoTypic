@@ -8,7 +8,7 @@ if TYPE_CHECKING:
 from scipy.spatial.distance import euclidean
 
 from phenotypic.abc_ import ObjectRefiner
-from phenotypic.tools.constants_ import OBJECT, BBOX
+from phenotypic.tools.constants_ import BBOX
 
 
 class CenterDeviationReducer(ObjectRefiner):

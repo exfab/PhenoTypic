@@ -8,7 +8,6 @@ from pathlib import Path
 import numpy as np
 import tifffile
 
-import phenotypic
 from phenotypic.tools.constants_ import IO
 from phenotypic.tools.exceptions_ import IllegalAssignmentError
 from ._image_accessor_base import ImageAccessorBase
@@ -131,7 +130,6 @@ class ColorSpaceAccessor(ImageAccessorBase):
         Raises:
             ValueError: If file extension is not .tif or .tiff.
         """
-        import skimage.io
 
         filepath = Path(filepath)
 

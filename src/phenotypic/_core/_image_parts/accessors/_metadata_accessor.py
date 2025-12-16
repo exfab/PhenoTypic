@@ -333,7 +333,7 @@ class MetadataAccessor:
                 value = (
                     self._parent_image.name
                 )  # offload handling to image handler class
-            if not key.startswith(f"Metadata_"):
+            if not key.startswith("Metadata_"):
                 header = f"Metadata_{key}"
             else:
                 header = key

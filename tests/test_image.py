@@ -7,7 +7,6 @@ import phenotypic
 
 from .resources.TestHelper import timeit
 
-from .test_fixtures import sample_image_array_with_imformat
 
 
 @timeit

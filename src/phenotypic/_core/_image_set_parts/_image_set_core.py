@@ -101,7 +101,7 @@ class ImageSetCore:
         if outpath.is_dir():
             outpath = outpath / f"{self.name}.hdf5"
         else:
-            if not outpath.suffix in HDF.EXT:
+            if outpath.suffix not in HDF.EXT:
                 raise ValueError(f"Invalid output file extension: {outpath.suffix}")
 
         # Track whether this instance owns the outpath and should delete it on GC

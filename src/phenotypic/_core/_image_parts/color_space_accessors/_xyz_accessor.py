@@ -5,9 +5,7 @@ import numpy as np
 
 from phenotypic.tools.colourspaces_ import sRGB_D50
 from phenotypic.tools.exceptions_ import IllegalAssignmentError
-from phenotypic.tools.funcs_ import normalize_rgb_bitdepth
 from ..accessor_abstracts._color_space_accessor import ColorSpaceAccessor
-from phenotypic.tools.constants_ import IMAGE_MODE
 
 
 class XyzAccessor(ColorSpaceAccessor):
