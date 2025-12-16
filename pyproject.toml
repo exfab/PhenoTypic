@@ -51,6 +51,7 @@ dependencies = [
     "click>=8.3.0",
     "bm3d>=4.0.3",
     "napari[all]>=0.5.4",
+    "wand>=0.6.13",
 ]
 
 [project.urls]
