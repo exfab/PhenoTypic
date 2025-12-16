@@ -16,10 +16,10 @@ if TYPE_CHECKING:
 
 
 def _validate_inputs(
-    image: Image,
-    operations: List[ImageOperation],
-    parameters: List[Dict[str, List[Any]]],
-    data_layers: List[str],
+        image: Image,
+        operations: List[ImageOperation],
+        parameters: List[Dict[str, List[Any]]],
+        data_layers: List[str],
 ) -> None:
     """Validate all inputs before processing.
 
@@ -35,8 +35,8 @@ def _validate_inputs(
     # Check operations and parameters have same length
     if len(operations) != len(parameters):
         raise ValueError(
-            f"Length mismatch: {len(operations)} operations but "
-            f"{len(parameters)} parameter dictionaries. Must be equal."
+                f"Length mismatch: {len(operations)} operations but "
+                f"{len(parameters)} parameter dictionaries. Must be equal."
         )
 
     # Verify parameter names exist as operation attributes
@@ -44,9 +44,9 @@ def _validate_inputs(
         for param_name in params.keys():
             if not hasattr(op, param_name):
                 raise ValueError(
-                    f"Operation {op_idx} ({op.__class__.__name__}) has no "
-                    f"attribute '{param_name}'. Available attributes: "
-                    f"{[a for a in dir(op) if not a.startswith('_')]}"
+                        f"Operation {op_idx} ({op.__class__.__name__}) has no "
+                        f"attribute '{param_name}'. Available attributes: "
+                        f"{[a for a in dir(op) if not a.startswith('_')]}"
                 )
 
     # Validate data_layers
@@ -54,12 +54,12 @@ def _validate_inputs(
     invalid = set(data_layers) - valid_layers
     if invalid:
         raise ValueError(
-            f"Invalid data_layers: {invalid}. Must be subset of {valid_layers}"
+                f"Invalid data_layers: {invalid}. Must be subset of {valid_layers}"
         )
 
 
 def _validate_pipeline_configs(
-    pipeline_configs: List[Dict[str, Any]],
+        pipeline_configs: List[Dict[str, Any]],
 ) -> None:
     """Validate structure of pipeline configuration list.
 
@@ -72,14 +72,14 @@ def _validate_pipeline_configs(
     if not pipeline_configs:
         raise ValueError("pipeline_configs cannot be empty")
 
-    required_keys = {"name", "operations", "parameters"}
+    required_keys = {"name", "ops", "params"}
 
     for idx, config in enumerate(pipeline_configs):
         # Check all required keys present
         missing = required_keys - set(config.keys())
         if missing:
             raise ValueError(
-                f"Pipeline config {idx} missing required keys: {missing}"
+                    f"Pipeline config {idx} missing required keys: {missing}"
             )
 
         # Validate name is string
@@ -87,24 +87,24 @@ def _validate_pipeline_configs(
             raise ValueError(f"Pipeline config {idx}: 'name' must be a string")
 
         # Validate operations is list
-        if not isinstance(config["operations"], list):
+        if not isinstance(config["ops"], list):
             raise ValueError(f"Pipeline config {idx}: 'operations' must be a list")
 
         # Validate parameters is list
-        if not isinstance(config["parameters"], list):
+        if not isinstance(config["params"], list):
             raise ValueError(f"Pipeline config {idx}: 'parameters' must be a list")
 
         # Use existing validation for operations and parameters
         _validate_inputs(
-            image=None,  # type: ignore
-            operations=config["operations"],
-            parameters=config["parameters"],
-            data_layers=[],
+                image=None,  # type: ignore
+                operations=config["ops"],
+                parameters=config["params"],
+                data_layers=[],
         )
 
 
 def _generate_param_combinations(
-    parameters: List[Dict[str, List[Any]]],
+        parameters: List[Dict[str, List[Any]]],
 ) -> List[Tuple[Dict[str, Any], ...]]:
     """Generate all parameter combinations using itertools.product.
 
@@ -146,9 +146,9 @@ def _create_param_name_string(param_config: Tuple[Dict[str, Any], ...]) -> str:
 
 
 def _execute_single_pipeline(
-    image: Image,
-    operations: List[ImageOperation],
-    param_config: Tuple[Dict[str, Any], ...],
+        image: Image,
+        operations: List[ImageOperation],
+        param_config: Tuple[Dict[str, Any], ...],
 ) -> Tuple[Image, Tuple[Dict[str, Any], ...]]:
     """Execute a single pipeline with given parameter configuration.
 
@@ -189,10 +189,10 @@ def _add_original_layers(viewer: napari.Viewer, image: Image) -> None:
 
 
 def _add_result_layer(
-    viewer: napari.Viewer,
-    result_img: Image,
-    data_layer: str,
-    layer_name: str,
+        viewer: napari.Viewer,
+        result_img: Image,
+        data_layer: str,
+        layer_name: str,
 ) -> None:
     """Add a single data layer from result image to viewer.
 
@@ -226,11 +226,11 @@ def _add_result_layer(
 
 
 def _add_result_layers(
-    viewer: napari.Viewer,
-    result_img: Image,
-    param_config: Tuple[Dict[str, Any], ...],
-    data_layers: List[str],
-    result_idx: int,
+        viewer: napari.Viewer,
+        result_img: Image,
+        param_config: Tuple[Dict[str, Any], ...],
+        data_layers: List[str],
+        result_idx: int,
 ) -> None:
     """Add all requested data layers for a single result.
 
@@ -249,7 +249,7 @@ def _add_result_layers(
 
 
 def _build_results_dict(
-    results: List[Tuple[Image, Tuple[Dict[str, Any], ...]]]
+        results: List[Tuple[Image, Tuple[Dict[str, Any], ...]]]
 ) -> Dict[Tuple, Image]:
     """Build dictionary mapping parameter configs to result images.
 
@@ -269,13 +269,13 @@ def _build_results_dict(
 
 
 def PipelineGridSearch(
-    image: Image,
-    operations: List[ImageOperation],
-    parameters: List[Dict[str, List[Any]]],
-    data_layers: List[str] = ["rgb", "gray", "enh_gray", "objmask", "objmap"],
-    n_jobs: int = -1,
-    return_results: bool = False,
-    viewer_title: str = "Pipeline Grid Search",
+        image: Image,
+        operations: List[ImageOperation],
+        parameters: List[Dict[str, List[Any]]],
+        data_layers: List[str] = ["rgb", "gray", "enh_gray", "objmask", "objmap"],
+        n_jobs: int = -1,
+        return_results: bool = False,
+        viewer_title: str = "Pipeline Grid Search",
 ) -> Union[napari.Viewer, Tuple[napari.Viewer, Dict]]:
     """Execute parameter grid search with parallel pipelines and napari visualization.
 
@@ -347,8 +347,8 @@ def PipelineGridSearch(
 
     # 3. Execute pipelines in parallel
     results = Parallel(n_jobs=n_jobs)(
-        delayed(_execute_single_pipeline)(image, operations, config)
-        for config in all_configs
+            delayed(_execute_single_pipeline)(image, operations, config)
+            for config in all_configs
     )
 
     # 4. Create napari viewer and add layers
@@ -360,7 +360,7 @@ def PipelineGridSearch(
     # Add result layers for each parameter combination
     for idx, (result_img, param_config) in enumerate(results):
         _add_result_layers(viewer, result_img, param_config, data_layers, idx)
-        
+
         # Delete result image if not returning results (memory optimization)
         if not return_results:
             del result_img
@@ -376,12 +376,12 @@ def PipelineGridSearch(
 
 
 def MultiPipelineGridSearch(
-    image: Image,
-    pipeline_configs: List[Dict[str, Any]],
-    data_layers: List[str] = ["rgb", "gray", "enh_gray", "objmask", "objmap"],
-    n_jobs: int = -1,
-    return_results: bool = False,
-    viewer_title: str = "Multi-Pipeline Grid Search",
+        image: Image,
+        pipeline_configs: List[Dict[str, Any]],
+        data_layers: List[str] = ["rgb", "gray", "enh_gray", "objmask", "objmap"],
+        n_jobs: int = -1,
+        return_results: bool = False,
+        viewer_title: str = "Multi-Pipeline Grid Search",
 ) -> Union[napari.Viewer, Tuple[napari.Viewer, Dict]]:
     """Execute grid search across multiple pipeline configurations.
 
@@ -397,8 +397,8 @@ def MultiPipelineGridSearch(
         pipeline_configs: List of pipeline configuration dictionaries. Each dict
             must contain:
             - "name" (str): Descriptive name for this pipeline (e.g., "GaussianBlur_Otsu")
-            - "operations" (List[ImageOperation]): Operations for this pipeline
-            - "parameters" (List[Dict[str, List[Any]]]): Parameter grids for each operation
+            - "ops" (List[ImageOperation]): Operations for this pipeline
+            - "params" (List[Dict[str, List[Any]]]): Parameter grids for each operation
         data_layers: Which image data to display in napari viewer. Valid options:
             "rgb", "gray", "enh_gray", "objmask", "objmap". Defaults to all available.
         n_jobs: Number of parallel jobs for joblib. -1 uses all available cores.
@@ -426,13 +426,13 @@ def MultiPipelineGridSearch(
         >>> pipeline_configs = [
         ...     {
         ...         "name": "GaussianBlur_Otsu",
-        ...         "operations": [GaussianBlur(sigma=1.0), OtsuDetector()],
-        ...         "parameters": [{"sigma": [1.0, 2.0, 3.0]}, {}]
+        ...         "ops": [GaussianBlur(sigma=1.0), OtsuDetector()],
+        ...         "params": [{"sigma": [1.0, 2.0, 3.0]}, {}]
         ...     },
         ...     {
         ...         "name": "MedianFilter_Otsu",
-        ...         "operations": [MedianFilter(size=3), OtsuDetector()],
-        ...         "parameters": [{"size": [3, 5, 7]}, {}]
+        ...         "ops": [MedianFilter(size=3), OtsuDetector()],
+        ...         "params": [{"size": [3, 5, 7]}, {}]
         ...     }
         ... ]
         >>>
@@ -460,16 +460,16 @@ def MultiPipelineGridSearch(
     # Process each pipeline configuration
     for config_idx, config in enumerate(pipeline_configs):
         pipeline_name = config["name"]
-        operations = config["operations"]
-        parameters = config["parameters"]
+        operations = config["ops"]
+        parameters = config["params"]
 
         # Generate parameter combinations for this pipeline
         param_configs = _generate_param_combinations(parameters)
 
         # Execute this pipeline's grid search (reuse existing helper)
         results = Parallel(n_jobs=n_jobs)(
-            delayed(_execute_single_pipeline)(image, operations, param_config)
-            for param_config in param_configs
+                delayed(_execute_single_pipeline)(image, operations, param_config)
+                for param_config in param_configs
         )
 
         # Add results to viewer with pipeline name prefix
