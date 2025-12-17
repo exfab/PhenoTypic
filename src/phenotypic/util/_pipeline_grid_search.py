@@ -15,29 +15,65 @@ if TYPE_CHECKING:
     from phenotypic import Image, ImageOperation
 
 
+def _unpack_ops_tuples(
+        ops: List[Tuple[ImageOperation, Dict[str, List[Any]]]],
+) -> Tuple[List[ImageOperation], List[Dict[str, List[Any]]]]:
+    """Unpack list of (operation, params) tuples into separate lists.
+
+    Args:
+        ops: List of (operation, params_dict) tuples
+
+    Returns:
+        Tuple of (operations_list, parameters_list)
+    """
+    operations = []
+    parameters = []
+
+    for op, params in ops:
+        operations.append(op)
+        parameters.append(params)
+
+    return operations, parameters
+
+
 def _validate_inputs(
         image: Image,
-        operations: List[ImageOperation],
-        parameters: List[Dict[str, List[Any]]],
+        ops: List[Tuple[ImageOperation, Dict[str, List[Any]]]],
         data_layers: List[str],
 ) -> None:
     """Validate all inputs before processing.
 
     Args:
         image: Image to process
-        operations: List of ImageOperation instances
-        parameters: List of parameter dictionaries
+        ops: List of (operation, params_dict) tuples
         data_layers: List of data layer names to display
 
     Raises:
         ValueError: If inputs are invalid or malformed
     """
-    # Check operations and parameters have same length
-    if len(operations) != len(parameters):
-        raise ValueError(
-                f"Length mismatch: {len(operations)} operations but "
-                f"{len(parameters)} parameter dictionaries. Must be equal."
-        )
+    # Validate ops format
+    if not isinstance(ops, list):
+        raise ValueError(f"ops must be a list, got {type(ops)}")
+
+    if not ops:
+        raise ValueError("ops cannot be empty")
+
+    for idx, item in enumerate(ops):
+        if not isinstance(item, tuple) or len(item) != 2:
+            raise ValueError(
+                    f"ops[{idx}]: Each element must be a tuple (operation, params_dict), "
+                    f"got {type(item)}"
+            )
+
+        op, params = item
+        if not isinstance(params, dict):
+            raise ValueError(
+                    f"ops[{idx}]: Second element of tuple must be a dict, "
+                    f"got {type(params)}"
+            )
+
+    # Unpack tuples
+    operations, parameters = _unpack_ops_tuples(ops)
 
     # Verify parameter names exist as operation attributes
     for op_idx, (op, params) in enumerate(zip(operations, parameters)):
@@ -72,7 +108,7 @@ def _validate_pipeline_configs(
     if not pipeline_configs:
         raise ValueError("pipeline_configs cannot be empty")
 
-    required_keys = {"name", "ops", "params"}
+    required_keys = {"name", "ops"}
 
     for idx, config in enumerate(pipeline_configs):
         # Check all required keys present
@@ -86,19 +122,29 @@ def _validate_pipeline_configs(
         if not isinstance(config["name"], str):
             raise ValueError(f"Pipeline config {idx}: 'name' must be a string")
 
-        # Validate operations is list
+        # Validate ops is list
         if not isinstance(config["ops"], list):
-            raise ValueError(f"Pipeline config {idx}: 'operations' must be a list")
+            raise ValueError(f"Pipeline config {idx}: 'ops' must be a list")
 
-        # Validate parameters is list
-        if not isinstance(config["params"], list):
-            raise ValueError(f"Pipeline config {idx}: 'parameters' must be a list")
+        # Validate each element is a tuple of (operation, params_dict)
+        for op_idx, item in enumerate(config["ops"]):
+            if not isinstance(item, tuple) or len(item) != 2:
+                raise ValueError(
+                        f"Pipeline config {idx}, ops[{op_idx}]: "
+                        f"Each element must be a tuple (operation, params_dict)"
+                )
 
-        # Use existing validation for operations and parameters
+            op, params = item
+            if not isinstance(params, dict):
+                raise ValueError(
+                        f"Pipeline config {idx}, ops[{op_idx}]: "
+                        f"Second element of tuple must be a dict"
+                )
+
+        # Use existing validation for operations
         _validate_inputs(
                 image=None,  # type: ignore
-                operations=config["ops"],
-                parameters=config["params"],
+                ops=config["ops"],
                 data_layers=[],
         )
 
@@ -172,7 +218,7 @@ def _execute_single_pipeline(
 
     # Create and execute pipeline
     pipeline = ImagePipeline(ops=ops_copy)
-    result = pipeline.operate([image.copy()])[0]
+    result = pipeline.apply(image.copy())
 
     return result, param_config
 
@@ -270,8 +316,7 @@ def _build_results_dict(
 
 def PipelineGridSearch(
         image: Image,
-        operations: List[ImageOperation],
-        parameters: List[Dict[str, List[Any]]],
+        ops: List[Tuple[ImageOperation, Dict[str, List[Any]]]],
         data_layers: List[str] = ["rgb", "gray", "enh_gray", "objmask", "objmap"],
         n_jobs: int = -1,
         return_results: bool = False,
@@ -286,11 +331,11 @@ def PipelineGridSearch(
     Args:
         image: Single Image object to process. All parameter combinations will be
             applied to this image.
-        operations: List of ImageOperation instances forming the pipeline. Parameters
-            will be updated from the `parameters` argument for each combination.
-        parameters: List of dictionaries mapping parameter names to lists of values.
-            One dict per operation. Empty dict means no parameters to vary for that
-            operation. Example: [{"sigma": [1.0, 2.0, 3.0]}, {}]
+        ops: List of (operation, params_dict) tuples. Each tuple contains an
+            ImageOperation instance and a dictionary mapping parameter names to
+            lists of values to test. Empty dict means no parameters to vary for that
+            operation. Example: [(GaussianBlur(sigma=1.0), {"sigma": [1.0, 2.0, 3.0]}),
+                                 (OtsuDetector(), {})]
         data_layers: Which image data to display in napari viewer. Always adds
             original RGB and gray first. Valid options: "rgb", "gray", "enh_gray",
             "objmask", "objmap". Defaults to all available layers.
@@ -303,12 +348,11 @@ def PipelineGridSearch(
     Returns:
         napari.Viewer: If return_results=False (default)
         Tuple[napari.Viewer, Dict]: If return_results=True, where Dict maps
-            parameter tuples to processed Image objects. Dictionary keys are tuples
-            of (param_name, param_value) pairs.
+            parameter tuples to processed Image objects.
 
     Raises:
-        ValueError: If operations/parameters length mismatch, parameter names don't
-            match operation attributes, or data_layers contains invalid names.
+        ValueError: If ops format is invalid, parameter names don't match operation
+            attributes, or data_layers contains invalid names.
 
     Example:
         >>> from phenotypic import Image
@@ -317,41 +361,38 @@ def PipelineGridSearch(
         >>> from phenotypic.util import PipelineGridSearch
         >>>
         >>> image = Image.imread('colony_plate.jpg')
-        >>> operations = [GaussianBlur(sigma=1.0), OtsuDetector()]
-        >>> parameters = [{"sigma": [1.0, 2.0, 3.0]}, {}]
+        >>> ops = [
+        ...     (GaussianBlur(sigma=1.0), {"sigma": [1.0, 2.0, 3.0]}),
+        ...     (OtsuDetector(), {})
+        ... ]
         >>>
         >>> # Get viewer only
-        >>> viewer = PipelineGridSearch(
-        ...     image=image,
-        ...     operations=operations,
-        ...     parameters=parameters,
-        ...     n_jobs=-1
-        ... )
+        >>> viewer = PipelineGridSearch(image=image, ops=ops, n_jobs=-1)
         >>>
         >>> # Or get results dictionary too
         >>> viewer, results = PipelineGridSearch(
-        ...     image=image,
-        ...     operations=operations,
-        ...     parameters=parameters,
-        ...     return_results=True
+        ...     image=image, ops=ops, return_results=True
         ... )
     """
     import napari
     from joblib import Parallel, delayed
 
     # 1. Validate inputs
-    _validate_inputs(image, operations, parameters, data_layers)
+    _validate_inputs(image, ops, data_layers)
 
-    # 2. Generate parameter combinations
+    # 2. Unpack ops tuples into separate lists
+    operations, parameters = _unpack_ops_tuples(ops)
+
+    # 3. Generate parameter combinations
     all_configs = _generate_param_combinations(parameters)
 
-    # 3. Execute pipelines in parallel
+    # 4. Execute pipelines in parallel
     results = Parallel(n_jobs=n_jobs)(
             delayed(_execute_single_pipeline)(image, operations, config)
             for config in all_configs
     )
 
-    # 4. Create napari viewer and add layers
+    # 5. Create napari viewer and add layers
     viewer = napari.Viewer(title=viewer_title)
 
     # Add original reference layers
@@ -365,7 +406,7 @@ def PipelineGridSearch(
         if not return_results:
             del result_img
 
-    # 5. Return viewer and optionally results dictionary
+    # 6. Return viewer and optionally results dictionary
     if return_results:
         results_dict = _build_results_dict(results)
         return viewer, results_dict
@@ -397,8 +438,7 @@ def MultiPipelineGridSearch(
         pipeline_configs: List of pipeline configuration dictionaries. Each dict
             must contain:
             - "name" (str): Descriptive name for this pipeline (e.g., "GaussianBlur_Otsu")
-            - "ops" (List[ImageOperation]): Operations for this pipeline
-            - "params" (List[Dict[str, List[Any]]]): Parameter grids for each operation
+            - "ops" (List[Tuple]): List of (operation, params_dict) tuples
         data_layers: Which image data to display in napari viewer. Valid options:
             "rgb", "gray", "enh_gray", "objmask", "objmap". Defaults to all available.
         n_jobs: Number of parallel jobs for joblib. -1 uses all available cores.
@@ -418,7 +458,7 @@ def MultiPipelineGridSearch(
     Example:
         >>> from phenotypic import Image
         >>> from phenotypic.enhance import GaussianBlur, MedianFilter
-        >>> from phenotypic.detect import OtsuDetector, CannyDetector
+        >>> from phenotypic.detect import OtsuDetector
         >>> from phenotypic.util import MultiPipelineGridSearch
         >>>
         >>> image = Image.imread('colony_plate.jpg')
@@ -426,13 +466,17 @@ def MultiPipelineGridSearch(
         >>> pipeline_configs = [
         ...     {
         ...         "name": "GaussianBlur_Otsu",
-        ...         "ops": [GaussianBlur(sigma=1.0), OtsuDetector()],
-        ...         "params": [{"sigma": [1.0, 2.0, 3.0]}, {}]
+        ...         "ops": [
+        ...             (GaussianBlur(sigma=1.0), {"sigma": [1.0, 2.0, 3.0]}),
+        ...             (OtsuDetector(), {})
+        ...         ]
         ...     },
         ...     {
         ...         "name": "MedianFilter_Otsu",
-        ...         "ops": [MedianFilter(size=3), OtsuDetector()],
-        ...         "params": [{"size": [3, 5, 7]}, {}]
+        ...         "ops": [
+        ...             (MedianFilter(size=3), {"size": [3, 5, 7]}),
+        ...             (OtsuDetector(), {})
+        ...         ]
         ...     }
         ... ]
         >>>
@@ -460,8 +504,10 @@ def MultiPipelineGridSearch(
     # Process each pipeline configuration
     for config_idx, config in enumerate(pipeline_configs):
         pipeline_name = config["name"]
-        operations = config["ops"]
-        parameters = config["params"]
+        ops = config["ops"]
+
+        # Unpack ops tuples
+        operations, parameters = _unpack_ops_tuples(ops)
 
         # Generate parameter combinations for this pipeline
         param_configs = _generate_param_combinations(parameters)
