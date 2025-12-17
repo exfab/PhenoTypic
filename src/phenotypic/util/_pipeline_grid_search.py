@@ -195,7 +195,7 @@ def _execute_single_pipeline(
         image: Image,
         operations: List[ImageOperation],
         param_config: Tuple[Dict[str, Any], ...],
-) -> Tuple[Image, Tuple[Dict[str, Any], ...]]:
+) -> Tuple[Image, Tuple[Dict[str, Any], ...], str]:
     """Execute a single pipeline with given parameter configuration.
 
     Args:
@@ -204,7 +204,7 @@ def _execute_single_pipeline(
         param_config: Parameter values for this configuration
 
     Returns:
-        Tuple of (processed_image, param_config)
+        Tuple of (processed_image, param_config, json_config)
     """
     from phenotypic import ImagePipeline
 
@@ -220,7 +220,10 @@ def _execute_single_pipeline(
     pipeline = ImagePipeline(ops=ops_copy)
     result = pipeline.apply(image.copy())
 
-    return result, param_config
+    # Serialize pipeline configuration to JSON
+    json_config = pipeline.to_json_str()
+
+    return result, param_config, json_config
 
 
 def _add_original_layers(viewer: napari.Viewer, image: Image) -> None:
@@ -314,6 +317,34 @@ def _build_results_dict(
     return results_dict
 
 
+def _build_configs_dict(
+        results: List[Tuple[Image, Tuple[Dict[str, Any], ...], str]],
+        pipeline_name: str = None,
+) -> Dict[str, str]:
+    """Build dictionary mapping base layer names to serialized pipeline configs.
+
+    Args:
+        results: List of (image, param_config, json_config) tuples
+        pipeline_name: Optional pipeline name prefix for MultiPipelineGridSearch
+
+    Returns:
+        Dictionary with base layer names as keys, JSON config strings as values
+    """
+    configs_dict = {}
+    for result_idx, (result_img, param_config, json_config) in enumerate(results):
+        param_str = _create_param_name_string(param_config)
+
+        # Build layer name based on whether pipeline_name is provided
+        if pipeline_name:
+            layer_name = f"{pipeline_name}_{result_idx:03d}_{param_str}"
+        else:
+            layer_name = f"{result_idx:03d}_{param_str}"
+
+        configs_dict[layer_name] = json_config
+
+    return configs_dict
+
+
 def PipelineGridSearch(
         image: Image,
         ops: List[Tuple[ImageOperation, Dict[str, List[Any]]]],
@@ -321,7 +352,7 @@ def PipelineGridSearch(
         n_jobs: int = -1,
         return_results: bool = False,
         viewer_title: str = "Pipeline Grid Search",
-) -> Union[napari.Viewer, Tuple[napari.Viewer, Dict]]:
+) -> Union[Tuple[napari.Viewer, Dict], Tuple[napari.Viewer, Dict, Dict]]:
     """Execute parameter grid search with parallel pipelines and napari visualization.
 
     Generates all combinations of provided parameters, executes ImagePipeline for each
@@ -341,14 +372,15 @@ def PipelineGridSearch(
             "objmask", "objmap". Defaults to all available layers.
         n_jobs: Number of parallel jobs for joblib. -1 uses all available cores.
             Default -1.
-        return_results: If True, returns tuple of (viewer, results_dict). If False
-            (default), returns only viewer.
+        return_results: If True, also returns dict of processed Image objects. If False
+            (default), only image results are not included.
         viewer_title: Title for the napari viewer window.
 
     Returns:
-        napari.Viewer: If return_results=False (default)
-        Tuple[napari.Viewer, Dict]: If return_results=True, where Dict maps
-            parameter tuples to processed Image objects.
+        Tuple[napari.Viewer, Dict]: Always returns (viewer, configs_dict). Configs dict maps
+            base layer names to serialized pipeline configuration JSON strings.
+        Tuple[napari.Viewer, Dict, Dict]: If return_results=True, returns (viewer, results_dict,
+            configs_dict) where results_dict maps parameter tuples to processed Image objects.
 
     Raises:
         ValueError: If ops format is invalid, parameter names don't match operation
@@ -366,16 +398,17 @@ def PipelineGridSearch(
         ...     (OtsuDetector(), {})
         ... ]
         >>>
-        >>> # Get viewer only
-        >>> viewer = PipelineGridSearch(image=image, ops=ops, n_jobs=-1)
+        >>> # Always get viewer and configs
+        >>> viewer, configs = PipelineGridSearch(image=image, ops=ops, n_jobs=-1)
         >>>
-        >>> # Or get results dictionary too
-        >>> viewer, results = PipelineGridSearch(
+        >>> # Or also get image results
+        >>> viewer, results, configs = PipelineGridSearch(
         ...     image=image, ops=ops, return_results=True
         ... )
     """
     import napari
     from joblib import Parallel, delayed
+    from tqdm_joblib import tqdm_joblib
 
     # 1. Validate inputs
     _validate_inputs(image, ops, data_layers)
@@ -387,10 +420,11 @@ def PipelineGridSearch(
     all_configs = _generate_param_combinations(parameters)
 
     # 4. Execute pipelines in parallel
-    results = Parallel(n_jobs=n_jobs)(
-            delayed(_execute_single_pipeline)(image, operations, config)
-            for config in all_configs
-    )
+    with tqdm_joblib(desc="PipelineGridSearch", total=len(all_configs)):
+        results = Parallel(n_jobs=n_jobs)(
+                delayed(_execute_single_pipeline)(image, operations, config)
+                for config in all_configs
+        )
 
     # 5. Create napari viewer and add layers
     viewer = napari.Viewer(title=viewer_title)
@@ -398,22 +432,33 @@ def PipelineGridSearch(
     # Add original reference layers
     _add_original_layers(viewer, image)
 
+    # Storage for results and configs
+    results_dict = {} if return_results else None
+    configs_dict = {}
+
     # Add result layers for each parameter combination
-    for idx, (result_img, param_config) in enumerate(results):
+    for idx, (result_img, param_config, json_config) in enumerate(results):
         _add_result_layers(viewer, result_img, param_config, data_layers, idx)
 
-        # Delete result image if not returning results (memory optimization)
-        if not return_results:
+        # Store config always
+        param_str = _create_param_name_string(param_config)
+        layer_name = f"{idx:03d}_{param_str}"
+        configs_dict[layer_name] = json_config
+
+        # Store result if requested
+        if return_results:
+            key = tuple(tuple(sorted(params.items())) for params in param_config)
+            results_dict[key] = result_img
+        else:
             del result_img
 
-    # 6. Return viewer and optionally results dictionary
+    # 6. Return viewer, results (optional), and configs (always)
     if return_results:
-        results_dict = _build_results_dict(results)
-        return viewer, results_dict
+        return viewer, configs_dict, results_dict
     else:
         # Delete remaining result references for memory cleanup
         del results
-        return viewer
+        return viewer, configs_dict
 
 
 def MultiPipelineGridSearch(
@@ -423,7 +468,7 @@ def MultiPipelineGridSearch(
         n_jobs: int = -1,
         return_results: bool = False,
         viewer_title: str = "Multi-Pipeline Grid Search",
-) -> Union[napari.Viewer, Tuple[napari.Viewer, Dict]]:
+) -> Union[Tuple[napari.Viewer, Dict], Tuple[napari.Viewer, Dict, Dict]]:
     """Execute grid search across multiple pipeline configurations.
 
     Allows comparing different algorithm combinations and architectures. Each pipeline
@@ -442,14 +487,17 @@ def MultiPipelineGridSearch(
         data_layers: Which image data to display in napari viewer. Valid options:
             "rgb", "gray", "enh_gray", "objmask", "objmap". Defaults to all available.
         n_jobs: Number of parallel jobs for joblib. -1 uses all available cores.
-        return_results: If True, returns tuple of (viewer, results_dict). If False
-            (default), returns only viewer.
+        return_results: If True, also returns dict of processed Image objects. If False
+            (default), only image results are not included.
         viewer_title: Title for the napari viewer window.
 
     Returns:
-        napari.Viewer: If return_results=False (default)
-        Tuple[napari.Viewer, Dict]: If return_results=True, where Dict maps
-            (pipeline_name, param_tuple) to processed Image objects.
+        Tuple[napari.Viewer, Dict]: Always returns (viewer, configs_dict). Configs dict maps
+            base layer names (with pipeline prefix) to serialized pipeline configuration JSON
+            strings.
+        Tuple[napari.Viewer, Dict, Dict]: If return_results=True, returns (viewer, results_dict,
+            configs_dict) where results_dict maps (pipeline_name, param_tuple) to processed Image
+            objects.
 
     Raises:
         ValueError: If pipeline_configs is empty, contains invalid structures,
@@ -498,8 +546,9 @@ def MultiPipelineGridSearch(
     # Add original reference layers once
     _add_original_layers(viewer, image)
 
-    # Storage for combined results if needed
+    # Storage for combined results and configs
     all_results = {} if return_results else None
+    all_configs = {}
 
     # Process each pipeline configuration
     for config_idx, config in enumerate(pipeline_configs):
@@ -519,7 +568,7 @@ def MultiPipelineGridSearch(
         )
 
         # Add results to viewer with pipeline name prefix
-        for result_idx, (result_img, param_config) in enumerate(results):
+        for result_idx, (result_img, param_config, json_config) in enumerate(results):
             param_str = _create_param_name_string(param_config)
 
             # Add layers with pipeline name prefix
@@ -530,7 +579,11 @@ def MultiPipelineGridSearch(
                 )
                 _add_result_layer(viewer, result_img, data_layer, layer_name)
 
-            # Store in results dict if requested, otherwise delete for memory optimization
+            # Store config always
+            config_key = f"{pipeline_name}_{result_idx:03d}_{param_str}"
+            all_configs[config_key] = json_config
+
+            # Store result if requested
             if return_results:
                 key = (
                     pipeline_name,
@@ -540,13 +593,13 @@ def MultiPipelineGridSearch(
             else:
                 del result_img
 
-    # Return viewer and optionally results
+    # Return viewer, results (optional), and configs (always)
     if return_results:
-        return viewer, all_results
+        return viewer, all_configs, all_results
     else:
         # Delete results list for memory cleanup
         del results
-        return viewer
+        return viewer, all_configs
 
 
 __all__ = ["PipelineGridSearch", "MultiPipelineGridSearch"]
