@@ -7,6 +7,8 @@ with parallel execution via joblib and visualization in napari.
 from __future__ import annotations
 
 import copy
+import logging
+import time
 from dataclasses import dataclass, field
 from itertools import product
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
@@ -14,6 +16,20 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 if TYPE_CHECKING:
     import napari
     from phenotypic import Image, ImageOperation
+
+logger = logging.getLogger(__name__)
+
+
+def _get_memory_usage() -> float:
+    """Get current process memory usage in MB.
+
+    Returns:
+        Memory usage of current process in MB
+    """
+    import psutil
+    process = psutil.Process()
+    return process.memory_info().rss / 1024 / 1024
+
 
 
 def _ops_key(op: "ImageOperation", params: Dict[str, Any]) -> Tuple:
@@ -223,8 +239,8 @@ def _create_param_name_string(param_config: Tuple[Dict[str, Any], ...]) -> str:
 
 
 def _extract_data_layers(
-    result_img: "Image",
-    data_layers: List[str],
+        result_img: "Image",
+        data_layers: List[str],
 ) -> Dict[str, Any]:
     """Extract only requested data layers as independent array copies.
 
@@ -275,10 +291,10 @@ def _extract_data_layers(
 
 
 def _estimate_pipeline_memory(
-    image: "Image",
-    num_operations: int,
-    data_layers: List[str],
-    extract_arrays: bool = True,
+        image: "Image",
+        num_operations: int,
+        data_layers: List[str],
+        extract_arrays: bool = True,
 ) -> int:
     """Estimate peak memory usage for one pipeline execution in bytes.
 
@@ -326,15 +342,20 @@ def _estimate_pipeline_memory(
         extracted_size = 0
         for layer in data_layers:
             if layer == "rgb" and rgb_data is not None and rgb_data.size > 0:
-                extracted_size += sys.getsizeof(rgb_data)
+                extracted_size += (np.prod(rgb_data.shape, dtype=rgb_data.dtype)
+                                   * rgb_data.itemsize)
             elif layer == "gray" and gray_data is not None:
-                extracted_size += sys.getsizeof(gray_data)
+                extracted_size += (np.prod(gray_data.shape, dtype=gray_data.dtype)
+                                   * gray_data.itemsize)
             elif layer == "enh_gray" and enh_gray_data is not None:
-                extracted_size += sys.getsizeof(enh_gray_data)
+                extracted_size += (np.prod(enh_gray_data.shape,
+                                           dtype=enh_gray_data.dtype)
+                                   * enh_gray_data.itemsize)
             elif layer in ["objmask", "objmap"]:
                 # Estimate label map size (conservative: same as gray)
                 if gray_data is not None:
-                    extracted_size += sys.getsizeof(gray_data)
+                    extracted_size += (np.prod(enh_gray_data.shape, dtype=np.uint16)
+                                       * rgb_data.itemsize)
 
         # Peak: base image + extracted arrays + overhead (20%)
         return int((base_size + extracted_size) * 1.2)
@@ -346,10 +367,10 @@ def _estimate_pipeline_memory(
 
 
 def _calculate_optimal_batch_size(
-    total_pipelines: int,
-    memory_per_pipeline: int,
-    memory_limit_gb: float = None,
-    n_jobs: int = -1,
+        total_pipelines: int,
+        memory_per_pipeline: int,
+        memory_limit_gb: float = None,
+        n_jobs: int = -1,
 ) -> Tuple[int, int]:
     """Calculate optimal batch size and parallelism for memory-constrained execution.
 
@@ -392,7 +413,7 @@ def _calculate_optimal_batch_size(
         available_memory = psutil.virtual_memory().available
         memory_limit = int(available_memory * 0.75)
     else:
-        memory_limit = int(memory_limit_gb * 1024**3)
+        memory_limit = int(memory_limit_gb * 1024 ** 3)
 
     # Calculate max parallel pipelines that fit in memory
     max_parallel = max(1, memory_limit // memory_per_pipeline)
@@ -464,7 +485,7 @@ def _expand_pipeline_configs_to_concrete(
             # Add concrete config to list
             concrete_configs.append({
                 "name": concrete_name,
-                "ops": concrete_ops,
+                "ops" : concrete_ops,
             })
 
     return concrete_configs
@@ -512,6 +533,201 @@ def _build_pipeline_trie(
     return root
 
 
+def _analyze_trie_structure(root: _TrieNode) -> Dict[str, Any]:
+    """Analyze trie structure for logging and optimization decisions.
+
+    Args:
+        root: Root node of the execution trie
+
+    Returns:
+        Dictionary with structure statistics including depth, branch points, and path count
+    """
+    def count_descendants(node: _TrieNode) -> Tuple[int, int, int]:
+        """Count depth, branch points, and total leaf paths from node.
+
+        Returns:
+            Tuple of (max_depth, branch_point_count, leaf_path_count)
+        """
+        if not node.children:
+            return 0, 0, 1  # Leaf node
+
+        max_depth = 0
+        total_branches = 0
+        total_paths = 1
+
+        for child in node.children.values():
+            child_depth, child_branches, child_paths = count_descendants(child)
+            max_depth = max(max_depth, child_depth + 1)
+            total_branches += child_branches
+            total_paths *= child_paths
+
+        # This node is a branch point if it has multiple children
+        if len(node.children) > 1:
+            total_branches += 1
+
+        return max_depth, total_branches, total_paths
+
+    depth, branch_points, total_paths = count_descendants(root)
+
+    return {
+        "max_depth": depth,
+        "branch_points": branch_points,
+        "total_leaf_paths": total_paths,
+        "total_nodes": _count_trie_nodes(root),
+    }
+
+
+def _count_trie_nodes(node: _TrieNode) -> int:
+    """Count total nodes in trie (helper for analysis)."""
+    count = 1
+    for child in node.children.values():
+        count += _count_trie_nodes(child)
+    return count
+
+
+def _find_first_branch_point(
+        root: _TrieNode,
+) -> Tuple[_TrieNode, List["ImageOperation"]]:
+    """Find first node with multiple children, return node and ops_stack to that point.
+
+    Traverses trie from root serially until finding a node with multiple children
+    (first branch point). Returns that node and the operation stack to reach it.
+    If no branch point exists (linear trie), returns the leaf node.
+
+    Args:
+        root: Root node of the execution trie
+
+    Returns:
+        Tuple of (branch_point_node, operations_stack) where operations_stack
+        contains all ImageOperation objects from root to branch point (not including
+        branch point's children operations)
+    """
+    current = root
+    ops_stack = []
+
+    while current.children:
+        if len(current.children) > 1:
+            # Found first branch point
+            logger.debug(
+                f"Branch point found with {len(current.children)} children at "
+                f"depth {len(ops_stack)}"
+            )
+            return current, ops_stack
+
+        # Linear path: single child, continue traversing
+        child_node = next(iter(current.children.values()))
+        if child_node.op is not None:
+            ops_stack.append(child_node.op)
+        current = child_node
+
+    # No branch point found - trie is linear
+    logger.debug(f"No branch point found - linear trie with depth {len(ops_stack)}")
+    return current, ops_stack
+
+
+def _enumerate_downstream_paths(
+        node: _TrieNode,
+        ops_stack: List["ImageOperation"],
+) -> List[Tuple[str, List["ImageOperation"]]]:
+    """Enumerate all pipeline paths from node to leaf nodes.
+
+    Recursively traverses from given node to all leaf endpoints, building complete
+    operation stacks for each path. Returns list of (pipeline_name, full_ops_list).
+
+    Args:
+        node: Starting node (typically a branch point)
+        ops_stack: Operations already applied to reach this node
+
+    Returns:
+        List of (pipeline_name, operations_list) tuples, one per pipeline
+    """
+    pipelines = []
+
+    # If this node is a pipeline endpoint, add to results
+    if node.pipeline_names:
+        for name in node.pipeline_names:
+            pipelines.append((name, ops_stack.copy()))
+
+    # Process children recursively
+    for child_node in node.children.values():
+        child_ops = ops_stack.copy()
+        if child_node.op is not None:
+            child_ops.append(child_node.op)
+
+        # Recursively get paths from child
+        child_pipelines = _enumerate_downstream_paths(child_node, child_ops)
+        pipelines.extend(child_pipelines)
+
+    return pipelines
+
+
+def _execute_concrete_pipeline_batch(
+        image: "Image",
+        pipeline_specs: List[Tuple[str, List["ImageOperation"]]],
+        shared_prefix_len: int,
+        data_layers: List[str],
+        extract_arrays: bool = True,
+) -> List[Tuple[str, Any, str]]:
+    """Execute concrete pipelines that share a common prefix image.
+
+    Takes a batch of pipeline specifications that all operate on the same
+    pre-processed image (from shared prefix). Executes only the operations
+    AFTER the shared prefix and returns results.
+
+    Args:
+        image: Pre-processed image from shared prefix execution
+        pipeline_specs: List of (pipeline_name, full_operations_list) tuples
+        shared_prefix_len: Number of operations in shared prefix to skip
+        data_layers: List of data layers to extract
+        extract_arrays: Whether to extract arrays (vs returning full Image objects)
+
+    Returns:
+        List of (pipeline_name, result_data, json_config) tuples
+    """
+    from phenotypic import ImagePipeline
+
+    results = []
+
+    for pipeline_name, all_ops in pipeline_specs:
+        # Get only the operations after the shared prefix
+        remaining_ops = all_ops[shared_prefix_len:]
+
+        if not remaining_ops:
+            # No operations to apply - result is the input image
+            result_image = image.copy()
+            full_ops = all_ops
+        else:
+            # Deep copy operations to avoid parameter sharing between executions
+            ops_copy = []
+            for op in remaining_ops:
+                ops_copy.append(copy.deepcopy(op))
+
+            # Apply remaining operations to the already-processed image
+            result_image = image.copy()
+            for op in ops_copy:
+                result_image = op.apply(result_image)
+
+            full_ops = all_ops
+
+        # Create pipeline with FULL ops for serialization
+        pipeline = ImagePipeline(ops=copy.deepcopy(full_ops))
+
+        # Extract data or keep full image
+        if extract_arrays:
+            result_data = _extract_data_layers(result_image, data_layers)
+        else:
+            result_data = result_image
+
+        # Serialize config
+        json_config = pipeline.to_json_str()
+
+        results.append((pipeline_name, result_data, json_config))
+        logger.debug(f"Pipeline '{pipeline_name}' completed")
+
+    return results
+
+
+
 def _execute_pipeline_trie(
         root: _TrieNode,
         image: "Image",
@@ -519,11 +735,14 @@ def _execute_pipeline_trie(
         data_layers: List[str] = None,
         extract_arrays: bool = True,
 ):
-    """Execute pipeline trie depth-first with shared prefix optimization.
+    """Execute pipeline trie using shallow traversal with top-level parallelization.
 
-    Executes shared prefix operations once and reuses intermediate results
-    for divergent branches. Uses parallel execution for independent branches
-    at each level. Yields results as they complete to minimize memory usage.
+    Implements hybrid approach:
+    1. Serial traversal: Follow shared prefix path until reaching first branch point
+    2. Parallel execution: Execute all divergent branches in parallel using joblib
+
+    This avoids nested parallelization deadlocks while maintaining shared prefix
+    optimization and enabling true parallel execution of divergent branches.
 
     Args:
         root: Root node of the execution trie
@@ -535,130 +754,109 @@ def _execute_pipeline_trie(
             full Image objects. Reduces memory by ~10×.
 
     Yields:
-        If extract_arrays=True:
-            Tuple of (pipeline_name, extracted_arrays_dict, json_config)
-        If extract_arrays=False:
-            Tuple of (pipeline_name, result_image, json_config)
+        Tuple of (pipeline_name, result_data, json_config) where result_data is
+        extracted arrays dict (if extract_arrays=True) or Image object otherwise
     """
     from joblib import Parallel, delayed
-    from phenotypic import ImagePipeline
 
     # Default data layers if not specified
     if data_layers is None:
         data_layers = ["rgb", "gray", "enh_gray", "objmask", "objmap"]
 
-    def _process_node(
-            node: _TrieNode,
-            current_image: "Image",
-            ops_stack: List["ImageOperation"],
-    ):
-        """Recursively process trie node and yield results.
+    mem_start = _get_memory_usage()
+    logger.debug(f"Initial memory usage: {mem_start:.1f} MB")
 
-        Args:
-            node: Current trie node
-            current_image: Image state at this node
-            ops_stack: List of operations applied so far
+    # Step 1: Analyze trie structure
+    trie_stats = _analyze_trie_structure(root)
+    logger.info(f"Trie structure: depth={trie_stats['max_depth']}, "
+                f"branch_points={trie_stats['branch_points']}, "
+                f"leaf_paths={trie_stats['total_leaf_paths']}")
 
-        Yields:
-            Tuple of (pipeline_name, result_image, json_config)
-        """
-        # If this node is a pipeline endpoint, yield result
-        if node.pipeline_names:
-            for idx, pipeline_name in enumerate(node.pipeline_names):
-                # Create pipeline from ops_stack for serialization
-                pipeline = ImagePipeline(ops=ops_stack)
-                json_config = pipeline.to_json_str()
+    # Step 2: Find first branch point and get shared prefix operations
+    start_time = time.time()
+    branch_node, shared_prefix_ops = _find_first_branch_point(root)
+    shared_prefix_len = len(shared_prefix_ops)
+    logger.debug(f"Shared prefix: {shared_prefix_len} operations")
 
-                # Extract arrays or yield full image based on extract_arrays flag
-                if extract_arrays:
-                    # Extract only requested data layers
-                    extracted = _extract_data_layers(current_image, data_layers)
+    # Step 3: Execute shared prefix operations once
+    if shared_prefix_ops:
+        logger.info(f"Executing shared prefix ({shared_prefix_len} operations)...")
+        prefix_start = time.time()
+        mem_before_prefix = _get_memory_usage()
+        current_image = image
+        for op in shared_prefix_ops:
+            current_image = op.apply(current_image.copy())
+        prefix_time = time.time() - prefix_start
+        mem_after_prefix = _get_memory_usage()
+        logger.info(f"Shared prefix execution completed in {prefix_time:.2f}s "
+                    f"(memory: {mem_before_prefix:.1f} MB → {mem_after_prefix:.1f} MB)")
+    else:
+        current_image = image
 
-                    # Only copy if multiple pipelines share this endpoint
-                    if len(node.pipeline_names) > 1 and idx < len(node.pipeline_names) - 1:
-                        yield (pipeline_name, extracted, json_config)
-                    else:
-                        # Last/only pipeline can use extracted data directly
-                        yield (pipeline_name, extracted, json_config)
-                else:
-                    # Original behavior: yield full Image objects
-                    if len(node.pipeline_names) > 1 and idx < len(node.pipeline_names) - 1:
-                        yield (pipeline_name, current_image.copy(), json_config)
-                    else:
-                        # Last/only pipeline can use image directly
-                        yield (pipeline_name, current_image, json_config)
+    # Step 4: Enumerate all downstream paths from branch point
+    logger.debug("Enumerating downstream pipeline paths...")
+    pipeline_specs = _enumerate_downstream_paths(branch_node, shared_prefix_ops)
+    logger.info(f"Enumerated {len(pipeline_specs)} pipeline paths")
 
-        # Process children
-        if node.children:
-            # Prepare child processing tasks
-            child_tasks = []
-            for child_node in node.children.values():
-                # Deep copy the operation and apply parameters from trie node
-                op_copy = copy.deepcopy(child_node.op)
-                for key, value in child_node.params.items():
-                    setattr(op_copy, key, value)
+    if not pipeline_specs:
+        logger.warning("No pipeline paths found from branch point")
+        return
 
-                child_tasks.append((child_node, op_copy))
+    # Step 5: Execute all pipelines in parallel using joblib (top-level only)
+    if len(pipeline_specs) > 1 and n_jobs != 1:
+        logger.info(f"Executing {len(pipeline_specs)} pipelines in parallel "
+                    f"(n_jobs={n_jobs})")
+        parallel_start = time.time()
+        mem_before_parallel = _get_memory_usage()
 
-            num_children = len(child_tasks)
+        # Create joblib delayed tasks
+        tasks = [
+            delayed(_execute_concrete_pipeline_batch)(
+                current_image,
+                [(name, ops)],
+                shared_prefix_len,
+                data_layers,
+                extract_arrays,
+            )
+            for name, ops in pipeline_specs
+        ]
 
-            # Smart copying: minimize copies at branch points
-            # - Linear path (1 child): use current_image directly
-            # - Branch point + parallel: need copies for thread safety
-            # - Branch point + serial: copy for all except last child
+        # Execute in parallel
+        batch_results = Parallel(n_jobs=n_jobs, verbose=10)(tasks)
 
-            if num_children > 1 and n_jobs != 1:
-                # Parallel execution: all branches must have independent image copies
-                # for thread safety
-                def _process_branch(child_node, op_copy):
-                    # Copy current_image for this branch (thread safety)
-                    branch_image = op_copy.apply(current_image.copy())
-                    # Recursively process this branch and collect results
-                    new_stack = ops_stack + [op_copy]
-                    return list(_process_node(child_node, branch_image, new_stack))
+        parallel_time = time.time() - parallel_start
+        mem_after_parallel = _get_memory_usage()
+        logger.info(f"Parallel execution completed in {parallel_time:.2f}s "
+                    f"(memory: {mem_before_parallel:.1f} MB → {mem_after_parallel:.1f} MB)")
 
-                branch_results = Parallel(n_jobs=n_jobs)(
-                        delayed(_process_branch)(child_node, op_copy)
-                        for child_node, op_copy in child_tasks
-                )
+        # Flatten results from batch execution
+        for batch in batch_results:
+            for result in batch:
+                yield result
+    else:
+        # Serial execution
+        if len(pipeline_specs) > 1:
+            logger.info(f"Executing {len(pipeline_specs)} pipelines serially "
+                        f"(n_jobs=1)")
+        serial_start = time.time()
+        mem_before_serial = _get_memory_usage()
 
-                # Yield results from all branches
-                for branch_result_list in branch_results:
-                    for result in branch_result_list:
-                        yield result
+        results = _execute_concrete_pipeline_batch(
+            current_image, pipeline_specs, shared_prefix_len, data_layers, extract_arrays
+        )
 
-            elif num_children > 1:
-                # Serial execution with multiple children: optimize last child
-                # Copy for all branches except the last one (can reuse image)
-                for idx, (child_node, op_copy) in enumerate(child_tasks):
-                    is_last_child = (idx == num_children - 1)
+        serial_time = time.time() - serial_start
+        mem_after_serial = _get_memory_usage()
+        logger.info(f"Serial execution completed in {serial_time:.2f}s "
+                    f"(memory: {mem_before_serial:.1f} MB → {mem_after_serial:.1f} MB)")
 
-                    if is_last_child:
-                        # Last child can use current_image directly (no further siblings)
-                        branch_image = op_copy.apply(current_image)
-                    else:
-                        # Earlier children must copy to preserve image for siblings
-                        child_copy = current_image.copy()
-                        branch_image = op_copy.apply(child_copy)
+        for result in results:
+            yield result
 
-                    # Recursively process and yield results
-                    new_stack = ops_stack + [op_copy]
-                    for result in _process_node(child_node, branch_image, new_stack):
-                        yield result
-
-            else:
-                # Linear path (single child): use current_image directly
-                for child_node, op_copy in child_tasks:
-                    # Apply operation directly without extra copying
-                    branch_image = op_copy.apply(current_image)
-                    # Recursively process and yield results
-                    new_stack = ops_stack + [op_copy]
-                    for result in _process_node(child_node, branch_image, new_stack):
-                        yield result
-
-    # Start recursive processing from root and yield results
-    for result in _process_node(root, image, []):
-        yield result
+    total_time = time.time() - start_time
+    mem_end = _get_memory_usage()
+    logger.info(f"Total trie execution time: {total_time:.2f}s "
+                f"(memory: {mem_start:.1f} MB → {mem_end:.1f} MB)")
 
 
 def _execute_single_pipeline(
@@ -1089,46 +1287,64 @@ def MultiPipelineGridSearch(
         # Step 1: Expand all parameter combinations into concrete pipelines
         concrete_configs = _expand_pipeline_configs_to_concrete(pipeline_configs)
         total_pipelines = len(concrete_configs)
+        logger.info(f"Expanded {len(pipeline_configs)} pipeline configs into "
+                    f"{total_pipelines} concrete pipelines")
 
         # Step 2: Determine batch size and parallelism
         if adaptive_batching and total_pipelines > 1:
             # Estimate memory per pipeline
-            avg_ops = sum(len(c["ops"]) for c in concrete_configs) / len(concrete_configs)
+            avg_ops = sum(len(c["ops"]) for c in concrete_configs) / len(
+                concrete_configs)
             memory_per_pipeline = _estimate_pipeline_memory(
-                image, int(avg_ops), data_layers, extract_arrays=True
+                    image, int(avg_ops), data_layers, extract_arrays=True
             )
 
             # Calculate optimal batching
             batch_size, jobs_per_batch = _calculate_optimal_batch_size(
-                total_pipelines, memory_per_pipeline, memory_limit_gb, n_jobs
+                    total_pipelines, memory_per_pipeline, memory_limit_gb, n_jobs
             )
 
-            print(f"Adaptive batching: {total_pipelines} pipelines in batches of "
-                  f"{batch_size} with {jobs_per_batch} parallel jobs")
-            print(f"Estimated memory per pipeline: {memory_per_pipeline / 1024**2:.1f} MB")
+            logger.info(f"Adaptive batching: {total_pipelines} pipelines in batches of "
+                        f"{batch_size} with {jobs_per_batch} parallel jobs")
+            logger.info(
+                    f"Estimated memory per pipeline: "
+                    f"{memory_per_pipeline / 1024 ** 2:.1f} MB")
         else:
             # Process all at once (original behavior)
             batch_size = total_pipelines
             jobs_per_batch = n_jobs
+            logger.info(f"Processing {total_pipelines} pipelines without batching")
 
         # Step 3: Process in batches
-        for batch_start in range(0, total_pipelines, batch_size):
+        global_start_time = time.time()
+        for batch_idx, batch_start in enumerate(range(0, total_pipelines, batch_size)):
             batch_end = min(batch_start + batch_size, total_pipelines)
             batch_configs = concrete_configs[batch_start:batch_end]
+            batch_pipeline_count = batch_end - batch_start
 
             if adaptive_batching and total_pipelines > batch_size:
                 batch_num = (batch_start // batch_size) + 1
                 total_batches = (total_pipelines + batch_size - 1) // batch_size
-                print(f"Processing batch {batch_num}/{total_batches}: "
-                      f"pipelines {batch_start} to {batch_end-1}")
+                mem_before = _get_memory_usage()
+                logger.info(f"Processing batch {batch_num}/{total_batches}: "
+                            f"pipelines {batch_start} to {batch_end - 1} "
+                            f"({batch_pipeline_count} pipelines, {mem_before:.1f} MB)")
+
+            batch_start_time = time.time()
 
             # Build trie for this batch
+            logger.debug(f"Building trie for batch with {batch_pipeline_count} pipelines")
             batch_trie = _build_pipeline_trie(batch_configs)
 
             # Execute batch with shared prefix optimization
+            logger.debug(f"Starting trie execution for batch")
+            pipeline_results_count = 0
             for pipeline_name, result_data, json_config in _execute_pipeline_trie(
-                batch_trie, image, jobs_per_batch, data_layers=data_layers, extract_arrays=True
+                    batch_trie, image, jobs_per_batch,
+                    data_layers=data_layers,
+                    extract_arrays=True
             ):
+                pipeline_results_count += 1
                 # result_data is now a dict of {layer_name: np.ndarray}
                 # Add layers with pipeline name
                 for data_layer, array_data in result_data.items():
@@ -1145,12 +1361,26 @@ def MultiPipelineGridSearch(
                     # Explicitly delete to free memory as soon as possible
                     del result_data
 
+            batch_elapsed = time.time() - batch_start_time
+
             # Explicit garbage collection after each batch
             import gc
+
             gc.collect()
+            mem_after = _get_memory_usage()
 
             if adaptive_batching and total_pipelines > batch_size:
-                print(f"Batch {batch_num}/{total_batches} complete, memory freed")
+                logger.info(f"Batch {batch_num}/{total_batches} complete: "
+                            f"{pipeline_results_count} pipelines in {batch_elapsed:.2f}s, "
+                            f"memory: {mem_before:.1f} MB → {mem_after:.1f} MB")
+            else:
+                logger.info(f"Batch processing complete: "
+                            f"{pipeline_results_count} pipelines in {batch_elapsed:.2f}s, "
+                            f"memory: {mem_after:.1f} MB")
+
+        global_elapsed = time.time() - global_start_time
+        logger.info(f"All batches completed in {global_elapsed:.2f}s")
+
 
     else:
         # Original linear execution path (non-optimized)
@@ -1167,12 +1397,14 @@ def MultiPipelineGridSearch(
 
             # Execute this pipeline's grid search (reuse existing helper)
             results = Parallel(n_jobs=n_jobs)(
-                    delayed(_execute_single_pipeline)(image, operations, param_config, inplace)
+                    delayed(_execute_single_pipeline)(image, operations, param_config,
+                                                      inplace)
                     for param_config in param_configs
             )
 
             # Add results to viewer with pipeline name prefix
-            for result_idx, (result_img, param_config, json_config) in enumerate(results):
+            for result_idx, (result_img, param_config, json_config) in enumerate(
+                    results):
                 param_str = _create_param_name_string(param_config)
 
                 # Add layers with pipeline name prefix
