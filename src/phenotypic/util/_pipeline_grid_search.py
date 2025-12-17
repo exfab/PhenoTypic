@@ -7,12 +7,43 @@ with parallel execution via joblib and visualization in napari.
 from __future__ import annotations
 
 import copy
+from dataclasses import dataclass, field
 from itertools import product
-from typing import TYPE_CHECKING, Any, Dict, List, Tuple, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 
 if TYPE_CHECKING:
     import napari
     from phenotypic import Image, ImageOperation
+
+
+def _ops_key(op: "ImageOperation", params: Dict[str, Any]) -> Tuple:
+    """Create hashable key for operation tuple comparison.
+
+    Args:
+        op: ImageOperation instance
+        params: Parameter dictionary for the operation
+
+    Returns:
+        Tuple containing (class_name, sorted_params) for hashing
+    """
+    return (type(op).__name__, tuple(sorted(params.items())))
+
+
+@dataclass
+class _TrieNode:
+    """Node in pipeline execution trie for shared prefix optimization.
+
+    Attributes:
+        op: ImageOperation at this node (None for root)
+        params: Parameter dict for this operation (None for root)
+        children: Child nodes keyed by operation signature
+        pipeline_names: Names of pipelines that end at this node
+    """
+
+    op: Optional["ImageOperation"] = None
+    params: Optional[Dict[str, Any]] = None
+    children: Dict[Tuple, "_TrieNode"] = field(default_factory=dict)
+    pipeline_names: List[str] = field(default_factory=list)
 
 
 def _unpack_ops_tuples(
@@ -189,6 +220,205 @@ def _create_param_name_string(param_config: Tuple[Dict[str, Any], ...]) -> str:
             parts.append(f"{key}={value}")
 
     return "_".join(parts) if parts else "default"
+
+
+def _expand_pipeline_configs_to_concrete(
+        pipeline_configs: List[Dict[str, Any]],
+) -> List[Dict[str, Any]]:
+    """Expand pipeline configs with parameter lists into concrete pipelines.
+
+    Takes pipeline configs where params are lists of values and generates
+    all combinations, creating one concrete pipeline config per combination.
+
+    Args:
+        pipeline_configs: List with format:
+            [{"name": "Pipeline1",
+              "ops": [(op1, {"sigma": [1.0, 2.0]}), (op2, {})]}]
+
+    Returns:
+        List of concrete configs with scalar parameter values:
+            [{"name": "Pipeline1_sigma=1.0",
+              "ops": [(op1, {"sigma": 1.0}), (op2, {})]},
+             {"name": "Pipeline1_sigma=2.0",
+              "ops": [(op1, {"sigma": 2.0}), (op2, {})]}]
+    """
+    concrete_configs = []
+
+    for config in pipeline_configs:
+        pipeline_name = config["name"]
+        ops = config["ops"]
+
+        # Unpack ops tuples
+        operations, parameters = _unpack_ops_tuples(ops)
+
+        # Generate parameter combinations
+        param_configs = _generate_param_combinations(parameters)
+
+        # Create a concrete pipeline config for each parameter combination
+        for param_config in param_configs:
+            # Create parameter name string for unique naming
+            param_str = _create_param_name_string(param_config)
+
+            # Build unique pipeline name
+            if param_str == "default":
+                # No parameters varied, use original name
+                concrete_name = pipeline_name
+            else:
+                concrete_name = f"{pipeline_name}_{param_str}"
+
+            # Build concrete ops list with scalar parameter values
+            concrete_ops = []
+            for op, params in zip(operations, param_config):
+                concrete_ops.append((op, params))
+
+            # Add concrete config to list
+            concrete_configs.append({
+                "name": concrete_name,
+                "ops": concrete_ops,
+            })
+
+    return concrete_configs
+
+
+def _build_pipeline_trie(
+        concrete_pipeline_configs: List[Dict[str, Any]],
+) -> _TrieNode:
+    """Build execution trie from concrete pipeline configurations.
+
+    Groups pipelines with shared prefixes under common nodes. Pipelines are
+    compared by operation class name AND parameter values. Parameter values
+    must be scalar (not lists), as this function expects concrete configs
+    from _expand_pipeline_configs_to_concrete().
+
+    Args:
+        concrete_pipeline_configs: List of expanded pipeline configs where
+            each param dict contains scalar values (not lists). Each config
+            represents one specific parameter combination.
+
+    Returns:
+        Root node of the execution trie
+    """
+    root = _TrieNode()
+
+    for config in concrete_pipeline_configs:
+        pipeline_name = config["name"]
+        ops = config["ops"]
+
+        current_node = root
+        for op, params in ops:
+            # Create hashable key for this operation with its specific params
+            key = _ops_key(op, params)
+
+            # Create child node if it doesn't exist
+            if key not in current_node.children:
+                current_node.children[key] = _TrieNode(op=op, params=params)
+
+            # Move to child node
+            current_node = current_node.children[key]
+
+        # Mark this node as a pipeline endpoint
+        current_node.pipeline_names.append(pipeline_name)
+
+    return root
+
+
+def _execute_pipeline_trie(
+        root: _TrieNode,
+        image: "Image",
+        n_jobs: int,
+):
+    """Execute pipeline trie depth-first with shared prefix optimization.
+
+    Executes shared prefix operations once and reuses intermediate results
+    for divergent branches. Uses parallel execution for independent branches
+    at each level. Yields results as they complete to minimize memory usage.
+
+    Args:
+        root: Root node of the execution trie
+        image: Original image to process
+        n_jobs: Number of parallel jobs (-1 for all cores)
+
+    Yields:
+        Tuple of (pipeline_name, result_image, json_config) for each completed pipeline
+    """
+    from joblib import Parallel, delayed
+    from phenotypic import ImagePipeline
+
+    def _process_node(
+            node: _TrieNode,
+            current_image: "Image",
+            ops_stack: List["ImageOperation"],
+    ):
+        """Recursively process trie node and yield results.
+
+        Args:
+            node: Current trie node
+            current_image: Image state at this node
+            ops_stack: List of operations applied so far
+
+        Yields:
+            Tuple of (pipeline_name, result_image, json_config)
+        """
+        # If this node is a pipeline endpoint, yield result
+        if node.pipeline_names:
+            for idx, pipeline_name in enumerate(node.pipeline_names):
+                # Create pipeline from ops_stack for serialization
+                pipeline = ImagePipeline(ops=ops_stack)
+                json_config = pipeline.to_json_str()
+                
+                # Only copy if multiple pipelines share this endpoint
+                if len(node.pipeline_names) > 1 and idx < len(node.pipeline_names) - 1:
+                    yield (pipeline_name, current_image.copy(), json_config)
+                else:
+                    # Last/only pipeline can use image directly
+                    yield (pipeline_name, current_image, json_config)
+
+        # Process children
+        if node.children:
+            # Prepare child processing tasks
+            child_tasks = []
+            for child_node in node.children.values():
+                # Deep copy the operation and apply parameters from trie node
+                op_copy = copy.deepcopy(child_node.op)
+                for key, value in child_node.params.items():
+                    setattr(op_copy, key, value)
+
+                child_tasks.append((child_node, op_copy))
+
+            # Execute child branches in parallel if multiple branches
+            if len(child_tasks) > 1 and n_jobs != 1:
+                # Parallel execution for independent branches
+
+                def _process_branch(child_node, op_copy):
+                    # Apply operation - returns a copy, no need to copy first
+                    branch_image = op_copy.apply(current_image)
+                    # Recursively process this branch and collect results
+                    new_stack = ops_stack + [op_copy]
+                    return list(_process_node(child_node, branch_image, new_stack))
+
+                branch_results = Parallel(n_jobs=n_jobs)(
+                        delayed(_process_branch)(child_node, op_copy)
+                        for child_node, op_copy in child_tasks
+                )
+
+                # Yield results from all branches
+                for branch_result_list in branch_results:
+                    for result in branch_result_list:
+                        yield result
+
+            else:
+                # Serial execution for single branch or when n_jobs=1
+                for child_node, op_copy in child_tasks:
+                    # Apply operation - returns a copy, no need to copy first
+                    branch_image = op_copy.apply(current_image)
+                    # Recursively process and yield results
+                    new_stack = ops_stack + [op_copy]
+                    for result in _process_node(child_node, branch_image, new_stack):
+                        yield result
+
+    # Start recursive processing from root and yield results
+    for result in _process_node(root, image, []):
+        yield result
 
 
 def _execute_single_pipeline(
@@ -467,6 +697,7 @@ def MultiPipelineGridSearch(
         data_layers: List[str] = ["rgb", "gray", "enh_gray", "objmask", "objmap"],
         n_jobs: int = -1,
         return_results: bool = False,
+        optimize_shared_prefixes: bool = True,
         viewer_title: str = "Multi-Pipeline Grid Search",
 ) -> Union[Tuple[napari.Viewer, Dict], Tuple[napari.Viewer, Dict, Dict]]:
     """Execute grid search across multiple pipeline configurations.
@@ -476,6 +707,12 @@ def MultiPipelineGridSearch(
     MedianFilter+Canny). For each pipeline, all parameter combinations are tested
     in parallel. All results are visualized in a single napari viewer with pipeline
     names in the layer labels for easy comparison.
+
+    When optimize_shared_prefixes=True (default), pipelines with shared starting
+    operations are automatically optimized. Shared operations (same class type and
+    parameters) are executed only once, and the intermediate result is reused for
+    divergent branches. This can significantly reduce computation time when multiple
+    pipelines share common preprocessing steps.
 
     Args:
         image: Single Image object to process. All pipelines and parameter
@@ -489,6 +726,10 @@ def MultiPipelineGridSearch(
         n_jobs: Number of parallel jobs for joblib. -1 uses all available cores.
         return_results: If True, also returns dict of processed Image objects. If False
             (default), only image results are not included.
+        optimize_shared_prefixes: If True (default), automatically detect and optimize
+            pipelines with shared starting operations. Shared operations are executed
+            once and intermediate results are reused. Set to False to use original
+            linear execution (useful for debugging or comparison).
         viewer_title: Title for the napari viewer window.
 
     Returns:
@@ -550,55 +791,85 @@ def MultiPipelineGridSearch(
     all_results = {} if return_results else None
     all_configs = {}
 
-    # Process each pipeline configuration
-    for config_idx, config in enumerate(pipeline_configs):
-        pipeline_name = config["name"]
-        ops = config["ops"]
-
-        # Unpack ops tuples
-        operations, parameters = _unpack_ops_tuples(ops)
-
-        # Generate parameter combinations for this pipeline
-        param_configs = _generate_param_combinations(parameters)
-
-        # Execute this pipeline's grid search (reuse existing helper)
-        results = Parallel(n_jobs=n_jobs)(
-                delayed(_execute_single_pipeline)(image, operations, param_config)
-                for param_config in param_configs
-        )
-
-        # Add results to viewer with pipeline name prefix
-        for result_idx, (result_img, param_config, json_config) in enumerate(results):
-            param_str = _create_param_name_string(param_config)
-
-            # Add layers with pipeline name prefix
-            # Format: "PipelineName_idx_params_layer"
+    # Choose execution strategy
+    if optimize_shared_prefixes:
+        # Step 1: Expand all parameter combinations into concrete pipelines
+        concrete_configs = _expand_pipeline_configs_to_concrete(pipeline_configs)
+        
+        # Step 2: Build trie from concrete pipelines (optimizes shared op+param combos)
+        trie = _build_pipeline_trie(concrete_configs)
+        
+        # Step 3: Execute trie with shared prefix optimization
+        # Process results as they're generated (streaming) to minimize memory
+        for pipeline_name, result_img, json_config in _execute_pipeline_trie(trie, image, n_jobs):
+            # Add layers with pipeline name
             for data_layer in data_layers:
-                layer_name = (
-                    f"{pipeline_name}_{result_idx:03d}_{param_str}_{data_layer}"
-                )
+                layer_name = f"{pipeline_name}_{data_layer}"
                 _add_result_layer(viewer, result_img, data_layer, layer_name)
 
             # Store config always
-            config_key = f"{pipeline_name}_{result_idx:03d}_{param_str}"
-            all_configs[config_key] = json_config
+            all_configs[pipeline_name] = json_config
 
-            # Store result if requested
+            # Store result if requested, otherwise free memory immediately
             if return_results:
-                key = (
-                    pipeline_name,
-                    tuple(tuple(sorted(p.items())) for p in param_config),
-                )
-                all_results[key] = result_img
+                all_results[pipeline_name] = result_img
             else:
+                # Explicitly delete to free memory as soon as possible
                 del result_img
+
+    else:
+        # Original linear execution path (non-optimized)
+        # Process each pipeline configuration
+        for config_idx, config in enumerate(pipeline_configs):
+            pipeline_name = config["name"]
+            ops = config["ops"]
+
+            # Unpack ops tuples
+            operations, parameters = _unpack_ops_tuples(ops)
+
+            # Generate parameter combinations for this pipeline
+            param_configs = _generate_param_combinations(parameters)
+
+            # Execute this pipeline's grid search (reuse existing helper)
+            results = Parallel(n_jobs=n_jobs)(
+                    delayed(_execute_single_pipeline)(image, operations, param_config)
+                    for param_config in param_configs
+            )
+
+            # Add results to viewer with pipeline name prefix
+            for result_idx, (result_img, param_config, json_config) in enumerate(results):
+                param_str = _create_param_name_string(param_config)
+
+                # Add layers with pipeline name prefix
+                # Format: "PipelineName_idx_params_layer"
+                for data_layer in data_layers:
+                    layer_name = (
+                        f"{pipeline_name}_{result_idx:03d}_{param_str}_{data_layer}"
+                    )
+                    _add_result_layer(viewer, result_img, data_layer, layer_name)
+
+                # Store config always
+                config_key = f"{pipeline_name}_{result_idx:03d}_{param_str}"
+                all_configs[config_key] = json_config
+
+                # Store result if requested
+                if return_results:
+                    key = (
+                        pipeline_name,
+                        tuple(tuple(sorted(p.items())) for p in param_config),
+                    )
+                    all_results[key] = result_img
+                else:
+                    del result_img
 
     # Return viewer, results (optional), and configs (always)
     if return_results:
         return viewer, all_configs, all_results
     else:
-        # Delete results list for memory cleanup
-        del results
+        # Memory cleanup: results already deleted in loop for optimized path
+        # Only delete for non-optimized path
+        if not optimize_shared_prefixes:
+            del results
         return viewer, all_configs
 
 
