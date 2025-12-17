@@ -533,6 +533,148 @@ def _build_pipeline_trie(
     return root
 
 
+def _group_pipelines_by_longest_prefix(
+        concrete_configs: List[Dict[str, Any]],
+) -> List[List[Dict[str, Any]]]:
+    """Group pipelines by their longest shared operation prefix.
+    
+    Builds temporary trie, identifies natural groups where pipelines share
+    maximum operation sequence before diverging. Critically distinguishes between
+    parameter sweeps (same operation, different params) and structural divergence
+    (different operation types).
+    
+    Args:
+        concrete_configs: List of concrete pipeline configurations
+        
+    Returns:
+        List of pipeline groups sharing longest possible operation sequence.
+        Parameter sweeps are kept together in one group (enables parallelization).
+        Structural divergence creates separate groups.
+    """
+    if not concrete_configs:
+        return []
+    if len(concrete_configs) == 1:
+        return [concrete_configs]
+    
+    # Build temporary trie
+    temp_trie = _build_pipeline_trie(concrete_configs)
+    
+    # Recursively identify groups
+    def _collect_groups_from_node(node: _TrieNode) -> List[List[str]]:
+        """Collect pipeline groups from a trie node.
+        
+        Returns list of groups, where each group is a list of pipeline names.
+        """
+        if not node.children:
+            # Leaf node - return pipelines at this endpoint
+            if node.pipeline_names:
+                return [[name] for name in node.pipeline_names]
+            return []
+        
+        if len(node.children) == 1:
+            # Single child - no branching yet, continue traversal
+            child = next(iter(node.children.values()))
+            return _collect_groups_from_node(child)
+        
+        # Multiple children = potential branch point
+        # Check if all children are same operation (parameter sweep) or different (structural divergence)
+        child_ops = [child.op for child in node.children.values() if child.op is not None]
+        
+        if child_ops:
+            # Check if all children are the same operation CLASS (ignore parameter values)
+            op_types = set(type(op).__name__ for op in child_ops)
+            
+            if len(op_types) == 1:
+                # All children are same operation type with different parameters
+                # This is a PARAMETER SWEEP, not structural divergence
+                # Don't split - merge ALL downstream pipelines into ONE group
+                all_pipeline_names = []
+                for child in node.children.values():
+                    child_groups = _collect_groups_from_node(child)
+                    # Flatten: merge all child groups into single group
+                    for group in child_groups:
+                        all_pipeline_names.extend(group)
+                # Return as single merged group
+                return [all_pipeline_names] if all_pipeline_names else []
+        
+        # Different operation types = structural divergence
+        # Split into separate groups (one per child subtree)
+        all_groups = []
+        for child in node.children.values():
+            child_groups = _collect_groups_from_node(child)
+            all_groups.extend(child_groups)
+        return all_groups
+    
+    # Collect pipeline name groups
+    pipeline_name_groups = _collect_groups_from_node(temp_trie)
+    
+    # Map pipeline names back to configs
+    config_by_name = {cfg["name"]: cfg for cfg in concrete_configs}
+    config_groups = [
+        [config_by_name[name] for name in group]
+        for group in pipeline_name_groups
+    ]
+    
+    logger.debug(f"Grouped {len(concrete_configs)} pipelines into "
+                f"{len(config_groups)} trie groups by longest shared prefix")
+    logger.debug(f"  Group sizes: {[len(g) for g in config_groups]}")
+    
+    return config_groups
+
+
+def _process_trie_groups_sequentially(
+        image: "Image",
+        trie_groups: List[List[Dict[str, Any]]],
+        n_jobs: int,
+        data_layers: List[str],
+        extract_arrays: bool = True,
+):
+    """Process multiple trie groups sequentially.
+    
+    Each trie group contains pipelines sharing longest prefix before structural
+    divergence. Groups are processed sequentially (not in parallel) to maintain
+    memory efficiency and avoid coordination overhead. Within each group, the
+    existing shallow traversal is used (serial prefix + parallel branches).
+    
+    Args:
+        image: Original image to process
+        trie_groups: List of pipeline groups (each group is a list of configs)
+        n_jobs: Number of parallel jobs for branch execution within each trie
+        data_layers: List of data layers to extract
+        extract_arrays: Whether to extract arrays vs returning full Images
+        
+    Yields:
+        Tuple of (pipeline_name, result_data, json_config) for each completed pipeline
+    """
+    total_groups = len(trie_groups)
+    logger.info(f"Processing {total_groups} trie groups sequentially")
+    
+    for group_idx, group_configs in enumerate(trie_groups, start=1):
+        group_size = len(group_configs)
+        logger.info(f"Trie group {group_idx}/{total_groups}: {group_size} pipelines")
+        
+        # Log first operation for identification
+        if group_configs and group_configs[0]["ops"]:
+            first_op_name = type(group_configs[0]["ops"][0][0]).__name__
+            logger.debug(f"  First operation: {first_op_name}")
+        
+        # Build trie for this group
+        group_start = time.time()
+        group_trie = _build_pipeline_trie(group_configs)
+        
+        # Process this trie group using shallow traversal
+        group_results_count = 0
+        for result in _execute_pipeline_trie(
+            group_trie, image, n_jobs, data_layers, extract_arrays
+        ):
+            group_results_count += 1
+            yield result
+        
+        group_elapsed = time.time() - group_start
+        logger.info(f"Trie group {group_idx}/{total_groups} complete: "
+                   f"{group_results_count} pipelines in {group_elapsed:.2f}s")
+
+
 def _analyze_trie_structure(root: _TrieNode) -> Dict[str, Any]:
     """Analyze trie structure for logging and optimization decisions.
 
@@ -1332,15 +1474,16 @@ def MultiPipelineGridSearch(
 
             batch_start_time = time.time()
 
-            # Build trie for this batch
-            logger.debug(f"Building trie for batch with {batch_pipeline_count} pipelines")
-            batch_trie = _build_pipeline_trie(batch_configs)
+            # Group batch pipelines by longest shared prefix
+            logger.debug(f"Grouping {batch_pipeline_count} pipelines by longest shared prefix")
+            trie_groups = _group_pipelines_by_longest_prefix(batch_configs)
+            logger.info(f"Batch contains {len(trie_groups)} distinct trie groups")
 
-            # Execute batch with shared prefix optimization
-            logger.debug(f"Starting trie execution for batch")
+            # Process each trie group sequentially
+            logger.debug(f"Starting sequential trie group processing")
             pipeline_results_count = 0
-            for pipeline_name, result_data, json_config in _execute_pipeline_trie(
-                    batch_trie, image, jobs_per_batch,
+            for pipeline_name, result_data, json_config in _process_trie_groups_sequentially(
+                    image, trie_groups, jobs_per_batch,
                     data_layers=data_layers,
                     extract_arrays=True
             ):
