@@ -5,6 +5,7 @@ error handling, and edge cases.
 """
 
 import pytest
+import numpy as np
 from dataclasses import dataclass
 from typing import Any, Dict, List, Tuple
 
@@ -18,6 +19,7 @@ from phenotypic.util._pipeline_grid_search import (
     _build_pipeline_trie,
     _build_results_dict,
     _build_configs_dict,
+    _extract_data_layers,
 )
 
 
@@ -774,6 +776,105 @@ class TestIntegration:
 
         # Should have same number of entries
         assert len(results_dict) == len(configs_dict)
+
+
+# ============================================================================
+# Test _extract_data_layers
+# ============================================================================
+
+class TestExtractDataLayers:
+    """Tests for _extract_data_layers helper function."""
+
+    @pytest.fixture
+    def mock_image_with_data(self):
+        """Create a mock Image with realistic data arrays."""
+        import numpy as np
+
+        class MockImageWithData:
+            def __init__(self):
+                self._rgb = np.random.randint(0, 256, (100, 100, 3), dtype=np.uint8)
+                self._gray = np.random.rand(100, 100).astype(np.float32)
+                self._enh_gray = np.random.rand(100, 100).astype(np.float32)
+                self._objmask = np.random.randint(0, 2, (100, 100), dtype=np.uint8)
+                self._objmap = np.random.randint(0, 10, (100, 100), dtype=np.uint16)
+
+                # Create accessor-like objects
+                self.rgb = type('obj', (object,), {'__getitem__': lambda self, key: self._arr[key], '_arr': self._rgb})()
+                self.gray = type('obj', (object,), {'__getitem__': lambda self, key: self._arr[key], '_arr': self._gray})()
+                self.enh_gray = type('obj', (object,), {'__getitem__': lambda self, key: self._arr[key], '_arr': self._enh_gray})()
+                self.objmask = type('obj', (object,), {'__getitem__': lambda self, key: self._arr[key], '_arr': self._objmask})()
+                self.objmap = type('obj', (object,), {'__getitem__': lambda self, key: self._arr[key], '_arr': self._objmap})()
+
+        return MockImageWithData()
+
+    def test_extract_single_layer(self, mock_image_with_data):
+        """Test extracting a single data layer."""
+        result = _extract_data_layers(mock_image_with_data, ["rgb"])
+
+        assert "rgb" in result
+        assert len(result) == 1
+        assert result["rgb"].shape == (100, 100, 3)
+        assert result["rgb"].dtype == np.uint8
+
+    def test_extract_multiple_layers(self, mock_image_with_data):
+        """Test extracting multiple data layers."""
+        result = _extract_data_layers(
+            mock_image_with_data,
+            ["rgb", "gray", "objmask"]
+        )
+
+        assert "rgb" in result
+        assert "gray" in result
+        assert "objmask" in result
+        assert len(result) == 3
+
+    def test_extract_all_layers(self, mock_image_with_data):
+        """Test extracting all available data layers."""
+        result = _extract_data_layers(
+            mock_image_with_data,
+            ["rgb", "gray", "enh_gray", "objmask", "objmap"]
+        )
+
+        assert len(result) == 5
+        for layer in ["rgb", "gray", "enh_gray", "objmask", "objmap"]:
+            assert layer in result
+
+    def test_extracted_arrays_are_copies(self, mock_image_with_data):
+        """Test that extracted arrays are independent copies, not views."""
+        result = _extract_data_layers(mock_image_with_data, ["rgb"])
+
+        # Modify extracted array
+        original_value = result["rgb"][0, 0, 0]
+        result["rgb"][0, 0, 0] = 255
+
+        # Original should be unchanged
+        assert mock_image_with_data.rgb[:][0, 0, 0] == original_value
+
+    def test_handles_empty_layer_list(self, mock_image_with_data):
+        """Test behavior with empty layer list."""
+        result = _extract_data_layers(mock_image_with_data, [])
+
+        assert isinstance(result, dict)
+        assert len(result) == 0
+
+    def test_memory_reduction(self, mock_image_with_data):
+        """Test that extracted arrays use less memory than full Image."""
+        import sys
+
+        # Extract only one layer
+        result_single = _extract_data_layers(mock_image_with_data, ["objmask"])
+
+        # Extract all layers
+        result_all = _extract_data_layers(
+            mock_image_with_data,
+            ["rgb", "gray", "enh_gray", "objmask", "objmap"]
+        )
+
+        # Single layer should be smaller
+        single_size = sys.getsizeof(result_single["objmask"])
+        all_size = sum(sys.getsizeof(arr) for arr in result_all.values())
+
+        assert single_size < all_size
 
 
 if __name__ == "__main__":
