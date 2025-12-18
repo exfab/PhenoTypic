@@ -7,6 +7,7 @@ including argument parsing, file I/O, and output validation.
 
 import tempfile
 from pathlib import Path
+import shutil
 
 import pytest
 from click.testing import CliRunner
@@ -90,7 +91,7 @@ class TestPhenotypicCLI:
         result = runner.invoke(main, ["--help"])
         assert result.exit_code == 0
         assert "PIPELINE_JSON" in result.output
-        assert "INPUT_DIR" in result.output
+        assert "INPUT_PATH" in result.output
         assert "OUTPUT_DIR" in result.output
 
     def test_cli_missing_pipeline_arg(self, runner):
@@ -485,6 +486,68 @@ class TestPhenotypicCLI:
 
         # Should return None on failure
         assert result is None
+
+    def test_cli_joblib_parallel_smoke(
+            self, runner, circular_pipeline_json, synthetic_grid_image, temp_dirs
+    ):
+        """Smoke test joblib path with multiple images."""
+        input_dir, output_dir = temp_dirs
+
+        # Duplicate the synthetic image so we have >1 for joblib path
+        dup_path = input_dir/"test_grid_dup.png"
+        shutil.copy(synthetic_grid_image, dup_path)
+
+        result = runner.invoke(
+                main,
+                [
+                    str(circular_pipeline_json),
+                    str(input_dir),
+                    str(output_dir),
+                    "--n-jobs",
+                    "2",
+                ],
+        )
+
+        assert result.exit_code == 0
+
+    def test_cli_submitit_debug_smoke(
+            self, runner, circular_pipeline_json, synthetic_grid_image, temp_dirs
+    ):
+        """Smoke test submitit debug mode (runs locally)."""
+        try:
+            import submitit  # noqa: F401
+        except ImportError:
+            pytest.skip("submitit not installed")
+
+        input_dir, output_dir = temp_dirs
+
+        # Duplicate the synthetic image so we have >1 for submitit path
+        dup_path = input_dir/"test_grid_dup.png"
+        shutil.copy(synthetic_grid_image, dup_path)
+
+        submitit_log_dir = output_dir/"submitit_logs"
+
+        result = runner.invoke(
+                main,
+                [
+                    str(circular_pipeline_json),
+                    str(input_dir),
+                    str(output_dir),
+                    "--slurm",
+                    "--slurm-params",
+                    "cluster=debug",
+                    "--slurm-params",
+                    f"folder={submitit_log_dir}",
+                    "--slurm-params",
+                    "timeout_min=5",
+                    "--slurm-params",
+                    "mem_gb=1",
+                    "--slurm-params",
+                    "slurm_cpus_per_task=1",
+                ],
+        )
+
+        assert result.exit_code == 0
 
     @pytest.mark.slow
     def test_cli_with_synthetic_plates(self, runner, circular_pipeline_json):

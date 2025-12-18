@@ -563,12 +563,16 @@ def _create_submitit_executor(
     # Merge with user params (user params override defaults)
     params = {**defaults, **(slurm_params or {})}
 
-    # Extract folder for executor creation
+    # Extract folder/cluster for executor creation
     folder = params.pop("folder")
+    cluster = params.pop("cluster", None)
 
     try:
         # Create executor
-        executor = submitit.AutoExecutor(folder=folder)
+        if cluster is not None:
+            executor = submitit.AutoExecutor(folder=folder, cluster=cluster)
+        else:
+            executor = submitit.AutoExecutor(folder=folder)
 
         # Update with all parameters
         executor.update_parameters(**params)
