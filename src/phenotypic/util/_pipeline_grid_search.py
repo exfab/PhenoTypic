@@ -111,6 +111,14 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+# Memory estimation overhead factor
+# Empirical 20% overhead accounts for:
+# - Python object allocation metadata
+# - Garbage collector bookkeeping structures
+# - Temporary arrays created during processing
+# - NumPy view/slice overhead
+_MEMORY_OVERHEAD_FACTOR = 1.2
+
 
 def _get_memory_usage() -> float:
     """Get current process memory usage in MB.
@@ -124,9 +132,9 @@ def _get_memory_usage() -> float:
         can be safely ignored. To suppress it, set: export MallocStackLogging=0
     """
     import psutil
+
     process = psutil.Process()
     return process.memory_info().rss / 1024 / 1024
-
 
 
 def _ops_key(op: "ImageOperation", params: Dict[str, Any]) -> Tuple:
@@ -181,14 +189,12 @@ def _unpack_ops_tuples(
 
 
 def _validate_inputs(
-        image: Image,
         ops: List[Tuple[ImageOperation, Dict[str, List[Any]]]],
         data_layers: List[str],
 ) -> None:
     """Validate all inputs before processing.
 
     Args:
-        image: Image to process
         ops: List of (operation, params_dict) tuples
         data_layers: List of data layer names to display
 
@@ -287,7 +293,6 @@ def _validate_pipeline_configs(
 
         # Use existing validation for operations
         _validate_inputs(
-                image=None,  # type: ignore
                 ops=config["ops"],
                 data_layers=[],
         )
@@ -445,7 +450,7 @@ def _save_array_as_tiff(
 
         else:
             raise ValueError(
-                f"Unsupported array shape {array.shape}. Expected (H, W) or (H, W, 3)"
+                    f"Unsupported array shape {array.shape}. Expected (H, W) or (H, W, 3)"
             )
 
         # Save as TIFF
@@ -480,8 +485,8 @@ def _validate_save_tiff_params(
     # Validate create_trial_view dependency
     if create_trial_view and save_tiff_dir is None:
         raise ValueError(
-            "create_trial_view=True requires save_tiff_dir to be specified. "
-            "HTML trial view can only be generated when saving TIFFs."
+                "create_trial_view=True requires save_tiff_dir to be specified. "
+                "HTML trial view can only be generated when saving TIFFs."
         )
 
     # Validate and create save_tiff_dir if provided
@@ -497,13 +502,13 @@ def _validate_save_tiff_params(
 
         except Exception as e:
             raise ValueError(
-                f"Cannot write to save_tiff_dir '{save_tiff_dir}': {e}"
+                    f"Cannot write to save_tiff_dir '{save_tiff_dir}': {e}"
             ) from e
 
     # Validate backend
     if backend not in ["joblib", "submitit"]:
         raise ValueError(
-            f"backend must be 'joblib' or 'submitit', got '{backend}'"
+                f"backend must be 'joblib' or 'submitit', got '{backend}'"
         )
 
     # Check submitit availability
@@ -512,16 +517,16 @@ def _validate_save_tiff_params(
             import submitit  # noqa: F401
         except ImportError as e:
             raise ImportError(
-                "submitit backend requested but submitit is not installed. "
-                "Install with: pip install phenotypic[cluster]"
+                    "submitit backend requested but submitit is not installed. "
+                    "Install with: pip install phenotypic[cluster]"
             ) from e
 
         # Submitit backend requires TIFF mode (cluster jobs cannot display napari)
         if save_tiff_dir is None:
             raise ValueError(
-                "save_tiff_dir is required when backend='submitit'. "
-                "Cluster jobs cannot create interactive napari viewers. "
-                "Please specify a directory to save TIFF files."
+                    "save_tiff_dir is required when backend='submitit'. "
+                    "Cluster jobs cannot create interactive napari viewers. "
+                    "Please specify a directory to save TIFF files."
             )
 
 
@@ -549,9 +554,9 @@ def _create_submitit_executor(
 
     # Default parameters
     defaults = {
-        "folder": "./submitit_logs",
-        "timeout_min": 60,
-        "mem_gb": 16,
+        "folder"       : "./submitit_logs",
+        "timeout_min"  : 60,
+        "mem_gb"       : 16,
         "cpus_per_task": 1,
     }
 
@@ -575,8 +580,8 @@ def _create_submitit_executor(
 
     except Exception as e:
         raise RuntimeError(
-            f"Failed to create submitit executor: {e}. "
-            f"Ensure you are on a SLURM cluster and submitit is properly configured."
+                f"Failed to create submitit executor: {e}. "
+                f"Ensure you are on a SLURM cluster and submitit is properly configured."
         ) from e
 
 
@@ -615,10 +620,42 @@ def _execute_parallel_tasks(
         from joblib import Parallel, delayed
         from tqdm_joblib import tqdm_joblib
 
+        # Wrapper function to collect errors per task
+        def _task_with_error_handling(idx, func, args):
+            """Execute task and return (result, error, task_idx) tuple."""
+            try:
+                result = func(*args)
+                return result, None, idx
+            except Exception as e:
+                return None, e, idx
+
         with tqdm_joblib(desc=desc, total=len(task_args)):
-            results = Parallel(n_jobs=n_jobs)(
-                delayed(func)(*args) for args in task_args
+            task_results = Parallel(n_jobs=n_jobs)(
+                    delayed(_task_with_error_handling)(idx, func, args)
+                    for idx, args in enumerate(task_args)
             )
+
+        # Separate results and errors
+        results = []
+        failed_tasks = []
+
+        for result, error, task_idx in task_results:
+            if error is None:
+                results.append(result)
+            else:
+                logger.error(f"Task {task_idx} failed: {error}")
+                failed_tasks.append((task_idx, error))
+
+        # Report failures (match submitit behavior)
+        if failed_tasks:
+            failure_msg = "\n".join(
+                    f"  Task {idx}: {error}"
+                    for idx, error in failed_tasks
+            )
+            raise RuntimeError(
+                    f"{len(failed_tasks)} task(s) failed:\n{failure_msg}"
+            )
+
         return results
 
     elif backend == "submitit":
@@ -628,11 +665,12 @@ def _execute_parallel_tasks(
         # Validate function is picklable
         try:
             import pickle
+
             pickle.dumps(func)
         except Exception as e:
             raise ValueError(
-                f"Function '{func.__name__}' is not picklable and cannot "
-                f"be used with submitit backend. Error: {e}"
+                    f"Function '{func.__name__}' is not picklable and cannot "
+                    f"be used with submitit backend. Error: {e}"
             ) from e
 
         # Create executor
@@ -662,11 +700,11 @@ def _execute_parallel_tasks(
         # Report failures
         if failed_jobs:
             failure_msg = "\n".join(
-                f"  Task {idx} (Job {job_id}): {error}"
-                for idx, job_id, error in failed_jobs
+                    f"  Task {idx} (Job {job_id}): {error}"
+                    for idx, job_id, error in failed_jobs
             )
             raise RuntimeError(
-                f"{len(failed_jobs)} job(s) failed:\n{failure_msg}"
+                    f"{len(failed_jobs)} job(s) failed:\n{failure_msg}"
             )
 
         logger.info(f"All {len(jobs)} jobs completed successfully")
@@ -740,7 +778,8 @@ def _create_trial_view_html(
                         # Normalize to 0-255 for display
                         img_array = np.array(img)
                         if img_array.max() > 255:
-                            img_array = (img_array / img_array.max() * 255).astype(np.uint8)
+                            img_array = (img_array / img_array.max() * 255).astype(
+                                np.uint8)
                         else:
                             img_array = img_array.astype(np.uint8)
                         img = PIL_Image.fromarray(img_array)
@@ -936,28 +975,23 @@ def _estimate_pipeline_memory(
         extracted_size = 0
         for layer in data_layers:
             if layer == "rgb" and rgb_data is not None and rgb_data.size > 0:
-                extracted_size += (np.prod(rgb_data.shape, dtype=rgb_data.dtype)
-                                   * rgb_data.itemsize)
+                extracted_size += (np.prod(rgb_data.shape) * rgb_data.itemsize)
             elif layer == "gray" and gray_data is not None:
-                extracted_size += (np.prod(gray_data.shape, dtype=gray_data.dtype)
-                                   * gray_data.itemsize)
+                extracted_size += (np.prod(gray_data.shape) * gray_data.itemsize)
             elif layer == "enh_gray" and enh_gray_data is not None:
-                extracted_size += (np.prod(enh_gray_data.shape,
-                                           dtype=enh_gray_data.dtype)
-                                   * enh_gray_data.itemsize)
+                extracted_size += (np.prod(enh_gray_data.shape) * enh_gray_data.itemsize)
             elif layer in ["objmask", "objmap"]:
-                # Estimate label map size (conservative: same as gray)
+                # Estimate label map size (uint16 label maps: 2 bytes per pixel)
                 if gray_data is not None:
-                    extracted_size += (np.prod(enh_gray_data.shape, dtype=np.uint16)
-                                       * rgb_data.itemsize)
+                    extracted_size += (np.prod(gray_data.shape) * np.dtype(np.uint16).itemsize)
 
-        # Peak: base image + extracted arrays + overhead (20%)
-        return int((base_size + extracted_size) * 1.2)
+        # Peak: base image + extracted arrays + overhead
+        return int((base_size + extracted_size) * _MEMORY_OVERHEAD_FACTOR)
     else:
         # Without extraction: num_operations intermediate copies
         # Each operation creates a new image
         # Peak occurs when all intermediate copies exist simultaneously
-        return int(base_size * (num_operations + 1) * 1.2)
+        return int(base_size * (num_operations + 1) * _MEMORY_OVERHEAD_FACTOR)
 
 
 def _calculate_optimal_batch_size(
@@ -1152,10 +1186,10 @@ def _group_pipelines_by_longest_prefix(
         return []
     if len(concrete_configs) == 1:
         return [concrete_configs]
-    
+
     # Build temporary trie
     temp_trie = _build_pipeline_trie(concrete_configs)
-    
+
     # Recursively identify groups
     def _collect_groups_from_node(node: _TrieNode) -> List[List[str]]:
         """Collect pipeline groups from a trie node.
@@ -1167,20 +1201,21 @@ def _group_pipelines_by_longest_prefix(
             if node.pipeline_names:
                 return [[name] for name in node.pipeline_names]
             return []
-        
+
         if len(node.children) == 1:
             # Single child - no branching yet, continue traversal
             child = next(iter(node.children.values()))
             return _collect_groups_from_node(child)
-        
+
         # Multiple children = potential branch point
         # Check if all children are same operation (parameter sweep) or different (structural divergence)
-        child_ops = [child.op for child in node.children.values() if child.op is not None]
-        
+        child_ops = [child.op for child in node.children.values() if
+                     child.op is not None]
+
         if child_ops:
             # Check if all children are the same operation CLASS (ignore parameter values)
             op_types = set(type(op).__name__ for op in child_ops)
-            
+
             if len(op_types) == 1:
                 # All children are same operation type with different parameters
                 # This is a PARAMETER SWEEP, not structural divergence
@@ -1193,7 +1228,7 @@ def _group_pipelines_by_longest_prefix(
                         all_pipeline_names.extend(group)
                 # Return as single merged group
                 return [all_pipeline_names] if all_pipeline_names else []
-        
+
         # Different operation types = structural divergence
         # Split into separate groups (one per child subtree)
         all_groups = []
@@ -1201,21 +1236,21 @@ def _group_pipelines_by_longest_prefix(
             child_groups = _collect_groups_from_node(child)
             all_groups.extend(child_groups)
         return all_groups
-    
+
     # Collect pipeline name groups
     pipeline_name_groups = _collect_groups_from_node(temp_trie)
-    
+
     # Map pipeline names back to configs
     config_by_name = {cfg["name"]: cfg for cfg in concrete_configs}
     config_groups = [
         [config_by_name[name] for name in group]
         for group in pipeline_name_groups
     ]
-    
+
     logger.debug(f"Grouped {len(concrete_configs)} pipelines into "
-                f"{len(config_groups)} trie groups by longest shared prefix")
+                 f"{len(config_groups)} trie groups by longest shared prefix")
     logger.debug(f"  Group sizes: {[len(g) for g in config_groups]}")
-    
+
     return config_groups
 
 
@@ -1225,6 +1260,8 @@ def _process_trie_groups_sequentially(
         n_jobs: int,
         data_layers: List[str],
         extract_arrays: bool = True,
+        backend: str = "joblib",
+        slurm_params: Optional[Dict[str, Any]] = None,
 ):
     """Process multiple trie groups sequentially.
 
@@ -1239,6 +1276,10 @@ def _process_trie_groups_sequentially(
         n_jobs: Number of parallel jobs for branch execution within each trie
         data_layers: List of data layers to extract
         extract_arrays: Whether to extract arrays vs returning full Images
+        backend: Execution backend - "joblib" (local) or "submitit" (SLURM cluster).
+            Default "joblib".
+        slurm_params: Configuration dict for submitit backend. Only used when
+            backend="submitit". Default None.
 
     Yields:
         Tuple of (pipeline_name, result_data, json_config) for each completed pipeline
@@ -1249,38 +1290,39 @@ def _process_trie_groups_sequentially(
     logger.info(f"Processing {total_groups} trie groups sequentially")
 
     for group_idx, group_configs in enumerate(
-        tqdm(
-            trie_groups,
-            desc="Trie groups",
-            unit="group",
-            total=total_groups,
-            disable=(total_groups == 1),
-        ),
-        start=1,
+            tqdm(
+                    trie_groups,
+                    desc="Trie groups",
+                    unit="group",
+                    total=total_groups,
+                    disable=(total_groups == 1),
+            ),
+            start=1,
     ):
         group_size = len(group_configs)
         logger.info(f"Trie group {group_idx}/{total_groups}: {group_size} pipelines")
-        
+
         # Log first operation for identification
         if group_configs and group_configs[0]["ops"]:
             first_op_name = type(group_configs[0]["ops"][0][0]).__name__
             logger.debug(f"  First operation: {first_op_name}")
-        
+
         # Build trie for this group
         group_start = time.time()
         group_trie = _build_pipeline_trie(group_configs)
-        
+
         # Process this trie group using shallow traversal
         group_results_count = 0
         for result in _execute_pipeline_trie(
-            group_trie, image, n_jobs, data_layers, extract_arrays
+                group_trie, image, n_jobs, data_layers, extract_arrays,
+                backend, slurm_params
         ):
             group_results_count += 1
             yield result
-        
+
         group_elapsed = time.time() - group_start
         logger.info(f"Trie group {group_idx}/{total_groups} complete: "
-                   f"{group_results_count} pipelines in {group_elapsed:.2f}s")
+                    f"{group_results_count} pipelines in {group_elapsed:.2f}s")
 
 
 def _analyze_trie_structure(root: _TrieNode) -> Dict[str, Any]:
@@ -1292,6 +1334,7 @@ def _analyze_trie_structure(root: _TrieNode) -> Dict[str, Any]:
     Returns:
         Dictionary with structure statistics including depth, branch points, and path count
     """
+
     def count_descendants(node: _TrieNode) -> Tuple[int, int, int]:
         """Count depth, branch points, and total leaf paths from node.
 
@@ -1320,10 +1363,10 @@ def _analyze_trie_structure(root: _TrieNode) -> Dict[str, Any]:
     depth, branch_points, total_paths = count_descendants(root)
 
     return {
-        "max_depth": depth,
-        "branch_points": branch_points,
+        "max_depth"       : depth,
+        "branch_points"   : branch_points,
         "total_leaf_paths": total_paths,
-        "total_nodes": _count_trie_nodes(root),
+        "total_nodes"     : _count_trie_nodes(root),
     }
 
 
@@ -1359,8 +1402,8 @@ def _find_first_branch_point(
         if len(current.children) > 1:
             # Found first branch point
             logger.debug(
-                f"Branch point found with {len(current.children)} children at "
-                f"depth {len(ops_stack)}"
+                    f"Branch point found with {len(current.children)} children at "
+                    f"depth {len(ops_stack)}"
             )
             return current, ops_stack
 
@@ -1477,19 +1520,20 @@ def _execute_concrete_pipeline_batch(
     return results
 
 
-
 def _execute_pipeline_trie(
         root: _TrieNode,
         image: "Image",
         n_jobs: int,
         data_layers: List[str] = None,
         extract_arrays: bool = True,
+        backend: str = "joblib",
+        slurm_params: Optional[Dict[str, Any]] = None,
 ):
     """Execute pipeline trie using shallow traversal with top-level parallelization.
 
     Implements hybrid approach:
     1. Serial traversal: Follow shared prefix path until reaching first branch point
-    2. Parallel execution: Execute all divergent branches in parallel using joblib
+    2. Parallel execution: Execute all divergent branches in parallel using specified backend
 
     This avoids nested parallelization deadlocks while maintaining shared prefix
     optimization and enabling true parallel execution of divergent branches.
@@ -1502,6 +1546,10 @@ def _execute_pipeline_trie(
             Only used if extract_arrays=True. If None, uses default set.
         extract_arrays: If True, yields dict of extracted arrays instead of
             full Image objects. Reduces memory by ~10×.
+        backend: Execution backend - "joblib" (local) or "submitit" (SLURM cluster).
+            Default "joblib".
+        slurm_params: Configuration dict for submitit backend. Only used when
+            backend="submitit". Default None.
 
     Yields:
         Tuple of (pipeline_name, result_data, json_config) where result_data is
@@ -1564,20 +1612,20 @@ def _execute_pipeline_trie(
         # Create joblib delayed tasks
         tasks = [
             delayed(_execute_concrete_pipeline_batch)(
-                current_image,
-                [(name, ops)],
-                shared_prefix_len,
-                data_layers,
-                extract_arrays,
+                    current_image,
+                    [(name, ops)],
+                    shared_prefix_len,
+                    data_layers,
+                    extract_arrays,
             )
             for name, ops in pipeline_specs
         ]
 
         # Execute in parallel with progress bar
         with tqdm_joblib(
-            desc="Parallel pipelines",
-            total=len(pipeline_specs),
-            unit="pipeline",
+                desc="Parallel pipelines",
+                total=len(pipeline_specs),
+                unit="pipeline",
         ):
             batch_results = Parallel(n_jobs=n_jobs)(tasks)
 
@@ -1599,7 +1647,8 @@ def _execute_pipeline_trie(
         mem_before_serial = _get_memory_usage()
 
         results = _execute_concrete_pipeline_batch(
-            current_image, pipeline_specs, shared_prefix_len, data_layers, extract_arrays
+                current_image, pipeline_specs, shared_prefix_len, data_layers,
+                extract_arrays
         )
 
         serial_time = time.time() - serial_start
@@ -1901,7 +1950,7 @@ def PipelineGridSearch(
         ... )
     """
     # 1. Validate inputs
-    _validate_inputs(image, ops, data_layers)
+    _validate_inputs(ops, data_layers)
     _validate_save_tiff_params(save_tiff_dir, create_trial_view, backend)
 
     # 2. Unpack ops tuples into separate lists
@@ -1915,12 +1964,12 @@ def PipelineGridSearch(
 
     # 5. Execute pipelines with selected backend
     results = _execute_parallel_tasks(
-        func=_execute_single_pipeline,
-        task_args=task_args,
-        backend=backend,
-        n_jobs=n_jobs,
-        slurm_params=slurm_params,
-        desc="PipelineGridSearch",
+            func=_execute_single_pipeline,
+            task_args=task_args,
+            backend=backend,
+            n_jobs=n_jobs,
+            slurm_params=slurm_params,
+            desc="PipelineGridSearch",
     )
 
     # 6. Process results based on mode
@@ -1941,9 +1990,9 @@ def PipelineGridSearch(
 
             for layer_name, array_data in extracted.items():
                 tiff_path = _save_array_as_tiff(
-                    array_data,
-                    save_tiff_dir,
-                    f"{base_name}_{layer_name}"
+                        array_data,
+                        save_tiff_dir,
+                        f"{base_name}_{layer_name}"
                 )
                 tiff_files.append(tiff_path)
 
@@ -1959,7 +2008,7 @@ def PipelineGridSearch(
         # Generate HTML view if requested
         if create_trial_view:
             html_path = _create_trial_view_html(
-                save_tiff_dir, configs_dict, data_layers
+                    save_tiff_dir, configs_dict, data_layers
             )
             logger.info(f"Created trial view: {html_path}")
 
@@ -1995,11 +2044,11 @@ def MultiPipelineGridSearch(
         data_layers: List[str] = ["rgb", "gray", "enh_gray", "objmask", "objmap"],
         n_jobs: int = -1,
         inplace: bool = False,
+        save_tiff_dir: Optional[str] = None,
+        viewer_title: str = "Multi-Pipeline Grid Search",
         optimize_shared_prefixes: bool = True,
         memory_limit_gb: float = None,
         adaptive_batching: bool = True,
-        viewer_title: str = "Multi-Pipeline Grid Search",
-        save_tiff_dir: Optional[str] = None,
         create_trial_view: bool = False,
         backend: str = "joblib",
         slurm_params: Optional[Dict[str, Any]] = None,
@@ -2113,16 +2162,17 @@ def MultiPipelineGridSearch(
     # When using submitit backend, disable trie optimization since jobs are already parallel
     # The trie structure is still available for HTML view generation via all_configs naming
     if backend == "submitit":
-        logger.info("Submitit backend detected: disabling trie optimization for execution "
-                   "(jobs are already parallelized)")
+        logger.info(
+            "Submitit backend detected: disabling trie optimization for execution "
+            "(jobs are already parallelized)")
         optimize_shared_prefixes = False
 
         # Enforce TIFF mode for submitit (cluster jobs cannot display napari viewer)
         if save_tiff_dir is None:
             raise ValueError(
-                "save_tiff_dir is required when backend='submitit'. "
-                "Cluster jobs cannot create interactive napari viewers. "
-                "Please specify a directory to save TIFF files."
+                    "save_tiff_dir is required when backend='submitit'. "
+                    "Cluster jobs cannot create interactive napari viewers. "
+                    "Please specify a directory to save TIFF files."
             )
 
     # Storage for combined configs and results
@@ -2141,6 +2191,7 @@ def MultiPipelineGridSearch(
     else:
         # Napari mode - create viewer
         import napari
+
         viewer = napari.Viewer(title=viewer_title)
         # Add original reference layers once
         _add_original_layers(viewer, image)
@@ -2156,18 +2207,19 @@ def MultiPipelineGridSearch(
         # Add memory usage warning for large n_jobs
         if total_pipelines > 20 and n_jobs == -1:
             import psutil
-            available_gb = psutil.virtual_memory().available / (1024**3)
+
+            available_gb = psutil.virtual_memory().available / (1024 ** 3)
             logger.warning(
-                f"Processing {total_pipelines} pipelines with n_jobs=-1 (all cores). "
-                f"Available memory: {available_gb:.1f} GB. "
-                f"Consider reducing n_jobs or setting memory_limit_gb if OOM errors occur."
+                    f"Processing {total_pipelines} pipelines with n_jobs=-1 (all cores). "
+                    f"Available memory: {available_gb:.1f} GB. "
+                    f"Consider reducing n_jobs or setting memory_limit_gb if OOM errors occur."
             )
 
         # Step 2: Determine batch size and parallelism
         if adaptive_batching and total_pipelines > 1:
             # Estimate memory per pipeline
             avg_ops = sum(len(c["ops"]) for c in concrete_configs) / len(
-                concrete_configs)
+                    concrete_configs)
             memory_per_pipeline = _estimate_pipeline_memory(
                     image, int(avg_ops), data_layers, extract_arrays=True
             )
@@ -2196,12 +2248,12 @@ def MultiPipelineGridSearch(
         total_batches = len(batch_ranges)
 
         for batch_idx, batch_start in enumerate(
-            tqdm(
-                batch_ranges,
-                desc="Batches",
-                unit="batch",
-                disable=(total_batches == 1),
-            )
+                tqdm(
+                        batch_ranges,
+                        desc="Batches",
+                        unit="batch",
+                        disable=(total_batches == 1),
+                )
         ):
             batch_end = min(batch_start + batch_size, total_pipelines)
             batch_configs = concrete_configs[batch_start:batch_end]
@@ -2209,7 +2261,6 @@ def MultiPipelineGridSearch(
 
             if adaptive_batching and total_pipelines > batch_size:
                 batch_num = (batch_start // batch_size) + 1
-                total_batches = (total_pipelines + batch_size - 1) // batch_size
                 mem_before = _get_memory_usage()
                 logger.info(f"Processing batch {batch_num}/{total_batches}: "
                             f"pipelines {batch_start} to {batch_end - 1} "
@@ -2218,7 +2269,8 @@ def MultiPipelineGridSearch(
             batch_start_time = time.time()
 
             # Group batch pipelines by longest shared prefix
-            logger.debug(f"Grouping {batch_pipeline_count} pipelines by longest shared prefix")
+            logger.debug(
+                f"Grouping {batch_pipeline_count} pipelines by longest shared prefix")
             trie_groups = _group_pipelines_by_longest_prefix(batch_configs)
             logger.info(f"Batch contains {len(trie_groups)} distinct trie groups")
 
@@ -2228,7 +2280,9 @@ def MultiPipelineGridSearch(
             for pipeline_name, result_data, json_config in _process_trie_groups_sequentially(
                     image, trie_groups, jobs_per_batch,
                     data_layers=data_layers,
-                    extract_arrays=True
+                    extract_arrays=True,
+                    backend=backend,
+                    slurm_params=slurm_params
             ):
                 pipeline_results_count += 1
                 # result_data is now a dict of {layer_name: np.ndarray}
@@ -2238,9 +2292,9 @@ def MultiPipelineGridSearch(
                     # Save each layer as TIFF
                     for layer_name, array_data in result_data.items():
                         tiff_path = _save_array_as_tiff(
-                            array_data,
-                            save_tiff_dir,
-                            f"{pipeline_name}_{layer_name}"
+                                array_data,
+                                save_tiff_dir,
+                                f"{pipeline_name}_{layer_name}"
                         )
                         tiff_files.append(tiff_path)
 
@@ -2286,7 +2340,7 @@ def MultiPipelineGridSearch(
 
     else:
         # Original linear execution path (non-optimized)
-        from joblib import Parallel, delayed
+        logger.info("Using non-optimized path (optimize_shared_prefixes=False)")
 
         # Process each pipeline configuration
         for config_idx, config in enumerate(pipeline_configs):
@@ -2299,15 +2353,29 @@ def MultiPipelineGridSearch(
             # Generate parameter combinations for this pipeline
             param_configs = _generate_param_combinations(parameters)
 
-            # Execute this pipeline's grid search (reuse existing helper)
-            results = Parallel(n_jobs=n_jobs)(
-                    delayed(_execute_single_pipeline)(image, operations, param_config,
-                                                      inplace)
-                    for param_config in param_configs
+            # Build task arguments for _execute_parallel_tasks
+            # Each task is: (image, operations, param_config, inplace)
+            task_args = [
+                (image, operations, param_config, inplace)
+                for param_config in param_configs
+            ]
+
+            logger.info(f"Processing pipeline '{pipeline_name}' with {len(task_args)} parameter configs "
+                       f"using {backend} backend")
+
+            # Execute this pipeline's grid search using appropriate backend
+            results = _execute_parallel_tasks(
+                    func=_execute_single_pipeline,
+                    task_args=task_args,
+                    backend=backend,
+                    n_jobs=n_jobs,
+                    slurm_params=slurm_params,
+                    desc=f"Pipeline '{pipeline_name}'",
             )
 
             # Process results
-            for result_idx, (result_img, param_config, json_config) in enumerate(results):
+            for result_idx, (result_img, param_config, json_config) in enumerate(
+                    results):
                 param_str = _create_param_name_string(param_config)
                 config_key = f"{pipeline_name}_{result_idx:03d}_{param_str}"
 
@@ -2319,9 +2387,9 @@ def MultiPipelineGridSearch(
                     # Save each layer as TIFF
                     for layer_name, array_data in extracted.items():
                         tiff_path = _save_array_as_tiff(
-                            array_data,
-                            save_tiff_dir,
-                            f"{config_key}_{layer_name}"
+                                array_data,
+                                save_tiff_dir,
+                                f"{config_key}_{layer_name}"
                         )
                         tiff_files.append(tiff_path)
 
@@ -2350,7 +2418,7 @@ def MultiPipelineGridSearch(
 
         if create_trial_view:
             html_path = _create_trial_view_html(
-                save_tiff_dir, all_configs, data_layers
+                    save_tiff_dir, all_configs, data_layers
             )
             logger.info(f"Created trial view: {html_path}")
 

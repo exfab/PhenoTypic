@@ -20,6 +20,7 @@ from phenotypic.util._pipeline_grid_search import (
     _build_results_dict,
     _build_configs_dict,
     _extract_data_layers,
+    _estimate_pipeline_memory,
 )
 
 
@@ -875,6 +876,179 @@ class TestExtractDataLayers:
         all_size = sum(sys.getsizeof(arr) for arr in result_all.values())
 
         assert single_size < all_size
+
+
+# ============================================================================
+# Tests for _estimate_pipeline_memory
+# ============================================================================
+
+class TestEstimatePipelineMemory:
+    """Test memory estimation for pipeline execution."""
+
+    @pytest.fixture
+    def mock_image_for_memory(self):
+        """Create a mock image with controllable dimensions for memory testing."""
+        class MockImageForMemory:
+            def __init__(self, height=100, width=100, has_rgb=True, has_gray=True, has_enh_gray=True):
+                self.height = height
+                self.width = width
+                self._rgb = np.zeros((height, width, 3), dtype=np.uint8) if has_rgb else None
+                self._gray = np.zeros((height, width), dtype=np.uint8) if has_gray else None
+                self._enh_gray = np.zeros((height, width), dtype=np.uint8) if has_enh_gray else None
+
+            @property
+            def rgb(self):
+                class Accessor:
+                    def __init__(self, data):
+                        self.data = data
+                    def __getitem__(self, key):
+                        return self.data
+                return Accessor(self._rgb)
+
+            @property
+            def gray(self):
+                class Accessor:
+                    def __init__(self, data):
+                        self.data = data
+                    def __getitem__(self, key):
+                        return self.data
+                return Accessor(self._gray)
+
+            @property
+            def enh_gray(self):
+                class Accessor:
+                    def __init__(self, data):
+                        self.data = data
+                    def __getitem__(self, key):
+                        return self.data
+                return Accessor(self._enh_gray)
+
+        return MockImageForMemory()
+
+    def test_memory_estimate_rgb_layer(self, mock_image_for_memory):
+        """Test memory estimation includes RGB layer correctly."""
+        # 100x100 RGB image = 100*100*3 bytes
+        estimated = _estimate_pipeline_memory(
+            mock_image_for_memory,
+            num_operations=1,
+            data_layers=["rgb"],
+            extract_arrays=True
+        )
+
+        # Should include: RGB (30KB) + gray (10KB) + enh_gray (10KB) + overhead
+        # sys.getsizeof() includes Python object overhead
+        assert estimated > 40000  # At least base sizes
+        assert estimated < 150000  # But reasonable upper bound
+
+    def test_memory_estimate_uint16_objmask(self, mock_image_for_memory):
+        """Test that objmask/objmap use correct uint16 itemsize (2 bytes)."""
+        # 100x100 uint16 label map = 100*100*2 bytes = 20KB
+        estimated = _estimate_pipeline_memory(
+            mock_image_for_memory,
+            num_operations=1,
+            data_layers=["objmask"],
+            extract_arrays=True
+        )
+
+        # Should include grayscale + objmask uint16 + enh_gray + overhead
+        # sys.getsizeof() includes Python object overhead, so actual is higher
+        assert estimated >= 60000  # At least gray + objmask + enh_gray
+        assert estimated < 150000  # Reasonable upper bound with overhead
+
+    def test_memory_estimate_all_layers(self, mock_image_for_memory):
+        """Test memory estimation with all layer types."""
+        estimated = _estimate_pipeline_memory(
+            mock_image_for_memory,
+            num_operations=1,
+            data_layers=["rgb", "gray", "enh_gray", "objmask", "objmap"],
+            extract_arrays=True
+        )
+
+        # RGB: 100*100*3 = 30KB
+        # Gray: 100*100 = 10KB
+        # Enh_gray: 100*100 = 10KB
+        # Objmask: 100*100*2 = 20KB (uint16)
+        # Objmap: 100*100*2 = 20KB (uint16)
+        # Total: ~90KB + sys.getsizeof() overhead + 1.2x = ~170KB
+        assert estimated > 80000
+        assert estimated < 200000
+
+    def test_memory_estimate_proportional_to_image_size(self, mock_image_for_memory):
+        """Test that memory estimate scales with image size."""
+        # Small image
+        small_image = type(mock_image_for_memory)(height=50, width=50)
+        small_estimate = _estimate_pipeline_memory(
+            small_image,
+            num_operations=1,
+            data_layers=["objmask"],
+            extract_arrays=True
+        )
+
+        # Large image (2x larger in each dimension = 4x larger in area)
+        large_image = type(mock_image_for_memory)(height=100, width=100)
+        large_estimate = _estimate_pipeline_memory(
+            large_image,
+            num_operations=1,
+            data_layers=["objmask"],
+            extract_arrays=True
+        )
+
+        # Large image should require ~4x more memory (area scales quadratically)
+        # With sys.getsizeof() overhead, the ratio may vary, but should still be significant
+        assert large_estimate > small_estimate * 3
+
+    def test_memory_estimate_without_extraction(self, mock_image_for_memory):
+        """Test memory estimation for non-extracted arrays mode."""
+        # Without extraction, scales with number of operations
+        estimate_1_op = _estimate_pipeline_memory(
+            mock_image_for_memory,
+            num_operations=1,
+            data_layers=["rgb"],
+            extract_arrays=False
+        )
+
+        estimate_5_ops = _estimate_pipeline_memory(
+            mock_image_for_memory,
+            num_operations=5,
+            data_layers=["rgb"],
+            extract_arrays=False
+        )
+
+        # 5 operations should require more memory
+        # (base * (5 + 1) * 1.2) vs (base * (1 + 1) * 1.2)
+        assert estimate_5_ops > estimate_1_op * 2
+
+    def test_memory_estimate_returns_bytes(self, mock_image_for_memory):
+        """Test that memory estimate is returned in bytes."""
+        estimated = _estimate_pipeline_memory(
+            mock_image_for_memory,
+            num_operations=1,
+            data_layers=["gray"],
+            extract_arrays=True
+        )
+
+        # Should be an integer (bytes)
+        assert isinstance(estimated, int)
+        assert estimated > 0
+        assert estimated < 1_000_000_000  # Less than 1GB (sanity check)
+
+    def test_objmask_itemsize_is_two_bytes(self, mock_image_for_memory):
+        """Regression test: verify objmask uses 2-byte uint16 not 1-byte uint8."""
+        # This is the critical bug fix test
+        # 100x100 objmask should be 20000 bytes (2 bytes per pixel), not 10000 bytes
+        estimated = _estimate_pipeline_memory(
+            mock_image_for_memory,
+            num_operations=1,
+            data_layers=["objmask"],
+            extract_arrays=True
+        )
+
+        # Expected: base grayscale + enh_gray + objmask (uint16) + overhead
+        # With sys.getsizeof() overhead, this is higher
+        # Key: objmask should contribute 100*100*2 = 20000 bytes, NOT 10000
+        # So estimated should be > 60000 (all layers including overhead)
+        # If it was using uint8 (1 byte) instead of uint16 (2 bytes), it would be < 60000
+        assert estimated >= 60000, f"Objmask itemsize bug: estimate {estimated} is too low (should use 2-byte uint16)"
 
 
 if __name__ == "__main__":

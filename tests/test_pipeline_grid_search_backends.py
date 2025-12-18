@@ -28,6 +28,27 @@ def _test_identity(x):
     return x
 
 
+def _test_failing_task(x):
+    """Module-level task that fails for specific inputs."""
+    if x == 2:
+        raise ValueError(f"Intentional failure at x={x}")
+    return x * 2
+
+
+def _test_multi_fail_task(x):
+    """Module-level task that fails for x > 2."""
+    if x > 2:
+        raise ValueError(f"Failure for x={x}")
+    return x
+
+
+def _test_fail_at_one(x):
+    """Module-level task that fails when x == 1."""
+    if x == 1:
+        raise ValueError("Test error")
+    return x
+
+
 class MockJob:
     """Mock submitit job for testing."""
 
@@ -319,3 +340,93 @@ class TestBackendIntegration:
 
         with pytest.raises(ImportError, match="submitit.*not installed"):
             _validate_save_tiff_params("./test", False, "submitit")
+
+
+class TestErrorHandling:
+    """Tests for consistent error handling across backends."""
+
+    def test_joblib_error_collection(self):
+        """Test that joblib backend collects all errors before raising."""
+        # Mix of successful and failing tasks
+        task_args = [(1,), (2,), (3,)]
+
+        with pytest.raises(RuntimeError, match="1 task\\(s\\) failed"):
+            _execute_parallel_tasks(
+                func=_test_failing_task,
+                task_args=task_args,
+                backend="joblib",
+                n_jobs=1,
+            )
+
+    def test_joblib_multiple_errors(self):
+        """Test joblib backend with multiple failing tasks."""
+        task_args = [(1,), (2,), (3,), (4,), (5,)]
+
+        with pytest.raises(RuntimeError, match="3 task\\(s\\) failed"):
+            _execute_parallel_tasks(
+                func=_test_multi_fail_task,
+                task_args=task_args,
+                backend="joblib",
+                n_jobs=1,
+            )
+
+    def test_joblib_error_message_includes_task_index(self):
+        """Test that joblib error message includes task index."""
+        task_args = [(1,), (2,), (3,)]
+
+        try:
+            _execute_parallel_tasks(
+                func=_test_failing_task,
+                task_args=task_args,
+                backend="joblib",
+                n_jobs=1,
+            )
+        except RuntimeError as e:
+            # Error message should include task index
+            assert "Task 1" in str(e) or "task 1" in str(e).lower()
+
+    def test_submitit_error_collection(self, mock_submitit):
+        """Test that submitit backend collects all errors before raising."""
+        # Mix of successful and failing tasks
+        task_args = [(1,), (2,), (3,)]
+
+        with pytest.raises(RuntimeError, match="1 job\\(s\\) failed"):
+            _execute_parallel_tasks(
+                func=_test_failing_task,
+                task_args=task_args,
+                backend="submitit",
+            )
+
+    def test_joblib_vs_submitit_error_consistency(self, mock_submitit):
+        """Test that both backends report errors consistently."""
+        task_args = [(0,), (1,), (2,)]
+
+        # Joblib should raise RuntimeError with task failures
+        joblib_error = None
+        try:
+            _execute_parallel_tasks(
+                func=_test_fail_at_one,
+                task_args=task_args,
+                backend="joblib",
+                n_jobs=1,
+            )
+        except RuntimeError as e:
+            joblib_error = str(e)
+
+        # Submitit should raise RuntimeError with job failures
+        submitit_error = None
+        try:
+            _execute_parallel_tasks(
+                func=_test_fail_at_one,
+                task_args=task_args,
+                backend="submitit",
+            )
+        except RuntimeError as e:
+            submitit_error = str(e)
+
+        # Both should raise RuntimeError
+        assert joblib_error is not None
+        assert submitit_error is not None
+        # Both should mention failures
+        assert "failed" in joblib_error.lower()
+        assert "failed" in submitit_error.lower()
