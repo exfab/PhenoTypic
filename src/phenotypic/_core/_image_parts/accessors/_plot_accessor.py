@@ -21,6 +21,7 @@ from skimage.morphology import (
     binary_closing,
 )
 from skimage.measure import regionprops_table
+from skimage.filters import try_all_threshold
 
 # Optional interactive widgets
 try:
@@ -44,6 +45,12 @@ class PlotAccessor:
     labeled objects (objmap) or binary masks (objmask) are available, and adapting
     their analysis accordingly.
 
+    Note:
+        For large images (>3000×3000 pixels), memory usage can be significant.
+        Caller is responsible for closing returned figures with ``plt.close(fig)``
+        after saving to free memory and prevent accumulation of matplotlib figure
+        objects in memory.
+
     Examples:
         .. dropdown:: Access plot methods through an Image instance
 
@@ -59,8 +66,12 @@ class PlotAccessor:
 
                 # Access plot methods
                 fig, axes = detected.plot.morph_progression()
-                fig, ax = detected.plot.structural_response_curve()
+                plt.savefig('morph.png')
+                plt.close(fig)  # Important: free memory
+
                 fig, ax = detected.plot.size_distribution()
+                plt.savefig('size.png')
+                plt.close(fig)
     """
 
     def __init__(self, root_image: Image) -> None:
@@ -128,6 +139,11 @@ class PlotAccessor:
 
         Raises:
             ValueError: If no objects detected (both objmap and objmask are empty).
+
+        Note:
+            Uses float32 RGBA arrays (50% memory savings vs. float64 default).
+            Intermediate arrays cleaned up after each kernel iteration. Caller should
+            close figure with ``plt.close(fig)`` after saving.
 
         Interpretation:
             **Identifying optimal kernel sizes:**
@@ -219,11 +235,11 @@ class PlotAccessor:
         # Calculate grid layout
         n_kernels = len(kernel_sizes)
         n_cols = min(3, n_kernels)
-        n_rows = int(np.ceil(n_kernels/n_cols))
+        n_rows = int(np.ceil(n_kernels / n_cols))
 
         # Set figure size
         if figsize is None:
-            figsize = (4*n_cols, 4*n_rows)
+            figsize = (4 * n_cols, 4 * n_rows)
 
         # Create figure
         fig, axes = plt.subplots(n_rows, n_cols, figsize=figsize, squeeze=False)
@@ -242,7 +258,7 @@ class PlotAccessor:
                 case "disk":
                     selem = disk(k_size)
                 case "square":
-                    selem = square(2*k_size + 1)
+                    selem = square(2 * k_size + 1)
                 case "diamond":
                     selem = diamond(k_size)
                 case _:
@@ -273,13 +289,16 @@ class PlotAccessor:
 
             # Overlay boundary with color
             if boundary.any():
-                overlay = np.zeros((*gray.shape, 4))
-                color = colors(idx/n_kernels)
+                overlay = np.zeros((*gray.shape, 4), dtype=np.float32)
+                color = colors(idx / n_kernels)
                 overlay[boundary] = color
                 ax.imshow(overlay, alpha=0.7)
 
             ax.set_title(f"Kernel size: {k_size}")
             ax.axis("off")
+
+            # Clean up large arrays to reduce memory usage
+            del result, boundary
 
         # Hide unused subplots
         for idx in range(n_kernels, len(axes)):
@@ -432,6 +451,8 @@ class PlotAccessor:
                         "No labeled objects. Apply an ObjectDetector first."
                 )
             mask_ref = (objmap > 0).astype(bool)
+            # Clean up objmap immediately after use
+            del objmap
 
         # Parse kernel_range
         if isinstance(kernel_range, (list, tuple)) and len(kernel_range) == 2:
@@ -449,7 +470,7 @@ class PlotAccessor:
             if shape == "disk":
                 selem = disk(k_size)
             elif shape == "square":
-                selem = square(2*k_size + 1)
+                selem = square(2 * k_size + 1)
             elif shape == "diamond":
                 selem = diamond(k_size)
 
@@ -471,7 +492,7 @@ class PlotAccessor:
             elif metric == "total_area":
                 value = np.sum(result)
             elif metric == "mean_size":
-                value = np.sum(result)/num if num > 0 else 0
+                value = np.sum(result) / num if num > 0 else 0
             else:
                 raise ValueError(f"Unknown metric: {metric}")
 
@@ -483,7 +504,7 @@ class PlotAccessor:
         if len(kernel_sizes) > 2:
             derivative = np.gradient(metric_values, kernel_sizes)
         else:
-            derivative = np.diff(metric_values)/np.diff(kernel_sizes)
+            derivative = np.diff(metric_values) / np.diff(kernel_sizes)
             derivative = np.concatenate([[derivative[0]], derivative])
 
         # Create plot
@@ -507,7 +528,7 @@ class PlotAccessor:
             ax2.axhline(0, color="gray", linestyle=":", linewidth=1)
 
             # Shade stable zones (low absolute derivative)
-            stable_threshold = np.std(derivative)*0.5
+            stable_threshold = np.std(derivative) * 0.5
             stable_mask = np.abs(derivative) < stable_threshold
             if stable_mask.any():
                 for i in range(len(stable_mask) - 1):
@@ -572,7 +593,12 @@ class PlotAccessor:
                 - ax: Array of Axes [heatmap_ax, stats_ax]
 
         Raises:
-            ValueError: If no objects detected or insufficient kernel sizes provided.
+            ValueError: If no objects detected, insufficient kernel sizes provided,
+                or reference_size not in kernel_sizes.
+
+        Note:
+            Memory-efficient implementation using incremental distance map computation.
+            Caller should close figure with ``plt.close(fig)`` after saving.
 
         Interpretation:
             **High-displacement regions:**
@@ -673,32 +699,35 @@ class PlotAccessor:
 
         # Select reference size
         if reference_size is None:
-            reference_size = kernel_sizes[len(kernel_sizes)//2]
+            reference_size = kernel_sizes[len(kernel_sizes) // 2]
 
         # Get grayscale for visualization
         gray = self._root_image.gray[:]
 
-        # Compute distance transforms for all kernel sizes
-        distance_maps = {}
+        # Helper function to compute morphological operation + signed distance
+        def _apply_morph_and_distance(mask, k_size, operation, shape):
+            """Apply morphological operation and compute signed distance transform.
 
-        for k_size in kernel_sizes:
+            Memory-efficient helper that computes distance immediately to avoid storing
+            intermediate masks. Returns signed distance map for given kernel size.
+            """
             # Create structuring element
             if shape == "disk":
                 selem = disk(k_size)
             elif shape == "square":
-                selem = square(2*k_size + 1)
+                selem = square(2 * k_size + 1)
             elif shape == "diamond":
                 selem = diamond(k_size)
 
             # Apply operation
             if operation == "opening":
-                result = binary_opening(mask_ref, footprint=selem)
+                result = binary_opening(mask, footprint=selem)
             elif operation == "closing":
-                result = binary_closing(mask_ref, footprint=selem)
+                result = binary_closing(mask, footprint=selem)
             elif operation == "erosion":
-                result = binary_erosion(mask_ref, footprint=selem)
+                result = binary_erosion(mask, footprint=selem)
             elif operation == "dilation":
-                result = binary_dilation(mask_ref, footprint=selem)
+                result = binary_dilation(mask, footprint=selem)
 
             # Compute signed distance transform (positive inside, negative outside)
             if result.any():
@@ -708,19 +737,29 @@ class PlotAccessor:
             else:
                 dist_signed = -distance_transform_edt(~result)
 
-            distance_maps[k_size] = dist_signed
+            return dist_signed
 
-        # Get reference distance map
-        dist_ref = distance_maps[reference_size]
+        # Validate reference_size is in kernel_sizes
+        if reference_size not in kernel_sizes:
+            raise ValueError(
+                f"reference_size {reference_size} not in kernel_sizes {kernel_sizes}"
+            )
 
-        # Compute displacement magnitude from reference
-        displacement = np.zeros_like(dist_ref)
-        for k_size, dist_map in distance_maps.items():
+        # Compute reference distance map
+        dist_ref = _apply_morph_and_distance(mask_ref, reference_size, operation, shape)
+
+        # Compute displacement incrementally to avoid storing all distance maps
+        displacement = np.zeros_like(dist_ref, dtype=np.float64)
+        for k_size in kernel_sizes:
             if k_size != reference_size:
-                displacement += np.abs(dist_map - dist_ref)
+                # Compute distance for this kernel size
+                dist_current = _apply_morph_and_distance(mask_ref, k_size, operation, shape)
+                # Add to displacement accumulator
+                displacement += np.abs(dist_current - dist_ref)
+                # dist_current automatically garbage collected when out of scope
 
         # Normalize by number of comparisons
-        displacement = displacement/(len(kernel_sizes) - 1)
+        displacement = displacement / (len(kernel_sizes) - 1)
 
         # Compute statistics
         mean_disp = np.mean(displacement)
@@ -755,7 +794,7 @@ class PlotAccessor:
 
         stats_text = (
             f"Displacement Statistics\n"
-            f"{'='*25}\n\n"
+            f"{'=' * 25}\n\n"
             f"Mean: {mean_disp:.2f} px\n"
             f"Std Dev: {std_disp:.2f} px\n"
             f"95th %ile: {p95_disp:.2f} px\n\n"
@@ -809,6 +848,11 @@ class PlotAccessor:
 
         Raises:
             ValueError: If no labeled objects detected.
+
+        Note:
+            Memory-efficient implementation avoids copying objmap. Uses float32 RGBA
+            arrays instead of float64 for 50% memory reduction. Caller should close
+            figure with ``plt.close(fig)`` after saving.
 
         Interpretation:
             **Panel A (Histogram with KDE):**
@@ -893,8 +937,8 @@ class PlotAccessor:
 
         # Freedman-Diaconis rule for histogram bins
         iqr = np.percentile(sizes, 75) - np.percentile(sizes, 25)
-        bin_width = 2*iqr/(len(sizes) ** (1/3))
-        n_bins = int(np.ceil((sizes.max() - sizes.min())/bin_width))
+        bin_width = 2 * iqr / (len(sizes) ** (1 / 3))
+        n_bins = int(np.ceil((sizes.max() - sizes.min()) / bin_width))
         n_bins = max(10, min(n_bins, 100))  # Clamp between 10 and 100
 
         # Auto-select thresholds if not provided
@@ -931,7 +975,8 @@ class PlotAccessor:
                     x_range = np.linspace(sizes.min(), sizes.max(), 200)
                 kde_values = kde(x_range)
                 # Scale KDE to match histogram height
-                kde_scaled = kde_values*len(sizes)*(sizes.max() - sizes.min())/n_bins
+                kde_scaled = kde_values * len(sizes) * (
+                        sizes.max() - sizes.min()) / n_bins
                 ax2 = ax_hist.twinx()
                 ax2.plot(x_range, kde_scaled, "r-", linewidth=2, label="KDE")
                 ax2.set_ylabel("Density (KDE)", color="r")
@@ -944,7 +989,7 @@ class PlotAccessor:
             ax_hist.axvline(val, color="green", linestyle="--", alpha=0.5)
             ax_hist.text(
                     val,
-                    ax_hist.get_ylim()[1]*0.9,
+                    ax_hist.get_ylim()[1] * 0.9,
                     f"P{p}",
                     rotation=90,
                     va="top",
@@ -959,8 +1004,8 @@ class PlotAccessor:
         # Panel B: Cumulative distribution
         ax_cdf = fig.add_subplot(gs[0, 1])
         sorted_sizes = np.sort(sizes)
-        cumsum_count = np.arange(1, len(sorted_sizes) + 1)/len(sorted_sizes)
-        cumsum_area = np.cumsum(sorted_sizes)/np.sum(sorted_sizes)
+        cumsum_count = np.arange(1, len(sorted_sizes) + 1) / len(sorted_sizes)
+        cumsum_area = np.cumsum(sorted_sizes) / np.sum(sorted_sizes)
 
         if log_scale and sizes.min() > 0:
             ax_cdf.set_xscale("log")
@@ -976,7 +1021,8 @@ class PlotAccessor:
 
         # Panel C: Threshold sensitivity
         ax_sens = fig.add_subplot(gs[0, 2])
-        threshold_range = sorted_sizes[::max(1, len(sorted_sizes)//50)]  # Sample points
+        threshold_range = sorted_sizes[
+            ::max(1, len(sorted_sizes) // 50)]  # Sample points
         n_retained = [np.sum(sizes >= t) for t in threshold_range]
 
         if log_scale and sizes.min() > 0:
@@ -997,32 +1043,31 @@ class PlotAccessor:
         for idx, threshold in enumerate(thresholds[:3]):  # Max 3 previews
             ax_prev = fig.add_subplot(gs[1, idx])
 
-            # Create filtered mask efficiently using lookup
-            filtered_objmap = objmap.copy()
+            # Use boolean masks instead of copying entire objmap
             labels_to_remove = [lbl for lbl, size in label_to_size.items() if
                                 size < threshold]
-            filtered_objmap[np.isin(objmap, labels_to_remove)] = 0
+            mask_to_remove = np.isin(objmap, labels_to_remove)
+
+            # Direct boolean indexing - no objmap copy
+            mask_accepted = (objmap > 0) & ~mask_to_remove
+            mask_rejected = (objmap > 0) & mask_to_remove
 
             # Create overlay
             ax_prev.imshow(gray, cmap="gray")
 
-            # Color accepted objects
-            mask_accepted = filtered_objmap > 0
+            # Color accepted objects (green)
             if mask_accepted.any():
-                overlay = np.zeros((*gray.shape, 4))
-                overlay[mask_accepted] = [0, 1, 0, 0.4]  # Green, semi-transparent
+                overlay = np.zeros((*gray.shape, 4), dtype=np.float32)
+                overlay[mask_accepted] = [0, 1, 0, 0.4]
                 ax_prev.imshow(overlay)
 
-            # Show rejected objects dimly
-            mask_rejected = (objmap > 0) & ~mask_accepted
+            # Show rejected objects dimly (red)
             if mask_rejected.any():
-                overlay_rejected = np.zeros((*gray.shape, 4))
-                overlay_rejected[mask_rejected] = [1, 0, 0,
-                                                   0.2]  # Red, very transparent
+                overlay_rejected = np.zeros((*gray.shape, 4), dtype=np.float32)
+                overlay_rejected[mask_rejected] = [1, 0, 0, 0.2]
                 ax_prev.imshow(overlay_rejected)
 
-            n_accepted = len(labels_to_remove)
-            n_accepted = len(sizes) - n_accepted  # Count kept, not removed
+            n_accepted = len(sizes) - len(labels_to_remove)
             ax_prev.set_title(
                     f"Threshold: {int(threshold)} px\n"
                     f"Retained: {n_accepted}/{len(sizes)} objects"
@@ -1065,6 +1110,11 @@ class PlotAccessor:
 
         Raises:
             ValueError: If no labeled objects detected or ipywidgets not available.
+
+        Note:
+            Includes automatic figure cleanup to prevent memory leak during interactive
+            use. Previous figures are closed before creating new ones on each slider
+            movement. Uses float32 RGBA arrays for memory efficiency.
 
         Examples:
             .. dropdown:: Interactive threshold selection with live preview
@@ -1129,10 +1179,19 @@ class PlotAccessor:
         # Create output for live preview
         output = widgets.Output()
 
+        # Track current figure in closure to prevent memory leak
+        fig_preview_ref = None
+
         def update_preview(change):
+            nonlocal fig_preview_ref
+
             with output:
                 output.clear_output(wait=True)
                 threshold = change["new"]
+
+                # CRITICAL: Close previous figure to free memory
+                if fig_preview_ref is not None:
+                    plt.close(fig_preview_ref)
 
                 # Create filtered mask efficiently using lookup
                 filtered_objmap = objmap.copy()
@@ -1141,17 +1200,19 @@ class PlotAccessor:
 
                 # Display preview
                 fig_preview, ax_preview = plt.subplots(figsize=figsize)
+                fig_preview_ref = fig_preview  # Store reference for next update
+
                 ax_preview.imshow(gray, cmap="gray")
 
                 mask_accepted = filtered_objmap > 0
                 if mask_accepted.any():
-                    overlay = np.zeros((*gray.shape, 4))
+                    overlay = np.zeros((*gray.shape, 4), dtype=np.float32)
                     overlay[mask_accepted] = [0, 1, 0, 0.4]
                     ax_preview.imshow(overlay)
 
                 mask_rejected = (objmap > 0) & ~mask_accepted
                 if mask_rejected.any():
-                    overlay_rejected = np.zeros((*gray.shape, 4))
+                    overlay_rejected = np.zeros((*gray.shape, 4), dtype=np.float32)
                     overlay_rejected[mask_rejected] = [1, 0, 0, 0.2]
                     ax_preview.imshow(overlay_rejected)
 
@@ -1370,7 +1431,7 @@ class PlotAccessor:
             if robust:
                 # Trimmed mean (5% trim on each end)
                 sorted_sizes = np.sort(sizes)
-                trim_count = int(len(sizes)*0.05)
+                trim_count = int(len(sizes) * 0.05)
                 if trim_count > 0:
                     trimmed = sorted_sizes[trim_count:-trim_count]
                 else:
@@ -1393,7 +1454,7 @@ class PlotAccessor:
         # Calculate statistics
         n_below = np.sum(sizes < center)
         n_above = np.sum(sizes >= center)
-        fraction_below = n_below/len(sizes)
+        fraction_below = n_below / len(sizes)
 
         # Normalize sizes relative to center
         # Use symmetric scale: max deviation from center
@@ -1451,8 +1512,8 @@ class PlotAccessor:
 
         # Add statistics text
         stats_text = (
-            f"Objects below center: {n_below} ({fraction_below*100:.1f}%)\n"
-            f"Objects above center: {n_above} ({(1 - fraction_below)*100:.1f}%)\n"
+            f"Objects below center: {n_below} ({fraction_below * 100:.1f}%)\n"
+            f"Objects above center: {n_above} ({(1 - fraction_below) * 100:.1f}%)\n"
             f"Mean: {np.mean(sizes):.1f} px\n"
             f"Median: {np.median(sizes):.1f} px\n"
             f"Std: {np.std(sizes):.1f} px"
@@ -1755,9 +1816,9 @@ class PlotAccessor:
 
         # Fit regression line in log-log space
         if show_regression and len(sizes) >= 3:
-            # Log transform for linear fit
-            log_sizes = np.log10(sizes)
-            log_intensities = np.log10(intensities + 1e-10)  # Avoid log(0)
+            # Log transform for linear fit - use copies to avoid modifying originals
+            log_sizes = np.log10(sizes, dtype=np.float64)
+            log_intensities = np.log10(intensities + 1e-10, dtype=np.float64)  # Avoid log(0)
 
             # Linear fit in log space
             coeffs = np.polyfit(log_sizes, log_intensities, 1)
@@ -1782,8 +1843,8 @@ class PlotAccessor:
             residuals = log_intensities - poly(log_sizes)
             std_residuals = np.std(residuals)
 
-            intensity_upper = 10 ** (log_intensity_pred + 2*std_residuals)
-            intensity_lower = 10 ** (log_intensity_pred - 2*std_residuals)
+            intensity_upper = 10 ** (log_intensity_pred + 2 * std_residuals)
+            intensity_lower = 10 ** (log_intensity_pred - 2 * std_residuals)
 
             ax_main.fill_between(
                     size_range,
@@ -1795,6 +1856,9 @@ class PlotAccessor:
             )
 
             ax_main.legend(loc="upper left", fontsize=10)
+
+            # Clean up intermediate arrays
+            del log_sizes, log_intensities, residuals
 
             # Interpretation text
             if coeffs[0] < -0.1:
@@ -1846,6 +1910,31 @@ class PlotAccessor:
         plt.tight_layout()
 
         return fig, ax_main
+
+    def try_thresh(self,
+                   figsize: Tuple[int, int] = (10, 8)
+                   ) -> Tuple[plt.Figure, plt.Axes]:
+        """
+        This method visualizes and applies various simple thresholding techniques on a processed image of
+        microbial colonies. It is especially useful for determining the best thresholding method
+        for segmenting colonies on agar plates. The `figsize` parameter influences the display scaling
+        of the visualization, which can help in analyzing image details more comprehensively.
+
+        Note:
+            This does not cover all the detection methods in phenotypic
+
+        Args:
+            figsize (Tuple[int, int]): Controls the size of the figure used for visualizing
+                different thresholding methods. Larger values result in bigger visualizations,
+                making fine details of microbial colonies easier to discern. Smaller values
+                might make the figure more compact but could limit the granularity of visible
+                details, which could impact the perception of segmentation results.
+
+        Returns:
+            Tuple[plt.Figure, plt.Axes]: A tuple containing the Matplotlib figure and axes objects
+            that display the various thresholding techniques applied to the input image.
+        """
+        return try_all_threshold(image=self._root_image.enh_gray[:], figsize=figsize)
 
 
 __all__ = "PlotAccessor",

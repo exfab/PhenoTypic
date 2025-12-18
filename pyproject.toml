@@ -67,6 +67,9 @@ plotly = [
     "plotly>=6.5.0",
     "plotly-express>=0.4.1",
 ]
+cluster = [
+    "submitit>=1.5.4",
+]
 
 [project.scripts]
 phenotypic = "phenotypic.phenotypic_cli:main"

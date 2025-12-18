@@ -963,7 +963,8 @@ class ImageAccessorBase(ABC):
 
         # Reset viewer if requested
         if reset and _global_napari_viewer is not None:
-            if hasattr(_global_napari_viewer, "window") and _global_napari_viewer.window is not None:
+            if hasattr(_global_napari_viewer,
+                       "window") and _global_napari_viewer.window is not None:
                 _global_napari_viewer.close()
             _global_napari_viewer = None
 
@@ -983,10 +984,14 @@ class ImageAccessorBase(ABC):
         layer_name = f"{self._accessor_property_name}_{image_name}"
 
         # Replace layer if it exists, otherwise add new layer
+
+        imdata = self._subject_arr
+        if imdata.ndim == 3:
+            imdata = normalize_rgb_bitdepth(imdata)
         try:
             existing_layer = _global_napari_viewer.layers[layer_name]
-            existing_layer.data = self._subject_arr
+            existing_layer.data = imdata
         except KeyError:
-            _global_napari_viewer.add_image(self._subject_arr, name=layer_name)
+            _global_napari_viewer.add_image(imdata, name=layer_name)
 
         return _global_napari_viewer

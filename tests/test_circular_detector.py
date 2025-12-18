@@ -46,7 +46,7 @@ class TestCircularDetectorInitialization:
                 thresh_method="triangle",
                 subtract_background=False,
                 remove_noise=False,
-                footprint_radius=5,
+                footprint_width=5,
                 smoothing_sigma=3.0,
                 min_peak_distance=10,
                 peak_prominence=0.2,
@@ -227,7 +227,7 @@ class TestCircularDetectorParameters:
     def test_different_footprint_radius(self, radius):
         """Test detection with different footprint radii."""
         image = phenotypic.GridImage(load_plate_12hr())
-        detector = RoundPeaksDetector(footprint_radius=radius)
+        detector = RoundPeaksDetector(footprint_width=radius)
         result = detector.apply(image, inplace=False)
 
         assert result.num_objects > 0
@@ -343,14 +343,14 @@ class TestCircularDetectorHelperMethods:
         height, width = 200, 300
         binary_image = np.zeros((height, width), dtype=bool)
 
-        row_spacing = height//nrows
-        col_spacing = width//ncols
+        row_spacing = height // nrows
+        col_spacing = width // ncols
 
         for r in range(nrows):
             for c in range(ncols):
                 # Add a small colony at each grid position
-                r_center = r*row_spacing + row_spacing//2
-                c_center = c*col_spacing + col_spacing//2
+                r_center = r * row_spacing + row_spacing // 2
+                c_center = c * col_spacing + col_spacing // 2
                 binary_image[
                     r_center - 3: r_center + 3, c_center - 3: c_center + 3
                 ] = True
@@ -369,7 +369,7 @@ class TestCircularDetectorEdgeCases:
     def test_empty_image(self):
         """Test detection on an empty/blank image."""
         # Create blank image (RGB for GridImage compatibility)
-        blank_array = np.ones((100, 100, 3), dtype=np.uint8)*255
+        blank_array = np.ones((100, 100, 3), dtype=np.uint8) * 255
         image = phenotypic.GridImage(blank_array)
         detector = RoundPeaksDetector()
         result = detector.apply(image, inplace=False)
@@ -417,7 +417,7 @@ class TestCircularDetectorEdgeCases:
     def test_large_footprint_radius(self):
         """Test with footprint width larger than typical colony size."""
         image = phenotypic.GridImage(load_plate_12hr())
-        detector = RoundPeaksDetector(footprint_radius=20)
+        detector = RoundPeaksDetector(footprint_width=20)
         result = detector.apply(image, inplace=False)
 
         # Should still work, though may affect results
@@ -479,7 +479,7 @@ class TestCircularDetectorOutputConsistency:
                 thresh_method="otsu",
                 subtract_background=True,
                 remove_noise=True,
-                footprint_radius=3,
+                footprint_width=3,
                 smoothing_sigma=2.0,
                 edge_refinement=True,
         )
@@ -515,7 +515,7 @@ class TestCircularDetectorComparisonWithOtherDetectors:
 
         # Numbers don't need to match exactly, but should be in similar range
         # Allow up to 50% difference
-        ratio = result_gitter.num_objects/max(result_watershed.num_objects, 1)
+        ratio = result_gitter.num_objects / max(result_watershed.num_objects, 1)
         assert 0.5 <= ratio <= 2.0, (
             f"RoundPeaksDetector found {result_gitter.num_objects} objects, WatershedDetector found {result_watershed.num_objects}"
         )

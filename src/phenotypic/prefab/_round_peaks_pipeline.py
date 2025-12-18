@@ -196,7 +196,7 @@ class RoundPeaksPipeline(PrefabPipeline):
                 thresh_method=detector_thresh_method,
                 subtract_background=detector_subtract_background,
                 remove_noise=detector_remove_noise,
-                footprint_radius=detector_footprint_radius,
+                footprint_width=detector_footprint_radius,
                 smoothing_sigma=detector_smoothing_sigma,
                 min_peak_distance=detector_min_peak_distance,
                 peak_prominence=detector_peak_prominence,

@@ -79,5 +79,5 @@ class Skeletonize(ObjectRefiner):
         self.method: Literal["zhang", "lee"] | None = method
 
     def _operate(self, image: Image) -> Image:
-        image.objmask[:] = skeletonize(image.objmask[:], method=self.method)
+        image.objmask[:] = skeletonize(image.objmask.copy(), method=self.method)
         return image

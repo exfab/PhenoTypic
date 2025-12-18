@@ -80,11 +80,11 @@ class RoundPeaksDetector(ObjectDetector):
     def __init__(
             self,
             thresh_method: Literal[
-                "otsu", "mean", "local", "triangle", "minimum", "isodata"
+                "otsu", "mean", "local", "triangle", "minimum", "isodata", "li"
             ] = "otsu",
             subtract_background: bool = True,
             remove_noise: bool = True,
-            footprint_radius: int = 3,
+            footprint_width: int = 6,
             smoothing_sigma: float = 2.0,
             min_peak_distance: int | None = None,
             peak_prominence: float | None = None,
@@ -95,12 +95,13 @@ class RoundPeaksDetector(ObjectDetector):
 
         Args:
             thresh_method: Method for thresholding the image. Options are:
-                'otsu' (default), 'mean', 'local', 'triangle', 'minimum', 'isodata'.
+                'otsu' (default), 'mean', 'local', 'triangle', 'minimum',
+                'isodata', 'li'.
             subtract_background: If True, apply white tophat transform to remove
                 background variations before thresholding.
             remove_noise: If True, apply morphological opening to remove small
                 noise artifacts from the binary mask.
-            footprint_radius: Radius in pixels for morphological operations.
+            footprint_width: width in pixels for morphological operations.
                 Larger values remove larger noise but may erode colony edges.
             smoothing_sigma: Standard deviation for Gaussian smoothing of intensity
                 profiles before peak detection. Set to 0 to disable smoothing.
@@ -115,7 +116,7 @@ class RoundPeaksDetector(ObjectDetector):
 
         self.thresh_method = thresh_method
         self.subtract_background = subtract_background
-        self.footprint_radius = footprint_radius
+        self.footprint_radius = footprint_width
         self.remove_noise = remove_noise
         self.smoothing_sigma = smoothing_sigma
         self.min_peak_distance = min_peak_distance
@@ -158,7 +159,9 @@ class RoundPeaksDetector(ObjectDetector):
         image.objmask[:] = objmask
 
         labeled, num_features = ndimage.label(
-                objmask, structure=ndimage.generate_binary_structure(2, 2)
+                objmask, structure=ndimage.generate_binary_structure(
+                        rank=2,
+                        connectivity=2)
         )
         self._log_memory_usage(f"after labeling ({num_features} features)")
 
@@ -246,7 +249,7 @@ class RoundPeaksDetector(ObjectDetector):
             ValueError: If an invalid thresholding method is specified.
         """
         kernel = morphology.footprint_rectangle(
-                (self.footprint_radius*2, self.footprint_radius*2)
+                (self.footprint_radius * 2, self.footprint_radius * 2)
         )
         enh_matrix = matrix.copy()  # Work on a copy to avoid modifying input
 
@@ -263,7 +266,7 @@ class RoundPeaksDetector(ObjectDetector):
                 thresh = filters.threshold_mean(enh_matrix)
             case "local":
                 block_size = max(
-                        self.footprint_radius*2 + 1, 3
+                        self.footprint_radius * 2 + 1, 3
                 )  # Ensure odd block size
                 thresh = filters.threshold_local(enh_matrix, block_size=block_size)
             case "triangle":
@@ -272,6 +275,8 @@ class RoundPeaksDetector(ObjectDetector):
                 thresh = filters.threshold_minimum(enh_matrix)
             case "isodata":
                 thresh = filters.threshold_isodata(enh_matrix)
+            case "li":
+                thresh = filters.threshold_li(enh_matrix)
             case _:
                 # Default to Otsu if method not recognized
                 thresh = filters.threshold_otsu(enh_matrix)
@@ -308,10 +313,10 @@ class RoundPeaksDetector(ObjectDetector):
         # For axis=0: we're summing columns, so check for long runs across columns
         # For axis=1: we're summing rows, so check for long runs across rows
         if axis == 0:
-            c = p*binary_image.shape[1]  # Threshold based on number of columns
+            c = p * binary_image.shape[1]  # Threshold based on number of columns
             n_slices = binary_image.shape[0]  # Number of rows to iterate through
         else:
-            c = p*binary_image.shape[0]  # Threshold based on number of rows
+            c = p * binary_image.shape[0]  # Threshold based on number of rows
             n_slices = binary_image.shape[1]  # Number of columns to iterate through
 
         # Identify problematic rows/columns with long stretches of 1s
@@ -337,7 +342,7 @@ class RoundPeaksDetector(ObjectDetector):
         sums = np.sum(binary_image, axis=axis, dtype=np.float64)
 
         # Split problematic array in half and zero out problematic regions at edges
-        mid = len(problematic)//2
+        mid = len(problematic) // 2
         left_prob = problematic[:mid]
         right_prob = problematic[mid:]
 
@@ -385,13 +390,13 @@ class RoundPeaksDetector(ObjectDetector):
 
         # Calculate expected spacing between colonies
         image_size = binary_image.shape[1 - axis]  # Size along the summed dimension
-        expected_spacing = max(image_size//max(n_bins, 1), 1)
+        expected_spacing = max(image_size // max(n_bins, 1), 1)
 
         # Determine peak detection parameters
         min_distance = (
             self.min_peak_distance
             if self.min_peak_distance is not None
-            else max(expected_spacing//2, 1)
+            else max(expected_spacing // 2, 1)
         )
 
         # Calculate prominence if not provided
@@ -400,7 +405,7 @@ class RoundPeaksDetector(ObjectDetector):
         else:
             # noinspection PyUnresolvedReferences
             signal_range = np.max(sums) - np.min(sums)
-            prominence = 0.1*signal_range if signal_range > 0 else None
+            prominence = 0.1 * signal_range if signal_range > 0 else None
 
         # Detect peaks with prominence and distance constraints
         peaks, properties = find_peaks(
@@ -410,8 +415,8 @@ class RoundPeaksDetector(ObjectDetector):
         if peaks.size < n_bins:
             # Fallback: enforce evenly spaced peaks if auto detection under-fits
             peaks = np.linspace(
-                    start=expected_spacing//2,
-                    stop=image_size - expected_spacing//2,
+                    start=expected_spacing // 2,
+                    stop=image_size - expected_spacing // 2,
                     num=n_bins,
                     dtype=int,
             )
@@ -424,7 +429,7 @@ class RoundPeaksDetector(ObjectDetector):
         # Derive edges midway between peaks
         if len(peaks) > 1:
             # Calculate midpoints between consecutive peaks
-            midpoints = ((peaks[:-1] + peaks[1:])/2).astype(int)
+            midpoints = ((peaks[:-1] + peaks[1:]) / 2).astype(int)
             # Prepend/append image borders
             edges = np.concatenate(([0], midpoints, [image_size]))
         else:
@@ -469,7 +474,7 @@ class RoundPeaksDetector(ObjectDetector):
         for i in range(1, len(edges) - 1):
             edge_pos = edges[i]
             # Define search window around current edge
-            search_radius = min(10, (edges[i + 1] - edges[i - 1])//4)
+            search_radius = min(10, (edges[i + 1] - edges[i - 1]) // 4)
             search_start = max(0, edge_pos - search_radius)
             search_end = min(len(sums), edge_pos + search_radius + 1)
 
@@ -505,7 +510,7 @@ class RoundPeaksDetector(ObjectDetector):
             return 8, 12
 
         # Estimate based on aspect ratio and colony count
-        aspect_ratio = binary_image.shape[1]/binary_image.shape[0]
+        aspect_ratio = binary_image.shape[1] / binary_image.shape[0]
 
         if aspect_ratio > 1.3:  # Wide plate (likely 8x12 or similar)
             # Try 8x12 (96 wells), 16x24 (384 wells), etc.
@@ -514,8 +519,8 @@ class RoundPeaksDetector(ObjectDetector):
             elif num <= 400:
                 return 16, 24
             else:
-                approx_rows = int(np.ceil(np.sqrt(num/aspect_ratio)))
-                approx_cols = int(np.ceil(np.sqrt(num*aspect_ratio)))
+                approx_rows = int(np.ceil(np.sqrt(num / aspect_ratio)))
+                approx_cols = int(np.ceil(np.sqrt(num * aspect_ratio)))
                 return approx_rows, approx_cols
         else:
             # Square-ish layout
