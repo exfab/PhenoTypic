@@ -583,7 +583,7 @@ class ObjectRefiner(ImageOperation, ABC):
 
     @staticmethod
     def _make_footprint(
-            shape: Literal["square", "diamond", "disk"] | np.ndarray, radius: int
+            shape: Literal["square", "diamond", "disk"] | np.ndarray, width: int
     ) -> np.ndarray:
         """
         Generates a binary footprint (structuring element) for morphological operations.
@@ -607,7 +607,7 @@ class ObjectRefiner(ImageOperation, ABC):
                 - "disk": Creates a disk-shaped footprint with width `width`.
                 - np.ndarray: A custom binary array can be directly passed for specific applications.
                   Suitable for advanced cases where predefined shapes are insufficient.
-            radius: int
+            width: int
                 The width of the footprint for the selected shape. A higher width results in
                 a larger footprint, increasing the size of regions affected by processing.
                 For analyzing microbe colonies, it can determine how closely neighboring
@@ -623,13 +623,13 @@ class ObjectRefiner(ImageOperation, ABC):
         if isinstance(shape, np.ndarray):
             return shape
         else:
-            radius = int(radius)
+            width = int(width)
             match shape:
                 case "square":
-                    return square(width=radius*2)
+                    return square(width=width)
                 case "diamond":
-                    return diamond(radius=radius)
+                    return diamond(radius=width // 2)
                 case "disk":
-                    return disk(radius=radius)
+                    return disk(radius=width // 2)
                 case _:
                     raise ValueError(f"Unknown shape: {shape}")

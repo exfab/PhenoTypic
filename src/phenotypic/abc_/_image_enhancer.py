@@ -478,7 +478,7 @@ class ImageEnhancer(ImageOperation, ABC):
         Returns:
             np.ndarray: A binary numpy array representing the generated footprint. The
             footprint will be used for convolutional operations over the microbial colony
-            image. The specific shape and radius passed as arguments dictate the size
+            image. The specific shape and width passed as arguments dictate the size
             and morphology of this array.
 
         Raises:
@@ -489,8 +489,8 @@ class ImageEnhancer(ImageOperation, ABC):
             case "square":
                 return morphology.footprint_rectangle(shape=(width, width))
             case "diamond":
-                return diamond(radius=width//2)
+                return diamond(radius=width // 2)
             case "disk":
-                return disk(radius=width//2)
+                return disk(radius=width // 2)
             case _:
                 raise ValueError(f"Unknown shape: {shape}")

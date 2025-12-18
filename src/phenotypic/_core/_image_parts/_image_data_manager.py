@@ -197,7 +197,7 @@ class ImageDataManager:
                   The sparsity provides computational efficiency for large images 
                   or when colonies sparsely populate the agar plate.
         """
-        if len(shape) == 3:
+        if len(shape) == 3 and shape[2] == 3:
             rgb = np.empty(shape=shape,
                            dtype=self._ARRAY8_DTYPE
                            if self.bit_depth == 8
@@ -420,4 +420,4 @@ class ImageDataManager:
             target_dtype = np.uint16
             max_value = 65535
 
-        return (float_array*max_value).astype(target_dtype)
+        return (float_array * max_value).astype(target_dtype)

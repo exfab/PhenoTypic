@@ -24,7 +24,7 @@ def get_synthetic_plates_dir() -> Path:
     import phenotypic
 
     phenotypic_dir = Path(phenotypic.__file__).parent
-    return phenotypic_dir/"data"/"synthetic_plates"
+    return phenotypic_dir / "data" / "synthetic_plates"
 
 
 class TestPhenotypicCLI:
@@ -40,8 +40,8 @@ class TestPhenotypicCLI:
         """Create temporary directories for testing."""
         with tempfile.TemporaryDirectory() as tmpdir:
             tmpdir = Path(tmpdir)
-            input_dir = tmpdir/"input"
-            output_dir = tmpdir/"output"
+            input_dir = tmpdir / "input"
+            output_dir = tmpdir / "output"
             input_dir.mkdir()
             # Don't create output_dir - CLI should create it
             yield input_dir, output_dir
@@ -77,7 +77,7 @@ class TestPhenotypicCLI:
         grid_image = load_synthetic_detection_image()
 
         # Save it as a PNG in the input directory
-        img_path = input_dir/"test_grid.png"
+        img_path = input_dir / "test_grid.png"
         grid_image.rgb[:].astype("uint8")  # Ensure proper type
         from PIL import Image as PILImage
 
@@ -171,8 +171,8 @@ class TestPhenotypicCLI:
 
         # Verify directories were created
         assert output_dir.exists()
-        assert (output_dir/"measurements").exists()
-        assert (output_dir/"overlays").exists()
+        assert (output_dir / "measurements").exists()
+        assert (output_dir / "overlays").exists()
 
     def test_cli_invalid_image_type_option(
             self, runner, circular_pipeline_json, temp_dirs
@@ -275,7 +275,7 @@ class TestPhenotypicCLI:
 
         assert result.exit_code == 0
 
-        master_csv = output_dir/"master_measurements.csv"
+        master_csv = output_dir / "master_measurements.csv"
         assert master_csv.exists(), "master_measurements.csv should exist"
         assert master_csv.is_file(), "master_measurements.csv should be a file"
         assert master_csv.parent.is_dir(), "Parent directory should exist"
@@ -308,8 +308,8 @@ class TestPhenotypicCLI:
         assert output_dir.exists(), "Output directory should exist"
 
         # Check structure
-        meas_dir = output_dir/"measurements"
-        overlay_dir = output_dir/"overlays"
+        meas_dir = output_dir / "measurements"
+        overlay_dir = output_dir / "overlays"
 
         assert meas_dir.is_dir(), (
             "measurements directory should exist and be a directory"
@@ -359,7 +359,7 @@ class TestPhenotypicCLI:
         assert result.exit_code == 0
 
         # Load and validate master CSV
-        master_csv = output_dir/"master_measurements.csv"
+        master_csv = output_dir / "master_measurements.csv"
         assert master_csv.is_file(), "master_measurements.csv should be a file"
         assert master_csv.suffix == ".csv", "File should have .csv extension"
         assert master_csv.stat().st_size > 0, (
@@ -376,7 +376,7 @@ class TestPhenotypicCLI:
         assert len(df.columns) > 0, "Master CSV should have measurement columns"
 
         # Verify individual CSVs exist for each image
-        meas_dir = output_dir/"measurements"
+        meas_dir = output_dir / "measurements"
         csv_files = list(meas_dir.glob("*.csv"))
 
         for csv_file in csv_files:
@@ -416,14 +416,14 @@ class TestPhenotypicCLI:
         )
         assert (
                 "master_measurements.csv" in result.output
-                or (output_dir/"master_measurements.csv").exists()
+                or (output_dir / "master_measurements.csv").exists()
         )
 
     def test_process_single_image_with_real_pipeline(self, temp_dirs):
         """Test process_single_image function with a real RoundPeaksPipeline and image."""
         input_dir, output_dir = temp_dirs
-        meas_dir = output_dir/"measurements"
-        overlay_dir = output_dir/"overlays"
+        meas_dir = output_dir / "measurements"
+        overlay_dir = output_dir / "overlays"
         meas_dir.mkdir(parents=True, exist_ok=True)
         overlay_dir.mkdir(parents=True, exist_ok=True)
 
@@ -431,7 +431,7 @@ class TestPhenotypicCLI:
         grid_image = load_synthetic_detection_image()
 
         # Save it
-        img_path = input_dir/"test.png"
+        img_path = input_dir / "test.png"
         from PIL import Image as PILImage
 
         pil_img = PILImage.fromarray(grid_image.rgb[:].astype("uint8"))
@@ -468,13 +468,13 @@ class TestPhenotypicCLI:
     def test_process_single_image_handles_exception(self, temp_dirs):
         """Test that process_single_image handles exceptions gracefully."""
         input_dir, output_dir = temp_dirs
-        meas_dir = output_dir/"measurements"
-        overlay_dir = output_dir/"overlays"
+        meas_dir = output_dir / "measurements"
+        overlay_dir = output_dir / "overlays"
         meas_dir.mkdir(parents=True, exist_ok=True)
         overlay_dir.mkdir(parents=True, exist_ok=True)
 
         # Create a fake image file (not a real image)
-        fake_img = input_dir/"fake.jpg"
+        fake_img = input_dir / "fake.jpg"
         fake_img.write_text("not an image")
 
         # Create real pipeline
@@ -494,7 +494,7 @@ class TestPhenotypicCLI:
         input_dir, output_dir = temp_dirs
 
         # Duplicate the synthetic image so we have >1 for joblib path
-        dup_path = input_dir/"test_grid_dup.png"
+        dup_path = input_dir / "test_grid_dup.png"
         shutil.copy(synthetic_grid_image, dup_path)
 
         result = runner.invoke(
@@ -522,10 +522,10 @@ class TestPhenotypicCLI:
         input_dir, output_dir = temp_dirs
 
         # Duplicate the synthetic image so we have >1 for submitit path
-        dup_path = input_dir/"test_grid_dup.png"
+        dup_path = input_dir / "test_grid_dup.png"
         shutil.copy(synthetic_grid_image, dup_path)
 
-        submitit_log_dir = output_dir/"submitit_logs"
+        submitit_log_dir = output_dir / "submitit_logs"
 
         result = runner.invoke(
                 main,
@@ -549,7 +549,6 @@ class TestPhenotypicCLI:
 
         assert result.exit_code == 0
 
-    @pytest.mark.slow
     def test_cli_with_synthetic_plates(self, runner, circular_pipeline_json):
         """Test CLI with real synthetic plate images."""
         synthetic_dir = get_synthetic_plates_dir()
@@ -560,7 +559,7 @@ class TestPhenotypicCLI:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             tmpdir = Path(tmpdir)
-            output_dir = tmpdir/"output"
+            output_dir = tmpdir / "output"
 
             # Run CLI on synthetic plates directory
             result = runner.invoke(
@@ -585,11 +584,10 @@ class TestPhenotypicCLI:
 
             # Verify output structure
             assert output_dir.exists()
-            assert (output_dir/"measurements").exists()
-            assert (output_dir/"overlays").exists()
-            assert (output_dir/"master_measurements.csv").exists()
+            assert (output_dir / "measurements").exists()
+            assert (output_dir / "overlays").exists()
+            assert (output_dir / "master_measurements.csv").exists()
 
-    @pytest.mark.slow
     def test_cli_processes_multiple_synthetic_plates(
             self, runner, circular_pipeline_json
     ):
@@ -609,7 +607,7 @@ class TestPhenotypicCLI:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             tmpdir = Path(tmpdir)
-            output_dir = tmpdir/"output"
+            output_dir = tmpdir / "output"
 
             result = runner.invoke(
                     main,
@@ -631,7 +629,7 @@ class TestPhenotypicCLI:
             assert result.exit_code == 0
 
             # Check that all images were processed
-            meas_dir = output_dir/"measurements"
+            meas_dir = output_dir / "measurements"
             csv_files = list(meas_dir.glob("*.csv"))
 
             # Should have processed multiple images
@@ -640,7 +638,7 @@ class TestPhenotypicCLI:
             )
 
             # Master CSV should contain aggregated results
-            master_csv = output_dir/"master_measurements.csv"
+            master_csv = output_dir / "master_measurements.csv"
             import pandas as pd
 
             df = pd.read_csv(master_csv)
@@ -650,7 +648,6 @@ class TestPhenotypicCLI:
                 f"Master CSV should have many measurement rows, got {len(df)}"
             )
 
-    @pytest.mark.slow
     def test_cli_synthetic_plates_output_validation(
             self, runner, circular_pipeline_json
     ):
@@ -662,7 +659,7 @@ class TestPhenotypicCLI:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             tmpdir = Path(tmpdir)
-            output_dir = tmpdir/"output"
+            output_dir = tmpdir / "output"
 
             result = runner.invoke(
                     main,
@@ -684,7 +681,7 @@ class TestPhenotypicCLI:
             assert result.exit_code == 0
 
             # Validate measurements CSV
-            master_csv = output_dir/"master_measurements.csv"
+            master_csv = output_dir / "master_measurements.csv"
             import pandas as pd
 
             df = pd.read_csv(master_csv)
@@ -709,7 +706,7 @@ class TestPhenotypicCLI:
             )
 
             # Verify overlay PNGs exist and are valid
-            overlay_dir = output_dir/"overlays"
+            overlay_dir = output_dir / "overlays"
             png_files = list(overlay_dir.glob("*.png"))
 
             assert len(png_files) > 0, "No overlay PNG files created"
@@ -721,7 +718,7 @@ class TestPhenotypicCLI:
                 )
 
             # Verify individual measurement CSVs
-            meas_dir = output_dir/"measurements"
+            meas_dir = output_dir / "measurements"
             csv_files = list(meas_dir.glob("*.csv"))
 
             assert len(csv_files) > 0, "No individual measurement CSVs created"
@@ -730,7 +727,6 @@ class TestPhenotypicCLI:
                 csv_df = pd.read_csv(csv_file)
                 assert len(csv_df) > 0, f"{csv_file.name} has no measurement data"
 
-    @pytest.mark.slow
     def test_cli_parallel_processing_synthetic_plates(
             self, runner, circular_pipeline_json
     ):
@@ -742,7 +738,7 @@ class TestPhenotypicCLI:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             tmpdir = Path(tmpdir)
-            output_dir = tmpdir/"output"
+            output_dir = tmpdir / "output"
 
             # Run with 2 parallel jobs
             result = runner.invoke(
@@ -766,7 +762,7 @@ class TestPhenotypicCLI:
             assert result.exit_code == 0
 
             # Verify outputs are correct
-            master_csv = output_dir/"master_measurements.csv"
+            master_csv = output_dir / "master_measurements.csv"
             assert master_csv.exists()
             assert master_csv.stat().st_size > 0
 
@@ -784,7 +780,7 @@ class TestModuleCallable:
         """Test that __main__.py exists in phenotypic package."""
         from phenotypic import __file__ as phenotypic_init
 
-        main_file = Path(phenotypic_init).parent/"__main__.py"
+        main_file = Path(phenotypic_init).parent / "__main__.py"
         assert main_file.exists()
 
     def test_import_main_from_main_module(self):

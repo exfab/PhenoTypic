@@ -99,7 +99,7 @@ class BayesShrinkEnhancer(ImageEnhancer):
                 # Denoise while preserving colony texture
                 pipeline = ImagePipeline()
                 pipeline.add(BayesShrinkEnhancer(wavelet='db4'))  # Fine details
-                pipeline.add(UnsharpMask(radius=1.5, amount=1.0))  # Enhance edges
+                pipeline.add(UnsharpMask(width=1.5, amount=1.0))  # Enhance edges
 
                 result = pipeline.apply(image)
 
@@ -109,11 +109,11 @@ class BayesShrinkEnhancer(ImageEnhancer):
     """
 
     def __init__(
-        self,
-        sigma: float | None = None,
-        wavelet: str = "db2",
-        mode: Literal["soft", "hard"] = "soft",
-        wavelet_levels: int | None = None,
+            self,
+            sigma: float | None = None,
+            wavelet: str = "db2",
+            mode: Literal["soft", "hard"] = "soft",
+            wavelet_levels: int | None = None,
     ):
         """Initialize BayesShrink adaptive wavelet denoiser.
 
@@ -135,11 +135,11 @@ class BayesShrinkEnhancer(ImageEnhancer):
 
     @staticmethod
     def _operate(
-        image: Image,
-        sigma: float | None = None,
-        wavelet: str = "db2",
-        mode: Literal["soft", "hard"] = "soft",
-        wavelet_levels: int | None = None,
+            image: Image,
+            sigma: float | None = None,
+            wavelet: str = "db2",
+            mode: Literal["soft", "hard"] = "soft",
+            wavelet_levels: int | None = None,
     ) -> Image:
         """Apply BayesShrink adaptive wavelet denoising to enhanced grayscale.
 
@@ -154,14 +154,14 @@ class BayesShrinkEnhancer(ImageEnhancer):
             Modified Image with denoised enh_gray
         """
         denoised = denoise_wavelet(
-            image=image.enh_gray[:],
-            sigma=sigma,
-            wavelet=wavelet,
-            mode=mode,
-            wavelet_levels=wavelet_levels,
-            method="BayesShrink",
-            channel_axis=None,
-            rescale_sigma=True,
+                image=image.enh_gray[:],
+                sigma=sigma,
+                wavelet=wavelet,
+                mode=mode,
+                wavelet_levels=wavelet_levels,
+                method="BayesShrink",
+                channel_axis=None,
+                rescale_sigma=True,
         )
         image.enh_gray[:] = denoised.clip(0.0, 1.0)
         return image

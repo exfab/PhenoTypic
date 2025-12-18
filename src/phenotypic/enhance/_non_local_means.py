@@ -30,7 +30,7 @@ class NonLocalMeansDenoiser(ImageEnhancer):
     - patch_size: Larger patches (e.g., 7-15) capture more structure and are slower;
       smaller patches (5-7) are faster but may miss textures. For colonies, 7 is typically
       a good balance.
-    - patch_distance: Larger search radius (e.g., 11-21) considers more similar patches
+    - patch_distance: Larger search width (e.g., 11-21) considers more similar patches
       at higher computational cost; smaller values (5-7) run faster but may miss good
       matches far from the pixel. Default of 11 usually works well.
     - h: Controls the decay in patch weights. Larger h allows more smoothing between
@@ -60,13 +60,13 @@ class NonLocalMeansDenoiser(ImageEnhancer):
     """
 
     def __init__(
-        self,
-        patch_size: int = 7,
-        patch_distance: int = 11,
-        h: float = 0.1,
-        *,
-        fast_mode: bool = True,
-        sigma: float = 0.0,
+            self,
+            patch_size: int = 7,
+            patch_distance: int = 11,
+            h: float = 0.1,
+            *,
+            fast_mode: bool = True,
+            sigma: float = 0.0,
     ):
         """
         Parameters:
@@ -93,22 +93,22 @@ class NonLocalMeansDenoiser(ImageEnhancer):
 
     @staticmethod
     def _operate(
-        image: Image,
-        patch_size: int = 7,
-        patch_distance: int = 11,
-        h: float = 0.1,
-        fast_mode: bool = True,
-        sigma: float = 0.0,
+            image: Image,
+            patch_size: int = 7,
+            patch_distance: int = 11,
+            h: float = 0.1,
+            fast_mode: bool = True,
+            sigma: float = 0.0,
     ) -> Image:
         """Apply non-local means denoising to enhanced grayscale."""
         denoised = denoise_nl_means(
-            image=image.enh_gray[:],
-            patch_size=patch_size,
-            patch_distance=patch_distance,
-            h=h,
-            fast_mode=fast_mode,
-            sigma=sigma,
-            preserve_range=True,
+                image=image.enh_gray[:],
+                patch_size=patch_size,
+                patch_distance=patch_distance,
+                h=h,
+                fast_mode=fast_mode,
+                sigma=sigma,
+                preserve_range=True,
         )
         image.enh_gray[:] = denoised
         return image

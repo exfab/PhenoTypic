@@ -1,6 +1,9 @@
 # conftest.py
 import logging
 
+# Share test fixtures defined in tests/test_fixtures.py across the suite.
+pytest_plugins = ["tests.test_fixtures"]
+
 
 def pytest_configure(config):
     import phenotypic.settings_

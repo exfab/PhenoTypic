@@ -101,7 +101,7 @@ class VisuShrinkEnhancer(ImageEnhancer):
 
                 # Build preprocessing pipeline
                 pipeline = ImagePipeline()
-                pipeline.add(GaussianSubtract(radius=50))  # Remove background
+                pipeline.add(GaussianSubtract(width=50))  # Remove background
                 pipeline.add(VisuShrinkEnhancer(sigma=0.03))  # Denoise
                 pipeline.add(CLAHE(clip_limit=0.02))  # Enhance local contrast
                 pipeline.add(OtsuDetector())  # Detect colonies
@@ -111,11 +111,11 @@ class VisuShrinkEnhancer(ImageEnhancer):
     """
 
     def __init__(
-        self,
-        sigma: float | None = None,
-        wavelet: str = "db2",
-        mode: Literal["soft", "hard"] = "soft",
-        wavelet_levels: int | None = None,
+            self,
+            sigma: float | None = None,
+            wavelet: str = "db2",
+            mode: Literal["soft", "hard"] = "soft",
+            wavelet_levels: int | None = None,
     ):
         """Initialize VisuShrink wavelet denoiser.
 
@@ -141,11 +141,11 @@ class VisuShrinkEnhancer(ImageEnhancer):
 
     @staticmethod
     def _operate(
-        image: Image,
-        sigma: float | None = None,
-        wavelet: str = "db2",
-        mode: Literal["soft", "hard"] = "soft",
-        wavelet_levels: int | None = None,
+            image: Image,
+            sigma: float | None = None,
+            wavelet: str = "db2",
+            mode: Literal["soft", "hard"] = "soft",
+            wavelet_levels: int | None = None,
     ) -> Image:
         """Apply VisuShrink wavelet denoising to enhanced grayscale.
 
@@ -160,14 +160,14 @@ class VisuShrinkEnhancer(ImageEnhancer):
             Modified Image with denoised enh_gray
         """
         denoised = denoise_wavelet(
-            image=image.enh_gray[:],
-            sigma=sigma,
-            wavelet=wavelet,
-            mode=mode,
-            wavelet_levels=wavelet_levels,
-            method="VisuShrink",
-            channel_axis=None,
-            rescale_sigma=True,
+                image=image.enh_gray[:],
+                sigma=sigma,
+                wavelet=wavelet,
+                mode=mode,
+                wavelet_levels=wavelet_levels,
+                method="VisuShrink",
+                channel_axis=None,
+                rescale_sigma=True,
         )
         image.enh_gray[:] = denoised.clip(0.0, 1.0)
         return image
