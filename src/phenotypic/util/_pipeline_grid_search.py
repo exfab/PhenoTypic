@@ -1902,19 +1902,29 @@ def _add_result_layer(
 ) -> None:
     """Add a single data layer to napari viewer.
 
-    Accepts either a full Image object or a numpy array directly. When
-    result_data is an Image, extracts the requested layer. When result_data
-    is already an array, uses it directly.
+    IMPORTANT: For memory safety, always pass numpy arrays (not Image objects)
+    to this function. Image objects should be extracted using _extract_data_layers()
+    first to create independent array copies before passing to napari.
 
     Args:
         viewer: Napari viewer instance
-        result_data: Either Image object or numpy array for this layer
-        data_layer: Which data to add ("rgb", "gray", etc.)
+        result_data: **PREFERRED**: numpy array for this layer (created by
+            _extract_data_layers() with explicit .copy()). **DEPRECATED**: Image
+            object (legacy support, may cause memory issues if the source Image
+            is deleted while napari holds references to its internal arrays).
+        data_layer: Which data to add ("rgb", "gray", "enh_gray", "objmask", "objmap")
         layer_name: Name for the layer in napari
 
+    Deprecation:
+        Passing Image objects is deprecated and may be removed in future versions.
+        Always extract arrays first using _extract_data_layers() to ensure napari
+        receives independent copies that won't be invalidated when the source
+        Image object is deleted.
+
     Note:
-        For backwards compatibility, this function handles both Image objects
-        (legacy behavior) and numpy arrays (memory-optimized behavior).
+        For backwards compatibility, this function currently accepts both Image
+        objects (legacy behavior) and numpy arrays (memory-optimized behavior).
+        The Image object path should only be used for debugging or legacy code.
     """
     import numpy as np
 
@@ -2130,6 +2140,12 @@ def PipelineGridSearch(
     all_configs = _generate_param_combinations(parameters)
 
     # 4. Prepare task arguments
+    # Note: We pass image reference (not a copy) to each parallel task. This is intentional
+    # and safe because _execute_single_pipeline makes an explicit copy before processing:
+    # - Line 1874: `result_image = image.copy()` (inplace=True path)
+    # - Line 1878: `result = pipeline.apply(image.copy())` (inplace=False path)
+    # This avoids unnecessary image copying when only serial execution occurs, while
+    # remaining safe for parallel execution where each worker gets an immutable reference.
     task_args = [(image, operations, config, inplace) for config in all_configs]
 
     # 5. Execute pipelines with selected backend
@@ -2201,10 +2217,12 @@ def PipelineGridSearch(
             layer_name = f"{idx:03d}_{param_str}"
             configs_dict[layer_name] = json_config
 
+            # Clean up Image object immediately after use
             del result_img
 
         # Delete remaining result references for memory cleanup
         del results
+        gc.collect()  # Explicit garbage collection to match TIFF mode cleanup
         return viewer, configs_dict
 
 
@@ -2530,6 +2548,9 @@ def MultiPipelineGridSearch(
 
             # Build task arguments for _execute_parallel_tasks
             # Each task is: (image, operations, param_config, inplace)
+            # Note: We pass image reference (not a copy) to each parallel task. This is intentional
+            # and safe because _execute_single_pipeline makes an explicit copy before processing
+            # (see PipelineGridSearch Step 2 rationale). Each worker gets an immutable reference.
             task_args = [
                 (image, operations, param_config, inplace)
                 for param_config in param_configs
@@ -2576,16 +2597,24 @@ def MultiPipelineGridSearch(
 
                 else:
                     # ============ NAPARI VIEWER MODE ============
+                    # Extract arrays BEFORE passing to napari (prevents stale references)
+                    # This ensures napari receives independent copies, not references to
+                    # the Image object's internal data that would become invalid when
+                    # the Image object is deleted
+                    extracted = _extract_data_layers(result_img, data_layers)
+
                     # Add layers with pipeline name prefix
-                    for data_layer in data_layers:
-                        layer_name = f"{config_key}_{data_layer}"
-                        _add_result_layer(viewer, result_img, data_layer, layer_name)
+                    for layer_name, array_data in extracted.items():
+                        full_layer_name = f"{config_key}_{layer_name}"
+                        _add_result_layer(viewer, array_data, layer_name, full_layer_name)
 
                     # Store config always
                     all_configs[config_key] = json_config
 
-                    # Free memory
-                    del result_img
+                    # Free memory immediately after use
+                    del result_img, extracted
+                    import gc as gc_module
+                    gc_module.collect()
 
     # Generate HTML view if in TIFF mode
     if save_tiff_dir:
