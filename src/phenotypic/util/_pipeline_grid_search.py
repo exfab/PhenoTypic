@@ -111,13 +111,30 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+# Batch size constraints
+_MIN_BATCH_SIZE = 2  # Minimum pipelines per batch
+_MAX_SAFE_BATCH_SIZE = 8  # Conservative default max for memory safety
+_IDEAL_BATCH_MULTIPLIER = 2  # Multiply jobs_per_batch by this for ideal size
+
+# Memory safety factors
+_MEMORY_SAFETY_FACTOR = 0.75  # Use 75% of available memory for safety
+
 # Memory estimation overhead factor
-# Empirical 20% overhead accounts for:
-# - Python object allocation metadata
-# - Garbage collector bookkeeping structures
-# - Temporary arrays created during processing
-# - NumPy view/slice overhead
-_MEMORY_OVERHEAD_FACTOR = 1.2
+# Conservative 50% overhead accounts for:
+# - Python object allocation metadata (10-15%)
+# - Garbage collector structures (5-10%)
+# - Temporary arrays during operations (15-20%)
+# - NumPy view/slice overhead (5-10%)
+# - Safety margin for heavy operations (BM3D, wavelets, morphological ops)
+# Using 1.5 factor prevents OOM errors across diverse operation types
+_MEMORY_OVERHEAD_FACTOR = 1.5
+
+# Fallback memory estimate when calculation fails (100 MB)
+_DEFAULT_FALLBACK_MEMORY_MB = 100
+
+# HTML generation
+_THUMBNAIL_SIZE = (200, 200)  # Thumbnail dimensions for trial view
+_THUMBNAIL_JPEG_QUALITY = 100  # JPEG quality (0-100) - max quality for scientific imaging
 
 
 def _get_memory_usage() -> float:
@@ -140,14 +157,44 @@ def _get_memory_usage() -> float:
 def _ops_key(op: "ImageOperation", params: Dict[str, Any]) -> Tuple:
     """Create hashable key for operation tuple comparison.
 
+    Recursively converts unhashable parameter values (lists, dicts, numpy arrays)
+    to hashable equivalents (tuples, nested tuples, flattened tuples) to enable
+    use as trie node keys.
+
     Args:
         op: ImageOperation instance
         params: Parameter dictionary for the operation
 
     Returns:
         Tuple containing (class_name, sorted_params) for hashing
+
+    Raises:
+        TypeError: If a parameter value cannot be converted to a hashable type
     """
-    return (type(op).__name__, tuple(sorted(params.items())))
+    def _make_hashable(val):
+        """Recursively convert unhashable types to hashable equivalents."""
+        if isinstance(val, dict):
+            # Convert dict to sorted tuple of (key, value) pairs
+            return tuple(sorted((_make_hashable(k), _make_hashable(v)) for k, v in val.items()))
+        elif isinstance(val, (list, tuple)):
+            # Convert sequences to tuples recursively
+            return tuple(_make_hashable(v) for v in val)
+        elif isinstance(val, np.ndarray):
+            # Convert numpy arrays to flattened tuples
+            return tuple(val.flatten().tolist())
+        else:
+            # Already hashable (int, float, str, bool, etc.)
+            return val
+    
+    try:
+        hashable_params = tuple(sorted((k, _make_hashable(v)) for k, v in params.items()))
+        return (type(op).__name__, hashable_params)
+    except TypeError as e:
+        raise TypeError(
+            f"Cannot create hashable key for operation {type(op).__name__} with "
+            f"parameters {params}. Parameter values must be convertible to hashable types. "
+            f"Error: {e}"
+        ) from e
 
 
 @dataclass
@@ -440,8 +487,14 @@ def _save_array_as_tiff(
             elif array.dtype == np.uint16:
                 # Label map: save as 16-bit grayscale
                 pil_img = PIL_Image.fromarray(array, mode='I;16')
+            elif np.issubdtype(array.dtype, np.floating):
+                # Floating point array: normalize [0.0-1.0] to uint8 [0-255]
+                # For values outside [0,1], clip to this range for scientific accuracy
+                array_normalized = np.clip(array, 0.0, 1.0)
+                array_to_save = (array_normalized * 255).astype(np.uint8)
+                pil_img = PIL_Image.fromarray(array_to_save, mode='L')
             else:
-                # Regular grayscale
+                # Regular uint8 grayscale (or other integer types)
                 pil_img = PIL_Image.fromarray(array, mode='L')
 
         elif array.ndim == 3 and array.shape[2] == 3:
@@ -719,6 +772,51 @@ def _execute_parallel_tasks(
         raise ValueError(f"Unknown backend: {backend}")
 
 
+def _create_single_thumbnail(
+        tiff_path: "Path",
+        thumbnails_dir: "Path",
+        base_name: str,
+        layer: str,
+) -> Optional[str]:
+    """Create a single thumbnail from a TIFF file.
+    
+    Args:
+        tiff_path: Path to TIFF file
+        thumbnails_dir: Directory to save thumbnail JPEG
+        base_name: Base name for result
+        layer: Data layer name
+        
+    Returns:
+        Relative path to thumbnail (e.g., "thumbnails/001_sigma=2.0_rgb_thumb.jpg")
+        or None if thumbnail creation failed
+    """
+    from PIL import Image as PIL_Image
+    import numpy as np
+    
+    try:
+        img = PIL_Image.open(tiff_path)
+        img.thumbnail(_THUMBNAIL_SIZE, PIL_Image.Resampling.LANCZOS)
+        thumb_name = f"{base_name}_{layer}_thumb.jpg"
+        thumb_path = thumbnails_dir / thumb_name
+
+        # Convert to RGB for JPEG saving if needed
+        if img.mode == 'I;16' or img.mode == 'L':
+            # Normalize to 0-255 for display
+            img_array = np.array(img)
+            if img_array.max() > 255:
+                img_array = (img_array / img_array.max() * 255).astype(np.uint8)
+            else:
+                img_array = img_array.astype(np.uint8)
+            img = PIL_Image.fromarray(img_array)
+
+        img.save(thumb_path, format='JPEG', quality=_THUMBNAIL_JPEG_QUALITY)
+        return f"thumbnails/{thumb_name}"
+
+    except Exception as e:
+        logger.warning(f"Failed to create thumbnail for {tiff_path}: {e}")
+        return None
+
+
 def _create_trial_view_html(
         save_dir: Union[str, Path],
         configs_dict: Dict[str, str],
@@ -764,36 +862,33 @@ def _create_trial_view_html(
         # Extract pipeline name and params (before layer suffix)
         result_groups[base_name] = {}
 
-        # Find TIFF files for this result
+    # Collect all thumbnail tasks to parallelize
+    thumbnail_tasks = []
+    for base_name in configs_dict.keys():
         for layer in data_layers:
             tiff_pattern = f"{base_name}_{layer}.tiff"
             tiff_path = save_path / tiff_pattern
 
             if tiff_path.exists():
-                # Create thumbnail
-                try:
-                    img = PIL_Image.open(tiff_path)
-                    img.thumbnail((200, 200), PIL_Image.Resampling.LANCZOS)
-                    thumb_name = f"{base_name}_{layer}_thumb.jpg"
-                    thumb_path = thumbnails_dir / thumb_name
+                thumbnail_tasks.append((tiff_path, thumbnails_dir, base_name, layer))
 
-                    # Convert to RGB for JPEG saving if needed
-                    if img.mode == 'I;16' or img.mode == 'L':
-                        # Normalize to 0-255 for display
-                        img_array = np.array(img)
-                        if img_array.max() > 255:
-                            img_array = (img_array / img_array.max() * 255).astype(
-                                np.uint8)
-                        else:
-                            img_array = img_array.astype(np.uint8)
-                        img = PIL_Image.fromarray(img_array)
-
-                    img.save(thumb_path, format='JPEG', quality=85)
-                    result_groups[base_name][layer] = f"thumbnails/{thumb_name}"
-
-                except Exception as e:
-                    logger.warning(f"Failed to create thumbnail for {tiff_path}: {e}")
-                    result_groups[base_name][layer] = None
+    # Parallelize thumbnail creation if there are multiple tasks
+    if len(thumbnail_tasks) > 1:
+        from joblib import Parallel, delayed
+        
+        logger.info(f"Creating {len(thumbnail_tasks)} thumbnails in parallel...")
+        thumbnail_results = Parallel(n_jobs=-1)(
+            delayed(_create_single_thumbnail)(*args) for args in thumbnail_tasks
+        )
+        
+        # Map results back to result_groups
+        for (_, _, base_name, layer), thumb_path in zip(thumbnail_tasks, thumbnail_results):
+            result_groups[base_name][layer] = thumb_path
+    else:
+        # Serial execution for small numbers of thumbnails
+        for tiff_path, thumbnails_dir, base_name, layer in thumbnail_tasks:
+            thumb_path = _create_single_thumbnail(tiff_path, thumbnails_dir, base_name, layer)
+            result_groups[base_name][layer] = thumb_path
 
     # Generate HTML
     html_content = f"""<!DOCTYPE html>
@@ -956,38 +1051,89 @@ def _estimate_pipeline_memory(
     import sys
     import numpy as np
 
-    # Get base image data sizes
+    # Get base image data sizes without creating copies
     base_size = 0
 
-    # RGB array size (if present)
-    rgb_data = image.rgb[:]
-    if rgb_data is not None and rgb_data.size > 0:
-        base_size += sys.getsizeof(rgb_data)
+    # RGB array size (if present) - access shape/dtype without copying
+    rgb_accessor = image.rgb
+    if rgb_accessor is not None:
+        try:
+            # Avoid creating full array copy - calculate from shape and dtype
+            if hasattr(rgb_accessor, 'shape') and hasattr(rgb_accessor, 'dtype'):
+                base_size += np.prod(rgb_accessor.shape) * rgb_accessor.dtype.itemsize
+            else:
+                # Fallback: minimal peek at data for dtype detection
+                rgb_peek = image.rgb[0:1, 0:1] if hasattr(image.rgb, 'shape') else image.rgb[:]
+                if rgb_peek is not None and rgb_peek.size > 0:
+                    shape = image.rgb.shape if hasattr(image.rgb, 'shape') else rgb_peek.shape
+                    base_size += np.prod(shape) * rgb_peek.dtype.itemsize
+        except Exception:
+            pass  # If access fails, skip this layer
 
-    # Gray and enhanced gray (always present)
-    gray_data = image.gray[:]
-    if gray_data is not None:
-        base_size += sys.getsizeof(gray_data)
+    # Gray and enhanced gray (always present) - no copies
+    gray_accessor = image.gray
+    if gray_accessor is not None:
+        try:
+            if hasattr(gray_accessor, 'shape') and hasattr(gray_accessor, 'dtype'):
+                base_size += np.prod(gray_accessor.shape) * gray_accessor.dtype.itemsize
+            else:
+                gray_peek = image.gray[0:1, 0:1] if hasattr(image.gray, 'shape') else image.gray[:]
+                if gray_peek is not None:
+                    shape = image.gray.shape if hasattr(image.gray, 'shape') else gray_peek.shape
+                    base_size += np.prod(shape) * gray_peek.dtype.itemsize
+        except Exception:
+            pass
 
-    enh_gray_data = image.enh_gray[:]
-    if enh_gray_data is not None:
-        base_size += sys.getsizeof(enh_gray_data)
+    enh_gray_accessor = image.enh_gray
+    if enh_gray_accessor is not None:
+        try:
+            if hasattr(enh_gray_accessor, 'shape') and hasattr(enh_gray_accessor, 'dtype'):
+                base_size += np.prod(enh_gray_accessor.shape) * enh_gray_accessor.dtype.itemsize
+            else:
+                enh_peek = image.enh_gray[0:1, 0:1] if hasattr(image.enh_gray, 'shape') else image.enh_gray[:]
+                if enh_peek is not None:
+                    shape = image.enh_gray.shape if hasattr(image.enh_gray, 'shape') else enh_peek.shape
+                    base_size += np.prod(shape) * enh_peek.dtype.itemsize
+        except Exception:
+            pass
 
     if extract_arrays:
         # With array extraction: 1 full image copy + extracted arrays
         # Estimate extracted array sizes
         extracted_size = 0
         for layer in data_layers:
-            if layer == "rgb" and rgb_data is not None and rgb_data.size > 0:
-                extracted_size += (np.prod(rgb_data.shape) * rgb_data.itemsize)
-            elif layer == "gray" and gray_data is not None:
-                extracted_size += (np.prod(gray_data.shape) * gray_data.itemsize)
-            elif layer == "enh_gray" and enh_gray_data is not None:
-                extracted_size += (np.prod(enh_gray_data.shape) * enh_gray_data.itemsize)
+            if layer == "rgb" and rgb_accessor is not None:
+                try:
+                    shape = rgb_accessor.shape if hasattr(rgb_accessor, 'shape') else None
+                    dtype = rgb_accessor.dtype if hasattr(rgb_accessor, 'dtype') else None
+                    if shape is not None and dtype is not None:
+                        extracted_size += (np.prod(shape) * dtype.itemsize)
+                except Exception:
+                    pass
+            elif layer == "gray" and gray_accessor is not None:
+                try:
+                    shape = gray_accessor.shape if hasattr(gray_accessor, 'shape') else None
+                    dtype = gray_accessor.dtype if hasattr(gray_accessor, 'dtype') else None
+                    if shape is not None and dtype is not None:
+                        extracted_size += (np.prod(shape) * dtype.itemsize)
+                except Exception:
+                    pass
+            elif layer == "enh_gray" and enh_gray_accessor is not None:
+                try:
+                    shape = enh_gray_accessor.shape if hasattr(enh_gray_accessor, 'shape') else None
+                    dtype = enh_gray_accessor.dtype if hasattr(enh_gray_accessor, 'dtype') else None
+                    if shape is not None and dtype is not None:
+                        extracted_size += (np.prod(shape) * dtype.itemsize)
+                except Exception:
+                    pass
             elif layer in ["objmask", "objmap"]:
                 # Estimate label map size (uint16 label maps: 2 bytes per pixel)
-                if gray_data is not None:
-                    extracted_size += (np.prod(gray_data.shape) * np.dtype(np.uint16).itemsize)
+                try:
+                    shape = gray_accessor.shape if hasattr(gray_accessor, 'shape') else None
+                    if shape is not None:
+                        extracted_size += (np.prod(shape) * np.dtype(np.uint16).itemsize)
+                except Exception:
+                    pass
 
         # Peak: base image + extracted arrays + overhead
         return int((base_size + extracted_size) * _MEMORY_OVERHEAD_FACTOR)
@@ -1003,6 +1149,7 @@ def _calculate_optimal_batch_size(
         memory_per_pipeline: int,
         memory_limit_gb: float = None,
         n_jobs: int = -1,
+        max_batch_size: int = None,
 ) -> Tuple[int, int]:
     """Calculate optimal batch size and parallelism for memory-constrained execution.
 
@@ -1018,6 +1165,8 @@ def _calculate_optimal_batch_size(
             system memory for safety. Default None.
         n_jobs: User-requested parallel jobs. -1 means use all cores. If
             specified, will be respected but limited by memory constraints.
+        max_batch_size: Maximum batch size to use. If None, uses default
+            _MAX_SAFE_BATCH_SIZE. Allows override for high-memory systems.
 
     Returns:
         Tuple of (batch_size, jobs_per_batch):
@@ -1033,7 +1182,8 @@ def _calculate_optimal_batch_size(
         ...     total_pipelines=200,
         ...     memory_per_pipeline=50_000_000,  # 50 MB
         ...     memory_limit_gb=None,  # Auto-detect
-        ...     n_jobs=-1
+        ...     n_jobs=-1,
+        ...     max_batch_size=32  # Allow larger batches on high-memory system
         ... )
         >>> print(f"Process {total_pipelines} in batches of {batch_size}")
     """
@@ -1048,6 +1198,13 @@ def _calculate_optimal_batch_size(
         memory_limit = int(memory_limit_gb * 1024 ** 3)
 
     # Calculate max parallel pipelines that fit in memory
+    if memory_per_pipeline <= 0:
+        logger.warning(
+            f"Memory estimation returned {memory_per_pipeline} bytes (invalid). "
+            f"Using conservative fallback estimate of {_DEFAULT_FALLBACK_MEMORY_MB} MB per pipeline."
+        )
+        memory_per_pipeline = _DEFAULT_FALLBACK_MEMORY_MB * 1024 ** 2  # Convert MB to bytes
+    
     max_parallel = max(1, memory_limit // memory_per_pipeline)
 
     # Respect user's n_jobs if specified, but limit by memory
@@ -1059,10 +1216,11 @@ def _calculate_optimal_batch_size(
         jobs_per_batch = min(max_parallel, n_jobs)
 
     # Batch size: process enough to utilize parallel workers efficiently
-    # Be conservative to prevent OOM: use 2× for ideal, but cap at reasonable limit
-    ideal_batch_size = jobs_per_batch * 2
-    # Conservative minimum: at least 2 jobs per batch, but max 8 pipelines
-    safe_batch_size = min(max(2, jobs_per_batch), 8)
+    # Be conservative to prevent OOM: use multiplier for ideal, but cap at reasonable limit
+    max_safe_batch = max_batch_size if max_batch_size is not None else _MAX_SAFE_BATCH_SIZE
+    
+    ideal_batch_size = jobs_per_batch * _IDEAL_BATCH_MULTIPLIER
+    safe_batch_size = min(max(_MIN_BATCH_SIZE, jobs_per_batch), max_safe_batch)
     batch_size = min(ideal_batch_size, safe_batch_size, total_pipelines)
 
     return batch_size, jobs_per_batch
@@ -1173,18 +1331,31 @@ def _group_pipelines_by_longest_prefix(
 ) -> List[List[Dict[str, Any]]]:
     """Group pipelines by their longest shared operation prefix.
     
-    Builds temporary trie, identifies natural groups where pipelines share
-    maximum operation sequence before diverging. Critically distinguishes between
-    parameter sweeps (same operation, different params) and structural divergence
-    (different operation types).
+    Builds a temporary trie and groups pipelines that share a common sequence
+    of operations. All pipelines sharing a prefix are placed in the SAME trie
+    group to enable:
+    1. Execute the shared prefix operations only once
+    2. Parallelize ALL downstream branches (both parameter sweeps AND structural divergence)
+    
+    IMPORTANT: This function groups ALL downstream branches (parameter sweeps and
+    structural divergence) into a single group at the branch point. Branches are NOT
+    split into separate groups - they execute in parallel from the shared prefix.
+    
+    Example:
+        Pipeline A: GaussianBlur(σ=1) → OtsuDetector()
+        Pipeline B: GaussianBlur(σ=2) → CannyDetector()
+        
+        Result: BOTH in same group (branch at GaussianBlur with parameter sweep +
+        structural divergence). Execution: run GaussianBlur variants in parallel with
+        their respective downstream operations.
     
     Args:
         concrete_configs: List of concrete pipeline configurations
         
     Returns:
         List of pipeline groups sharing longest possible operation sequence.
-        Parameter sweeps are kept together in one group (enables parallelization).
-        Structural divergence creates separate groups.
+        All branches (parameter sweeps AND structural divergence) are grouped
+        together to maximize parallelization opportunities.
     """
     if not concrete_configs:
         return []
@@ -1211,35 +1382,20 @@ def _group_pipelines_by_longest_prefix(
             child = next(iter(node.children.values()))
             return _collect_groups_from_node(child)
 
-        # Multiple children = potential branch point
-        # Check if all children are same operation (parameter sweep) or different (structural divergence)
-        child_ops = [child.op for child in node.children.values() if
-                     child.op is not None]
-
-        if child_ops:
-            # Check if all children are the same operation CLASS (ignore parameter values)
-            op_types = set(type(op).__name__ for op in child_ops)
-
-            if len(op_types) == 1:
-                # All children are same operation type with different parameters
-                # This is a PARAMETER SWEEP, not structural divergence
-                # Don't split - merge ALL downstream pipelines into ONE group
-                all_pipeline_names = []
-                for child in node.children.values():
-                    child_groups = _collect_groups_from_node(child)
-                    # Flatten: merge all child groups into single group
-                    for group in child_groups:
-                        all_pipeline_names.extend(group)
-                # Return as single merged group
-                return [all_pipeline_names] if all_pipeline_names else []
-
-        # Different operation types = structural divergence
-        # Split into separate groups (one per child subtree)
-        all_groups = []
+        # Multiple children = branch point
+        # Collect ALL downstream pipelines from ALL children and merge into one group
+        # This handles both:
+        # 1. Parameter sweeps (same op type, different params)
+        # 2. Structural divergence (different op types)
+        # Both are grouped together to enable parallel execution from this branch point
+        all_pipeline_names = []
         for child in node.children.values():
             child_groups = _collect_groups_from_node(child)
-            all_groups.extend(child_groups)
-        return all_groups
+            # Flatten: merge all child groups into single group
+            for group in child_groups:
+                all_pipeline_names.extend(group)
+        # Return as single merged group
+        return [all_pipeline_names] if all_pipeline_names else []
 
     # Collect pipeline name groups
     pipeline_name_groups = _collect_groups_from_node(temp_trie)
@@ -1346,17 +1502,17 @@ def _analyze_trie_structure(root: _TrieNode) -> Dict[str, Any]:
             Tuple of (max_depth, branch_point_count, leaf_path_count)
         """
         if not node.children:
-            return 0, 0, 1  # Leaf node
+            return 0, 0, 1  # Leaf node - counts as 1 path
 
         max_depth = 0
         total_branches = 0
-        total_paths = 1
+        total_paths = 0  # Start at 0, then sum all child paths
 
         for child in node.children.values():
             child_depth, child_branches, child_paths = count_descendants(child)
             max_depth = max(max_depth, child_depth + 1)
             total_branches += child_branches
-            total_paths *= child_paths
+            total_paths += child_paths  # Sum paths from all children
 
         # This node is a branch point if it has multiple children
         if len(node.children) > 1:
@@ -1480,8 +1636,19 @@ def _execute_concrete_pipeline_batch(
 
     Returns:
         List of (pipeline_name, result_data, json_config) tuples
+        
+    Raises:
+        ValueError: If shared_prefix_len exceeds the length of any pipeline's operations
     """
     from phenotypic import ImagePipeline
+
+    # Validate shared_prefix_len before processing
+    for pipeline_name, all_ops in pipeline_specs:
+        if shared_prefix_len > len(all_ops):
+            raise ValueError(
+                f"shared_prefix_len ({shared_prefix_len}) exceeds pipeline '{pipeline_name}' "
+                f"length ({len(all_ops)}). This indicates a configuration error in trie traversal."
+            )
 
     results = []
 
@@ -1492,22 +1659,24 @@ def _execute_concrete_pipeline_batch(
         if not remaining_ops:
             # No operations to apply - result is the input image
             result_image = image.copy()
-            full_ops = all_ops
+            # For serialization: use original operations (no remaining ops to copy)
+            ops_for_pipeline = copy.deepcopy(all_ops)
         else:
-            # Deep copy operations to avoid parameter sharing between executions
-            ops_copy = []
-            for op in remaining_ops:
-                ops_copy.append(copy.deepcopy(op))
+            # Deep copy operations ONCE for both execution and serialization
+            # Avoid parameter sharing between executions
+            ops_copy = [copy.deepcopy(op) for op in remaining_ops]
 
             # Apply remaining operations to the already-processed image
             result_image = image.copy()
             for op in ops_copy:
                 result_image = op.apply(result_image)
 
-            full_ops = all_ops
+            # Reuse copied operations for serialization (combine prefix + copied ops)
+            # Prefix operations are not copied (they already ran)
+            ops_for_pipeline = all_ops[:shared_prefix_len] + ops_copy
 
-        # Create pipeline with FULL ops for serialization
-        pipeline = ImagePipeline(ops=copy.deepcopy(full_ops))
+        # Create pipeline with operations for serialization (no second copy needed)
+        pipeline = ImagePipeline(ops=ops_for_pipeline)
 
         # Extract data or keep full image
         if extract_arrays:
@@ -1568,11 +1737,14 @@ def _execute_pipeline_trie(
     mem_start = _get_memory_usage()
     logger.debug(f"Initial memory usage: {mem_start:.1f} MB")
 
-    # Step 1: Analyze trie structure
-    trie_stats = _analyze_trie_structure(root)
-    logger.info(f"Trie structure: depth={trie_stats['max_depth']}, "
-                f"branch_points={trie_stats['branch_points']}, "
-                f"leaf_paths={trie_stats['total_leaf_paths']}")
+    # Step 1: Analyze trie structure (only if debug logging enabled)
+    if logger.isEnabledFor(logging.DEBUG):
+        trie_stats = _analyze_trie_structure(root)
+        logger.debug(f"Trie structure: depth={trie_stats['max_depth']}, "
+                    f"branch_points={trie_stats['branch_points']}, "
+                    f"leaf_paths={trie_stats['total_leaf_paths']}")
+    else:
+        logger.info("Executing pipeline trie (enable DEBUG logging for structure details)")
 
     # Step 2: Find first branch point and get shared prefix operations
     start_time = time.time()
@@ -1604,34 +1776,28 @@ def _execute_pipeline_trie(
         logger.warning("No pipeline paths found from branch point")
         return
 
-    # Step 5: Execute all pipelines in parallel using joblib (top-level only)
+    # Step 5: Execute all pipelines in parallel using specified backend (top-level only)
     if len(pipeline_specs) > 1 and n_jobs != 1:
-        from tqdm_joblib import tqdm_joblib
-
         logger.info(f"Executing {len(pipeline_specs)} pipelines in parallel "
-                    f"(n_jobs={n_jobs})")
+                    f"(backend={backend}, n_jobs={n_jobs})")
         parallel_start = time.time()
         mem_before_parallel = _get_memory_usage()
 
-        # Create joblib delayed tasks
-        tasks = [
-            delayed(_execute_concrete_pipeline_batch)(
-                    current_image,
-                    [(name, ops)],
-                    shared_prefix_len,
-                    data_layers,
-                    extract_arrays,
-            )
+        # Create task arguments for parallel execution
+        task_args = [
+            (current_image, [(name, ops)], shared_prefix_len, data_layers, extract_arrays)
             for name, ops in pipeline_specs
         ]
 
-        # Execute in parallel with progress bar
-        with tqdm_joblib(
-                desc="Parallel pipelines",
-                total=len(pipeline_specs),
-                unit="pipeline",
-        ):
-            batch_results = Parallel(n_jobs=n_jobs)(tasks)
+        # Execute using specified backend
+        batch_results = _execute_parallel_tasks(
+            func=_execute_concrete_pipeline_batch,
+            task_args=task_args,
+            backend=backend,
+            n_jobs=n_jobs,
+            slurm_params=slurm_params,
+            desc="Parallel pipelines"
+        )
 
         parallel_time = time.time() - parallel_start
         mem_after_parallel = _get_memory_usage()
@@ -2166,9 +2332,14 @@ def MultiPipelineGridSearch(
     # When using submitit backend, disable trie optimization since jobs are already parallel
     # The trie structure is still available for HTML view generation via all_configs naming
     if backend == "submitit":
-        logger.info(
-            "Submitit backend detected: disabling trie optimization for execution "
-            "(jobs are already parallelized)")
+        if optimize_shared_prefixes:
+            logger.warning(
+                "optimize_shared_prefixes=True is incompatible with submitit backend. "
+                "Disabling trie optimization (SLURM jobs are already parallelized). "
+                "To suppress this warning, set optimize_shared_prefixes=False explicitly."
+            )
+        else:
+            logger.info("Submitit backend: trie optimization disabled (jobs parallelized)")
         optimize_shared_prefixes = False
 
         # Enforce TIFF mode for submitit (cluster jobs cannot display napari viewer)

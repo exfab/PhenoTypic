@@ -6,7 +6,7 @@ __pycache__/
 .Python
 .pytest_cache/
 *.egg-info/
-.mypy
+.mypy_cache/
 phenotypic.egg-info/
 
 # Virtual environments

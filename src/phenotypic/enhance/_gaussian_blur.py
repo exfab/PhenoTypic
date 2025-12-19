@@ -61,7 +61,7 @@ class GaussianBlur(ImageEnhancer):
             truncate (float): Kernel extent in standard deviations. Rarely needs
                 adjustment; larger values slightly widen the effective kernel.
         """
-        if isinstance(sigma, int):
+        if isinstance(sigma, int) and ((sigma % 1.0) == 0):
             self.sigma = sigma
         else:
             raise TypeError("sigma must be an integer")
