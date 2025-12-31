@@ -7,7 +7,7 @@ import pytest
 
 from phenotypic.enhance import GaussianBlur, MedianFilter
 from phenotypic.detect import OtsuDetector, CannyDetector
-from phenotypic.util._pipeline_grid_search import (
+from phenotypic.util._pipeline_grid_search._shared import (
     _build_pipeline_trie,
     _group_pipelines_by_longest_prefix,
     _analyze_trie_structure,

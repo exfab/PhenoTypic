@@ -766,6 +766,105 @@ class TestPhenotypicCLI:
             assert master_csv.exists()
             assert master_csv.stat().st_size > 0
 
+    def test_cli_save_rgb_flag_creates_subdirectory(
+            self, runner, circular_pipeline_json, synthetic_grid_image, temp_dirs
+    ):
+        """Test that --save-rgb flag creates rgb/ subdirectory."""
+        input_dir, output_dir = temp_dirs
+
+        result = runner.invoke(
+            main,
+            [
+                str(circular_pipeline_json),
+                str(input_dir),
+                str(output_dir),
+                "--save-rgb",
+                "--rgb-ext", "png",
+            ],
+        )
+
+        assert result.exit_code == 0
+        rgb_dir = output_dir / "rgb"
+        assert rgb_dir.exists()
+        assert rgb_dir.is_dir()
+
+    def test_cli_save_multiple_layers(
+            self, runner, circular_pipeline_json, synthetic_grid_image, temp_dirs
+    ):
+        """Test that multiple --save-* flags create corresponding subdirectories."""
+        input_dir, output_dir = temp_dirs
+
+        result = runner.invoke(
+            main,
+            [
+                str(circular_pipeline_json),
+                str(input_dir),
+                str(output_dir),
+                "--save-rgb",
+                "--save-gray",
+                "--save-objmask",
+            ],
+        )
+
+        assert result.exit_code == 0
+
+        for subdir_name in ["rgb", "gray", "objmask"]:
+            subdir = output_dir / subdir_name
+            assert subdir.exists()
+            assert subdir.is_dir()
+
+    def test_cli_no_save_flags_no_extra_dirs(
+            self, runner, circular_pipeline_json, synthetic_grid_image, temp_dirs
+    ):
+        """Test that without --save-* flags, only measurements/ and overlays/ exist."""
+        input_dir, output_dir = temp_dirs
+
+        result = runner.invoke(
+            main,
+            [
+                str(circular_pipeline_json),
+                str(input_dir),
+                str(output_dir),
+            ],
+        )
+
+        assert result.exit_code == 0
+        assert (output_dir / "measurements").exists()
+        assert (output_dir / "overlays").exists()
+
+        for subdir_name in ["rgb", "gray", "enh_gray", "objmask", "objmap", "objmap_rgb"]:
+            subdir = output_dir / subdir_name
+            assert not subdir.exists()
+
+    def test_cli_save_all_layers(
+            self, runner, circular_pipeline_json, synthetic_grid_image, temp_dirs
+    ):
+        """Test that all 6 --save-* flags create all subdirectories."""
+        input_dir, output_dir = temp_dirs
+
+        result = runner.invoke(
+            main,
+            [
+                str(circular_pipeline_json),
+                str(input_dir),
+                str(output_dir),
+                "--save-rgb",
+                "--save-gray",
+                "--save-enh-gray",
+                "--save-objmask",
+                "--save-objmap",
+                "--save-objmap-rgb",
+            ],
+        )
+
+        assert result.exit_code == 0
+
+        expected_subdirs = ["rgb", "gray", "enh_gray", "objmask", "objmap", "objmap_rgb"]
+        for subdir_name in expected_subdirs:
+            subdir = output_dir / subdir_name
+            assert subdir.exists()
+            assert subdir.is_dir()
+
 
 class TestModuleCallable:
     """Test that the module can be called as python -m phenotypic."""

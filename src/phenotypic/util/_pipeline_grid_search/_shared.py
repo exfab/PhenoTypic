@@ -1,94 +1,8 @@
-"""Grid search utilities for pipeline parameter tuning and architecture comparison.
+"""Shared utilities for pipeline grid search operations.
 
-This module provides functions to perform parameter grid searches on ImagePipelines,
-with multiple execution backends (joblib or submitit) and visualization options (napari or TIFF).
-
-## Quick Start
-
-### Interactive Exploration (Napari Mode - Default)
-For exploring parameter combinations with visual feedback::
-
-    from phenotypic import Image
-    from phenotypic.enhance import GaussianBlur
-    from phenotypic.util import PipelineGridSearch
-
-    image = Image.imread('colony_plate.jpg')
-    ops = [(GaussianBlur(sigma=1.0), {"sigma": [1.0, 2.0, 3.0]})]
-
-    viewer, configs = PipelineGridSearch(image=image, ops=ops, n_jobs=-1)
-
-### Batch Processing (TIFF Mode - Memory Efficient)
-For large grid searches without visualization overhead::
-
-    configs = PipelineGridSearch(
-        image=image,
-        ops=ops,
-        save_tiff_dir="./grid_results",
-        create_trial_view=True,
-        n_jobs=-1
-    )
-
-### Cluster Execution (Submitit Backend)
-For submitting to SLURM clusters::
-
-    configs = PipelineGridSearch(
-        image=image,
-        ops=ops,
-        backend="submitit",
-        slurm_params={"slurm_partition": "gpu", "mem_gb": 32},
-        save_tiff_dir="./cluster_results"
-    )
-
-## Key Features
-
-- **Multiple Backends**: Choose between local (joblib) or cluster (submitit) execution
-- **Memory Efficient**: TIFF mode achieves 7-13× memory reduction by eliminating napari
-- **HTML Reports**: Generate visual quality control pages with thumbnails
-- **Shared Prefix Optimization**: Automatically optimize MultiPipelineGridSearch (enabled by default)
-- **Automatic Memory Management**: Garbage collection and array cleanup after each batch
-- **Progress Tracking**: Terminal and Jupyter-compatible progress bars with ETA
-
-## Progress Tracking
-
-All grid search functions provide automatic progress bars:
-- **Terminal mode**: Standard tqdm progress bars with ETA
-- **Jupyter mode**: Interactive widget-based progress bars (requires ipywidgets)
-- **Multi-level operations**: Nested progress bars show batch → group → pipeline progress
-
-Progress bars are automatically enabled for:
-- Batch processing (MultiPipelineGridSearch with adaptive_batching=True)
-- Trie group iteration (optimize_shared_prefixes=True)
-- Parallel pipeline execution (when n_jobs != 1)
-
-## Memory Optimization for Large Grids
-
-When processing large numbers of pipelines with memory-intensive operations (e.g., BM3D):
-
-1. **Use TIFF mode instead of napari viewer:**
-   ```python
-   configs = MultiPipelineGridSearch(
-       ...,
-       save_tiff_dir="./results",
-       create_trial_view=True,
-       n_jobs=4,  # Reduce parallelism
-       memory_limit_gb=8.0  # Set conservative limit
-   )
-   ```
-
-2. **Reduce parallel workers to fit in memory:**
-   - With 4096×4096 images: ~560 MB per pipeline
-   - With n_jobs=4: ~2.2 GB peak memory
-   - With n_jobs=-1 on 16 cores: ~9 GB peak memory (may OOM on 16 GB systems)
-
-3. **Use submitit backend for cluster execution:**
-   - Auto-disables napari viewer (cannot display on clusters)
-   - Requires save_tiff_dir parameter
-   - Ideal for processing hundreds of pipelines across many jobs
-
-## Notes
-
-- On macOS, you may see a harmless "MallocStackLogging" warning from the system malloc library.
-  This warning does not affect functionality and can be safely ignored.
+This module contains core data structures, validation functions, I/O operations,
+backend abstractions, trie algorithms, and napari helpers used by both
+PipelineGridSearch and MultiPipelineGridSearch.
 """
 
 from __future__ import annotations
@@ -104,6 +18,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple, Union
 
 import numpy as np
+import submitit
 
 if TYPE_CHECKING:
     import napari
@@ -171,11 +86,14 @@ def _ops_key(op: "ImageOperation", params: Dict[str, Any]) -> Tuple:
     Raises:
         TypeError: If a parameter value cannot be converted to a hashable type
     """
+
     def _make_hashable(val):
         """Recursively convert unhashable types to hashable equivalents."""
         if isinstance(val, dict):
             # Convert dict to sorted tuple of (key, value) pairs
-            return tuple(sorted((_make_hashable(k), _make_hashable(v)) for k, v in val.items()))
+            return tuple(
+                    sorted((_make_hashable(k), _make_hashable(v)) for k, v in
+                           val.items()))
         elif isinstance(val, (list, tuple)):
             # Convert sequences to tuples recursively
             return tuple(_make_hashable(v) for v in val)
@@ -185,15 +103,16 @@ def _ops_key(op: "ImageOperation", params: Dict[str, Any]) -> Tuple:
         else:
             # Already hashable (int, float, str, bool, etc.)
             return val
-    
+
     try:
-        hashable_params = tuple(sorted((k, _make_hashable(v)) for k, v in params.items()))
+        hashable_params = tuple(
+                sorted((k, _make_hashable(v)) for k, v in params.items()))
         return (type(op).__name__, hashable_params)
     except TypeError as e:
         raise TypeError(
-            f"Cannot create hashable key for operation {type(op).__name__} with "
-            f"parameters {params}. Parameter values must be convertible to hashable types. "
-            f"Error: {e}"
+                f"Cannot create hashable key for operation {type(op).__name__} with "
+                f"parameters {params}. Parameter values must be convertible to hashable types. "
+                f"Error: {e}"
         ) from e
 
 
@@ -399,7 +318,7 @@ def _extract_data_layers(
 
     Args:
         result_img: Image object to extract data from
-        data_layers: List of layer names to extract (e.g., ["rgb", "objmask"])
+        data_layers: List of layer names to extract (e.g., [\"rgb\", \"objmask\"])
 
     Returns:
         Dictionary mapping layer names to numpy array copies. Only includes
@@ -454,7 +373,7 @@ def _save_array_as_tiff(
             - (H, W): Grayscale or labels
             - (H, W, 3): RGB image
         save_dir: Directory to save TIFF file in
-        base_name: Base filename without extension (e.g., "001_sigma=2.0_rgb")
+        base_name: Base filename without extension (e.g., \"001_sigma=2.0_rgb\")
 
     Returns:
         Path to saved TIFF file
@@ -466,7 +385,7 @@ def _save_array_as_tiff(
     Example:
         >>> import numpy as np
         >>> array = np.random.randint(0, 256, (480, 640, 3), dtype=np.uint8)
-        >>> path = _save_array_as_tiff(array, "/tmp/results", "001_rgb")
+        >>> path = _save_array_as_tiff(array, \"/tmp/results\", \"001_rgb\")
         >>> print(path)
         /tmp/results/001_rgb.tiff
     """
@@ -590,7 +509,7 @@ def _create_submitit_executor(
 
     Args:
         slurm_params: Optional configuration dict with keys:
-            - folder: Log folder path (default: "./submitit_logs")
+            - folder: Log folder path (default: \"./submitit_logs\")
             - timeout_min: Job timeout in minutes (default: 60)
             - mem_gb: Memory per job in GB (default: 16)
             - cpus_per_task: CPUs per job (default: 1)
@@ -661,7 +580,7 @@ def _execute_parallel_tasks(
             submitit backend.
         task_args: List of argument tuples to pass to func. Each tuple
             is unpacked as func(*args).
-        backend: Execution backend - "joblib" or "submitit"
+        backend: Execution backend - \"joblib\" or \"submitit\"
         n_jobs: Number of parallel jobs (joblib only). -1 uses all cores.
         slurm_params: Configuration for submitit backend
         desc: Description for progress bar
@@ -705,12 +624,12 @@ def _execute_parallel_tasks(
 
         # Report failures (match submitit behavior)
         if failed_tasks:
-            failure_msg = "\n".join(
+            failure_msg = "\\n".join(
                     f"  Task {idx}: {error}"
                     for idx, error in failed_tasks
             )
             raise RuntimeError(
-                    f"{len(failed_tasks)} task(s) failed:\n{failure_msg}"
+                    f"{len(failed_tasks)} task(s) failed:\\n{failure_msg}"
             )
 
         return results
@@ -756,12 +675,12 @@ def _execute_parallel_tasks(
 
         # Report failures
         if failed_jobs:
-            failure_msg = "\n".join(
+            failure_msg = "\\n".join(
                     f"  Task {idx} (Job {job_id}): {error}"
                     for idx, job_id, error in failed_jobs
             )
             raise RuntimeError(
-                    f"{len(failed_jobs)} job(s) failed:\n{failure_msg}"
+                    f"{len(failed_jobs)} job(s) failed:\\n{failure_msg}"
             )
 
         logger.info(f"All {len(jobs)} jobs completed successfully")
@@ -779,20 +698,20 @@ def _create_single_thumbnail(
         layer: str,
 ) -> Optional[str]:
     """Create a single thumbnail from a TIFF file.
-    
+
     Args:
         tiff_path: Path to TIFF file
         thumbnails_dir: Directory to save thumbnail JPEG
         base_name: Base name for result
         layer: Data layer name
-        
+
     Returns:
-        Relative path to thumbnail (e.g., "thumbnails/001_sigma=2.0_rgb_thumb.jpg")
+        Relative path to thumbnail (e.g., \"thumbnails/001_sigma=2.0_rgb_thumb.jpg\")
         or None if thumbnail creation failed
     """
     from PIL import Image as PIL_Image
     import numpy as np
-    
+
     try:
         img = PIL_Image.open(tiff_path)
         img.thumbnail(_THUMBNAIL_SIZE, PIL_Image.Resampling.LANCZOS)
@@ -875,19 +794,21 @@ def _create_trial_view_html(
     # Parallelize thumbnail creation if there are multiple tasks
     if len(thumbnail_tasks) > 1:
         from joblib import Parallel, delayed
-        
+
         logger.info(f"Creating {len(thumbnail_tasks)} thumbnails in parallel...")
         thumbnail_results = Parallel(n_jobs=-1)(
-            delayed(_create_single_thumbnail)(*args) for args in thumbnail_tasks
+                delayed(_create_single_thumbnail)(*args) for args in thumbnail_tasks
         )
-        
+
         # Map results back to result_groups
-        for (_, _, base_name, layer), thumb_path in zip(thumbnail_tasks, thumbnail_results):
+        for (_, _, base_name, layer), thumb_path in zip(thumbnail_tasks,
+                                                        thumbnail_results):
             result_groups[base_name][layer] = thumb_path
     else:
         # Serial execution for small numbers of thumbnails
         for tiff_path, thumbnails_dir, base_name, layer in thumbnail_tasks:
-            thumb_path = _create_single_thumbnail(tiff_path, thumbnails_dir, base_name, layer)
+            thumb_path = _create_single_thumbnail(tiff_path, thumbnails_dir, base_name,
+                                                  layer)
             result_groups[base_name][layer] = thumb_path
 
     # Generate HTML
@@ -1063,9 +984,11 @@ def _estimate_pipeline_memory(
                 base_size += np.prod(rgb_accessor.shape) * rgb_accessor.dtype.itemsize
             else:
                 # Fallback: minimal peek at data for dtype detection
-                rgb_peek = image.rgb[0:1, 0:1] if hasattr(image.rgb, 'shape') else image.rgb[:]
+                rgb_peek = image.rgb[0:1, 0:1] if hasattr(image.rgb,
+                                                          'shape') else image.rgb[:]
                 if rgb_peek is not None and rgb_peek.size > 0:
-                    shape = image.rgb.shape if hasattr(image.rgb, 'shape') else rgb_peek.shape
+                    shape = image.rgb.shape if hasattr(image.rgb,
+                                                       'shape') else rgb_peek.shape
                     base_size += np.prod(shape) * rgb_peek.dtype.itemsize
         except Exception:
             pass  # If access fails, skip this layer
@@ -1077,9 +1000,11 @@ def _estimate_pipeline_memory(
             if hasattr(gray_accessor, 'shape') and hasattr(gray_accessor, 'dtype'):
                 base_size += np.prod(gray_accessor.shape) * gray_accessor.dtype.itemsize
             else:
-                gray_peek = image.gray[0:1, 0:1] if hasattr(image.gray, 'shape') else image.gray[:]
+                gray_peek = image.gray[0:1, 0:1] if hasattr(image.gray,
+                                                            'shape') else image.gray[:]
                 if gray_peek is not None:
-                    shape = image.gray.shape if hasattr(image.gray, 'shape') else gray_peek.shape
+                    shape = image.gray.shape if hasattr(image.gray,
+                                                        'shape') else gray_peek.shape
                     base_size += np.prod(shape) * gray_peek.dtype.itemsize
         except Exception:
             pass
@@ -1087,12 +1012,17 @@ def _estimate_pipeline_memory(
     enh_gray_accessor = image.enh_gray
     if enh_gray_accessor is not None:
         try:
-            if hasattr(enh_gray_accessor, 'shape') and hasattr(enh_gray_accessor, 'dtype'):
-                base_size += np.prod(enh_gray_accessor.shape) * enh_gray_accessor.dtype.itemsize
+            if hasattr(enh_gray_accessor, 'shape') and hasattr(enh_gray_accessor,
+                                                               'dtype'):
+                base_size += np.prod(
+                        enh_gray_accessor.shape) * enh_gray_accessor.dtype.itemsize
             else:
-                enh_peek = image.enh_gray[0:1, 0:1] if hasattr(image.enh_gray, 'shape') else image.enh_gray[:]
+                enh_peek = image.enh_gray[0:1, 0:1] if hasattr(image.enh_gray,
+                                                               'shape') else image.enh_gray[
+                    :]
                 if enh_peek is not None:
-                    shape = image.enh_gray.shape if hasattr(image.enh_gray, 'shape') else enh_peek.shape
+                    shape = image.enh_gray.shape if hasattr(image.enh_gray,
+                                                            'shape') else enh_peek.shape
                     base_size += np.prod(shape) * enh_peek.dtype.itemsize
         except Exception:
             pass
@@ -1104,24 +1034,30 @@ def _estimate_pipeline_memory(
         for layer in data_layers:
             if layer == "rgb" and rgb_accessor is not None:
                 try:
-                    shape = rgb_accessor.shape if hasattr(rgb_accessor, 'shape') else None
-                    dtype = rgb_accessor.dtype if hasattr(rgb_accessor, 'dtype') else None
+                    shape = rgb_accessor.shape if hasattr(rgb_accessor,
+                                                          'shape') else None
+                    dtype = rgb_accessor.dtype if hasattr(rgb_accessor,
+                                                          'dtype') else None
                     if shape is not None and dtype is not None:
                         extracted_size += (np.prod(shape) * dtype.itemsize)
                 except Exception:
                     pass
             elif layer == "gray" and gray_accessor is not None:
                 try:
-                    shape = gray_accessor.shape if hasattr(gray_accessor, 'shape') else None
-                    dtype = gray_accessor.dtype if hasattr(gray_accessor, 'dtype') else None
+                    shape = gray_accessor.shape if hasattr(gray_accessor,
+                                                           'shape') else None
+                    dtype = gray_accessor.dtype if hasattr(gray_accessor,
+                                                           'dtype') else None
                     if shape is not None and dtype is not None:
                         extracted_size += (np.prod(shape) * dtype.itemsize)
                 except Exception:
                     pass
             elif layer == "enh_gray" and enh_gray_accessor is not None:
                 try:
-                    shape = enh_gray_accessor.shape if hasattr(enh_gray_accessor, 'shape') else None
-                    dtype = enh_gray_accessor.dtype if hasattr(enh_gray_accessor, 'dtype') else None
+                    shape = enh_gray_accessor.shape if hasattr(enh_gray_accessor,
+                                                               'shape') else None
+                    dtype = enh_gray_accessor.dtype if hasattr(enh_gray_accessor,
+                                                               'dtype') else None
                     if shape is not None and dtype is not None:
                         extracted_size += (np.prod(shape) * dtype.itemsize)
                 except Exception:
@@ -1129,9 +1065,11 @@ def _estimate_pipeline_memory(
             elif layer in ["objmask", "objmap"]:
                 # Estimate label map size (uint16 label maps: 2 bytes per pixel)
                 try:
-                    shape = gray_accessor.shape if hasattr(gray_accessor, 'shape') else None
+                    shape = gray_accessor.shape if hasattr(gray_accessor,
+                                                           'shape') else None
                     if shape is not None:
-                        extracted_size += (np.prod(shape) * np.dtype(np.uint16).itemsize)
+                        extracted_size += (
+                                np.prod(shape) * np.dtype(np.uint16).itemsize)
                 except Exception:
                     pass
 
@@ -1200,11 +1138,11 @@ def _calculate_optimal_batch_size(
     # Calculate max parallel pipelines that fit in memory
     if memory_per_pipeline <= 0:
         logger.warning(
-            f"Memory estimation returned {memory_per_pipeline} bytes (invalid). "
-            f"Using conservative fallback estimate of {_DEFAULT_FALLBACK_MEMORY_MB} MB per pipeline."
+                f"Memory estimation returned {memory_per_pipeline} bytes (invalid). "
+                f"Using conservative fallback estimate of {_DEFAULT_FALLBACK_MEMORY_MB} MB per pipeline."
         )
         memory_per_pipeline = _DEFAULT_FALLBACK_MEMORY_MB * 1024 ** 2  # Convert MB to bytes
-    
+
     max_parallel = max(1, memory_limit // memory_per_pipeline)
 
     # Respect user's n_jobs if specified, but limit by memory
@@ -1218,7 +1156,7 @@ def _calculate_optimal_batch_size(
     # Batch size: process enough to utilize parallel workers efficiently
     # Be conservative to prevent OOM: use multiplier for ideal, but cap at reasonable limit
     max_safe_batch = max_batch_size if max_batch_size is not None else _MAX_SAFE_BATCH_SIZE
-    
+
     ideal_batch_size = jobs_per_batch * _IDEAL_BATCH_MULTIPLIER
     safe_batch_size = min(max(_MIN_BATCH_SIZE, jobs_per_batch), max_safe_batch)
     batch_size = min(ideal_batch_size, safe_batch_size, total_pipelines)
@@ -1646,8 +1584,8 @@ def _execute_concrete_pipeline_batch(
     for pipeline_name, all_ops in pipeline_specs:
         if shared_prefix_len > len(all_ops):
             raise ValueError(
-                f"shared_prefix_len ({shared_prefix_len}) exceeds pipeline '{pipeline_name}' "
-                f"length ({len(all_ops)}). This indicates a configuration error in trie traversal."
+                    f"shared_prefix_len ({shared_prefix_len}) exceeds pipeline '{pipeline_name}' "
+                    f"length ({len(all_ops)}). This indicates a configuration error in trie traversal."
             )
 
     results = []
@@ -1741,10 +1679,11 @@ def _execute_pipeline_trie(
     if logger.isEnabledFor(logging.DEBUG):
         trie_stats = _analyze_trie_structure(root)
         logger.debug(f"Trie structure: depth={trie_stats['max_depth']}, "
-                    f"branch_points={trie_stats['branch_points']}, "
-                    f"leaf_paths={trie_stats['total_leaf_paths']}")
+                     f"branch_points={trie_stats['branch_points']}, "
+                     f"leaf_paths={trie_stats['total_leaf_paths']}")
     else:
-        logger.info("Executing pipeline trie (enable DEBUG logging for structure details)")
+        logger.info(
+                "Executing pipeline trie (enable DEBUG logging for structure details)")
 
     # Step 2: Find first branch point and get shared prefix operations
     start_time = time.time()
@@ -1785,18 +1724,19 @@ def _execute_pipeline_trie(
 
         # Create task arguments for parallel execution
         task_args = [
-            (current_image, [(name, ops)], shared_prefix_len, data_layers, extract_arrays)
+            (current_image, [(name, ops)], shared_prefix_len, data_layers,
+             extract_arrays)
             for name, ops in pipeline_specs
         ]
 
         # Execute using specified backend
         batch_results = _execute_parallel_tasks(
-            func=_execute_concrete_pipeline_batch,
-            task_args=task_args,
-            backend=backend,
-            n_jobs=n_jobs,
-            slurm_params=slurm_params,
-            desc="Parallel pipelines"
+                func=_execute_concrete_pipeline_batch,
+                task_args=task_args,
+                backend=backend,
+                n_jobs=n_jobs,
+                slurm_params=slurm_params,
+                desc="Parallel pipelines"
         )
 
         parallel_time = time.time() - parallel_start
@@ -2030,608 +1970,3 @@ def _build_configs_dict(
         configs_dict[layer_name] = json_config
 
     return configs_dict
-
-
-def PipelineGridSearch(
-        image: Image,
-        ops: List[Tuple[ImageOperation, Dict[str, List[Any]]]],
-        data_layers: List[str] = ["rgb", "gray", "enh_gray", "objmask", "objmap"],
-        n_jobs: int = -1,
-        inplace: bool = False,
-        viewer_title: str = "Pipeline Grid Search",
-        save_tiff_dir: Optional[str] = None,
-        create_trial_view: bool = False,
-        backend: str = "joblib",
-        slurm_params: Optional[Dict[str, Any]] = None,
-) -> Union[Dict[str, str], Tuple[napari.Viewer, Dict[str, str]]]:
-    """Execute parameter grid search with parallel pipelines and napari visualization.
-
-    Generates all combinations of provided parameters, executes ImagePipeline for each
-    combination in parallel. Results are visualized in napari (default) or saved as
-    TIFF files for memory-efficient processing.
-
-    Args:
-        image: Single Image object to process. All parameter combinations will be
-            applied to this image.
-        ops: List of (operation, params_dict) tuples. Each tuple contains an
-            ImageOperation instance and a dictionary mapping parameter names to
-            lists of values to test. Empty dict means no parameters to vary for that
-            operation. Example: [(GaussianBlur(sigma=1.0), {"sigma": [1.0, 2.0, 3.0]}),
-                                 (OtsuDetector(), {})]
-        data_layers: Which image data to display/save. Valid options: "rgb", "gray",
-            "enh_gray", "objmask", "objmap". Defaults to all available layers.
-        n_jobs: Number of parallel jobs. -1 uses all available cores. Default -1.
-        inplace: Whether to apply operations in-place. If True, reduces memory usage
-            by ~3× for typical pipelines. Only safe when input image won't be reused.
-            Default False.
-        viewer_title: Title for the napari viewer window (napari mode only).
-        save_tiff_dir: Optional path to directory for saving TIFF files. When provided,
-            disables napari viewer creation and saves all result layers as TIFF files
-            instead. Enables 7-13× memory reduction. Creates directory if it doesn't
-            exist. Default None (napari mode).
-        create_trial_view: Generate HTML overview page with thumbnails of all saved
-            TIFF files. Only valid when save_tiff_dir is specified. Default False.
-        backend: Execution backend - "joblib" (local) or "submitit" (SLURM cluster).
-            Default "joblib".
-        slurm_params: Configuration dict for submitit backend (keys: folder, timeout_min,
-            slurm_partition, mem_gb, cpus_per_task, etc.). Only used when backend="submitit".
-            Default None.
-
-    Returns:
-        When save_tiff_dir is None (napari mode):
-            Tuple[napari.Viewer, Dict[str, str]]: (viewer, configs_dict)
-                - viewer: napari.Viewer with all results as layers
-                - configs_dict: Maps layer names to JSON pipeline configs
-
-        When save_tiff_dir is provided (TIFF mode):
-            Dict[str, str]: configs_dict only
-                - Keys: base layer names (e.g., "001_sigma=2.0")
-                - Values: JSON pipeline configuration strings
-                - TIFF files saved to save_tiff_dir with names like
-                  "{idx:03d}_{params}_{layer}.tiff"
-
-    Raises:
-        ValueError: If parameters are invalid (create_trial_view without save_tiff_dir,
-            invalid backend, save_tiff_dir not writable).
-        ImportError: If backend="submitit" but submitit is not installed.
-        RuntimeError: If TIFF saving, HTML generation, or job execution fails.
-
-    Example:
-        >>> from phenotypic import Image
-        >>> from phenotypic.enhance import GaussianBlur
-        >>> from phenotypic.detect import OtsuDetector
-        >>> from phenotypic.util import PipelineGridSearch
-        >>>
-        >>> image = Image.imread('colony_plate.jpg')
-        >>> ops = [(GaussianBlur(sigma=1.0), {"sigma": [1.0, 2.0, 3.0]}),
-        ...        (OtsuDetector(), {})]
-        >>>
-        >>> # Napari mode (default - interactive exploration)
-        >>> viewer, configs = PipelineGridSearch(image=image, ops=ops, n_jobs=-1)
-        >>>
-        >>> # TIFF mode (memory-efficient - saves results to disk)
-        >>> configs = PipelineGridSearch(
-        ...     image=image, ops=ops,
-        ...     save_tiff_dir="./grid_search_results"
-        ... )
-        >>>
-        >>> # TIFF mode with HTML trial view for visual QC
-        >>> configs = PipelineGridSearch(
-        ...     image=image, ops=ops,
-        ...     save_tiff_dir="./grid_search_results",
-        ...     create_trial_view=True
-        ... )
-        >>>
-        >>> # Cluster execution with submitit
-        >>> configs = PipelineGridSearch(
-        ...     image=image, ops=ops,
-        ...     backend="submitit",
-        ...     slurm_params={"slurm_partition": "gpu", "mem_gb": 32}
-        ... )
-    """
-    # 1. Validate inputs
-    _validate_inputs(ops, data_layers)
-    _validate_save_tiff_params(save_tiff_dir, create_trial_view, backend)
-
-    # 2. Unpack ops tuples into separate lists
-    operations, parameters = _unpack_ops_tuples(ops)
-
-    # 3. Generate parameter combinations
-    all_configs = _generate_param_combinations(parameters)
-
-    # 4. Prepare task arguments
-    # Note: We pass image reference (not a copy) to each parallel task. This is intentional
-    # and safe because _execute_single_pipeline makes an explicit copy before processing:
-    # - Line 1874: `result_image = image.copy()` (inplace=True path)
-    # - Line 1878: `result = pipeline.apply(image.copy())` (inplace=False path)
-    # This avoids unnecessary image copying when only serial execution occurs, while
-    # remaining safe for parallel execution where each worker gets an immutable reference.
-    task_args = [(image, operations, config, inplace) for config in all_configs]
-
-    # 5. Execute pipelines with selected backend
-    results = _execute_parallel_tasks(
-            func=_execute_single_pipeline,
-            task_args=task_args,
-            backend=backend,
-            n_jobs=n_jobs,
-            slurm_params=slurm_params,
-            desc="PipelineGridSearch",
-    )
-
-    # 6. Process results based on mode
-    if save_tiff_dir:
-        # ============ TIFF SAVING MODE ============
-        configs_dict = {}
-        tiff_files = []
-
-        logger.info(f"Saving {len(results)} results as TIFFs to {save_tiff_dir}")
-
-        for idx, (result_img, param_config, json_config) in enumerate(results):
-            # Extract arrays
-            extracted = _extract_data_layers(result_img, data_layers)
-
-            # Save each layer as TIFF
-            param_str = _create_param_name_string(param_config)
-            base_name = f"{idx:03d}_{param_str}"
-
-            for layer_name, array_data in extracted.items():
-                tiff_path = _save_array_as_tiff(
-                        array_data,
-                        save_tiff_dir,
-                        f"{base_name}_{layer_name}"
-                )
-                tiff_files.append(tiff_path)
-
-            # Store config
-            configs_dict[base_name] = json_config
-
-            # Free memory immediately
-            del result_img, extracted
-            gc.collect()
-
-        logger.info(f"Saved {len(tiff_files)} TIFF files")
-
-        # Generate HTML view if requested
-        if create_trial_view:
-            html_path = _create_trial_view_html(
-                    save_tiff_dir, configs_dict, data_layers
-            )
-            logger.info(f"Created trial view: {html_path}")
-
-        # Return only configs (no viewer)
-        return configs_dict
-
-    else:
-        # ============ NAPARI VIEWER MODE ============
-        import napari
-
-        viewer = napari.Viewer(title=viewer_title)
-        _add_original_layers(viewer, image)
-
-        configs_dict = {}
-
-        for idx, (result_img, param_config, json_config) in enumerate(results):
-            _add_result_layers(viewer, result_img, param_config, data_layers, idx)
-
-            param_str = _create_param_name_string(param_config)
-            layer_name = f"{idx:03d}_{param_str}"
-            configs_dict[layer_name] = json_config
-
-            # Clean up Image object immediately after use
-            del result_img
-
-        # Delete remaining result references for memory cleanup
-        del results
-        gc.collect()  # Explicit garbage collection to match TIFF mode cleanup
-        return viewer, configs_dict
-
-
-def MultiPipelineGridSearch(
-        image: Image,
-        pipeline_configs: List[Dict[str, Any]],
-        data_layers: List[str] = ["rgb", "gray", "enh_gray", "objmask", "objmap"],
-        n_jobs: int = -1,
-        inplace: bool = False,
-        save_tiff_dir: Optional[str] = None,
-        viewer_title: str = "Multi-Pipeline Grid Search",
-        optimize_shared_prefixes: bool = True,
-        memory_limit_gb: float = None,
-        adaptive_batching: bool = True,
-        create_trial_view: bool = False,
-        backend: str = "joblib",
-        slurm_params: Optional[Dict[str, Any]] = None,
-) -> Union[Dict[str, str], Tuple[napari.Viewer, Dict[str, str]]]:
-    """Execute grid search across multiple pipeline configurations.
-
-    Allows comparing different algorithm combinations and architectures. Each pipeline
-    configuration is a different set of operations (e.g., GaussianBlur+Otsu vs.
-    MedianFilter+Canny). For each pipeline, all parameter combinations are tested
-    in parallel. Results are visualized in napari (default) or saved as TIFF files.
-
-    When optimize_shared_prefixes=True (default), pipelines with shared starting
-    operations are automatically optimized. Shared operations (same class type and
-    parameters) are executed only once, and the intermediate result is reused for
-    divergent branches. This can significantly reduce computation time when multiple
-    pipelines share common preprocessing steps.
-
-    Args:
-        image: Single Image object to process. All pipelines and parameter
-            combinations will be applied to this image.
-        pipeline_configs: List of pipeline configuration dictionaries. Each dict
-            must contain:
-            - "name" (str): Descriptive name for this pipeline (e.g., "GaussianBlur_Otsu")
-            - "ops" (List[Tuple]): List of (operation, params_dict) tuples
-        data_layers: Which image data to display/save. Valid options: "rgb", "gray",
-            "enh_gray", "objmask", "objmap". Defaults to all available.
-        n_jobs: Number of parallel jobs. -1 uses all available cores. When
-            adaptive_batching=True, this value may be reduced automatically to fit
-            within memory limits. Default -1.
-        inplace: Whether to apply operations in-place. If True, reduces memory usage
-            by ~3× for typical pipelines (6× → 2× for 5-op pipeline). Only safe when
-            input image won't be reused. Default False.
-        optimize_shared_prefixes: If True (default), automatically detect and optimize
-            pipelines with shared starting operations. Shared operations are executed
-            once and intermediate results are reused. Set to False to use original
-            linear execution (useful for debugging or comparison).
-        memory_limit_gb: Memory limit in GB for adaptive batching. If None (default),
-            uses 75% of available system memory. Only used when adaptive_batching=True.
-        adaptive_batching: If True (default), automatically batch pipeline execution
-            to stay within memory limits. Calculates optimal batch size based on image
-            size and available memory. All results still appear in single napari viewer.
-            Set to False to process all pipelines at once (may cause OOM for large grids).
-        viewer_title: Title for the napari viewer window (napari mode only).
-        save_tiff_dir: Optional path to directory for saving TIFF files. When provided,
-            disables napari viewer creation and saves all result layers as TIFF files
-            instead. Enables 7-13× memory reduction. Creates directory if it doesn't
-            exist. Default None (napari mode).
-        create_trial_view: Generate HTML overview page with thumbnails of all saved
-            TIFF files. Only valid when save_tiff_dir is specified. Default False.
-        backend: Execution backend - "joblib" (local) or "submitit" (SLURM cluster).
-            Default "joblib".
-        slurm_params: Configuration dict for submitit backend (keys: folder, timeout_min,
-            slurm_partition, mem_gb, cpus_per_task, etc.). Only used when backend="submitit".
-            Default None.
-
-    Returns:
-        When save_tiff_dir is None (napari mode):
-            Tuple[napari.Viewer, Dict[str, str]]: (viewer, configs_dict)
-                - viewer: napari.Viewer with all results as layers
-                - configs_dict: Maps layer names to JSON pipeline configs
-
-        When save_tiff_dir is provided (TIFF mode):
-            Dict[str, str]: configs_dict only
-                - Keys: base layer names (e.g., "pipeline_001_sigma=2.0")
-                - Values: JSON pipeline configuration strings
-                - TIFF files saved to save_tiff_dir
-
-    Raises:
-        ValueError: If pipeline_configs is empty, contains invalid structures,
-            or if operations/parameters/parameters are invalid (same as before) or
-            if new parameter combinations are invalid (create_trial_view without
-            save_tiff_dir, invalid backend, save_tiff_dir not writable).
-        ImportError: If backend="submitit" but submitit is not installed.
-        RuntimeError: If TIFF saving, HTML generation, or job execution fails.
-
-    Example:
-        >>> from phenotypic import Image
-        >>> from phenotypic.enhance import GaussianBlur, MedianFilter
-        >>> from phenotypic.detect import OtsuDetector
-        >>> from phenotypic.util import MultiPipelineGridSearch
-        >>>
-        >>> image = Image.imread('colony_plate.jpg')
-        >>>
-        >>> pipeline_configs = [
-        ...     {
-        ...         "name": "GaussianBlur_Otsu",
-        ...         "ops": [
-        ...             (GaussianBlur(sigma=1.0), {"sigma": [1.0, 2.0, 3.0]}),
-        ...             (OtsuDetector(), {})
-        ...         ]
-        ...     },
-        ...     {
-        ...         "name": "MedianFilter_Otsu",
-        ...         "ops": [
-        ...             (MedianFilter(size=3), {"size": [3, 5, 7]}),
-        ...             (OtsuDetector(), {})
-        ...         ]
-        ...     }
-        ... ]
-        >>>
-        >>> viewer = MultiPipelineGridSearch(
-        ...     image=image,
-        ...     pipeline_configs=pipeline_configs,
-        ...     n_jobs=-1
-        ... )
-    """
-    # Validate inputs
-    _validate_pipeline_configs(pipeline_configs)
-    _validate_save_tiff_params(save_tiff_dir, create_trial_view, backend)
-
-    # When using submitit backend, disable trie optimization since jobs are already parallel
-    # The trie structure is still available for HTML view generation via all_configs naming
-    if backend == "submitit":
-        if optimize_shared_prefixes:
-            logger.warning(
-                "optimize_shared_prefixes=True is incompatible with submitit backend. "
-                "Disabling trie optimization (SLURM jobs are already parallelized). "
-                "To suppress this warning, set optimize_shared_prefixes=False explicitly."
-            )
-        else:
-            logger.info("Submitit backend: trie optimization disabled (jobs parallelized)")
-        optimize_shared_prefixes = False
-
-        # Enforce TIFF mode for submitit (cluster jobs cannot display napari viewer)
-        if save_tiff_dir is None:
-            raise ValueError(
-                    "save_tiff_dir is required when backend='submitit'. "
-                    "Cluster jobs cannot create interactive napari viewers. "
-                    "Please specify a directory to save TIFF files."
-            )
-
-    # Storage for combined configs and results
-    all_configs = {}
-    tiff_files = []
-
-    # Create viewer OR prepare for TIFF mode
-    if save_tiff_dir:
-        # TIFF mode - no viewer needed
-        viewer = None
-        logger.info(f"TIFF saving mode: will save results to {save_tiff_dir}")
-        # Enable inplace operations for memory efficiency in TIFF mode
-        if inplace is False:
-            logger.info("TIFF mode: enabling inplace=True for 3× memory reduction")
-            inplace = True  # Safe because images are discarded after saving
-    else:
-        # Napari mode - create viewer
-        import napari
-
-        viewer = napari.Viewer(title=viewer_title)
-        # Add original reference layers once
-        _add_original_layers(viewer, image)
-
-    # Choose execution strategy
-    if optimize_shared_prefixes:
-        # Step 1: Expand all parameter combinations into concrete pipelines
-        concrete_configs = _expand_pipeline_configs_to_concrete(pipeline_configs)
-        total_pipelines = len(concrete_configs)
-        logger.info(f"Expanded {len(pipeline_configs)} pipeline configs into "
-                    f"{total_pipelines} concrete pipelines")
-
-        # Add memory usage warning for large n_jobs
-        if total_pipelines > 20 and n_jobs == -1:
-            import psutil
-
-            available_gb = psutil.virtual_memory().available / (1024 ** 3)
-            logger.warning(
-                    f"Processing {total_pipelines} pipelines with n_jobs=-1 (all cores). "
-                    f"Available memory: {available_gb:.1f} GB. "
-                    f"Consider reducing n_jobs or setting memory_limit_gb if OOM errors occur."
-            )
-
-        # Step 2: Determine batch size and parallelism
-        if adaptive_batching and total_pipelines > 1:
-            # Estimate memory per pipeline
-            avg_ops = sum(len(c["ops"]) for c in concrete_configs) / len(
-                    concrete_configs)
-            memory_per_pipeline = _estimate_pipeline_memory(
-                    image, int(avg_ops), data_layers, extract_arrays=True
-            )
-
-            # Calculate optimal batching
-            batch_size, jobs_per_batch = _calculate_optimal_batch_size(
-                    total_pipelines, memory_per_pipeline, memory_limit_gb, n_jobs
-            )
-
-            logger.info(f"Adaptive batching: {total_pipelines} pipelines in batches of "
-                        f"{batch_size} with {jobs_per_batch} parallel jobs")
-            logger.info(
-                    f"Estimated memory per pipeline: "
-                    f"{memory_per_pipeline / 1024 ** 2:.1f} MB")
-        else:
-            # Process all at once (original behavior)
-            batch_size = total_pipelines
-            jobs_per_batch = n_jobs
-            logger.info(f"Processing {total_pipelines} pipelines without batching")
-
-        # Step 3: Process in batches
-        from tqdm.auto import tqdm
-
-        global_start_time = time.time()
-        batch_ranges = list(range(0, total_pipelines, batch_size))
-        total_batches = len(batch_ranges)
-
-        for batch_idx, batch_start in enumerate(
-                tqdm(
-                        batch_ranges,
-                        desc="Batches",
-                        unit="batch",
-                        disable=(total_batches == 1),
-                )
-        ):
-            batch_end = min(batch_start + batch_size, total_pipelines)
-            batch_configs = concrete_configs[batch_start:batch_end]
-            batch_pipeline_count = batch_end - batch_start
-
-            if adaptive_batching and total_pipelines > batch_size:
-                batch_num = (batch_start // batch_size) + 1
-                mem_before = _get_memory_usage()
-                logger.info(f"Processing batch {batch_num}/{total_batches}: "
-                            f"pipelines {batch_start} to {batch_end - 1} "
-                            f"({batch_pipeline_count} pipelines, {mem_before:.1f} MB)")
-
-            batch_start_time = time.time()
-
-            # Group batch pipelines by longest shared prefix
-            logger.debug(
-                f"Grouping {batch_pipeline_count} pipelines by longest shared prefix")
-            trie_groups = _group_pipelines_by_longest_prefix(batch_configs)
-            logger.info(f"Batch contains {len(trie_groups)} distinct trie groups")
-
-            # Process each trie group sequentially
-            logger.debug(f"Starting sequential trie group processing")
-            pipeline_results_count = 0
-            for pipeline_name, result_data, json_config in _process_trie_groups_sequentially(
-                    image, trie_groups, jobs_per_batch,
-                    data_layers=data_layers,
-                    extract_arrays=True,
-                    backend=backend,
-                    slurm_params=slurm_params
-            ):
-                pipeline_results_count += 1
-                # result_data is now a dict of {layer_name: np.ndarray}
-
-                if save_tiff_dir:
-                    # ============ TIFF SAVING MODE ============
-                    # Save each layer as TIFF
-                    for layer_name, array_data in result_data.items():
-                        tiff_path = _save_array_as_tiff(
-                                array_data,
-                                save_tiff_dir,
-                                f"{pipeline_name}_{layer_name}"
-                        )
-                        tiff_files.append(tiff_path)
-
-                    # Store config
-                    all_configs[pipeline_name] = json_config
-
-                    # Free memory immediately
-                    del result_data
-
-                else:
-                    # ============ NAPARI VIEWER MODE ============
-                    # Add layers with pipeline name
-                    for data_layer, array_data in result_data.items():
-                        layer_name = f"{pipeline_name}_{data_layer}"
-                        _add_result_layer(viewer, array_data, data_layer, layer_name)
-
-                    # Store config always
-                    all_configs[pipeline_name] = json_config
-
-                    # Free memory immediately
-                    del result_data
-
-            batch_elapsed = time.time() - batch_start_time
-
-            # Explicit garbage collection after each batch
-            import gc
-
-            gc.collect()
-            mem_after = _get_memory_usage()
-
-            if adaptive_batching and total_pipelines > batch_size:
-                logger.info(f"Batch {batch_num}/{total_batches} complete: "
-                            f"{pipeline_results_count} pipelines in {batch_elapsed:.2f}s, "
-                            f"memory: {mem_before:.1f} MB → {mem_after:.1f} MB")
-            else:
-                logger.info(f"Batch processing complete: "
-                            f"{pipeline_results_count} pipelines in {batch_elapsed:.2f}s, "
-                            f"memory: {mem_after:.1f} MB")
-
-        global_elapsed = time.time() - global_start_time
-        logger.info(f"All batches completed in {global_elapsed:.2f}s")
-
-
-    else:
-        # Original linear execution path (non-optimized)
-        logger.info("Using non-optimized path (optimize_shared_prefixes=False)")
-
-        # Process each pipeline configuration
-        for config_idx, config in enumerate(pipeline_configs):
-            pipeline_name = config["name"]
-            ops = config["ops"]
-
-            # Unpack ops tuples
-            operations, parameters = _unpack_ops_tuples(ops)
-
-            # Generate parameter combinations for this pipeline
-            param_configs = _generate_param_combinations(parameters)
-
-            # Build task arguments for _execute_parallel_tasks
-            # Each task is: (image, operations, param_config, inplace)
-            # Note: We pass image reference (not a copy) to each parallel task. This is intentional
-            # and safe because _execute_single_pipeline makes an explicit copy before processing
-            # (see PipelineGridSearch Step 2 rationale). Each worker gets an immutable reference.
-            task_args = [
-                (image, operations, param_config, inplace)
-                for param_config in param_configs
-            ]
-
-            logger.info(f"Processing pipeline '{pipeline_name}' with {len(task_args)} parameter configs "
-                       f"using {backend} backend")
-
-            # Execute this pipeline's grid search using appropriate backend
-            results = _execute_parallel_tasks(
-                    func=_execute_single_pipeline,
-                    task_args=task_args,
-                    backend=backend,
-                    n_jobs=n_jobs,
-                    slurm_params=slurm_params,
-                    desc=f"Pipeline '{pipeline_name}'",
-            )
-
-            # Process results
-            for result_idx, (result_img, param_config, json_config) in enumerate(
-                    results):
-                param_str = _create_param_name_string(param_config)
-                config_key = f"{pipeline_name}_{result_idx:03d}_{param_str}"
-
-                if save_tiff_dir:
-                    # ============ TIFF SAVING MODE ============
-                    # Extract arrays
-                    extracted = _extract_data_layers(result_img, data_layers)
-
-                    # Save each layer as TIFF
-                    for layer_name, array_data in extracted.items():
-                        tiff_path = _save_array_as_tiff(
-                                array_data,
-                                save_tiff_dir,
-                                f"{config_key}_{layer_name}"
-                        )
-                        tiff_files.append(tiff_path)
-
-                    # Store config
-                    all_configs[config_key] = json_config
-
-                    # Free memory immediately
-                    del result_img, extracted
-
-                else:
-                    # ============ NAPARI VIEWER MODE ============
-                    # Extract arrays BEFORE passing to napari (prevents stale references)
-                    # This ensures napari receives independent copies, not references to
-                    # the Image object's internal data that would become invalid when
-                    # the Image object is deleted
-                    extracted = _extract_data_layers(result_img, data_layers)
-
-                    # Add layers with pipeline name prefix
-                    for layer_name, array_data in extracted.items():
-                        full_layer_name = f"{config_key}_{layer_name}"
-                        _add_result_layer(viewer, array_data, layer_name, full_layer_name)
-
-                    # Store config always
-                    all_configs[config_key] = json_config
-
-                    # Free memory immediately after use
-                    del result_img, extracted
-                    import gc as gc_module
-                    gc_module.collect()
-
-    # Generate HTML view if in TIFF mode
-    if save_tiff_dir:
-        logger.info(f"Saved {len(tiff_files)} TIFF files")
-
-        if create_trial_view:
-            html_path = _create_trial_view_html(
-                    save_tiff_dir, all_configs, data_layers
-            )
-            logger.info(f"Created trial view: {html_path}")
-
-        # Return only configs (TIFF mode)
-        return all_configs
-
-    else:
-        # Return viewer and configs (napari mode)
-        return viewer, all_configs
-
-
-__all__ = ["PipelineGridSearch", "MultiPipelineGridSearch"]

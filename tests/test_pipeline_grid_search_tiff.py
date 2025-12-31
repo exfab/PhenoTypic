@@ -9,12 +9,12 @@ import pytest
 from phenotypic import Image, ImagePipeline
 from phenotypic.enhance import GaussianBlur
 from phenotypic.detect import OtsuDetector
-from phenotypic.util._pipeline_grid_search import (
+from phenotypic.util._pipeline_grid_search._shared import (
     _save_array_as_tiff,
     _validate_save_tiff_params,
     _create_trial_view_html,
-    PipelineGridSearch,
 )
+from phenotypic.util._pipeline_grid_search import PipelineGridSearch
 
 
 @pytest.fixture

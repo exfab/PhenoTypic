@@ -10,6 +10,13 @@ overlays.
 Usage:
     python -m phenotypic PIPELINE_JSON INPUT_PATH OUTPUT_DIR [OPTIONS]
 
+MIGRATION NOTE (v2.0+):
+    The --save-*-dir PATH flags have been replaced with --save-* boolean flags.
+    Directories are now auto-generated as OUTPUT_DIR/<layer_name>/.
+
+    Old: --save-rgb-dir ./custom/path/rgb
+    New: --save-rgb  (saves to OUTPUT_DIR/rgb/)
+
 Example:
     python -m phenotypic my_pipeline.json ./raw_images ./results --n-jobs 4
     python -m phenotypic my_pipeline.json ./example.jpg ./results --slurm --slurm-params slurm_partition=gpu --slurm-params mem_gb=32
@@ -30,13 +37,14 @@ Examples:
         --nrows 16 --ncols 24
 
     # Save intermediate layers (RGB, grayscale, masks, objmaps)
+    # Output automatically saved to OUTPUT_DIR/rgb/, OUTPUT_DIR/gray/, etc.
     uv run python -m phenotypic my_pipeline.json ./raw_images ./results \
-        --save-rgb-dir ./results/rgb \
-        --save-gray-dir ./results/gray \
-        --save-enh-gray-dir ./results/enh_gray \
-        --save-objmask-dir ./results/objmask \
-        --save-objmap-dir ./results/objmap \
-        --save-objmap-rgb-dir ./results/objmap_rgb \
+        --save-rgb \
+        --save-gray \
+        --save-enh-gray \
+        --save-objmask \
+        --save-objmap \
+        --save-objmap-rgb \
         --rgb-ext png --gray-ext tiff --objmask-ext png
 """
 
@@ -375,34 +383,34 @@ def _run_submitit_jobs(
     help="SLURM parameters as KEY=VALUE pairs (e.g., --slurm-params slurm_partition=gpu --slurm-params mem_gb=32).",
 )
 @click.option(
-    "--save-rgb-dir",
-    type=click.Path(dir_okay=True, file_okay=False, path_type=Path),
-    help="Optional directory to save RGB images from Image.rgb.",
+    "--save-rgb",
+    is_flag=True,
+    help="Save RGB images from Image.rgb to OUTPUT_DIR/rgb/. File extension controlled by --rgb-ext.",
 )
 @click.option(
-    "--save-gray-dir",
-    type=click.Path(dir_okay=True, file_okay=False, path_type=Path),
-    help="Optional directory to save grayscale images from Image.gray.",
+    "--save-gray",
+    is_flag=True,
+    help="Save grayscale images from Image.gray to OUTPUT_DIR/gray/. File extension controlled by --gray-ext.",
 )
 @click.option(
-    "--save-enh-gray-dir",
-    type=click.Path(dir_okay=True, file_okay=False, path_type=Path),
-    help="Optional directory to save enhanced grayscale images from Image.enh_gray.",
+    "--save-enh-gray",
+    is_flag=True,
+    help="Save enhanced grayscale images from Image.enh_gray to OUTPUT_DIR/enh_gray/. File extension controlled by --enh-gray-ext.",
 )
 @click.option(
-    "--save-objmask-dir",
-    type=click.Path(dir_okay=True, file_okay=False, path_type=Path),
-    help="Optional directory to save binary object masks from Image.objmask.",
+    "--save-objmask",
+    is_flag=True,
+    help="Save binary object masks from Image.objmask to OUTPUT_DIR/objmask/. File extension controlled by --objmask-ext.",
 )
 @click.option(
-    "--save-objmap-dir",
-    type=click.Path(dir_okay=True, file_okay=False, path_type=Path),
-    help="Optional directory to save label maps from Image.objmap.",
+    "--save-objmap",
+    is_flag=True,
+    help="Save label maps from Image.objmap to OUTPUT_DIR/objmap/. File extension controlled by --objmap-ext.",
 )
 @click.option(
-    "--save-objmap-rgb-dir",
-    type=click.Path(dir_okay=True, file_okay=False, path_type=Path),
-    help="Optional directory to save label maps rendered with label2rgb (Image.objmap.imsave(..., use_label2rgb=True)).",
+    "--save-objmap-rgb",
+    is_flag=True,
+    help="Save label maps rendered with label2rgb to OUTPUT_DIR/objmap_rgb/. File extension controlled by --objmap-rgb-ext.",
 )
 @click.option(
     "--rgb-ext",
@@ -451,12 +459,12 @@ def main(
     n_jobs: int,
     slurm: bool,
     slurm_params: Sequence[str],
-    save_rgb_dir: Optional[Path],
-    save_gray_dir: Optional[Path],
-    save_enh_gray_dir: Optional[Path],
-    save_objmask_dir: Optional[Path],
-    save_objmap_dir: Optional[Path],
-    save_objmap_rgb_dir: Optional[Path],
+    save_rgb: bool,
+    save_gray: bool,
+    save_enh_gray: bool,
+    save_objmask: bool,
+    save_objmap: bool,
+    save_objmap_rgb: bool,
     rgb_ext: str,
     gray_ext: str,
     enh_gray_ext: str,
@@ -476,23 +484,24 @@ def main(
         - SLURM: enable with --slurm to submit jobs via submitit; customize with
           --slurm-params KEY=VALUE (e.g., slurm_partition=gpu mem_gb=32).
 
-    Optional exports (saved with accessor.imsave; defaults: rgb/gray/enh_gray=tiff, masks/objmap=png):
-        --save-rgb-dir PATH           Save Image.rgb arrays.
-        --save-gray-dir PATH          Save Image.gray arrays.
-        --save-enh-gray-dir PATH      Save Image.enh_gray arrays.
-        --save-objmask-dir PATH       Save Image.objmask.
-        --save-objmap-dir PATH        Save Image.objmap label maps.
-        --save-objmap-rgb-dir PATH    Save Image.objmap rendered with label2rgb.
-        --rgb-ext EXT                 File ending for Image.rgb (default: tiff).
-        --gray-ext EXT                File ending for Image.gray (default: tiff).
-        --enh-gray-ext EXT            File ending for Image.enh_gray (default: tiff).
-        --objmask-ext EXT             File ending for Image.objmask (default: png).
-        --objmap-ext EXT              File ending for Image.objmap (default: png).
-        --objmap-rgb-ext EXT          File ending for label2rgb objmap (default: png).
+    Optional exports (saved to OUTPUT_DIR subdirectories; defaults: rgb/gray/enh_gray=tiff, masks/objmap=png):
+        --save-rgb                    Save Image.rgb arrays to OUTPUT_DIR/rgb/.
+        --save-gray                   Save Image.gray arrays to OUTPUT_DIR/gray/.
+        --save-enh-gray               Save Image.enh_gray arrays to OUTPUT_DIR/enh_gray/.
+        --save-objmask                Save Image.objmask to OUTPUT_DIR/objmask/.
+        --save-objmap                 Save Image.objmap label maps to OUTPUT_DIR/objmap/.
+        --save-objmap-rgb             Save Image.objmap rendered with label2rgb to OUTPUT_DIR/objmap_rgb/.
+        --rgb-ext EXT                 File extension for RGB saves (default: tiff).
+        --gray-ext EXT                File extension for grayscale saves (default: tiff).
+        --enh-gray-ext EXT            File extension for enhanced gray saves (default: tiff).
+        --objmask-ext EXT             File extension for objmask saves (default: png).
+        --objmap-ext EXT              File extension for objmap saves (default: png).
+        --objmap-rgb-ext EXT          File extension for label2rgb objmap saves (default: png).
 
     Examples:
         uv run python -m phenotypic my_pipeline.json ./raw_images ./results --n-jobs 8
         uv run python -m phenotypic my_pipeline.json ./plate.png ./results --image-type Image
+        uv run python -m phenotypic my_pipeline.json ./raw_images ./results --save-rgb --save-gray --rgb-ext png
         uv run python -m phenotypic my_pipeline.json ./raw_images ./results --slurm \
             --slurm-params slurm_partition=gpu --slurm-params mem_gb=32
 
@@ -556,6 +565,14 @@ def main(
 
     overlay_dir = output_dir / "overlays"
     overlay_dir.mkdir(parents=True, exist_ok=True)
+
+    # Compute optional directory paths based on flags
+    save_rgb_dir = output_dir / "rgb" if save_rgb else None
+    save_gray_dir = output_dir / "gray" if save_gray else None
+    save_enh_gray_dir = output_dir / "enh_gray" if save_enh_gray else None
+    save_objmask_dir = output_dir / "objmask" if save_objmask else None
+    save_objmap_dir = output_dir / "objmap" if save_objmap else None
+    save_objmap_rgb_dir = output_dir / "objmap_rgb" if save_objmap_rgb else None
 
     for optional_dir in [
         save_rgb_dir,

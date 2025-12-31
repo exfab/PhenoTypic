@@ -6,7 +6,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from phenotypic.util._pipeline_grid_search import (
+from phenotypic.util._pipeline_grid_search._shared import (
     _execute_parallel_tasks,
     _create_submitit_executor,
     _validate_save_tiff_params,

@@ -9,7 +9,7 @@ import numpy as np
 from dataclasses import dataclass
 from typing import Any, Dict, List, Tuple
 
-from phenotypic.util._pipeline_grid_search import (
+from phenotypic.util._pipeline_grid_search._shared import (
     _ops_key,
     _TrieNode,
     _unpack_ops_tuples,
