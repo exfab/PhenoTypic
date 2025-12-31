@@ -1,12 +1,13 @@
 """Grid search utilities for pipeline parameter tuning and architecture comparison.
 
 This module provides functions to perform parameter grid searches on ImagePipelines,
-with multiple execution backends (joblib or submitit) and visualization options (napari or TIFF).
+with multiple execution backends (joblib or submitit) and directory-based output with
+interactive HTML viewer.
 
 ## Quick Start
 
-### Interactive Exploration (Napari Mode - Default)
-For exploring parameter combinations with visual feedback::
+### Single Pipeline Grid Search
+For exploring parameter combinations of a single pipeline::
 
     from phenotypic import Image
     from phenotypic.enhance import GaussianBlur
@@ -15,16 +16,39 @@ For exploring parameter combinations with visual feedback::
     image = Image.imread('colony_plate.jpg')
     ops = [(GaussianBlur(sigma=1.0), {"sigma": [1.0, 2.0, 3.0]})]
 
-    viewer, configs = PipelineGridSearch(image=image, ops=ops, n_jobs=-1)
-
-### Batch Processing (TIFF Mode - Memory Efficient)
-For large grid searches without visualization overhead::
-
     configs = PipelineGridSearch(
         image=image,
         ops=ops,
-        save_tiff_dir="./grid_results",
-        create_trial_view=True,
+        output_dir="./grid_results",
+        n_jobs=-1
+    )
+
+### Multi-Pipeline Grid Search
+For comparing different pipeline architectures::
+
+    from phenotypic.util import MultiPipelineGridSearch
+
+    pipeline_configs = [
+        {
+            "name": "GaussianBlur_Otsu",
+            "ops": [
+                (GaussianBlur(sigma=1.0), {"sigma": [1.0, 2.0]}),
+                (OtsuDetector(), {})
+            ]
+        },
+        {
+            "name": "MedianFilter_Otsu",
+            "ops": [
+                (MedianFilter(size=3), {"size": [3, 5]}),
+                (OtsuDetector(), {})
+            ]
+        }
+    ]
+
+    configs = MultiPipelineGridSearch(
+        image=image,
+        pipeline_configs=pipeline_configs,
+        output_dir="./multi_results",
         n_jobs=-1
     )
 
@@ -34,19 +58,41 @@ For submitting to SLURM clusters::
     configs = PipelineGridSearch(
         image=image,
         ops=ops,
+        output_dir="./cluster_results",
         backend="submitit",
-        slurm_params={"slurm_partition": "gpu", "mem_gb": 32},
-        save_tiff_dir="./cluster_results"
+        slurm_params={"slurm_partition": "gpu", "mem_gb": 32}
     )
 
 ## Key Features
 
+- **Directory-Based Output**: Results organized in individual subdirectories per pipeline
+- **Interactive HTML Viewer**: Browse results with sidebar navigation and config display
 - **Multiple Backends**: Choose between local (joblib) or cluster (submitit) execution
-- **Memory Efficient**: TIFF mode achieves 7-13× memory reduction by eliminating napari
-- **HTML Reports**: Generate visual quality control pages with thumbnails
-- **Shared Prefix Optimization**: Automatically optimize MultiPipelineGridSearch (enabled by default)
-- **Automatic Memory Management**: Garbage collection and array cleanup after each batch
+- **Memory Efficient**: Automatic cleanup and optimized array extraction
+- **Shared Prefix Optimization**: MultiPipelineGridSearch reuses common preprocessing steps
+- **Adaptive Batching**: Automatic memory management for large grid searches
 - **Progress Tracking**: Terminal and Jupyter-compatible progress bars with ETA
+
+## Output Structure
+
+All grid search functions save results to organized directory structure::
+
+    output_dir/
+    ├── manifest.json           # Maps pipeline codes to configs + metadata
+    ├── original/
+    │   ├── rgb.tiff
+    │   └── gray.tiff
+    ├── pipeline_001/
+    │   ├── rgb.tiff
+    │   ├── gray.tiff
+    │   ├── enh_gray.tiff
+    │   ├── objmask.tiff
+    │   └── objmap.tiff
+    ├── pipeline_002/
+    │   └── ...
+    ├── thumbnails/             # Generated for HTML viewer
+    │   └── ...
+    └── viewer.html             # Interactive HTML viewer
 
 ## Progress Tracking
 
@@ -64,14 +110,13 @@ Progress bars are automatically enabled for:
 
 When processing large numbers of pipelines with memory-intensive operations (e.g., BM3D):
 
-1. **Use TIFF mode instead of napari viewer:**
+1. **Enable adaptive batching (default):**
    ```python
    configs = MultiPipelineGridSearch(
        ...,
-       save_tiff_dir="./results",
-       create_trial_view=True,
-       n_jobs=4,  # Reduce parallelism
-       memory_limit_gb=8.0  # Set conservative limit
+       adaptive_batching=True,
+       memory_limit_gb=8.0,  # Set conservative limit
+       n_jobs=4  # Reduce parallelism if needed
    )
    ```
 
@@ -81,9 +126,8 @@ When processing large numbers of pipelines with memory-intensive operations (e.g
    - With n_jobs=-1 on 16 cores: ~9 GB peak memory (may OOM on 16 GB systems)
 
 3. **Use submitit backend for cluster execution:**
-   - Auto-disables napari viewer (cannot display on clusters)
-   - Requires save_tiff_dir parameter
    - Ideal for processing hundreds of pipelines across many jobs
+   - Each job runs independently with its own memory allocation
 
 ## Notes
 

@@ -1,7 +1,7 @@
 """Shared utilities for pipeline grid search operations.
 
 This module contains core data structures, validation functions, I/O operations,
-backend abstractions, trie algorithms, and napari helpers used by both
+backend abstractions, trie algorithms, and HTML viewer generation used by both
 PipelineGridSearch and MultiPipelineGridSearch.
 """
 
@@ -21,7 +21,6 @@ import numpy as np
 import submitit
 
 if TYPE_CHECKING:
-    import napari
     from phenotypic import Image, ImageOperation
 
 logger = logging.getLogger(__name__)
@@ -67,6 +66,193 @@ def _get_memory_usage() -> float:
 
     process = psutil.Process()
     return process.memory_info().rss / 1024 / 1024
+
+
+def _generate_pipeline_code(index: int) -> str:
+    """Generate sequential pipeline code.
+
+    Args:
+        index: Zero-based index for the pipeline
+
+    Returns:
+        Pipeline code string in format "pipeline_XXX" (e.g., "pipeline_001")
+
+    Example:
+        >>> _generate_pipeline_code(0)
+        'pipeline_001'
+        >>> _generate_pipeline_code(42)
+        'pipeline_043'
+    """
+    return f"pipeline_{index + 1:03d}"
+
+
+def _create_manifest_json(
+        output_dir: Union[str, Path],
+        configs_dict: Dict[str, str],
+        data_layers: List[str],
+) -> Path:
+    """Create manifest JSON mapping pipeline codes to configurations.
+
+    Args:
+        output_dir: Output directory path
+        configs_dict: Dictionary mapping pipeline codes to JSON config strings
+        data_layers: List of data layers that were saved
+
+    Returns:
+        Path to created manifest.json file
+
+    Raises:
+        RuntimeError: If manifest creation fails
+
+    Example:
+        >>> configs = {
+        ...     "pipeline_001": '{"ops": [{"class": "GaussianBlur", "params": {"sigma": 2.0}}]}',
+        ...     "pipeline_002": '{"ops": [{"class": "GaussianBlur", "params": {"sigma": 3.0}}]}'
+        ... }
+        >>> manifest_path = _create_manifest_json("/tmp/results", configs, ["rgb", "gray"])
+    """
+    import json
+    from datetime import datetime
+
+    manifest_path = Path(output_dir) / "manifest.json"
+
+    try:
+        # Build manifest structure
+        manifest = {
+            "generated_at": datetime.now().isoformat(),
+            "total_pipelines": len(configs_dict),
+            "data_layers": data_layers,
+            "pipelines": {}
+        }
+
+        # Add each pipeline entry
+        for code, json_config_str in configs_dict.items():
+            # Parse JSON config to extract metadata
+            try:
+                config_obj = json.loads(json_config_str)
+            except json.JSONDecodeError:
+                logger.warning(f"Failed to parse JSON config for {code}, storing as string")
+                config_obj = {"raw": json_config_str}
+
+            manifest["pipelines"][code] = {
+                "config": config_obj,
+                "directory": code,
+                "layers": data_layers
+            }
+
+        # Write manifest
+        with open(manifest_path, 'w', encoding='utf-8') as f:
+            json.dump(manifest, f, indent=2)
+
+        logger.info(f"Created manifest: {manifest_path}")
+        return manifest_path
+
+    except Exception as e:
+        raise RuntimeError(f"Failed to create manifest.json: {e}") from e
+
+
+def _create_output_directory_structure(
+        output_dir: Union[str, Path],
+) -> Dict[str, Path]:
+    """Create output directory structure for pipeline grid search.
+
+    Creates the following structure:
+        output_dir/
+        ├── original/       # Original input images
+        └── thumbnails/     # Thumbnail images for HTML viewer
+
+    Args:
+        output_dir: Base output directory path
+
+    Returns:
+        Dictionary with paths to created subdirectories:
+        - "base": Main output directory
+        - "original": Original images directory
+        - "thumbnails": Thumbnails directory
+
+    Raises:
+        ValueError: If directory creation fails or permissions are insufficient
+
+    Example:
+        >>> paths = _create_output_directory_structure("./results")
+        >>> print(paths["original"])
+        ./results/original
+    """
+    try:
+        base_path = Path(output_dir)
+        base_path.mkdir(parents=True, exist_ok=True)
+
+        # Create subdirectories
+        original_dir = base_path / "original"
+        original_dir.mkdir(exist_ok=True)
+
+        thumbnails_dir = base_path / "thumbnails"
+        thumbnails_dir.mkdir(exist_ok=True)
+
+        # Test write permissions
+        test_file = base_path / ".write_test"
+        test_file.touch()
+        test_file.unlink()
+
+        logger.info(f"Created output directory structure: {base_path}")
+
+        return {
+            "base": base_path,
+            "original": original_dir,
+            "thumbnails": thumbnails_dir,
+        }
+
+    except Exception as e:
+        raise ValueError(
+                f"Failed to create output directory structure at '{output_dir}': {e}"
+        ) from e
+
+
+def _save_original_images(
+        image: "Image",
+        original_dir: Union[str, Path],
+) -> List[Path]:
+    """Save original RGB and grayscale images as TIFF files.
+
+    Args:
+        image: Original input image
+        original_dir: Directory to save original images
+
+    Returns:
+        List of paths to saved TIFF files
+
+    Raises:
+        RuntimeError: If saving fails
+
+    Example:
+        >>> from phenotypic import Image
+        >>> image = Image.imread("test.jpg")
+        >>> paths = _save_original_images(image, "./results/original")
+        >>> print(paths)
+        [PosixPath('./results/original/rgb.tiff'), PosixPath('./results/original/gray.tiff')]
+    """
+    saved_paths = []
+
+    try:
+        # Save RGB if available
+        rgb_data = image.rgb[:]
+        if rgb_data is not None and rgb_data.size > 0:
+            rgb_path = _save_array_as_tiff(rgb_data, original_dir, "rgb")
+            saved_paths.append(rgb_path)
+            logger.debug(f"Saved original RGB: {rgb_path}")
+
+        # Save grayscale
+        gray_data = image.gray[:]
+        if gray_data is not None and gray_data.size > 0:
+            gray_path = _save_array_as_tiff(gray_data, original_dir, "gray")
+            saved_paths.append(gray_path)
+            logger.debug(f"Saved original grayscale: {gray_path}")
+
+        logger.info(f"Saved {len(saved_paths)} original images to {original_dir}")
+        return saved_paths
+
+    except Exception as e:
+        raise RuntimeError(f"Failed to save original images: {e}") from e
 
 
 def _ops_key(op: "ImageOperation", params: Dict[str, Any]) -> Tuple:
@@ -436,16 +622,16 @@ def _save_array_as_tiff(
         raise RuntimeError(f"TIFF saving failed for {base_name}: {e}") from e
 
 
-def _validate_save_tiff_params(
-        save_tiff_dir: Optional[str],
-        create_trial_view: bool,
+def _validate_output_dir_params(
+        output_dir: Optional[str],
+        create_viewer: bool,
         backend: str,
 ) -> None:
-    """Validate TIFF saving and backend parameters.
+    """Validate output directory and backend parameters.
 
     Args:
-        save_tiff_dir: Path to TIFF save directory (or None)
-        create_trial_view: Whether HTML generation was requested
+        output_dir: Path to output directory
+        create_viewer: Whether HTML viewer generation was requested
         backend: Execution backend name
 
     Raises:
@@ -454,28 +640,26 @@ def _validate_save_tiff_params(
     """
     from pathlib import Path
 
-    # Validate create_trial_view dependency
-    if create_trial_view and save_tiff_dir is None:
+    # Validate output_dir is provided
+    if output_dir is None:
         raise ValueError(
-                "create_trial_view=True requires save_tiff_dir to be specified. "
-                "HTML trial view can only be generated when saving TIFFs."
+                "output_dir is required. Please specify a directory for saving results."
         )
 
-    # Validate and create save_tiff_dir if provided
-    if save_tiff_dir is not None:
-        try:
-            save_path = Path(save_tiff_dir)
-            save_path.mkdir(parents=True, exist_ok=True)
+    # Validate and create output_dir
+    try:
+        output_path = Path(output_dir)
+        output_path.mkdir(parents=True, exist_ok=True)
 
-            # Test write permissions
-            test_file = save_path / ".write_test"
-            test_file.touch()
-            test_file.unlink()
+        # Test write permissions
+        test_file = output_path / ".write_test"
+        test_file.touch()
+        test_file.unlink()
 
-        except Exception as e:
-            raise ValueError(
-                    f"Cannot write to save_tiff_dir '{save_tiff_dir}': {e}"
-            ) from e
+    except Exception as e:
+        raise ValueError(
+                f"Cannot write to output_dir '{output_dir}': {e}"
+        ) from e
 
     # Validate backend
     if backend not in ["joblib", "submitit"]:
@@ -492,14 +676,6 @@ def _validate_save_tiff_params(
                     "submitit backend requested but submitit is not installed. "
                     "Install with: pip install phenotypic[cluster]"
             ) from e
-
-        # Submitit backend requires TIFF mode (cluster jobs cannot display napari)
-        if save_tiff_dir is None:
-            raise ValueError(
-                    "save_tiff_dir is required when backend='submitit'. "
-                    "Cluster jobs cannot create interactive napari viewers. "
-                    "Please specify a directory to save TIFF files."
-            )
 
 
 def _create_submitit_executor(
@@ -736,200 +912,524 @@ def _create_single_thumbnail(
         return None
 
 
-def _create_trial_view_html(
-        save_dir: Union[str, Path],
+def _create_interactive_viewer_html(
+        output_dir: Union[str, Path],
         configs_dict: Dict[str, str],
         data_layers: List[str],
 ) -> Path:
-    """Generate HTML overview page with thumbnails of all saved TIFF files.
+    """Generate interactive HTML viewer with three-panel layout.
 
-    Creates an HTML page with:
-    - Grid layout showing all results
-    - Thumbnails for each data layer
-    - Pipeline configuration details
-    - Responsive CSS for viewing in browser
+    Creates a static HTML viewer with:
+    - Left sidebar: Pipeline list for selection
+    - Center panel: Main image view with layer selector
+    - Right sidebar: Pipeline configuration details
+    - Keyboard navigation support
 
     Args:
-        save_dir: Directory containing TIFF files
-        configs_dict: Dictionary mapping layer base names to JSON configs
+        output_dir: Output directory containing pipeline subdirectories
+        configs_dict: Dictionary mapping pipeline codes to JSON config strings
         data_layers: List of layer names that were saved
 
     Returns:
-        Path to generated trial_overview.html file
+        Path to generated viewer.html file
 
     Raises:
         RuntimeError: If HTML generation fails
 
     Example:
-        >>> configs = {"001_sigma=2.0": "{...json...}", ...}
-        >>> html_path = _create_trial_view_html(
-        ...     "/tmp/results", configs, ["rgb", "objmask"]
-        ... )
+        >>> configs = {
+        ...     "pipeline_001": '{"ops": [{"class": "GaussianBlur", "params": {"sigma": 2.0}}]}',
+        ...     "pipeline_002": '{"ops": [{"class": "GaussianBlur", "params": {"sigma": 3.0}}]}'
+        ... }
+        >>> html_path = _create_interactive_viewer_html("./results", configs, ["rgb", "gray"])
     """
-    from PIL import Image as PIL_Image
+    import json
 
-    save_path = Path(save_dir)
-    html_file = save_path / "trial_overview.html"
-    thumbnails_dir = save_path / "thumbnails"
+    output_path = Path(output_dir)
+    html_file = output_path / "viewer.html"
+    thumbnails_dir = output_path / "thumbnails"
     thumbnails_dir.mkdir(exist_ok=True)
 
-    logger.info(f"Generating trial view HTML with {len(configs_dict)} results")
+    logger.info(f"Generating interactive viewer HTML with {len(configs_dict)} pipelines")
 
-    # Group results by base name
-    result_groups = {}
-    for base_name in configs_dict.keys():
-        # Extract pipeline name and params (before layer suffix)
-        result_groups[base_name] = {}
-
-    # Collect all thumbnail tasks to parallelize
+    # Create thumbnails for all pipeline layers
     thumbnail_tasks = []
-    for base_name in configs_dict.keys():
+    for pipeline_code in configs_dict.keys():
+        pipeline_dir = output_path / pipeline_code
         for layer in data_layers:
-            tiff_pattern = f"{base_name}_{layer}.tiff"
-            tiff_path = save_path / tiff_pattern
-
+            tiff_path = pipeline_dir / f"{layer}.tiff"
             if tiff_path.exists():
-                thumbnail_tasks.append((tiff_path, thumbnails_dir, base_name, layer))
+                thumbnail_tasks.append((tiff_path, thumbnails_dir, pipeline_code, layer))
 
-    # Parallelize thumbnail creation if there are multiple tasks
+    # Parallelize thumbnail creation
     if len(thumbnail_tasks) > 1:
         from joblib import Parallel, delayed
-
         logger.info(f"Creating {len(thumbnail_tasks)} thumbnails in parallel...")
-        thumbnail_results = Parallel(n_jobs=-1)(
+        Parallel(n_jobs=-1)(
                 delayed(_create_single_thumbnail)(*args) for args in thumbnail_tasks
         )
-
-        # Map results back to result_groups
-        for (_, _, base_name, layer), thumb_path in zip(thumbnail_tasks,
-                                                        thumbnail_results):
-            result_groups[base_name][layer] = thumb_path
     else:
-        # Serial execution for small numbers of thumbnails
-        for tiff_path, thumbnails_dir, base_name, layer in thumbnail_tasks:
-            thumb_path = _create_single_thumbnail(tiff_path, thumbnails_dir, base_name,
-                                                  layer)
-            result_groups[base_name][layer] = thumb_path
+        for args in thumbnail_tasks:
+            _create_single_thumbnail(*args)
 
-    # Generate HTML
+    # Build pipeline data structure for JavaScript
+    pipelines_data = {}
+    for pipeline_code, json_config_str in configs_dict.items():
+        try:
+            config_obj = json.loads(json_config_str)
+        except json.JSONDecodeError:
+            config_obj = {"error": "Failed to parse config", "raw": json_config_str}
+
+        pipelines_data[pipeline_code] = {
+            "code": pipeline_code,
+            "config": config_obj,
+            "layers": {layer: f"{pipeline_code}/{layer}.tiff" for layer in data_layers}
+        }
+
+    # Serialize pipeline data to JSON for embedding
+    pipelines_json = json.dumps(pipelines_data, indent=2)
+
+    # Generate HTML content
     html_content = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pipeline Grid Search - Trial Overview</title>
+    <title>Pipeline Grid Search Viewer</title>
     <style>
+        * {{
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }}
+        
         body {{
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            margin: 20px;
-            background-color: #f5f5f5;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            background-color: #1e1e1e;
+            color: #d4d4d4;
         }}
-        h1 {{
-            color: #333;
-            border-bottom: 2px solid #007bff;
-            padding-bottom: 10px;
+        
+        header {{
+            background-color: #252526;
+            padding: 12px 20px;
+            border-bottom: 1px solid #3e3e42;
         }}
-        .results-grid {{
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 20px;
-            margin-top: 20px;
+        
+        header h1 {{
+            font-size: 18px;
+            font-weight: 500;
+            color: #cccccc;
         }}
-        .result-card {{
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            padding: 15px;
+        
+        .container {{
+            display: flex;
+            flex: 1;
+            overflow: hidden;
         }}
-        .result-card h3 {{
-            margin-top: 0;
-            color: #007bff;
-            font-size: 14px;
-            word-wrap: break-word;
-            font-family: monospace;
+        
+        /* Left Sidebar - Pipeline List */
+        .sidebar-left {{
+            width: 250px;
+            background-color: #252526;
+            border-right: 1px solid #3e3e42;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
         }}
-        .layers {{
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-            gap: 10px;
-        }}
-        .layer {{
-            text-align: center;
-        }}
-        .layer-name {{
-            font-size: 12px;
+        
+        .sidebar-left h2 {{
+            padding: 12px 16px;
+            font-size: 13px;
             font-weight: 600;
-            color: #666;
-            margin-bottom: 5px;
+            color: #999;
+            text-transform: uppercase;
+            border-bottom: 1px solid #3e3e42;
         }}
-        .layer img {{
-            max-width: 100%;
-            border: 1px solid #ddd;
-            border-radius: 4px;
+        
+        .pipeline-list {{
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px 0;
         }}
-        .no-thumbnail {{
-            width: 180px;
-            height: 180px;
-            background: #f0f0f0;
+        
+        .pipeline-item {{
+            padding: 8px 16px;
+            cursor: pointer;
+            font-size: 13px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            color: #cccccc;
+            border-left: 3px solid transparent;
+            transition: background-color 0.15s;
+        }}
+        
+        .pipeline-item:hover {{
+            background-color: #2a2d2e;
+        }}
+        
+        .pipeline-item.active {{
+            background-color: #37373d;
+            border-left-color: #007acc;
+            color: #ffffff;
+        }}
+        
+        /* Center Panel - Image View */
+        .main-view {{
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            background-color: #1e1e1e;
+        }}
+        
+        .layer-selector {{
+            background-color: #252526;
+            padding: 12px 20px;
+            border-bottom: 1px solid #3e3e42;
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }}
+        
+        .layer-button {{
+            padding: 6px 14px;
+            background-color: #3e3e42;
+            color: #cccccc;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 500;
+            transition: background-color 0.15s;
+        }}
+        
+        .layer-button:hover {{
+            background-color: #505050;
+        }}
+        
+        .layer-button.active {{
+            background-color: #007acc;
+            color: #ffffff;
+        }}
+        
+        .image-container {{
+            flex: 1;
             display: flex;
             align-items: center;
             justify-content: center;
-            color: #999;
-            font-size: 12px;
-            border-radius: 4px;
+            overflow: auto;
+            padding: 20px;
         }}
-        .timestamp {{
-            text-align: right;
-            color: #888;
+        
+        .image-container img {{
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            border: 1px solid #3e3e42;
+            background-color: #2d2d30;
+        }}
+        
+        .no-image {{
+            color: #858585;
+            font-size: 14px;
+        }}
+        
+        /* Right Sidebar - Config Panel */
+        .sidebar-right {{
+            width: 350px;
+            background-color: #252526;
+            border-left: 1px solid #3e3e42;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }}
+        
+        .sidebar-right h2 {{
+            padding: 12px 16px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #999;
+            text-transform: uppercase;
+            border-bottom: 1px solid #3e3e42;
+        }}
+        
+        .config-content {{
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+        }}
+        
+        .config-section {{
+            margin-bottom: 20px;
+        }}
+        
+        .config-section h3 {{
             font-size: 12px;
-            margin-top: 20px;
+            color: #999;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }}
+        
+        .config-code {{
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 16px;
+            color: #4ec9b0;
+            margin-bottom: 16px;
+        }}
+        
+        .operation {{
+            background-color: #2d2d30;
+            border-left: 3px solid #007acc;
+            padding: 10px 12px;
+            margin-bottom: 8px;
+            border-radius: 3px;
+        }}
+        
+        .operation-name {{
+            font-weight: 600;
+            color: #dcdcaa;
+            font-size: 13px;
+            margin-bottom: 6px;
+        }}
+        
+        .param {{
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 12px;
+            color: #9cdcfe;
+            margin-left: 12px;
+        }}
+        
+        .param-key {{
+            color: #9cdcfe;
+        }}
+        
+        .param-value {{
+            color: #ce9178;
+        }}
+        
+        /* Scrollbar styling */
+        ::-webkit-scrollbar {{
+            width: 10px;
+            height: 10px;
+        }}
+        
+        ::-webkit-scrollbar-track {{
+            background: #1e1e1e;
+        }}
+        
+        ::-webkit-scrollbar-thumb {{
+            background: #424242;
+            border-radius: 5px;
+        }}
+        
+        ::-webkit-scrollbar-thumb:hover {{
+            background: #4e4e4e;
         }}
     </style>
 </head>
 <body>
-    <h1>Pipeline Grid Search Results</h1>
-    <p>Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
-    <p>Total results: {len(result_groups)}</p>
-
-    <div class="results-grid">
-"""
-
-    # Add each result card
-    for base_name, layers in result_groups.items():
-        html_content += f"""
-        <div class="result-card">
-            <h3>{base_name}</h3>
-            <div class="layers">
-"""
-
-        for layer in data_layers:
-            thumb_path = layers.get(layer)
-            if thumb_path:
-                html_content += f"""
-                <div class="layer">
-                    <div class="layer-name">{layer}</div>
-                    <img src="{thumb_path}" alt="{layer}" loading="lazy">
-                </div>
-"""
-            else:
-                html_content += f"""
-                <div class="layer">
-                    <div class="layer-name">{layer}</div>
-                    <div class="no-thumbnail">No data</div>
-                </div>
-"""
-
-        html_content += """
+    <header>
+        <h1>Pipeline Grid Search Viewer</h1>
+    </header>
+    
+    <div class="container">
+        <!-- Left Sidebar: Pipeline List -->
+        <div class="sidebar-left">
+            <h2>Pipelines</h2>
+            <div class="pipeline-list" id="pipelineList"></div>
+        </div>
+        
+        <!-- Center: Image View -->
+        <div class="main-view">
+            <div class="layer-selector" id="layerSelector"></div>
+            <div class="image-container" id="imageContainer">
+                <div class="no-image">Select a pipeline to view</div>
             </div>
         </div>
-"""
-
-    html_content += """
+        
+        <!-- Right Sidebar: Config Panel -->
+        <div class="sidebar-right">
+            <h2>Configuration</h2>
+            <div class="config-content" id="configPanel">
+                <div class="no-image">Select a pipeline to view configuration</div>
+            </div>
+        </div>
     </div>
-
-    <div class="timestamp">
-        Generated by PhenoTypic Pipeline Grid Search
-    </div>
+    
+    <script>
+        // Embedded pipeline data
+        const pipelinesData = {pipelines_json};
+        const dataLayers = {json.dumps(data_layers)};
+        
+        let currentPipeline = null;
+        let currentLayer = dataLayers[0] || 'rgb';
+        
+        // Initialize viewer
+        function initViewer() {{
+            renderPipelineList();
+            renderLayerSelector();
+            
+            // Select first pipeline by default
+            const firstPipeline = Object.keys(pipelinesData)[0];
+            if (firstPipeline) {{
+                selectPipeline(firstPipeline);
+            }}
+            
+            // Setup keyboard navigation
+            document.addEventListener('keydown', handleKeyboard);
+        }}
+        
+        // Render pipeline list
+        function renderPipelineList() {{
+            const listEl = document.getElementById('pipelineList');
+            listEl.innerHTML = '';
+            
+            for (const code in pipelinesData) {{
+                const item = document.createElement('div');
+                item.className = 'pipeline-item';
+                item.textContent = code;
+                item.onclick = () => selectPipeline(code);
+                listEl.appendChild(item);
+            }}
+        }}
+        
+        // Render layer selector buttons
+        function renderLayerSelector() {{
+            const selectorEl = document.getElementById('layerSelector');
+            selectorEl.innerHTML = '';
+            
+            dataLayers.forEach(layer => {{
+                const btn = document.createElement('button');
+                btn.className = 'layer-button';
+                btn.textContent = layer;
+                btn.onclick = () => selectLayer(layer);
+                if (layer === currentLayer) {{
+                    btn.classList.add('active');
+                }}
+                selectorEl.appendChild(btn);
+            }});
+        }}
+        
+        // Select pipeline
+        function selectPipeline(code) {{
+            currentPipeline = code;
+            
+            // Update active state
+            document.querySelectorAll('.pipeline-item').forEach(item => {{
+                item.classList.toggle('active', item.textContent === code);
+            }});
+            
+            // Update displays
+            updateImageView();
+            updateConfigPanel();
+        }}
+        
+        // Select layer
+        function selectLayer(layer) {{
+            currentLayer = layer;
+            
+            // Update active state
+            document.querySelectorAll('.layer-button').forEach(btn => {{
+                btn.classList.toggle('active', btn.textContent === layer);
+            }});
+            
+            // Update image
+            updateImageView();
+        }}
+        
+        // Update image view
+        function updateImageView() {{
+            const containerEl = document.getElementById('imageContainer');
+            
+            if (!currentPipeline || !currentLayer) {{
+                containerEl.innerHTML = '<div class="no-image">No image available</div>';
+                return;
+            }}
+            
+            const pipeline = pipelinesData[currentPipeline];
+            const imagePath = pipeline.layers[currentLayer];
+            
+            if (imagePath) {{
+                containerEl.innerHTML = `<img src="${{imagePath}}" alt="${{currentLayer}}" />`;
+            }} else {{
+                containerEl.innerHTML = '<div class="no-image">Image not available</div>';
+            }}
+        }}
+        
+        // Update config panel
+        function updateConfigPanel() {{
+            const panelEl = document.getElementById('configPanel');
+            
+            if (!currentPipeline) {{
+                panelEl.innerHTML = '<div class="no-image">No pipeline selected</div>';
+                return;
+            }}
+            
+            const pipeline = pipelinesData[currentPipeline];
+            const config = pipeline.config;
+            
+            let html = `<div class="config-code">${{pipeline.code}}</div>`;
+            
+            if (config.ops && Array.isArray(config.ops)) {{
+                html += '<div class="config-section"><h3>Operations</h3>';
+                
+                config.ops.forEach((op, idx) => {{
+                    const opClass = op.class || 'Unknown';
+                    const params = op.params || {{}};
+                    
+                    html += `<div class="operation">
+                        <div class="operation-name">${{idx + 1}}. ${{opClass}}</div>`;
+                    
+                    for (const [key, value] of Object.entries(params)) {{
+                        const valueStr = typeof value === 'object' ? JSON.stringify(value) : value;
+                        html += `<div class="param">
+                            <span class="param-key">${{key}}:</span> 
+                            <span class="param-value">${{valueStr}}</span>
+                        </div>`;
+                    }}
+                    
+                    html += '</div>';
+                }});
+                
+                html += '</div>';
+            }} else {{
+                html += '<div class="config-section">No operations found</div>';
+            }}
+            
+            panelEl.innerHTML = html;
+        }}
+        
+        // Keyboard navigation
+        function handleKeyboard(e) {{
+            const codes = Object.keys(pipelinesData);
+            const currentIdx = codes.indexOf(currentPipeline);
+            
+            if (e.key === 'ArrowDown' && currentIdx < codes.length - 1) {{
+                e.preventDefault();
+                selectPipeline(codes[currentIdx + 1]);
+            }} else if (e.key === 'ArrowUp' && currentIdx > 0) {{
+                e.preventDefault();
+                selectPipeline(codes[currentIdx - 1]);
+            }} else if (e.key === 'ArrowRight') {{
+                e.preventDefault();
+                const layerIdx = dataLayers.indexOf(currentLayer);
+                if (layerIdx < dataLayers.length - 1) {{
+                    selectLayer(dataLayers[layerIdx + 1]);
+                }}
+            }} else if (e.key === 'ArrowLeft') {{
+                e.preventDefault();
+                const layerIdx = dataLayers.indexOf(currentLayer);
+                if (layerIdx > 0) {{
+                    selectLayer(dataLayers[layerIdx - 1]);
+                }}
+            }}
+        }}
+        
+        // Initialize on load
+        window.addEventListener('DOMContentLoaded', initViewer);
+    </script>
 </body>
 </html>
 """
@@ -937,10 +1437,10 @@ def _create_trial_view_html(
     # Write HTML file
     try:
         html_file.write_text(html_content, encoding='utf-8')
-        logger.info(f"Created trial view HTML: {html_file}")
+        logger.info(f"Created interactive viewer: {html_file}")
         return html_file
     except Exception as e:
-        raise RuntimeError(f"Failed to create HTML file: {e}") from e
+        raise RuntimeError(f"Failed to create HTML viewer: {e}") from e
 
 
 def _estimate_pipeline_memory(
@@ -1821,107 +2321,6 @@ def _execute_single_pipeline(
     json_config = pipeline.to_json_str()
 
     return result, param_config, json_config
-
-
-def _add_original_layers(viewer: napari.Viewer, image: Image) -> None:
-    """Add original RGB and gray reference layers to viewer.
-
-    Args:
-        viewer: Napari viewer instance
-        image: Original image
-    """
-    viewer.add_image(image.rgb[:], name="Original_RGB", rgb=True)
-    viewer.add_image(image.gray[:], name="Original_Gray", colormap="gray")
-
-
-def _add_result_layer(
-        viewer: napari.Viewer,
-        result_data: Union["Image", Any],
-        data_layer: str,
-        layer_name: str,
-) -> None:
-    """Add a single data layer to napari viewer.
-
-    IMPORTANT: For memory safety, always pass numpy arrays (not Image objects)
-    to this function. Image objects should be extracted using _extract_data_layers()
-    first to create independent array copies before passing to napari.
-
-    Args:
-        viewer: Napari viewer instance
-        result_data: **PREFERRED**: numpy array for this layer (created by
-            _extract_data_layers() with explicit .copy()). **DEPRECATED**: Image
-            object (legacy support, may cause memory issues if the source Image
-            is deleted while napari holds references to its internal arrays).
-        data_layer: Which data to add ("rgb", "gray", "enh_gray", "objmask", "objmap")
-        layer_name: Name for the layer in napari
-
-    Deprecation:
-        Passing Image objects is deprecated and may be removed in future versions.
-        Always extract arrays first using _extract_data_layers() to ensure napari
-        receives independent copies that won't be invalidated when the source
-        Image object is deleted.
-
-    Note:
-        For backwards compatibility, this function currently accepts both Image
-        objects (legacy behavior) and numpy arrays (memory-optimized behavior).
-        The Image object path should only be used for debugging or legacy code.
-    """
-    import numpy as np
-
-    try:
-        # Check if result_data is a numpy array (new behavior)
-        if isinstance(result_data, np.ndarray):
-            data = result_data
-        else:
-            # result_data is an Image object (legacy behavior)
-            if data_layer == "rgb":
-                data = result_data.rgb[:]
-            elif data_layer == "gray":
-                data = result_data.gray[:]
-            elif data_layer == "enh_gray":
-                data = result_data.enh_gray[:]
-            elif data_layer == "objmask":
-                data = result_data.objmask[:]
-            elif data_layer == "objmap":
-                data = result_data.objmap[:]
-            else:
-                return  # Unknown layer type
-
-        # Add to viewer based on layer type
-        if data_layer == "rgb":
-            viewer.add_image(data, name=layer_name, rgb=True)
-        elif data_layer in ["gray", "enh_gray"]:
-            viewer.add_image(data, name=layer_name, colormap="gray")
-        elif data_layer in ["objmask", "objmap"]:
-            if data.any():  # Only add if not empty
-                viewer.add_labels(data, name=layer_name)
-
-    except Exception as e:
-        # Gracefully handle missing data
-        print(f"Warning: Could not add layer {layer_name}: {e}")
-
-
-def _add_result_layers(
-        viewer: napari.Viewer,
-        result_img: Image,
-        param_config: Tuple[Dict[str, Any], ...],
-        data_layers: List[str],
-        result_idx: int,
-) -> None:
-    """Add all requested data layers for a single result.
-
-    Args:
-        viewer: Napari viewer instance
-        result_img: Processed image result
-        param_config: Parameter configuration for this result
-        data_layers: List of data layers to add
-        result_idx: Index of this result in the grid
-    """
-    param_str = _create_param_name_string(param_config)
-
-    for data_layer in data_layers:
-        layer_name = f"{result_idx:03d}_{param_str}_{data_layer}"
-        _add_result_layer(viewer, result_img, data_layer, layer_name)
 
 
 def _build_results_dict(

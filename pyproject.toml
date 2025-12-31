@@ -107,7 +107,7 @@ docs = [
 ]
 
 [tool.pytest.ini_options]
-testpaths = ["./tests/*"]
+testpaths = ["tests"]
 addopts = "--verbose --capture=no"
 
 [tool.setuptools.dynamic]
