@@ -75,7 +75,7 @@ def MultiPipelineGridSearch(
         pipeline_configs: List of pipeline configuration dictionaries. Each dict
             must contain:
             - "name" (str): Descriptive name for this pipeline (e.g., "GaussianBlur_Otsu")
-            - "ops" (List[Tuple]): List of (operation, params_dict) tuples
+            - "pipe_cfgs" (List[Tuple]): List of (operation, params_dict) tuples
         output_dir: Directory for saving all results. Will be created if it doesn't exist.
             Results are organized into subdirectories per pipeline configuration.
         data_layers: Which image data to save. Valid options: "rgb", "gray",
@@ -144,14 +144,14 @@ def MultiPipelineGridSearch(
         >>> pipeline_configs = [
         ...     {
         ...         "name": "GaussianBlur_Otsu",
-        ...         "ops": [
+        ...         "pipe_cfgs": [
         ...             (GaussianBlur(sigma=1.0), {"sigma": [1.0, 2.0, 3.0]}),
         ...             (OtsuDetector(), {})
         ...         ]
         ...     },
         ...     {
         ...         "name": "MedianFilter_Otsu",
-        ...         "ops": [
+        ...         "pipe_cfgs": [
         ...             (MedianFilter(size=3), {"size": [3, 5, 7]}),
         ...             (OtsuDetector(), {})
         ...         ]
@@ -181,12 +181,13 @@ def MultiPipelineGridSearch(
     if backend == "submitit":
         if optimize_shared_prefixes:
             logger.warning(
-                "optimize_shared_prefixes=True is incompatible with submitit backend. "
-                "Disabling trie optimization (SLURM jobs are already parallelized). "
-                "To suppress this warning, set optimize_shared_prefixes=False explicitly."
+                    "optimize_shared_prefixes=True is incompatible with submitit backend. "
+                    "Disabling trie optimization (SLURM jobs are already parallelized). "
+                    "To suppress this warning, set optimize_shared_prefixes=False explicitly."
             )
         else:
-            logger.info("Submitit backend: trie optimization disabled (jobs parallelized)")
+            logger.info(
+                "Submitit backend: trie optimization disabled (jobs parallelized)")
         optimize_shared_prefixes = False
 
     # Storage for combined configs
@@ -220,7 +221,7 @@ def MultiPipelineGridSearch(
         # Step 2: Determine batch size and parallelism
         if adaptive_batching and total_pipelines > 1:
             # Estimate memory per pipeline
-            avg_ops = sum(len(c["ops"]) for c in concrete_configs) / len(
+            avg_ops = sum(len(c["pipe_cfgs"]) for c in concrete_configs) / len(
                     concrete_configs)
             memory_per_pipeline = _estimate_pipeline_memory(
                     image, int(avg_ops), data_layers, extract_arrays=True
@@ -272,7 +273,7 @@ def MultiPipelineGridSearch(
 
             # Group batch pipelines by longest shared prefix
             logger.debug(
-                f"Grouping {batch_pipeline_count} pipelines by longest shared prefix")
+                    f"Grouping {batch_pipeline_count} pipelines by longest shared prefix")
             trie_groups = _group_pipelines_by_longest_prefix(batch_configs)
             logger.info(f"Batch contains {len(trie_groups)} distinct trie groups")
 
@@ -336,9 +337,9 @@ def MultiPipelineGridSearch(
         # Process each pipeline configuration
         for config_idx, config in enumerate(pipeline_configs):
             pipeline_name = config["name"]
-            ops = config["ops"]
+            ops = config["pipe_cfgs"]
 
-            # Unpack ops tuples
+            # Unpack pipe_cfgs tuples
             operations, parameters = _unpack_ops_tuples(ops)
 
             # Generate parameter combinations for this pipeline
@@ -350,8 +351,9 @@ def MultiPipelineGridSearch(
                 for param_config in param_configs
             ]
 
-            logger.info(f"Processing pipeline '{pipeline_name}' with {len(task_args)} parameter configs "
-                       f"using {backend} backend")
+            logger.info(
+                f"Processing pipeline '{pipeline_name}' with {len(task_args)} parameter configs "
+                f"using {backend} backend")
 
             # Execute this pipeline's grid search using appropriate backend
             results = _execute_parallel_tasks(
@@ -364,7 +366,8 @@ def MultiPipelineGridSearch(
             )
 
             # Process results
-            for result_idx, (result_img, param_config, json_config) in enumerate(results):
+            for result_idx, (result_img, param_config, json_config) in enumerate(
+                    results):
                 # Generate pipeline code
                 pipeline_code = _generate_pipeline_code(pipeline_counter)
                 pipeline_counter += 1
@@ -407,4 +410,3 @@ def MultiPipelineGridSearch(
 
     logger.info(f"Multi-pipeline grid search complete. Results saved to: {output_dir}")
     return all_configs
-

@@ -239,7 +239,7 @@ critical areas requiring immediate attention.
 
 [1 tool called]
 
-### PipelineGridSearch Analysis and Optimization Report
+### PipelineGridSearchBase Analysis and Optimization Report
 
 Here is a comprehensive analysis of `@src/phenotypic/util/_pipeline_grid_search.py`,
 highlighting logic, error handling, performance, and code quality aspects.
@@ -353,12 +353,13 @@ highlighting logic, error handling, performance, and code quality aspects.
 
 # Report 3
 
-I'll analyze the `PipelineGridSearch` implementation comprehensively. Let me start by
+I'll analyze the `PipelineGridSearchBase` implementation comprehensively. Let me start
+by
 examining the file structure and key components.
 
 [1 tool called]
 
-I'll provide a comprehensive analysis of the `PipelineGridSearch` implementation,
+I'll provide a comprehensive analysis of the `PipelineGridSearchBase` implementation,
 organized by the categories you've requested.
 
 ## 1. Comprehensive Logic Review
@@ -725,7 +726,7 @@ Missing logs for:
 
 ```python
 logger.debug(f"Processing pipeline {pipeline_name}: "
-             f"{len(remaining_ops)} ops, estimated {mem_estimate_mb:.1f} MB")
+             f"{len(remaining_ops)} pipe_cfgs, estimated {mem_estimate_mb:.1f} MB")
 ```
 
 #### **C. No Validation Mode for Dry-Run**

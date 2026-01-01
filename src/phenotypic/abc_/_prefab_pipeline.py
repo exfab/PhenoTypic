@@ -157,14 +157,14 @@ class PrefabPipeline(ImagePipeline):
             def __init__(self, param1: int = 100, param2: float = 1.5,
                          benchmark: bool = False, verbose: bool = False):
                 '''Initialize with tunable parameters.'''
-                ops = [
+                pipe_cfgs = [
                     GaussianBlur(sigma=param2),
                     CLAHE(),
                     OtsuDetector(),
                     SmallObjectRemover(min_size=param1),
                 ]
                 meas = [MeasureShape()]
-                super().__init__(ops=ops, meas=meas, benchmark=benchmark,
+                super().__init__(pipe_cfgs=pipe_cfgs, meas=meas, benchmark=benchmark,
                                verbose=verbose)
 
     Notes:

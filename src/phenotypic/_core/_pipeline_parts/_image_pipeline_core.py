@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import traceback
-from typing import TYPE_CHECKING, Union
+import uuid
+from typing import TYPE_CHECKING, Union, Optional
 
 import numpy as np
 
@@ -33,6 +34,8 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
     construction and usage.
 
     Attributes:
+        name (str): A unique identifier for this pipeline. Defaults to a randomly
+            generated UUID4 string if not provided during initialization.
         _ops (Dict[str, ImageOperation]): A dictionary where keys are string
             identifiers and values are `ImageOperation` objects representing operations to apply
             to an Image.
@@ -47,6 +50,7 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
             meas: List[MeasureFeatures] | Dict[str, MeasureFeatures] | None = None,
             benchmark: bool = False,
             verbose: bool = False,
+            name: Optional[str] = None,
     ):
         """
         This class represents a processing and measurement abc_ for Image operations
@@ -64,8 +68,10 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
                 and measurements. Defaults to False.
             verbose: A flag indicating whether to print progress information when
                 benchmark mode is on. Defaults to False.
+            name: An optional string identifier for this pipeline. If not provided,
+                a randomly generated UUID4 string will be assigned automatically.
         """
-        # If ops is a list of operations convert to a dictionary
+        # If pipe_cfgs is a list of operations convert to a dictionary
         self._ops: Dict[str, ImageOperation] = {}
         if ops is not None:
             self.set_ops(ops)
@@ -77,6 +83,9 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
         # Store benchmark and verbose flags
         self._benchmark = benchmark
         self._verbose = verbose
+
+        # Set pipeline name (generate UUID4 if not provided)
+        self.name = name if name is not None else str(uuid.uuid4())
 
         # Initialize dictionaries to store execution times
         self._operation_times: Dict[str, float] = {}
@@ -96,16 +105,17 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
         Raises:
             TypeError: If the input is not a list or a dictionary.
         """
-        # If ops is a list of ImageOperation
+        # If pipe_cfgs is a list of ImageOperation
         if isinstance(ops, list):
             op_names = [x.__class__.__name__ for x in ops]
             op_names = self.__make_unique(op_names)
             self._ops = {op_names[i]: ops[i] for i in range(len(ops))}
-        # If ops is a dictionary
+        # If pipe_cfgs is a dictionary
         elif isinstance(ops, dict):
             self._ops = ops
         else:
-            raise TypeError(f"ops must be a list or a dictionary, got {type(ops)}")
+            raise TypeError(
+                f"pipe_cfgs must be a list or a dictionary, got {type(ops)}")
 
     def set_meas(
             self, measurements: List[MeasureFeatures] | Dict[str, MeasureFeatures]

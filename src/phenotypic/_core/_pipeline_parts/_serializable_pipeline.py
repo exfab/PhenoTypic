@@ -52,7 +52,7 @@ class SerializablePipeline(ImagePipelineCore):
                 >>> from phenotypic.detect import OtsuDetector
                 >>> from phenotypic.measure import MeasureShape
                 >>>
-                >>> pipe = ImagePipeline(ops=[OtsuDetector()], meas=[MeasureShape()])
+                >>> pipe = ImagePipeline(pipe_cfgs=[OtsuDetector()], meas=[MeasureShape()])
                 >>> json_str = pipe.to_json()
                 >>> pipe.to_json('my_pipeline.json')  # Save to file
         """
@@ -80,10 +80,11 @@ class SerializablePipeline(ImagePipelineCore):
             and measurements, benchmarking state, and verbosity level.
         """
         config = {
-            "ops"      : self._serialize_operations(self._ops),
+            "pipe_cfgs": self._serialize_operations(self._ops),
             "meas"     : self._serialize_operations(self._meas),
             "benchmark": self._benchmark,
             "verbose"  : self._verbose,
+            "name"     : self.name,
         }
 
         return json.dumps(config, indent=2)
@@ -124,13 +125,14 @@ class SerializablePipeline(ImagePipelineCore):
             raise ValueError(f"Invalid JSON data: {e}")
 
         # Deserialize operations and measurements
-        ops = cls._deserialize_operations(config.get("ops", {}))
+        ops = cls._deserialize_operations(config.get("pipe_cfgs", {}))
         meas = cls._deserialize_operations(config.get("meas", {}))
         benchmark = config.get("benchmark", False)
         verbose = config.get("verbose", False)
+        name = config.get("name", None)
 
         # Create and return new pipeline instance
-        return cls(ops=ops, meas=meas, benchmark=benchmark, verbose=verbose)
+        return cls(ops=ops, meas=meas, benchmark=benchmark, verbose=verbose, name=name)
 
     @classmethod
     def from_json(cls, json_data: Union[str, Path]) -> ImagePipeline:
@@ -161,7 +163,7 @@ class SerializablePipeline(ImagePipelineCore):
                 >>> pipe = ImagePipeline.from_json('my_pipeline.json')
                 >>>
                 >>> # Load from string
-                >>> json_str = '{"ops": {...}, "meas": {...}}'
+                >>> json_str = '{"pipe_cfgs": {...}, "meas": {...}}'
                 >>> pipe = ImagePipeline.from_json(json_str)
         """
         # Check if json_data is a file path
@@ -183,13 +185,14 @@ class SerializablePipeline(ImagePipelineCore):
             raise ValueError(f"Invalid JSON data: {e}")
 
         # Deserialize operations and measurements
-        ops = cls._deserialize_operations(config.get("ops", {}))
+        ops = cls._deserialize_operations(config.get("pipe_cfgs", {}))
         meas = cls._deserialize_operations(config.get("meas", {}))
         benchmark = config.get("benchmark", False)
         verbose = config.get("verbose", False)
+        name = config.get("name", None)
 
         # Create and return new pipeline instance
-        return cls(ops=ops, meas=meas, benchmark=benchmark, verbose=verbose)
+        return cls(ops=ops, meas=meas, benchmark=benchmark, verbose=verbose, name=name)
 
     @staticmethod
     def _serialize_operations(

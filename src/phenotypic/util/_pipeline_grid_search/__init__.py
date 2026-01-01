@@ -11,14 +11,14 @@ For exploring parameter combinations of a single pipeline::
 
     from phenotypic import Image
     from phenotypic.enhance import GaussianBlur
-    from phenotypic.util import PipelineGridSearch
+    from phenotypic.util import PipelineGridSearchBase
 
     image = Image.imread('colony_plate.jpg')
-    ops = [(GaussianBlur(sigma=1.0), {"sigma": [1.0, 2.0, 3.0]})]
+    pipe_cfgs = [(GaussianBlur(sigma=1.0), {"sigma": [1.0, 2.0, 3.0]})]
 
-    configs = PipelineGridSearch(
+    configs = PipelineGridSearchBase(
         image=image,
-        ops=ops,
+        pipe_cfgs=pipe_cfgs,
         output_dir="./grid_results",
         n_jobs=-1
     )
@@ -31,14 +31,14 @@ For comparing different pipeline architectures::
     pipeline_configs = [
         {
             "name": "GaussianBlur_Otsu",
-            "ops": [
+            "pipe_cfgs": [
                 (GaussianBlur(sigma=1.0), {"sigma": [1.0, 2.0]}),
                 (OtsuDetector(), {})
             ]
         },
         {
             "name": "MedianFilter_Otsu",
-            "ops": [
+            "pipe_cfgs": [
                 (MedianFilter(size=3), {"size": [3, 5]}),
                 (OtsuDetector(), {})
             ]
@@ -55,9 +55,9 @@ For comparing different pipeline architectures::
 ### Cluster Execution (Submitit Backend)
 For submitting to SLURM clusters::
 
-    configs = PipelineGridSearch(
+    configs = PipelineGridSearchBase(
         image=image,
-        ops=ops,
+        pipe_cfgs=pipe_cfgs,
         output_dir="./cluster_results",
         backend="submitit",
         slurm_params={"slurm_partition": "gpu", "mem_gb": 32}

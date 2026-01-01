@@ -350,3 +350,4 @@ class SizeDistributionPlotter(BasePlotter):
         update_preview({"new": slider.value})
 
         return widget_container
+

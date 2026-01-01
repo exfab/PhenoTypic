@@ -23,9 +23,9 @@ class TestBasicSerialization:
 
         # Verify JSON is valid
         config = json.loads(json_str)
-        assert "ops" in config
+        assert "pipe_cfgs" in config
         assert "meas" in config
-        assert config["ops"] == {}
+        assert config["pipe_cfgs"] == {}
         assert config["meas"] == {}
 
     def test_empty_pipeline_roundtrip(self):
@@ -43,9 +43,9 @@ class TestBasicSerialization:
         json_str = pipe.to_json()
 
         config = json.loads(json_str)
-        assert len(config["ops"]) == 1
-        assert "OtsuDetector" in config["ops"]
-        assert config["ops"]["OtsuDetector"]["class"] == "OtsuDetector"
+        assert len(config["pipe_cfgs"]) == 1
+        assert "OtsuDetector" in config["pipe_cfgs"]
+        assert config["pipe_cfgs"]["OtsuDetector"]["class"] == "OtsuDetector"
 
     def test_single_measurement_serialization(self):
         """Test serialization with a single measurement."""
@@ -66,10 +66,10 @@ class TestBasicSerialization:
         json_str = pipe.to_json()
 
         config = json.loads(json_str)
-        assert len(config["ops"]) == 3
-        assert "GaussianBlur" in config["ops"]
-        assert "OtsuDetector" in config["ops"]
-        assert "SmallObjectRemover" in config["ops"]
+        assert len(config["pipe_cfgs"]) == 3
+        assert "GaussianBlur" in config["pipe_cfgs"]
+        assert "OtsuDetector" in config["pipe_cfgs"]
+        assert "SmallObjectRemover" in config["pipe_cfgs"]
 
     def test_multiple_measurements_serialization(self):
         """Test serialization with multiple measurements."""
@@ -152,8 +152,8 @@ class TestParameterSerialization:
         json_str = pipe.to_json()
 
         config = json.loads(json_str)
-        assert "blur" in config["ops"]
-        assert "detect" in config["ops"]
+        assert "blur" in config["pipe_cfgs"]
+        assert "detect" in config["pipe_cfgs"]
 
 
 class TestRoundtripFunctionality:
@@ -221,13 +221,13 @@ class TestFileIO:
         pipe = ImagePipeline(ops=[OtsuDetector()], meas=[MeasureShape()])
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            filepath = Path(tmpdir)/"pipeline.json"
+            filepath = Path(tmpdir) / "pipeline.json"
             pipe.to_json(filepath)
 
             # Verify file exists and contains valid JSON
             assert filepath.exists()
             config = json.loads(filepath.read_text())
-            assert "ops" in config
+            assert "pipe_cfgs" in config
             assert "meas" in config
 
     def test_load_from_file(self):
@@ -235,7 +235,7 @@ class TestFileIO:
         pipe = ImagePipeline(ops=[OtsuDetector()], meas=[MeasureShape()])
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            filepath = Path(tmpdir)/"pipeline.json"
+            filepath = Path(tmpdir) / "pipeline.json"
             pipe.to_json(filepath)
 
             # Load from file
@@ -248,7 +248,7 @@ class TestFileIO:
         pipe = ImagePipeline(ops=[OtsuDetector()])
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            filepath = str(Path(tmpdir)/"pipeline.json")
+            filepath = str(Path(tmpdir) / "pipeline.json")
             pipe.to_json(filepath)
 
             # Load using string path
@@ -263,7 +263,7 @@ class TestFileIO:
         )
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            filepath = Path(tmpdir)/"pipeline.json"
+            filepath = Path(tmpdir) / "pipeline.json"
             original_pipe.to_json(filepath)
             loaded_pipe = ImagePipeline.from_json(filepath)
 
@@ -332,7 +332,7 @@ class TestEdgeCases:
         config = json.loads(json_str)
 
         # Check that no internal attributes are serialized
-        for op_data in config["ops"].values():
+        for op_data in config["pipe_cfgs"].values():
             for param_key in op_data["params"].keys():
                 assert not param_key.startswith("_"), (
                     f"Internal attribute {param_key} was serialized"
@@ -349,7 +349,7 @@ class TestEdgeCases:
         config = json.loads(json_str)
 
         # Verify DataFrame is not in the serialized data
-        assert "test_df" not in config["ops"]["OtsuDetector"]["params"]
+        assert "test_df" not in config["pipe_cfgs"]["OtsuDetector"]["params"]
 
 
 class TestErrorHandling:
@@ -369,7 +369,7 @@ class TestErrorHandling:
     def test_missing_class(self):
         """Test error when a class cannot be found."""
         config = {
-            "ops"      : {"fake": {"class": "NonExistentClass", "params": {}}},
+            "pipe_cfgs": {"fake": {"class": "NonExistentClass", "params": {}}},
             "meas"     : {},
             "benchmark": False,
             "verbose"  : False,
@@ -380,17 +380,17 @@ class TestErrorHandling:
             ImagePipeline.from_json(json_str)
 
     def test_malformed_config_missing_ops(self):
-        """Test handling of config without 'ops' key."""
+        """Test handling of config without 'pipe_cfgs' key."""
         config = {"meas": {}, "benchmark": False, "verbose": False}
         json_str = json.dumps(config)
 
-        # Should work with empty ops
+        # Should work with empty pipe_cfgs
         loaded_pipe = ImagePipeline.from_json(json_str)
         assert len(loaded_pipe._ops) == 0
 
     def test_malformed_config_missing_meas(self):
         """Test handling of config without 'meas' key."""
-        config = {"ops": {}, "benchmark": False, "verbose": False}
+        config = {"pipe_cfgs": {}, "benchmark": False, "verbose": False}
         json_str = json.dumps(config)
 
         # Should work with empty meas
@@ -413,7 +413,7 @@ class TestBatchPipelineSerialization:
         json_str = pipe.to_json()
         config = json.loads(json_str)
 
-        assert "ops" in config
+        assert "pipe_cfgs" in config
         assert "meas" in config
         assert "benchmark" in config
         assert "verbose" in config

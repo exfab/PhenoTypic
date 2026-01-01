@@ -1,6 +1,6 @@
 """Single pipeline grid search implementation.
 
-This module provides the PipelineGridSearch function for executing parameter grid
+This module provides the PipelineGridSearchBase function for executing parameter grid
 searches on a single ImagePipeline with parallel execution and directory-based output.
 """
 
@@ -9,7 +9,7 @@ from __future__ import annotations
 import gc
 import logging
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
+from typing import Literal, TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
 from ._shared import (
     _create_interactive_viewer_html,
@@ -37,7 +37,9 @@ def PipelineGridSearch(
         image: Image,
         ops: List[Tuple[ImageOperation, Dict[str, List[Any]]]],
         output_dir: str,
-        data_layers: List[str] = ["rgb", "gray", "enh_gray", "objmask", "objmap"],
+        data_layers: List[
+            Literal["rgb", "gray", "enh_gray", "objmap", "objmask"]
+        ] = None,
         n_jobs: int = -1,
         inplace: bool = False,
         create_viewer: bool = True,
@@ -81,7 +83,7 @@ def PipelineGridSearch(
 
     Raises:
         ValueError: If parameters are invalid (output_dir not writable, invalid backend,
-            invalid data_layers, etc.).
+            invalid DataAccessors, etc.).
         ImportError: If backend="submitit" but submitit is not installed.
         RuntimeError: If image saving, HTML generation, or job execution fails.
 
@@ -95,8 +97,8 @@ def PipelineGridSearch(
         │   ├── rgb.tiff
         │   ├── gray.tiff
         │   ├── enh_gray.tiff
-        │   ├── objmask.tiff
-        │   └── objmap.tiff
+        │   ├── objmask.png
+        │   └── objmap.png
         ├── pipeline_002/
         │   └── ...
         ├── thumbnails/             # Generated for HTML viewer
@@ -107,30 +109,32 @@ def PipelineGridSearch(
         >>> from phenotypic import Image
         >>> from phenotypic.enhance import GaussianBlur
         >>> from phenotypic.detect import OtsuDetector
-        >>> from phenotypic.util import PipelineGridSearch
+        >>> from phenotypic.util import PipelineGridSearchBase
         >>>
         >>> image = Image.imread('colony_plate.jpg')
-        >>> ops = [(GaussianBlur(sigma=1.0), {"sigma": [1.0, 2.0, 3.0]}),
+        >>> pipe_cfgs = [(GaussianBlur(sigma=1.0), {"sigma": [1.0, 2.0, 3.0]}),
         ...        (OtsuDetector(), {})]
         >>>
         >>> # Standard usage - directory output with HTML viewer
-        >>> configs = PipelineGridSearch(
+        >>> configs = PipelineGridSearchBase(
         ...     image=image,
-        ...     ops=ops,
+        ...     pipe_cfgs=pipe_cfgs,
         ...     output_dir="./grid_results",
         ...     n_jobs=-1
         ... )
         >>>
         >>> # Cluster execution with submitit
-        >>> configs = PipelineGridSearch(
+        >>> configs = PipelineGridSearchBase(
         ...     image=image,
-        ...     ops=ops,
+        ...     pipe_cfgs=pipe_cfgs,
         ...     output_dir="./cluster_results",
         ...     backend="submitit",
         ...     slurm_params={"slurm_partition": "gpu", "mem_gb": 32}
         ... )
     """
     # 1. Validate inputs
+    if data_layers is None:
+        data_layers = ["rgb", "gray", "enh_gray", "objmask", "objmap"]
     _validate_inputs(ops, data_layers)
     _validate_output_dir_params(output_dir, create_viewer, backend)
 
@@ -142,7 +146,7 @@ def PipelineGridSearch(
     logger.info("Saving original images...")
     _save_original_images(image, dir_paths["original"])
 
-    # 4. Unpack ops tuples into separate lists
+    # 4. Unpack pipe_cfgs tuples into separate lists
     operations, parameters = _unpack_ops_tuples(ops)
 
     # 5. Generate parameter combinations
@@ -163,7 +167,7 @@ def PipelineGridSearch(
             backend=backend,
             n_jobs=n_jobs,
             slurm_params=slurm_params,
-            desc="PipelineGridSearch",
+            desc="PipelineGridSearchBase",
     )
 
     # 8. Save results to individual pipeline directories

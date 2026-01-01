@@ -416,3 +416,4 @@ class SpatialPlotter(BasePlotter):
         plt.tight_layout()
 
         return fig, ax_main
+

@@ -46,7 +46,7 @@ def test_pipeline_widget_creation(pipe):
 
     assert widget is not None
 
-    # Check if accordion for ops exists
+    # Check if accordion for pipe_cfgs exists
     # The structure is VBox([params..., VBox([Accordion...])])
     # Let's just check if child widgets were created for operations
 
@@ -77,7 +77,7 @@ def test_recursive_widget_structure(pipe):
     assert child_pipe_op is pipe
     assert child_pipe_op._ui is not None
 
-    # And grandchild ops
+    # And grandchild pipe_cfgs
     op_a = child_pipe_op._ops["OpA"]
     assert op_a._ui is not None
 

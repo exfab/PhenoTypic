@@ -462,3 +462,4 @@ class MorphologyPlotter(BasePlotter):
         plt.tight_layout()
 
         return fig, np.array([ax0, ax1])
+
