@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 from itertools import product
-from typing import Any, Dict, List, Literal, Tuple, TYPE_CHECKING
+from typing import Any, Dict, List, Literal, Tuple, TYPE_CHECKING, Iterator
+
+from phenotypic import ImagePipeline
 
 if TYPE_CHECKING:
     from phenotypic.tools.typing_ import DataAccessors, GridSearchConfig
@@ -92,6 +94,51 @@ class PipelineGridSearchBase(ABC):
         self.output_dir: Path = Path(output_dir) \
             if output_dir \
             else Path.cwd()
+
+    @staticmethod
+    def _get_param_sweep(
+            name: str,
+            pipe_cfg: GridSearchConfig) -> Iterator[ImagePipeline]:
+        """
+        Generates an iterable of `ImagePipeline` objects, each configured with a unique
+        combination of parameters derived from the grid search configuration.
+
+        This static method is utilized to perform exhaustive parameter sweeps over the
+        defined parameter space for image processing pipelines. Parameters are applied
+        to operations defined in the pipeline configuration, resulting in pipelines
+        tailored to specific parameter sets. The primary application is in processing
+        microbial colonies on solid media agar, wherein variations in parameters can
+        alter results such as colony detection accuracy, separation of overlapping
+        colonies, or noise suppression.
+
+        Args:
+            name (str):
+                A base name for each generated pipeline. This name will be suffixed with
+                a unique identifier corresponding to each parameter combination. Adjusting
+                this value provides context to the generated pipelines, which can be
+                useful when analyzing or benchmarking different configurations.
+            pipe_cfg (GridSearchConfig):
+                Contains the operations and their corresponding parameter ranges for
+                sweeping. Changing this configuration directly influences the number of
+                pipelines generated, as well as the variety of parameter configurations
+                applied. Modifications to these parameters could impact the pipeline's
+                behavior when processing images, affecting outputs like identifying
+                colony boundaries, resolving complex overlaps, and suppressing lighting
+                artifacts.
+
+        Yields:
+            Iterator[ImagePipeline]:
+                An iterator of `ImagePipeline` objects, each instantiated with a distinct
+                parameter combination. Each pipeline is constructed with unique operational
+                parameters, enabling systematic analysis of image processing configurations.
+        """
+        ops, params = PipelineGridSearchBase._unpack_ops_tuples(pipe_cfg)
+        param_sweep = PipelineGridSearchBase._generate_param_combinations(params)
+        for idx, param_set in enumerate(param_sweep):
+            yield ImagePipeline(ops=[op.__class__(**param_set[op_idx])
+                                     for op_idx, op in enumerate(ops)],
+                                name=f"{name}_{idx}"
+                                )
 
     @staticmethod
     def _validate_pipe_cfgs(
