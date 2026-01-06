@@ -535,15 +535,13 @@ class TestPhenotypicCLI:
                     str(output_dir),
                     "--slurm",
                     "--slurm-params",
-                    "cluster=debug",
-                    "--slurm-params",
                     f"folder={submitit_log_dir}",
                     "--slurm-params",
                     "timeout_min=5",
                     "--slurm-params",
                     "mem_gb=1",
                     "--slurm-params",
-                    "slurm_cpus_per_task=1",
+                    "cpus_per_task=1",
                 ],
         )
 

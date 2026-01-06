@@ -463,3 +463,4 @@ class MorphologyPlotter(BasePlotter):
 
         return fig, np.array([ax0, ax1])
 
+

@@ -128,7 +128,7 @@ class ImageDataManager:
         )
 
     @property
-    def bit_depth(self) -> int:
+    def bit_depth(self) -> Literal[8, 16]:
         """Get the bit depth of the image.
 
         The bit depth determines the number of bits used to represent each pixel

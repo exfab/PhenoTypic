@@ -9,9 +9,15 @@ if TYPE_CHECKING:
     from phenotypic import ImagePipeline
 
 import pandas as pd
+import warnings
 
 from phenotypic.abc_ import ImageOperation, MeasureFeatures
 from ._image_pipeline_core import ImagePipelineCore
+
+# Import version for serialization - must be after other phenotypic imports to avoid circular import
+import phenotypic
+
+__version__ = phenotypic.__version__
 
 
 class SerializablePipeline(ImagePipelineCore):
@@ -85,6 +91,8 @@ class SerializablePipeline(ImagePipelineCore):
             "benchmark": self._benchmark,
             "verbose"  : self._verbose,
             "name"     : self.name,
+            "desc"     : self._desc,
+            "version"  : __version__,
         }
 
         return json.dumps(config, indent=2)
@@ -130,9 +138,22 @@ class SerializablePipeline(ImagePipelineCore):
         benchmark = config.get("benchmark", False)
         verbose = config.get("verbose", False)
         name = config.get("name", None)
+        desc = config.get("desc", None)
+        saved_version = config.get("version", None)
+
+        # Check version compatibility
+        if saved_version is not None and saved_version != __version__:
+            warnings.warn(
+                    f"Pipeline was saved with phenotypic version {saved_version} "
+                    f"but current version is {__version__}. "
+                    f"This may cause compatibility issues.",
+                    UserWarning,
+                    stacklevel=2
+            )
 
         # Create and return new pipeline instance
-        return cls(ops=ops, meas=meas, benchmark=benchmark, verbose=verbose, name=name)
+        return cls(ops=ops, meas=meas, benchmark=benchmark, verbose=verbose, name=name,
+                   desc=desc)
 
     @classmethod
     def from_json(cls, json_data: Union[str, Path]) -> ImagePipeline:
@@ -190,9 +211,22 @@ class SerializablePipeline(ImagePipelineCore):
         benchmark = config.get("benchmark", False)
         verbose = config.get("verbose", False)
         name = config.get("name", None)
+        desc = config.get("desc", None)
+        saved_version = config.get("version", None)
+
+        # Check version compatibility
+        if saved_version is not None and saved_version != __version__:
+            warnings.warn(
+                    f"Pipeline was saved with phenotypic version {saved_version} "
+                    f"but current version is {__version__}. "
+                    f"This may cause compatibility issues.",
+                    UserWarning,
+                    stacklevel=2
+            )
 
         # Create and return new pipeline instance
-        return cls(ops=ops, meas=meas, benchmark=benchmark, verbose=verbose, name=name)
+        return cls(ops=ops, meas=meas, benchmark=benchmark, verbose=verbose, name=name,
+                   desc=desc)
 
     @staticmethod
     def _serialize_operations(

@@ -257,6 +257,42 @@ def _maybe_imsave(accessor, filepath: Path, **kwargs) -> None:
         click.echo(f"Failed to save {filepath}: {e}", err=True)
 
 
+def _create_submitit_executor(slurm_params: Dict[str, Any]):
+    """Create and configure a submitit executor with provided SLURM parameters.
+
+    Args:
+        slurm_params: Dictionary of SLURM configuration parameters.
+            If 'folder' key is not provided, defaults to './submitit_logs'.
+
+    Returns:
+        submitit.AutoExecutor: Configured executor ready for job submission.
+
+    Raises:
+        ImportError: If submitit is not installed.
+    """
+    try:
+        import submitit
+    except ImportError as e:
+        raise click.ClickException(
+            "submitit backend requested but submitit is not installed. "
+            "Install with: pip install phenotypic[cluster]"
+        ) from e
+
+    # Extract folder parameter or use default
+    folder = slurm_params.pop('folder', None)
+    if folder is None:
+        folder = Path.cwd() / "submitit_logs"
+
+    # Ensure folder exists
+    Path(folder).mkdir(parents=True, exist_ok=True)
+
+    # Create and configure executor
+    executor = submitit.AutoExecutor(folder=folder)
+    executor.update_parameters(**slurm_params)
+
+    return executor
+
+
 def _run_submitit_jobs(
     image_paths: List[Path],
     meas_dir: Path,
@@ -279,21 +315,6 @@ def _run_submitit_jobs(
     objmap_rgb_ext: str = ".png",
 ) -> List[Optional[pd.DataFrame]]:
     """Submit image processing jobs to SLURM via submitit."""
-    try:
-        import submitit  # noqa: F401
-    except ImportError as e:
-        raise click.ClickException(
-            "submitit backend requested but submitit is not installed. "
-            "Install with: pip install phenotypic[cluster]"
-        ) from e
-
-    try:
-        from phenotypic.util._pipeline_grid_search import _create_submitit_executor
-    except Exception as e:
-        raise click.ClickException(
-            f"Failed to initialize submitit executor: {e}"
-        ) from e
-
     executor = _create_submitit_executor(slurm_params=slurm_params)
     jobs = [
         executor.submit(

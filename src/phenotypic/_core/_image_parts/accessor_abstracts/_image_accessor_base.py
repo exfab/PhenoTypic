@@ -906,6 +906,10 @@ class ImageAccessorBase(ABC):
 
         return bit_depth
 
+    @property
+    def nbytes(self) -> int:
+        return self._subject_arr.nbytes
+
     def napari(self, name: str | None = None, reset: bool = False) -> napari.Viewer:
         """Add image to a persistent global napari viewer for Jupyter workflows.
 

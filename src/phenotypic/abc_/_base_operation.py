@@ -193,9 +193,9 @@ class BaseOperation(ABC):
                 # This enables parallel execution in pipelines
     """
 
-    def __init__(self):
+    def __init__(self, *args, **kwargs) -> None:
         self._logger = logging.getLogger(
-            f"{self.__class__.__module__}.{self.__class__.__name__}"
+                f"{self.__class__.__module__}.{self.__class__.__name__}"
         )
         self._tracemalloc_started = False
 
@@ -206,10 +206,10 @@ class BaseOperation(ABC):
             self._logger.debug("Tracemalloc started for memory logging")
 
     def _log_memory_usage(
-        self,
-        step: str,
-        include_process: bool = False,
-        include_tracemalloc: bool = False,
+            self,
+            step: str,
+            include_process: bool = False,
+            include_tracemalloc: bool = False,
     ) -> None:
         """Log memory usage if logger is in INFO mode."""
         if self._logger.isEnabledFor(logging.INFO):
@@ -221,10 +221,10 @@ class BaseOperation(ABC):
                     all_objects = muppy.get_objects()
                     mem_summary = summary.summarize(all_objects)
                     object_memory = sum(
-                        mem[2] for mem in mem_summary
+                            mem[2] for mem in mem_summary
                     )  # mem[2] is total size
                     log_msg_parts.append(
-                        f"{object_memory / 1024 / 1024:.2f} MB (objects)"
+                            f"{object_memory / 1024 / 1024:.2f} MB (objects)"
                     )
                 except Exception as e:
                     self._logger.debug(f"Failed to get object memory: {e}")
@@ -237,7 +237,7 @@ class BaseOperation(ABC):
                     process = psutil.Process()
                     process_memory = process.memory_info().rss
                     log_msg_parts.append(
-                        f"{process_memory / 1024 / 1024:.2f} MB (process)"
+                            f"{process_memory / 1024 / 1024:.2f} MB (process)"
                     )
                 except Exception as e:
                     self._logger.debug(f"Failed to get process memory: {e}")
@@ -247,7 +247,7 @@ class BaseOperation(ABC):
                 try:
                     current, peak = tracemalloc.get_traced_memory()
                     log_msg_parts.append(
-                        f"{current / 1024 / 1024:.2f} MB current, {peak / 1024 / 1024:.2f} MB peak (tracemalloc)"
+                            f"{current / 1024 / 1024:.2f} MB current, {peak / 1024 / 1024:.2f} MB peak (tracemalloc)"
                     )
                 except Exception as e:
                     self._logger.debug(f"Failed to get tracemalloc memory: {e}")
@@ -287,13 +287,13 @@ class BaseOperation(ABC):
 
         for name, param in sig.parameters.items():
             if (
-                name == "image"
+                    name == "image"
             ):  # The image provided by the user is always passed as the first argument.
                 continue
             if hasattr(self, name):
                 value = getattr(self, name)
                 if isinstance(
-                    value, types.MethodType
+                        value, types.MethodType
                 ):  # transform a bounded method into a pickleable object
                     value = functools.partial(value.__func__, self)
                 matched[name] = value
@@ -303,7 +303,7 @@ class BaseOperation(ABC):
                 continue  # default will be used
             else:
                 raise AttributeError(
-                    f"{self.__class__.__name__} lacks attribute '{name}' "
-                    f"required by {func.__qualname__}",
+                        f"{self.__class__.__name__} lacks attribute '{name}' "
+                        f"required by {func.__qualname__}",
                 )
         return matched

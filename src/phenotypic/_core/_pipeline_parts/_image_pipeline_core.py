@@ -36,6 +36,8 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
     Attributes:
         name (str): A unique identifier for this pipeline. Defaults to a randomly
             generated UUID4 string if not provided during initialization.
+        desc (str): Pipeline description accessed via property. Returns the class docstring
+            if no custom description was set. Can be modified via the property setter.
         _ops (Dict[str, ImageOperation]): A dictionary where keys are string
             identifiers and values are `ImageOperation` objects representing operations to apply
             to an Image.
@@ -51,6 +53,7 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
             benchmark: bool = False,
             verbose: bool = False,
             name: Optional[str] = None,
+            desc: Optional[str] = None,
     ):
         """
         This class represents a processing and measurement abc_ for Image operations
@@ -70,6 +73,8 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
                 benchmark mode is on. Defaults to False.
             name: An optional string identifier for this pipeline. If not provided,
                 a randomly generated UUID4 string will be assigned automatically.
+            desc: An optional description for this pipeline. If not provided, the
+                class docstring will be used when accessing the desc property.
         """
         # If pipe_cfgs is a list of operations convert to a dictionary
         self._ops: Dict[str, ImageOperation] = {}
@@ -87,9 +92,26 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
         # Set pipeline name (generate UUID4 if not provided)
         self.name = name if name is not None else str(uuid.uuid4())
 
+        # Store description as protected attribute
+        self._desc = desc
+
         # Initialize dictionaries to store execution times
         self._operation_times: Dict[str, float] = {}
         self._measurement_times: Dict[str, float] = {}
+
+    @property
+    def desc(self) -> str:
+        """Get pipeline description. Returns class docstring if no description set."""
+        if self._desc is not None:
+            return self._desc
+        # Return the actual class's docstring (e.g., ImagePipeline's docstring)
+        # This uses self.__class__.__doc__ to get the docstring of the instantiated class
+        return self.__class__.__doc__ or ""
+
+    @desc.setter
+    def desc(self, value: Optional[str]):
+        """Set pipeline description."""
+        self._desc = value
 
     def set_ops(self, ops: List[ImageOperation] | Dict[str, ImageOperation]):
         """

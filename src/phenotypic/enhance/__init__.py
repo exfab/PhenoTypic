@@ -25,6 +25,7 @@ from ._sobel_filter import SobelFilter
 from ._unsharp_mask import UnsharpMask
 from ._visushrink_enhancer import VisuShrinkEnhancer
 from ._white_tophat_subtract import WhiteTophatSubtract
+from ._opening import Opening
 
 __all__ = [
     "BayesShrinkEnhancer",
@@ -43,4 +44,5 @@ __all__ = [
     "UnsharpMask",
     "VisuShrinkEnhancer",
     "WhiteTophatSubtract",
+    "Opening",
 ]

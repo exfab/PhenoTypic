@@ -51,3 +51,4 @@ class ThresholdPlotter(BasePlotter):
 
         return try_all_threshold(image=self._root_image.enh_gray[:], figsize=figsize)
 
+

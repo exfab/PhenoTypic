@@ -140,3 +140,4 @@ flowchart TD
     class CollectResults,ExtractLayers,SaveTiff,StoreConfigs,GenerateHtml,ExtractLayersNapari,AddOriginal,AddResults,StoreConfigsNapari results
     class TiffOutput,NapariOutput output
 ```
+

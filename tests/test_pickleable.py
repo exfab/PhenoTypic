@@ -5,7 +5,8 @@ from .test_fixtures import _public
 
 # Filter out CLI objects that aren't meant to be pickled
 _pickleable_public = [
-    (qualname, obj) for qualname, obj in _public if "phenotypicCLI." not in qualname
+    (qualname, obj) for qualname, obj in _public
+    if ("phenotypicCLI." not in qualname)
 ]
 
 

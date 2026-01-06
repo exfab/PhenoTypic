@@ -3,10 +3,8 @@ A module for useful utility operations and functions that don't fit into a speci
 """
 
 from ._geometric_median import geometric_median
-from ._pipeline_grid_search import PipelineGridSearch, MultiPipelineGridSearch
 
 __all__ = [
     "geometric_median",
-    "PipelineGridSearch",
-    "MultiPipelineGridSearch"
+
 ]

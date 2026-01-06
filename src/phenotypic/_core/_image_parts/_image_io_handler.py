@@ -704,7 +704,7 @@ class ImageIOHandler(ImageColorSpace):
         Load an ImageHandler instance from an HDF5 file at the default hdf5 location
         """
         with h5py.File(filename, "r") as filehandler:
-            grp = filehandler[str(IO.SINGLE_IMAGE_HDF5_PARENT_GROUP/image_name)]
+            grp = filehandler[str(IO.SINGLE_IMAGE_HDF5_PARENT_GROUP / image_name)]
             img = cls._load_from_hdf5_group(grp)
 
         return img
@@ -750,18 +750,22 @@ class ImageIOHandler(ImageColorSpace):
             pickle.dump(data2save, filehandler)
 
     @classmethod
-    def load_pickle(cls, filename: str) -> Image:
-        """Load an image from a pickle file.
+    def load_pickle(cls, filename: str | Path | PathLike) -> Image | GridImage:
+        """Load an Image or GridImage from a pickle file with automatic type detection.
 
         Deserializes image data and metadata that were previously saved with save2pickle().
+        Automatically detects if the pickle contains a GridFinder and instantiates the
+        appropriate class (GridImage if grid_finder is present, Image otherwise).
         Restores all image components including RGB, grayscale, enhanced grayscale, object map,
-        and metadata.
+        metadata, and GridFinder (if present).
 
         Args:
             filename (str | PathLike): Path to the pickle file to read.
 
         Returns:
-            Image: A new Image instance with all data and metadata restored from the pickle file.
+            Image | GridImage: A new Image or GridImage instance with all data and metadata
+                restored from the pickle file. Returns GridImage if the pickle contains a
+                grid_finder, otherwise returns Image.
 
         Raises:
             FileNotFoundError: If the specified pickle file does not exist.
@@ -771,22 +775,65 @@ class ImageIOHandler(ImageColorSpace):
             - Pickle files must be created with save2pickle() to ensure compatibility.
             - Enhanced gray and object map are reset and reconstructed from saved data.
             - Metadata (protected and public) is fully restored.
+            - GridFinder is restored if present in the pickle (GridImage only).
+            - Backward compatible: Old pickles without grid_finder load as regular Image.
 
         Examples:
-            .. dropdown:: Load from pickle
+            .. dropdown:: Load GridImage from pickle
 
-                >>> loaded = Image.load_pickle('image.pkl')
-                >>> print(loaded.shape)
+                >>> from phenotypic import Image, GridImage
+                >>> from phenotypic.grid import AutoGridFinder
+                >>>
+                >>> # Save a GridImage
+                >>> finder = AutoGridFinder(nrows=16, ncols=24)
+                >>> grid_img = GridImage('plate.jpg', grid_finder=finder)
+                >>> grid_img.save2pickle('plate.pkl')
+                >>>
+                >>> # Load automatically returns GridImage
+                >>> loaded = Image.load_pickle('plate.pkl')
+                >>> isinstance(loaded, GridImage)  # True
+                >>> loaded.nrows  # 16
+                >>> loaded.ncols  # 24
+
+            .. dropdown:: Load regular Image from pickle
+
+                >>> img = Image.imread('photo.jpg')
+                >>> img.save2pickle('photo.pkl')
+                >>> loaded = Image.load_pickle('photo.pkl')
+                >>> isinstance(loaded, Image)  # True
         """
         with open(filename, "rb") as f:
             loaded = pickle.load(f)
 
-        # Determine format from available data
-        if loaded["_data.rgb"].size > 0:
-            instance = cls(arr=loaded["_data.rgb"], name=None)
-        else:
-            instance = cls(arr=loaded["_data.gray"], name=None)
+        # Check if pickle contains grid_finder -> use GridImage
+        has_grid_finder = "grid_finder" in loaded
 
+        if has_grid_finder:
+            # Import here to avoid circular dependency
+            from phenotypic._core._grid_image import GridImage
+
+            target_class = GridImage
+            grid_finder = loaded["grid_finder"]
+        else:
+            target_class = cls  # Use Image or whatever class this was called on
+            grid_finder = None
+
+        # Create instance with appropriate type
+        # GridImage constructor accepts grid_finder parameter
+        if loaded["_data.rgb"].size > 0:
+            if has_grid_finder:
+                instance = target_class(arr=loaded["_data.rgb"], name=None,
+                                        grid_finder=grid_finder)
+            else:
+                instance = target_class(arr=loaded["_data.rgb"], name=None)
+        else:
+            if has_grid_finder:
+                instance = target_class(arr=loaded["_data.gray"], name=None,
+                                        grid_finder=grid_finder)
+            else:
+                instance = target_class(arr=loaded["_data.gray"], name=None)
+
+        # Restore enhanced gray, object map, and metadata
         instance.enh_gray.reset()
         instance.objmap.reset()
 
@@ -794,10 +841,5 @@ class ImageIOHandler(ImageColorSpace):
         instance.objmap[:] = loaded["objmap"]
         instance._metadata.protected = loaded["protected_metadata"]
         instance._metadata.public = loaded["public_metadata"]
-
-        if hasattr(instance, "grid_finder"):
-            instance: GridImage  # handled case of GridImage instead of Image
-            if hasattr(instance, "grid_finder"):
-                instance.grid_finder
 
         return instance

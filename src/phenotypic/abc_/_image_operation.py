@@ -429,6 +429,9 @@ class ImageOperation(BaseOperation, LazyWidgetMixin, ABC):
                 result = op.apply(image)
     """
 
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+
     def apply(self, image: Image, inplace=False) -> Image:
         """
         Applies the operation to an image, either in-place or on a copy.
@@ -480,7 +483,11 @@ class ImageOperation(BaseOperation, LazyWidgetMixin, ABC):
     def _apply_to_single_image(cls_name, image, operation, inplace, matched_args):
         """Applies the operation to a single image. this intermediate function is needed for parallel execution."""
         try:
-            return operation(image=image if inplace else image.copy(), **matched_args)
+            if inplace:
+                image = operation(image, **matched_args)
+                return image
+            else:
+                return operation(image=image.copy(), **matched_args)
         except KeyboardInterrupt:
             raise KeyboardInterrupt
         except Exception as e:

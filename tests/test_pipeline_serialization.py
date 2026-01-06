@@ -398,43 +398,156 @@ class TestErrorHandling:
         assert len(loaded_pipe._meas) == 0
 
 
-class TestBatchPipelineSerialization:
-    """Test serialization with ImagePipelineBatch."""
+class TestNameAndDescAttributes:
+    """Test name and desc attribute functionality."""
 
-    def test_batch_pipeline_serialization(self):
-        """Test that ImagePipelineBatch can also be serialized."""
-        from phenotypic._core._pipeline_parts._image_pipeline_batch import (
-            ImagePipelineBatch,
-        )
+    def test_name_auto_generation(self):
+        """Test that pipelines get auto-generated UUID4 names."""
+        import uuid
 
-        pipe = ImagePipelineBatch(ops=[OtsuDetector()], meas=[MeasureShape()], njobs=2)
+        pipe = ImagePipeline(ops=[OtsuDetector()])
+        assert pipe.name is not None
+        assert isinstance(pipe.name, str)
+        # Verify it's a valid UUID4
+        uuid.UUID(pipe.name, version=4)
 
-        # Should only serialize _core parameters, not batch-specific ones
+    def test_name_explicit(self):
+        """Test explicit name assignment."""
+        pipe = ImagePipeline(ops=[OtsuDetector()], name="my_custom_pipeline")
+        assert pipe.name == "my_custom_pipeline"
+
+    def test_name_serialization(self):
+        """Test that name is included in JSON."""
+        pipe = ImagePipeline(ops=[OtsuDetector()], name="test_pipeline")
         json_str = pipe.to_json()
         config = json.loads(json_str)
+        assert "name" in config
+        assert config["name"] == "test_pipeline"
 
-        assert "pipe_cfgs" in config
-        assert "meas" in config
-        assert "benchmark" in config
-        assert "verbose" in config
-        # njobs should not be in the serialization
-        assert "njobs" not in config
-
-    def test_batch_pipeline_roundtrip(self):
-        """Test roundtrip of ImagePipelineBatch preserves _core functionality."""
-        from phenotypic._core._pipeline_parts._image_pipeline_batch import (
-            ImagePipelineBatch,
-        )
-
-        pipe = ImagePipelineBatch(
-                ops=[OtsuDetector()], meas=[MeasureShape()], njobs=2, benchmark=True
-        )
-
+    def test_name_deserialization(self):
+        """Test that name is restored from JSON."""
+        pipe = ImagePipeline(ops=[OtsuDetector()], name="test_pipeline")
         json_str = pipe.to_json()
+        loaded = ImagePipeline.from_json(json_str)
+        assert loaded.name == "test_pipeline"
 
-        # Load back as ImagePipelineBatch
-        loaded_pipe = ImagePipelineBatch.from_json(json_str)
+    def test_desc_default_returns_docstring(self):
+        """Test that desc returns class docstring when not set."""
+        pipe = ImagePipeline(ops=[OtsuDetector()])
+        assert pipe.desc is not None
+        assert isinstance(pipe.desc, str)
+        # Should be the ImagePipeline docstring
+        assert "comprehensive class" in pipe.desc.lower()
 
-        assert len(loaded_pipe._ops) == 1
-        assert len(loaded_pipe._meas) == 1
-        assert loaded_pipe._benchmark is True
+    def test_desc_explicit(self):
+        """Test explicit desc assignment."""
+        pipe = ImagePipeline(ops=[OtsuDetector()], desc="My custom description")
+        assert pipe.desc == "My custom description"
+
+    def test_desc_property_setter(self):
+        """Test desc property can be set after instantiation."""
+        pipe = ImagePipeline(ops=[OtsuDetector()])
+        original_desc = pipe.desc  # Should be docstring
+
+        pipe.desc = "New description"
+        assert pipe.desc == "New description"
+        assert pipe.desc != original_desc
+
+    def test_desc_serialization(self):
+        """Test that desc is included in JSON."""
+        pipe = ImagePipeline(ops=[OtsuDetector()], desc="Test description")
+        json_str = pipe.to_json()
+        config = json.loads(json_str)
+        assert "desc" in config
+        assert config["desc"] == "Test description"
+
+    def test_desc_serialization_none(self):
+        """Test that desc can be null in JSON when not set."""
+        pipe = ImagePipeline(ops=[OtsuDetector()])
+        json_str = pipe.to_json()
+        config = json.loads(json_str)
+        assert "desc" in config
+        assert config["desc"] is None
+
+    def test_desc_deserialization(self):
+        """Test that desc is restored from JSON."""
+        pipe = ImagePipeline(ops=[OtsuDetector()], desc="Test description")
+        json_str = pipe.to_json()
+        loaded = ImagePipeline.from_json(json_str)
+        assert loaded.desc == "Test description"
+
+    def test_desc_deserialization_none_returns_docstring(self):
+        """Test that desc returns docstring when deserialized as None."""
+        pipe = ImagePipeline(ops=[OtsuDetector()])  # desc not set
+        json_str = pipe.to_json()
+        loaded = ImagePipeline.from_json(json_str)
+        assert loaded.desc is not None
+        assert "comprehensive class" in loaded.desc.lower()
+
+    def test_name_and_desc_roundtrip(self):
+        """Test that both name and desc survive roundtrip."""
+        pipe = ImagePipeline(
+                ops=[OtsuDetector()],
+                name="my_pipeline",
+                desc="My pipeline description"
+        )
+        json_str = pipe.to_json()
+        loaded = ImagePipeline.from_json(json_str)
+        assert loaded.name == "my_pipeline"
+        assert loaded.desc == "My pipeline description"
+
+    def test_version_included_in_serialization(self):
+        """Test that phenotypic version is included in JSON."""
+        import phenotypic
+
+        pipe = ImagePipeline(ops=[OtsuDetector()])
+        json_str = pipe.to_json()
+        config = json.loads(json_str)
+        assert "version" in config
+        assert config["version"] == phenotypic.__version__
+
+    def test_version_mismatch_warning(self):
+        """Test that version mismatch triggers a warning."""
+        import warnings
+
+        # Create JSON with different version
+        config = {
+            "pipe_cfgs": {},
+            "meas"     : {},
+            "benchmark": False,
+            "verbose"  : False,
+            "name"     : "test",
+            "desc"     : None,
+            "version"  : "0.0.0"  # Different version
+        }
+        json_str = json.dumps(config)
+
+        # Should trigger warning
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            loaded = ImagePipeline.from_json(json_str)
+            assert len(w) == 1
+            assert "version" in str(w[0].message).lower()
+            assert "0.0.0" in str(w[0].message)
+
+    def test_no_version_in_json_no_warning(self):
+        """Test that old JSON without version doesn't trigger warning."""
+        import warnings
+
+        # Old JSON without version field
+        config = {
+            "pipe_cfgs": {},
+            "meas"     : {},
+            "benchmark": False,
+            "verbose"  : False
+        }
+        json_str = json.dumps(config)
+
+        # Should NOT trigger warning
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            loaded = ImagePipeline.from_json(json_str)
+            # Filter for our specific warning type
+            version_warnings = [warn for warn in w if
+                                "version" in str(warn.message).lower()]
+            assert len(version_warnings) == 0

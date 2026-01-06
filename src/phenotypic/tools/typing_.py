@@ -7,6 +7,8 @@ if TYPE_CHECKING:
 
 FootprintShape = Literal["disk", "square", "diamond"]
 
-DataAccessors = List[Literal["rgb", "gray", "enh_gray", "objmap", "objmask"]]
+GridSearchSaveData = List[
+    Literal["rgb", "gray", "enh_gray", "objmap", "objmask", "map2rgb"]
+]
 
 GridSearchConfig = List[Tuple["ImageOperation", Dict[str, List[Any]]]]
