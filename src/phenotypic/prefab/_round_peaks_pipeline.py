@@ -57,7 +57,7 @@ class RoundPeaksPipeline(PrefabPipeline):
         image boundary.
     blur_truncate : float, optional
         Radius of the Gaussian kernel in standard deviations. Increasing this
-        slightly widens the effective blur footprint and further smooths broad
+        slightly widens the effective blur shape and further smooths broad
         illumination gradients on the plate, at the cost of speed. For typical
         pinned fungal colonies, the default is usually sufficient; very large
         values can over-smooth diffuse halos or ring-like growth.

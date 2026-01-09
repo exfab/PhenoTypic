@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from phenotypic._core._image_parts.accessor_abstracts import SingleChannelAccessor
+from phenotypic._core._image_parts.accessor_abstracts._napari_labels_mixin import NapariLabelsMixin
 from phenotypic.tools.exceptions_ import (
     InvalidMaskValueError,
     InvalidMaskScalarValueError,
@@ -16,7 +17,7 @@ from phenotypic.tools.exceptions_ import (
 )
 
 
-class ObjectMask(SingleChannelAccessor):
+class ObjectMask(NapariLabelsMixin, SingleChannelAccessor):
     """Manages a binary object mask linked to a parent image.
 
     ObjectMask provides array-like access and manipulation of a binary mask indicating

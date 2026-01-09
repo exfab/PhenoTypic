@@ -31,6 +31,7 @@ from ._small_to_large_merger import SmallToLargeMerger
 from ._thinning import Thinning
 from ._transitive_distance_merger import TransitiveDistanceMerger
 from ._white_tophat_modifier import WhiteTophat
+from ._grid_section_largest import GridSectionLargest
 
 __all__ = [
     "BorderObjectRemover",
@@ -52,4 +53,5 @@ __all__ = [
     "Thinning",
     "TransitiveDistanceMerger",
     "WhiteTophat",
+    "GridSectionLargest"
 ]

@@ -73,7 +73,7 @@ class SHAPE(MeasurementInfo):
     )
     BBOX_AREA = (
         "BboxArea",
-        "Area of the smallest rectangle that completely contains the colony. Represents the total spatial footprint of the colony including any empty space. In high-throughput assays, this helps assess colony positioning and potential interference with neighboring colonies.",
+        "Area of the smallest rectangle that completely contains the colony. Represents the total spatial shape of the colony including any empty space. In high-throughput assays, this helps assess colony positioning and potential interference with neighboring colonies.",
     )
     MAJOR_AXIS_LENGTH = (
         "MajorAxisLength",
@@ -227,7 +227,7 @@ class MeasureShape(MeasureFeatures):
         for i in range(n):
             # Define edge vector from point i to point i+1
             p1 = hull_points[i]
-            p2 = hull_points[(i + 1)%n]
+            p2 = hull_points[(i + 1) % n]
             edge = p2 - p1
             edge_length = np.linalg.norm(edge)
 
@@ -235,7 +235,7 @@ class MeasureShape(MeasureFeatures):
                 continue
 
             # Normalized perpendicular direction to the edge
-            edge_unit = edge/edge_length
+            edge_unit = edge / edge_length
             perpendicular = np.array([-edge_unit[1], edge_unit[0]])
 
             # Project all hull points onto the perpendicular direction
@@ -284,14 +284,14 @@ class MeasureShape(MeasureFeatures):
             )
             measurements[str(SHAPE.ORIENTATION)][idx] = current_props.orientation
 
-            numer = 4*np.pi*current_props.area
+            numer = 4 * np.pi * current_props.area
             denom = current_props.perimeter ** 2
 
             measurements[str(SHAPE.CIRCULARITY)][idx] = (
-                numer/denom if denom != 0 else np.nan
+                numer / denom if denom != 0 else np.nan
             )
             measurements[str(SHAPE.COMPACTNESS)][idx] = (
-                denom/numer if numer != 0 else np.nan
+                denom / numer if numer != 0 else np.nan
             )
 
             try:
@@ -306,7 +306,7 @@ class MeasureShape(MeasureFeatures):
                 convex_hull.area if convex_hull else np.nan
             )
             measurements[str(SHAPE.SOLIDITY)][idx] = (
-                (current_props.area/convex_hull.area) if convex_hull else np.nan
+                (current_props.area / convex_hull.area) if convex_hull else np.nan
             )
 
             # Calculate Feret diameters using convex hull vertices if available

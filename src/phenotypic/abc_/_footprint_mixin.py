@@ -25,33 +25,33 @@ class FootprintMixin:
             shape: Literal["square", "diamond", "disk"], width: int
     ) -> np.ndarray:
         """
-        Creates a morphological footprint for image processing.
+        Creates a morphological shape for image processing.
 
-        This static utility method generates a structuring element (footprint) useful
+        This static utility method generates a structuring element (shape) useful
         for morphological operations like dilation and erosion. It supports different
         shapes such as square, diamond, and disk, which are often used in image analysis
         tasks. These morphological tools are particularly helpful in analyzing colonies
         of microbes on solid media agar.
 
         Args:
-            shape (Literal["square", "diamond", "disk"]): The shape of the footprint to create.
+            shape (Literal["square", "diamond", "disk"]): The shape of the shape to create.
                 Adjusting the shape changes the way the morphological operations interact
                 with the image. For example:
-                - "square" creates a square footprint, which may emphasize features with
+                - "square" creates a square shape, which may emphasize features with
                   sharp edges.
-                - "diamond" creates a diamond-shaped footprint, which may enhance diagonal
+                - "diamond" creates a diamond-shaped shape, which may enhance diagonal
                   connections while being less sensitive to orthogonal edges.
-                - "disk" generates a circular footprint, which may better preserve rounded
+                - "disk" generates a circular shape, which may better preserve rounded
                   microbial colony shapes.
 
-            width (int): The width of the footprint. This defines the size of the
+            width (int): The width of the shape. This defines the size of the
                 structuring element. Larger width will lead to broader morphological
                 effects, which could impact the resolution of small colonies but can help
                 to merge fragmented edges or clean noise.
 
         Returns:
-            np.ndarray: A binary numpy array representing the generated footprint. The
-            footprint will be used for convolutional operations over the microbial colony
+            np.ndarray: A binary numpy array representing the generated shape. The
+            shape will be used for convolutional operations over the microbial colony
             image. The specific shape and width passed as arguments dictate the size
             and morphology of this array.
 

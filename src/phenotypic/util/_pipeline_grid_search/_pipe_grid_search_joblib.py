@@ -90,7 +90,7 @@ class PipeGridSearchJoblib(PipeGridSearchSubmitit):
                 plate format (nrows=8, ncols=12).
             njobs: Number of parallel jobs to use. If -1 (default), automatically
                 calculates based on available memory and estimated image processing
-                footprint. Positive integers specify exact job count. Typical values:
+                shape. Positive integers specify exact job count. Typical values:
                 
                 - -1: Auto-scale based on memory (aggressive: 95% RAM usage)
                 - 1: Serial processing (useful for debugging)
@@ -164,7 +164,7 @@ class PipeGridSearchJoblib(PipeGridSearchSubmitit):
         logger.info("Grid search complete. Results saved to %s", self.output_dir)
 
     def _estimate_image_memory(self, image: Image) -> int:
-        """Estimate memory footprint of a single image processing job.
+        """Estimate memory shape of a single image processing job.
         
         Calculates the expected memory usage for processing one image through
         the entire pipeline. This includes the original image data plus overhead

@@ -418,3 +418,4 @@ class SpatialPlotter(BasePlotter):
         return fig, ax_main
 
 
+

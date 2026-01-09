@@ -228,19 +228,19 @@ class ObjectRefiner(ImageOperation, ABC):
 
         @staticmethod
         def _make_footprint(shape: Literal["square", "diamond", "disk"], width: int) -> np.ndarray:
-            '''Creates a binary morphological footprint for image processing.'''
+            '''Creates a binary morphological shape for image processing.'''
 
     **Footprint Shapes and When to Use Each**
 
-    - **"disk":** Circular/isotropic footprint. Best for preserving rounded colony shapes and
+    - **"disk":** Circular/isotropic shape. Best for preserving rounded colony shapes and
       applying uniform processing in all directions. Use for: general-purpose morphology (dilation
       to merge fragments, erosion to remove noise), operations that respect colony roundness.
 
-    - **"square":** Square footprint with 8-connectivity. Emphasizes horizontal/vertical edges
+    - **"square":** Square shape with 8-connectivity. Emphasizes horizontal/vertical edges
       and aligns with pixel grid. Use for: grid-aligned artifacts, operations aligned with imaging
       hardware, when processing speed matters (slightly faster than disk).
 
-    - **"diamond":** Diamond-shaped (rotated square) footprint with 4-connectivity. Creates a
+    - **"diamond":** Diamond-shaped (rotated square) shape with 4-connectivity. Creates a
       cross-like neighborhood pattern. Use for: specialized cases where diagonal connections should
       be de-emphasized; less common in practice.
 
@@ -270,7 +270,7 @@ class ObjectRefiner(ImageOperation, ABC):
         # Closing: dilation then erosion (fill small holes)
         closed_mask = binary_closing(binary_mask, structure=disk_fp)
 
-        # Opening: erosion then dilation (remove small noise)
+        # GrayOpening: erosion then dilation (remove small noise)
         opened_mask = binary_opening(binary_mask, structure=disk_fp)
 
     **Chaining Multiple Refinements**
@@ -322,7 +322,7 @@ class ObjectRefiner(ImageOperation, ABC):
             Performs the actual refinement algorithm. Parameters are automatically matched
             to instance attributes.
         _make_footprint(shape, width): Static utility that creates a binary morphological
-            footprint (disk, square, or diamond) for use in morphological operations.
+            shape (disk, square, or diamond) for use in morphological operations.
 
     Notes:
         - **Protected components:** The ``@validate_operation_integrity`` decorator ensures
@@ -509,7 +509,7 @@ class ObjectRefiner(ImageOperation, ABC):
                         '''Dilate mask and relabel to merge nearby fragments.'''
                         mask = image.objmask[:]
 
-                        # Create disk footprint for isotropic dilation
+                        # Create disk shape for isotropic dilation
                         fp = ObjectRefiner._make_footprint('disk', dilation_radius)
 
                         # Dilate to bridge fragmented regions
@@ -580,56 +580,3 @@ class ObjectRefiner(ImageOperation, ABC):
     @validate_operation_integrity("image.rgb", "image.gray", "image.enh_gray")
     def apply(self, image: Image, inplace: bool = False) -> Image:
         return super().apply(image=image, inplace=inplace)
-
-    @staticmethod
-    def _make_footprint(
-            shape: Literal["square", "diamond", "disk"] | np.ndarray, width: int
-    ) -> np.ndarray:
-        """
-        Generates a binary footprint (structuring element) for morphological operations.
-
-        A footprint is a binary array that defines the neighborhood used in processing elements
-        in an image during morphological operations. It can be generated as a predefined shape
-        such as square, diamond, or disk, or can be manually specified using a custom numpy
-        array. This function is typically used for tasks such as dilating or eroding features
-        in images of microbe colonies on solid media agar.
-
-        By adjusting the shape and width of the footprint, users can influence the scale
-        and connectivity of morphological processing in the context of image analysis. Larger
-        radii result in operations affecting wider regions in the image, and the specific shape
-        affects how colonies with irregular or complex structures are processed.
-
-        Args:
-            shape: Literal["square", "diamond", "disk"] | np.ndarray
-                Defines the shape of the footprint. Options include:
-                - "square": Creates a square-shaped footprint of width `2 * width`.
-                - "diamond": Creates a diamond-shaped footprint with width `width`.
-                - "disk": Creates a disk-shaped footprint with width `width`.
-                - np.ndarray: A custom binary array can be directly passed for specific applications.
-                  Suitable for advanced cases where predefined shapes are insufficient.
-            width: int
-                The width of the footprint for the selected shape. A higher width results in
-                a larger footprint, increasing the size of regions affected by processing.
-                For analyzing microbe colonies, it can determine how closely neighboring
-                colonies are treated as connected.
-
-        Returns:
-            np.ndarray: A binary array representing the footprint. Shape and size depend
-                on the `shape` and `width` parameters.
-
-        Raises:
-            ValueError: If an unsupported shape value is provided.
-        """
-        if isinstance(shape, np.ndarray):
-            return shape
-        else:
-            width = int(width)
-            match shape:
-                case "square":
-                    return square(width=width)
-                case "diamond":
-                    return diamond(radius=width // 2)
-                case "disk":
-                    return disk(radius=width // 2)
-                case _:
-                    raise ValueError(f"Unknown shape: {shape}")

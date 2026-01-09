@@ -194,33 +194,195 @@ class GridAccessor:
                 [7, 11] = 95 (bottom-right).
         """
         return np.reshape(
-                np.arange(self.nrows*self.ncols), newshape=(self.nrows, self.ncols)
+                np.arange(self.nrows * self.ncols), (self.nrows, self.ncols)
         )
 
-    def __getitem__(self, idx: int | tuple[int, int]) -> phenotypic.Image:
-        """Extract a grid section as a subimage.
+    def _parse_slice_to_section_indices(
+            self,
+            idx: int | tuple | slice,
+    ) -> list[int]:
+        """Convert various index formats to list of flattened section indices.
 
-        Returns a cropped image corresponding to a specific grid section based on either
-        its flattened index or a (row, column) grid coordinate. The grid is indexed
-        left-to-right, top-to-bottom (row-major order). Only objects belonging to the
-        specified grid section are included in the subimage. The subimage's pixel
-        coordinates are adjusted relative to the section origin (top-left corner).
+        Supports single indices (int), slices on flattened indices, and tuple-based
+        indexing for (row, column) patterns with optional slicing on each dimension.
 
         Args:
-            idx (int | tuple[int, int]): Grid section identifier.
-                - If int: flattened grid section index, ranging from 0 to
-                  nrows * ncols - 1. For an 8x12 grid: section 0 is top-left,
-                  section 11 is top-right, section 84 is bottom-left,
-                  section 95 is bottom-right.
-                - If tuple[int, int]: (row_index, col_index) pair specifying the grid
-                  location, with both indices 0-based (0 <= row_index < nrows,
-                  0 <= col_index < ncols).
+            idx: Index in various forms:
+                - int: Single flattened section index
+                - slice: Range of flattened section indices
+                - tuple[int, int]: Single section as (row, col)
+                - tuple[int, slice]: Specific row, range of columns
+                - tuple[slice, int]: Range of rows, specific column
+                - tuple[slice, slice]: Range of rows and columns (only if one is full)
 
         Returns:
-            phenotypic.Image: A subimage containing the grid section. Includes only
-                pixels and objects belonging to this section. Pixel coordinates in the
-                returned image are relative to the section's top-left corner. Object
-                labels are preserved for objects in this section; objects from other
+            list[int]: List of flattened section indices.
+
+        Raises:
+            ValueError: If slicing in both row AND column dimensions simultaneously
+                (except when one dimension is a full slice like ':').
+            IndexError: If index is out of bounds or tuple has wrong length.
+            TypeError: If index type is not supported.
+        """
+        # Case 1: int -> single section
+        if isinstance(idx, int):
+            return [idx]
+
+        # Case 2: slice -> range of flattened sections
+        if isinstance(idx, slice):
+            total_sections = self.nrows * self.ncols
+            return list(range(total_sections)[idx])
+
+        # Case 3: tuple (row_part, col_part)
+        if isinstance(idx, tuple):
+            if len(idx) != 2:
+                raise IndexError(
+                        "Grid section index tuple must have length 2: (row, col)."
+                )
+
+            row_part, col_part = idx
+
+            # Check if both parts are slices
+            if isinstance(row_part, slice) and isinstance(col_part, slice):
+                # Only allow if at least one is a full slice (:)
+                row_is_full = row_part == slice(None)
+                col_is_full = col_part == slice(None)
+
+                if not (row_is_full or col_is_full):
+                    raise ValueError(
+                            "Cannot slice in both dimensions simultaneously. "
+                            "Use grid[rows, col] or grid[row, cols], not grid[rows, cols]."
+                    )
+
+            # Convert to list of row indices
+            if isinstance(row_part, slice):
+                rows = list(range(self.nrows)[row_part])
+            else:
+                rows = [row_part]
+
+            # Convert to list of column indices
+            if isinstance(col_part, slice):
+                cols = list(range(self.ncols)[col_part])
+            else:
+                cols = [col_part]
+
+            # Generate section indices using _idx_ref_matrix (row-major order)
+            sections = []
+            for r in rows:
+                for c in cols:
+                    sections.append(int(self._idx_ref_matrix[r, c]))
+
+            return sections
+
+        raise TypeError(f"Invalid index type: {type(idx)}")
+
+    def _get_multi_section_bounds(
+            self,
+            section_indices: list[int],
+    ) -> tuple[tuple[float, float], tuple[float, float]]:
+        """Get union of bounding boxes for multiple grid sections.
+
+        For each section index, retrieves the object-aware bounding box using
+        `_adv_get_grid_section_slices`, then computes the union (min of mins,
+        max of maxs) across all sections.
+
+        Args:
+            section_indices: List of flattened section indices.
+
+        Returns:
+            tuple[tuple[float, float], tuple[float, float]]: A tuple containing:
+                - (min_rr, min_cc): Minimum pixel coordinates (top-left)
+                - (max_rr, max_cc): Maximum pixel coordinates (bottom-right)
+                These bounds encompass all objects in all specified sections.
+        """
+        # Handle empty selection
+        if len(section_indices) == 0:
+            return (0, 0), (self._root_image.shape[0], self._root_image.shape[1])
+
+        # Collect bounds for each section
+        all_min_rr, all_min_cc = [], []
+        all_max_rr, all_max_cc = [], []
+
+        for idx in section_indices:
+            min_coords, max_coords = self._adv_get_grid_section_slices(idx)
+            min_rr, min_cc = min_coords
+            max_rr, max_cc = max_coords
+
+            all_min_rr.append(min_rr)
+            all_min_cc.append(min_cc)
+            all_max_rr.append(max_rr)
+            all_max_cc.append(max_cc)
+
+        # Compute union: min of mins, max of maxs
+        global_min_rr = min(all_min_rr)
+        global_min_cc = min(all_min_cc)
+        global_max_rr = max(all_max_rr)
+        global_max_cc = max(all_max_cc)
+
+        return (global_min_rr, global_min_cc), (global_max_rr, global_max_cc)
+
+    def _get_multi_section_labels(
+            self,
+            section_indices: list[int],
+    ) -> list[int]:
+        """Get all object labels from multiple grid sections.
+
+        Retrieves the labels (object identifiers) for all objects belonging to
+        the specified sections. The returned list contains each label exactly
+        once, even if an object appears in multiple sections.
+
+        Args:
+            section_indices: List of flattened section indices.
+
+        Returns:
+            list[int]: List of unique object labels across all specified sections.
+        """
+        all_labels = []
+        for idx in section_indices:
+            all_labels.extend(self._get_section_labels(idx))
+
+        # Return unique labels
+        return list(set(all_labels))
+
+    def __getitem__(
+            self,
+            idx: int | tuple[int, int] | slice | tuple[slice | int, slice | int],
+    ) -> phenotypic.Image:
+        """Extract grid section(s) as a subimage.
+
+        Returns a cropped image corresponding to one or more grid sections. Supports
+        flexible indexing including single sections, row/column slices, and flattened
+        index ranges. The grid is indexed left-to-right, top-to-bottom (row-major order).
+        Only objects belonging to the specified grid sections are included. For multiple
+        sections, the subimage is cropped to the union of all section bounding boxes.
+
+        Args:
+            idx: Grid section identifier(s). Supported formats:
+                - int: Single flattened section index (0 to nrows*ncols-1).
+                  Example: grid[54] for center section in 8x12 grid.
+                - tuple[int, int]: Single section as (row_index, col_index).
+                  Example: grid[4, 6] for row 4, column 6.
+                - slice: Range of flattened section indices.
+                  Example: grid[0:12] for first row in 8x12 grid.
+                - tuple[int, slice]: Specific row, range of columns.
+                  Example: grid[2, 0:6] for row 2, columns 0-5.
+                - tuple[slice, int]: Range of rows, specific column.
+                  Example: grid[0:4, 3] for rows 0-3, column 3.
+                - tuple[slice, slice]: Slices in both dimensions (only if at least
+                  one is a full slice ':'). Examples: grid[2, :], grid[:, 5],
+                  grid[:, :], grid[:].
+
+                Note: Slicing in both dimensions is not allowed unless one is a
+                full slice. For example, grid[0:5, 2:7] raises ValueError.
+                Use grid[rows, col] OR grid[row, cols], but not grid[rows, cols].
+
+        Returns:
+            phenotypic.Image: A subimage containing the selected grid section(s).
+                For a single section, pixels and objects are relative to that section's
+                top-left corner. For multiple sections, the image is cropped to the
+                union of all selected section bounding boxes, preserving complete
+                objects even if they extend beyond ideal grid boundaries. Object labels
+                are preserved for objects in the selected sections; objects from other
                 sections have their labels removed (set to 0). The subimage is marked
                 with IMAGE_TYPE=GRID_SECTION metadata. If no objects are present in
                 the parent image, returns a copy of the entire parent image.
@@ -228,58 +390,87 @@ class GridAccessor:
         Raises:
             IndexError: If idx is out of bounds for the grid dimensions, or if idx
                 is a tuple with length != 2.
+            ValueError: If attempting to slice in both row AND column dimensions
+                simultaneously with non-full slices (e.g., grid[0:5, 2:7]).
+            TypeError: If idx is not a supported type.
 
         Examples:
-            .. dropdown:: Extract grid sections by flattened or (row, col) indexing
 
-                .. code-block:: python
+            .. code-block:: python
 
-                    # Extract top-left grid section (row 0, col 0)
-                    top_left = grid_image.grid[0]
-                    print(f"Section size: {top_left.shape}")
+                # Single section by flattened index
+                top_left = grid_image.grid[0]
+                print(f"Section size: {top_left.shape}")
 
-                    # Extract center section for an 8x12 grid (row 4, col 6)
-                    # Using flattened index
-                    center_idx = 4 * 12 + 6  # = 54
-                    center_section = grid_image.grid[center_idx]
+                # Single section by (row, col) indexing
+                center = grid_image.grid[4, 6]
 
-                    # The same section accessed using (row, col) indexing
-                    center_section_2 = grid_image.grid[4, 6]
+                # Flattened index slice - first row (sections 0-11 for 8x12 grid)
+                first_row = grid_image.grid[0:12]
 
-                    # Process colonies in top row (row 0, columns 0-11)
-                    for col in range(grid_image.grid.ncols):
-                        # Access by (row, col) index
-                        section = grid_image.grid[0, col]
-                        analyze_colony(section)
+                # All columns in row 2
+                row_2 = grid_image.grid[2, :]
+
+                # All rows in column 5
+                col_5 = grid_image.grid[:, 5]
+
+                # Rows 0-3 in column 5
+                subset = grid_image.grid[0:4, 5]
+
+                # Row 2, columns 0-5
+                subset = grid_image.grid[2, 0:6]
+
+                # Every other section (step slicing)
+                checkerboard = grid_image.grid[::2]
+
+                # Full grid extraction
+                all_sections = grid_image.grid[:]
+
+                # This raises ValueError: cannot slice both dimensions
+                # grid_image.grid[0:5, 2:7]
         """
-        # Allow access either by flattened index or by (row, col) tuple
-        if isinstance(idx, tuple):
-            if len(idx) != 2:
-                raise IndexError(
-                        "Grid section index tuple must have length 2: (row, col)."
-                )
-            row_idx, col_idx = idx
-            # This will naturally raise IndexError for out-of-range indices
-            idx = int(self._idx_ref_matrix[row_idx, col_idx])
+        # Parse input to list of section indices
+        section_indices = self._parse_slice_to_section_indices(idx)
 
-        if self._root_image.objects.num_objects != 0:
-            min_coords, max_coords = self._adv_get_grid_section_slices(idx)
-            min_rr, min_cc = min_coords
-            max_rr, max_cc = max_coords
-
-            section_image = phenotypic.Image(
-                    self._root_image[int(min_rr): int(max_rr), int(min_cc): int(max_cc)]
-            )
-
-            # Remove objects that don't belong in that grid section from the subimage
-            objmap = section_image.objmap[:]
-            objmap[~np.isin(objmap, self._get_section_labels(idx))] = 0
-            section_image.objmap = objmap
-            section_image.metadata[METADATA.IMAGE_TYPE] = IMAGE_TYPES.GRID_SECTION.value
-
-            return section_image
-        else:
+        # Handle empty image (no objects detected)
+        if self._root_image.objects.num_objects == 0:
             return phenotypic.Image(self._root_image)
+
+        # Handle empty selection
+        if len(section_indices) == 0:
+            # Return empty image with parent's shape
+            return phenotypic.Image(self._root_image)
+
+        # Get union bounding box for all selected sections
+        min_coords, max_coords = self._get_multi_section_bounds(section_indices)
+        min_rr, min_cc = min_coords
+        max_rr, max_cc = max_coords
+
+        # Crop parent image to union bounds
+
+        section_image = phenotypic.Image(
+                self._root_image[
+                    self.__to_int(min_rr):self.__to_int(max_rr),
+                    self.__to_int(min_cc):self.__to_int(max_cc)]
+        )
+
+        # Filter object map to only include selected sections
+        objmap = section_image.objmap[:]
+        valid_labels = self._get_multi_section_labels(section_indices)
+        objmap[~np.isin(objmap, valid_labels)] = 0
+        section_image.objmap = objmap
+
+        # Mark as grid section
+        section_image.metadata[METADATA.IMAGE_TYPE] = IMAGE_TYPES.GRID_SECTION.value
+
+        return section_image
+
+    @staticmethod
+    def __to_int(val):
+        """Safely convert value to int, handling numpy scalars."""
+        if hasattr(val, 'item'):
+            return int(val.item())
+        return int(val)
 
     def get_centroid_alignment_info(self, axis: int) -> tuple[np.ndarray, np.ndarray]:
         """Calculate linear regression fit for colony centroids along a grid axis.
@@ -365,11 +556,11 @@ class GridAccessor:
             y = grid_info.loc[grid_info.loc[:, x_group] == idx, y_val].to_numpy()
             y_mean = np.mean(y) if y.size > 0 else np.nan
 
-            covariance = ((x - x_mean)*(y - y_mean)).sum()
+            covariance = ((x - x_mean) * (y - y_mean)).sum()
             variance = ((x - x_mean) ** 2).sum()
             if variance != 0:
-                m_slope[idx] = covariance/variance
-                b_intercept[idx] = y_mean - m_slope[idx]*x_mean
+                m_slope[idx] = covariance / variance
+                b_intercept[idx] = y_mean - m_slope[idx] * x_mean
             else:
                 m_slope[idx] = 0
                 b_intercept[idx] = y_mean if axis == 0 else x_mean
@@ -1008,4 +1199,4 @@ class GridAccessor:
         """
         grid_info = self.info()
         section_info = grid_info.loc[grid_info.loc[:, str(GRID.SECTION_NUM)] == idx, :]
-        return section_info.index.to_list()
+        return section_info[OBJECT.LABELhowe].to_list()

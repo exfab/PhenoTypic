@@ -5,13 +5,13 @@ from typing import Literal, TYPE_CHECKING
 if TYPE_CHECKING:
     from phenotypic import Image
 
-from phenotypic.abc_ import ObjectRefiner
+from phenotypic.abc_ import ObjectRefiner, FootprintMixin
 
 import numpy as np
 from skimage.morphology import binary_dilation
 
 
-class MaskDilator(ObjectRefiner):
+class MaskDilator(ObjectRefiner, FootprintMixin):
     """Morphologically dilate binary masks to expand colonies and bridge gaps.
 
     Intuition:
@@ -35,7 +35,7 @@ class MaskDilator(ObjectRefiner):
         - Prepare masks for merge-based refinement operations.
 
     Caveats:
-        - Too large a footprint merges distinct adjacent colonies into a single
+        - Too large a shape merges distinct adjacent colonies into a single
           object, reducing count accuracy and biasing spatial analysis.
         - Dilation inflates area measurements; if area accuracy is critical,
           follow dilation with erosion (closing) or record original measurements.
@@ -43,8 +43,8 @@ class MaskDilator(ObjectRefiner):
           that were only separated by a thin gap, introducing false merges.
 
     Attributes:
-        footprint (Literal["auto", "square", "diamond", "disk"] | np.ndarray | None):
-            Structuring element used for dilation. A larger footprint expands
+        shape (Literal["auto", "square", "diamond", "disk"] | np.ndarray | None):
+            Structuring element used for dilation. A larger shape expands
             objects more aggressively but risks merging adjacent colonies.
         width (int): Footprint width in pixels. Larger values bridge bigger gaps
             but risk over-connecting separate objects.
@@ -57,32 +57,32 @@ class MaskDilator(ObjectRefiner):
             >>> from phenotypic.detect import OtsuDetector
             >>> image = Image.imread("colony_plate.jpg")  # doctest: +SKIP
             >>> detected = OtsuDetector().apply(image)  # doctest: +SKIP
-            >>> # Dilate with auto-scaled footprint to bridge nearby fragments
-            >>> refiner = MaskDilator(footprint='auto')  # doctest: +SKIP
+            >>> # Dilate with auto-scaled shape to bridge nearby fragments
+            >>> refiner = MaskDilator(shape='auto')  # doctest: +SKIP
             >>> dilated = refiner.apply(detected)  # doctest: +SKIP
-            >>> # Or use a fixed disk footprint with width 2 for moderate expansion
-            >>> refiner = MaskDilator(footprint='disk', width=2)  # doctest: +SKIP
+            >>> # Or use a fixed disk shape with width 2 for moderate expansion
+            >>> refiner = MaskDilator(shape='disk', width=2)  # doctest: +SKIP
             >>> dilated = refiner.apply(detected, inplace=False)  # doctest: +SKIP
 
     Raises:
-        AttributeError: If an invalid ``footprint`` type is provided (checked
+        AttributeError: If an invalid ``shape`` type is provided (checked
             during operation).
     """
 
     def __init__(
             self,
-            footprint: Literal["auto", "square", "diamond", "disk"] |
+            shape: Literal["auto", "square", "diamond", "disk"] |
                        np.ndarray[int] | None = None,
             width: int = 3
     ):
         """Initialize the dilator.
 
         Args:
-            footprint (Literal["auto", "square", "diamond", "disk"] | np.ndarray | None):
+            shape (Literal["auto", "square", "diamond", "disk"] | np.ndarray | None):
                 Structuring element for dilation. Use:
-                - "auto" to select a disk footprint scaled to image size
+                - "auto" to select a disk shape scaled to image size
                   (larger plates → slightly larger width),
-                - a NumPy array to pass a custom footprint,
+                - a NumPy array to pass a custom shape,
                 - one of the named shapes ("disk", "square", "diamond") with
                   a specified width,
                 - or ``None`` to use the library default.
@@ -94,23 +94,23 @@ class MaskDilator(ObjectRefiner):
                 or auto-scaling. Default: 3 pixels (moderate expansion).
         """
         super().__init__()
-        self.footprint = footprint
+        self.shape = shape
         self.width = width
 
     def _operate(self, image: Image) -> Image:
-        if self.footprint == "auto":
-            footprint = self._make_footprint(
-                    shape="diamond", width=max(2, round(np.min(image.shape)*0.003))
+        if self.shape == "auto":
+            footprint = FootprintMixin._make_footprint(
+                    shape="diamond", width=max(2, round(np.min(image.shape) * 0.003))
             )
-        elif isinstance(self.footprint, np.ndarray):
-            footprint = self.footprint
-        elif self.footprint in self._footprint_shapes:
-            footprint = self._make_footprint(shape=self.footprint,
+        elif isinstance(self.shape, np.ndarray):
+            footprint = self.shape
+        elif self.shape in self._footprint_shapes:
+            footprint = FootprintMixin._make_footprint(shape=self.shape,
                                              width=self.width)
-        elif not self.footprint:
+        elif not self.shape:
             footprint = None
         else:
-            raise AttributeError("Invalid footprint type")
+            raise AttributeError("Invalid shape type")
 
         image.objmask[:] = binary_dilation(image.objmask[:],
                                            footprint=footprint)

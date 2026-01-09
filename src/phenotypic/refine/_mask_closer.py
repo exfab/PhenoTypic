@@ -5,13 +5,13 @@ from typing import Literal, TYPE_CHECKING
 if TYPE_CHECKING:
     from phenotypic import Image
 
-from phenotypic.abc_ import ObjectRefiner
+from phenotypic.abc_ import ObjectRefiner, FootprintMixin
 
 import numpy as np
 from skimage.morphology import binary_closing
 
 
-class MaskCloser(ObjectRefiner):
+class MaskCloser(ObjectRefiner, FootprintMixin):
     """Morphologically close binary masks to fill small holes and gaps.
 
     Intuition:
@@ -33,15 +33,15 @@ class MaskCloser(ObjectRefiner):
         - Smooth minor gaps in colony boundaries after thresholding.
 
     Caveats:
-        - Too large a footprint may merge adjacent but distinct colonies into
+        - Too large a shape may merge adjacent but distinct colonies into
           a single object, inflating size measurements and reducing count accuracy.
         - Closing can obscure true biological gaps in filamentous or spreading
           growth phenotypes.
         - Large radii produce blunter colony edges and may remove thin appendages.
 
     Attributes:
-        footprint (Literal["auto", "square", "diamond", "disk"] | np.ndarray | None):
-            Structuring element used for closing. A larger or denser footprint fills
+        shape (Literal["auto", "square", "diamond", "disk"] | np.ndarray | None):
+            Structuring element used for closing. A larger or denser shape fills
             wider gaps but risks merging adjacent colonies.
         width (int): Footprint width in pixels. Larger values fill bigger gaps
             but risk over-connecting separate objects.
@@ -54,32 +54,32 @@ class MaskCloser(ObjectRefiner):
             >>> from phenotypic.detect import OtsuDetector
             >>> image = Image.imread("colony_plate.jpg")  # doctest: +SKIP
             >>> detected = OtsuDetector().apply(image)  # doctest: +SKIP
-            >>> # Fill gaps from uneven staining with auto-scaled footprint
-            >>> refiner = MaskCloser(footprint='auto')  # doctest: +SKIP
+            >>> # Fill gaps from uneven staining with auto-scaled shape
+            >>> refiner = MaskCloser(shape='auto')  # doctest: +SKIP
             >>> refined = refiner.apply(detected)  # doctest: +SKIP
-            >>> # Or use a fixed disk footprint with width 3
-            >>> refiner = MaskCloser(footprint='disk', width=3)  # doctest: +SKIP
+            >>> # Or use a fixed disk shape with width 3
+            >>> refiner = MaskCloser(shape='disk', width=3)  # doctest: +SKIP
             >>> refined = refiner.apply(detected, inplace=False)  # doctest: +SKIP
 
     Raises:
-        AttributeError: If an invalid ``footprint`` type is provided (checked
+        AttributeError: If an invalid ``shape`` type is provided (checked
             during operation).
     """
 
     def __init__(
             self,
-            footprint: Literal[
+            shape: Literal[
                            "auto", "square", "diamond", "disk"] | np.ndarray | None = None,
             width: int = 5
     ):
         """Initialize the closer.
 
         Args:
-            footprint (Literal["auto", "square", "diamond", "disk"] | np.ndarray | None):
+            shape (Literal["auto", "square", "diamond", "disk"] | np.ndarray | None):
                 Structuring element for closing. Use:
-                - "auto" to select a disk footprint scaled to image size
+                - "auto" to select a disk shape scaled to image size
                   (larger plates → slightly larger width),
-                - a NumPy array to pass a custom footprint,
+                - a NumPy array to pass a custom shape,
                 - one of the named shapes ("disk", "square", "diamond") with
                   a specified width,
                 - or ``None`` to use the library default.
@@ -90,22 +90,22 @@ class MaskCloser(ObjectRefiner):
                 or auto-scaling. Default: 5 pixels (moderate gap-filling).
         """
         super().__init__()
-        self.footprint = footprint
+        self.shape = shape
         self.width = width
 
     def _operate(self, image: Image) -> Image:
-        if self.footprint == "auto":
-            footprint = self._make_footprint(
-                    "disk", width=max(3, round(np.min(image.shape)*0.005))
+        if self.shape == "auto":
+            footprint = FootprintMixin._make_footprint(
+                    "disk", width=max(3, round(np.min(image.shape) * 0.005))
             )
-        elif isinstance(self.footprint, np.ndarray):
-            footprint = self.footprint
-        elif self.footprint in self._footprint_shapes:
-            footprint = self._make_footprint(self.footprint, width=self.width)
-        elif not self.footprint:
+        elif isinstance(self.shape, np.ndarray):
+            footprint = self.shape
+        elif self.shape in self._footprint_shapes:
+            footprint = FootprintMixin._make_footprint(self.shape, width=self.width)
+        elif not self.shape:
             footprint = None
         else:
-            raise AttributeError("Invalid footprint type")
+            raise AttributeError("Invalid shape type")
 
         image.objmask[:] = binary_closing(image.objmask[:], footprint=footprint)
         return image

@@ -5,13 +5,13 @@ from typing import Literal, TYPE_CHECKING
 if TYPE_CHECKING:
     from phenotypic import Image
 
-from phenotypic.abc_ import ObjectRefiner
+from phenotypic.abc_ import ObjectRefiner, FootprintMixin
 
 import numpy as np
 from skimage.morphology import binary_erosion
 
 
-class MaskEroder(ObjectRefiner):
+class MaskEroder(ObjectRefiner, FootprintMixin):
     """Morphologically erode binary masks to remove thin protrusions and noise.
 
     Intuition:
@@ -25,7 +25,7 @@ class MaskEroder(ObjectRefiner):
         Colony boundaries detected via thresholding often include noise pixels,
         thin speckles from uneven illumination, and uncertain boundary pixels
         from soft edges. Erosion strips away these artifacts, leaving a more
-        robust _core colony footprint. This is useful for reducing false-positive
+        robust _core colony shape. This is useful for reducing false-positive
         signal and improving measurement precision.
 
     Use cases:
@@ -36,7 +36,7 @@ class MaskEroder(ObjectRefiner):
           refine morphology without changing overall size).
 
     Caveats:
-        - Too large a footprint eliminates small colonies entirely or severely
+        - Too large a shape eliminates small colonies entirely or severely
           shrinks area measurements, reducing sensitivity for small colonies.
         - Aggressive erosion can disconnect weakly-stained colonies or separate
           merged colonies at the cost of breaking apart the same colony.
@@ -44,8 +44,8 @@ class MaskEroder(ObjectRefiner):
           analysis if not compensated downstream.
 
     Attributes:
-        footprint (Literal["auto", "square", "diamond", "disk"] | np.ndarray | None):
-            Structuring element used for erosion. A larger footprint removes
+        shape (Literal["auto", "square", "diamond", "disk"] | np.ndarray | None):
+            Structuring element used for erosion. A larger shape removes
             more boundary pixels and thin features but risks shrinking colonies
             too aggressively.
         width (int): Footprint width in pixels. Larger values erode more deeply
@@ -59,32 +59,32 @@ class MaskEroder(ObjectRefiner):
             >>> from phenotypic.detect import OtsuDetector
             >>> image = Image.imread("colony_plate.jpg")  # doctest: +SKIP
             >>> detected = OtsuDetector().apply(image)  # doctest: +SKIP
-            >>> # Erode with auto-scaled footprint to remove specks
-            >>> refiner = MaskEroder(footprint='auto')  # doctest: +SKIP
+            >>> # Erode with auto-scaled shape to remove specks
+            >>> refiner = MaskEroder(shape='auto')  # doctest: +SKIP
             >>> eroded = refiner.apply(detected)  # doctest: +SKIP
-            >>> # Or use a small fixed disk footprint (width 1) for gentle erosion
-            >>> refiner = MaskEroder(footprint='disk', width=1)  # doctest: +SKIP
+            >>> # Or use a small fixed disk shape (width 1) for gentle erosion
+            >>> refiner = MaskEroder(shape='disk', width=1)  # doctest: +SKIP
             >>> eroded = refiner.apply(detected, inplace=True)  # doctest: +SKIP
 
     Raises:
-        AttributeError: If an invalid ``footprint`` type is provided (checked
+        AttributeError: If an invalid ``shape`` type is provided (checked
             during operation).
     """
 
     def __init__(
             self,
-            footprint: Literal[
+            shape: Literal[
                            "auto", "square", "diamond", "disk"] | np.ndarray | None = None,
             width: int = 3
     ):
         """Initialize the eroder.
 
         Args:
-            footprint (Literal["auto", "square", "diamond", "disk"] | np.ndarray | None):
+            shape (Literal["auto", "square", "diamond", "disk"] | np.ndarray | None):
                 Structuring element for erosion. Use:
-                - "auto" to select a disk footprint scaled to image size
+                - "auto" to select a disk shape scaled to image size
                   (larger plates → slightly larger width),
-                - a NumPy array to pass a custom footprint,
+                - a NumPy array to pass a custom shape,
                 - one of the named shapes ("disk", "square", "diamond") with
                   a specified width,
                 - or ``None`` to use the library default.
@@ -96,22 +96,22 @@ class MaskEroder(ObjectRefiner):
                 or auto-scaling. Default: 3 pixels (moderate erosion).
         """
         super().__init__()
-        self.footprint = footprint
+        self.shape = shape
         self.width = width
 
     def _operate(self, image: Image) -> Image:
-        if self.footprint == "auto":
-            footprint = self._make_footprint(
-                    "disk", width=max(2, round(np.min(image.shape)*0.003))
+        if self.shape == "auto":
+            footprint = FootprintMixin._make_footprint(
+                    "disk", width=max(2, round(np.min(image.shape) * 0.003))
             )
-        elif isinstance(self.footprint, np.ndarray):
-            footprint = self.footprint
-        elif self.footprint in self._footprint_shapes:
-            footprint = self._make_footprint(self.footprint, width=self.width)
-        elif not self.footprint:
+        elif isinstance(self.shape, np.ndarray):
+            footprint = self.shape
+        elif self.shape in self._footprint_shapes:
+            footprint = FootprintMixin._make_footprint(self.shape, width=self.width)
+        elif not self.shape:
             footprint = None
         else:
-            raise AttributeError("Invalid footprint type")
+            raise AttributeError("Invalid shape type")
 
         image.objmask[:] = binary_erosion(image.objmask[:], footprint=footprint)
         return image

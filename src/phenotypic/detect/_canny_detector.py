@@ -95,7 +95,7 @@ class CannyDetector(ThresholdDetector):
             use_quantiles: bool = True,
             min_size: int = 50,
             invert_edges: bool = True,
-            connectivity: int = 1,
+            connectivity: int = 2,
     ):
         """
         Parameters:

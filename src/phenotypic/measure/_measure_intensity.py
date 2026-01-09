@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-
 from phenotypic.tools.constants_ import OBJECT
 
 if TYPE_CHECKING:
@@ -19,6 +18,10 @@ class INTENSITY(MeasurementInfo):
         return "Intensity"
 
     INTEGRATED_INTENSITY = ("IntegratedIntensity", "The sum of the object's pixels")
+    DENSITY = ("Density", "The ratio of the object's intensity to the max possible "
+                          "intensity of the object")
+    CONVEX_DENSITY = ("ConvexDensity", "The ratio of the objects intensity to the max "
+                                       "possible intensity of the object's convex hull")
     MINIMUM_INTENSITY = ("MinimumIntensity", "The minimum intensity of the object")
     MAXIMUM_INTENSITY = ("MaximumIntensity", "The maximum intensity of the object")
     MEAN_INTENSITY = ("MeanIntensity", "The mean intensity of the object")
@@ -130,6 +133,8 @@ class MeasureIntensity(MeasureFeatures):
     """
 
     def _operate(self, image: Image) -> pd.DataFrame:
+        from phenotypic.measure._measure_shape import MeasureShape, SHAPE
+
         intensity_matrix, objmap = image.gray[:].copy(), image.objmap[:].copy()
         measurements = {
             str(INTENSITY.INTEGRATED_INTENSITY)        : self._calculate_sum(
@@ -170,6 +175,17 @@ class MeasureIntensity(MeasureFeatures):
         measurements = pd.DataFrame(measurements)
         measurements.insert(
                 loc=0, column=OBJECT.LABEL, value=image.objects.labels2series()
+        )
+        shape_measurements = MeasureShape().measure(image)
+
+        measurements[INTENSITY.DENSITY] = (
+                measurements[INTENSITY.INTEGRATED_INTENSITY]
+                / shape_measurements[SHAPE.AREA]
+        )
+
+        measurements[INTENSITY.CONVEX_DENSITY] = (
+                measurements[INTENSITY.INTEGRATED_INTENSITY]
+                / shape_measurements[SHAPE.CONVEX_AREA]
         )
         return measurements
 

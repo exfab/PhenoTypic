@@ -8,10 +8,10 @@ if TYPE_CHECKING:
 import numpy as np
 from skimage.morphology import white_tophat
 
-from phenotypic.abc_ import ObjectRefiner
+from phenotypic.abc_ import ObjectRefiner, FootprintMixin
 
 
-class WhiteTophat(ObjectRefiner):
+class WhiteTophat(ObjectRefiner, FootprintMixin):
     """Suppress small bright structures in the mask using white tophat.
 
     Intuition:
@@ -34,13 +34,13 @@ class WhiteTophat(ObjectRefiner):
     Caveats:
         - Large footprints may remove real bright edges of colonies (e.g.,
           highly reflective rims), slightly eroding edge sharpness.
-        - If the footprint is too small, bright artifacts may remain.
+        - If the shape is too small, bright artifacts may remain.
 
     Attributes:
-        footprint (str): Shape for the footprint used in the tophat
+        footprint (str): Shape for the shape used in the tophat
             transform. Supported: 'disk', 'square'. Disk tends to preserve
             round features, while square can be more aggressive along axes.
-        width (int | None): Width of the footprint. Larger values
+        width (int | None): Width of the shape. Larger values
             remove broader bright features but risk shrinking thin colony
             appendages. ``None`` auto-scales with image size.
 
@@ -48,12 +48,12 @@ class WhiteTophat(ObjectRefiner):
         .. dropdown:: Suppress small bright structures in the mask using white tophat
 
             >>> from phenotypic.refine import WhiteTophat
-            >>> op = WhiteTophat(footprint='disk', width=5)
+            >>> op = WhiteTophat(shape='disk', width=5)
             >>> image = op.apply(image, inplace=True)  # doctest: +SKIP
     """
 
     def __init__(self,
-                 footprint: Literal["disk", "square", "diamond"] | np.ndarray = "disk",
+                 shape: Literal["disk", "square", "diamond"] | np.ndarray = "disk",
                  width: int | None = None):
         """
         Represents a structural element used to analyze and process images, specifically useful for microbial
@@ -79,14 +79,14 @@ class WhiteTophat(ObjectRefiner):
                 structural elements, which can preserve fine details and delineate smaller colonies. A None
                 value assumes a default or minimal size.
         """
-        self.footprint = footprint
+        self.shape = shape
         self.width = width
 
     def _operate(self, image: Image) -> Image:
         white_tophat_results = white_tophat(
                 image.objmask[:],
-                footprint=self._make_footprint(
-                        shape=self.footprint,
+                footprint=FootprintMixin._make_footprint(
+                        shape=self.shape,
                         width=self._get_footprint_width(array=image.objmask[:]),
                 ),
         )
@@ -95,6 +95,6 @@ class WhiteTophat(ObjectRefiner):
 
     def _get_footprint_width(self, array: np.ndarray) -> int:
         if self.width is None:
-            return int(np.min(array.shape)*0.004)
+            return int(np.min(array.shape) * 0.004)
         else:
             return self.width

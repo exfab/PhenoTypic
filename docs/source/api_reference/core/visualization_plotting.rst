@@ -65,7 +65,7 @@ inter-colony spacing.
         kernel_sizes=[1, 3, 5, 7, 9, 11, 13, 15],
         shape='disk'
     )
-    fig.suptitle('Opening: Colony Boundary Changes')
+    fig.suptitle('GrayOpening: Colony Boundary Changes')
     
     # Compare with closing
     fig2, axes2 = detected.plot.morph_progression(
@@ -101,7 +101,7 @@ sensitivity.
 
 The structural response curve reveals trade-offs in detection pipelines:
 
-- **Opening for noise removal:** Count drops sharply at small sizes (dust removed), then plateaus (real colonies preserved)
+- **GrayOpening for noise removal:** Count drops sharply at small sizes (dust removed), then plateaus (real colonies preserved)
 - **Closing for fragment merging:** Area increases while count decreases (fragments merge into single colonies)
 - **Optimal kernel:** First stable plateau after transition region
 
@@ -118,7 +118,7 @@ The structural response curve reveals trade-offs in detection pipelines:
         metric='count',
         show_derivative=True
     )
-    ax.set_title('Colony Count vs. Opening Kernel Size')
+    ax.set_title('Colony Count vs. GrayOpening Kernel Size')
     
     # Find optimal kernel: first plateau after noise removal
     # Look for region where derivative approaches zero
@@ -167,7 +167,7 @@ Boundary displacement patterns reveal imaging artifacts common in plate scanners
         reference_size=1,
         cmap='hot'
     )
-    fig.suptitle('Boundary Sensitivity to Opening')
+    fig.suptitle('Boundary Sensitivity to GrayOpening')
     
     # High displacement indicates regions requiring correction
 
@@ -377,4 +377,3 @@ Feature correlations reveal detection issues:
     
     # Identify outliers for manual inspection
     # High intensity_std (red points) = heterogeneous/merged
-

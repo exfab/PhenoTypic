@@ -29,7 +29,7 @@ class SmallToLargeMerger(ObjectRefiner):
         can fragment a single colony into a large central region plus small satellites.
         Size-based filtering assumes large = real colony and small = artifact or
         fragment. By merging only small objects into large neighbors, you reconstruct
-        the full colony footprint while avoiding the risk of merging two distinct
+        the full colony shape while avoiding the risk of merging two distinct
         large colonies that happen to be close together.
 
     Use cases:
@@ -135,7 +135,7 @@ class SmallToLargeMerger(ObjectRefiner):
 
         # Extract properties
         props = regionprops_table(
-            label_image=objmap, properties=["label", "centroid", "area"]
+                label_image=objmap, properties=["label", "centroid", "area"]
         )
         df = pd.DataFrame(props)
 

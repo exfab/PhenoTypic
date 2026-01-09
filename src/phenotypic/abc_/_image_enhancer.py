@@ -155,19 +155,19 @@ class ImageEnhancer(ImageOperation, ABC):
 
         @staticmethod
         def _make_footprint(shape: Literal["square", "diamond", "disk"], width: int) -> np.ndarray:
-            '''Creates a binary morphological footprint for image processing.'''
+            '''Creates a binary morphological shape for image processing.'''
 
     **Footprint Shapes and When to Use Each**
 
-    - **"disk":** Circular/isotropic footprint. Best for preserving rounded colony shapes and
+    - **"disk":** Circular/isotropic shape. Best for preserving rounded colony shapes and
       applying uniform processing in all directions. Use for: general-purpose smoothing, median
       filtering, dilations that expand colonies symmetrically.
 
-    - **"square":** Square footprint with 8-connectivity. Emphasizes horizontal/vertical edges
+    - **"square":** Square shape with 8-connectivity. Emphasizes horizontal/vertical edges
       and aligns with pixel grid. Use for: grid-aligned artifacts (imaging hardware stripe patterns),
       when processing speed matters (slightly faster than disk).
 
-    - **"diamond":** Diamond-shaped (rotated square) footprint with 4-connectivity. Creates a
+    - **"diamond":** Diamond-shaped (rotated square) shape with 4-connectivity. Creates a
       cross-like neighborhood pattern. Use for: specialized cases where diagonal connections should
       be de-emphasized; less common in practice.
 
@@ -254,7 +254,7 @@ class ImageEnhancer(ImageOperation, ABC):
             Performs the actual enhancement algorithm. Parameters are automatically matched
             to instance attributes.
         _make_footprint(shape, width): Static utility that creates a binary morphological
-            footprint (disk, square, or diamond) for use in morphological operations.
+            shape (disk, square, or diamond) for use in morphological operations.
 
     Notes:
         - **Protected components:** The ``@validate_operation_integrity`` decorator ensures
@@ -335,17 +335,17 @@ class ImageEnhancer(ImageOperation, ABC):
                     @staticmethod
                     def _operate(image: Image, operation: str = 'closing', width: int = 3) -> Image:
                         enh = image.enh_gray[:]
-                        # Create a disk footprint for isotropic processing
-                        footprint = ImageEnhancer._make_footprint('disk', width)
+                        # Create a disk shape for isotropic processing
+                        shape = ImageEnhancer._make_footprint('disk', width)
 
                         # Apply morphological operation to binary image
                         binary = enh > enh.mean()
                         if operation == 'closing':
                             # Close small holes within colonies
-                            refined = binary_closing(binary, structure=footprint)
+                            refined = binary_closing(binary, structure=shape)
                         elif operation == 'opening':
                             # Remove small noise regions
-                            refined = binary_opening(binary, structure=footprint)
+                            refined = binary_opening(binary, structure=shape)
                         else:
                             return image
 
@@ -394,7 +394,7 @@ class ImageEnhancer(ImageOperation, ABC):
                     colonies = result.objects
                     print(f"Plate {i}: {len(colonies)} colonies detected")
 
-        .. dropdown:: Using different footprint shapes for specialized morphological filtering
+        .. dropdown:: Using different shape shapes for specialized morphological filtering
 
             .. code-block:: python
 
@@ -405,7 +405,7 @@ class ImageEnhancer(ImageOperation, ABC):
                 import numpy as np
 
                 class SelectiveMedianEnhancer(ImageEnhancer):
-                    '''Enhance by applying median filtering with configurable footprint shape.'''
+                    '''Enhance by applying median filtering with configurable shape shape.'''
 
                     def __init__(self, shape: str = 'disk', width: int = 3):
                         super().__init__()
@@ -416,13 +416,13 @@ class ImageEnhancer(ImageOperation, ABC):
                     def _operate(image: Image, shape: str = 'disk', width: int = 3) -> Image:
                         enh = image.enh_gray[:]
 
-                        # Create footprint with specified shape
-                        footprint = ImageEnhancer._make_footprint(shape, width)
+                        # Create shape with specified shape
+                        shape = ImageEnhancer._make_footprint(shape, width)
 
                         # Apply median filter (rank filter)
                         # Convert to uint8 for rank filter compatibility
                         as_uint8 = img_as_ubyte(enh)
-                        filtered = median(as_uint8, footprint=footprint)
+                        filtered = median(as_uint8, shape=shape)
 
                         # Restore original dtype
                         image.enh_gray[:] = img_as_float(filtered) if enh.dtype == np.float64 else filtered

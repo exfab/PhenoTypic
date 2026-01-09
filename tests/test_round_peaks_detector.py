@@ -224,7 +224,7 @@ class TestCircularDetectorParameters:
     @timeit
     @pytest.mark.parametrize("footprint_width", [1, 3, 6, 9])
     def test_different_footprint_width(self, footprint_width):
-        """Test detection with different footprint widths."""
+        """Test detection with different shape widths."""
         image = phenotypic.GridImage(load_plate_12hr())
         detector = RoundPeaksDetector(footprint_width=footprint_width)
         result = detector.apply(image, inplace=False)
@@ -445,7 +445,7 @@ class TestCircularDetectorEdgeCases:
 
     @timeit
     def test_large_footprint_radius(self):
-        """Test with footprint width larger than typical colony size."""
+        """Test with shape width larger than typical colony size."""
         image = phenotypic.GridImage(load_plate_12hr())
         detector = RoundPeaksDetector(footprint_width=20)
         result = detector.apply(image, inplace=False)

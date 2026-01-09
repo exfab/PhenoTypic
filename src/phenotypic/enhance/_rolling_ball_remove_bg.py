@@ -54,7 +54,7 @@ class RollingBallRemoveBG(ImageEnhancer):
         Parameters:
             radius (int): Rolling-ball width (pixels). Use a value larger than
                 colony diameter to avoid removing colony signal. Default 100.
-            kernel (np.ndarray): Optional custom ball/footprint; when provided it
+            kernel (np.ndarray): Optional custom ball/shape; when provided it
                 overrides `width`.
             nansafe (bool): If True, treat NaNs as missing data to avoid artifacts
                 when using masked images (e.g., outside the plate).

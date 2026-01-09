@@ -21,7 +21,7 @@ class WatershedDetector(ThresholdDetector):
 
     The WatershedDetector class processes images to detect and segment objects
     by applying the watershed algorithm. This class extends the capabilities
-    of ThresholdDetector and includes customization for parameters such as footprint
+    of ThresholdDetector and includes customization for parameters such as shape
     size, minimum object size, compactness, and connectivity. This is useful for
     image segmentation tasks, where proximity-based object identification is needed.
 
@@ -50,13 +50,13 @@ class WatershedDetector(ThresholdDetector):
     """
 
     def __init__(
-        self,
-        footprint: Literal["auto"] | np.ndarray | int | None = None,
-        min_size: int = 50,
-        compactness: float = 0.001,
-        connectivity: int = 1,
-        relabel: bool = True,
-        ignore_zeros: bool = True,
+            self,
+            footprint: Literal["auto"] | np.ndarray | int | None = None,
+            min_size: int = 50,
+            compactness: float = 0.001,
+            connectivity: int = 1,
+            relabel: bool = True,
+            ignore_zeros: bool = True,
     ):
         super().__init__()
 
@@ -68,7 +68,7 @@ class WatershedDetector(ThresholdDetector):
             case "auto":
                 self.footprint = "auto"
             case None:
-                # footprint will be automatically determined by implementation
+                # shape will be automatically determined by implementation
                 self.footprint = None
         self.min_size = min_size
         self.compactness = compactness
@@ -81,15 +81,15 @@ class WatershedDetector(ThresholdDetector):
 
         enhanced_matrix = image.enh_gray[
             :
-        ]  # direct access to reduce memory footprint, but careful to not delete
+        ]  # direct access to reduce memory shape, but careful to not delete
         self._log_memory_usage("getting enhanced gray")
 
-        # Determine footprint for peak detection
+        # Determine shape for peak detection
         if self.footprint == "auto":
             if isinstance(image, GridImage):
                 est_footprint_diameter = max(
-                    image.shape[0] // image.grid.nrows,
-                    image.shape[1] // image.grid.ncols,
+                        image.shape[0] // image.grid.nrows,
+                        image.shape[1] // image.grid.ncols,
                 )
                 footprint = morphology.diamond(est_footprint_diameter // 2)
                 del est_footprint_diameter
@@ -97,9 +97,9 @@ class WatershedDetector(ThresholdDetector):
                 # Not enough information with a normal image to infer
                 footprint = None
         else:
-            # Use the footprint as defined in __init__ (None, ndarray, or processed int)
+            # Use the shape as defined in __init__ (None, ndarray, or processed int)
             footprint = self.footprint
-        self._log_memory_usage("determining footprint")
+        self._log_memory_usage("determining shape")
 
         # Prepare values for threshold calculation
         if self.ignore_zeros:
@@ -122,7 +122,7 @@ class WatershedDetector(ThresholdDetector):
         self._log_memory_usage("threshold calculation and binary mask creation")
 
         binary = morphology.remove_small_objects(
-            binary, min_size=self.min_size
+                binary, min_size=self.min_size
         )  # clean to reduce runtime
 
         # Ensure binary is contiguous for memory-efficient operations (only if needed)
@@ -137,7 +137,7 @@ class WatershedDetector(ThresholdDetector):
         self._log_memory_usage("after distance transform", include_tracemalloc=True)
 
         max_peak_indices = feature.peak_local_max(
-            image=dist_matrix, footprint=footprint, labels=binary
+                image=dist_matrix, footprint=footprint, labels=binary
         )
 
         del footprint, dist_matrix
@@ -160,23 +160,23 @@ class WatershedDetector(ThresholdDetector):
 
         # Memory-intensive watershed operation - detailed tracking
         self._log_memory_usage(
-            "before watershed segmentation",
-            include_process=True,
-            include_tracemalloc=True,
+                "before watershed segmentation",
+                include_process=True,
+                include_tracemalloc=True,
         )
 
         objmap = segmentation.watershed(
-            image=gradient,
-            markers=max_peaks,
-            compactness=self.compactness,
-            connectivity=self.connectivity,
-            mask=binary,
+                image=gradient,
+                markers=max_peaks,
+                compactness=self.compactness,
+                connectivity=self.connectivity,
+                mask=binary,
         )
 
         self._log_memory_usage(
-            "after watershed segmentation",
-            include_process=True,
-            include_tracemalloc=True,
+                "after watershed segmentation",
+                include_process=True,
+                include_tracemalloc=True,
         )
         if objmap.dtype != np.uint16:
             objmap = objmap.astype(image._OBJMAP_DTYPE)
@@ -190,9 +190,9 @@ class WatershedDetector(ThresholdDetector):
 
         # Final comprehensive memory report
         self._log_memory_usage(
-            "final cleanup and relabeling",
-            include_process=True,
-            include_tracemalloc=True,
+                "final cleanup and relabeling",
+                include_process=True,
+                include_tracemalloc=True,
         )
 
         return image

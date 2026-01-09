@@ -14,13 +14,14 @@ from skimage.measure import label
 from skimage.color import label2rgb
 
 from phenotypic._core._image_parts.accessor_abstracts import SingleChannelAccessor
+from phenotypic._core._image_parts.accessor_abstracts._napari_labels_mixin import NapariLabelsMixin
 from phenotypic.tools.exceptions_ import (
     ArrayKeyValueShapeMismatchError,
     InvalidMapValueError,
 )
 
 
-class ObjectMap(SingleChannelAccessor):
+class ObjectMap(NapariLabelsMixin, SingleChannelAccessor):
     """Manages an object map for labeled regions in an image.
 
     This class provides a mechanism to manipulate and access labeled object maps

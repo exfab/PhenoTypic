@@ -107,6 +107,8 @@ class ImageHandler(ImageDataManager):
         subimage.enh_gray[:] = self.enh_gray[key].copy()
         subimage.objmap[:] = self.objmap[key].copy()
         subimage.metadata[METADATA.IMAGE_TYPE] = IMAGE_TYPES.CROP.value
+        subimage.metadata[METADATA.IMAGE_NAME] \
+            = f"{self.metadata[METADATA.IMAGE_NAME]}_crop"
         return subimage
 
     def __setitem__(self, key, other_image):

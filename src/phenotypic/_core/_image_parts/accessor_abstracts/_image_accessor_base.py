@@ -14,6 +14,7 @@ import pandas as pd
 import skimage as ski
 from PIL import Image as PIL_Image
 import napari
+import imageio.v3 as iio
 
 import phenotypic
 from phenotypic.settings_ import MPL
@@ -789,6 +790,7 @@ class ImageAccessorBase(ABC):
             UserWarning: When saving arrays that require downcasting and may lose
                 information (e.g., float or 16-bit arrays to JPEG, float arrays to PNG).
         """
+        filepath = Path(filepath)
         arr2save = arr
         suffix = filepath.suffix.lower()
 
@@ -815,8 +817,14 @@ class ImageAccessorBase(ABC):
 
             case x if x in IO.PNG_FILE_EXTENSIONS:
                 match arr2save.dtype:
-                    case np.uint8 | np.uint16:
+                    case np.uint8:
                         pass
+                    case np.uint16:
+                        warnings.warn(
+                                "Saving a 16 bit array as a jpeg will potentially "
+                                "result in information loss during conversion"
+                        )
+                        arr2save = ski.util.img_as_ubyte(arr2save)
                     case dt if np.issubdtype(dt, np.floating):
                         warnings.warn(
                                 ".png images only accept 8 bit and 16 bit "
@@ -829,6 +837,7 @@ class ImageAccessorBase(ABC):
                             else ski.util.img_as_uint(arr2save)
                         )
                 pil_img = PIL_Image.fromarray(arr2save)
+
                 if metadata_json:
                     self._write_png_metadata(filepath, pil_img, metadata_json)
 

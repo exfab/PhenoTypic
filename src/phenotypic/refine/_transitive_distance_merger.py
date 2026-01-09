@@ -27,7 +27,7 @@ class TransitiveDistanceMerger(ObjectRefiner):
     Why this is useful for agar plates:
         Aggressive thresholding or contrast enhancement can fragment a single colony
         into multiple labeled regions. Merging by proximity reconstructs the true
-        colony footprint, correcting inflated colony counts and improving downstream
+        colony shape, correcting inflated colony counts and improving downstream
         area and intensity measurements. This is particularly effective for colonies
         with heterogeneous pigmentation or those growing on plates with uneven lighting.
 

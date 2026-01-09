@@ -127,7 +127,7 @@ class HeavyRoundPeaksPipeline(PrefabPipeline):
                 automatically estimated from signal statistics. Higher values are more selective.
             detector_edge_refinement: Whether to refine grid edges using local intensity profiles.
                 Improves accuracy but adds computational cost.
-            mask_opener_footprint: Describes the morphological footprint for noise removal or
+            mask_opener_footprint: Describes the morphological shape for noise removal or
                 mask refinement. "auto" lets the system adapt, while specifying values allows
                 control over the scale of mask cleanup or preservation of detailed structures.
             border_remover_size: Specifies the width of the border region to remove. Larger sizes
@@ -166,7 +166,7 @@ class HeavyRoundPeaksPipeline(PrefabPipeline):
             MedianFilter(shape=median_shape, radius=median_radius),
             # First detection pass
             RoundPeaksDetector(**detector_kwargs),
-            MaskOpener(footprint=mask_opener_footprint),
+            MaskOpener(shape=mask_opener_footprint),
             BorderObjectRemover(border_size=border_remover_size),
             SmallObjectRemover(min_size=small_object_min_size),
             MaskFill(),
@@ -175,7 +175,7 @@ class HeavyRoundPeaksPipeline(PrefabPipeline):
             GridAligner(),
             # Second detection pass
             RoundPeaksDetector(**detector_kwargs),
-            MaskOpener(footprint=None),
+            MaskOpener(shape=None),
             BorderObjectRemover(border_size=border_remover_size),
             SmallObjectRemover(min_size=small_object_min_size),
             GridOversizedObjectRemover(),

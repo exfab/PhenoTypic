@@ -25,7 +25,7 @@ class MeasureBounds(MeasureFeatures):
     measurements) and are used to relate colonies to expected well positions in arrayed assays.
 
     **Use cases (agar plates):**
-    - Establish the spatial footprint of each detected colony for morphological analysis.
+    - Establish the spatial shape of each detected colony for morphological analysis.
     - Compute centroids for aligning colonies to grid positions in high-throughput assays.
     - Enable region-of-interest (ROI) extraction for downstream intensity, color, or texture measurements.
     - Assess colony positioning relative to plate edges to detect spreading beyond well boundaries.
@@ -82,19 +82,20 @@ class MeasureBounds(MeasureFeatures):
 
     def _operate(self, image: Image) -> pd.DataFrame:
         results = pd.DataFrame(
-            data=regionprops_table(
-                label_image=image.objmap[:], properties=["label", "centroid", "bbox"]
-            )
+                data=regionprops_table(
+                        label_image=image.objmap[:],
+                        properties=["label", "centroid", "bbox"]
+                )
         ).rename(
-            columns={
-                "label": OBJECT.LABEL,
-                "centroid-0": str(BBOX.CENTER_RR),
-                "centroid-1": str(BBOX.CENTER_CC),
-                "bbox-0": str(BBOX.MIN_RR),
-                "bbox-1": str(BBOX.MIN_CC),
-                "bbox-2": str(BBOX.MAX_RR),
-                "bbox-3": str(BBOX.MAX_CC),
-            }
+                columns={
+                    "label"     : OBJECT.LABEL,
+                    "centroid-0": str(BBOX.CENTER_RR),
+                    "centroid-1": str(BBOX.CENTER_CC),
+                    "bbox-0"    : str(BBOX.MIN_RR),
+                    "bbox-1"    : str(BBOX.MIN_CC),
+                    "bbox-2"    : str(BBOX.MAX_RR),
+                    "bbox-3"    : str(BBOX.MAX_CC),
+                }
         )
 
         return results

@@ -14,15 +14,15 @@ from phenotypic.abc_ import ImageEnhancer
 
 class RankMedianEnhancer(ImageEnhancer):
     """
-    Rank-based median filtering with configurable footprint.
+    Rank-based median filtering with configurable shape.
 
-    Applies a local median using rank filters with a user-defined footprint
+    Applies a local median using rank filters with a user-defined shape
     shape and width. For agar plate colony images, this enables targeted
     suppression of impulsive noise while tailoring the spatial scale to colony
     size and shape, offering more control than a default median.
 
     Use cases (agar plates):
-    - Denoise while preserving colony boundaries by matching the footprint width
+    - Denoise while preserving colony boundaries by matching the shape width
       to be smaller than colony diameters.
     - Use anisotropic or non-circular footprints (e.g., squares) for grid-like
       artifacts from imaging hardware.
@@ -32,7 +32,7 @@ class RankMedianEnhancer(ImageEnhancer):
       'square' or 'cube' can align with grid artifacts; 'ball' for 3D stacks.
     - width: Controls neighborhood size. Larger radii remove more
       noise but can erode small colonies and close tight gaps.
-    - shift_x/shift_y: Offset the footprint center to bias the neighborhood
+    - shift_x/shift_y: Offset the shape center to bias the neighborhood
       if imaging introduces directional streaks; typically left at 0.
 
     Caveats:
@@ -42,11 +42,11 @@ class RankMedianEnhancer(ImageEnhancer):
 
     Attributes:
         shape (str): 'disk', 'square', 'sphere', or 'cube' defining
-            the footprint geometry.
+            the shape geometry.
         width (int | None): Width (pixels). If None, a small default
             derived from image size is used.
-        shift_x (int): Horizontal footprint offset for advanced use.
-        shift_y (int): Vertical footprint offset for advanced use.
+        shift_x (int): Horizontal shape offset for advanced use.
+        shift_y (int): Vertical shape offset for advanced use.
     """
 
     def __init__(self, shape: str = "square", width: int = None, shift_x=0, shift_y=0):
@@ -58,12 +58,12 @@ class RankMedianEnhancer(ImageEnhancer):
             width (int | None): Neighborhood width in pixels. Set
                 smaller than the minimum colony width to preserve colony edges;
                 None chooses a small default based on image size.
-            shift_x (int): Horizontal offset of the footprint center to bias the
+            shift_x (int): Horizontal offset of the shape center to bias the
                 neighborhood if artifacts are directional. Typically 0.
-            shift_y (int): Vertical offset of the footprint center. Typically 0.
+            shift_y (int): Vertical offset of the shape center. Typically 0.
         """
         if shape not in ["disk", "square", "sphere", "cube"]:
-            raise ValueError(f"footprint shape {shape} is not supported")
+            raise ValueError(f"shape shape {shape} is not supported")
 
         self.shape = shape
         self.width = width
@@ -83,7 +83,7 @@ class RankMedianEnhancer(ImageEnhancer):
 
     def _get_footprint_width(self, enh_gray: np.ndarray) -> int:
         if self.width is None:
-            return int(np.min(enh_gray.shape)*0.002)
+            return int(np.min(enh_gray.shape) * 0.002)
         else:
             return self.width
 
@@ -96,6 +96,6 @@ class RankMedianEnhancer(ImageEnhancer):
             case "ball":
                 return ball(radius)
             case "cube":
-                return cube(int(radius*2))
+                return cube(int(radius * 2))
             case _:
-                raise TypeError("Unknown footprint shape")
+                raise TypeError("Unknown shape shape")

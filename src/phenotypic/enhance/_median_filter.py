@@ -25,7 +25,7 @@ class MedianFilter(ImageEnhancer):
       or closely packed.
 
     Tuning and effects:
-    - Footprint: This implementation uses the library default footprint when none
+    - Footprint: This implementation uses the library default shape when none
       is provided (a small neighborhood). For stronger denoising, prefer
       `RankMedianEnhancer` where you can set shape and width explicitly.
     - mode/cval: Control how borders are handled. 'reflect' or 'nearest' avoids
@@ -35,7 +35,7 @@ class MedianFilter(ImageEnhancer):
     - Using a very large neighborhood (when configured via alternative median
       functions) can remove small colonies or close thin gaps.
     - Median filtering can flatten fine texture within pigmented colonies; use a
-      light application or a rank filter with an appropriate footprint.
+      light application or a rank filter with an appropriate shape.
 
     Attributes:
         mode (str): Boundary handling mode: 'nearest', 'reflect', 'constant',
@@ -53,7 +53,7 @@ class MedianFilter(ImageEnhancer):
     ):
         """
         This class is designed to facilitate image processing tasks, particularly for analyzing microbe
-        colonies on solid media agar. By adjusting the mode, footprint, width, and cval attributes,
+        colonies on solid media agar. By adjusting the mode, shape, width, and cval attributes,
         users can modify the processing behavior and results to suit their specific requirements for
         studying spatial arrangements, colony boundaries, and other morphological features.
 

@@ -24,7 +24,7 @@ class PipeGridSearch(PipeGridSearchJoblib):
     **Key Features:**
 
     * **Memory-Aware Parallelism:** Automatically scales parallel jobs based on available
-      system memory and estimated per-image processing footprint (5× base image size).
+      system memory and estimated per-image processing shape (5× base image size).
 
     * **Hierarchical Results:** Organizes outputs in structured directory tree with
       reproducible JSON-serialized pipelines for each parameter combination.

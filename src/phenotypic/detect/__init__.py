@@ -19,6 +19,7 @@ from ._triangle_detector import TriangleDetector
 from ._watershed_detector import WatershedDetector
 from ._yen_detector import YenDetector
 from ._rank_otsu import RankOtsuDetector
+from ._secondary_otsu import SecondaryOtsuDetector
 
 __all__ = [
     "CannyDetector",
@@ -33,4 +34,5 @@ __all__ = [
     "WatershedDetector",
     "YenDetector",
     "RankOtsuDetector",
+    "SecondaryOtsuDetector",
 ]

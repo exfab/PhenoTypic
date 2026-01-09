@@ -175,7 +175,7 @@ class ObjectDetector(ImageOperation, ABC):
       plate boundaries may be partially cut off).
 
     - **skimage.morphology.binary_opening():** Erosion followed by dilation; removes small
-      noise while preserving larger objects. Use with a suitable footprint (disk, square, or
+      noise while preserving larger objects. Use with a suitable shape (disk, square, or
       diamond).
 
     - **scipy.ndimage.binary_dilation() / binary_erosion():** Expand or shrink objects

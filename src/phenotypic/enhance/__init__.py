@@ -14,7 +14,9 @@ from ._bayesshrink_enhancer import BayesShrinkEnhancer
 from ._bm3d_denoiser import BM3DDenoiser
 from ._clahe import CLAHE
 from ._contrast_streching import ContrastStretching
+from ._frangi_vesselness import FrangiVesselness
 from ._gaussian_blur import GaussianBlur
+from ._hessian_filter import HessianFilter
 from ._gaussian_subtract import GaussianSubtract
 from ._laplace_enhancer import LaplaceEnhancer
 from ._median_filter import MedianFilter
@@ -25,7 +27,7 @@ from ._sobel_filter import SobelFilter
 from ._unsharp_mask import UnsharpMask
 from ._visushrink_enhancer import VisuShrinkEnhancer
 from ._white_tophat_subtract import WhiteTophatSubtract
-from ._opening import Opening
+from ._gray_opening import GrayOpening
 
 __all__ = [
     "BayesShrinkEnhancer",
@@ -33,8 +35,11 @@ __all__ = [
     "BM3DDenoiser",
     "CLAHE",
     "ContrastStretching",
+    "FrangiVesselness",
     "GaussianBlur",
     "GaussianSubtract",
+    "GrayOpening",
+    "HessianFilter",
     "LaplaceEnhancer",
     "MedianFilter",
     "NonLocalMeansDenoiser",
@@ -44,5 +49,4 @@ __all__ = [
     "UnsharpMask",
     "VisuShrinkEnhancer",
     "WhiteTophatSubtract",
-    "Opening",
 ]

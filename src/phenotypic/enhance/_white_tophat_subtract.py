@@ -26,7 +26,7 @@ class WhiteTophatSubtract(ImageEnhancer):
     - Reduce glare highlights on shiny plates before thresholding.
 
     Tuning and effects:
-    - shape: The morphology footprint geometry. 'diamond' or 'disk' are good
+    - shape: The morphology shape geometry. 'diamond' or 'disk' are good
       isotropic choices on plates; 'square' can align with pixel grids.
     - width: Sets the maximum size of bright features to remove. Choose slightly
       smaller than the minimum colony width so real colonies are preserved.
@@ -70,7 +70,7 @@ class WhiteTophatSubtract(ImageEnhancer):
 
     def _get_footprint_width(self, detection_matrix: np.ndarray) -> int:
         if self.width is None:
-            return int(np.min(detection_matrix.shape)*0.004)
+            return int(np.min(detection_matrix.shape) * 0.004)
         else:
             return self.width
 
@@ -83,4 +83,4 @@ class WhiteTophatSubtract(ImageEnhancer):
             case "sphere":
                 return ball(radius)
             case "cube":
-                return cube(radius*2)
+                return cube(radius * 2)

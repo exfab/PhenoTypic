@@ -177,7 +177,7 @@ class PrefabPipeline(ImagePipeline):
 
         - **Parameter tuning via __init__():** Most PrefabPipeline subclasses expose key algorithm
           parameters in ``__init__()`` (e.g., detection threshold, smoothing sigma, refinement
-          footprint). Adjust these for your specific images before scaling to large batches.
+          shape). Adjust these for your specific images before scaling to large batches.
 
         - **Benchmarking for profiling:** Set ``benchmark=True`` when instantiating to track
           execution time and memory usage per operation. Useful for identifying bottlenecks in

@@ -84,7 +84,7 @@ class HeavyOtsuPipeline(PrefabPipeline):
             small_object_min_size (int): Minimum size of objects to retain.
             texture_scale (int): Scale parameter for Haralick texture features.
             texture_warn (bool): Whether to warn on texture computation errors.
-            footprint: Deprecated, use mask_opener_footprint.
+            shape: Deprecated, use mask_opener_footprint.
             min_size: Deprecated, use small_object_min_size.
             border_size: Deprecated, use border_remover_size.
         """
@@ -101,7 +101,7 @@ class HeavyOtsuPipeline(PrefabPipeline):
             OtsuDetector(
                     ignore_zeros=otsu_ignore_zeros, ignore_borders=otsu_ignore_borders
             ),
-            MaskOpener(footprint=mask_opener_footprint),
+            MaskOpener(shape=mask_opener_footprint),
             border_remover,
             SmallObjectRemover(min_size=small_object_min_size),
             MaskFill(),
@@ -111,7 +111,7 @@ class HeavyOtsuPipeline(PrefabPipeline):
             OtsuDetector(
                     ignore_zeros=otsu_ignore_zeros, ignore_borders=otsu_ignore_borders
             ),
-            MaskOpener(footprint=None),
+            MaskOpener(shape=None),
             border_remover,
             SmallObjectRemover(min_size=small_object_min_size),
             GridOversizedObjectRemover(),

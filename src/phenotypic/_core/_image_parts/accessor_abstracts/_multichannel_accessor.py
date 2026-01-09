@@ -80,6 +80,12 @@ class MultiChannelAccessor(ImageAccessorBase, ABC):
             self._write_jpeg_metadata(fname, pil_img, metadata_json)
 
         elif suffix in IO.PNG_FILE_EXTENSIONS:
+            # Convert 16-bit to 8-bit for JPEG
+            if arr.dtype == np.uint16:
+                warnings.warn(
+                        "Saving 16-bit RGB as png will result in information loss"
+                )
+                arr = ski.util.img_as_ubyte(arr)
             pil_img = PIL_Image.fromarray(arr)
             self._write_png_metadata(fname, pil_img, metadata_json)
 

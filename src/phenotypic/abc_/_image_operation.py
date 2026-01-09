@@ -9,6 +9,7 @@ from ._base_operation import BaseOperation
 from ._lazy_widget_mixin import LazyWidgetMixin
 
 from abc import ABC, abstractmethod
+import traceback
 
 
 class ImageOperation(BaseOperation, LazyWidgetMixin, ABC):
@@ -458,7 +459,8 @@ class ImageOperation(BaseOperation, LazyWidgetMixin, ABC):
             raise KeyboardInterrupt
         except Exception as e:
             raise RuntimeError(
-                    f"{self.__class__.__name__} failed on image {image.name}: {e}"
+                    f"{self.__class__.__name__} failed on image {image.name}:\n"
+                    f"{traceback.format_exc()}"
             ) from e
 
     @staticmethod

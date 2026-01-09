@@ -240,3 +240,171 @@ class TestGridImageBitDepthInheritance:
         assert grid_uint8.bit_depth == 8
         assert grid_uint16.bit_depth == 16
         assert grid_float32.bit_depth == 16
+
+
+# Tests for GridAccessor slicing support
+class TestGridAccessorSlicing:
+    """Test suite for GridAccessor slicing functionality."""
+
+    @timeit
+    def test_grid_accessor_flattened_slice(self, plate_grid_images_with_detection):
+        """Test grid[start:stop] flattened index slicing."""
+        grid_image = plate_grid_images_with_detection
+        # First row for 8x12 grid (sections 0-11)
+        first_row = grid_image.grid[0:12]
+
+        assert isinstance(first_row, Image)
+        assert first_row.shape[0] > 0  # Has pixels
+        assert first_row.shape[1] > 0
+
+    @timeit
+    def test_grid_accessor_row_slice_all_cols(self, plate_grid_images_with_detection):
+        """Test grid[row, :] pattern."""
+        grid_image = plate_grid_images_with_detection
+        row_2 = grid_image.grid[2, :]
+
+        assert isinstance(row_2, Image)
+        assert row_2.shape[0] > 0
+        assert row_2.shape[1] > 0
+
+    @timeit
+    def test_grid_accessor_col_slice_all_rows(self, plate_grid_images_with_detection):
+        """Test grid[:, col] pattern."""
+        grid_image = plate_grid_images_with_detection
+        col_5 = grid_image.grid[:, 5]
+
+        assert isinstance(col_5, Image)
+        assert col_5.shape[0] > 0
+        assert col_5.shape[1] > 0
+
+    @timeit
+    def test_grid_accessor_row_range_single_col(self, plate_grid_images_with_detection):
+        """Test grid[row_start:row_stop, col] pattern."""
+        grid_image = plate_grid_images_with_detection
+        subset = grid_image.grid[0:4, 3]
+
+        assert isinstance(subset, Image)
+        assert subset.shape[0] > 0
+        assert subset.shape[1] > 0
+
+    @timeit
+    def test_grid_accessor_single_row_col_range(self, plate_grid_images_with_detection):
+        """Test grid[row, col_start:col_stop] pattern."""
+        grid_image = plate_grid_images_with_detection
+        subset = grid_image.grid[2, 0:6]
+
+        assert isinstance(subset, Image)
+        assert subset.shape[0] > 0
+        assert subset.shape[1] > 0
+
+    @timeit
+    def test_grid_accessor_2d_slice_raises_error(self, plate_grid_images_with_detection):
+        """Test that grid[rows, cols] raises ValueError."""
+        grid_image = plate_grid_images_with_detection
+
+        with pytest.raises(ValueError, match="both dimensions"):
+            _ = grid_image.grid[0:5, 2:7]
+
+    @timeit
+    def test_grid_accessor_empty_slice(self, plate_grid_images_with_detection):
+        """Test empty slice returns valid image."""
+        grid_image = plate_grid_images_with_detection
+
+        # Out of bounds slice should return empty
+        empty = grid_image.grid[100:200]
+        assert isinstance(empty, Image)
+
+    @timeit
+    def test_grid_accessor_negative_indices(self, plate_grid_images_with_detection):
+        """Test negative index support."""
+        grid_image = plate_grid_images_with_detection
+
+        # Last row for 8x12 grid: sections 84-95
+        last_row = grid_image.grid[-12:]
+        assert isinstance(last_row, Image)
+
+    @timeit
+    def test_grid_accessor_step_slicing(self, plate_grid_images_with_detection):
+        """Test step slicing support."""
+        grid_image = plate_grid_images_with_detection
+
+        every_other = grid_image.grid[::2]
+        assert isinstance(every_other, Image)
+
+    @timeit
+    def test_grid_accessor_full_grid_slice(self, plate_grid_images_with_detection):
+        """Test grid[:] and grid[:, :] return entire grid."""
+        grid_image = plate_grid_images_with_detection
+
+        # Full flattened slice
+        all_flat = grid_image.grid[:]
+        assert isinstance(all_flat, Image)
+        assert all_flat.shape[0] > 0
+
+        # Full 2D slice
+        all_2d = grid_image.grid[:, :]
+        assert isinstance(all_2d, Image)
+        assert all_2d.shape[0] > 0
+
+    @timeit
+    def test_grid_accessor_single_section_backward_compat(self, plate_grid_images_with_detection):
+        """Test backward compatibility: single section access unchanged."""
+        grid_image = plate_grid_images_with_detection
+
+        # Single index (int)
+        single_int = grid_image.grid[0]
+        assert isinstance(single_int, Image)
+
+        # Single index (tuple)
+        single_tuple = grid_image.grid[0, 0]
+        assert isinstance(single_tuple, Image)
+
+    @timeit
+    def test_grid_accessor_slice_return_type_is_image(self, plate_grid_images_with_detection):
+        """Test that slices return Image, not GridImage."""
+        grid_image = plate_grid_images_with_detection
+
+        sliced = grid_image.grid[0:12]
+        assert type(sliced).__name__ == 'Image'
+        assert not isinstance(sliced, GridImage)
+
+    @timeit
+    def test_grid_accessor_slice_metadata_marked_as_grid_section(self, plate_grid_images_with_detection):
+        """Test that sliced images have GRID_SECTION metadata."""
+        from phenotypic.tools.constants_ import METADATA, IMAGE_TYPES
+
+        grid_image = plate_grid_images_with_detection
+        sliced = grid_image.grid[0:12]
+
+        # Check metadata marks it as GRID_SECTION
+        image_type = sliced.metadata.get(METADATA.IMAGE_TYPE)
+        assert image_type == IMAGE_TYPES.GRID_SECTION.value
+
+    @timeit
+    def test_grid_accessor_slice_object_filtering(self, plate_grid_images_with_detection):
+        """Test that sliced images have filtered objects."""
+        grid_image = plate_grid_images_with_detection
+
+        # Get first row
+        first_row = grid_image.grid[0:12]
+
+        # Should have objects (or be empty if no objects in first row)
+        assert first_row.objects is not None
+        # Object map should be valid (unsigned integer dtype)
+        assert np.issubdtype(first_row.objmap[:].dtype, np.integer)
+
+    @timeit
+    def test_grid_accessor_invalid_tuple_length_raises_error(self, plate_grid_images_with_detection):
+        """Test that invalid tuple length raises IndexError."""
+        grid_image = plate_grid_images_with_detection
+
+        with pytest.raises(IndexError, match="length 2"):
+            _ = grid_image.grid[0, 1, 2]
+
+    @timeit
+    def test_grid_accessor_invalid_type_raises_error(self, plate_grid_images_with_detection):
+        """Test that invalid index type raises TypeError."""
+        grid_image = plate_grid_images_with_detection
+
+        with pytest.raises(TypeError):
+            _ = grid_image.grid["invalid"]
