@@ -13,7 +13,7 @@ import pytest
 from click.testing import CliRunner
 
 from phenotypic import Image, GridImage, ImagePipeline
-from phenotypic.phenotypicCLI import main, process_single_image
+from phenotypic.phenotypicCLI import main
 from phenotypic.prefab import RoundPeaksPipeline
 from phenotypic.data import load_synthetic_detection_image
 
@@ -27,8 +27,9 @@ def get_synthetic_plates_dir() -> Path:
     return phenotypic_dir / "data" / "synthetic_plates"
 
 
+@pytest.mark.skip(reason="v1.x CLI interface tests - v2.0 changed OUTPUT_DIR to optional -o flag. See test_cli_v2.py for v2.0 tests.")
 class TestPhenotypicCLI:
-    """Test suite for the PhenoTypic CLI command."""
+    """Test suite for the PhenoTypic CLI command (v1.x interface - deprecated in v2.0)."""
 
     @pytest.fixture
     def runner(self):
@@ -419,6 +420,7 @@ class TestPhenotypicCLI:
                 or (output_dir / "master_measurements.csv").exists()
         )
 
+    @pytest.mark.skip(reason="process_single_image moved to _cli_process_single in v2.0")
     def test_process_single_image_with_real_pipeline(self, temp_dirs):
         """Test process_single_image function with a real RoundPeaksPipeline and image."""
         input_dir, output_dir = temp_dirs
@@ -465,6 +467,7 @@ class TestPhenotypicCLI:
         png_files = list(overlay_dir.glob("*.png"))
         assert len(png_files) > 0
 
+    @pytest.mark.skip(reason="process_single_image moved to _cli_process_single in v2.0")
     def test_process_single_image_handles_exception(self, temp_dirs):
         """Test that process_single_image handles exceptions gracefully."""
         input_dir, output_dir = temp_dirs

@@ -1,229 +1,134 @@
 """
-PhenoTypic CLI
-==============
+PhenoTypic CLI (v2.0)
+=====================
 
 A command-line interface for executing PhenoTypic ImagePipelines on images or
-directories of images. This script allows for parallel processing of images (locally
-or via SLURM with submitit), saving both measurements and visual quality control
-overlays.
+directories of images with support for local parallel processing and autonomous
+SLURM cluster execution.
+
+Features:
+    - Automatic timestamped output directories
+    - Recursive directory support (1 level deep)
+    - Dry-run mode for previewing processing plans
+    - Sample processing mode for testing pipelines
+    - Resume capability with state tracking
+    - Local parallel execution (joblib)
+    - Autonomous SLURM execution with bash scripts
+    - HTML failure reports with tracebacks
+    - Progress monitoring tools
 
 Usage:
-    python -m phenotypic PIPELINE_JSON INPUT_PATH OUTPUT_DIR [OPTIONS]
-
-MIGRATION NOTE (v2.0+):
-    The --save-*-dir PATH flags have been replaced with --save-* boolean flags.
-    Directories are now auto-generated as OUTPUT_DIR/<layer_name>/.
-
-    Old: --save-rgb-dir ./custom/path/rgb
-    New: --save-rgb  (saves to OUTPUT_DIR/rgb/)
-
-Example:
-    python -m phenotypic my_pipeline.json ./raw_images ./results --n-jobs 4
-    python -m phenotypic my_pipeline.json ./example.jpg ./results --slurm --slurm-params slurm_partition=gpu --slurm-params mem_gb=32
+    python -m phenotypic PIPELINE_JSON INPUT_PATH [OPTIONS]
 
 Examples:
-    # Process a single image locally
-    uv run python -m phenotypic my_pipeline.json ./plate_A01.png ./results
+    # Basic usage with auto-generated output directory
+    uv run python -m phenotypic pipeline.json ./images
 
-    # Process a directory with local parallelism (all cores)
-    uv run python -m phenotypic my_pipeline.json ./raw_images ./results --n-jobs -1
+    # Specify output directory
+    uv run python -m phenotypic pipeline.json ./images -o ./results
 
-    # Process on SLURM with submitit, overriding partition and memory
-    uv run python -m phenotypic my_pipeline.json ./raw_images ./results --slurm \
-        --slurm-params slurm_partition=gpu --slurm-params mem_gb=32
+    # Dry-run to preview processing plan
+    uv run python -m phenotypic pipeline.json ./images --dry-run
 
-    # Override grid shape for plate images
-    uv run python -m phenotypic my_pipeline.json ./plates ./results --image-type GridImage \
-        --nrows 16 --ncols 24
+    # Sample 5 images per dataset for testing
+    uv run python -m phenotypic pipeline.json ./images --sample 5
 
-    # Save intermediate layers (RGB, grayscale, masks, objmaps)
-    # Output automatically saved to OUTPUT_DIR/rgb/, OUTPUT_DIR/gray/, etc.
-    uv run python -m phenotypic my_pipeline.json ./raw_images ./results \
-        --save-rgb \
-        --save-gray \
-        --save-enh-gray \
-        --save-objmask \
-        --save-objmap \
-        --save-objmap-rgb \
-        --rgb-ext png --gray-ext tiff --objmask-ext png
+    # Resume interrupted processing
+    uv run python -m phenotypic pipeline.json ./images -o ./results --resume
+
+    # SLURM execution (autonomous)
+    uv run python -m phenotypic pipeline.json ./images \
+        --slurm-kwds slurm_partition=compute slurm_account=proj mem_gb=16
+
+    # SLURM with progress monitoring
+    uv run python -m phenotypic pipeline.json ./images \
+        --slurm-kwds slurm_partition=compute slurm_account=proj \
+        --wait
+
+    # Save intermediate layers
+    uv run python -m phenotypic pipeline.json ./images \
+        --save-rgb --save-gray --save-objmask
+
+    # GridImage with custom dimensions
+    uv run python -m phenotypic pipeline.json ./plates \
+        --image-type GridImage --nrows 16 --ncols 24
+
+Migration Notes (v1.x → v2.0):
+    - OUTPUT_DIR is now optional (generates timestamped dir if not provided)
+    - Use -o/--output-dir instead of positional OUTPUT_DIR argument
+    - --slurm-params KEY=VALUE replaced with --slurm-kwds KEY=VALUE (space-separated)
+    - Recursive directory processing now preserves subdirectory hierarchy
 """
 
-import ast
 import sys
-import click
-import pandas as pd
-import matplotlib
-import matplotlib.pyplot as plt
+from datetime import datetime
 from pathlib import Path
-from joblib import Parallel, delayed
-from typing import Optional, Type, Dict, Any, Iterable, List, Sequence
+from typing import Optional, Sequence
+
+import click
 
 from phenotypic import Image, GridImage, ImagePipeline
-from phenotypic.tools.constants_ import IO
+from phenotypic._core._cli_directory_scanner import (
+    generate_timestamped_output_dir,
+    organize_by_dataset,
+    scan_directory_structure,
+)
+from phenotypic._core._cli_execution_strategies import create_execution_strategy
+from phenotypic._core._cli_interactive import (
+    execute_dry_run,
+    get_sample_datasets,
+)
+from phenotypic._core._cli_output_manager import OutputManager
+from phenotypic._core._cli_report_generator import HTMLReportGenerator
+from phenotypic._core._cli_state_management import (
+    create_initial_state,
+    get_remaining_images_for_datasets,
+    load_processing_state,
+    save_processing_state,
+    validate_resume_compatibility,
+)
+from phenotypic._core._cli_types import ExecutionConfig
+from phenotypic._core._cli_validation import full_validation
 
-# Set non-interactive backend for headless execution
-matplotlib.use("Agg")
 
-
-def process_single_image(
-    image_path: Path,
-    meas_dir: Path,
-    overlay_dir: Path,
-    pipeline: ImagePipeline,
-    image_cls: Type[Image],
-    read_kwargs: Dict[str, Any],
-    save_rgb_dir: Optional[Path] = None,
-    save_gray_dir: Optional[Path] = None,
-    save_enh_gray_dir: Optional[Path] = None,
-    save_objmask_dir: Optional[Path] = None,
-    save_objmap_dir: Optional[Path] = None,
-    save_objmap_label2rgb_dir: Optional[Path] = None,
-    rgb_ext: str = ".tiff",
-    gray_ext: str = ".tiff",
-    enh_gray_ext: str = ".tiff",
-    objmask_ext: str = ".png",
-    objmap_ext: str = ".png",
-    objmap_rgb_ext: str = ".png",
-) -> Optional[pd.DataFrame]:
+def _parse_slurm_kwds(slurm_kwds: Sequence[str]) -> dict:
     """
-    Processes a single image of a microbe colony on solid media agar by applying an
-    image processing pipeline, generating measurements, and creating a graphical
-    overlay output. This function is highly versatile, allowing the user to control
-    how images are read, analyzed, and stored based on provided arguments.
+    Parse space-separated KEY=VALUE pairs into dictionary.
 
     Args:
-        image_path (Path):
-            Path to the image file representing the microbe colony on agar.
-            Adjusting this variable changes which colony image is analyzed.
-        meas_dir (Path):
-            Directory where the measurement results (CSV) will be saved.
-            The choice of directory affects the organization of analysis
-            results and resultant data pipeline workflows.
-        overlay_dir (Path):
-            Directory for saving visual overlays. This allows inspection of
-            how the overlay corresponds to the processed regions in the image.
-            Choose a directory accessible to tools used for review.
-        pipeline (ImagePipeline):
-            A sequence of image processing steps applied to the input image.
-            The pipeline heavily influences the analysis' sensitivity and accuracy
-            in extracting colony features like size, shape, or density.
-        image_cls (Type[Image]):
-            Class responsible for reading and processing the input image. Changing
-            this affects how the image format is handled (e.g., handling raw images
-            produced in specific microscopy settings).
-        read_kwargs (Dict[str, Any]):
-            Parameters passed when reading the image (e.g., color modes, compression).
-            Modifying these parameters tailors how images are interpreted and may
-            change the fidelity of image data used in downstream analyses.
+        slurm_kwds: Sequence of "KEY=VALUE" strings
 
     Returns:
-        Optional[pd.DataFrame]:
-            A DataFrame containing microbiological measurements for the processed
-            image, such as colony area, perimeter, and optical density. If processing
-            fails, returns None. Adjustments in inputs or pipeline steps directly
-            affect the resulting metrics.
+        Dictionary of parsed parameters
 
     Raises:
-        This function handles all internal exceptions and reports processing failures
-        with user-friendly messages, allowing review of errors without interrupting a
-        batch process.
+        click.BadParameter: If parsing fails
     """
-    try:
-        # Create specific output path for this image's results
-        # We use the image stem for naming
-        image_stem = image_path.stem
+    import ast
 
-        # Load image
-        # We need to handle rawpy_params if needed, but for CLI we'll stick to basics for now
-        image = image_cls.imread(image_path, **read_kwargs)
-
-        # Execute pipeline
-        # We use inplace=True to save memory, though pipeline operations might copy internally
-        meas = pipeline.apply_and_measure(image, inplace=True)
-
-        # Save measurements for this individual image
-        meas_path = meas_dir / f"{image_stem}.csv"
-        meas.to_csv(meas_path, index=False)
-
-        # Generate and save overlay
-        # We suppress the plot display since we are in a CLI
-        fig, ax = image.show_overlay()
-        overlay_path = overlay_dir / f"{image_stem}.png"
-        fig.savefig(overlay_path, bbox_inches="tight")
-        plt.close(fig)
-
-        # Optional intermediate exports
-        if save_rgb_dir:
-            _maybe_imsave(image.rgb, save_rgb_dir / f"{image_stem}{rgb_ext}")
-        if save_gray_dir:
-            _maybe_imsave(image.gray, save_gray_dir / f"{image_stem}{gray_ext}")
-        if save_enh_gray_dir:
-            _maybe_imsave(
-                image.enh_gray, save_enh_gray_dir / f"{image_stem}{enh_gray_ext}"
-            )
-        if save_objmask_dir:
-            _maybe_imsave(image.objmask, save_objmask_dir / f"{image_stem}{objmask_ext}")
-        if save_objmap_dir:
-            _maybe_imsave(image.objmap, save_objmap_dir / f"{image_stem}{objmap_ext}")
-        if save_objmap_label2rgb_dir:
-            _maybe_imsave(
-                image.objmap,
-                save_objmap_label2rgb_dir / f"{image_stem}{objmap_rgb_ext}",
-                use_label2rgb=True,
-            )
-
-        return meas
-
-    except Exception as e:
-        click.echo(f"Error processing {image_path.name}: {str(e)}", err=True)
-        return None
-
-
-def _collect_image_paths(input_path: Path, extensions: Iterable[str]) -> List[Path]:
-    """Return all valid image paths from a directory or a single file."""
-    valid_exts = {ext.lower() for ext in extensions}
-
-    if input_path.is_dir():
-        image_paths = [
-            p
-            for p in input_path.iterdir()
-            if p.is_file() and p.suffix.lower() in valid_exts
-        ]
-        if not image_paths:
-            raise click.ClickException(f"No valid images found in {input_path}")
-        return sorted(image_paths)
-
-    if input_path.is_file():
-        if input_path.suffix.lower() not in valid_exts:
-            raise click.ClickException(
-                f"{input_path} is not a supported image type. "
-                f"Supported extensions: {', '.join(sorted(valid_exts))}"
-            )
-        return [input_path]
-
-    raise click.ClickException(f"{input_path} is not a valid file or directory")
-
-
-def _parse_slurm_params(slurm_params: Sequence[str]) -> Dict[str, Any]:
-    """Parse KEY=VALUE pairs from --slurm-params into a dictionary."""
-    parsed: Dict[str, Any] = {}
-    for param in slurm_params:
-        if "=" not in param:
+    parsed = {}
+    for kwd in slurm_kwds:
+        if "=" not in kwd:
             raise click.BadParameter(
-                "--slurm-params must be provided as KEY=VALUE", param_hint="--slurm-params"
+                "--slurm-kwds must be KEY=VALUE pairs",
+                param_hint="--slurm-kwds",
             )
-        key, value = param.split("=", 1)
+
+        key, value = kwd.split("=", 1)
         key = key.strip()
         value = value.strip()
 
         if not key:
             raise click.BadParameter(
-                "SLURM parameter keys cannot be empty", param_hint="--slurm-params"
+                "SLURM parameter keys cannot be empty",
+                param_hint="--slurm-kwds",
             )
 
+        # Try to parse value as Python literal
         try:
             parsed_value = ast.literal_eval(value)
-        except Exception:
+        except (ValueError, SyntaxError):
+            # Keep as string if not a valid literal
             parsed_value = value
 
         parsed[key] = parsed_value
@@ -231,255 +136,199 @@ def _parse_slurm_params(slurm_params: Sequence[str]) -> Dict[str, Any]:
     return parsed
 
 
-def _normalize_extension(ext: Optional[str], default_ext: str) -> str:
-    """Normalize file extension to include leading dot and validate against allowed set."""
+def _normalize_extension(ext: str, default: str = ".tiff") -> str:
+    """Normalize extension to include leading dot."""
     if not ext:
-        ext = default_ext
+        ext = default
     ext = ext.lower()
     if not ext.startswith("."):
         ext = f".{ext}"
+
     allowed = {".png", ".tif", ".tiff", ".jpg", ".jpeg"}
     if ext not in allowed:
         raise click.BadParameter(
-            f"Unsupported extension '{ext}'. Allowed: {', '.join(sorted(allowed))}."
+            f"Unsupported extension '{ext}'. "
+            f"Allowed: {', '.join(sorted(allowed))}"
         )
+
     return ext
-
-
-def _maybe_imsave(accessor, filepath: Path, **kwargs) -> None:
-    """Safely save an accessor array and emit a friendly message on failure."""
-    try:
-        if hasattr(accessor, "isempty") and accessor.isempty():
-            click.echo(f"Skipping save for {filepath.name}: accessor is empty", err=True)
-            return
-        accessor.imsave(filepath=filepath, **kwargs)
-    except Exception as e:
-        click.echo(f"Failed to save {filepath}: {e}", err=True)
-
-
-def _create_submitit_executor(slurm_params: Dict[str, Any]):
-    """Create and configure a submitit executor with provided SLURM parameters.
-
-    Args:
-        slurm_params: Dictionary of SLURM configuration parameters.
-            If 'folder' key is not provided, defaults to './submitit_logs'.
-
-    Returns:
-        submitit.AutoExecutor: Configured executor ready for job submission.
-
-    Raises:
-        ImportError: If submitit is not installed.
-    """
-    try:
-        import submitit
-    except ImportError as e:
-        raise click.ClickException(
-            "submitit backend requested but submitit is not installed. "
-            "Install with: pip install phenotypic[cluster]"
-        ) from e
-
-    # Extract folder parameter or use default
-    folder = slurm_params.pop('folder', None)
-    if folder is None:
-        folder = Path.cwd() / "submitit_logs"
-
-    # Ensure folder exists
-    Path(folder).mkdir(parents=True, exist_ok=True)
-
-    # Create and configure executor
-    executor = submitit.AutoExecutor(folder=folder)
-    executor.update_parameters(**slurm_params)
-
-    return executor
-
-
-def _run_submitit_jobs(
-    image_paths: List[Path],
-    meas_dir: Path,
-    overlay_dir: Path,
-    pipeline: ImagePipeline,
-    image_cls: Type[Image],
-    read_kwargs: Dict[str, Any],
-    slurm_params: Dict[str, Any],
-    save_rgb_dir: Optional[Path] = None,
-    save_gray_dir: Optional[Path] = None,
-    save_enh_gray_dir: Optional[Path] = None,
-    save_objmask_dir: Optional[Path] = None,
-    save_objmap_dir: Optional[Path] = None,
-    save_objmap_label2rgb_dir: Optional[Path] = None,
-    rgb_ext: str = ".tiff",
-    gray_ext: str = ".tiff",
-    enh_gray_ext: str = ".tiff",
-    objmask_ext: str = ".png",
-    objmap_ext: str = ".png",
-    objmap_rgb_ext: str = ".png",
-) -> List[Optional[pd.DataFrame]]:
-    """Submit image processing jobs to SLURM via submitit."""
-    executor = _create_submitit_executor(slurm_params=slurm_params)
-    jobs = [
-        executor.submit(
-            process_single_image,
-            path,
-            meas_dir,
-            overlay_dir,
-            pipeline,
-            image_cls,
-            read_kwargs,
-            save_rgb_dir,
-            save_gray_dir,
-            save_enh_gray_dir,
-            save_objmask_dir,
-            save_objmap_dir,
-            save_objmap_label2rgb_dir,
-            rgb_ext,
-            gray_ext,
-            enh_gray_ext,
-            objmask_ext,
-            objmap_ext,
-            objmap_rgb_ext,
-        )
-        for path in image_paths
-    ]
-
-    click.echo(f"Submitted {len(jobs)} job(s) to SLURM. Waiting for completion...")
-
-    results: List[Optional[pd.DataFrame]] = []
-    for job in jobs:
-        try:
-            results.append(job.result())
-        except Exception as e:
-            job_id = getattr(job, "job_id", "unknown")
-            click.echo(f"SLURM job {job_id} failed: {e}", err=True)
-            results.append(None)
-
-    return results
 
 
 @click.command()
 @click.argument(
-    "pipeline_json", type=click.Path(exists=True, dir_okay=False, path_type=Path)
+    "pipeline_json",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
 )
 @click.argument(
-    "input_path", type=click.Path(exists=True, dir_okay=True, file_okay=True, path_type=Path)
+    "input_path",
+    type=click.Path(exists=True, dir_okay=True, file_okay=True, path_type=Path),
 )
-@click.argument("output_dir", type=click.Path(path_type=Path))
+@click.option(
+    "-o",
+    "--output-dir",
+    type=click.Path(path_type=Path),
+    default=None,
+    help="Output directory (auto-generated if not specified)",
+)
 @click.option(
     "--image-type",
     type=click.Choice(["Image", "GridImage"], case_sensitive=False),
     default="GridImage",
-    help="Type of image object to instantiate.",
+    show_default=True,
+    help="Type of image object to instantiate",
 )
 @click.option(
     "--nrows",
     type=int,
     default=8,
     show_default=True,
-    help="Number of rows for GridImage.",
+    help="Number of rows for GridImage",
 )
 @click.option(
     "--ncols",
     type=int,
     default=12,
     show_default=True,
-    help="Number of columns for GridImage.",
+    help="Number of columns for GridImage",
 )
 @click.option(
-    "--bit-depth", type=int, default=None, help="Bit depth of input images (8 or 16)."
+    "--bit-depth",
+    type=int,
+    default=None,
+    help="Bit depth of input images (8 or 16)",
 )
 @click.option(
     "--n-jobs",
     type=int,
     default=-1,
     show_default=True,
-    help="Number of parallel jobs. -1 uses all available cores.",
+    help="Number of parallel jobs for local execution (-1 = all cores)",
 )
 @click.option(
-    "--slurm",
-    is_flag=True,
-    help="Use submitit to run jobs on a SLURM cluster instead of local joblib.",
-)
-@click.option(
-    "--slurm-params",
+    "--slurm-kwds",
     multiple=True,
-    help="SLURM parameters as KEY=VALUE pairs (e.g., --slurm-params slurm_partition=gpu --slurm-params mem_gb=32).",
+    help="SLURM parameters as space-separated KEY=VALUE pairs "
+    "(e.g., --slurm-kwds slurm_partition=compute mem_gb=16)",
+)
+@click.option(
+    "--force-local",
+    is_flag=True,
+    help="Force local execution even if SLURM available",
+)
+@click.option(
+    "--wait",
+    is_flag=True,
+    help="Wait and monitor SLURM jobs (default: return immediately)",
 )
 @click.option(
     "--save-rgb",
     is_flag=True,
-    help="Save RGB images from Image.rgb to OUTPUT_DIR/rgb/. File extension controlled by --rgb-ext.",
+    help="Save RGB images to OUTPUT_DIR/rgb/",
 )
 @click.option(
     "--save-gray",
     is_flag=True,
-    help="Save grayscale images from Image.gray to OUTPUT_DIR/gray/. File extension controlled by --gray-ext.",
+    help="Save grayscale images to OUTPUT_DIR/gray/",
 )
 @click.option(
     "--save-enh-gray",
     is_flag=True,
-    help="Save enhanced grayscale images from Image.enh_gray to OUTPUT_DIR/enh_gray/. File extension controlled by --enh-gray-ext.",
+    help="Save enhanced grayscale to OUTPUT_DIR/enh_gray/",
 )
 @click.option(
     "--save-objmask",
     is_flag=True,
-    help="Save binary object masks from Image.objmask to OUTPUT_DIR/objmask/. File extension controlled by --objmask-ext.",
+    help="Save object masks to OUTPUT_DIR/objmask/",
 )
 @click.option(
     "--save-objmap",
     is_flag=True,
-    help="Save label maps from Image.objmap to OUTPUT_DIR/objmap/. File extension controlled by --objmap-ext.",
+    help="Save object maps to OUTPUT_DIR/objmap/",
 )
 @click.option(
     "--save-objmap-rgb",
     is_flag=True,
-    help="Save label maps rendered with label2rgb to OUTPUT_DIR/objmap_rgb/. File extension controlled by --objmap-rgb-ext.",
+    help="Save object map RGB to OUTPUT_DIR/objmap_rgb/",
 )
 @click.option(
     "--rgb-ext",
     default="tiff",
     show_default=True,
-    help="File extension for Image.rgb saves (e.g., tiff, png, jpg). Default is TIFF.",
+    help="File extension for RGB saves",
 )
 @click.option(
     "--gray-ext",
     default="tiff",
     show_default=True,
-    help="File extension for Image.gray saves. Default is TIFF.",
+    help="File extension for grayscale saves",
 )
 @click.option(
     "--enh-gray-ext",
     default="tiff",
     show_default=True,
-    help="File extension for Image.enh_gray saves. Default is TIFF.",
+    help="File extension for enhanced grayscale saves",
 )
 @click.option(
     "--objmask-ext",
     default="png",
     show_default=True,
-    help="File extension for Image.objmask saves. Default is PNG.",
+    help="File extension for object mask saves",
 )
 @click.option(
     "--objmap-ext",
     default="png",
     show_default=True,
-    help="File extension for Image.objmap saves. Default is PNG.",
+    help="File extension for object map saves",
 )
 @click.option(
     "--objmap-rgb-ext",
     default="png",
     show_default=True,
-    help="File extension for label2rgb Image.objmap saves. Default is PNG.",
+    help="File extension for object map RGB saves",
+)
+@click.option(
+    "--include-dataset-column",
+    is_flag=True,
+    help="Add 'Dataset' column to master_measurements.csv",
+)
+@click.option(
+    "--dry-run",
+    is_flag=True,
+    help="Preview processing plan without executing",
+)
+@click.option(
+    "--sample",
+    type=int,
+    default=None,
+    help="Process N random images per dataset for testing",
+)
+@click.option(
+    "--resume",
+    is_flag=True,
+    help="Resume interrupted processing from checkpoint",
+)
+@click.option(
+    "--retry-failures",
+    is_flag=True,
+    help="Include failed images when resuming (requires --resume)",
+)
+@click.option(
+    "--skip-validation",
+    is_flag=True,
+    help="Skip pipeline validation (for advanced users)",
 )
 def main(
     pipeline_json: Path,
     input_path: Path,
-    output_dir: Path,
+    output_dir: Optional[Path],
     image_type: str,
     nrows: int,
     ncols: int,
     bit_depth: Optional[int],
     n_jobs: int,
-    slurm: bool,
-    slurm_params: Sequence[str],
+    slurm_kwds: Sequence[str],
+    force_local: bool,
+    wait: bool,
     save_rgb: bool,
     save_gray: bool,
     save_enh_gray: bool,
@@ -492,254 +341,254 @@ def main(
     objmask_ext: str,
     objmap_ext: str,
     objmap_rgb_ext: str,
+    include_dataset_column: bool,
+    dry_run: bool,
+    sample: Optional[int],
+    resume: bool,
+    retry_failures: bool,
+    skip_validation: bool,
 ):
     """
-    Execute a PhenoTypic pipeline on an image file or directory of images.
+    Execute a PhenoTypic pipeline on images.
 
-    PIPELINE_JSON: Path to the exported pipeline configuration file.
-    INPUT_PATH: Single image file or directory containing images to process.
-    OUTPUT_DIR: Directory where results (CSVs and overlays) will be saved.
+    PIPELINE_JSON: Path to pipeline configuration file
 
-    The CLI supports two execution modes:
-        - Local (default): joblib-backed parallelism controlled by --n-jobs.
-        - SLURM: enable with --slurm to submit jobs via submitit; customize with
-          --slurm-params KEY=VALUE (e.g., slurm_partition=gpu mem_gb=32).
-
-    Optional exports (saved to OUTPUT_DIR subdirectories; defaults: rgb/gray/enh_gray=tiff, masks/objmap=png):
-        --save-rgb                    Save Image.rgb arrays to OUTPUT_DIR/rgb/.
-        --save-gray                   Save Image.gray arrays to OUTPUT_DIR/gray/.
-        --save-enh-gray               Save Image.enh_gray arrays to OUTPUT_DIR/enh_gray/.
-        --save-objmask                Save Image.objmask to OUTPUT_DIR/objmask/.
-        --save-objmap                 Save Image.objmap label maps to OUTPUT_DIR/objmap/.
-        --save-objmap-rgb             Save Image.objmap rendered with label2rgb to OUTPUT_DIR/objmap_rgb/.
-        --rgb-ext EXT                 File extension for RGB saves (default: tiff).
-        --gray-ext EXT                File extension for grayscale saves (default: tiff).
-        --enh-gray-ext EXT            File extension for enhanced gray saves (default: tiff).
-        --objmask-ext EXT             File extension for objmask saves (default: png).
-        --objmap-ext EXT              File extension for objmap saves (default: png).
-        --objmap-rgb-ext EXT          File extension for label2rgb objmap saves (default: png).
-
-    Examples:
-        uv run python -m phenotypic my_pipeline.json ./raw_images ./results --n-jobs 8
-        uv run python -m phenotypic my_pipeline.json ./plate.png ./results --image-type Image
-        uv run python -m phenotypic my_pipeline.json ./raw_images ./results --save-rgb --save-gray --rgb-ext png
-        uv run python -m phenotypic my_pipeline.json ./raw_images ./results --slurm \
-            --slurm-params slurm_partition=gpu --slurm-params mem_gb=32
-
-    SLURM + submitit quick reference (use with --slurm-params KEY=VALUE):
-        Mandatory runtime params (always set):
-            slurm_partition=<partition>          # SBATCH --partition
-            slurm_account=<account>              # SBATCH --account
-            slurm_time=HH:MM:SS                  # SBATCH --time
-            slurm_mem=<size> OR slurm_mem_per_cpu=<size>  # SBATCH --mem / --mem-per-cpu (pick one)
-            slurm_cpus_per_task=<N>              # SBATCH --cpus-per-task
-
-        Strongly recommended defaults:
-            slurm_job_name=<name>                # SBATCH --job-name
-            slurm_output=logs/%j.out             # SBATCH --output
-            slurm_error=logs/%j.err              # SBATCH --error
-            slurm_requeue=True                   # SBATCH --requeue
-            slurm_signal_delay_s=120             # SBATCH --signal=USR1@120
-
-        Conditional but high-value:
-            slurm_gpus_per_node=<N> or slurm_gres=\"gpu:<N>\"   # SBATCH --gpus-per-node / --gres
-            nodes=<N> and slurm_ntasks=<N>                      # SBATCH --nodes / --ntasks
-            # Arrays: use executor.map_array(...)
-
-        Guardrails:
-            - Always set partition, account, time, memory, cpus
-            - Never set both slurm_mem and slurm_mem_per_cpu
-            - Do not assume implicit GPUs; request explicitly if needed
-            - Prefer conservative resource requests
-
-        Canonical minimal baseline:
-            #SBATCH --partition=<partition>
-            #SBATCH --account=<account>
-            #SBATCH --time=HH:MM:SS
-            #SBATCH --mem=<size>
-            #SBATCH --cpus-per-task=<N>
-            #SBATCH --job-name=<name>
-            #SBATCH --output=logs/%j.out
-            #SBATCH --error=logs/%j.err
-            #SBATCH --requeue
-            #SBATCH --signal=USR1@120
-
-            executor.update_parameters(
-                slurm_partition="<partition>",
-                slurm_account="<account>",
-                slurm_time="HH:MM:SS",
-                slurm_mem="<size>",
-                slurm_cpus_per_task=<N>,
-                slurm_job_name="<name>",
-                slurm_output="logs/%j.out",
-                slurm_error="logs/%j.err",
-                slurm_requeue=True,
-                slurm_signal_delay_s=120,
-            )
+    INPUT_PATH: Image file or directory to process
     """
-
-    # Setup
-    output_dir.mkdir(parents=True, exist_ok=True)
-
-    meas_dir = output_dir / "measurements"
-    meas_dir.mkdir(parents=True, exist_ok=True)
-
-    overlay_dir = output_dir / "overlays"
-    overlay_dir.mkdir(parents=True, exist_ok=True)
-
-    # Compute optional directory paths based on flags
-    save_rgb_dir = output_dir / "rgb" if save_rgb else None
-    save_gray_dir = output_dir / "gray" if save_gray else None
-    save_enh_gray_dir = output_dir / "enh_gray" if save_enh_gray else None
-    save_objmask_dir = output_dir / "objmask" if save_objmask else None
-    save_objmap_dir = output_dir / "objmap" if save_objmap else None
-    save_objmap_rgb_dir = output_dir / "objmap_rgb" if save_objmap_rgb else None
-
-    for optional_dir in [
-        save_rgb_dir,
-        save_gray_dir,
-        save_enh_gray_dir,
-        save_objmask_dir,
-        save_objmap_dir,
-        save_objmap_rgb_dir,
-    ]:
-        if optional_dir:
-            optional_dir.mkdir(parents=True, exist_ok=True)
-
     try:
-        rgb_ext = _normalize_extension(rgb_ext, ".tiff")
-        gray_ext = _normalize_extension(gray_ext, ".tiff")
-        enh_gray_ext = _normalize_extension(enh_gray_ext, ".tiff")
-        objmask_ext = _normalize_extension(objmask_ext, ".png")
-        objmap_ext = _normalize_extension(objmap_ext, ".png")
-        objmap_rgb_ext = _normalize_extension(objmap_rgb_ext, ".png")
-    except click.BadParameter as e:
-        click.echo(str(e), err=True)
-        sys.exit(1)
+        # Validate extension arguments
+        try:
+            rgb_ext = _normalize_extension(rgb_ext, ".tiff")
+            gray_ext = _normalize_extension(gray_ext, ".tiff")
+            enh_gray_ext = _normalize_extension(enh_gray_ext, ".tiff")
+            objmask_ext = _normalize_extension(objmask_ext, ".png")
+            objmap_ext = _normalize_extension(objmap_ext, ".png")
+            objmap_rgb_ext = _normalize_extension(objmap_rgb_ext, ".png")
+        except click.BadParameter as e:
+            click.echo(str(e), err=True)
+            sys.exit(1)
 
-    click.echo(f"Loading pipeline from {pipeline_json}...")
-    try:
-        pipeline = ImagePipeline.from_json(pipeline_json)
+        # Parse SLURM kwargs
+        slurm_kwds_dict = {}
+        if slurm_kwds:
+            try:
+                slurm_kwds_dict = _parse_slurm_kwds(slurm_kwds)
+            except click.BadParameter as e:
+                click.echo(str(e), err=True)
+                sys.exit(1)
+
+        # Validate flags
+        if retry_failures and not resume:
+            click.echo(
+                "Error: --retry-failures requires --resume", err=True
+            )
+            sys.exit(1)
+
+        # Create ExecutionConfig
+        config = ExecutionConfig(
+            pipeline_json=pipeline_json,
+            input_path=input_path,
+            output_dir=output_dir,
+            image_type=image_type,
+            nrows=nrows,
+            ncols=ncols,
+            bit_depth=bit_depth,
+            n_jobs=n_jobs,
+            slurm_kwds=slurm_kwds_dict,
+            force_local=force_local,
+            wait=wait,
+            save_rgb=save_rgb,
+            save_gray=save_gray,
+            save_enh_gray=save_enh_gray,
+            save_objmask=save_objmask,
+            save_objmap=save_objmap,
+            save_objmap_rgb=save_objmap_rgb,
+            rgb_ext=rgb_ext,
+            gray_ext=gray_ext,
+            enh_gray_ext=enh_gray_ext,
+            objmask_ext=objmask_ext,
+            objmap_ext=objmap_ext,
+            objmap_rgb_ext=objmap_rgb_ext,
+            include_dataset_column=include_dataset_column,
+            dry_run=dry_run,
+            sample=sample,
+            resume=resume,
+            retry_failures=retry_failures,
+            skip_validation=skip_validation,
+        )
+
+        # Generate output directory if not provided
+        if output_dir is None:
+            output_dir = generate_timestamped_output_dir()
+            click.echo(f"Auto-generated output directory: {output_dir}")
+
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        # Scan directory structure
+        click.echo(f"Scanning {input_path}...")
+        try:
+            image_paths_by_dataset = scan_directory_structure(input_path)
+            datasets = organize_by_dataset(
+                image_paths_by_dataset, output_dir
+            )
+        except (FileNotFoundError, ValueError) as e:
+            click.echo(f"Error: {e}", err=True)
+            sys.exit(1)
+
+        total_images = sum(len(d.images) for d in datasets)
+        click.echo(f"Found {total_images} images in {len(datasets)} dataset(s)")
+
+        # Validate configuration
+        if not config.skip_validation:
+            click.echo("Validating pipeline configuration...")
+            is_valid, errors = full_validation(config, datasets)
+            if not is_valid:
+                click.echo("Validation failed:", err=True)
+                for error in errors:
+                    click.echo(f"  - {error}", err=True)
+                sys.exit(1)
+            click.echo("✓ Validation passed")
+
+        # Handle dry-run mode
+        if config.dry_run:
+            execute_dry_run(config, datasets, output_dir)
+            sys.exit(0)
+
+        # Handle sample mode
+        if config.sample is not None:
+            click.echo(
+                f"\nSample mode: processing {config.sample} "
+                f"images per dataset"
+            )
+            datasets = get_sample_datasets(
+                datasets, config.sample, output_dir
+            )
+            total_images = sum(len(d.images) for d in datasets)
+            click.echo(f"Processing {total_images} sample images\n")
+
+        # Handle resume mode
+        if config.resume:
+            state = load_processing_state(output_dir)
+            if state is None:
+                click.echo(
+                    "Error: No processing state found for resume", err=True
+                )
+                click.echo(
+                    "Cannot resume - no previous processing found in "
+                    f"{output_dir}",
+                    err=True,
+                )
+                sys.exit(1)
+
+            is_compatible, error = validate_resume_compatibility(
+                state, config
+            )
+            if not is_compatible:
+                click.echo(
+                    f"Error: Cannot resume - {error}", err=True
+                )
+                sys.exit(1)
+
+            # Get remaining images
+            datasets = get_remaining_images_for_datasets(
+                state, datasets, config.retry_failures
+            )
+            remaining_images = sum(len(d.images) for d in datasets)
+
+            if remaining_images == 0:
+                click.echo("✓ All images already processed!")
+                sys.exit(0)
+
+            click.echo(
+                f"Resuming processing ({remaining_images} "
+                f"images remaining)"
+            )
+            if config.retry_failures:
+                click.echo("  - Including previously failed images")
+
+        # Create initial state (or update if resuming)
+        state = create_initial_state(config, datasets, output_dir)
+        save_processing_state(state, output_dir)
+
+        # Create output manager
+        output_manager = OutputManager(
+            base_dir=output_dir,
+            save_layers={
+                "rgb": config.save_rgb,
+                "gray": config.save_gray,
+                "enh_gray": config.save_enh_gray,
+                "objmask": config.save_objmask,
+                "objmap": config.save_objmap,
+                "objmap_rgb": config.save_objmap_rgb,
+            },
+            extensions={
+                "rgb": config.rgb_ext,
+                "gray": config.gray_ext,
+                "enh_gray": config.enh_gray_ext,
+                "objmask": config.objmask_ext,
+                "objmap": config.objmap_ext,
+                "objmap_rgb": config.objmap_rgb_ext,
+            },
+            include_dataset_column=config.include_dataset_column,
+        )
+        output_manager.create_structure(datasets)
+
+        # Create execution strategy
+        strategy = create_execution_strategy(config, output_manager)
+
+        # Execute processing
+        execution_mode = "SLURM" if config.is_slurm_mode() else "local"
+        click.echo(f"\nStarting {execution_mode} processing...")
+
+        results = strategy.execute(datasets, output_dir)
+
+        # Aggregate master CSV (if we have completed results)
+        if results.total_completed > 0:
+            click.echo("\nAggregating measurements...")
+            master_path = output_manager.aggregate_master_csv(datasets)
+            click.echo(f"✓ Master measurements: {master_path}")
+
+        # Generate HTML report
+        click.echo("Generating HTML report...")
+        report_gen = HTMLReportGenerator()
+        report_path = output_dir / "processing_report.html"
+        report_gen.generate_report(results, report_path)
+        click.echo(f"✓ Report: {report_path}")
+
+        # Print summary
+        click.echo("\n" + "=" * 60)
+        click.echo("PROCESSING COMPLETE")
+        click.echo("=" * 60)
+        click.echo(f"Completed: {results.total_completed}/{results.total_images}")
+        click.echo(f"Failed:    {results.total_failed}")
+        click.echo(
+            f"Success rate: {results.success_rate*100:.1f}%"
+        )
+        click.echo(f"Duration: {_format_duration(results.duration)}")
+        click.echo(f"\nResults saved to: {output_dir}")
+
+        # Exit with appropriate code
+        sys.exit(0 if results.total_failed == 0 else 1)
+
+    except KeyboardInterrupt:
+        click.echo("\n\nInterrupted by user", err=True)
+        sys.exit(130)
     except Exception as e:
-        click.echo(f"Failed to load pipeline: {e}", err=True)
+        click.echo(f"\nUnexpected error: {e}", err=True)
+        import traceback
+
+        traceback.print_exc()
         sys.exit(1)
 
-    # Determine Image Class and Arguments
-    if image_type == "GridImage":
-        image_cls = GridImage
-        read_kwargs = {"nrows": nrows, "ncols": ncols}
+
+def _format_duration(seconds: float) -> str:
+    """Format duration as human-readable string."""
+    if seconds < 60:
+        return f"{seconds:.1f}s"
+    elif seconds < 3600:
+        return f"{seconds/60:.1f} min"
     else:
-        image_cls = Image
-        read_kwargs = {}
-
-    if bit_depth:
-        read_kwargs["bit_depth"] = bit_depth
-
-    if slurm_params and not slurm:
-        raise click.ClickException("--slurm-params requires --slurm to be set.")
-
-    extensions = IO.ACCEPTED_FILE_EXTENSIONS + IO.RAW_FILE_EXTENSIONS
-    try:
-        image_paths = _collect_image_paths(input_path, extensions)
-    except click.ClickException as e:
-        click.echo(str(e), err=True)
-        sys.exit(1)
-
-    if len(image_paths) == 1:
-        click.echo(f"Processing single image: {image_paths[0].name}")
-    else:
-        backend_desc = "submitit (SLURM)" if slurm else f"joblib with n_jobs={n_jobs}"
-        click.echo(
-            f"Found {len(image_paths)} images under {input_path}. "
-            f"Starting processing using {backend_desc}..."
-        )
-
-    if slurm:
-        slurm_kwargs = _parse_slurm_params(slurm_params)
-        results = _run_submitit_jobs(
-            image_paths,
-            meas_dir,
-            overlay_dir,
-            pipeline,
-            image_cls,
-            read_kwargs,
-            slurm_kwargs,
-            save_rgb_dir,
-            save_gray_dir,
-            save_enh_gray_dir,
-            save_objmask_dir,
-            save_objmap_dir,
-            save_objmap_rgb_dir,
-            rgb_ext,
-            gray_ext,
-            enh_gray_ext,
-            objmask_ext,
-            objmap_ext,
-            objmap_rgb_ext,
-        )
-    elif len(image_paths) == 1:
-        results = [
-            process_single_image(
-                image_paths[0],
-                meas_dir,
-                overlay_dir,
-                pipeline,
-                image_cls,
-                read_kwargs,
-                save_rgb_dir,
-                save_gray_dir,
-                save_enh_gray_dir,
-                save_objmask_dir,
-                save_objmap_dir,
-                save_objmap_rgb_dir,
-                rgb_ext,
-                gray_ext,
-                enh_gray_ext,
-                objmask_ext,
-                objmap_ext,
-                objmap_rgb_ext,
-            )
-        ]
-    else:
-        # Parallel Execution with joblib
-        results = Parallel(n_jobs=n_jobs)(
-            delayed(process_single_image)(
-                path,
-                meas_dir,
-                overlay_dir,
-                pipeline,
-                image_cls,
-                read_kwargs,
-                save_rgb_dir,
-                save_gray_dir,
-                save_enh_gray_dir,
-                save_objmask_dir,
-                save_objmap_dir,
-                save_objmap_rgb_dir,
-                rgb_ext,
-                gray_ext,
-                enh_gray_ext,
-                objmask_ext,
-                objmap_ext,
-                objmap_rgb_ext,
-            )
-            for path in image_paths
-        )
-
-    # Aggregate Results
-    valid_results = [res for res in results if res is not None]
-
-    if valid_results:
-        click.echo(
-            f"Successfully processed {len(valid_results)}/{len(image_paths)} images."
-        )
-        master_df = pd.concat(valid_results, axis=0, ignore_index=True)
-        master_path = output_dir / "master_measurements.csv"
-        master_df.to_csv(master_path, index=False)
-        click.echo(f"Master measurements saved to {master_path}")
-    else:
-        click.echo("No images were successfully processed.", err=True)
-        sys.exit(1)
+        return f"{seconds/3600:.1f} hr"
 
 
 if __name__ == "__main__":
