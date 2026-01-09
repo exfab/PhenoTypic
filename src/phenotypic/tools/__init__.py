@@ -9,6 +9,7 @@ for persisting plate datasets and measurements.
 from .funcs_ import timed_execution, is_binary_mask
 from . import constants_, exceptions_, colourspaces_
 from .hdf_ import HDF
+from . import slurm_
 
 __all__ = [
     "timed_execution",
@@ -17,4 +18,5 @@ __all__ = [
     "exceptions_",
     "colourspaces_",
     "HDF",
+    "slurm_",
 ]

@@ -421,3 +421,370 @@ class ObjectMask(NapariLabelsMixin, SingleChannelAccessor):
         # possible, and automatically converted to 8-bit for JPEGs. This matches
         # the behaviour of ``ObjectMap`` whose backend is already ``uint16``.
         return (self._backend.toarray() > 0).astype(np.bool_)
+
+    def __and__(self, other) -> np.ndarray:
+        """Perform element-wise bitwise AND with the object mask.
+
+        Returns the element-wise logical AND between the mask and another operand.
+        This is useful for intersecting masks or filtering foreground regions based
+        on additional criteria.
+
+        Args:
+            other: Operand to AND with. Can be:
+                - ObjectMask: Uses its binary mask values
+                - np.ndarray or array-like: Must match mask shape
+                - bool: Applied to all mask elements
+
+        Returns:
+            np.ndarray: Binary array (dtype int) with AND results (values 0 or 1).
+
+        Raises:
+            ValueError: If array operand shape doesn't match mask shape.
+
+        Examples:
+            Intersect two masks to find overlapping regions:
+
+            >>> mask1 = image.objmask
+            >>> mask2 = other_image.objmask
+            >>> intersection = mask1 & mask2
+            >>> print(intersection.shape)
+            (1024, 1024)
+
+            Filter mask using a region of interest:
+
+            >>> roi = np.zeros(image.shape, dtype=bool)
+            >>> roi[100:500, 100:500] = True
+            >>> filtered_mask = image.objmask & roi
+        """
+        self_mask = self._backend.toarray() > 0
+
+        if isinstance(other, ObjectMask):
+            other_mask = other._backend.toarray() > 0
+        elif isinstance(other, bool):
+            other_mask = other
+        elif isinstance(other, (np.ndarray, list, tuple)):
+            other_arr = np.asarray(other)
+            if other_arr.shape != self.shape:
+                raise ValueError(
+                    f"Shape mismatch: mask shape {self.shape} != operand shape {other_arr.shape}"
+                )
+            other_mask = other_arr > 0
+        else:
+            return NotImplemented
+
+        result = self_mask & other_mask
+        return result.astype(int)
+
+    def __or__(self, other) -> np.ndarray:
+        """Perform element-wise bitwise OR with the object mask.
+
+        Returns the element-wise logical OR between the mask and another operand.
+        Useful for combining masks from different detections or merging foreground
+        regions.
+
+        Args:
+            other: Operand to OR with. Can be:
+                - ObjectMask: Uses its binary mask values
+                - np.ndarray or array-like: Must match mask shape
+                - bool: Applied to all mask elements
+
+        Returns:
+            np.ndarray: Binary array (dtype int) with OR results (values 0 or 1).
+
+        Raises:
+            ValueError: If array operand shape doesn't match mask shape.
+
+        Examples:
+            Combine detections from two different methods:
+
+            >>> from phenotypic.detect import OtsuDetector, CannyDetector
+            >>> otsu_result = OtsuDetector().operate(image)
+            >>> canny_result = CannyDetector().operate(image)
+            >>> combined_mask = otsu_result.objmask | canny_result.objmask
+
+            Add a manually drawn region to existing detections:
+
+            >>> manual_region = np.zeros(image.shape, dtype=bool)
+            >>> manual_region[50:150, 50:150] = True
+            >>> expanded_mask = image.objmask | manual_region
+        """
+        self_mask = self._backend.toarray() > 0
+
+        if isinstance(other, ObjectMask):
+            other_mask = other._backend.toarray() > 0
+        elif isinstance(other, bool):
+            other_mask = other
+        elif isinstance(other, (np.ndarray, list, tuple)):
+            other_arr = np.asarray(other)
+            if other_arr.shape != self.shape:
+                raise ValueError(
+                    f"Shape mismatch: mask shape {self.shape} != operand shape {other_arr.shape}"
+                )
+            other_mask = other_arr > 0
+        else:
+            return NotImplemented
+
+        result = self_mask | other_mask
+        return result.astype(int)
+
+    def __xor__(self, other) -> np.ndarray:
+        """Perform element-wise bitwise XOR with the object mask.
+
+        Returns the element-wise logical XOR between the mask and another operand.
+        Useful for finding symmetric differences between masks or detecting regions
+        unique to each mask.
+
+        Args:
+            other: Operand to XOR with. Can be:
+                - ObjectMask: Uses its binary mask values
+                - np.ndarray or array-like: Must match mask shape
+                - bool: Applied to all mask elements
+
+        Returns:
+            np.ndarray: Binary array (dtype int) with XOR results (values 0 or 1).
+
+        Raises:
+            ValueError: If array operand shape doesn't match mask shape.
+
+        Examples:
+            Find regions detected by one method but not the other:
+
+            >>> detector1_mask = detector1.operate(image).objmask
+            >>> detector2_mask = detector2.operate(image).objmask
+            >>> unique_regions = detector1_mask ^ detector2_mask
+
+            Invert mask in a specific ROI:
+
+            >>> roi = np.zeros(image.shape, dtype=bool)
+            >>> roi[200:400, 200:400] = True
+            >>> modified = image.objmask ^ roi  # Flip bits in ROI
+        """
+        self_mask = self._backend.toarray() > 0
+
+        if isinstance(other, ObjectMask):
+            other_mask = other._backend.toarray() > 0
+        elif isinstance(other, bool):
+            other_mask = other
+        elif isinstance(other, (np.ndarray, list, tuple)):
+            other_arr = np.asarray(other)
+            if other_arr.shape != self.shape:
+                raise ValueError(
+                    f"Shape mismatch: mask shape {self.shape} != operand shape {other_arr.shape}"
+                )
+            other_mask = other_arr > 0
+        else:
+            return NotImplemented
+
+        result = self_mask ^ other_mask
+        return result.astype(int)
+
+    def __invert__(self) -> np.ndarray:
+        """Perform bitwise NOT on the object mask.
+
+        Returns the logical negation of the mask, inverting foreground and background
+        pixels. Useful for selecting background regions or creating inverted masks.
+
+        Returns:
+            np.ndarray: Binary array (dtype int) with inverted mask values.
+
+        Examples:
+            Get background pixels for analysis:
+
+            >>> background_mask = ~image.objmask
+            >>> background_intensity = image.gray[:][background_mask > 0].mean()
+
+            Combine with other operations to exclude detected regions:
+
+            >>> from phenotypic.enhance import GaussianBlur
+            >>> # Apply blur only to background
+            >>> blurred = GaussianBlur(sigma=2.0).operate(image)
+            >>> combined = image.gray[:] * image.objmask[:] + blurred.gray[:] * ~image.objmask
+        """
+        self_mask = self._backend.toarray() > 0
+        result = ~self_mask
+        return result.astype(int)
+
+    def __iand__(self, other) -> ObjectMask:
+        """Perform in-place bitwise AND with the object mask.
+
+        Modifies the mask by performing element-wise logical AND with another operand.
+        After modification, automatically relabels the mask to maintain consistent
+        object IDs.
+
+        Args:
+            other: Operand to AND with. Can be:
+                - ObjectMask: Uses its binary mask values
+                - np.ndarray or array-like: Must match mask shape
+                - bool: Applied to all mask elements
+
+        Returns:
+            ObjectMask: Returns self for method chaining.
+
+        Raises:
+            ValueError: If array operand shape doesn't match mask shape.
+
+        Examples:
+            Remove objects outside a region of interest:
+
+            >>> roi = np.zeros(image.shape, dtype=bool)
+            >>> roi[100:900, 100:900] = True
+            >>> image.objmask &= roi  # Keep only objects in ROI
+
+            Intersect with another detection result:
+
+            >>> refined_detector = RefinedDetector()
+            >>> refined_result = refined_detector.operate(image)
+            >>> image.objmask &= refined_result.objmask
+
+        Note:
+            This operation triggers automatic relabeling of the object map to
+            maintain consistent object IDs. Existing object labels may change.
+        """
+        mask = self._backend.toarray() > 0
+
+        if isinstance(other, ObjectMask):
+            other_mask = other._backend.toarray() > 0
+        elif isinstance(other, bool):
+            other_mask = other
+        elif isinstance(other, (np.ndarray, list, tuple)):
+            other_arr = np.asarray(other)
+            if other_arr.shape != self.shape:
+                raise ValueError(
+                    f"Shape mismatch: mask shape {self.shape} != operand shape {other_arr.shape}"
+                )
+            other_mask = other_arr > 0
+        else:
+            return NotImplemented
+
+        mask &= other_mask
+
+        # Relabel and update backend (same as __setitem__ pattern)
+        relabeled = label(mask > 0)
+        new_sparse = self._root_image.objmap._dense_to_sparse(relabeled)
+        new_sparse.eliminate_zeros()
+        self._root_image._data.sparse_object_map = new_sparse
+
+        return self
+
+    def __ior__(self, other) -> ObjectMask:
+        """Perform in-place bitwise OR with the object mask.
+
+        Modifies the mask by performing element-wise logical OR with another operand.
+        Useful for progressively adding detections or manually expanding mask regions.
+        Automatically relabels after modification.
+
+        Args:
+            other: Operand to OR with. Can be:
+                - ObjectMask: Uses its binary mask values
+                - np.ndarray or array-like: Must match mask shape
+                - bool: Applied to all mask elements
+
+        Returns:
+            ObjectMask: Returns self for method chaining.
+
+        Raises:
+            ValueError: If array operand shape doesn't match mask shape.
+
+        Examples:
+            Add manually drawn colonies to existing detection:
+
+            >>> manual_additions = np.zeros(image.shape, dtype=bool)
+            >>> manual_additions[250:300, 250:300] = True
+            >>> image.objmask |= manual_additions
+
+            Combine multiple detection passes:
+
+            >>> for detector in [OtsuDetector(), CannyDetector(), WatershedDetector()]:
+            >>>     result = detector.operate(image)
+            >>>     image.objmask |= result.objmask
+
+        Note:
+            This operation triggers automatic relabeling, which may change
+            existing object IDs. Use with caution in measurement workflows.
+        """
+        mask = self._backend.toarray() > 0
+
+        if isinstance(other, ObjectMask):
+            other_mask = other._backend.toarray() > 0
+        elif isinstance(other, bool):
+            other_mask = other
+        elif isinstance(other, (np.ndarray, list, tuple)):
+            other_arr = np.asarray(other)
+            if other_arr.shape != self.shape:
+                raise ValueError(
+                    f"Shape mismatch: mask shape {self.shape} != operand shape {other_arr.shape}"
+                )
+            other_mask = other_arr > 0
+        else:
+            return NotImplemented
+
+        mask |= other_mask
+
+        # Relabel and update backend (same as __setitem__ pattern)
+        relabeled = label(mask > 0)
+        new_sparse = self._root_image.objmap._dense_to_sparse(relabeled)
+        new_sparse.eliminate_zeros()
+        self._root_image._data.sparse_object_map = new_sparse
+
+        return self
+
+    def __ixor__(self, other) -> ObjectMask:
+        """Perform in-place bitwise XOR with the object mask.
+
+        Modifies the mask by performing element-wise logical XOR with another operand.
+        Useful for selectively toggling mask regions or removing specific patterns.
+        Automatically relabels after modification.
+
+        Args:
+            other: Operand to XOR with. Can be:
+                - ObjectMask: Uses its binary mask values
+                - np.ndarray or array-like: Must match mask shape
+                - bool: Applied to all mask elements
+
+        Returns:
+            ObjectMask: Returns self for method chaining.
+
+        Raises:
+            ValueError: If array operand shape doesn't match mask shape.
+
+        Examples:
+            Toggle mask values in a specific region:
+
+            >>> toggle_region = np.zeros(image.shape, dtype=bool)
+            >>> toggle_region[300:400, 300:400] = True
+            >>> image.objmask ^= toggle_region  # Flip mask in region
+
+            Remove overlapping regions between two masks:
+
+            >>> artifact_mask = artifact_detector.operate(image).objmask
+            >>> image.objmask ^= artifact_mask & image.objmask
+
+        Note:
+            This operation triggers automatic relabeling. XOR with True will
+            invert the entire mask.
+        """
+        mask = self._backend.toarray() > 0
+
+        if isinstance(other, ObjectMask):
+            other_mask = other._backend.toarray() > 0
+        elif isinstance(other, bool):
+            other_mask = other
+        elif isinstance(other, (np.ndarray, list, tuple)):
+            other_arr = np.asarray(other)
+            if other_arr.shape != self.shape:
+                raise ValueError(
+                    f"Shape mismatch: mask shape {self.shape} != operand shape {other_arr.shape}"
+                )
+            other_mask = other_arr > 0
+        else:
+            return NotImplemented
+
+        mask ^= other_mask
+
+        # Relabel and update backend (same as __setitem__ pattern)
+        relabeled = label(mask > 0)
+        new_sparse = self._root_image.objmap._dense_to_sparse(relabeled)
+        new_sparse.eliminate_zeros()
+        self._root_image._data.sparse_object_map = new_sparse
+
+        return self

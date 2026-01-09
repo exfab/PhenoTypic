@@ -4,9 +4,11 @@ Preprocessing steps that denoise, normalize, and emphasize colony structure befo
 detection. The module covers local contrast equalization (CLAHE), Gaussian/median/rank
 denoising, rolling-ball and Gaussian background subtraction, tophat and Laplacian edge
 accentuation, Sobel gradients, contrast stretching, unsharp masking, bilateral denoising,
-BM3D denoising, morphological operations (opening, closing, erosion, dilation, gradient,
-black tophat) for noise removal and boundary enhancement, and more for clean plates.
-All operate on copies of the grayscale view to keep raw data intact.
+BM3D denoising, Hessian-based ridge detection (Frangi vesselness, Sato tubeness, Meijering
+neuriteness, Hessian filter) for filamentous structure detection, morphological operations
+(opening, closing, erosion, dilation, gradient, black tophat) for noise removal and boundary
+enhancement, and more for clean plates. All operate on copies of the grayscale view to keep
+raw data intact.
 """
 
 from ._bilateral_denoise import BilateralDenoise
@@ -20,9 +22,11 @@ from ._hessian_filter import HessianFilter
 from ._gaussian_subtract import GaussianSubtract
 from ._laplace_enhancer import LaplaceEnhancer
 from ._median_filter import MedianFilter
+from ._meijering_ridge_filter import MeijeringRidgeFilter
 from ._non_local_means import NonLocalMeansDenoiser
 from ._rank_median_enhancer import RankMedianEnhancer
 from ._rolling_ball_remove_bg import RollingBallRemoveBG
+from ._sato_ridge_filter import SatoRidgeFilter
 from ._sobel_filter import SobelFilter
 from ._unsharp_mask import UnsharpMask
 from ._visushrink_enhancer import VisuShrinkEnhancer
@@ -42,9 +46,11 @@ __all__ = [
     "HessianFilter",
     "LaplaceEnhancer",
     "MedianFilter",
+    "MeijeringRidgeFilter",
     "NonLocalMeansDenoiser",
     "RankMedianEnhancer",
     "RollingBallRemoveBG",
+    "SatoRidgeFilter",
     "SobelFilter",
     "UnsharpMask",
     "VisuShrinkEnhancer",
