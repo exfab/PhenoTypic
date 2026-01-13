@@ -20,6 +20,7 @@ from ._frangi_vesselness import FrangiVesselness
 from ._gaussian_blur import GaussianBlur
 from ._hessian_filter import HessianFilter
 from ._gaussian_subtract import GaussianSubtract
+from ._image_inverter import ImageInverter
 from ._laplace_enhancer import LaplaceEnhancer
 from ._median_filter import MedianFilter
 from ._meijering_ridge_filter import MeijeringRidgeFilter
@@ -44,6 +45,7 @@ __all__ = [
     "GaussianSubtract",
     "GrayOpening",
     "HessianFilter",
+    "ImageInverter",
     "LaplaceEnhancer",
     "MedianFilter",
     "MeijeringRidgeFilter",
