@@ -5,7 +5,7 @@ This script monitors SLURM job progress with live updates by reading
 the event log and displaying real-time statistics.
 
 Usage:
-    python -m phenotypic.tools.monitor_slurm_jobs OUTPUT_DIR
+    python -m phenotypic.tools_.monitor_slurm_jobs OUTPUT_DIR
 """
 
 import json
@@ -15,21 +15,21 @@ from pathlib import Path
 
 import click
 
-from phenotypic._core._cli_update_state import aggregate_state_from_events
+from phenotypic._cli._cli_update_state import aggregate_state_from_events
 
 
 @click.command()
 @click.argument("output_dir", type=click.Path(exists=True, path_type=Path))
 @click.option(
-    "--refresh-interval",
-    default=30,
-    show_default=True,
-    help="Seconds between updates",
+        "--refresh-interval",
+        default=30,
+        show_default=True,
+        help="Seconds between updates",
 )
 @click.option(
-    "--no-clear",
-    is_flag=True,
-    help="Don't clear screen between updates (useful for logging)",
+        "--no-clear",
+        is_flag=True,
+        help="Don't clear screen between updates (useful for logging)",
 )
 def main(output_dir: Path, refresh_interval: int, no_clear: bool):
     """
@@ -43,13 +43,13 @@ def main(output_dir: Path, refresh_interval: int, no_clear: bool):
 
     Examples:
         # Monitor with default 30s refresh
-        python -m phenotypic.tools.monitor_slurm_jobs ./results
+        python -m phenotypic.tools_.monitor_slurm_jobs ./results
 
         # Monitor with faster refresh
-        python -m phenotypic.tools.monitor_slurm_jobs ./results --refresh-interval 10
+        python -m phenotypic.tools_.monitor_slurm_jobs ./results --refresh-interval 10
 
         # Monitor without clearing screen (good for logging)
-        python -m phenotypic.tools.monitor_slurm_jobs ./results --no-clear
+        python -m phenotypic.tools_.monitor_slurm_jobs ./results --no-clear
     """
     event_log = output_dir / "processing_events.log"
     state_file = output_dir / "processing_state.json"
@@ -58,8 +58,8 @@ def main(output_dir: Path, refresh_interval: int, no_clear: bool):
     if not state_file.exists():
         click.echo("Error: No processing_state.json found", err=True)
         click.echo(
-            "This directory does not appear to contain active processing.",
-            err=True,
+                "This directory does not appear to contain active processing.",
+                err=True,
         )
         sys.exit(1)
 
@@ -87,16 +87,16 @@ def main(output_dir: Path, refresh_interval: int, no_clear: bool):
 
             # Calculate totals
             total_completed = sum(
-                len(ds.completed) for ds in datasets_state.values()
+                    len(ds.completed) for ds in datasets_state.values()
             )
             total_failed = sum(
-                len(ds.failed) for ds in datasets_state.values()
+                    len(ds.failed) for ds in datasets_state.values()
             )
             total_processed = total_completed + total_failed
 
             # Calculate expected total from state file
             expected_total = sum(
-                ds.get("total", 0) for ds in expected_datasets.values()
+                    ds.get("total", 0) for ds in expected_datasets.values()
             )
             if expected_total == 0:
                 # Fallback: count from current state
@@ -117,12 +117,12 @@ def main(output_dir: Path, refresh_interval: int, no_clear: bool):
             if expected_total > 0:
                 progress_pct = (total_processed / expected_total) * 100
                 progress_bar = _create_progress_bar(
-                    total_processed, expected_total, width=50
+                        total_processed, expected_total, width=50
                 )
                 click.echo(f"Overall Progress: {progress_bar}")
                 click.echo(
-                    f"  {total_processed}/{expected_total} "
-                    f"({progress_pct:.1f}%)\n"
+                        f"  {total_processed}/{expected_total} "
+                        f"({progress_pct:.1f}%)\n"
                 )
 
             # Display per-dataset progress
@@ -131,7 +131,7 @@ def main(output_dir: Path, refresh_interval: int, no_clear: bool):
                 click.echo("-" * 60)
 
                 for dataset_name, ds_state in sorted(
-                    datasets_state.items()
+                        datasets_state.items()
                 ):
                     completed = len(ds_state.completed)
                     failed = len(ds_state.failed)
@@ -139,7 +139,7 @@ def main(output_dir: Path, refresh_interval: int, no_clear: bool):
 
                     # Get expected total for this dataset
                     expected_ds = expected_datasets.get(dataset_name, {}).get(
-                        "total", total_ds
+                            "total", total_ds
                     )
 
                     display_name = (
@@ -158,11 +158,11 @@ def main(output_dir: Path, refresh_interval: int, no_clear: bool):
 
                         progress_pct = (completed / expected_ds) * 100
                         progress_bar = _create_progress_bar(
-                            completed, expected_ds, width=30
+                                completed, expected_ds, width=30
                         )
                         click.echo(
-                            f"    Progress:  {progress_bar} "
-                            f"{progress_pct:.1f}%"
+                                f"    Progress:  {progress_bar} "
+                                f"{progress_pct:.1f}%"
                         )
             else:
                 click.echo("Waiting for processing events...")
@@ -177,16 +177,16 @@ def main(output_dir: Path, refresh_interval: int, no_clear: bool):
             if remaining == 0 and expected_total > 0:
                 click.echo("\n✓ All jobs complete!")
                 click.echo(
-                    f"\nFinal Results:"
+                        f"\nFinal Results:"
                 )
                 click.echo(
-                    f"  Success rate: "
-                    f"{(total_completed/expected_total)*100:.1f}%"
+                        f"  Success rate: "
+                        f"{(total_completed / expected_total) * 100:.1f}%"
                 )
                 click.echo(f"\nGenerate report with:")
                 click.echo(
-                    f"  python -m phenotypic.tools.generate_report "
-                    f"{output_dir}"
+                        f"  python -m phenotypic.tools_.generate_report "
+                        f"{output_dir}"
                 )
                 break
 
@@ -194,7 +194,7 @@ def main(output_dir: Path, refresh_interval: int, no_clear: bool):
             new_completions = total_completed - last_total_completed
             if new_completions > 0:
                 click.echo(
-                    f"\n({new_completions} new since last update)"
+                        f"\n({new_completions} new since last update)"
                 )
 
             last_total_completed = total_completed
@@ -205,13 +205,13 @@ def main(output_dir: Path, refresh_interval: int, no_clear: bool):
 
     except KeyboardInterrupt:
         click.echo(
-            "\n\nMonitoring stopped. Jobs continue running on SLURM."
+                "\n\nMonitoring stopped. Jobs continue running on SLURM."
         )
         click.echo(
-            f"\nResume monitoring with:"
+                f"\nResume monitoring with:"
         )
         click.echo(
-            f"  python -m phenotypic.tools.monitor_slurm_jobs {output_dir}"
+                f"  python -m phenotypic.tools_.monitor_slurm_jobs {output_dir}"
         )
         return 0
 

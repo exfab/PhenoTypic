@@ -92,10 +92,5 @@ class RankMedianEnhancer(ImageEnhancer):
             # Use the central ImageEnhancer utility for common 2D shapes
             case "disk" | "square":
                 return self._make_footprint(shape=self.shape, width=width)
-            # Preserve alternative 3D options as originally implemented
-            case "ball":
-                return ball(radius)
-            case "cube":
-                return cube(int(radius * 2))
             case _:
                 raise TypeError("Unknown shape shape")

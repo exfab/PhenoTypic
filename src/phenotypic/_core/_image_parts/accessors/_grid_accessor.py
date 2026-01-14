@@ -11,8 +11,8 @@ import pandas as pd
 from skimage.color import label2rgb
 
 import phenotypic
-from phenotypic.tools.constants_ import METADATA, IMAGE_TYPES, BBOX, GRID, OBJECT
-from phenotypic.tools.exceptions_ import NoObjectsError
+from phenotypic.tools_.constants_ import METADATA, IMAGE_TYPES, BBOX, GRID, OBJECT
+from phenotypic.tools_.exceptions_ import NoObjectsError
 
 
 class GridAccessor:
@@ -194,7 +194,8 @@ class GridAccessor:
                 [7, 11] = 95 (bottom-right).
         """
         return np.reshape(
-                np.arange(self.nrows * self.ncols), (self.nrows, self.ncols)
+                np.arange(self.nrows * self.ncols, dtype=np.uint16),
+                shape=(self.nrows, self.ncols)
         )
 
     def _parse_slice_to_section_indices(
@@ -279,6 +280,7 @@ class GridAccessor:
     def _get_multi_section_bounds(
             self,
             section_indices: list[int],
+            grid_info: pd.DataFrame | None = None,
     ) -> tuple[tuple[float, float], tuple[float, float]]:
         """Get union of bounding boxes for multiple grid sections.
 
@@ -288,6 +290,7 @@ class GridAccessor:
 
         Args:
             section_indices: List of flattened section indices.
+            grid_info: Optional precomputed grid info table to avoid recomputation.
 
         Returns:
             tuple[tuple[float, float], tuple[float, float]]: A tuple containing:
@@ -299,31 +302,89 @@ class GridAccessor:
         if len(section_indices) == 0:
             return (0, 0), (self._root_image.shape[0], self._root_image.shape[1])
 
-        # Collect bounds for each section
-        all_min_rr, all_min_cc = [], []
-        all_max_rr, all_max_cc = [], []
+        if grid_info is None:
+            grid_info = self.info()
 
-        for idx in section_indices:
-            min_coords, max_coords = self._adv_get_grid_section_slices(idx)
-            min_rr, min_cc = min_coords
-            max_rr, max_cc = max_coords
-
-            all_min_rr.append(min_rr)
-            all_min_cc.append(min_cc)
-            all_max_rr.append(max_rr)
-            all_max_cc.append(max_cc)
+        min_rr_all, max_rr_all, min_cc_all, max_cc_all = (
+            self._get_section_bounds_arrays(grid_info=grid_info)
+        )
+        idx_array = np.asarray(section_indices, dtype=int)
 
         # Compute union: min of mins, max of maxs
-        global_min_rr = min(all_min_rr)
-        global_min_cc = min(all_min_cc)
-        global_max_rr = max(all_max_rr)
-        global_max_cc = max(all_max_cc)
+        global_min_rr = float(np.min(min_rr_all[idx_array]))
+        global_min_cc = float(np.min(min_cc_all[idx_array]))
+        global_max_rr = float(np.max(max_rr_all[idx_array]))
+        global_max_cc = float(np.max(max_cc_all[idx_array]))
 
         return (global_min_rr, global_min_cc), (global_max_rr, global_max_cc)
+
+    def _get_section_bounds_arrays(
+            self,
+            grid_info: pd.DataFrame | None = None,
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        """Compute per-section bounds using grid edges and object extents."""
+        if grid_info is None:
+            grid_info = self.info()
+
+        nrows, ncols = self.nrows, self.ncols
+        section_count = nrows * ncols
+        row_edges = self.get_row_edges()
+        col_edges = self.get_col_edges()
+
+        grid_min_rr = np.repeat(row_edges[:-1], ncols)
+        grid_max_rr = np.repeat(row_edges[1:], ncols)
+        grid_min_cc = np.tile(col_edges[:-1], nrows)
+        grid_max_cc = np.tile(col_edges[1:], nrows)
+
+        if grid_info.empty:
+            obj_min_rr = np.full(section_count, np.nan)
+            obj_max_rr = np.full(section_count, np.nan)
+            obj_min_cc = np.full(section_count, np.nan)
+            obj_max_cc = np.full(section_count, np.nan)
+        else:
+            bounds = (
+                grid_info.groupby(str(GRID.SECTION_NUM), observed=False)
+                .agg(
+                        min_rr=(str(BBOX.MIN_RR), "min"),
+                        max_rr=(str(BBOX.MAX_RR), "max"),
+                        min_cc=(str(BBOX.MIN_CC), "min"),
+                        max_cc=(str(BBOX.MAX_CC), "max"),
+                )
+            )
+            bounds = bounds.reset_index()
+            bounds[str(GRID.SECTION_NUM)] = bounds[str(GRID.SECTION_NUM)].astype(int)
+            bounds = bounds.set_index(str(GRID.SECTION_NUM)).reindex(
+                    range(section_count)
+            )
+            obj_min_rr = bounds["min_rr"].to_numpy()
+            obj_max_rr = bounds["max_rr"].to_numpy()
+            obj_min_cc = bounds["min_cc"].to_numpy()
+            obj_max_cc = bounds["max_cc"].to_numpy()
+
+        min_rr = np.where(
+                np.isnan(obj_min_rr), grid_min_rr, np.minimum(grid_min_rr, obj_min_rr)
+        )
+        max_rr = np.where(
+                np.isnan(obj_max_rr), grid_max_rr, np.maximum(grid_max_rr, obj_max_rr)
+        )
+        min_cc = np.where(
+                np.isnan(obj_min_cc), grid_min_cc, np.minimum(grid_min_cc, obj_min_cc)
+        )
+        max_cc = np.where(
+                np.isnan(obj_max_cc), grid_max_cc, np.maximum(grid_max_cc, obj_max_cc)
+        )
+
+        min_rr = np.clip(min_rr, 0, self._root_image.shape[0] - 1)
+        max_rr = np.clip(max_rr, 0, self._root_image.shape[0] - 1)
+        min_cc = np.clip(min_cc, 0, self._root_image.shape[1] - 1)
+        max_cc = np.clip(max_cc, 0, self._root_image.shape[1] - 1)
+
+        return min_rr, max_rr, min_cc, max_cc
 
     def _get_multi_section_labels(
             self,
             section_indices: list[int],
+            grid_info: pd.DataFrame | None = None,
     ) -> list[int]:
         """Get all object labels from multiple grid sections.
 
@@ -333,16 +394,25 @@ class GridAccessor:
 
         Args:
             section_indices: List of flattened section indices.
+            grid_info: Optional precomputed grid info table to avoid recomputation.
 
         Returns:
             list[int]: List of unique object labels across all specified sections.
         """
-        all_labels = []
-        for idx in section_indices:
-            all_labels.extend(self._get_section_labels(idx))
+        if len(section_indices) == 0:
+            return []
 
-        # Return unique labels
-        return list(set(all_labels))
+        if grid_info is None:
+            grid_info = self.info()
+
+        labels = grid_info.loc[
+            grid_info.loc[:, str(GRID.SECTION_NUM)].isin(section_indices),
+            OBJECT.LABEL,
+        ]
+        if labels.empty:
+            return []
+
+        return labels.unique().tolist()
 
     def __getitem__(
             self,
@@ -441,8 +511,12 @@ class GridAccessor:
             # Return empty image with parent's shape
             return phenotypic.Image(self._root_image)
 
+        grid_info = self.info()
+
         # Get union bounding box for all selected sections
-        min_coords, max_coords = self._get_multi_section_bounds(section_indices)
+        min_coords, max_coords = self._get_multi_section_bounds(
+                section_indices, grid_info=grid_info
+        )
         min_rr, min_cc = min_coords
         max_rr, max_cc = max_coords
 
@@ -456,7 +530,9 @@ class GridAccessor:
 
         # Filter object map to only include selected sections
         objmap = section_image.objmap[:]
-        valid_labels = self._get_multi_section_labels(section_indices)
+        valid_labels = self._get_multi_section_labels(
+                section_indices, grid_info=grid_info
+        )
         objmap[~np.isin(objmap, valid_labels)] = 0
         section_image.objmap = objmap
 
@@ -1136,7 +1212,9 @@ class GridAccessor:
         return (min_rr, min_cc), (max_rr, max_cc)
 
     def _adv_get_grid_section_slices(
-            self, idx: int
+            self,
+            idx: int,
+            grid_info: pd.DataFrame | None = None,
     ) -> tuple[tuple[float, float], tuple[float, float]]:
         """Internal method: get pixel slices for a grid section accounting for object boundaries.
 
@@ -1147,6 +1225,7 @@ class GridAccessor:
 
         Args:
             idx (int): Flattened grid section index (0 to nrows*ncols-1).
+            grid_info (pd.DataFrame | None): Optional precomputed grid info table.
 
         Returns:
             tuple[tuple[float, float], tuple[float, float]]: A tuple containing:
@@ -1159,7 +1238,8 @@ class GridAccessor:
         grid_min_rr, grid_min_cc = grid_min
         grid_max_rr, grid_max_cc = grid_max
 
-        grid_info = self.info()
+        if grid_info is None:
+            grid_info = self.info()
         section_info = grid_info.loc[grid_info.loc[:, str(GRID.SECTION_NUM)] == idx, :]
 
         obj_min_cc = section_info.loc[:, str(BBOX.MIN_CC)].min()
@@ -1184,7 +1264,11 @@ class GridAccessor:
 
         return (min_rr, min_cc), (max_rr, max_cc)
 
-    def _get_section_labels(self, idx: int) -> list[int]:
+    def _get_section_labels(
+            self,
+            idx: int,
+            grid_info: pd.DataFrame | None = None,
+    ) -> list[int]:
         """Internal method: get object labels belonging to a grid section.
 
         Retrieves all object labels (colony identifiers) that are assigned to
@@ -1192,11 +1276,13 @@ class GridAccessor:
 
         Args:
             idx (int): Flattened grid section index (0 to nrows*ncols-1).
+            grid_info (pd.DataFrame | None): Optional precomputed grid info table.
 
         Returns:
             list[int]: List of object labels assigned to this grid section.
                 Returns empty list if no colonies are in the section.
         """
-        grid_info = self.info()
+        if grid_info is None:
+            grid_info = self.info()
         section_info = grid_info.loc[grid_info.loc[:, str(GRID.SECTION_NUM)] == idx, :]
-        return section_info[OBJECT.LABELhowe].to_list()
+        return section_info[OBJECT.LABEL].to_list()

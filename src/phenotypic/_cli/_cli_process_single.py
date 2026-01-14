@@ -8,6 +8,7 @@ designed to be called by SLURM batch scripts for autonomous execution.
 from __future__ import annotations
 
 import sys
+import logging
 import click
 import traceback
 from pathlib import Path
@@ -20,6 +21,9 @@ import matplotlib.pyplot as plt
 from phenotypic import Image, GridImage, ImagePipeline
 from ._cli_output_manager import OutputManager
 from ._cli_update_state import append_completion_event
+from ._cli_utils import normalize_extension
+
+logger = logging.getLogger(__name__)
 
 
 def process_single_image_core(
@@ -167,15 +171,20 @@ def main(
             "objmap_rgb": save_objmap_rgb
         }
         
-        # Prepare extensions
-        extensions = {
-            "rgb": f".{rgb_ext}" if not rgb_ext.startswith('.') else rgb_ext,
-            "gray": f".{gray_ext}" if not gray_ext.startswith('.') else gray_ext,
-            "enh_gray": f".{enh_gray_ext}" if not enh_gray_ext.startswith('.') else enh_gray_ext,
-            "objmask": f".{objmask_ext}" if not objmask_ext.startswith('.') else objmask_ext,
-            "objmap": f".{objmap_ext}" if not objmap_ext.startswith('.') else objmap_ext,
-            "objmap_rgb": f".{objmap_rgb_ext}" if not objmap_rgb_ext.startswith('.') else objmap_rgb_ext
-        }
+        # Prepare extensions - validate all before processing
+        try:
+            extensions = {
+                "rgb": normalize_extension(rgb_ext, ".tiff"),
+                "gray": normalize_extension(gray_ext, ".tiff"),
+                "enh_gray": normalize_extension(enh_gray_ext, ".tiff"),
+                "objmask": normalize_extension(objmask_ext, ".png"),
+                "objmap": normalize_extension(objmap_ext, ".png"),
+                "objmap_rgb": normalize_extension(objmap_rgb_ext, ".png")
+            }
+        except click.BadParameter as e:
+            logger.error(f"Invalid extension parameter: {e}")
+            click.echo(f"Error: {e}", err=True)
+            sys.exit(1)
         
         # Create output manager
         output_manager = OutputManager(

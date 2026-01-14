@@ -22,8 +22,8 @@ from phenotypic._core._image_parts.accessors import (
     MetadataAccessor,
 )
 
-from phenotypic.tools.constants_ import METADATA, IMAGE_TYPES
-from phenotypic.tools.exceptions_ import EmptyImageError, IllegalAssignmentError
+from phenotypic.tools_.constants_ import METADATA, IMAGE_TYPES
+from phenotypic.tools_.exceptions_ import EmptyImageError, IllegalAssignmentError
 
 
 class ImageHandler(ImageDataManager):

@@ -18,8 +18,8 @@ import imageio.v3 as iio
 
 import phenotypic
 from phenotypic.settings_ import MPL
-from phenotypic.tools.constants_ import IO, METADATA
-from phenotypic.tools.funcs_ import normalize_rgb_bitdepth
+from phenotypic.tools_.constants_ import IO, METADATA
+from phenotypic.tools_.funcs_ import normalize_rgb_bitdepth
 
 if TYPE_CHECKING:
     from phenotypic import Image

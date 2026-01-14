@@ -10,7 +10,7 @@ import pandas as pd
 from skimage.measure import regionprops_table, regionprops
 from typing import List
 
-from phenotypic.tools.constants_ import OBJECT, METADATA, IMAGE_TYPES, BBOX
+from phenotypic.tools_.constants_ import OBJECT, METADATA, IMAGE_TYPES, BBOX
 
 
 class ObjectsAccessor:
@@ -320,9 +320,9 @@ class ObjectsAccessor:
                     print(f"Found {len(circular_colonies)} circular colonies")
         """
         return regionprops(
-            label_image=self._root_image.objmap[:],
-            intensity_image=self._root_image.gray[:],
-            cache=False,
+                label_image=self._root_image.objmap[:],
+                intensity_image=self._root_image.gray[:],
+                cache=False,
         )
 
     @property
@@ -741,7 +741,7 @@ class ObjectsAccessor:
         This method creates a pandas DataFrame containing key positional information for all
         detected colonies, including their labels, centroid coordinates, and bounding box
         coordinates. This is particularly useful for organizing colony data for downstream
-        analysis, quality control, or exporting to other tools.
+        analysis, quality control, or exporting to other tools_.
 
         The table includes one row per colony with columns for the colony label, centroid
         position (row and column), and bounding box coordinates (min/max row and column).
@@ -790,7 +790,7 @@ class ObjectsAccessor:
                     labels_centroids = colony_info[["ObjectLabel", "Bbox_CenterRR", "Bbox_CenterCC"]]
                     print(labels_centroids)
 
-            .. dropdown:: Export colony positions for other tools
+            .. dropdown:: Export colony positions for other tools_
 
                 .. code-block:: python
 
@@ -822,20 +822,20 @@ class ObjectsAccessor:
                     print(f"Average colony height: {info['BBox_Height'].mean():.1f} pixels")
         """
         info = pd.DataFrame(
-            data=regionprops_table(
-                label_image=self._root_image.objmap[:],
-                properties=["label", "centroid", "bbox"],
-            ),
+                data=regionprops_table(
+                        label_image=self._root_image.objmap[:],
+                        properties=["label", "centroid", "bbox"],
+                ),
         ).rename(
-            columns={
-                "label": OBJECT.LABEL,
-                "centroid-0": str(BBOX.CENTER_RR),
-                "centroid-1": str(BBOX.CENTER_CC),
-                "bbox-0": str(BBOX.MIN_RR),
-                "bbox-1": str(BBOX.MIN_CC),
-                "bbox-2": str(BBOX.MAX_RR),
-                "bbox-3": str(BBOX.MAX_CC),
-            },
+                columns={
+                    "label"     : OBJECT.LABEL,
+                    "centroid-0": str(BBOX.CENTER_RR),
+                    "centroid-1": str(BBOX.CENTER_CC),
+                    "bbox-0"    : str(BBOX.MIN_RR),
+                    "bbox-1"    : str(BBOX.MIN_CC),
+                    "bbox-2"    : str(BBOX.MAX_RR),
+                    "bbox-3"    : str(BBOX.MAX_CC),
+                },
         )
         if include_metadata:
             return self._root_image.metadata.insert_metadata(info)
@@ -924,9 +924,9 @@ class ObjectsAccessor:
         """
         labels = self.labels
         return pd.Series(
-            data=labels,
-            index=range(len(labels)),
-            name=OBJECT.LABEL,
+                data=labels,
+                index=range(len(labels)),
+                name=OBJECT.LABEL,
         )
 
     def relabel(self) -> None:

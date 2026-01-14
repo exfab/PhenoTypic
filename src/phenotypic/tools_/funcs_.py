@@ -11,7 +11,7 @@ import inspect
 import mmh3
 from functools import wraps
 
-from phenotypic.tools.exceptions_ import OperationIntegrityError
+from phenotypic.tools_.exceptions_ import OperationIntegrityError
 from phenotypic.settings_ import VALIDATE_OPS
 
 # this is a dummy variable so annotation's in ImageOperation, MeasureFeatures classes don't cause integrity check to throw an exception
@@ -278,7 +278,7 @@ def normalize_rgb_bitdepth(image: np.ndarray) -> np.ndarray:
 
     if np.issubdtype(img.dtype, np.integer):
         max_val = np.iinfo(img.dtype).max
-        return img.astype(np.float64)/max_val
+        return img.astype(np.float64) / max_val
 
     elif np.issubdtype(img.dtype, np.floating):
         tol = 1e-7
@@ -286,9 +286,9 @@ def normalize_rgb_bitdepth(image: np.ndarray) -> np.ndarray:
         if m <= 1.0 + tol:
             return img.astype(np.float32, copy=False)
         elif 1 < m <= (255 + tol):
-            return (img.astype(np.float32)/255.0).clip(0, 1)
+            return (img.astype(np.float32) / 255.0).clip(0, 1)
         elif 255 < m <= (65535.0 + tol):
-            return (img.astype(np.float32)/65535.0).clip(0, 1)
+            return (img.astype(np.float32) / 65535.0).clip(0, 1)
         else:
             raise ValueError(
                     f"Invalid range: min={img.min():.02f} max={img.max():.02f}"

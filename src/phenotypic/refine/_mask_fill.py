@@ -10,7 +10,7 @@ from scipy.ndimage import binary_fill_holes
 from typing import Optional
 
 from phenotypic.abc_ import ObjectRefiner
-from phenotypic.tools.funcs_ import is_binary_mask
+from phenotypic.tools_.funcs_ import is_binary_mask
 
 
 class MaskFill(ObjectRefiner):

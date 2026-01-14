@@ -9,7 +9,7 @@ from scipy.spatial.distance import euclidean
 from scipy.optimize import minimize_scalar
 
 from phenotypic.abc_ import GridCorrector
-from phenotypic.tools.constants_ import BBOX, GRID
+from phenotypic.tools_.constants_ import BBOX, GRID
 
 
 class GridAligner(GridCorrector):
@@ -68,10 +68,10 @@ class GridAligner(GridCorrector):
         x_max = grouped[:, 1]
 
         # Find the corresponding y-value at the above x values
-        y_0 = (x_min*m) + b
+        y_0 = (x_min * m) + b
 
         # Find the corresponding y-value at the above x values
-        y_1 = (x_max*m) + b
+        y_1 = (x_max * m) + b
 
         # Collect opening angle ray coordinate info
 
@@ -98,11 +98,11 @@ class GridAligner(GridCorrector):
         )
 
         # Find the angle of rotation from horizon in degrees
-        theta = np.arccos(adj_over_hyp)*(180.0/np.pi)
+        theta = np.arccos(adj_over_hyp) * (180.0 / np.pi)
 
         # Adds the correct orientation to the angle
         theta_sign = y_0 - y_1
-        theta = theta*(np.divide(theta_sign, abs(theta_sign), where=theta_sign != 0))
+        theta = theta * (np.divide(theta_sign, abs(theta_sign), where=theta_sign != 0))
 
         largest_angle = np.abs(theta).max()
         optimal_angle = minimize_scalar(

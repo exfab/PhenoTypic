@@ -6,7 +6,7 @@ if TYPE_CHECKING:
 
 import pandas as pd
 from os import PathLike
-from phenotypic.tools.constants_ import PIPE_STATUS
+from phenotypic.tools_.constants_ import PIPE_STATUS
 from ._image_set_core import ImageSetCore
 
 
@@ -22,21 +22,21 @@ class ImageSetStatus(ImageSetCore):
     """
 
     def __init__(
-        self,
-        name: str,
-        outpath: PathLike | str | None = None,
-        imtype: Literal["Image", "GridImage"] = "Image",
-        imparams: Dict[str, Any] | None = None,
-        default_mode: Literal["temp", "cwd"] = "temp",
-        overwrite: bool = False,
+            self,
+            name: str,
+            outpath: PathLike | str | None = None,
+            imtype: Literal["Image", "GridImage"] = "Image",
+            imparams: Dict[str, Any] | None = None,
+            default_mode: Literal["temp", "cwd"] = "temp",
+            overwrite: bool = False,
     ):
         super().__init__(
-            name=name,
-            outpath=outpath,
-            imtype=imtype,
-            imparams=imparams,
-            default_mode=default_mode,
-            overwrite=overwrite,
+                name=name,
+                outpath=outpath,
+                imtype=imtype,
+                imparams=imparams,
+                default_mode=default_mode,
+                overwrite=overwrite,
         )
         # Note: reset_status() is called later after images are imported
         # Calling it here would fail because the HDF5 file structure isn't initialized yet
@@ -70,7 +70,7 @@ class ImageSetStatus(ImageSetCore):
         with self.hdf_.strict_writer() as handle:
             for name in image_names:
                 status_group = self.hdf_.get_status_subgroup(
-                    handle=handle, image_name=name
+                        handle=handle, image_name=name
                 )
                 for stat in PIPE_STATUS:
                     # Statuses are worded in a way that they should be initially false
@@ -90,11 +90,11 @@ class ImageSetStatus(ImageSetCore):
             status = []
             for name in image_names:
                 status_group = self.hdf_.get_status_subgroup(
-                    handle=handle, image_name=name
+                        handle=handle, image_name=name
                 )
                 status.append([status_group.attrs[x.label] for x in PIPE_STATUS])
         return pd.DataFrame(
-            data=status, index=image_names, columns=PIPE_STATUS.get_headers()
+                data=status, index=image_names, columns=PIPE_STATUS.get_headers()
         )
 
     def _add_image2group(self, group, image: Image, overwrite: bool):

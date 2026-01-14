@@ -17,9 +17,9 @@ import warnings
 from functools import partial, wraps
 
 from ._base_operation import BaseOperation
-from phenotypic.tools.exceptions_ import OperationFailedError
-from phenotypic.tools.funcs_ import validate_measure_integrity
-from phenotypic.tools.constants_ import OBJECT
+from phenotypic.tools_.exceptions_ import OperationFailedError
+from phenotypic.tools_.funcs_ import validate_measure_integrity
+from phenotypic.tools_.constants_ import OBJECT
 from abc import ABC
 
 
@@ -137,7 +137,7 @@ class MeasureFeatures(BaseOperation, ABC):
         .. code-block:: python
 
             from phenotypic.abc_ import MeasureFeatures
-            from phenotypic.tools.constants_ import OBJECT
+            from phenotypic.tools_.constants_ import OBJECT
             import pandas as pd
             import numpy as np
 
@@ -863,8 +863,8 @@ class MeasureFeatures(BaseOperation, ABC):
             unique_counts = unique_counts[unique_labels != 0]
             biased_cv = MeasureFeatures._calculate_stddev(
                     array, objmap
-            )/MeasureFeatures._calculate_mean(array, objmap)
-            result = (1 + (1/unique_counts))*biased_cv
+            ) / MeasureFeatures._calculate_mean(array, objmap)
+            result = (1 + (1 / unique_counts)) * biased_cv
         else:
             # For the case when objmap is None, we can't calculate the coefficient of variation
             # because we need the counts of each label

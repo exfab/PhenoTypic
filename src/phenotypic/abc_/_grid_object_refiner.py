@@ -7,8 +7,8 @@ if TYPE_CHECKING:
 
 from phenotypic.abc_ import ObjectRefiner
 from phenotypic.abc_ import GridOperation
-from phenotypic.tools.exceptions_ import GridImageInputError
-from phenotypic.tools.funcs_ import validate_operation_integrity
+from phenotypic.tools_.exceptions_ import GridImageInputError
+from phenotypic.tools_.funcs_ import validate_operation_integrity
 from abc import ABC
 
 

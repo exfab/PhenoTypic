@@ -10,7 +10,7 @@ import pandas as pd
 import logging
 
 from phenotypic.abc_ import MeasureFeatures, MeasurementInfo
-from phenotypic.tools.constants_ import OBJECT
+from phenotypic.tools_.constants_ import OBJECT
 
 logger = logging.getLogger(__name__)
 
@@ -140,15 +140,15 @@ class MeasureColorComposition(MeasureFeatures):
     ]
 
     def __init__(
-        self,
-        hue_normalization: float = 360.0,
-        sat_normalization: float = 100.0,
-        val_normalization: float = 100.0,
-        black_value_max: float = 20.0,
-        neutral_sat_max: float = 15.0,
-        white_value_min: float = 85.0,
-        gray_value_min: float = 20.0,
-        gray_value_max: float = 85.0,
+            self,
+            hue_normalization: float = 360.0,
+            sat_normalization: float = 100.0,
+            val_normalization: float = 100.0,
+            black_value_max: float = 20.0,
+            neutral_sat_max: float = 15.0,
+            white_value_min: float = 85.0,
+            gray_value_min: float = 20.0,
+            gray_value_max: float = 85.0,
     ):
         """
         Initialize the color composition measurer.
@@ -199,7 +199,7 @@ class MeasureColorComposition(MeasureFeatures):
         except ValueError:
             valid_names = ", ".join(MeasureColorComposition._COLOR_NAMES)
             raise ValueError(
-                f"Invalid color name '{name}'. Valid names are: {valid_names}"
+                    f"Invalid color name '{name}'. Valid names are: {valid_names}"
             )
 
     @staticmethod
@@ -223,7 +223,7 @@ class MeasureColorComposition(MeasureFeatures):
         """
         if not 0 <= index < len(MeasureColorComposition._COLOR_NAMES):
             raise IndexError(
-                f"Color index {index} out of range. Valid range is 0-{len(MeasureColorComposition._COLOR_NAMES) - 1}"
+                    f"Color index {index} out of range. Valid range is 0-{len(MeasureColorComposition._COLOR_NAMES) - 1}"
             )
         return MeasureColorComposition._COLOR_NAMES[index]
 
@@ -273,132 +273,133 @@ class MeasureColorComposition(MeasureFeatures):
         return meas
 
     def _get_black_mask(
-        self, hue: np.ndarray, sat: np.ndarray, val: np.ndarray
+            self, hue: np.ndarray, sat: np.ndarray, val: np.ndarray
     ) -> np.ndarray:
         """Get mask for black pixels."""
         return val < self.black_value_max
 
     def _get_white_mask(
-        self,
-        hue: np.ndarray,
-        sat: np.ndarray,
-        val: np.ndarray,
-        exclude_mask: np.ndarray,
+            self,
+            hue: np.ndarray,
+            sat: np.ndarray,
+            val: np.ndarray,
+            exclude_mask: np.ndarray,
     ) -> np.ndarray:
         """Get mask for white pixels."""
         return (
-            (sat < self.neutral_sat_max) & (val > self.white_value_min) & ~exclude_mask
+                (sat < self.neutral_sat_max) & (
+                    val > self.white_value_min) & ~exclude_mask
         )
 
     def _get_gray_mask(
-        self,
-        hue: np.ndarray,
-        sat: np.ndarray,
-        val: np.ndarray,
-        exclude_mask: np.ndarray,
+            self,
+            hue: np.ndarray,
+            sat: np.ndarray,
+            val: np.ndarray,
+            exclude_mask: np.ndarray,
     ) -> np.ndarray:
         """Get mask for gray pixels."""
         return (
-            (sat < self.neutral_sat_max)
-            & (val >= self.gray_value_min)
-            & (val <= self.gray_value_max)
-            & ~exclude_mask
+                (sat < self.neutral_sat_max)
+                & (val >= self.gray_value_min)
+                & (val <= self.gray_value_max)
+                & ~exclude_mask
         )
 
     def _get_pink_mask(
-        self,
-        hue: np.ndarray,
-        sat: np.ndarray,
-        val: np.ndarray,
-        exclude_mask: np.ndarray,
+            self,
+            hue: np.ndarray,
+            sat: np.ndarray,
+            val: np.ndarray,
+            exclude_mask: np.ndarray,
     ) -> np.ndarray:
         """Get mask for pink pixels."""
         pink_hue_mask = (hue <= 15) | (hue >= 250)
         return pink_hue_mask & (sat >= 20) & (sat <= 60) & (val > 80) & ~exclude_mask
 
     def _get_brown_mask(
-        self,
-        hue: np.ndarray,
-        sat: np.ndarray,
-        val: np.ndarray,
-        exclude_mask: np.ndarray,
+            self,
+            hue: np.ndarray,
+            sat: np.ndarray,
+            val: np.ndarray,
+            exclude_mask: np.ndarray,
     ) -> np.ndarray:
         """Get mask for brown pixels."""
         brown_hue_mask = hue <= 45
         return brown_hue_mask & (val >= 20) & (val <= 60) & ~exclude_mask
 
     def _get_red_mask(
-        self,
-        hue: np.ndarray,
-        sat: np.ndarray,
-        val: np.ndarray,
-        exclude_mask: np.ndarray,
+            self,
+            hue: np.ndarray,
+            sat: np.ndarray,
+            val: np.ndarray,
+            exclude_mask: np.ndarray,
     ) -> np.ndarray:
         """Get mask for red pixels."""
         return ((hue <= 15) | (hue >= 345)) & ~exclude_mask
 
     def _get_orange_mask(
-        self,
-        hue: np.ndarray,
-        sat: np.ndarray,
-        val: np.ndarray,
-        exclude_mask: np.ndarray,
+            self,
+            hue: np.ndarray,
+            sat: np.ndarray,
+            val: np.ndarray,
+            exclude_mask: np.ndarray,
     ) -> np.ndarray:
         """Get mask for orange pixels."""
         return (hue > 15) & (hue <= 45) & ~exclude_mask
 
     def _get_yellow_mask(
-        self,
-        hue: np.ndarray,
-        sat: np.ndarray,
-        val: np.ndarray,
-        exclude_mask: np.ndarray,
+            self,
+            hue: np.ndarray,
+            sat: np.ndarray,
+            val: np.ndarray,
+            exclude_mask: np.ndarray,
     ) -> np.ndarray:
         """Get mask for yellow pixels."""
         return (hue > 45) & (hue <= 75) & ~exclude_mask
 
     def _get_green_mask(
-        self,
-        hue: np.ndarray,
-        sat: np.ndarray,
-        val: np.ndarray,
-        exclude_mask: np.ndarray,
+            self,
+            hue: np.ndarray,
+            sat: np.ndarray,
+            val: np.ndarray,
+            exclude_mask: np.ndarray,
     ) -> np.ndarray:
         """Get mask for green pixels."""
         return (hue > 75) & (hue <= 150) & ~exclude_mask
 
     def _get_cyan_mask(
-        self,
-        hue: np.ndarray,
-        sat: np.ndarray,
-        val: np.ndarray,
-        exclude_mask: np.ndarray,
+            self,
+            hue: np.ndarray,
+            sat: np.ndarray,
+            val: np.ndarray,
+            exclude_mask: np.ndarray,
     ) -> np.ndarray:
         """Get mask for cyan pixels."""
         return (hue > 150) & (hue <= 180) & ~exclude_mask
 
     def _get_blue_mask(
-        self,
-        hue: np.ndarray,
-        sat: np.ndarray,
-        val: np.ndarray,
-        exclude_mask: np.ndarray,
+            self,
+            hue: np.ndarray,
+            sat: np.ndarray,
+            val: np.ndarray,
+            exclude_mask: np.ndarray,
     ) -> np.ndarray:
         """Get mask for blue pixels."""
         return (hue > 180) & (hue <= 250) & ~exclude_mask
 
     def _get_purple_mask(
-        self,
-        hue: np.ndarray,
-        sat: np.ndarray,
-        val: np.ndarray,
-        exclude_mask: np.ndarray,
+            self,
+            hue: np.ndarray,
+            sat: np.ndarray,
+            val: np.ndarray,
+            exclude_mask: np.ndarray,
     ) -> np.ndarray:
         """Get mask for purple pixels."""
         return (hue > 250) & (hue < 345) & ~exclude_mask
 
     def _get_all_color_masks(
-        self, hue: np.ndarray, sat: np.ndarray, val: np.ndarray
+            self, hue: np.ndarray, sat: np.ndarray, val: np.ndarray
     ) -> list[np.ndarray]:
         """
         Generate all 12 color masks in priority order.
@@ -468,10 +469,10 @@ class MeasureColorComposition(MeasureFeatures):
         ]
 
     def _calculate_sum(
-        self,
-        objmap: np.ndarray,
-        object_labels: pd.Series,
-        color_masks: list[np.ndarray],
+            self,
+            objmap: np.ndarray,
+            object_labels: pd.Series,
+            color_masks: list[np.ndarray],
     ) -> list[list[float]]:
         """
         Calculate color composition percentages for each object.
@@ -509,14 +510,14 @@ class MeasureColorComposition(MeasureFeatures):
 
     @staticmethod
     def _classify_colors(
-        hue: np.ndarray,
-        sat: np.ndarray,
-        val: np.ndarray,
-        black_max: float = 20.0,
-        neutral_sat: float = 15.0,
-        white_min: float = 85.0,
-        gray_min: float = 20.0,
-        gray_max: float = 85.0,
+            hue: np.ndarray,
+            sat: np.ndarray,
+            val: np.ndarray,
+            black_max: float = 20.0,
+            neutral_sat: float = 15.0,
+            white_min: float = 85.0,
+            gray_min: float = 20.0,
+            gray_max: float = 85.0,
     ) -> list:
         """
         Classify pixels into 11 perceptual color categories using priority hierarchy.
@@ -581,10 +582,10 @@ class MeasureColorComposition(MeasureFeatures):
 
         # Gray: Mid-range value with low saturation
         gray_mask = (
-            (sat < neutral_sat)
-            & (val >= gray_min)
-            & (val <= gray_max)
-            & (classification == -1)
+                (sat < neutral_sat)
+                & (val >= gray_min)
+                & (val <= gray_max)
+                & (classification == -1)
         )
         classification[gray_mask] = GRAY
 
@@ -595,11 +596,11 @@ class MeasureColorComposition(MeasureFeatures):
         # Human perception: We call high-value, low-mid saturation reds "pink" not "light red"
         pink_hue_mask = (hue <= 15) | (hue >= 250)
         pink_mask = (
-            pink_hue_mask
-            & (sat >= 20)
-            & (sat <= 60)
-            & (val > 80)
-            & (classification == -1)
+                pink_hue_mask
+                & (sat >= 20)
+                & (sat <= 60)
+                & (val > 80)
+                & (classification == -1)
         )
         classification[pink_mask] = PINK
 
@@ -742,5 +743,5 @@ class MeasureColorComposition(MeasureFeatures):
 
 # Append documentation from MeasurementInfo class
 MeasureColorComposition.__doc__ = ColorComposition.append_rst_to_doc(
-    MeasureColorComposition
+        MeasureColorComposition
 )

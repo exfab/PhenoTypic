@@ -1,13 +1,13 @@
 from __future__ import annotations
-from typing import Literal, TYPE_CHECKING
+from typing import Literal, TYPE_CHECKING, overload
 
 if TYPE_CHECKING:
-    from phenotypic import Image
+    from phenotypic import Image, GridImage
 
 import numpy as np
 
 from ._image_operation import ImageOperation
-from phenotypic.tools.funcs_ import validate_operation_integrity
+from phenotypic.tools_.funcs_ import validate_operation_integrity
 from abc import ABC
 from skimage.morphology import disk, square, diamond
 
@@ -576,6 +576,12 @@ class ObjectRefiner(ImageOperation, ABC):
                 print(f"Color measurements: {measurements.shape}")
     """
     _footprint_shapes = {"square", "diamond", "disk"}
+
+    @overload
+    def apply(self, image: Image, inplace: bool = False) -> Image: ...
+
+    @overload
+    def apply(self, image: GridImage, inplace: bool = False) -> GridImage: ...
 
     @validate_operation_integrity("image.rgb", "image.gray", "image.enh_gray")
     def apply(self, image: Image, inplace: bool = False) -> Image:

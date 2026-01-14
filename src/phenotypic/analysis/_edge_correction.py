@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-
 import numpy as np
 import pandas as pd
 from joblib import delayed, Parallel
@@ -8,7 +7,7 @@ from scipy.stats import permutation_test
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
 
-from phenotypic.tools.constants_ import MeasurementInfo
+from phenotypic.tools_.constants_ import MeasurementInfo
 from .abc_ import SetAnalyzer
 
 
@@ -244,7 +243,7 @@ class EdgeCorrector(SetAnalyzer):
             raise ValueError(f"shape must be two positive integers, got {shape}")
 
         rows, cols = shape
-        total_cells = rows*cols
+        total_cells = rows * cols
 
         # Coerce active_idx to 1D unique array
         active_idx = np.asarray(active_idx, dtype=dtype).ravel()
@@ -276,8 +275,8 @@ class EdgeCorrector(SetAnalyzer):
 
         # Build active mask
         active_mask = np.zeros((rows, cols), dtype=bool)
-        rows_idx = active_idx//cols
-        cols_idx = active_idx%cols
+        rows_idx = active_idx // cols
+        cols_idx = active_idx % cols
         active_mask[rows_idx, cols_idx] = True
 
         # Define neighbor offsets based on connectivity
@@ -324,14 +323,14 @@ class EdgeCorrector(SetAnalyzer):
 
         # Convert back to flattened indices
         selected_rows, selected_cols = np.where(selected_mask)
-        result_idx = (selected_rows*cols + selected_cols).astype(dtype)
+        result_idx = (selected_rows * cols + selected_cols).astype(dtype)
         result_idx = np.sort(result_idx)
 
         if return_counts:
             # Get counts for selected indices
             counts = neighbor_count[selected_rows, selected_cols].astype(dtype)
             # Sort counts to match sorted indices
-            sort_order = np.argsort(selected_rows*cols + selected_cols)
+            sort_order = np.argsort(selected_rows * cols + selected_cols)
             counts = counts[sort_order]
             return result_idx, counts
 
@@ -387,7 +386,7 @@ class EdgeCorrector(SetAnalyzer):
                 >>> import pandas as pd
                 >>> import numpy as np
                 >>> from phenotypic.analysis import EdgeCorrector
-                >>> from phenotypic.tools.constants_ import GRID
+                >>> from phenotypic.tools_.constants_ import GRID
                 >>>
                 >>> # Create sample 96-well data (8 rows x 12 cols)
                 >>> np.random.seed(42)
@@ -435,7 +434,7 @@ class EdgeCorrector(SetAnalyzer):
                 >>> corrected = corrector.analyze(data)
                 >>> # Each plate-condition combo gets its own threshold
         """
-        from phenotypic.tools.constants_ import GRID
+        from phenotypic.tools_.constants_ import GRID
 
         # Validate input
         if data is None or len(data) == 0:
@@ -642,7 +641,7 @@ class EdgeCorrector(SetAnalyzer):
 
         n_groups = len(groups)
         if figsize is None:
-            figsize = (10, max(6, 0.5*n_groups + 2))
+            figsize = (10, max(6, 0.5 * n_groups + 2))
 
         fig, ax = plt.subplots(figsize=figsize, **fig_kwargs)
 
@@ -782,7 +781,7 @@ class EdgeCorrector(SetAnalyzer):
                 )
 
                 # Add p-value text
-                mid_x = (mean_inner + mean_edge)/2
+                mid_x = (mean_inner + mean_edge) / 2
                 ax.text(
                         mid_x,
                         bracket_y + bracket_h + 0.05,
@@ -843,10 +842,10 @@ class EdgeCorrector(SetAnalyzer):
 
         n_groups = len(groups)
         n_cols = min(3, n_groups)
-        n_rows = (n_groups + n_cols - 1)//n_cols
+        n_rows = (n_groups + n_cols - 1) // n_cols
 
         if figsize is None:
-            figsize = (5*n_cols, 4*n_rows)
+            figsize = (5 * n_cols, 4 * n_rows)
 
         fig, axes = plt.subplots(
                 n_rows, n_cols, figsize=figsize, squeeze=False, **fig_kwargs
@@ -983,7 +982,7 @@ class EdgeCorrector(SetAnalyzer):
             - If p-value > self.pvalue, threshold = np.inf (no correction applied)
             - Threshold = mean of top_n interior values if correction applies
         """
-        from phenotypic.tools.constants_ import GRID
+        from phenotypic.tools_.constants_ import GRID
 
         if len(group) == 0:
             return None
@@ -1163,7 +1162,7 @@ class EdgeCorrector(SetAnalyzer):
                 ...     pvalue=0.05
                 ... )
         """
-        from phenotypic.tools.constants_ import GRID
+        from phenotypic.tools_.constants_ import GRID
 
         section_col = GRID.SECTION_NUM
 

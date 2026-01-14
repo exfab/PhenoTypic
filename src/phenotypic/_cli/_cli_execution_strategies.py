@@ -262,7 +262,7 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
         # Generate all bash scripts
         click.echo("Generating SLURM job scripts...")
         all_scripts = generate_all_image_scripts(
-            datasets, self.config, output_dir, self.output_manager
+            datasets, self.config, output_dir
         )
 
         total_scripts = sum(len(scripts) for scripts in all_scripts.values())

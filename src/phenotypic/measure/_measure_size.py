@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from phenotypic.tools.constants_ import OBJECT
+from phenotypic.tools_.constants_ import OBJECT
 
 if TYPE_CHECKING:
     from phenotypic import Image
@@ -139,15 +139,15 @@ class MeasureSize(MeasureFeatures):
         objmap = image.objmap[:].copy()
 
         measurements[SIZE.AREA] = self._calculate_sum(
-            array=image.objmask[:], objmap=objmap
+                array=image.objmask[:], objmap=objmap
         )
         measurements[SIZE.INTEGRATED_INTENSITY] = self._calculate_sum(
-            array=intensity_matrix, objmap=objmap
+                array=intensity_matrix, objmap=objmap
         )
 
         measurements = pd.DataFrame(measurements)
         measurements.insert(
-            loc=0, column=OBJECT.LABEL, value=image.objects.labels2series()
+                loc=0, column=OBJECT.LABEL, value=image.objects.labels2series()
         )
         return measurements
 

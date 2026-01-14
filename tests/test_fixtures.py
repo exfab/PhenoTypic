@@ -233,7 +233,7 @@ def walk_package(pkg, ignore_modules: List[str] = None):
                 yield qualname, obj
 
 
-_public = list(walk_package(phenotypic, ignore_modules=["phenotypic.tools.typing_"]))
+_public = list(walk_package(phenotypic, ignore_modules=["phenotypic.tools_.typing_"]))
 
 
 def walk_package_for_class(pkg, target_class):

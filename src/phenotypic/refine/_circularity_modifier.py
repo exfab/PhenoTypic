@@ -11,7 +11,7 @@ from skimage.measure import regionprops_table
 import math
 
 from ..abc_ import ObjectRefiner
-from ..tools.constants_ import OBJECT
+from ..tools_.constants_ import OBJECT
 
 
 class LowCircularityRemover(ObjectRefiner):
@@ -71,11 +71,11 @@ class LowCircularityRemover(ObjectRefiner):
         # Create intial measurement table
         table = (
             pd.DataFrame(
-                regionprops_table(
-                    label_image=image.objmap[:],
-                    intensity_image=image.gray[:],
-                    properties=["label", "area", "perimeter"],
-                )
+                    regionprops_table(
+                            label_image=image.objmap[:],
+                            intensity_image=image.gray[:],
+                            properties=["label", "area", "perimeter"],
+                    )
             )
             .rename(columns={"label": OBJECT.LABEL})
             .set_index(OBJECT.LABEL)
@@ -87,7 +87,8 @@ class LowCircularityRemover(ObjectRefiner):
         passing_objects = table[table["circularity"] > self.cutoff]
         failed_object_boolean_indices = ~(
             np.isin(
-                element=image.objmap[:], test_elements=passing_objects.index.to_numpy()
+                    element=image.objmap[:],
+                    test_elements=passing_objects.index.to_numpy()
             )
         )
         image.objmap[failed_object_boolean_indices] = 0

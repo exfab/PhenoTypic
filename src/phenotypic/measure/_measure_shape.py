@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from phenotypic.tools.constants_ import OBJECT
+from phenotypic.tools_.constants_ import OBJECT
 
 if TYPE_CHECKING:
     from phenotypic import Image

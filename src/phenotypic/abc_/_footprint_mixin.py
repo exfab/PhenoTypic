@@ -30,7 +30,7 @@ class FootprintMixin:
         This static utility method generates a structuring element (shape) useful
         for morphological operations like dilation and erosion. It supports different
         shapes such as square, diamond, and disk, which are often used in image analysis
-        tasks. These morphological tools are particularly helpful in analyzing colonies
+        tasks. These morphological tools_ are particularly helpful in analyzing colonies
         of microbes on solid media agar.
 
         Args:

@@ -8,8 +8,8 @@ if TYPE_CHECKING:
 import pandas as pd
 
 from phenotypic.abc_ import MeasureFeatures
-from phenotypic.tools.exceptions_ import GridImageInputError, OutputValueError
-from phenotypic.tools.funcs_ import validate_measure_integrity
+from phenotypic.tools_.exceptions_ import GridImageInputError, OutputValueError
+from phenotypic.tools_.funcs_ import validate_measure_integrity
 from abc import ABC
 
 
@@ -88,7 +88,7 @@ class GridMeasureFeatures(MeasureFeatures, ABC):
 
                 from phenotypic import GridImage
                 from phenotypic.abc_ import GridMeasureFeatures
-                from phenotypic.tools.constants_ import OBJECT
+                from phenotypic.tools_.constants_ import OBJECT
                 import pandas as pd
 
                 class MeasureWellOccupancy(GridMeasureFeatures):

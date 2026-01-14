@@ -1,9 +1,8 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, overload
 
 if TYPE_CHECKING:
-    pass
-
+    from phenotypic import Image, GridImage
 
 from ._image_operation import ImageOperation
 from abc import ABC
@@ -259,4 +258,11 @@ class ImageCorrector(ImageOperation, ABC):
             # All image components are perspective-corrected together
     """
 
-    pass
+    @overload
+    def apply(self, image: Image, inplace: bool = False) -> Image: ...
+
+    @overload
+    def apply(self, image: GridImage, inplace: bool = False) -> GridImage: ...
+
+    def apply(self, image: Image, inplace: bool = False) -> Image:
+        return super().apply(image=image, inplace=inplace)

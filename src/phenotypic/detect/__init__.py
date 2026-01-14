@@ -8,6 +8,7 @@ segmentation for clustered colonies.
 """
 
 from ._canny_detector import CannyDetector
+from ._hysteresis_detector import HysteresisDetector
 from ._round_peaks_detector import RoundPeaksDetector
 from ._isodata_detector import IsodataDetector
 from ._li_detector import LiDetector
@@ -23,6 +24,7 @@ from ._secondary_otsu import SecondaryOtsuDetector
 
 __all__ = [
     "CannyDetector",
+    "HysteresisDetector",
     "RoundPeaksDetector",
     "IsodataDetector",
     "LiDetector",

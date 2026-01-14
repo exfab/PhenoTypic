@@ -13,7 +13,7 @@ import pandas as pd
 from skimage import exposure
 
 from phenotypic.abc_ import MeasureFeatures
-from phenotypic.tools.constants_ import OBJECT
+from phenotypic.tools_.constants_ import OBJECT
 from phenotypic.abc_ import MeasurementInfo
 
 
@@ -138,12 +138,12 @@ class TEXTURE(MeasurementInfo):
         for member in cls.get_labels():
             for angle in angles:
                 labels.append(
-                    f"{cls.category()}{matrix_name}_{member}-deg{angle:03d}-scale{scale:02d}"
+                        f"{cls.category()}{matrix_name}_{member}-deg{angle:03d}-scale{scale:02d}"
                 )
 
         for member in cls.get_labels():
             labels.append(
-                f"{cls.category()}{matrix_name}_{member}-avg-scale{scale:02d}"
+                    f"{cls.category()}{matrix_name}_{member}-avg-scale{scale:02d}"
             )
         return labels
 
@@ -251,11 +251,11 @@ class MeasureTexture(MeasureFeatures):
     """
 
     def __init__(
-        self,
-        scale: int | List[int] = 5,
-        quant_lvl: Literal[8, 16, 32, 64] = 32,
-        enhance: bool = False,
-        warn: bool = False,
+            self,
+            scale: int | List[int] = 5,
+            quant_lvl: Literal[8, 16, 32, 64] = 32,
+            enhance: bool = False,
+            warn: bool = False,
     ):
         """
         Initializes an object with specific configurations for scale, quantization level,
@@ -297,13 +297,13 @@ class MeasureTexture(MeasureFeatures):
                 The nrows are indexed by object labels, and columns represent different texture features.
         """
         compute_haralick = functools.partial(
-            self._compute_haralick,
-            image=image,
-            foreground_array=image.gray.foreground(),
-            foreground_name="Gray",
-            quant_lvl=self.quant_lvl,
-            enhance=self.enhance,
-            warn=self.warn,
+                self._compute_haralick,
+                image=image,
+                foreground_array=image.gray.foreground(),
+                foreground_name="Gray",
+                quant_lvl=self.quant_lvl,
+                enhance=self.enhance,
+                warn=self.warn,
         )
 
         meas = compute_haralick(scale=self.scale[0])
@@ -314,13 +314,13 @@ class MeasureTexture(MeasureFeatures):
 
     @staticmethod
     def _compute_haralick(
-        image: Image,
-        foreground_array: np.ndarray,
-        foreground_name: str,
-        scale: int,
-        quant_lvl: int,
-        enhance: bool,
-        warn: bool,
+            image: Image,
+            foreground_array: np.ndarray,
+            foreground_name: str,
+            scale: int,
+            quant_lvl: int,
+            enhance: bool,
+            warn: bool,
     ) -> pd.DataFrame:
         """
         Computes texture feature measurements using Haralick features for objects in a given image. The method
@@ -360,11 +360,11 @@ class MeasureTexture(MeasureFeatures):
         ]  # there are 13 haralick features so we separate the avgs out
         avg_measurement_names = measurement_names[-13:]
         deg_meas = np.empty(
-            shape=(
-                image.num_objects,
-                len(deg_measurement_names),
-            ),
-            dtype=np.float64,
+                shape=(
+                    image.num_objects,
+                    len(deg_measurement_names),
+                ),
+                dtype=np.float64,
         )
         for idx, label in enumerate(image.objects.labels):
             slices = props[idx].slice
@@ -384,14 +384,15 @@ class MeasureTexture(MeasureFeatures):
                         # this can improve texture detail, but can
                         # add bias when the variance of the original range is small
                         obj_fg = exposure.rescale_intensity(
-                            obj_fg, in_range="image", out_range=(0.0, 1.0)
+                                obj_fg, in_range="image", out_range=(0.0, 1.0)
                         )
 
                     texture_statistics = mh.features.haralick(
-                        MeasureTexture._quantize_arr(arr=obj_fg, quant_lvl=quant_lvl),
-                        distance=scale,
-                        ignore_zeros=True,
-                        return_mean=False,
+                            MeasureTexture._quantize_arr(arr=obj_fg,
+                                                         quant_lvl=quant_lvl),
+                            distance=scale,
+                            ignore_zeros=True,
+                            return_mean=False,
                     )
             except KeyboardInterrupt:
                 raise KeyboardInterrupt
@@ -399,24 +400,24 @@ class MeasureTexture(MeasureFeatures):
                 # 4 for each direction, 13 for each texture feature
                 if warn:
                     warnings.warn(
-                        f"Error in computing Haralick features for object {label}: {e}"
+                            f"Error in computing Haralick features for object {label}: {e}"
                     )
                 texture_statistics = np.full((4, 13), np.nan, dtype=np.float64)
 
             deg_meas[idx, :] = texture_statistics.T.ravel()
 
         avg_meas = np.empty(
-            shape=(
-                image.num_objects,
-                len(avg_measurement_names),
-            ),
-            dtype=np.float64,
+                shape=(
+                    image.num_objects,
+                    len(avg_measurement_names),
+                ),
+                dtype=np.float64,
         )
 
         # step through each feature and avg across degrees
         for avg_col_idx, deg_start_idx in enumerate(range(0, deg_meas.shape[1], 4)):
             avg_meas[:, avg_col_idx] = np.average(
-                deg_meas[:, deg_start_idx : deg_start_idx + 4], axis=1
+                    deg_meas[:, deg_start_idx: deg_start_idx + 4], axis=1
             )
 
         meas = pd.DataFrame(np.hstack([deg_meas, avg_meas]), columns=measurement_names)

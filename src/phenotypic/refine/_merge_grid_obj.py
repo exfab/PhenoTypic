@@ -9,7 +9,7 @@ if TYPE_CHECKING:
     from phenotypic import GridImage
 
 from phenotypic.abc_ import GridObjectRefiner
-from phenotypic.tools.constants_ import GRID, OBJECT
+from phenotypic.tools_.constants_ import GRID, OBJECT
 
 
 class MergeGridObj(GridObjectRefiner):

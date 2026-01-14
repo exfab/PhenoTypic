@@ -10,7 +10,7 @@ import pandas as pd
 import numpy as np
 
 from phenotypic.abc_ import GridMeasureFeatures
-from phenotypic.tools.constants_ import BBOX, GRID
+from phenotypic.tools_.constants_ import BBOX, GRID
 from abc import ABC
 
 
@@ -241,15 +241,15 @@ class GridFinder(GridMeasureFeatures, ABC):
         return np.clip(a=row_edges, a_min=0, a_max=imshape[0])
 
     def _add_row_number_info(
-        self, table: pd.DataFrame, row_edges: np.array, imshape: (int, int)
+            self, table: pd.DataFrame, row_edges: np.array, imshape: (int, int)
     ) -> pd.DataFrame:
         row_edges = self._clip_row_edges(row_edges=row_edges, imshape=imshape)
         table.loc[:, str(GRID.ROW_NUM)] = pd.cut(
-            table.loc[:, str(BBOX.CENTER_RR)],
-            bins=row_edges,
-            labels=range(self.nrows),
-            include_lowest=True,
-            right=True,
+                table.loc[:, str(BBOX.CENTER_RR)],
+                bins=row_edges,
+                labels=range(self.nrows),
+                include_lowest=True,
+                right=True,
         )
         return table
 
@@ -258,24 +258,24 @@ class GridFinder(GridMeasureFeatures, ABC):
         return np.clip(a=col_edges, a_min=0, a_max=imshape[1] - 1)
 
     def _add_col_number_info(
-        self, table: pd.DataFrame, col_edges: np.array, imshape: (int, int)
+            self, table: pd.DataFrame, col_edges: np.array, imshape: (int, int)
     ) -> pd.DataFrame:
         col_edges = self._clip_col_edges(col_edges=col_edges, imshape=imshape)
         table.loc[:, str(GRID.COL_NUM)] = pd.cut(
-            table.loc[:, str(BBOX.CENTER_CC)],
-            bins=col_edges,
-            labels=range(self.ncols),
-            include_lowest=True,
-            right=True,
+                table.loc[:, str(BBOX.CENTER_CC)],
+                bins=col_edges,
+                labels=range(self.ncols),
+                include_lowest=True,
+                right=True,
         )
         return table
 
     def _add_section_number_info(
-        self,
-        table: pd.DataFrame,
-        row_edges: np.array,
-        col_edges: np.array,
-        imshape: (int, int),
+            self,
+            table: pd.DataFrame,
+            row_edges: np.array,
+            col_edges: np.array,
+            imshape: (int, int),
     ) -> pd.DataFrame:
         # Ensure ROW_NUM and COL_NUM exist
         if str(GRID.ROW_NUM) not in table.columns:
@@ -285,7 +285,7 @@ class GridFinder(GridMeasureFeatures, ABC):
 
         # Create section number directly from row and column indices
         idx_map = np.reshape(
-            np.arange(self.nrows * self.ncols), (self.nrows, self.ncols)
+                np.arange(self.nrows * self.ncols), (self.nrows, self.ncols)
         )
 
         # Compute section number for each row using vectorized operations
@@ -310,7 +310,7 @@ class GridFinder(GridMeasureFeatures, ABC):
         return table
 
     def _get_grid_info(
-        self, image: Image, row_edges: np.ndarray, col_edges: np.ndarray
+            self, image: Image, row_edges: np.ndarray, col_edges: np.ndarray
     ) -> pd.DataFrame:
         """
         Assembles complete grid information from row and column edges.
@@ -331,20 +331,20 @@ class GridFinder(GridMeasureFeatures, ABC):
 
         # Add row information
         info_table = self._add_row_number_info(
-            table=info_table, row_edges=row_edges, imshape=image.shape
+                table=info_table, row_edges=row_edges, imshape=image.shape
         )
 
         # Add column information
         info_table = self._add_col_number_info(
-            table=info_table, col_edges=col_edges, imshape=image.shape
+                table=info_table, col_edges=col_edges, imshape=image.shape
         )
 
         # Add section information
         info_table = self._add_section_number_info(
-            table=info_table,
-            row_edges=row_edges,
-            col_edges=col_edges,
-            imshape=image.shape,
+                table=info_table,
+                row_edges=row_edges,
+                col_edges=col_edges,
+                imshape=image.shape,
         )
 
         return info_table

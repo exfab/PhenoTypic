@@ -10,7 +10,7 @@ from typing import Optional
 from phenotypic.abc_ import GridObjectRefiner
 from phenotypic.measure import MeasureGridLinRegStats
 from phenotypic.measure._measure_grid_linreg_stats import GRID_LINREG_STATS
-from phenotypic.tools.constants_ import GRID
+from phenotypic.tools_.constants_ import GRID
 
 
 class ResidualOutlierRemover(GridObjectRefiner):
@@ -60,10 +60,10 @@ class ResidualOutlierRemover(GridObjectRefiner):
     """
 
     def __init__(
-        self,
-        axis: Optional[int] = None,
-        stddev_multiplier=1.5,
-        max_coeff_variance: int = 1,
+            self,
+            axis: Optional[int] = None,
+            stddev_multiplier=1.5,
+            max_coeff_variance: int = 1,
     ):
         """Initialize the remover.
 
@@ -117,15 +117,15 @@ class ResidualOutlierRemover(GridObjectRefiner):
 
             #   Divide standard deviation by mean
             row_variance = (
-                row_variance
-                / grid_info.groupby(str(GRID.ROW_NUM))[
-                    str(GRID_LINREG_STATS.RESIDUAL_ERR)
-                ].mean()
+                    row_variance
+                    / grid_info.groupby(str(GRID.ROW_NUM))[
+                        str(GRID_LINREG_STATS.RESIDUAL_ERR)
+                    ].mean()
             )
 
             over_limit_row_variance = row_variance.loc[
                 row_variance > self.max_coeff_variance
-            ]
+                ]
 
             # Collect outlier objects in the nrows with a variance over the maximum
             for row_idx in over_limit_row_variance.index:
@@ -143,7 +143,7 @@ class ResidualOutlierRemover(GridObjectRefiner):
                 upper_row_cutoff = row_err_mean + row_iqr * self.cutoff_multiplier
                 outlier_obj_ids += row_err.loc[
                     row_err >= upper_row_cutoff
-                ].index.tolist()
+                    ].index.tolist()
 
         # Column-wise residual outlier discovery
         if self.axis is None or self.axis == 1:
@@ -155,15 +155,15 @@ class ResidualOutlierRemover(GridObjectRefiner):
 
             #   Divide standard deviation by mean
             col_variance = (
-                col_variance
-                / grid_info.groupby(str(GRID.COL_NUM))[
-                    str(GRID_LINREG_STATS.RESIDUAL_ERR)
-                ].mean()
+                    col_variance
+                    / grid_info.groupby(str(GRID.COL_NUM))[
+                        str(GRID_LINREG_STATS.RESIDUAL_ERR)
+                    ].mean()
             )
 
             over_limit_col_variance = col_variance.loc[
                 col_variance > self.max_coeff_variance
-            ]
+                ]
 
             # Collect outlier objects in the columns with a variance over the maximum
             for col_idx in over_limit_col_variance.index:
@@ -179,7 +179,7 @@ class ResidualOutlierRemover(GridObjectRefiner):
                 upper_col_cutoff = col_err_mean + col_iqr * self.cutoff_multiplier
                 outlier_obj_ids += col_err.loc[
                     col_err >= upper_col_cutoff
-                ].index.tolist()
+                    ].index.tolist()
 
         # Remove objects from obj map
         image.objmap[np.isin(image.objmap[:], outlier_obj_ids)] = 0

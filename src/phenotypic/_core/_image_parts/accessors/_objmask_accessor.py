@@ -9,8 +9,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from phenotypic._core._image_parts.accessor_abstracts import SingleChannelAccessor
-from phenotypic._core._image_parts.accessor_abstracts._napari_labels_mixin import NapariLabelsMixin
-from phenotypic.tools.exceptions_ import (
+from phenotypic._core._image_parts.accessor_abstracts._napari_labels_mixin import \
+    NapariLabelsMixin
+from phenotypic.tools_.exceptions_ import (
     InvalidMaskValueError,
     InvalidMaskScalarValueError,
     ArrayKeyValueShapeMismatchError,
@@ -466,7 +467,7 @@ class ObjectMask(NapariLabelsMixin, SingleChannelAccessor):
             other_arr = np.asarray(other)
             if other_arr.shape != self.shape:
                 raise ValueError(
-                    f"Shape mismatch: mask shape {self.shape} != operand shape {other_arr.shape}"
+                        f"Shape mismatch: mask shape {self.shape} != operand shape {other_arr.shape}"
                 )
             other_mask = other_arr > 0
         else:
@@ -518,7 +519,7 @@ class ObjectMask(NapariLabelsMixin, SingleChannelAccessor):
             other_arr = np.asarray(other)
             if other_arr.shape != self.shape:
                 raise ValueError(
-                    f"Shape mismatch: mask shape {self.shape} != operand shape {other_arr.shape}"
+                        f"Shape mismatch: mask shape {self.shape} != operand shape {other_arr.shape}"
                 )
             other_mask = other_arr > 0
         else:
@@ -569,7 +570,7 @@ class ObjectMask(NapariLabelsMixin, SingleChannelAccessor):
             other_arr = np.asarray(other)
             if other_arr.shape != self.shape:
                 raise ValueError(
-                    f"Shape mismatch: mask shape {self.shape} != operand shape {other_arr.shape}"
+                        f"Shape mismatch: mask shape {self.shape} != operand shape {other_arr.shape}"
                 )
             other_mask = other_arr > 0
         else:
@@ -650,7 +651,7 @@ class ObjectMask(NapariLabelsMixin, SingleChannelAccessor):
             other_arr = np.asarray(other)
             if other_arr.shape != self.shape:
                 raise ValueError(
-                    f"Shape mismatch: mask shape {self.shape} != operand shape {other_arr.shape}"
+                        f"Shape mismatch: mask shape {self.shape} != operand shape {other_arr.shape}"
                 )
             other_mask = other_arr > 0
         else:
@@ -712,7 +713,7 @@ class ObjectMask(NapariLabelsMixin, SingleChannelAccessor):
             other_arr = np.asarray(other)
             if other_arr.shape != self.shape:
                 raise ValueError(
-                    f"Shape mismatch: mask shape {self.shape} != operand shape {other_arr.shape}"
+                        f"Shape mismatch: mask shape {self.shape} != operand shape {other_arr.shape}"
                 )
             other_mask = other_arr > 0
         else:
@@ -773,7 +774,7 @@ class ObjectMask(NapariLabelsMixin, SingleChannelAccessor):
             other_arr = np.asarray(other)
             if other_arr.shape != self.shape:
                 raise ValueError(
-                    f"Shape mismatch: mask shape {self.shape} != operand shape {other_arr.shape}"
+                        f"Shape mismatch: mask shape {self.shape} != operand shape {other_arr.shape}"
                 )
             other_mask = other_arr > 0
         else:

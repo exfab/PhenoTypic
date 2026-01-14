@@ -16,7 +16,7 @@ import pytest
 from PIL import Image as PIL_Image
 
 import phenotypic
-from phenotypic.tools.constants_ import IO, METADATA
+from phenotypic.tools_.constants_ import IO, METADATA
 
 HAS_EXIFTOOL = shutil.which("exiftool") is not None
 
@@ -123,7 +123,7 @@ class TestPNGMetadataRoundTrip:
 
     def test_png_roundtrip_gray(self, sample_gray_image, temp_image_dir):
         """Test saving and loading grayscale PNG with metadata."""
-        filepath = temp_image_dir/"test_gray.png"
+        filepath = temp_image_dir / "test_gray.png"
 
         # Add custom metadata
         sample_gray_image.metadata["test_key"] = "test_value"
@@ -144,7 +144,7 @@ class TestPNGMetadataRoundTrip:
 
     def test_png_roundtrip_rgb(self, sample_rgb_image, temp_image_dir):
         """Test saving and loading RGB PNG with metadata."""
-        filepath = temp_image_dir/"test_rgb.png"
+        filepath = temp_image_dir / "test_rgb.png"
 
         sample_rgb_image.metadata["experiment"] = "growth_curve"
 
@@ -161,7 +161,7 @@ class TestPNGMetadataRoundTrip:
             self, sample_gray_image, temp_image_dir
     ):
         """Test that phenotypic_image_property is correctly set for gray accessor."""
-        filepath = temp_image_dir/"test_property_gray.png"
+        filepath = temp_image_dir / "test_property_gray.png"
 
         sample_gray_image.gray.imsave(filepath)
 
@@ -176,7 +176,7 @@ class TestPNGMetadataRoundTrip:
             self, sample_gray_image, temp_image_dir
     ):
         """Test that phenotypic_image_property is correctly set for enh_gray accessor."""
-        filepath = temp_image_dir/"test_property_enh_gray.png"
+        filepath = temp_image_dir / "test_property_enh_gray.png"
 
         sample_gray_image.enh_gray.imsave(filepath)
 
@@ -188,7 +188,7 @@ class TestPNGMetadataRoundTrip:
 
     def test_png_phenotypic_image_property_rgb(self, sample_rgb_image, temp_image_dir):
         """Test that phenotypic_image_property is correctly set for rgb accessor."""
-        filepath = temp_image_dir/"test_property_rgb.png"
+        filepath = temp_image_dir / "test_property_rgb.png"
 
         sample_rgb_image.rgb.imsave(filepath)
 
@@ -210,7 +210,7 @@ class TestJPEGMetadataRoundTrip:
 
     def test_jpeg_roundtrip_gray(self, sample_gray_image, temp_image_dir):
         """Test saving and loading grayscale JPEG with metadata."""
-        filepath = temp_image_dir/"test_gray.jpg"
+        filepath = temp_image_dir / "test_gray.jpg"
 
         sample_gray_image.metadata["test_key"] = "jpeg_test"
         sample_gray_image.gray.imsave(filepath)
@@ -222,7 +222,7 @@ class TestJPEGMetadataRoundTrip:
 
     def test_jpeg_roundtrip_rgb(self, sample_rgb_image, temp_image_dir):
         """Test saving and loading RGB JPEG with metadata."""
-        filepath = temp_image_dir/"test_rgb.jpg"
+        filepath = temp_image_dir / "test_rgb.jpg"
 
         sample_rgb_image.metadata["experiment"] = "jpeg_growth"
         sample_rgb_image.rgb.imsave(filepath)
@@ -234,7 +234,7 @@ class TestJPEGMetadataRoundTrip:
 
     def test_jpeg_phenotypic_image_property(self, sample_gray_image, temp_image_dir):
         """Test that phenotypic_image_property is correctly set in JPEG EXIF."""
-        filepath = temp_image_dir/"test_property.jpg"
+        filepath = temp_image_dir / "test_property.jpg"
 
         sample_gray_image.gray.imsave(filepath)
 
@@ -262,7 +262,7 @@ class TestTIFFMetadataRoundTrip:
 
     def test_tiff_roundtrip_gray(self, sample_gray_image, temp_image_dir):
         """Test saving and loading grayscale TIFF with metadata."""
-        filepath = temp_image_dir/"test_gray.tif"
+        filepath = temp_image_dir / "test_gray.tif"
 
         sample_gray_image.metadata["tiff_test"] = "value"
         sample_gray_image.gray.imsave(filepath)
@@ -274,7 +274,7 @@ class TestTIFFMetadataRoundTrip:
 
     def test_tiff_roundtrip_rgb(self, sample_rgb_image, temp_image_dir):
         """Test saving and loading RGB TIFF with metadata."""
-        filepath = temp_image_dir/"test_rgb.tiff"
+        filepath = temp_image_dir / "test_rgb.tiff"
 
         sample_rgb_image.metadata["experiment"] = "tiff_growth"
         sample_rgb_image.rgb.imsave(filepath)
@@ -286,7 +286,7 @@ class TestTIFFMetadataRoundTrip:
 
     def test_tiff_phenotypic_image_property(self, sample_gray_image, temp_image_dir):
         """Test that phenotypic_image_property is correctly set in TIFF ImageDescription."""
-        filepath = temp_image_dir/"test_property.tif"
+        filepath = temp_image_dir / "test_property.tif"
 
         sample_gray_image.enh_gray.imsave(filepath)
 
@@ -308,7 +308,7 @@ class TestProtectedMetadataPreservation:
 
     def test_bit_depth_preserved(self, sample_gray_image, temp_image_dir):
         """Test that bit depth is preserved through round-trip."""
-        filepath = temp_image_dir/"test_bitdepth.png"
+        filepath = temp_image_dir / "test_bitdepth.png"
 
         original_bit_depth = sample_gray_image.bit_depth
         sample_gray_image.gray.imsave(filepath)
@@ -318,7 +318,7 @@ class TestProtectedMetadataPreservation:
 
     def test_image_name_not_overwritten(self, sample_gray_image, temp_image_dir):
         """Test that image name from filename takes precedence."""
-        filepath = temp_image_dir/"new_name.png"
+        filepath = temp_image_dir / "new_name.png"
 
         sample_gray_image.gray.imsave(filepath)
         loaded = phenotypic.Image.imread(filepath)
@@ -328,7 +328,7 @@ class TestProtectedMetadataPreservation:
 
     def test_enh_gray_metadata_not_restored(self, sample_gray_image, temp_image_dir):
         """Test that metadata is NOT restored when image was saved from enh_gray."""
-        filepath = temp_image_dir/"test_enh_gray.png"
+        filepath = temp_image_dir / "test_enh_gray.png"
 
         # Add custom metadata
         sample_gray_image.metadata["should_not_restore"] = "test_value"
@@ -352,7 +352,7 @@ class TestVersionInfo:
 
     def test_version_saved_png(self, sample_gray_image, temp_image_dir):
         """Test that phenotypic version is saved in PNG metadata."""
-        filepath = temp_image_dir/"test_version.png"
+        filepath = temp_image_dir / "test_version.png"
 
         sample_gray_image.gray.imsave(filepath)
 
@@ -364,7 +364,7 @@ class TestVersionInfo:
 
     def test_version_saved_tiff(self, sample_gray_image, temp_image_dir):
         """Test that phenotypic version is saved in TIFF metadata."""
-        filepath = temp_image_dir/"test_version.tif"
+        filepath = temp_image_dir / "test_version.tif"
 
         sample_gray_image.gray.imsave(filepath)
 
@@ -464,7 +464,7 @@ class TestColorSpaceTIFFRoundTrip:
         """Test XYZ color space saves with correct metadata in TIFF."""
         import tifffile
 
-        filepath = temp_image_dir/"test_xyz.tif"
+        filepath = temp_image_dir / "test_xyz.tif"
 
         sample_rgb_image.color.XYZ.imsave(filepath)
 
@@ -482,7 +482,7 @@ class TestColorSpaceTIFFRoundTrip:
         """Test Lab color space saves with correct metadata in TIFF."""
         import tifffile
 
-        filepath = temp_image_dir/"test_lab.tif"
+        filepath = temp_image_dir / "test_lab.tif"
 
         sample_rgb_image.color.Lab.imsave(filepath)
 
@@ -498,7 +498,7 @@ class TestColorSpaceTIFFRoundTrip:
         """Test HSV color space saves with correct metadata in TIFF."""
         import tifffile
 
-        filepath = temp_image_dir/"test_hsv.tif"
+        filepath = temp_image_dir / "test_hsv.tif"
 
         sample_rgb_image.color.hsv.imsave(filepath)
 
@@ -512,7 +512,7 @@ class TestColorSpaceTIFFRoundTrip:
 
     def test_color_space_rejects_non_tiff(self, sample_rgb_image, temp_image_dir):
         """Test that color space accessor raises error for non-TIFF formats."""
-        filepath = temp_image_dir/"test_xyz.png"
+        filepath = temp_image_dir / "test_xyz.png"
 
         with pytest.raises(
                 ValueError, match="Color space arrays can only be saved in TIFF format"
@@ -533,7 +533,7 @@ class TestAccessorLoad:
         from phenotypic._core._image_parts.accessors._grayscale_accessor import \
             Grayscale
 
-        filepath = temp_image_dir/"test_gray.png"
+        filepath = temp_image_dir / "test_gray.png"
         sample_gray_image.gray.imsave(filepath)
 
         # Should load without warning
@@ -555,7 +555,7 @@ class TestAccessorLoad:
         from phenotypic._core._image_parts.accessors._grayscale_accessor import \
             Grayscale
 
-        filepath = temp_image_dir/"test_rgb.png"
+        filepath = temp_image_dir / "test_rgb.png"
         # Save from RGB accessor
         sample_rgb_image.rgb.imsave(filepath)
 
@@ -569,7 +569,7 @@ class TestAccessorLoad:
         """Test ImageRGB.load() with matching metadata."""
         from phenotypic._core._image_parts.accessors._rgb_accessor import ImageRGB
 
-        filepath = temp_image_dir/"test_rgb.png"
+        filepath = temp_image_dir / "test_rgb.png"
         sample_rgb_image.rgb.imsave(filepath)
 
         with warnings.catch_warnings(record=True) as w:
@@ -591,7 +591,7 @@ class TestAccessorLoad:
             Grayscale
 
         # Create a plain image without PhenoTypic metadata
-        filepath = temp_image_dir/"plain_image.png"
+        filepath = temp_image_dir / "plain_image.png"
         plain_arr = np.random.randint(0, 255, (50, 50), dtype=np.uint8)
         PIL_Image.fromarray(plain_arr).save(filepath)
 
@@ -606,7 +606,7 @@ class TestAccessorLoad:
             CieLabAccessor,
         )
 
-        filepath = temp_image_dir/"test_lab.tif"
+        filepath = temp_image_dir / "test_lab.tif"
         sample_rgb_image.color.Lab.imsave(filepath)
 
         with warnings.catch_warnings(record=True) as w:
@@ -628,7 +628,7 @@ class TestAccessorLoad:
             CieLabAccessor,
         )
 
-        filepath = temp_image_dir/"test_xyz.tif"
+        filepath = temp_image_dir / "test_xyz.tif"
         # Save from XYZ accessor
         sample_rgb_image.color.XYZ.imsave(filepath)
 
@@ -644,7 +644,7 @@ class TestAccessorLoad:
             CieLabAccessor,
         )
 
-        filepath = temp_image_dir/"test.png"
+        filepath = temp_image_dir / "test.png"
         with pytest.raises(ValueError, match="can only be loaded from TIFF format"):
             CieLabAccessor.load(filepath)
 
@@ -653,7 +653,7 @@ class TestAccessorLoad:
         from phenotypic._core._image_parts.color_space_accessors._hsv_accessor import \
             HsvAccessor
 
-        filepath = temp_image_dir/"test_hsv.tif"
+        filepath = temp_image_dir / "test_hsv.tif"
         sample_rgb_image.color.hsv.imsave(filepath)
 
         with warnings.catch_warnings(record=True) as w:

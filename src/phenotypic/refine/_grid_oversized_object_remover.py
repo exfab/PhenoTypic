@@ -8,7 +8,7 @@ if TYPE_CHECKING:
 import numpy as np
 
 from phenotypic.abc_ import GridObjectRefiner
-from phenotypic.tools.constants_ import BBOX, OBJECT
+from phenotypic.tools_.constants_ import BBOX, OBJECT
 
 
 class GridOversizedObjectRemover(GridObjectRefiner):
@@ -72,11 +72,11 @@ class GridOversizedObjectRemover(GridObjectRefiner):
 
         # Calculate the width and height of each object
         grid_info.loc[:, "width"] = (
-            grid_info.loc[:, str(BBOX.MAX_CC)] - grid_info.loc[:, str(BBOX.MIN_CC)]
+                grid_info.loc[:, str(BBOX.MAX_CC)] - grid_info.loc[:, str(BBOX.MIN_CC)]
         )
 
         grid_info.loc[:, "height"] = (
-            grid_info.loc[:, str(BBOX.MAX_RR)] - grid_info.loc[:, str(BBOX.MIN_RR)]
+                grid_info.loc[:, str(BBOX.MAX_RR)] - grid_info.loc[:, str(BBOX.MIN_RR)]
         )
 
         # Find objects that are past the max height & width

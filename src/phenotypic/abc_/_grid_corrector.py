@@ -1,13 +1,12 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
 
-
 if TYPE_CHECKING:
     from phenotypic import GridImage
 
 from phenotypic.abc_ import ImageCorrector
 from phenotypic.abc_ import GridOperation
-from phenotypic.tools.exceptions_ import GridImageInputError, OutputValueError
+from phenotypic.tools_.exceptions_ import GridImageInputError, OutputValueError
 from abc import ABC
 
 

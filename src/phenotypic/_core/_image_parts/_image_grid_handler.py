@@ -10,8 +10,8 @@ from phenotypic.abc_ import GridFinder
 from phenotypic._core._image_parts.accessors import GridAccessor
 from phenotypic.grid import AutoGridFinder
 from phenotypic.measure import MeasureBounds
-from phenotypic.tools.constants_ import IMAGE_TYPES, BBOX, METADATA
-from phenotypic.tools.exceptions_ import IllegalAssignmentError
+from phenotypic.tools_.constants_ import IMAGE_TYPES, BBOX, METADATA
+from phenotypic.tools_.exceptions_ import IllegalAssignmentError
 from .._image import Image
 
 
@@ -309,7 +309,7 @@ class ImageGridHandler(Image):
             secax_x = ax.secondary_xaxis("top")
             secax_x.set_xlabel("Grid Column Number")
 
-            col_centers = ((upper_col_edges - lower_col_edges)//2) + lower_col_edges
+            col_centers = ((upper_col_edges - lower_col_edges) // 2) + lower_col_edges
             secax_x.set_xticks(col_centers)
             secax_x.set_xticklabels(np.arange(self.ncols))
 
@@ -321,7 +321,7 @@ class ImageGridHandler(Image):
             secax_y = ax.secondary_yaxis("right")
             secax_y.set_ylabel("Grid Row Number", rotation=270, labelpad=10)
 
-            row_centers = ((upper_row_edges - lower_row_edges)//2) + lower_row_edges
+            row_centers = ((upper_row_edges - lower_row_edges) // 2) + lower_row_edges
             secax_y.set_yticks(row_centers)
             secax_y.set_yticklabels(np.arange(self.nrows))
 

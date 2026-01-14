@@ -1,6 +1,6 @@
 # AGENTS.md
 
-This file provides guidance to agentswhen working with code in
+This file provides guidance to agentic coding when working with code in
 this repository.
 
 ---
@@ -316,47 +316,98 @@ phenotypic/module_name/
 
 ---
 
-## Important Cursor/Development Rules
+## Documentation and Code Standards
 
-### From .cursor/rules/design-guide.mdc
+This section consolidates all code style, design, and documentation rules for the project.
+
+### Design Principles
 
 - Package features should be **intuitive for entry-level data scientists**
-- Extendable bio-image processing framework (standalone, no external extensions
-  required)
+- Framework is **extendable** and **standalone** (no external extensions required)
 - Examples should have **microbiology context** (arrayed microbe growth, agar plates)
 - Follow **duck typing** principles when reasonable
-- **Cross-platform support:** macOS, Windows, and Linux
+- **Cross-platform support:** macOS, Windows, and Linux (watch for platform-specific optional dependencies in pyproject.toml)
+- Use **explicit matplotlib interface** (never use implicit pyplot)
 
-### From .cursor/rules/active-code-rules.mdc
+### Code Style Rules
 
 - Use **Google-style docstrings** for all documentation
 - Use `uv run` to execute Python code or Python-dependent functions
 - Activate venv with: `source .venv/bin/activate`
 - Follow **duck typing** for type checks
-- Use **explicit matplotlib interface** (not implicit pyplot)
-- **Put example usage in docstrings**, don't create separate example files/notebooks
+- **Never create separate example files/notebooks** - put all examples in docstrings
 - Don't create summary documents unless explicitly asked
-- For batch processing, use the CLI: `uv run python -m phenotypic` rather than custom
-  scripts
+- For batch processing, use the CLI: `uv run python -m phenotypic` rather than custom scripts
 - When modifying settings, import `phenotypic.settings_` before other modules
 
-### From .cursor/rules/ops-doc-rules.mdc (for ImageOperation classes)
+### Docstring Format (All Classes)
 
-When writing docstrings for `ImageOperation` subclasses, use this specific order:
+Use **Google-style docstrings** with this exact order:
+
+1. **One-line summary** - What does it do?
+2. **Args** - Parameters and their effects
+3. **Returns** - What is returned
+4. **Raises** - Exceptions that can occur
+5. **Longer description** - Include intuition, use cases, limitations (especially for ImageOperation subclasses)
+6. **Examples** - Doctest-formatted, copy-pasteable code with microbiology context
+
+**Quick template:**
+
+```python
+def function_name(param):
+    """One-line summary.
+
+    Args:
+        param: Parameter description.
+
+    Returns:
+        Return value description.
+
+    Raises:
+        ValueError: When and why.
+
+    Longer explanation. For operations: why is this useful for colony analysis?
+    Include limitations and how parameters affect results.
+
+    Examples:
+        >>> from phenotypic.data import load_synth_plate
+        >>> image = load_synth_plate()
+        >>> result = function_name(image, param=value)
+    """
+```
+
+### Doctest Format Requirements
+
+- Use **doctest format** for all code examples (lines starting with `>>>` are code)
+- Output from code should appear on the next line(s) without prefix
+- All examples must be **fully runnable** and **copy-pasteable**
+- Use `load_synth_plate()` from `phenotypic.data` for image examples (returns a GridImage with detected colonies)
+- Use real microbiology context (colony detection, plate images) - not synthetic/abstract examples
+- Document parameter effects on colony visibility, edge sharpness, background suppression, or mask quality
+
+### ImageOperation Subclasses (Special Rules)
+
+For `ObjectDetector`, `ImageEnhancer`, `ImageCorrector`, and related operation classes, use this specific order:
 
 1. **One-line summary** at the top (what does it do?)
-2. **Args/Attributes section** - Parameters and their effects on image processing
+2. **Args/Attributes section** - Concise parameter descriptions (1-2 sentences per param) with effects on image processing
 3. **Returns section** - What the operation returns
 4. **Raises section** - Exceptions that can be raised
 5. **Detailed explanation** - Comes AFTER exceptions. Include:
-   - **Intuition:** Why is this useful for colony analysis?
-   - **Use cases:** What imaging artifacts does it address?
-   - **Caveats:** Limitations, failure modes, when performance might suffer
-   - **Parameter effects:** How does tuning each parameter affect colony visibility,
-     edge sharpness, background suppression, or mask quality?
-6. **Examples section** - Practical copy-pasteable code examples (NOT in dropdown format)
-7. Keep explanations technically meaningful but concise
-8. Follow the formatting of `phenotypic.enhance` docstrings as reference
+   - **Use cases** (3-5 bullet points): Key scenarios when to use this operation
+   - **Limitations** (3-5 bullet points): Critical limitations, failure modes, when NOT to use
+   - **Parameter effects** (1-2 sentences per parameter): How tuning impacts results
+6. **Examples section** - 2 practical doctest code examples:
+   - Basic usage
+   - Pipeline/advanced usage
+
+**Documentation format:** Moderate conciseness (100-150 lines total per class)
+- Clear and informative without excessive verbosity
+- Concise parameter descriptions (1-2 sentences per param)
+- Use cases and limitations as bullet-point lists
+- Examples use doctest format and are fully runnable
+- Use `load_synth_plate()` from `phenotypic.data` when an image is needed
+- Reference: [HysteresisDetector](src/phenotypic/detect/_hysteresis_detector.py) in `phenotypic.detect` module as an example
 
 ---
 
@@ -426,7 +477,10 @@ settings.VALIDATE_OPS = False
 settings.MPL.FIGSIZE = (12, 8)
 
 # Then proceed with normal operations
-from phenotypic import Image, ImagePipeline
+from phenotypic import ImagePipeline
+from phenotypic.data import load_synth_plate
+
+image = load_synth_plate()
 ```
 
 **Important Notes:**
@@ -484,12 +538,15 @@ MorphologicalClosing, etc.), and edge detection (SobelFilter).
 ```python
 from phenotypic import ImagePipeline
 from phenotypic.enhance import GaussianBlur, CLAHE, MorphologicalOpening
+from phenotypic.data import load_synth_plate
 
+image = load_synth_plate()
 pipeline = ImagePipeline([
     GaussianBlur(sigma=1.5),
     CLAHE(clip_limit=2.0),
     MorphologicalOpening(shape='disk', radius=2)
 ])
+result = pipeline.operate(image)
 ```
 
 See `phenotypic.enhance` module docstrings for parameter tuning guidance and use cases.
@@ -585,9 +642,10 @@ This allows profiling bottlenecks without explicit instrumentation.
 ```python
 from phenotypic import Image
 from phenotypic.detect import OtsuDetector
+from phenotypic.data import load_synth_plate
 
 # Load image
-image = Image.imread("path/to/image.jpg")
+image = load_synth_plate()
 
 # Apply operations
 detector = OtsuDetector()
@@ -665,11 +723,12 @@ When writing code:
 **1. Design and test pipeline interactively:**
 
 ```python
-from phenotypic import GridImage, ImagePipeline
+from phenotypic import ImagePipeline
 from phenotypic.enhance import GaussianBlur, CLAHE
 from phenotypic.detect import OtsuDetector
+from phenotypic.data import load_synth_plate
 
-image = GridImage.imread("test_plate.jpg", nrows=8, ncols=12)
+image = load_synth_plate()
 pipeline = ImagePipeline([GaussianBlur(sigma=1.5), CLAHE(clip_limit=2.0), OtsuDetector()])
 result = pipeline.apply_and_measure(image)
 pipeline.to_json("my_pipeline.json")  # Save for batch processing
@@ -719,51 +778,6 @@ uv run python -m phenotypic my_pipeline.json ./raw_plates ./results \
 - Use duck typing for type checks
 - Follow the accessor pattern for consistent data access
 - Document parameter effects on colony visibility, edge sharpness, and mask quality (for operations)
-
----
-
-## Documentation Standards
-
-Use **Google-style docstrings** with this exact order:
-
-1. **One-line summary** - What does it do?
-2. **Args** - Parameters and their effects
-3. **Returns** - What is returned
-4. **Raises** - Exceptions that can occur
-5. **Longer description** - Include intuition, use cases, caveats (for ImageOperation subclasses)
-6. **Examples** - Copy-pasteable code with microbiology context
-
-**Quick template:**
-
-```python
-def function_name(param):
-    """One-line summary.
-
-    Args:
-        param: Parameter description.
-
-    Returns:
-        Return value description.
-
-    Raises:
-        ValueError: When and why.
-
-    Longer explanation. For operations: why is this useful for colony analysis?
-    Include caveats and how parameters affect results.
-
-    Examples:
-        >>> from phenotypic import Image
-        >>> image = Image.imread("plate.jpg")
-        >>> result = function_name(image, param=value)
-    """
-```
-
-**Key rules:**
-
-- Put examples in docstrings, not separate files
-- Use real microbiology context (colony detection, plate images)
-- Make examples copy-pasteable and runnable
-- For ImageOperation subclasses, follow the ops-doc-rules.mdc order strictly
 
 ---
 

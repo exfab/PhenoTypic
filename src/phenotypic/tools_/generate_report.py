@@ -6,7 +6,7 @@ Useful for generating reports on-demand after processing completes or during
 long-running SLURM jobs.
 
 Usage:
-    python -m phenotypic.tools.generate_report OUTPUT_DIR
+    python -m phenotypic.tools_.generate_report OUTPUT_DIR
 """
 
 import sys
@@ -15,18 +15,18 @@ from pathlib import Path
 
 import click
 
-from phenotypic._core._cli_report_generator import HTMLReportGenerator
-from phenotypic._core._cli_types import (
+from phenotypic._cli._cli_report_generator import HTMLReportGenerator
+from phenotypic._cli._cli_types import (
     DatasetResults,
     ExecutionResults,
     ImageFailure,
 )
-from phenotypic._core._cli_update_state import aggregate_state_from_events
+from phenotypic._cli._cli_update_state import aggregate_state_from_events
 
 
 @click.command()
 @click.argument("output_dir", type=click.Path(exists=True, path_type=Path))
-def main(output_dir: Path):
+def generate_cli_report(output_dir: Path):
     """
     Generate HTML processing report from output directory.
 
@@ -37,10 +37,10 @@ def main(output_dir: Path):
 
     Examples:
         # Generate report after processing completes
-        python -m phenotypic.tools.generate_report ./results
+        python -m phenotypic.tools_.generate_report ./results
 
         # Generate report during long-running SLURM job
-        python -m phenotypic.tools.generate_report ./phenotypic_results_20260108_143022
+        python -m phenotypic.tools_.generate_report ./phenotypic_results_20260108_143022
     """
     click.echo(f"Generating report for {output_dir}...")
 
@@ -49,8 +49,8 @@ def main(output_dir: Path):
     if not event_log.exists():
         click.echo("Error: No processing_events.log found", err=True)
         click.echo(
-            "This directory does not appear to contain PhenoTypic processing results.",
-            err=True,
+                "This directory does not appear to contain PhenoTypic processing results.",
+                err=True,
         )
         sys.exit(1)
 
@@ -93,22 +93,22 @@ def main(output_dir: Path):
                 error_message = error_msg
 
             failures.append(
-                ImageFailure(
-                    dataset=dataset_name,
-                    image_filename=img_name,
-                    error_type=error_type,
-                    error_message=error_message,
-                    traceback=error_msg,  # Full message as traceback
-                    timestamp=datetime.now(),
-                )
+                    ImageFailure(
+                            dataset=dataset_name,
+                            image_filename=img_name,
+                            error_type=error_type,
+                            error_message=error_message,
+                            traceback=error_msg,  # Full message as traceback
+                            timestamp=datetime.now(),
+                    )
             )
 
         dataset_results[dataset_name] = DatasetResults(
-            name=dataset_name,
-            total=total,
-            completed=completed,
-            failed=failed,
-            failures=failures,
+                name=dataset_name,
+                total=total,
+                completed=completed,
+                failed=failed,
+                failures=failures,
         )
 
     # Create ExecutionResults
@@ -127,13 +127,13 @@ def main(output_dir: Path):
         execution_mode = "local"
 
     results = ExecutionResults(
-        datasets=dataset_results,
-        total_images=total_images,
-        total_completed=total_completed,
-        total_failed=total_failed,
-        execution_mode=execution_mode,
-        start_time=start_time,
-        end_time=end_time,
+            datasets=dataset_results,
+            total_images=total_images,
+            total_completed=total_completed,
+            total_failed=total_failed,
+            execution_mode=execution_mode,
+            start_time=start_time,
+            end_time=end_time,
     )
 
     # Generate report
@@ -148,11 +148,11 @@ def main(output_dir: Path):
     click.echo(f"  Completed: {total_completed}")
     click.echo(f"  Failed: {total_failed}")
     click.echo(
-        f"  Success rate: {results.success_rate*100:.1f}%"
+            f"  Success rate: {results.success_rate * 100:.1f}%"
     )
 
     return 0
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(generate_cli_report())

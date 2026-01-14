@@ -1,20 +1,20 @@
 from __future__ import annotations
-from typing import Literal, TYPE_CHECKING
+from typing import Literal, TYPE_CHECKING, overload
 
 if TYPE_CHECKING:
-    from phenotypic import Image
+    from phenotypic import Image, GridImage
 
 import numpy as np
 from ._image_operation import ImageOperation
 
-from phenotypic.tools.funcs_ import validate_operation_integrity
+from phenotypic.tools_.funcs_ import validate_operation_integrity
 from abc import ABC
 from skimage.morphology import disk, diamond
 from skimage import morphology
 from ._footprint_mixin import FootprintMixin
 
 
-class ImageEnhancer(ImageOperation, ABC):
+class ImageEnhancer(FootprintMixin, ImageOperation, ABC):
     """Abstract base class for preprocessing operations that improve colony detection through enhanced grayscale.
 
     ImageEnhancer is the foundation for all preprocessing algorithms that modify only the enhanced
@@ -442,6 +442,12 @@ class ImageEnhancer(ImageOperation, ABC):
                 assert np.array_equal(image.rgb[:], result1.rgb[:])
 
     """
+
+    @overload
+    def apply(self, image: Image, inplace: bool = False) -> Image: ...
+
+    @overload
+    def apply(self, image: GridImage, inplace: bool = False) -> GridImage: ...
 
     @validate_operation_integrity("image.rgb", "image.gray")
     def apply(self, image: Image, inplace: bool = False) -> Image:

@@ -2,11 +2,13 @@
 State file updater for the PhenoTypic CLI.
 
 This module handles append-only event logging for tracking image processing
-completion status. Uses atomic append operations for HPC filesystem safety.
+completion status. Uses atomic append operations with file locking for
+HPC filesystem safety across parallel workers and distributed SLURM jobs.
 """
 
 from __future__ import annotations
 
+import logging
 import click
 from pathlib import Path
 from typing import Literal, Dict, Set
@@ -14,6 +16,9 @@ from datetime import datetime
 from dataclasses import dataclass
 
 from ._cli_types import DatasetState
+from ._cli_file_locking import atomic_read, atomic_append, FileLockTimeout
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -35,12 +40,13 @@ def append_completion_event(
 ) -> None:
     """
     Atomically append completion event to processing log.
-    
+
     Event format: timestamp|dataset|image|status|error_msg
-    
-    This operation is thread-safe on most HPC filesystems (NFS, Lustre)
-    due to using O_APPEND mode which makes small writes atomic.
-    
+
+    This operation uses file locking to ensure thread-safety and process-safety
+    across parallel workers (local joblib and distributed SLURM jobs) on HPC
+    filesystems (NFS, Lustre).
+
     Args:
         event_log: Path to processing_events.log file
         dataset: Dataset name
@@ -50,19 +56,24 @@ def append_completion_event(
     """
     # Create parent directory if needed
     event_log.parent.mkdir(parents=True, exist_ok=True)
-    
+
     # Generate timestamp
     timestamp = datetime.now().isoformat(timespec='milliseconds')
-    
+
     # Escape pipe delimiters in error message
     error_msg_safe = error_msg.replace("|", "\\|").replace("\n", " ")
-    
+
     # Format event line
     event_line = f"{timestamp}|{dataset}|{image}|{status}|{error_msg_safe}\n"
-    
-    # Append with 'a' mode which uses O_APPEND for atomic writes
-    with open(event_log, 'a', encoding='utf-8') as f:
-        f.write(event_line)
+
+    # Append with file locking for consistency
+    try:
+        atomic_append(event_log, event_line, timeout=30.0)
+    except FileLockTimeout as e:
+        logger.warning(f"Timeout acquiring lock for event log: {e}")
+        # Fallback: append without lock (may cause race condition)
+        with open(event_log, 'a', encoding='utf-8') as f:
+            f.write(event_line)
 
 
 def parse_event_line(line: str) -> ProcessingEvent:
@@ -111,55 +122,69 @@ def parse_event_line(line: str) -> ProcessingEvent:
 def aggregate_state_from_events(event_log: Path) -> Dict[str, DatasetState]:
     """
     Read event log and build complete processing state.
-    
+
+    Uses file locking to ensure consistent reads during parallel execution.
     Processes events in order, allowing retries to override previous failures.
     The most recent status for each image is used.
-    
+
     Args:
         event_log: Path to processing_events.log file
-        
+
     Returns:
         Dictionary mapping dataset names to their current state
     """
-    datasets = {}
-    
-    if not event_log.exists():
+    def _parse_event_log(log_path: Path) -> Dict[str, DatasetState]:
+        """Inner parser function that processes event log."""
+        datasets = {}
+
+        if not log_path.exists():
+            return datasets
+
+        # Read all events
+        with open(log_path, 'r', encoding='utf-8') as f:
+            for line_num, line in enumerate(f, 1):
+                if not line.strip():
+                    continue
+
+                try:
+                    event = parse_event_line(line)
+                except ValueError as e:
+                    # Log malformed lines for debugging
+                    logger.debug(
+                        f"Skipping malformed line {line_num} in {log_path.name}: {e}"
+                    )
+                    continue
+
+                # Initialize dataset state if needed
+                if event.dataset not in datasets:
+                    datasets[event.dataset] = DatasetState()
+
+                ds = datasets[event.dataset]
+
+                # Update state based on event
+                if event.status == "completed":
+                    ds.completed.add(event.image)
+                    # Remove from failed if it was previously failed (retry success)
+                    ds.failed.discard(event.image)
+                    # Remove error if present
+                    ds.errors.pop(event.image, None)
+                elif event.status == "failed":
+                    ds.failed.add(event.image)
+                    # Remove from completed if it was previously completed (shouldn't happen)
+                    ds.completed.discard(event.image)
+                    # Store error message
+                    if event.error_msg:
+                        ds.errors[event.image] = event.error_msg
+
         return datasets
-    
-    # Read all events
-    with open(event_log, 'r', encoding='utf-8') as f:
-        for line_num, line in enumerate(f, 1):
-            if not line.strip():
-                continue
-            
-            try:
-                event = parse_event_line(line)
-            except ValueError:
-                # Skip malformed lines
-                continue
-            
-            # Initialize dataset state if needed
-            if event.dataset not in datasets:
-                datasets[event.dataset] = DatasetState()
-            
-            ds = datasets[event.dataset]
-            
-            # Update state based on event
-            if event.status == "completed":
-                ds.completed.add(event.image)
-                # Remove from failed if it was previously failed (retry success)
-                ds.failed.discard(event.image)
-                # Remove error if present
-                ds.errors.pop(event.image, None)
-            elif event.status == "failed":
-                ds.failed.add(event.image)
-                # Remove from completed if it was previously completed (shouldn't happen)
-                ds.completed.discard(event.image)
-                # Store error message
-                if event.error_msg:
-                    ds.errors[event.image] = event.error_msg
-    
-    return datasets
+
+    # Use atomic read with file locking
+    try:
+        return atomic_read(event_log, _parse_event_log, timeout=30.0)
+    except FileLockTimeout as e:
+        logger.warning(f"Timeout acquiring lock for reading event log: {e}")
+        # Fallback: read without lock
+        return _parse_event_log(event_log)
 
 
 def get_remaining_images(

@@ -16,7 +16,7 @@ except ImportError:
 
 if TYPE_CHECKING:
     from phenotypic import Image
-    from phenotypic.tools.typing_ import GridSearchSaveData
+    from phenotypic.tools_.typing_ import GridSearchSaveData
 
 
 class PipeGridSearchJoblib(PipeGridSearchSubmitit):

@@ -5,7 +5,7 @@ import pandas as pd
 
 if TYPE_CHECKING:
     from phenotypic import Image
-from phenotypic.tools.constants_ import METADATA
+from phenotypic.tools_.constants_ import METADATA
 from collections import ChainMap
 
 
@@ -62,7 +62,7 @@ class MetadataAccessor:
                 then public. Enables unified read access while maintaining search order.
         """
         return ChainMap(
-            self._private_metadata, self._protected_metadata, self._public_metadata
+                self._private_metadata, self._protected_metadata, self._public_metadata
         )
 
     @property
@@ -289,7 +289,7 @@ class MetadataAccessor:
             return default
 
     def insert_metadata(
-        self, df: pd.DataFrame, inplace=False, allow_duplicates=False
+            self, df: pd.DataFrame, inplace=False, allow_duplicates=False
     ) -> pd.DataFrame:
         """Insert metadata as columns into a DataFrame.
 
@@ -339,7 +339,8 @@ class MetadataAccessor:
                 header = key
             if header not in working_df.columns:
                 working_df.insert(
-                    loc=0, column=header, value=value, allow_duplicates=allow_duplicates
+                        loc=0, column=header, value=value,
+                        allow_duplicates=allow_duplicates
                 )
         return working_df
 
@@ -365,6 +366,6 @@ class MetadataAccessor:
                     print(series['ImageName'])  # 'sample_image'
         """
         return pd.Series(
-            self._combined_metadata,
-            name=self._parent_image.name,
+                self._combined_metadata,
+                name=self._parent_image.name,
         )

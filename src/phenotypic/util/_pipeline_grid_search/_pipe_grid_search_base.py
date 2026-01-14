@@ -10,7 +10,7 @@ from phenotypic.abc_ import ImageOperation
 from phenotypic import ImagePipeline
 
 if TYPE_CHECKING:
-    from phenotypic.tools.typing_ import GridSearchSaveData, GridSearchConfig
+    from phenotypic.tools_.typing_ import GridSearchSaveData, GridSearchConfig
     from phenotypic import Image
     from phenotypic._core._image_parts.accessor_abstracts import ImageAccessorBase
 

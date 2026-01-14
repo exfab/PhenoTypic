@@ -2,11 +2,13 @@
 Output file organization and management for the PhenoTypic CLI.
 
 This module handles all output file creation, directory structure management,
-and saving of image layers, measurements, and overlays.
+and saving of image layers, measurements, and overlays with comprehensive
+error logging to prevent silent data loss.
 """
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 from typing import Dict, List, Optional, TYPE_CHECKING
 import pandas as pd
@@ -16,6 +18,8 @@ if TYPE_CHECKING:
     from phenotypic import Image
 
 from ._cli_types import Dataset
+
+logger = logging.getLogger(__name__)
 
 
 class OutputManager:
@@ -182,7 +186,39 @@ class OutputManager:
         plt.close(fig)
         
         return output_path
-    
+
+    def _save_layer_safely(
+        self,
+        layer_name: str,
+        image: Image,
+        dataset_name: str,
+        image_stem: str,
+        save_func: callable
+    ) -> Optional[Path]:
+        """
+        Safely save an image layer with error logging.
+
+        Args:
+            layer_name: Name of layer (e.g., "rgb", "gray")
+            image: Image object
+            dataset_name: Dataset name
+            image_stem: Image filename stem
+            save_func: Function to call for saving (takes path as argument)
+
+        Returns:
+            Path if successful, None if failed
+        """
+        try:
+            path = self.get_output_path(dataset_name, layer_name, image_stem)
+            save_func(path)
+            return path
+        except Exception as e:
+            logger.warning(
+                f"Failed to save {layer_name} for {dataset_name}/{image_stem}: "
+                f"{type(e).__name__}: {e}"
+            )
+            return None
+
     def save_image_layers(
         self,
         image: Image,
@@ -191,116 +227,144 @@ class OutputManager:
     ) -> Dict[str, Path]:
         """
         Save all requested image layers (rgb, gray, masks, etc.).
-        
+
         Args:
             image: Image object with processing results
             dataset_name: Dataset name
             image_stem: Image filename without extension
-            
+
         Returns:
-            Dictionary mapping layer names to saved paths
+            Dictionary mapping layer names to saved paths (only successful saves)
         """
         saved_paths = {}
-        
+
         # Save RGB if requested
         if self.save_layers.get("rgb") and not image.rgb.isempty():
-            path = self.get_output_path(dataset_name, "rgb", image_stem)
-            try:
-                image.rgb.imsave(filepath=path)
+            path = self._save_layer_safely(
+                "rgb", image, dataset_name, image_stem,
+                lambda p: image.rgb.imsave(filepath=p)
+            )
+            if path:
                 saved_paths["rgb"] = path
-            except Exception:
-                pass  # Skip if fails
-        
+
         # Save grayscale if requested
         if self.save_layers.get("gray") and not image.gray.isempty():
-            path = self.get_output_path(dataset_name, "gray", image_stem)
-            try:
-                image.gray.imsave(filepath=path)
+            path = self._save_layer_safely(
+                "gray", image, dataset_name, image_stem,
+                lambda p: image.gray.imsave(filepath=p)
+            )
+            if path:
                 saved_paths["gray"] = path
-            except Exception:
-                pass
-        
+
         # Save enhanced grayscale if requested
         if self.save_layers.get("enh_gray") and not image.enh_gray.isempty():
-            path = self.get_output_path(dataset_name, "enh_gray", image_stem)
-            try:
-                image.enh_gray.imsave(filepath=path)
+            path = self._save_layer_safely(
+                "enh_gray", image, dataset_name, image_stem,
+                lambda p: image.enh_gray.imsave(filepath=p)
+            )
+            if path:
                 saved_paths["enh_gray"] = path
-            except Exception:
-                pass
-        
+
         # Save object mask if requested
         if self.save_layers.get("objmask") and not image.objmask.isempty():
-            path = self.get_output_path(dataset_name, "objmask", image_stem)
-            try:
-                image.objmask.imsave(filepath=path)
+            path = self._save_layer_safely(
+                "objmask", image, dataset_name, image_stem,
+                lambda p: image.objmask.imsave(filepath=p)
+            )
+            if path:
                 saved_paths["objmask"] = path
-            except Exception:
-                pass
-        
+
         # Save object map if requested
         if self.save_layers.get("objmap") and not image.objmap.isempty():
-            path = self.get_output_path(dataset_name, "objmap", image_stem)
-            try:
-                image.objmap.imsave(filepath=path)
+            path = self._save_layer_safely(
+                "objmap", image, dataset_name, image_stem,
+                lambda p: image.objmap.imsave(filepath=p)
+            )
+            if path:
                 saved_paths["objmap"] = path
-            except Exception:
-                pass
-        
+
         # Save object map RGB visualization if requested
         if self.save_layers.get("objmap_rgb") and not image.objmap.isempty():
-            path = self.get_output_path(dataset_name, "objmap_rgb", image_stem)
-            try:
-                image.objmap.imsave(filepath=path, use_label2rgb=True)
+            path = self._save_layer_safely(
+                "objmap_rgb", image, dataset_name, image_stem,
+                lambda p: image.objmap.imsave(filepath=p, use_label2rgb=True)
+            )
+            if path:
                 saved_paths["objmap_rgb"] = path
-            except Exception:
-                pass
-        
+
         return saved_paths
     
     def aggregate_master_csv(
         self,
         datasets: List[Dataset]
-    ) -> Path:
+    ) -> Optional[Path]:
         """
         Aggregate all individual measurement CSVs into master CSV.
-        
+
         Args:
             datasets: List of all datasets processed
-            
+
         Returns:
-            Path to master_measurements.csv
+            Path to master_measurements.csv, or None if no measurements found
         """
         all_measurements = []
-        
+        skipped_files = []
+
         for dataset in datasets:
             dataset_meas_dir = self.measurements_dir
             if dataset.name != "_root":
                 dataset_meas_dir = dataset_meas_dir / dataset.name
-            
+
             # Read all CSV files in this dataset's measurement directory
             csv_files = list(dataset_meas_dir.glob("*.csv"))
+
             for csv_file in csv_files:
                 try:
                     df = pd.read_csv(csv_file)
-                    
+
                     # Add dataset column if requested and not already present
                     if self.include_dataset_column and "Dataset" not in df.columns:
                         df.insert(0, "Dataset", dataset.name)
-                    
+
                     all_measurements.append(df)
-                except Exception:
-                    continue  # Skip files that can't be read
-        
+
+                except Exception as e:
+                    logger.warning(
+                        f"Failed to read {csv_file.relative_to(self.base_dir)}: "
+                        f"{type(e).__name__}: {e}"
+                    )
+                    skipped_files.append((csv_file, str(e)))
+
+        # Report skipped files
+        if skipped_files:
+            logger.warning(
+                f"Skipped {len(skipped_files)} CSV file(s) due to read errors"
+            )
+            for csv_file, error in skipped_files[:5]:  # Show first 5
+                logger.debug(f"  - {csv_file.name}: {error}")
+            if len(skipped_files) > 5:
+                logger.debug(f"  ... and {len(skipped_files) - 5} more")
+
         if not all_measurements:
-            # No valid measurements found
+            logger.warning("No valid measurements found for aggregation")
             return None
-        
+
         # Concatenate all measurements
-        master_df = pd.concat(all_measurements, axis=0, ignore_index=True)
-        
+        try:
+            master_df = pd.concat(all_measurements, axis=0, ignore_index=True)
+        except Exception as e:
+            logger.error(f"Failed to concatenate measurements: {e}")
+            return None
+
         # Save master CSV
         master_path = self.base_dir / "master_measurements.csv"
-        master_df.to_csv(master_path, index=False)
-        
-        return master_path
+        try:
+            master_df.to_csv(master_path, index=False)
+            logger.info(
+                f"Aggregated {len(all_measurements)} CSV files "
+                f"into {master_path.name} ({len(master_df)} total rows)"
+            )
+            return master_path
+        except Exception as e:
+            logger.error(f"Failed to save master CSV: {e}")
+            return None

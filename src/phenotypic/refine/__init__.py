@@ -15,6 +15,7 @@ by merging nearby detections based on spatial proximity and size thresholds.
 from ._border_object_modifier import BorderObjectRemover
 from ._center_deviation_reducer import CenterDeviationReducer
 from ._circularity_modifier import LowCircularityRemover
+from ._grid_alignment_refiner import GridAlignmentRefiner
 from ._grid_oversized_object_remover import GridOversizedObjectRemover
 from ._mask_closer import MaskCloser
 from ._mask_dilator import MaskDilator
@@ -32,10 +33,12 @@ from ._thinning import Thinning
 from ._transitive_distance_merger import TransitiveDistanceMerger
 from ._white_tophat_modifier import WhiteTophat
 from ._grid_section_largest import GridSectionLargest
+from ._separate_objects import SeparateObjects
 
 __all__ = [
     "BorderObjectRemover",
     "CenterDeviationReducer",
+    "GridAlignmentRefiner",
     "GridOversizedObjectRemover",
     "LowCircularityRemover",
     "MaskCloser",
@@ -47,6 +50,7 @@ __all__ = [
     "ReduceMultipleGridObjects",
     "NearestNeighborMerger",
     "ResidualOutlierRemover",
+    "SeparateObjects",
     "Skeletonize",
     "SmallObjectRemover",
     "SmallToLargeMerger",

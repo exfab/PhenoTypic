@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, overload
 
 if TYPE_CHECKING:
-    from phenotypic import Image
+    from phenotypic import Image, GridImage
 
 from ._base_operation import BaseOperation
-from ._lazy_widget_mixin import LazyWidgetMixin
+from phenotypic.tools_._lazy_widget_mixin import LazyWidgetMixin
 
 from abc import ABC, abstractmethod
 import traceback
@@ -433,6 +433,14 @@ class ImageOperation(BaseOperation, LazyWidgetMixin, ABC):
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
 
+    @overload
+    def apply(self, image: Image, inplace: bool = False) -> Image:
+        ...
+
+    @overload
+    def apply(self, image: GridImage, inplace: bool = False) -> GridImage:
+        ...
+
     def apply(self, image: Image, inplace=False) -> Image:
         """
         Applies the operation to an image, either in-place or on a copy.
@@ -462,6 +470,18 @@ class ImageOperation(BaseOperation, LazyWidgetMixin, ABC):
                     f"{self.__class__.__name__} failed on image {image.name}:\n"
                     f"{traceback.format_exc()}"
             ) from e
+
+    @staticmethod
+    @overload
+    @abstractmethod
+    def _operate(image: Image) -> Image:
+        ...
+
+    @staticmethod
+    @overload
+    @abstractmethod
+    def _operate(image: GridImage) -> GridImage:
+        ...
 
     @staticmethod
     @abstractmethod

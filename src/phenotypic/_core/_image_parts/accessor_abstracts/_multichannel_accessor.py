@@ -8,7 +8,7 @@ import skimage as ski
 from PIL import Image as PIL_Image
 from abc import ABC, abstractmethod
 from phenotypic._core._image_parts.accessor_abstracts import ImageAccessorBase
-from phenotypic.tools.constants_ import METADATA, IO
+from phenotypic.tools_.constants_ import METADATA, IO
 
 
 class MultiChannelAccessor(ImageAccessorBase, ABC):

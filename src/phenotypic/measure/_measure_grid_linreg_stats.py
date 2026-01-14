@@ -9,7 +9,7 @@ import pandas as pd
 from scipy.spatial.distance import euclidean
 
 from phenotypic.abc_ import GridMeasureFeatures, MeasurementInfo
-from phenotypic.tools.constants_ import OBJECT, BBOX, GRID
+from phenotypic.tools_.constants_ import OBJECT, BBOX, GRID
 
 
 class GRID_LINREG_STATS(MeasurementInfo):
@@ -149,25 +149,25 @@ class MeasureGridLinRegStats(GridMeasureFeatures):
 
         # Convert arrays to dataframe for join operation
         row_linreg_info = pd.DataFrame(
-            data={
-                str(GRID_LINREG_STATS.ROW_LINREG_M): row_m,
-                str(GRID_LINREG_STATS.ROW_LINREG_B): row_b,
-            },
-            index=pd.Index(data=range(image.grid.nrows), name=str(GRID.ROW_NUM)),
+                data={
+                    str(GRID_LINREG_STATS.ROW_LINREG_M): row_m,
+                    str(GRID_LINREG_STATS.ROW_LINREG_B): row_b,
+                },
+                index=pd.Index(data=range(image.grid.nrows), name=str(GRID.ROW_NUM)),
         )
 
         section_info = pd.merge(
-            left=section_info,
-            right=row_linreg_info,
-            left_on=str(GRID.ROW_NUM),
-            right_on=str(GRID.ROW_NUM),
+                left=section_info,
+                right=row_linreg_info,
+                left_on=str(GRID.ROW_NUM),
+                right_on=str(GRID.ROW_NUM),
         )
 
         # NOTE: Row linear regression(CC) -> pred RR
         section_info.loc[:, str(GRID_LINREG_STATS.PRED_RR)] = (
-            section_info.loc[:, str(BBOX.CENTER_CC)]
-            * section_info.loc[:, str(GRID_LINREG_STATS.ROW_LINREG_M)]
-            + section_info.loc[:, str(GRID_LINREG_STATS.ROW_LINREG_B)]
+                section_info.loc[:, str(BBOX.CENTER_CC)]
+                * section_info.loc[:, str(GRID_LINREG_STATS.ROW_LINREG_M)]
+                + section_info.loc[:, str(GRID_LINREG_STATS.ROW_LINREG_B)]
         )
 
         # Get the current column linreg info
@@ -175,42 +175,43 @@ class MeasureGridLinRegStats(GridMeasureFeatures):
 
         # convert array to dataframe for join operation
         col_linreg_info = pd.DataFrame(
-            data={
-                str(GRID_LINREG_STATS.COL_LINREG_M): col_m,
-                str(GRID_LINREG_STATS.COL_LINREG_B): col_b,
-            },
-            index=pd.Index(data=range(image.grid.ncols), name=str(GRID.COL_NUM)),
+                data={
+                    str(GRID_LINREG_STATS.COL_LINREG_M): col_m,
+                    str(GRID_LINREG_STATS.COL_LINREG_B): col_b,
+                },
+                index=pd.Index(data=range(image.grid.ncols), name=str(GRID.COL_NUM)),
         )
 
         section_info = pd.merge(
-            left=section_info,
-            right=col_linreg_info,
-            left_on=str(GRID.COL_NUM),
-            right_on=str(GRID.COL_NUM),
+                left=section_info,
+                right=col_linreg_info,
+                left_on=str(GRID.COL_NUM),
+                right_on=str(GRID.COL_NUM),
         )
 
         # NOTE: Col linear regression(RR) -> pred CC
         section_info.loc[:, str(GRID_LINREG_STATS.PRED_CC)] = (
-            section_info.loc[:, str(BBOX.CENTER_RR)]
-            * section_info.loc[:, str(GRID_LINREG_STATS.COL_LINREG_M)]
-            + section_info.loc[:, str(GRID_LINREG_STATS.COL_LINREG_B)]
+                section_info.loc[:, str(BBOX.CENTER_RR)]
+                * section_info.loc[:, str(GRID_LINREG_STATS.COL_LINREG_M)]
+                + section_info.loc[:, str(GRID_LINREG_STATS.COL_LINREG_B)]
         )
 
         # Calculate the distance each object is from it's predicted center. This is the residual error
         section_info.loc[:, str(GRID_LINREG_STATS.RESIDUAL_ERR)] = (
             section_info.apply(
-                lambda row: euclidean(
-                    u=[row[str(BBOX.CENTER_CC)], row[str(BBOX.CENTER_RR)]],
-                    v=[
-                        row[str(GRID_LINREG_STATS.PRED_CC)],
-                        row[str(GRID_LINREG_STATS.PRED_RR)],
-                    ],
-                ),
-                axis=1,
+                    lambda row: euclidean(
+                            u=[row[str(BBOX.CENTER_CC)], row[str(BBOX.CENTER_RR)]],
+                            v=[
+                                row[str(GRID_LINREG_STATS.PRED_CC)],
+                                row[str(GRID_LINREG_STATS.PRED_RR)],
+                            ],
+                    ),
+                    axis=1,
             )
         )
 
         return section_info.set_index(OBJECT.LABEL)
 
 
-MeasureGridLinRegStats.__doc__ = GRID_LINREG_STATS.append_rst_to_doc(MeasureGridLinRegStats)
+MeasureGridLinRegStats.__doc__ = GRID_LINREG_STATS.append_rst_to_doc(
+    MeasureGridLinRegStats)

@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from phenotypic.tools.hdf_ import HDF
+from phenotypic.tools_.hdf_ import HDF
 
 
 @pytest.fixture
@@ -59,14 +59,14 @@ class TestSeriesIO:
     """Test Series persistence functionality."""
 
     @pytest.mark.parametrize(
-        "dtype,expected_kind",
-        [
-            (np.float32, "numeric_float64"),
-            (np.float64, "numeric_float64"),
-            (bool, "numeric_float64"),
-            (str, "string_utf8_fixed"),
-            (object, "string_utf8_fixed"),
-        ],
+            "dtype,expected_kind",
+            [
+                (np.float32, "numeric_float64"),
+                (np.float64, "numeric_float64"),
+                (bool, "numeric_float64"),
+                (str, "string_utf8_fixed"),
+                (object, "string_utf8_fixed"),
+            ],
     )
     def test_series_round_trip_dtypes(self, temp_hdf5_file, dtype, expected_kind):
         """Test round-trip for different data types."""
@@ -86,7 +86,7 @@ class TestSeriesIO:
             # Step 1: Create all objects BEFORE enabling SWMR
             if dtype in [str, object]:
                 HDF.save_series_new(
-                    group, series, string_fixed_length=10, require_swmr=False
+                        group, series, string_fixed_length=10, require_swmr=False
                 )
             else:
                 HDF.save_series_new(group, series, require_swmr=False)
@@ -135,8 +135,8 @@ class TestSeriesIO:
     def test_series_with_multiindex(self, temp_hdf5_file):
         """Test Series with MultiIndex."""
         index = pd.MultiIndex.from_tuples(
-            [("A", 1), ("A", 2), ("B", 1), ("B", 2), ("C", None)],
-            names=["level1", "level2"],
+                [("A", 1), ("A", 2), ("B", 1), ("B", 2), ("C", None)],
+                names=["level1", "level2"],
         )
         series = pd.Series([10, 20, 30, 40, 50], index=index, name="multi_series")
 
@@ -162,7 +162,7 @@ class TestSeriesIO:
 
             # Check that values are correct
             np.testing.assert_array_equal(
-                loaded.values, series.astype(np.float64).values
+                    loaded.values, series.astype(np.float64).values
             )
             assert loaded.name == series.name
             assert isinstance(loaded.index, pd.MultiIndex)
@@ -210,12 +210,12 @@ class TestDataFrameIO:
     def test_frame_round_trip_basic(self, temp_hdf5_file):
         """Test basic DataFrame round-trip."""
         df = pd.DataFrame(
-            {
-                "int_col": [1, 2, 3, None],
-                "float_col": [1.1, 2.2, 3.3, 4.4],
-                "str_col": ["a", "b", None, "d"],
-                "bool_col": [True, False, True, None],
-            }
+                {
+                    "int_col"  : [1, 2, 3, None],
+                    "float_col": [1.1, 2.2, 3.3, 4.4],
+                    "str_col"  : ["a", "b", None, "d"],
+                    "bool_col" : [True, False, True, None],
+                }
         )
 
         with h5py.File(temp_hdf5_file, "w", libver="latest") as f:
@@ -322,7 +322,7 @@ class TestStringFixedLength:
 
             # Save with fixed length of 10 characters
             HDF.save_series_new(
-                group, series, string_fixed_length=10, require_swmr=False
+                    group, series, string_fixed_length=10, require_swmr=False
             )
 
             # Enable SWMR mode
@@ -339,10 +339,10 @@ class TestStringFixedLength:
     def test_fixed_length_strings_dataframe(self, temp_hdf5_file):
         """Test DataFrame with fixed-length strings."""
         df = pd.DataFrame(
-            {
-                "str_col": ["short", "very long string here", "medium"],
-                "num_col": [1, 2, 3],
-            }
+                {
+                    "str_col": ["short", "very long string here", "medium"],
+                    "num_col": [1, 2, 3],
+                }
         )
 
         with h5py.File(temp_hdf5_file, "w", libver="latest") as f:
@@ -391,7 +391,7 @@ class TestPreallocation:
             # Verify data - index will be string type due to HDF5 storage
             loaded = HDF.load_series(group, require_swmr=True)
             np.testing.assert_array_equal(
-                loaded.values, series.astype(np.float64).values
+                    loaded.values, series.astype(np.float64).values
             )
             assert loaded.name == series.name
             assert len(loaded) == len(series)

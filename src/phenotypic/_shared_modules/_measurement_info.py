@@ -39,7 +39,7 @@ class MeasurementInfo(str, Enum):
     Examples:
         Define a custom measurement enumeration:
 
-        >>> from phenotypic._shared_modules._measurement_info import MeasurementInfo
+        >>> from phenotypic.abc_ import MeasurementInfo
         >>> class SHAPE(MeasurementInfo):
         ...     @classmethod
         ...     def category(cls):
@@ -185,10 +185,10 @@ class MeasurementInfo(str, Enum):
 
     @classmethod
     def rst_table(
-        cls,
-        *,
-        title: str | None = None,
-        header: tuple[str, str] = ("Name", "Description"),
+            cls,
+            *,
+            title: str | None = None,
+            header: tuple[str, str] = ("Name", "Description"),
     ) -> str:
         """Generate an RST (reStructuredText) table documenting the measurements.
 

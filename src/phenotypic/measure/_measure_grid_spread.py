@@ -8,7 +8,7 @@ from phenotypic.abc_ import GridMeasureFeatures, MeasurementInfo
 import pandas as pd
 import numpy as np
 from scipy.spatial import distance_matrix
-from phenotypic.tools.constants_ import BBOX, GRID
+from phenotypic.tools_.constants_ import BBOX, GRID
 
 
 class GRID_SPREAD(MeasurementInfo):
@@ -121,8 +121,10 @@ class MeasureGridSpread(GridMeasureFeatures):
             gs_distance_matrix = distance_matrix(x=obj_vector, y=obj_vector, p=2)
 
             obj_spread.append(np.sum(np.unique(gs_distance_matrix) ** 2))
-        gs_counts.insert(loc=1, column=str(GRID_SPREAD.OBJECT_SPREAD), value=pd.Series(obj_spread))
-        gs_counts.sort_values(by=str(GRID_SPREAD.OBJECT_SPREAD), ascending=False, inplace=True)
+        gs_counts.insert(loc=1, column=str(GRID_SPREAD.OBJECT_SPREAD),
+                         value=pd.Series(obj_spread))
+        gs_counts.sort_values(by=str(GRID_SPREAD.OBJECT_SPREAD), ascending=False,
+                              inplace=True)
         return gs_counts
 
 

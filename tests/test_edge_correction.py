@@ -11,7 +11,7 @@ import pandas as pd
 
 from phenotypic.analysis import EdgeCorrector
 from phenotypic.analysis._edge_correction import EDGE_CORRECTION
-from phenotypic.tools.constants_ import GRID
+from phenotypic.tools_.constants_ import GRID
 
 
 class TestSurroundedPositions:
@@ -44,14 +44,14 @@ class TestSurroundedPositions:
         rows, cols = 8, 12
         # 3x3 block centered at (4, 6)
         block_rc = [(r, c) for r in range(3, 6) for c in range(5, 8)]
-        active = np.array([r*cols + c for r, c in block_rc], dtype=np.int64)
+        active = np.array([r * cols + c for r, c in block_rc], dtype=np.int64)
 
         result = EdgeCorrector._surrounded_positions(
                 active, (rows, cols), connectivity=4
         )
 
         # Only the center of the 3x3 block should be fully surrounded
-        expected_center = 4*cols + 6
+        expected_center = 4 * cols + 6
         assert len(result) == 1
         assert result[0] == expected_center
 
@@ -60,7 +60,7 @@ class TestSurroundedPositions:
         rows, cols = 8, 12
         # 3x3 block
         block_rc = [(r, c) for r in range(3, 6) for c in range(5, 8)]
-        active = np.array([r*cols + c for r, c in block_rc], dtype=np.int64)
+        active = np.array([r * cols + c for r, c in block_rc], dtype=np.int64)
 
         # At least 3 of 4 neighbors
         result, counts = EdgeCorrector._surrounded_positions(
@@ -71,7 +71,7 @@ class TestSurroundedPositions:
         # Should include center (4 neighbors) and edge positions (3 neighbors)
         assert len(result) > 1
         assert all(counts >= 3)
-        assert (4*cols + 6) in result  # center
+        assert (4 * cols + 6) in result  # center
 
     def test_empty_input(self):
         """Test with no active positions."""
@@ -163,7 +163,7 @@ class TestThresholdCalculation:
         np.random.seed(42)
         data = pd.DataFrame(
                 {
-                    "ImageName"          : ["img1"]*96,
+                    "ImageName"          : ["img1"] * 96,
                     str(GRID.SECTION_NUM): range(96),
                     "Area"               : np.random.uniform(100, 500, 96),
                 }
@@ -197,7 +197,7 @@ class TestThresholdCalculation:
         """Test behavior when fewer than top_n values are available."""
         data = pd.DataFrame(
                 {
-                    "ImageName"          : ["img1"]*5,
+                    "ImageName"          : ["img1"] * 5,
                     str(GRID.SECTION_NUM): range(5),
                     "Area"               : [100, 200, 300, 400, 500],
                 }
@@ -227,11 +227,11 @@ class TestValueCapping:
 
         # Create 4x6 grid with all positions filled
         nrows, ncols = 4, 6
-        n_sections = nrows*ncols
+        n_sections = nrows * ncols
 
         data = pd.DataFrame(
                 {
-                    "ImageName"          : ["img1"]*n_sections,
+                    "ImageName"          : ["img1"] * n_sections,
                     str(GRID.SECTION_NUM): range(n_sections),
                     "Area"               : np.random.uniform(100, 300, n_sections),
                 }
@@ -273,7 +273,7 @@ class TestValueCapping:
 
         data = pd.DataFrame(
                 {
-                    "ImageName"          : ["img1"]*96,
+                    "ImageName"          : ["img1"] * 96,
                     str(GRID.SECTION_NUM): range(96),
                     "Area"               : np.random.uniform(100, 200, 96),
                 }
@@ -320,7 +320,7 @@ class TestValueCapping:
         nrows, ncols = 5, 5
         data = pd.DataFrame(
                 {
-                    "ImageName"          : ["img1"]*25,
+                    "ImageName"          : ["img1"] * 25,
                     str(GRID.SECTION_NUM): range(25),
                     "Area"               : np.random.uniform(100, 500, 25),
                 }
@@ -351,7 +351,7 @@ class TestGroupbyBehavior:
         # Create data for two images
         img1_data = pd.DataFrame(
                 {
-                    "ImageName"          : ["img1"]*96,
+                    "ImageName"          : ["img1"] * 96,
                     str(GRID.SECTION_NUM): range(96),
                     "Area"               : np.random.uniform(100, 300, 96),
                 }
@@ -359,7 +359,7 @@ class TestGroupbyBehavior:
 
         img2_data = pd.DataFrame(
                 {
-                    "ImageName"          : ["img2"]*96,
+                    "ImageName"          : ["img2"] * 96,
                     str(GRID.SECTION_NUM): range(96),
                     "Area"               : np.random.uniform(200, 500, 96),
                 }
@@ -390,8 +390,8 @@ class TestGroupbyBehavior:
 
         data = pd.DataFrame(
                 {
-                    "ImageName"          : ["img1"]*48 + ["img2"]*48,
-                    str(GRID.SECTION_NUM): list(range(48))*2,
+                    "ImageName"          : ["img1"] * 48 + ["img2"] * 48,
+                    str(GRID.SECTION_NUM): list(range(48)) * 2,
                     "Area"               : np.random.uniform(100, 500, 96),
                 }
         )
@@ -433,7 +433,7 @@ class TestAnalyzeMethod:
 
         data = pd.DataFrame(
                 {
-                    "ImageName"          : ["img1"]*96,
+                    "ImageName"          : ["img1"] * 96,
                     str(GRID.SECTION_NUM): range(96),
                     "Area"               : np.random.uniform(100, 500, 96),
                 }
@@ -458,7 +458,7 @@ class TestAnalyzeMethod:
         """Test that analyze raises error with missing columns."""
         data = pd.DataFrame(
                 {
-                    "ImageName": ["img1"]*10,
+                    "ImageName": ["img1"] * 10,
                     "Area"     : np.random.uniform(100, 500, 10),
                     # Missing GRID.SECTION_NUM
                 }
@@ -492,7 +492,7 @@ class TestResultsMethod:
 
         data = pd.DataFrame(
                 {
-                    "ImageName"          : ["img1"]*96,
+                    "ImageName"          : ["img1"] * 96,
                     str(GRID.SECTION_NUM): range(96),
                     "Area"               : np.random.uniform(100, 500, 96),
                 }
@@ -538,7 +538,7 @@ class TestShowMethod:
 
         data = pd.DataFrame(
                 {
-                    "ImageName"          : ["img1"]*96,
+                    "ImageName"          : ["img1"] * 96,
                     str(GRID.SECTION_NUM): range(96),
                     "Area"               : np.random.uniform(100, 500, 96),
                 }
@@ -570,14 +570,14 @@ class TestIntegration:
         # Simulate 8x12 plate with most colonies ~200 area
         # But edge colonies artificially inflated
         nrows, ncols = 8, 12
-        n_sections = nrows*ncols
+        n_sections = nrows * ncols
 
         data = pd.DataFrame(
                 {
-                    "ImageName"          : ["plate1"]*n_sections,
+                    "ImageName"          : ["plate1"] * n_sections,
                     str(GRID.SECTION_NUM): range(n_sections),
-                    str(GRID.ROW_NUM)    : [i//ncols for i in range(n_sections)],
-                    str(GRID.COL_NUM)    : [i%ncols for i in range(n_sections)],
+                    str(GRID.ROW_NUM)    : [i // ncols for i in range(n_sections)],
+                    str(GRID.COL_NUM)    : [i % ncols for i in range(n_sections)],
                     "Area"               : np.random.normal(200, 30, n_sections),
                 }
         )
@@ -623,7 +623,7 @@ class TestIntegration:
 
         data = pd.DataFrame(
                 {
-                    "ImageName"          : ["img1"]*50,
+                    "ImageName"          : ["img1"] * 50,
                     str(GRID.SECTION_NUM): sections,
                     "Area"               : np.random.uniform(100, 500, 50),
                 }
@@ -643,7 +643,7 @@ class TestIntegration:
 
         data = pd.DataFrame(
                 {
-                    "ImageName"          : ["img1"]*96,
+                    "ImageName"          : ["img1"] * 96,
                     str(GRID.SECTION_NUM): range(96),
                     "Area"               : np.random.uniform(100, 500, 96),
                     "MeanRadius"         : np.random.uniform(5, 15, 96),

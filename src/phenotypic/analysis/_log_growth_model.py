@@ -14,7 +14,7 @@ from sklearn.metrics import (
 )
 
 from phenotypic.analysis.abc_ import ModelFitter
-from phenotypic.tools.constants_ import MeasurementInfo
+from phenotypic.tools_.constants_ import MeasurementInfo
 
 
 class LOG_GROWTH_MODEL(MeasurementInfo):
@@ -347,7 +347,7 @@ class LogGrowthModel(ModelFitter):
                 color_iter = itertools.cycle([cmap])
         else:
             # Default to None for automatic matplotlib coloring
-            color_iter = itertools.cycle([None]*len(model_groups))
+            color_iter = itertools.cycle([None] * len(model_groups))
 
         for model_key, model_group in model_groups.items():
             curr_meas = meas_groups[model_key]
@@ -368,7 +368,7 @@ class LogGrowthModel(ModelFitter):
             curr_time_groups = curr_meas.groupby(by=self.time_label)
             curr_mean = curr_time_groups[self.on].mean()
             curr_stddev = curr_time_groups[self.on].std()
-            curr_stderr = curr_stddev/np.sqrt(curr_time_groups[self.on].count())
+            curr_stderr = curr_stddev / np.sqrt(curr_time_groups[self.on].count())
 
             # noinspection PyUnresolvedReferences
             errorbar_kwargs = {
@@ -402,8 +402,8 @@ class LogGrowthModel(ModelFitter):
 
             # Check if legend is larger than axes (with small tolerance)
             if (
-                    legend_bbox.width > axes_bbox.width*0.95
-                    or legend_bbox.height > axes_bbox.height*0.95
+                    legend_bbox.width > axes_bbox.width * 0.95
+                    or legend_bbox.height > axes_bbox.height * 0.95
             ):
                 legend_obj.remove()
 
@@ -441,8 +441,8 @@ class LogGrowthModel(ModelFitter):
             float | np.ndarray[float]: The computed population size at the given time
             or array of times based on the logistic growth model.
         """
-        a = (K - N0)/N0
-        return K/(1 + a*np.exp(-r*t))
+        a = (K - N0) / N0
+        return K / (1 + a * np.exp(-r * t))
 
     @staticmethod
     def _loss_func(params, t, y, lam, beta):
@@ -505,8 +505,8 @@ class LogGrowthModel(ModelFitter):
         cost_func = y - LogGrowthModel.model_func(t=t, r=r, K=K, N0=N0)
 
         # regularization term
-        dN_dt = r*K/4
-        reg_term = np.sqrt(lam)*np.array([dN_dt, N0])
+        dN_dt = r * K / 4
+        reg_term = np.sqrt(lam) * np.array([dN_dt, N0])
 
         # K-based penalty
         if hasattr(y, "values"):
@@ -519,14 +519,15 @@ class LogGrowthModel(ModelFitter):
         y_max_observed = y_array[np.argmax(t)]
 
         # Numerical stability epsilon
-        epsilon = 1e-8*np.median(np.abs(y_array[y_array > 0]))
+        epsilon = 1e-8 * np.median(np.abs(y_array[y_array > 0]))
         if epsilon == 0 or np.isnan(epsilon):
             epsilon = 1e-8
 
         # Relative K penalty
         K_penalty_weight = np.sqrt(beta)
         K_penalty = (
-                K_penalty_weight*np.abs(K - y_max_observed)/(y_max_observed + epsilon)
+                K_penalty_weight * np.abs(K - y_max_observed) / (
+                    y_max_observed + epsilon)
         )
 
         return np.hstack(
@@ -594,7 +595,7 @@ class LogGrowthModel(ModelFitter):
                 LOG_GROWTH_MODEL.R_FIT      : x[0],
                 LOG_GROWTH_MODEL.K_FIT      : x[1],
                 LOG_GROWTH_MODEL.N0_FIT     : x[2],
-                LOG_GROWTH_MODEL.GROWTH_RATE: (x[0]*x[1])/4,
+                LOG_GROWTH_MODEL.GROWTH_RATE: (x[0] * x[1]) / 4,
             }
 
             y_pred = LogGrowthModel.model_func(t=t_data, r=x[0], K=x[1], N0=x[2])

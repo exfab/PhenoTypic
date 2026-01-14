@@ -6,7 +6,7 @@ from pathlib import Path
 from ._pipe_grid_search_base import PipelineGridSearchBase
 
 if TYPE_CHECKING:
-    from phenotypic.tools.typing_ import GridSearchSaveData, GridSearchConfig
+    from phenotypic.tools_.typing_ import GridSearchSaveData, GridSearchConfig
     from phenotypic import Image
 
 

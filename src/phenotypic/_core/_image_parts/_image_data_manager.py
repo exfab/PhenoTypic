@@ -13,7 +13,7 @@ from skimage.color import rgb2gray, rgba2rgb
 if TYPE_CHECKING:
     from phenotypic import Image
 
-from phenotypic.tools.constants_ import IMAGE_MODE, METADATA, IMAGE_TYPES
+from phenotypic.tools_.constants_ import IMAGE_MODE, METADATA, IMAGE_TYPES
 
 
 @dataclass

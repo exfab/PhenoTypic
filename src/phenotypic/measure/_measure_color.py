@@ -10,7 +10,7 @@ import pandas as pd
 import logging
 
 from phenotypic.abc_ import MeasureFeatures, MeasurementInfo
-from phenotypic.tools.constants_ import OBJECT
+from phenotypic.tools_.constants_ import OBJECT
 
 logger = logging.getLogger(__name__)
 

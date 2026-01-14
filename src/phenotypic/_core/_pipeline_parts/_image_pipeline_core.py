@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Union, Optional
 
 import numpy as np
 
-from phenotypic.tools.constants_ import OBJECT
+from phenotypic.tools_.constants_ import OBJECT
 
 if TYPE_CHECKING:
     from phenotypic import Image, GridImage
@@ -18,7 +18,7 @@ import time
 import sys
 
 from phenotypic.abc_ import MeasureFeatures, BaseOperation, ImageOperation
-from phenotypic.abc_._lazy_widget_mixin import LazyWidgetMixin
+from phenotypic.tools_._lazy_widget_mixin import LazyWidgetMixin
 
 
 class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
@@ -137,7 +137,7 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
             self._ops = ops
         else:
             raise TypeError(
-                f"pipe_cfgs must be a list or a dictionary, got {type(ops)}")
+                    f"pipe_cfgs must be a list or a dictionary, got {type(ops)}")
 
     def set_meas(
             self, measurements: List[MeasureFeatures] | Dict[str, MeasureFeatures]

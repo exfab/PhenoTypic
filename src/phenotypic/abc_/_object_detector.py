@@ -1,11 +1,11 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, overload
 
 if TYPE_CHECKING:
-    from phenotypic import Image
+    from phenotypic import Image, GridImage
 
 from ._image_operation import ImageOperation
-from phenotypic.tools.funcs_ import validate_operation_integrity
+from phenotypic.tools_.funcs_ import validate_operation_integrity
 from abc import ABC
 
 
@@ -452,6 +452,12 @@ class ObjectDetector(ImageOperation, ABC):
                 print(f"Colonies: {result.objmap[:].max()}")
                 print(f"Measurements: {result.measurements.shape}")
     """
+
+    @overload
+    def apply(self, image: Image, inplace: bool = False) -> Image: ...
+
+    @overload
+    def apply(self, image: GridImage, inplace: bool = False) -> GridImage: ...
 
     @validate_operation_integrity("image.rgb", "image.gray", "image.enh_gray")
     def apply(self, image: Image, inplace=False) -> Image:

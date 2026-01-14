@@ -9,7 +9,7 @@ from phenotypic.abc_ import ObjectRefiner, FootprintMixin
 
 import numpy as np
 from skimage.morphology import binary_opening
-from phenotypic.tools.typing_ import FootprintShape
+from phenotypic.tools_.typing_ import FootprintShape
 
 
 class MaskOpener(ObjectRefiner, FootprintMixin):
@@ -84,7 +84,8 @@ class MaskOpener(ObjectRefiner, FootprintMixin):
         elif isinstance(self.shape, np.ndarray):
             footprint = self.shape
         elif self.shape in self._footprint_shapes:
-            footprint = FootprintMixin._make_footprint(self.shape, width=int(self.width))
+            footprint = FootprintMixin._make_footprint(self.shape,
+                                                       width=int(self.width))
         elif not self.shape:
             footprint = self.shape
         else:

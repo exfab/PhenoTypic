@@ -32,9 +32,9 @@ except ImportError:
 import skimage as ski
 
 import phenotypic
-from phenotypic.tools.exceptions_ import UnsupportedFileTypeError
-from phenotypic.tools.constants_ import IO, METADATA
-from phenotypic.tools.hdf_ import HDF
+from phenotypic.tools_.exceptions_ import UnsupportedFileTypeError
+from phenotypic.tools_.constants_ import IO, METADATA
+from phenotypic.tools_.hdf_ import HDF
 from ._image_color_handler import ImageColorSpace
 
 

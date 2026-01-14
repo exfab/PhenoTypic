@@ -8,7 +8,7 @@ if TYPE_CHECKING:
 from scipy.spatial.distance import euclidean
 
 from phenotypic.abc_ import ObjectRefiner
-from phenotypic.tools.constants_ import BBOX
+from phenotypic.tools_.constants_ import BBOX
 
 
 class CenterDeviationReducer(ObjectRefiner):
@@ -48,8 +48,8 @@ class CenterDeviationReducer(ObjectRefiner):
     """
 
     def _operate(self, image: Image):
-        img_center_cc = image.shape[1]//2
-        img_center_rr = image.shape[0]//2
+        img_center_cc = image.shape[1] // 2
+        img_center_rr = image.shape[0] // 2
 
         bound_info = image.objects.info()
 

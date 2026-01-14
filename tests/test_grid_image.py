@@ -3,10 +3,9 @@ import pytest
 from phenotypic import Image, GridImage
 from phenotypic.grid import AutoGridFinder
 from phenotypic.detect import OtsuDetector
-from phenotypic.tools.exceptions_ import IllegalAssignmentError
+from phenotypic.tools_.exceptions_ import IllegalAssignmentError
 
 from .resources.TestHelper import timeit
-
 
 
 @timeit
@@ -224,16 +223,16 @@ class TestGridImageBitDepthInheritance:
 
         # All should have same grid dimensions (defaults)
         assert (
-            grid_uint8.grid.nrows
-            == grid_uint16.grid.nrows
-            == grid_float32.grid.nrows
-            == 8
+                grid_uint8.grid.nrows
+                == grid_uint16.grid.nrows
+                == grid_float32.grid.nrows
+                == 8
         )
         assert (
-            grid_uint8.grid.ncols
-            == grid_uint16.grid.ncols
-            == grid_float32.grid.ncols
-            == 12
+                grid_uint8.grid.ncols
+                == grid_uint16.grid.ncols
+                == grid_float32.grid.ncols
+                == 12
         )
 
         # All should have correct bit_depth
@@ -298,7 +297,8 @@ class TestGridAccessorSlicing:
         assert subset.shape[1] > 0
 
     @timeit
-    def test_grid_accessor_2d_slice_raises_error(self, plate_grid_images_with_detection):
+    def test_grid_accessor_2d_slice_raises_error(self,
+                                                 plate_grid_images_with_detection):
         """Test that grid[rows, cols] raises ValueError."""
         grid_image = plate_grid_images_with_detection
 
@@ -347,7 +347,8 @@ class TestGridAccessorSlicing:
         assert all_2d.shape[0] > 0
 
     @timeit
-    def test_grid_accessor_single_section_backward_compat(self, plate_grid_images_with_detection):
+    def test_grid_accessor_single_section_backward_compat(self,
+                                                          plate_grid_images_with_detection):
         """Test backward compatibility: single section access unchanged."""
         grid_image = plate_grid_images_with_detection
 
@@ -360,7 +361,8 @@ class TestGridAccessorSlicing:
         assert isinstance(single_tuple, Image)
 
     @timeit
-    def test_grid_accessor_slice_return_type_is_image(self, plate_grid_images_with_detection):
+    def test_grid_accessor_slice_return_type_is_image(self,
+                                                      plate_grid_images_with_detection):
         """Test that slices return Image, not GridImage."""
         grid_image = plate_grid_images_with_detection
 
@@ -369,9 +371,10 @@ class TestGridAccessorSlicing:
         assert not isinstance(sliced, GridImage)
 
     @timeit
-    def test_grid_accessor_slice_metadata_marked_as_grid_section(self, plate_grid_images_with_detection):
+    def test_grid_accessor_slice_metadata_marked_as_grid_section(self,
+                                                                 plate_grid_images_with_detection):
         """Test that sliced images have GRID_SECTION metadata."""
-        from phenotypic.tools.constants_ import METADATA, IMAGE_TYPES
+        from phenotypic.tools_.constants_ import METADATA, IMAGE_TYPES
 
         grid_image = plate_grid_images_with_detection
         sliced = grid_image.grid[0:12]
@@ -381,7 +384,8 @@ class TestGridAccessorSlicing:
         assert image_type == IMAGE_TYPES.GRID_SECTION.value
 
     @timeit
-    def test_grid_accessor_slice_object_filtering(self, plate_grid_images_with_detection):
+    def test_grid_accessor_slice_object_filtering(self,
+                                                  plate_grid_images_with_detection):
         """Test that sliced images have filtered objects."""
         grid_image = plate_grid_images_with_detection
 
@@ -394,7 +398,8 @@ class TestGridAccessorSlicing:
         assert np.issubdtype(first_row.objmap[:].dtype, np.integer)
 
     @timeit
-    def test_grid_accessor_invalid_tuple_length_raises_error(self, plate_grid_images_with_detection):
+    def test_grid_accessor_invalid_tuple_length_raises_error(self,
+                                                             plate_grid_images_with_detection):
         """Test that invalid tuple length raises IndexError."""
         grid_image = plate_grid_images_with_detection
 
@@ -402,7 +407,8 @@ class TestGridAccessorSlicing:
             _ = grid_image.grid[0, 1, 2]
 
     @timeit
-    def test_grid_accessor_invalid_type_raises_error(self, plate_grid_images_with_detection):
+    def test_grid_accessor_invalid_type_raises_error(self,
+                                                     plate_grid_images_with_detection):
         """Test that invalid index type raises TypeError."""
         grid_image = plate_grid_images_with_detection
 
