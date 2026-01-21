@@ -156,7 +156,7 @@ class ImageHandler(ImageDataManager):
         (`rgb`, `gray`, `enh_gray`, `objmap`) are element-wise identical.
 
         Note:
-            - Only checks _core image data, and not any other attributes such as metadata.
+            - Only checks image data, and not any other attributes such as metadata.
 
         Args:
             other: The object to compare with the current instance.

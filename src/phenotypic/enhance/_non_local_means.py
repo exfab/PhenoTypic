@@ -91,23 +91,15 @@ class NonLocalMeansDenoiser(ImageEnhancer):
         self.fast_mode = bool(fast_mode)
         self.sigma = float(sigma)
 
-    @staticmethod
-    def _operate(
-            image: Image,
-            patch_size: int = 7,
-            patch_distance: int = 11,
-            h: float = 0.1,
-            fast_mode: bool = True,
-            sigma: float = 0.0,
-    ) -> Image:
+    def _operate(self, image: Image) -> Image:
         """Apply non-local means denoising to enhanced grayscale."""
         denoised = denoise_nl_means(
                 image=image.enh_gray[:],
-                patch_size=patch_size,
-                patch_distance=patch_distance,
-                h=h,
-                fast_mode=fast_mode,
-                sigma=sigma,
+                patch_size=self.patch_size,
+                patch_distance=self.patch_distance,
+                h=self.h,
+                fast_mode=self.fast_mode,
+                sigma=self.sigma,
                 preserve_range=True,
         )
         image.enh_gray[:] = denoised

@@ -133,32 +133,18 @@ class BayesShrinkEnhancer(ImageEnhancer):
         self.mode = mode
         self.wavelet_levels = wavelet_levels
 
-    @staticmethod
-    def _operate(
-            image: Image,
-            sigma: float | None = None,
-            wavelet: str = "db2",
-            mode: Literal["soft", "hard"] = "soft",
-            wavelet_levels: int | None = None,
-    ) -> Image:
+    def _operate(self, image: Image) -> Image:
         """Apply BayesShrink adaptive wavelet denoising to enhanced grayscale.
-
-        Parameters:
-            image: Image object to denoise
-            sigma: Noise level in [0, 1] scale
-            wavelet: Wavelet type
-            mode: 'soft' or 'hard' thresholding
-            wavelet_levels: Decomposition levels
 
         Returns:
             Modified Image with denoised enh_gray
         """
         denoised = denoise_wavelet(
                 image=image.enh_gray[:],
-                sigma=sigma,
-                wavelet=wavelet,
-                mode=mode,
-                wavelet_levels=wavelet_levels,
+                sigma=self.sigma,
+                wavelet=self.wavelet,
+                mode=self.mode,
+                wavelet_levels=self.wavelet_levels,
                 method="BayesShrink",
                 channel_axis=None,
                 rescale_sigma=True,

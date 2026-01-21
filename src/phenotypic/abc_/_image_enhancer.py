@@ -11,7 +11,7 @@ from phenotypic.tools_.funcs_ import validate_operation_integrity
 from abc import ABC
 from skimage.morphology import disk, diamond
 from skimage import morphology
-from ._footprint_mixin import FootprintMixin
+from phenotypic.tools_ import FootprintMixin
 
 
 class ImageEnhancer(FootprintMixin, ImageOperation, ABC):
@@ -112,19 +112,17 @@ class ImageEnhancer(FootprintMixin, ImageOperation, ABC):
                 super().__init__()
                 self.sigma = sigma  # Instance attribute matched to _operate()
 
-            @staticmethod
-            def _operate(image: Image, sigma: float = 1.0) -> Image:
+            def _operate(self, image: Image) -> Image:
                 # Modify ONLY enh_gray; read, process, write back
                 enh = image.enh_gray[:]
-                filtered = gaussian_filter(enh.astype(float), sigma=sigma)
+                filtered = gaussian_filter(enh.astype(float), sigma=self.sigma)
                 image.enh_gray[:] = filtered.astype(enh.dtype)
                 return image
 
     **Key Rules for Implementation:**
 
-    1. ``_operate()`` must be **static** (required for parallel execution in pipelines).
-    2. All parameters except `image` must exist as instance attributes with matching names
-       (enables automatic parameter matching via `_get_matched_operation_args()`).
+    1. ``_operate()`` should be an **instance method** (no ``@staticmethod`` decorator).
+    2. Access operation parameters directly via ``self.param_name``.
     3. **Only modify ``image.enh_gray[:]``**—all other components are protected.
     4. Always use the accessor pattern: ``image.enh_gray[:] = new_data`` (never direct attribute
        assignment like ``image._enh_gray = ...``).
@@ -250,9 +248,8 @@ class ImageEnhancer(FootprintMixin, ImageOperation, ABC):
         apply(image, inplace=False): Applies the enhancement to an image. Returns a modified
             Image with enhanced `enh_gray` but unchanged RGB/gray/objects. Handles copy/inplace
             logic and validates data integrity.
-        _operate(image, **kwargs): Abstract static method implemented by subclasses.
-            Performs the actual enhancement algorithm. Parameters are automatically matched
-            to instance attributes.
+        _operate(self, image): Abstract instance method implemented by subclasses.
+            Performs the actual enhancement algorithm. Access parameters via ``self.param_name``.
         _make_footprint(shape, width): Static utility that creates a binary morphological
             shape (disk, square, or diamond) for use in morphological operations.
 
@@ -264,12 +261,9 @@ class ImageEnhancer(FootprintMixin, ImageOperation, ABC):
         - **Immutability by default:** ``apply(image)`` returns a modified copy by default.
           Set ``inplace=True`` for memory-efficient in-place modification.
 
-        - **Static _operate() requirement:** The ``_operate()`` method must be static to
-          support parallel execution in pipelines.
-
-        - **Parameter matching for parallelization:** All ``_operate()`` parameters except
-          ``image`` must exist as instance attributes. When ``apply()`` is called, these
-          values are extracted and passed to ``_operate()``.
+        - **Instance method pattern:** The ``_operate()`` method should be an instance method
+          (no ``@staticmethod`` decorator). Access operation parameters directly via
+          ``self.param_name``. This is simpler and more Pythonic.
 
         - **Accessor pattern:** Always use ``image.enh_gray[:] = new_data`` to modify
           enhanced grayscale. Never use direct attribute assignment.
@@ -295,11 +289,10 @@ class ImageEnhancer(FootprintMixin, ImageOperation, ABC):
                         super().__init__()
                         self.sigma = sigma
 
-                    @staticmethod
-                    def _operate(image: Image, sigma: float = 1.5) -> Image:
+                    def _operate(self, image: Image) -> Image:
                         enh = image.enh_gray[:]
                         # Convert to float for processing
-                        filtered = gaussian_filter(enh.astype(float), sigma=sigma)
+                        filtered = gaussian_filter(enh.astype(float), sigma=self.sigma)
                         # Restore original dtype
                         image.enh_gray[:] = filtered.astype(enh.dtype)
                         return image
@@ -332,18 +325,17 @@ class ImageEnhancer(FootprintMixin, ImageOperation, ABC):
                         self.operation = operation  # 'closing' or 'opening'
                         self.width = width
 
-                    @staticmethod
-                    def _operate(image: Image, operation: str = 'closing', width: int = 3) -> Image:
+                    def _operate(self, image: Image) -> Image:
                         enh = image.enh_gray[:]
                         # Create a disk shape for isotropic processing
-                        shape = ImageEnhancer._make_footprint('disk', width)
+                        shape = ImageEnhancer._make_footprint('disk', self.width)
 
                         # Apply morphological operation to binary image
                         binary = enh > enh.mean()
-                        if operation == 'closing':
+                        if self.operation == 'closing':
                             # Close small holes within colonies
                             refined = binary_closing(binary, structure=shape)
-                        elif operation == 'opening':
+                        elif self.operation == 'opening':
                             # Remove small noise regions
                             refined = binary_opening(binary, structure=shape)
                         else:
@@ -412,12 +404,11 @@ class ImageEnhancer(FootprintMixin, ImageOperation, ABC):
                         self.shape = shape  # 'disk', 'square', or 'diamond'
                         self.width = width
 
-                    @staticmethod
-                    def _operate(image: Image, shape: str = 'disk', width: int = 3) -> Image:
+                    def _operate(self, image: Image) -> Image:
                         enh = image.enh_gray[:]
 
-                        # Create shape with specified shape
-                        shape = ImageEnhancer._make_footprint(shape, width)
+                        # Create footprint with specified shape
+                        footprint = ImageEnhancer._make_footprint(self.shape, self.width)
 
                         # Apply median filter (rank filter)
                         # Convert to uint8 for rank filter compatibility

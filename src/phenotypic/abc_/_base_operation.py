@@ -1,9 +1,6 @@
 from __future__ import annotations
 
-import inspect
 from typing import TYPE_CHECKING
-import functools
-import types
 
 if TYPE_CHECKING:
     pass
@@ -58,9 +55,9 @@ class BaseOperation(ABC):
       class with the name format: `module.ClassName`. Subclasses can log messages
       and memory usage without additional setup.
 
-    - **Parallel Execution Support:** The `_get_matched_operation_args()` method
-      enables serialization of operation state for parallel execution by extracting
-      operation attributes that match the `_operate()` method's parameters.
+    - **Parallel Execution Support:** Operations are serialized with all instance
+      attributes (`op.__dict__`) for parallel execution. Worker processes unpickle
+      the complete operation object and execute it.
 
     Inheritance hierarchy:
 
@@ -119,10 +116,6 @@ class BaseOperation(ABC):
           set the logger level to WARNING or higher.
         - Tracemalloc is automatically stopped when the operation object is
           deleted (in `__del__`), even if an exception occurs.
-        - The `_get_matched_operation_args()` method is used internally by the
-          pipeline system for parallel execution. It extracts operation attributes
-          that match the `_operate()` method signature, enabling operations to be
-          serialized and executed in worker processes.
         - On Windows, pympler may not be available, so object memory tracking
           will fall back gracefully. psutil is available on all platforms.
 
@@ -188,9 +181,8 @@ class BaseOperation(ABC):
                 # When operation is applied via pipeline:
                 operation = CustomThreshold(threshold_value=100)
 
-                # _get_matched_operation_args() automatically extracts:
-                # {'threshold_value': 100}
-                # This enables parallel execution in pipelines
+                # The operation object is serialized with all attributes
+                # for parallel execution in worker processes
     """
 
     def __init__(self, *args, **kwargs) -> None:
@@ -213,7 +205,7 @@ class BaseOperation(ABC):
     ) -> None:
         """Log memory usage if logger is in INFO mode."""
         if self._logger.isEnabledFor(logging.INFO):
-            log_msg_parts = [f"Memory usage after {step}:"]
+            log_msg_parts = [f"Memory usage: {step}:"]
 
             # Object memory using pympler
             if PYMPLER_AVAILABLE:
@@ -266,44 +258,3 @@ class BaseOperation(ABC):
             except Exception:
                 # Ignore errors during cleanup
                 pass
-
-    def _get_matched_operation_args(self) -> dict:
-        """Returns a dictionary of matched attributes with the arguments for the _operate method. This aids in parallel execution
-
-        Returns:
-            dict: A dictionary of matched attributes with the arguments for the _operate method or blank dict if
-            _operate is a staticmethod. This is used for parallel execution of operations.
-        """
-        raw_operate_method = inspect.getattr_static(self.__class__, "_operate")
-        if isinstance(raw_operate_method, staticmethod):
-            return self._matched_args(raw_operate_method.__func__)
-        else:
-            return {}
-
-    def _matched_args(self, func):
-        """Return a dict of attributes that satisfy *func*'s signature."""
-        sig = inspect.signature(func)
-        matched = {}
-
-        for name, param in sig.parameters.items():
-            if (
-                    name == "image"
-            ):  # The image provided by the user is always passed as the first argument.
-                continue
-            if hasattr(self, name):
-                value = getattr(self, name)
-                if isinstance(
-                        value, types.MethodType
-                ):  # transform a bounded method into a pickleable object
-                    value = functools.partial(value.__func__, self)
-                matched[name] = value
-            elif hasattr(self.__class__, name):
-                matched[name] = getattr(self.__class__, name)
-            elif param.default is not param.empty:
-                continue  # default will be used
-            else:
-                raise AttributeError(
-                        f"{self.__class__.__name__} lacks attribute '{name}' "
-                        f"required by {func.__qualname__}",
-                )
-        return matched

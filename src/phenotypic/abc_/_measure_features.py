@@ -342,9 +342,7 @@ class MeasureFeatures(BaseOperation, ABC):
         """
 
         try:
-            matched_args = self._get_matched_operation_args()
-
-            meas = self._operate(image, **matched_args)
+            meas = self._operate(image)
             if include_meta:
                 meta = (
                     image.grid.info(include_metadata=True)

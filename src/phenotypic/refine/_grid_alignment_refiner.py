@@ -145,26 +145,12 @@ class GridAlignmentRefiner(GridInferenceMixin, ObjectRefiner):
     def apply(self, image: Image, inplace: bool = False) -> Image:
         return super().apply(image=image, inplace=inplace)
 
-    @staticmethod
-    def _operate(
-            image: Image,
-            smoothing_sigma: float,
-            min_peak_distance: int | None,
-            peak_prominence: float | None,
-            edge_refinement: bool,
-    ) -> Image:
+    def _operate(self, image: Image) -> Image:
         """Refine detected objects to grid-aligned colonies.
 
         This method filters the object map to keep only the dominant object within each
         grid cell. Objects are reassigned new labels (1, 2, 3, ...) to ensure contiguous
         labeling after filtering.
-
-        Args:
-            image: Image object with existing objmask and objmap from detection.
-            smoothing_sigma: Gaussian smoothing for grid inference.
-            min_peak_distance: Minimum distance between peaks.
-            peak_prominence: Minimum prominence for peaks.
-            edge_refinement: Whether to refine edges.
 
         Returns:
             Image: Modified image with filtered objmap and updated objmask.
@@ -187,20 +173,20 @@ class GridAlignmentRefiner(GridInferenceMixin, ObjectRefiner):
                     objmask,
                     axis=0,
                     n_bins=nrows,
-                    smoothing_sigma=smoothing_sigma,
-                    min_peak_distance=min_peak_distance,
-                    peak_prominence=peak_prominence,
+                    smoothing_sigma=self.smoothing_sigma,
+                    min_peak_distance=self.min_peak_distance,
+                    peak_prominence=self.peak_prominence,
             )
             col_edges = GridAlignmentRefiner._estimate_edges(
                     objmask,
                     axis=1,
                     n_bins=ncols,
-                    smoothing_sigma=smoothing_sigma,
-                    min_peak_distance=min_peak_distance,
-                    peak_prominence=peak_prominence,
+                    smoothing_sigma=self.smoothing_sigma,
+                    min_peak_distance=self.min_peak_distance,
+                    peak_prominence=self.peak_prominence,
             )
 
-            if edge_refinement:
+            if self.edge_refinement:
                 row_edges = GridAlignmentRefiner._refine_edges(objmask, row_edges,
                                                                axis=0)
                 col_edges = GridAlignmentRefiner._refine_edges(objmask, col_edges,

@@ -7,7 +7,7 @@ import pandas as pd
 
 from phenotypic import ImagePipeline, Image
 from phenotypic.data import load_colony
-from phenotypic.detect import OtsuDetector
+from phenotypic.detect import OtsuDetector, CannyDetector
 from phenotypic.enhance import GaussianBlur, CLAHE
 from phenotypic.measure import MeasureShape, MeasureIntensity, MeasureColor
 from phenotypic.refine import SmallObjectRemover, BorderObjectRemover
@@ -551,3 +551,138 @@ class TestNameAndDescAttributes:
             version_warnings = [warn for warn in w if
                                 "version" in str(warn.message).lower()]
             assert len(version_warnings) == 0
+
+
+class TestNestedOperationsSerialization:
+    """Test serialization of operations containing other operations."""
+
+    def test_nested_operations_serialization(self):
+        """Test that operations containing other operations serialize correctly."""
+        from phenotypic.detect import CompositeDetector, CannyDetector
+
+        # Create composite detector with nested detectors
+        composite = CompositeDetector(
+            detectors=[OtsuDetector(), CannyDetector(sigma=2.0)],
+            mode='overlap',
+            min_overlap_ratio=0.6
+        )
+
+        pipeline = ImagePipeline([composite])
+
+        # Serialize
+        json_str = pipeline.to_json()
+
+        # Verify JSON structure contains nested operations
+        config = json.loads(json_str)
+        pipe_cfgs = config['pipe_cfgs']
+
+        # Should have CompositeDetector
+        assert any('CompositeDetector' in key for key in pipe_cfgs.keys())
+
+        # Find the composite detector entry
+        composite_key = [k for k in pipe_cfgs.keys() if 'CompositeDetector' in k][0]
+        composite_data = pipe_cfgs[composite_key]
+
+        # Verify nested detectors are serialized
+        assert 'detectors' in composite_data['params']
+        detectors_data = composite_data['params']['detectors']
+        assert detectors_data['__type__'] == 'operation_list'
+        assert len(detectors_data['items']) == 2
+
+        # Verify first detector (OtsuDetector)
+        otsu_data = detectors_data['items'][0]
+        assert otsu_data['class'] == 'OtsuDetector'
+
+        # Verify second detector (CannyDetector)
+        canny_data = detectors_data['items'][1]
+        assert canny_data['class'] == 'CannyDetector'
+        assert canny_data['params']['sigma'] == 2.0
+
+        # Verify mode and min_overlap_ratio
+        assert composite_data['params']['mode'] == 'overlap'
+        assert composite_data['params']['min_overlap_ratio'] == 0.6
+
+    def test_nested_operations_deserialization(self):
+        """Test that nested operations are correctly deserialized."""
+        from phenotypic.detect import CompositeDetector
+
+        # Create composite detector
+        composite = CompositeDetector(
+            detectors=[
+                OtsuDetector(ignore_zeros=True),
+                CannyDetector(sigma=2)
+            ],
+            mode='union'
+        )
+
+        pipeline = ImagePipeline([composite])
+
+        # Serialize and deserialize
+        json_str = pipeline.to_json()
+        restored_pipeline = ImagePipeline.from_json(json_str)
+
+        # Verify structure
+        assert len(restored_pipeline._ops) == 1
+        restored_composite = list(restored_pipeline._ops.values())[0]
+        assert isinstance(restored_composite, CompositeDetector)
+        assert len(restored_composite.detectors) == 2
+        assert isinstance(restored_composite.detectors[0], OtsuDetector)
+        assert isinstance(restored_composite.detectors[1], CannyDetector)
+        assert restored_composite.mode == 'union'
+
+        # Verify nested detector parameters
+        assert restored_composite.detectors[0].ignore_zeros == True
+        assert restored_composite.detectors[1].sigma == 2
+
+    def test_nested_operations_functional_equivalence(self):
+        """Test that serialized/deserialized nested operations work identically."""
+        from phenotypic.detect import CompositeDetector
+        from phenotypic.data import load_synth_plate
+
+        image = load_synth_plate()
+
+        # Original detector
+        composite = CompositeDetector(
+            detectors=[OtsuDetector(), CannyDetector(sigma=2)],
+            mode='intersection'
+        )
+        original_result = composite.apply(image)
+
+        # Serialize and deserialize
+        pipeline = ImagePipeline([composite])
+        json_str = pipeline.to_json()
+        restored_pipeline = ImagePipeline.from_json(json_str)
+
+        # Apply restored detector
+        restored_result = restored_pipeline.apply(image.copy(), inplace=False)
+
+        # Results should be identical
+        import numpy as np
+        np.testing.assert_array_equal(
+            original_result.objmask[:],
+            restored_result.objmask[:]
+        )
+        np.testing.assert_array_equal(
+            original_result.objmap[:],
+            restored_result.objmap[:]
+        )
+
+    def test_single_nested_operation(self):
+        """Test serialization of operation containing single nested operation."""
+        from phenotypic.detect import CompositeDetector
+
+        # Single detector in CompositeDetector
+        composite = CompositeDetector(
+            detectors=[OtsuDetector()],
+            mode='union'
+        )
+
+        pipeline = ImagePipeline([composite])
+        json_str = pipeline.to_json()
+
+        # Deserialize
+        restored = ImagePipeline.from_json(json_str)
+        restored_composite = list(restored._ops.values())[0]
+
+        assert len(restored_composite.detectors) == 1
+        assert isinstance(restored_composite.detectors[0], OtsuDetector)

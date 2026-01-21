@@ -5,7 +5,8 @@ from typing import Literal, TYPE_CHECKING
 if TYPE_CHECKING:
     from phenotypic import Image
 
-from phenotypic.abc_ import ObjectRefiner, FootprintMixin
+from phenotypic.abc_ import ObjectRefiner
+from phenotypic.tools_ import FootprintMixin
 
 import numpy as np
 from skimage.morphology import binary_closing

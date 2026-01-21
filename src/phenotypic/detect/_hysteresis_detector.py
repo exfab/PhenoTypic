@@ -80,6 +80,8 @@ class HysteresisDetector(ThresholdDetector):
       to weak regions. Ensure low is meaningfully lower than high.
     - Threshold order required: high >= low. If computed methods violate this, raises
       ValueError.
+    - Fallback behavior: If low == high after computation, automatically performs
+      simple threshold segmentation (mask = image >= threshold) instead of hysteresis.
 
     **Parameter effects on colony detection**
 
@@ -138,7 +140,8 @@ class HysteresisDetector(ThresholdDetector):
         manual float values), validates that high >= low, then applies
         apply_hysteresis_threshold() to identify regions that exceed the high
         threshold OR exceed the low threshold while connected to regions above
-        the high threshold.
+        the high threshold. If low == high, performs simple threshold segmentation
+        instead.
 
         Args:
             image: The input image object. Must have ``enh_gray`` attribute
@@ -176,11 +179,15 @@ class HysteresisDetector(ThresholdDetector):
                 f"({low_val:.2f})"
             )
 
-        # Apply hysteresis thresholding
-        mask = apply_hysteresis_threshold(enh_matrix, low_val, high_val)
-
-        # Ensure mask is boolean (apply_hysteresis_threshold returns int64)
-        mask = mask.astype(bool)
+        # Apply thresholding (fallback to simple threshold if low == high)
+        if high_val == low_val:
+            # Simple threshold segmentation when thresholds are identical
+            mask = enh_matrix >= low_val
+        else:
+            # Hysteresis thresholding with dual thresholds
+            mask = apply_hysteresis_threshold(enh_matrix, low_val, high_val)
+            # Ensure mask is boolean (apply_hysteresis_threshold returns int64)
+            mask = mask.astype(bool)
 
         # Optionally clear borders
         mask = clear_border(mask) if self.ignore_borders else mask

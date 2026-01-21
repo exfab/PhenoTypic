@@ -11,10 +11,12 @@ from ._bayesshrink_corrector import BayesShrinkCorrector
 from ._grid_aligner import GridAligner
 from ._visushrink_corrector import VisuShrinkCorrector
 from ._image_cropper import ImageCropper
+from ._image_padder import ImagePadder
 
 __all__ = [
     "GridAligner",
     "ImageCropper",
+    "ImagePadder",
     "BayesShrinkCorrector",
     "VisuShrinkCorrector"
 ]

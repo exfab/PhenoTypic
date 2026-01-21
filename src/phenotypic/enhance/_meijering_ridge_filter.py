@@ -105,21 +105,13 @@ class MeijeringRidgeFilter(ImageEnhancer):
         self.mode = mode
         self.cval = cval
 
-    @staticmethod
-    def _operate(
-            image: Image,
-            sigmas: Iterable[float] = (1, 2, 3),
-            alpha: Optional[float] = None,
-            black_ridges: bool = True,
-            mode: str = 'reflect',
-            cval: float = 0,
-    ) -> Image:
+    def _operate(self, image: Image) -> Image:
         image.enh_gray[:] = meijering(
                 image=image.enh_gray[:],
-                sigmas=sigmas,
-                alpha=alpha,
-                black_ridges=black_ridges,
-                mode=mode,
-                cval=cval,
+                sigmas=self.sigmas,
+                alpha=self.alpha,
+                black_ridges=self.black_ridges,
+                mode=self.mode,
+                cval=self.cval,
         )
         return image

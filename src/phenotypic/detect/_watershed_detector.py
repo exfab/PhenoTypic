@@ -190,11 +190,13 @@ class WatershedDetector(ThresholdDetector):
             binary = np.ascontiguousarray(binary)
 
         # Memory-intensive distance transform operation
-        self._log_memory_usage("before distance transform", include_tracemalloc=True)
+        self._log_memory_usage("before distance transform",
+                               include_tracemalloc=True)
         # Allocate float32 output directly to avoid intermediate float64 array
         dist_matrix = np.empty(binary.shape, dtype=np.float64)
         distance_transform_edt(binary, distances=dist_matrix)
-        self._log_memory_usage("after distance transform", include_tracemalloc=True)
+        self._log_memory_usage("after distance transform",
+                               include_tracemalloc=True)
 
         max_peak_indices = feature.peak_local_max(
                 image=dist_matrix, footprint=footprint, labels=binary
@@ -216,7 +218,8 @@ class WatershedDetector(ThresholdDetector):
         # Convert to float32 and ensure contiguity in one step if needed
         if gradient.dtype != np.float32 or not gradient.flags["C_CONTIGUOUS"]:
             gradient = np.asarray(gradient, dtype=np.float32, order="C")
-        self._log_memory_usage("Sobel filter for gradient", include_tracemalloc=True)
+        self._log_memory_usage("Sobel filter for gradient",
+                               include_tracemalloc=True)
 
         # Memory-intensive watershed operation - detailed tracking
         self._log_memory_usage(

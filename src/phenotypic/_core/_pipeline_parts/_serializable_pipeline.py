@@ -262,6 +262,96 @@ class SerializablePipeline(ImagePipelineCore):
                 if isinstance(value, pd.DataFrame):
                     continue
 
+                # Handle nested ImageOperation or MeasureFeatures instances
+                if isinstance(value, (ImageOperation, MeasureFeatures)):
+                    params[key] = {
+                        "__type__": "operation",
+                        "class": value.__class__.__name__,
+                        "params": SerializablePipeline._serialize_single_operation(value)
+                    }
+                    continue
+
+                # Handle nested ImagePipeline instances (check before operations)
+                if isinstance(value, SerializablePipeline):
+                    pipeline_config = {
+                        "pipe_cfgs": SerializablePipeline._serialize_operations(value._ops),
+                        "meas": SerializablePipeline._serialize_operations(value._meas),
+                        "benchmark": value._benchmark,
+                        "verbose": value._verbose,
+                        "name": value.name,
+                        "desc": value._desc,
+                    }
+                    params[key] = {
+                        "__type__": "pipeline",
+                        "config": pipeline_config
+                    }
+                    continue
+
+                # Handle lists - check for mixed types (operations and/or pipelines)
+                if isinstance(value, list) and value:
+                    # Check if list contains any pipelines
+                    has_pipeline = any(isinstance(item, SerializablePipeline) for item in value)
+                    has_operation = any(isinstance(item, (ImageOperation, MeasureFeatures)) for item in value)
+
+                    if has_pipeline and not has_operation:
+                        # Pure pipeline list
+                        params[key] = {
+                            "__type__": "pipeline_list",
+                            "items": [
+                                {
+                                    "config": {
+                                        "pipe_cfgs": SerializablePipeline._serialize_operations(item._ops),
+                                        "meas": SerializablePipeline._serialize_operations(item._meas),
+                                        "benchmark": item._benchmark,
+                                        "verbose": item._verbose,
+                                        "name": item.name,
+                                        "desc": item._desc,
+                                    }
+                                }
+                                for item in value
+                            ]
+                        }
+                        continue
+                    elif has_operation and not has_pipeline:
+                        # Pure operation list
+                        params[key] = {
+                            "__type__": "operation_list",
+                            "items": [
+                                {
+                                    "class": item.__class__.__name__,
+                                    "params": SerializablePipeline._serialize_single_operation(item)
+                                }
+                                for item in value
+                            ]
+                        }
+                        continue
+                    elif has_operation and has_pipeline:
+                        # Mixed list - serialize as operation_list with special handling for pipelines
+                        items = []
+                        for item in value:
+                            if isinstance(item, SerializablePipeline):
+                                items.append({
+                                    "__type__": "pipeline",
+                                    "config": {
+                                        "pipe_cfgs": SerializablePipeline._serialize_operations(item._ops),
+                                        "meas": SerializablePipeline._serialize_operations(item._meas),
+                                        "benchmark": item._benchmark,
+                                        "verbose": item._verbose,
+                                        "name": item.name,
+                                        "desc": item._desc,
+                                    }
+                                })
+                            else:
+                                items.append({
+                                    "class": item.__class__.__name__,
+                                    "params": SerializablePipeline._serialize_single_operation(item)
+                                })
+                        params[key] = {
+                            "__type__": "operation_list",
+                            "items": items
+                        }
+                        continue
+
                 # Check if value is JSON serializable
                 try:
                     json.dumps(value)
@@ -273,6 +363,130 @@ class SerializablePipeline(ImagePipelineCore):
             serialized[name] = {"class": class_name, "params": params}
 
         return serialized
+
+    @staticmethod
+    def _serialize_single_operation(op: Union[ImageOperation, MeasureFeatures]) -> Dict:
+        """
+        Serialize a single operation instance (helper for nested operations).
+
+        This enables recursive serialization of operations containing other operations.
+
+        Args:
+            op: An ImageOperation or MeasureFeatures instance.
+
+        Returns:
+            Dict: Serialized parameters of the operation.
+        """
+        params = {}
+        for key, value in op.__dict__.items():
+            # Skip internal attributes (same logic as _serialize_operations)
+            if key.startswith("_"):
+                class_name = op.__class__.__name__
+                if not key.startswith(f"_{class_name}__"):
+                    continue
+
+            # Skip pandas DataFrames
+            if isinstance(value, pd.DataFrame):
+                continue
+
+            # Handle nested ImagePipeline instances (check before operations)
+            if isinstance(value, SerializablePipeline):
+                pipeline_config = {
+                    "pipe_cfgs": SerializablePipeline._serialize_operations(value._ops),
+                    "meas": SerializablePipeline._serialize_operations(value._meas),
+                    "benchmark": value._benchmark,
+                    "verbose": value._verbose,
+                    "name": value.name,
+                    "desc": value._desc,
+                }
+                params[key] = {
+                    "__type__": "pipeline",
+                    "config": pipeline_config
+                }
+                continue
+
+            # Recursively handle nested operations
+            if isinstance(value, (ImageOperation, MeasureFeatures)):
+                params[key] = {
+                    "__type__": "operation",
+                    "class": value.__class__.__name__,
+                    "params": SerializablePipeline._serialize_single_operation(value)
+                }
+                continue
+
+            # Handle lists - check for mixed types (operations and/or pipelines)
+            if isinstance(value, list) and value:
+                # Check if list contains any pipelines
+                has_pipeline = any(isinstance(item, SerializablePipeline) for item in value)
+                has_operation = any(isinstance(item, (ImageOperation, MeasureFeatures)) for item in value)
+
+                if has_pipeline and not has_operation:
+                    # Pure pipeline list
+                    params[key] = {
+                        "__type__": "pipeline_list",
+                        "items": [
+                            {
+                                "config": {
+                                    "pipe_cfgs": SerializablePipeline._serialize_operations(item._ops),
+                                    "meas": SerializablePipeline._serialize_operations(item._meas),
+                                    "benchmark": item._benchmark,
+                                    "verbose": item._verbose,
+                                    "name": item.name,
+                                    "desc": item._desc,
+                                }
+                            }
+                            for item in value
+                        ]
+                    }
+                    continue
+                elif has_operation and not has_pipeline:
+                    # Pure operation list
+                    params[key] = {
+                        "__type__": "operation_list",
+                        "items": [
+                            {
+                                "class": item.__class__.__name__,
+                                "params": SerializablePipeline._serialize_single_operation(item)
+                            }
+                            for item in value
+                        ]
+                    }
+                    continue
+                elif has_operation and has_pipeline:
+                    # Mixed list - serialize as operation_list with special handling for pipelines
+                    items = []
+                    for item in value:
+                        if isinstance(item, SerializablePipeline):
+                            items.append({
+                                "__type__": "pipeline",
+                                "config": {
+                                    "pipe_cfgs": SerializablePipeline._serialize_operations(item._ops),
+                                    "meas": SerializablePipeline._serialize_operations(item._meas),
+                                    "benchmark": item._benchmark,
+                                    "verbose": item._verbose,
+                                    "name": item.name,
+                                    "desc": item._desc,
+                                }
+                            })
+                        else:
+                            items.append({
+                                "class": item.__class__.__name__,
+                                "params": SerializablePipeline._serialize_single_operation(item)
+                            })
+                    params[key] = {
+                        "__type__": "operation_list",
+                        "items": items
+                    }
+                    continue
+
+            # Try JSON serialization for primitives
+            try:
+                json.dumps(value)
+                params[key] = value
+            except (TypeError, ValueError):
+                continue
+
+        return params
 
     @staticmethod
     def _deserialize_operations(
@@ -317,13 +531,83 @@ class SerializablePipeline(ImagePipelineCore):
                         f"The class may require mandatory parameters."
                 )
 
-            # Set the parameters from saved state
+            # Set the parameters from saved state, handling nested operations
             for key, value in params.items():
-                setattr(instance, key, value)
+                deserialized_value = SerializablePipeline._deserialize_value(value)
+                setattr(instance, key, deserialized_value)
 
             operations[name] = instance
 
         return operations
+
+    @classmethod
+    def _deserialize_value(cls, value):
+        """
+        Recursively deserialize a parameter value, handling nested operations.
+
+        Args:
+            value: The value to deserialize (may be primitive, nested operation, or operation list).
+
+        Returns:
+            Deserialized value (primitive, ImageOperation, MeasureFeatures, or list thereof).
+        """
+        # Handle nested operation
+        if isinstance(value, dict) and value.get("__type__") == "operation":
+            op_class = cls._find_class_in_phenotypic(value["class"])
+            if op_class is None:
+                raise AttributeError(
+                    f"Class '{value['class']}' not found in phenotypic namespace. "
+                    f"Make sure it's properly imported in phenotypic.__init__.py"
+                )
+            instance = op_class()
+            for nested_key, nested_value in value["params"].items():
+                setattr(instance, nested_key, cls._deserialize_value(nested_value))
+            return instance
+
+        # Handle list of operations (may contain mixed operations and pipelines)
+        elif isinstance(value, dict) and value.get("__type__") == "operation_list":
+            operation_list = []
+            for item_data in value["items"]:
+                # Check if item is a pipeline
+                if item_data.get("__type__") == "pipeline":
+                    from phenotypic import ImagePipeline
+                    json_str = json.dumps(item_data["config"])
+                    pipeline = ImagePipeline.from_json(json_str)
+                    operation_list.append(pipeline)
+                else:
+                    # Handle as operation
+                    item_class = cls._find_class_in_phenotypic(item_data["class"])
+                    if item_class is None:
+                        raise AttributeError(
+                            f"Class '{item_data['class']}' not found in phenotypic namespace. "
+                            f"Make sure it's properly imported in phenotypic.__init__.py"
+                        )
+                    item_instance = item_class()
+                    for item_key, item_value in item_data["params"].items():
+                        setattr(item_instance, item_key, cls._deserialize_value(item_value))
+                    operation_list.append(item_instance)
+            return operation_list
+
+        # Handle nested ImagePipeline
+        elif isinstance(value, dict) and value.get("__type__") == "pipeline":
+            from phenotypic import ImagePipeline
+            json_str = json.dumps(value["config"])
+            pipeline = ImagePipeline.from_json(json_str)
+            return pipeline
+
+        # Handle list of ImagePipeline instances
+        elif isinstance(value, dict) and value.get("__type__") == "pipeline_list":
+            from phenotypic import ImagePipeline
+            pipeline_list = []
+            for item_data in value["items"]:
+                json_str = json.dumps(item_data["config"])
+                pipeline = ImagePipeline.from_json(json_str)
+                pipeline_list.append(pipeline)
+            return pipeline_list
+
+        # Primitive value
+        else:
+            return value
 
     @staticmethod
     def _find_class_in_phenotypic(class_name: str):

@@ -195,13 +195,13 @@ class RoundPeaksDetector(GridInferenceMixin, ObjectDetector):
         self._log_memory_usage("getting enhanced gray")
 
         objmask = self._thresholding(enh_matrix)
-        self._log_memory_usage("after thresholding")
+        self._log_memory_usage("thresholding")
 
         if self.remove_noise:
             objmask = morphology.binary_opening(
                     objmask, morphology.diamond(radius=self.footprint_radius)
             )
-            self._log_memory_usage("after noise removal")
+            self._log_memory_usage("noise removal")
 
         # Keep a copy of the mask we intend to use for downstream measurements
         image.objmask[:] = objmask
@@ -211,7 +211,7 @@ class RoundPeaksDetector(GridInferenceMixin, ObjectDetector):
                         rank=2,
                         connectivity=2)
         )
-        self._log_memory_usage(f"after labeling ({num_features} features)")
+        self._log_memory_usage(f"labeling ({num_features} features)")
 
         # Determine grid edges either from GridImage or by estimating from the binary mask
         if isinstance(image, GridImage):
@@ -243,13 +243,13 @@ class RoundPeaksDetector(GridInferenceMixin, ObjectDetector):
                     min_peak_distance=self.min_peak_distance,
                     peak_prominence=self.peak_prominence,
             )
-            self._log_memory_usage("after edge estimation")
+            self._log_memory_usage("edge estimation")
 
             # Refine edges if requested
             if self.edge_refinement:
                 row_edges = self._refine_edges(objmask, row_edges, axis=0)
                 col_edges = self._refine_edges(objmask, col_edges, axis=1)
-                self._log_memory_usage("after edge refinement")
+                self._log_memory_usage("edge refinement")
 
         row_edges = np.clip(np.unique(row_edges), 0, objmask.shape[0])
         col_edges = np.clip(np.unique(col_edges), 0, objmask.shape[1])
@@ -281,7 +281,7 @@ class RoundPeaksDetector(GridInferenceMixin, ObjectDetector):
         if label_counter == 1:
             objmap = labeled.astype(image._OBJMAP_DTYPE, copy=False)
 
-        self._log_memory_usage("after grid cell assignment")
+        self._log_memory_usage("grid cell assignment")
 
         image.objmap[:] = objmap
         image.objmap.relabel(connectivity=1)

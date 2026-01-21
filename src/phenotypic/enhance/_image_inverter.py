@@ -46,8 +46,7 @@ class ImageInverter(ImageEnhancer):
         """Initialize the ImageInverter with no parameters."""
         pass
 
-    @staticmethod
-    def _operate(image: Image) -> Image:
+    def _operate(self, image: Image) -> Image:
         enh = image.enh_gray[:]
 
         # Invert based on data type

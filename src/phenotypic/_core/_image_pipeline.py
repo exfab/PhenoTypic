@@ -21,11 +21,18 @@ class ImagePipeline(SerializablePipeline):
 
         .. code-block:: python
 
-            >>> import phenotypic as pt
+            >>> import phenotypic as pht
+            >>> from phenotypic.enhance import GaussianBlur
             >>> from phenotypic.detect import OtsuDetector
             >>> from phenotypic.measure import MeasureShape, MeasureIntensity
             >>>
-            >>> pipe = pt.ImagePipeline(ops=[OtsuDetector()], meas=[MeasureShape(), MeasureIntensity()])
+            >>> pipe = pht.ImagePipeline(
+            >>>     ops=[GaussianBlur(),OtsuDetector()],
+            >>>     meas=[MeasureShape(), MeasureIntensity()]
+            >>> )
+            >>>
+            >>> image = pht.data.load_synth_plate()
+            >>> pipe.apply(image)
 
     """
 

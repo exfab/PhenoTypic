@@ -90,28 +90,23 @@ class ImageOperation(BaseOperation, LazyWidgetMixin, ABC):
        - If ``inplace=False`` (default): Image is copied before modification,
          original unchanged
        - If ``inplace=True``: Image is modified in-place for memory efficiency
-    3. **Extracts matched parameters** via ``_get_matched_operation_args()``
-       - Matches operation instance attributes to ``_operate()`` method parameters
-       - Enables parallel execution in pipelines
-    4. **Calls your _operate() static method** with the image and matched parameters
-    5. **Validates integrity** (subclass-specific via ``@validate_operation_integrity``)
+    3. **Calls your _operate() instance method** with the image
+    4. **Validates integrity** (subclass-specific via ``@validate_operation_integrity``)
        - Detects unexpected modifications to protected image components
        - Only enabled if ``VALIDATE_OPS=True`` in environment
 
-    Your subclass only needs to implement ``_operate(image, **kwargs) -> Image``.
+    Your subclass only needs to implement ``_operate(self, image) -> Image``.
 
     **The _operate() method contract**
 
-    ``_operate()`` is a **static method** (required for parallel execution):
+    ``_operate()`` is an **instance method** (no ``@staticmethod`` decorator):
 
-    - **Signature:** ``@staticmethod def _operate(image: Image, param1, param2=default) -> Image``
-    - **Parameters:** All parameters except ``image`` are automatically matched to
-      instance attributes via the ``_get_matched_operation_args()`` system
+    - **Signature:** ``def _operate(self, image: Image) -> Image:``
+    - **Parameters:** Access operation parameters directly via ``self.param_name``
     - **Behavior:** Modify only the allowed image components (determined by subclass)
     - **Returns:** The modified Image object
-    - **Must be static:** This enables serialization and parallel execution
 
-    Example parameter matching:
+    Example implementation:
 
     .. code-block:: python
 
@@ -120,14 +115,12 @@ class ImageOperation(BaseOperation, LazyWidgetMixin, ABC):
                 super().__init__()
                 self.sigma = sigma  # Instance attribute
 
-            @staticmethod
-            def _operate(image: Image, sigma: float = 1.0) -> Image:
-                # When apply() is called, 'sigma' is automatically passed from self.sigma
-                image.enh_gray[:] = gaussian_filter(image.enh_gray[:], sigma=sigma)
+            def _operate(self, image: Image) -> Image:
+                # Access parameters via self
+                image.enh_gray[:] = gaussian_filter(image.enh_gray[:], sigma=self.sigma)
                 return image
 
-    The ``_apply_to_single_image()`` static method retrieves ``sigma`` from the
-    instance (via ``_get_matched_operation_args()``) and passes it to ``_operate()``.
+    The instance method pattern is simpler and more Pythonic than the old static method approach.
 
     **Data access through accessors**
 
@@ -209,30 +202,29 @@ class ImageOperation(BaseOperation, LazyWidgetMixin, ABC):
 
     **Parallel execution support**
 
-    ImageOperation's static method design enables parallel execution. When
+    ImageOperation supports parallel execution through operation serialization. When
     ``ImagePipeline`` runs with multiple images, it:
 
-    1. Extracts operation parameters via ``_get_matched_operation_args()``
-    2. Serializes the operation instance (attributes only)
-    3. Sends to worker processes
-    4. Workers call ``_apply_to_single_image()`` in parallel
+    1. Serializes the operation instance with all attributes (``op.__dict__``)
+    2. Sends the pickled operation to worker processes
+    3. Workers unpickle the operation (restoring all ``self.param`` values)
+    4. Workers call ``operation.apply(image)`` which invokes ``_operate(self, image)``
 
-    This is why ``_operate()`` must be static and all parameters must be instance
-    attributes matching the method signature.
+    Instance methods work perfectly with parallel execution because the entire
+    operation object (with all parameters) is serialized together.
 
     Attributes:
         None (all operation state is stored in subclass instances as attributes).
 
     Methods:
         apply(image, inplace=False): User-facing method that applies the operation.
-            Handles copy/inplace logic and parameter matching.
-        _operate(image, **kwargs): Abstract static method implemented by subclasses
-            with algorithm logic. Parameters are automatically extracted from instance
-            attributes via _get_matched_operation_args().
-        _apply_to_single_image(cls_name, image, operation, inplace, matched_args):
-            Static method that performs the actual apply operation. Handles copy/inplace
-            logic and error handling. Called internally by apply(). Also called directly
-            by ImagePipeline for parallel execution.
+            Handles copy/inplace logic, calls ``_operate()``, and validates integrity.
+        _operate(self, image): Abstract instance method implemented by subclasses
+            with algorithm logic. Access parameters via ``self.param_name``.
+        _apply_to_single_image(cls_name, image, operation, inplace):
+            Static helper method that performs the actual apply operation. Handles
+            copy/inplace logic and error handling. Called internally by apply().
+            Also used by ImagePipeline for parallel execution.
 
     Notes:
         - **No direct Image attribute modification:** Never write to ``image.rgb``,
@@ -242,16 +234,14 @@ class ImageOperation(BaseOperation, LazyWidgetMixin, ABC):
         - **Immutability by default:** Operations return modified copies by default.
           Original image is unchanged unless ``inplace=True`` is explicitly passed.
 
-        - **Static _operate() is required:** The method must be static (decorated
-          with ``@staticmethod``) to support parallel execution in pipelines. This
-          enables ImagePipeline to serialize operations and execute them in worker
-          processes.
+        - **Instance method pattern:** The ``_operate()`` method should be an instance
+          method (no ``@staticmethod`` decorator). Access operation parameters directly
+          via ``self.param_name``. This is simpler and more Pythonic than the old
+          static method approach.
 
-        - **Parameter matching for parallelization:** All ``_operate()`` parameters
-          (except ``image``) must exist as instance attributes with the same name.
-          When ``apply()`` is called, ``_get_matched_operation_args()`` extracts
-          these values and passes them to ``_operate()``. This is why subclasses
-          store operation parameters as ``self.param_name`` in ``__init__``.
+        - **Parallel execution compatibility:** Instance methods work seamlessly with
+          parallel execution. Operations are serialized with all instance attributes
+          (``op.__dict__``) and unpickled in worker processes with full state restored.
 
         - **Automatic memory/performance tracking:** BaseOperation (parent class)
           automatically tracks memory usage and execution time when the logger is
@@ -265,7 +255,7 @@ class ImageOperation(BaseOperation, LazyWidgetMixin, ABC):
           development-time safety without production overhead.
 
     Examples:
-        .. dropdown:: Implementing a custom ImageEnhancer with parameter matching
+        .. dropdown:: Implementing a custom ImageEnhancer
 
             .. code-block:: python
 
@@ -278,16 +268,15 @@ class ImageOperation(BaseOperation, LazyWidgetMixin, ABC):
 
                     def __init__(self, sigma: float = 1.0):
                         super().__init__()
-                        self.sigma = sigma  # Instance attribute matched to _operate()
+                        self.sigma = sigma  # Instance attribute
 
-                    @staticmethod
-                    def _operate(image: Image, sigma: float = 1.0) -> Image:
+                    def _operate(self, image: Image) -> Image:
                         '''Apply Gaussian blur to enh_gray.'''
                         # Read enhanced grayscale
                         enh = image.enh_gray[:]
 
-                        # Apply Gaussian filter
-                        blurred = gaussian_filter(enh.astype(float), sigma=sigma)
+                        # Apply Gaussian filter (access parameter via self)
+                        blurred = gaussian_filter(enh.astype(float), sigma=self.sigma)
 
                         # Modify enh_gray through accessor
                         image.enh_gray[:] = blurred.astype(enh.dtype)
@@ -317,15 +306,13 @@ class ImageOperation(BaseOperation, LazyWidgetMixin, ABC):
                         self.min_distance = min_distance
                         self.threshold_abs = threshold_abs
 
-                    @staticmethod
-                    def _operate(image: Image, min_distance: int = 10,
-                                 threshold_abs: int = 100) -> Image:
+                    def _operate(self, image: Image) -> Image:
                         '''Find peaks in enh_gray and create object mask/map.'''
-                        # Find local maxima (colony peaks)
+                        # Find local maxima (colony peaks) - access parameters via self
                         coords = peak_local_max(
                             image.enh_gray[:],
-                            min_distance=min_distance,
-                            threshold_abs=threshold_abs
+                            min_distance=self.min_distance,
+                            threshold_abs=self.threshold_abs
                         )
 
                         # Create binary mask from peaks
@@ -397,7 +384,7 @@ class ImageOperation(BaseOperation, LazyWidgetMixin, ABC):
                 results = pipeline.operate(images)
                 # Results are fully processed images
 
-        .. dropdown:: How parameter matching enables parallel execution
+        .. dropdown:: How instance methods work with parallel execution
 
             .. code-block:: python
 
@@ -407,14 +394,12 @@ class ImageOperation(BaseOperation, LazyWidgetMixin, ABC):
                 class CustomThreshold(ImageOperation):
                     def __init__(self, threshold: int, min_size: int = 5):
                         super().__init__()
-                        self.threshold = threshold  # Matched to _operate
-                        self.min_size = min_size    # Matched to _operate
+                        self.threshold = threshold
+                        self.min_size = min_size
 
-                    @staticmethod
-                    def _operate(image: Image, threshold: int,
-                                 min_size: int = 5) -> Image:
-                        # 'threshold' and 'min_size' automatically passed
-                        binary = image.enh_gray[:] > threshold
+                    def _operate(self, image: Image) -> Image:
+                        # Access parameters via self
+                        binary = image.enh_gray[:] > self.threshold
                         image.objmask[:] = binary
                         return image
 
@@ -422,12 +407,14 @@ class ImageOperation(BaseOperation, LazyWidgetMixin, ABC):
                 op = CustomThreshold(threshold=100, min_size=10)
 
                 # apply() internally:
-                # 1. Calls _get_matched_operation_args()
-                # 2. Extracts: {'threshold': 100, 'min_size': 10}
-                # 3. Calls _apply_to_single_image(..., matched_args=...)
-                # 4. _apply_to_single_image passes kwargs to _operate()
+                # 1. Calls _apply_to_single_image() with self._operate (bound method)
+                # 2. _apply_to_single_image calls operation(image)
+                # 3. The bound method includes self, so all parameters are available
 
                 result = op.apply(image)
+
+                # For parallel execution, the entire operation object (with all
+                # attributes) is pickled and sent to worker processes
     """
 
     def __init__(self, *args, **kwargs) -> None:
@@ -454,13 +441,11 @@ class ImageOperation(BaseOperation, LazyWidgetMixin, ABC):
             Image: The modified image after applying the operation.
         """
         try:
-            matched_args = self._get_matched_operation_args()
             image = self._apply_to_single_image(
                     cls_name=self.__class__.__name__,
                     image=image,
                     operation=self._operate,
                     inplace=inplace,
-                    matched_args=matched_args,
             )
             return image
         except KeyboardInterrupt:
@@ -471,45 +456,55 @@ class ImageOperation(BaseOperation, LazyWidgetMixin, ABC):
                     f"{traceback.format_exc()}"
             ) from e
 
-    @staticmethod
     @overload
     @abstractmethod
-    def _operate(image: Image) -> Image:
+    def _operate(self, image: Image) -> Image:
         ...
 
-    @staticmethod
     @overload
     @abstractmethod
-    def _operate(image: GridImage) -> GridImage:
+    def _operate(self, image: GridImage) -> GridImage:
         ...
 
-    @staticmethod
     @abstractmethod
-    def _operate(image: Image) -> Image:
+    def _operate(self, image: Image) -> Image:
         """
-        A placeholder for the main subfunction for an image operator for processing
-        image objects.
+        Abstract instance method for processing an image.
 
-        This method is called from ImageOperation.apply() and must be implemented in a
-        subclass. This allows for checks for data integrity to be made.
+        Subclasses implement this to define their operation logic.
+        Access operation parameters via self.param_name.
 
         Args:
-            image (Image): The image object to be processed by internal operations.
+            image: The Image object to process.
 
-        Raises:
-            InterfaceError: Raised if the method is not implemented in a subclass.
+        Returns:
+            The modified Image object.
         """
         return image
 
     @staticmethod
-    def _apply_to_single_image(cls_name, image, operation, inplace, matched_args):
-        """Applies the operation to a single image. this intermediate function is needed for parallel execution."""
+    def _apply_to_single_image(cls_name, image, operation, inplace):
+        """
+        Applies the operation to a single image.
+
+        Supports both instance methods (recommended) and static methods (backward compatibility).
+        For instance methods, operation is a bound method with self included.
+        For static methods, operation is an unbound function.
+
+        Args:
+            cls_name: Name of the operation class for error messages.
+            image: The Image to process.
+            operation: The _operate method (bound instance method or static method).
+            inplace: If True, modify image in-place; otherwise work on a copy.
+
+        Returns:
+            The processed Image.
+        """
         try:
             if inplace:
-                image = operation(image, **matched_args)
-                return image
+                return operation(image)
             else:
-                return operation(image=image.copy(), **matched_args)
+                return operation(image.copy())
         except KeyboardInterrupt:
             raise KeyboardInterrupt
         except Exception as e:

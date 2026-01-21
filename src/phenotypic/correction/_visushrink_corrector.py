@@ -123,24 +123,8 @@ class VisuShrinkCorrector(ImageCorrector):
         self.wavelet_levels = wavelet_levels
         self.convert2ycbcr = convert2ycbcr
 
-    @staticmethod
-    def _operate(
-        image: Image,
-        sigma: float | None = None,
-        wavelet: str = "db2",
-        mode: Literal["soft", "hard"] = "soft",
-        wavelet_levels: int | None = None,
-        convert2ycbcr: bool = True,
-    ) -> Image:
+    def _operate(self, image: Image) -> Image:
         """Apply VisuShrink wavelet denoising to all image components.
-
-        Parameters:
-            image: Image object to denoise
-            sigma: Noise level estimate
-            wavelet: Wavelet type
-            mode: 'soft' or 'hard' thresholding
-            wavelet_levels: Decomposition levels
-            convert2ycbcr: Convert RGB to YCbCr before denoising
 
         Returns:
             Modified Image with all components denoised
@@ -149,12 +133,12 @@ class VisuShrinkCorrector(ImageCorrector):
         if not image.rgb.isempty():
             denoised_rgb = denoise_wavelet(
                 image=image.rgb[:],
-                sigma=sigma,
-                wavelet=wavelet,
-                mode=mode,
-                wavelet_levels=wavelet_levels,
+                sigma=self.sigma,
+                wavelet=self.wavelet,
+                mode=self.mode,
+                wavelet_levels=self.wavelet_levels,
                 method="VisuShrink",
-                convert2ycbcr=convert2ycbcr,
+                convert2ycbcr=self.convert2ycbcr,
                 channel_axis=-1,
                 rescale_sigma=True,
             )
@@ -163,10 +147,10 @@ class VisuShrinkCorrector(ImageCorrector):
         # Always denoise gray (luminance grayscale)
         denoised_gray = denoise_wavelet(
             image=image.gray[:],
-            sigma=sigma,
-            wavelet=wavelet,
-            mode=mode,
-            wavelet_levels=wavelet_levels,
+            sigma=self.sigma,
+            wavelet=self.wavelet,
+            mode=self.mode,
+            wavelet_levels=self.wavelet_levels,
             method="VisuShrink",
             channel_axis=None,
             rescale_sigma=True,
@@ -176,10 +160,10 @@ class VisuShrinkCorrector(ImageCorrector):
         # Always denoise enh_gray
         denoised_enh = denoise_wavelet(
             image=image.enh_gray[:],
-            sigma=sigma,
-            wavelet=wavelet,
-            mode=mode,
-            wavelet_levels=wavelet_levels,
+            sigma=self.sigma,
+            wavelet=self.wavelet,
+            mode=self.mode,
+            wavelet_levels=self.wavelet_levels,
             method="VisuShrink",
             channel_axis=None,
             rescale_sigma=True,

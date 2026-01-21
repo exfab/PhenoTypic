@@ -8,7 +8,8 @@ from skimage import morphology
 if TYPE_CHECKING:
     from phenotypic import Image
 
-from phenotypic.abc_ import ImageEnhancer, FootprintMixin
+from phenotypic.abc_ import ImageEnhancer
+from phenotypic.tools_ import FootprintMixin
 
 
 class GrayOpening(ImageEnhancer, FootprintMixin):

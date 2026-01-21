@@ -8,7 +8,8 @@ if TYPE_CHECKING:
 import numpy as np
 from skimage.morphology import white_tophat
 
-from phenotypic.abc_ import ObjectRefiner, FootprintMixin
+from phenotypic.abc_ import ObjectRefiner
+from phenotypic.tools_ import FootprintMixin
 
 
 class WhiteTophat(ObjectRefiner, FootprintMixin):

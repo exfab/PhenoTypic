@@ -48,12 +48,12 @@ class GaussianBlur(ImageEnhancer):
     """
 
     def __init__(
-            self, sigma: int = 2, *, mode: str = "reflect", cval=0.0,
+            self, sigma: float = 2.0, *, mode: str = "reflect", cval=0.0,
             truncate: float = 4.0
     ):
         """
         Parameters:
-            sigma (int): Blur strength; start near 1–3 for high-resolution scans.
+            sigma (float): Blur strength; start near 1–3 for high-resolution scans.
                 Keep below the colony width to avoid merging colonies.
             mode (str): Boundary handling. 'reflect' is a safe default for plates;
                 'constant' may require setting `cval` close to background.
@@ -61,10 +61,7 @@ class GaussianBlur(ImageEnhancer):
             truncate (float): Kernel extent in standard deviations. Rarely needs
                 adjustment; larger values slightly widen the effective kernel.
         """
-        if isinstance(sigma, int) and ((sigma % 1.0) == 0):
-            self.sigma = sigma
-        else:
-            raise TypeError("sigma must be an integer")
+        self.sigma = sigma
 
         if mode in ["reflect", "constant", "nearest"]:
             self.mode = mode

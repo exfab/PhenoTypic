@@ -10,7 +10,8 @@ from .resources.TestHelper import timeit
 ops = walk_package_for_class(pkg=phenotypic,
                              target_class=phenotypic.abc_.ImageOperation)
 
-image_ops = [(qualname, obj) for qualname, obj in ops if "Grid" not in qualname]
+image_ops = [(qualname, obj) for qualname, obj in ops
+             if ("Grid" not in qualname) or ("phenotypic.abc_" not in qualname)]
 
 
 @pytest.mark.parametrize("qualname,obj", image_ops)
@@ -55,7 +56,8 @@ def test_operation_compatibility_with_grid_image(qualname, obj):
         assert image1 == image2, "Operation was not reproducible"
 
 
-grid_ops = [(qualname, obj) for qualname, obj in ops if "Grid" in qualname]
+grid_ops = [(qualname, obj) for qualname, obj in ops if
+            ("Grid" in qualname) or ("phenotypic.abc_" not in qualname)]
 
 
 @pytest.mark.parametrize("qualname,obj", grid_ops)

@@ -104,8 +104,7 @@ class MeasureGridSpread(GridMeasureFeatures):
                 print(f"Wells needing refinement: {list(high_spread_multi.index)}")
     """
 
-    @staticmethod
-    def _operate(image: GridImage) -> pd.DataFrame:
+    def _operate(self, image: GridImage) -> pd.DataFrame:
         gs_table = image.grid.info()
         gs_counts = pd.DataFrame(gs_table.loc[:, str(GRID.SECTION_NUM)].value_counts())
 

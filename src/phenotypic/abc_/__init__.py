@@ -7,6 +7,7 @@ tailored to agar plate imaging, building on `MeasurementInfo`, `MeasureFeatures`
 """
 
 from phenotypic._shared_modules._measurement_info import MeasurementInfo
+from phenotypic.tools_ import FootprintMixin
 from ._measure_features import MeasureFeatures
 from ._image_operation import ImageOperation
 from ._image_enhancer import ImageEnhancer
@@ -22,7 +23,6 @@ from ._grid_finder import GridFinder
 from ._base_operation import BaseOperation
 from ._grid_object_detector import GridObjectDetector
 from ._prefab_pipeline import PrefabPipeline
-from ._footprint_mixin import FootprintMixin
 
 __all__ = [
     "MeasureFeatures",

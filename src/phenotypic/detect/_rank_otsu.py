@@ -3,7 +3,8 @@ from __future__ import annotations
 import numpy as np
 import skimage.filters.rank as rank
 from skimage.util import img_as_ubyte, img_as_uint
-from phenotypic.abc_ import ObjectDetector, FootprintMixin
+from phenotypic.abc_ import ObjectDetector
+from phenotypic.tools_ import FootprintMixin
 from typing import Literal, TYPE_CHECKING
 
 if TYPE_CHECKING:

@@ -15,29 +15,22 @@ import gc
 import numpy as np
 
 from phenotypic.abc_ import ObjectRefiner
-from phenotypic.tools_._grid_inference_mixin import GridInferenceMixin
 from phenotypic.tools_.funcs_ import validate_operation_integrity
 
 
-class SeparateObjects(GridInferenceMixin, ObjectRefiner):
-    """Separate touching/merged colonies using grid-based watershed segmentation.
+class SeparateObjects(ObjectRefiner):
+    """Separate touching/merged colonies using distance-based peak detection and watershed.
 
-    SeparateObjects segments colonies by inferring grid structure from colony layout
-    and using grid intersection points as seed markers for watershed segmentation.
-    This region-growing approach effectively separates touching colonies that may have
-    been merged by thresholding while preserving individual colony boundaries within
-    each grid cell.
+    SeparateObjects segments colonies by finding peaks in the distance transform as seed
+    markers for watershed segmentation. For GridImages, peaks are constrained to one per
+    grid cell using grid metadata. For regular Images, peaks are detected globally with
+    minimum distance spacing. This region-growing approach effectively separates touching
+    colonies that may have been merged by thresholding.
 
     Args:
-        smoothing_sigma: Gaussian smoothing standard deviation for row/column intensity
-            profiles during grid inference. Default 2.0. Higher values smooth noise but
-            may merge adjacent peaks.
-        min_peak_distance: Minimum pixel distance between detected grid peaks. If None
-            (default), automatically estimated from expected colony spacing.
-        peak_prominence: Minimum prominence threshold for peak detection. If None (default),
-            auto-calculated as 10% of signal range.
-        erosion_radius: Radius for morphological erosion footprint when computing object
-            boundaries. Default 1. Controls how aggressively boundaries are detected.
+        min_distance: Minimum pixel distance between peaks for regular Images. Ignored
+            for GridImages (which use one peak per grid cell). Default 10. Increase
+            for sparse colony patterns; decrease for dense colonies.
 
     Returns:
         Image: Input image with refined objmap where touching colonies are separated
@@ -45,250 +38,349 @@ class SeparateObjects(GridInferenceMixin, ObjectRefiner):
             (rgb, gray, enh_gray) remain unchanged.
 
     Raises:
-        ValueError: If grid inference fails or image lacks detection results (no objmap).
+        ValueError: If no peaks detected or image lacks detection results (no objmap).
 
     **Use cases**
 
+    - **GridImage processing:** Leverages grid metadata to ensure one peak per well,
+      ideal for arrayed formats (96-well, 384-well, pinned cultures).
     - **Touching/overlapping colonies:** Separates colonies that touch or overlap
       where simple thresholding merges them into a single detection.
-    - **High-throughput screening:** Grid-based seeding works well for arrayed formats
-      (96-well, 384-well, pinned cultures) where colonies align to known positions.
-    - **Post-detection refinement:** Apply after ObjectDetector (e.g., Otsu, Hysteresis)
+    - **Post-detection refinement:** Apply after ObjectDetector (e.g., CompositeDetector)
       when detections contain merged objects that need individualization.
-    - **Variable colony sizes:** Watershed respects local intensity gradients, adapting
-      to different colony sizes within the same grid better than geometric methods.
+    - **Variable colony sizes:** Distance transform automatically adapts to colony size,
+      creating stronger peaks at centers of larger colonies.
+    - **Non-grid images:** Works on regular Images using global peak detection with
+      minimum distance constraints.
 
     **Limitations**
 
-    - Assumes regular grid geometry; fails on irregular colony spacing or missing positions.
-    - Grid inference on regular Image is less accurate than explicit GridImage specification.
-    - Requires colonies to cluster near grid centers; fails if colonies straddle grid boundaries.
-    - Assumes at least some colonies present; completely empty plates will fail grid inference.
-    - Best for circular/regular colonies; less effective for highly irregular morphologies.
-    - May over-segment noisy detections with many spurious peaks if grid inference is poor.
+    - Requires detected objects (objmask) as input; cannot detect colonies from scratch.
+    - GridImage mode assumes colonies cluster near grid centers; fails if colonies
+      straddle cell boundaries or multiple colonies occupy one cell.
+    - Regular Image mode may over- or under-segment depending on min_distance parameter.
+    - Best for roughly circular colonies; less effective for highly irregular morphologies.
+    - Peak detection may fail on very small objects where distance transform has few pixels.
 
     **Parameter effects on separation quality**
 
-    - **smoothing_sigma:** Higher values improve robustness to noise in grid inference
-      but may merge adjacent peaks, leading to incomplete separation. Lower values
-      are more sensitive to noise. Set to 0 to disable smoothing (faster, less robust).
-    - **erosion_radius:** Larger values make boundaries thicker, forcing more aggressive
-      separation but potentially oversplitting single colonies. Smaller values preserve
-      more natural boundaries but may fail on touching regions. Range: 1-3 typically works.
-    - **min_peak_distance, peak_prominence:** Lower values detect more grid peaks; higher
-      values are more selective. Auto-tuning usually works well; manual adjustment helps
-      if grid inference fails on unusual plate layouts.
+    - **min_distance (regular Images only):** Higher values create sparser peaks,
+      reducing over-segmentation but potentially missing small colonies. Lower values
+      detect more peaks but may split single colonies. Tune based on expected colony
+      spacing and image resolution.
 
     Examples:
-        Basic usage with detected image to separate touching colonies:
+        Basic usage with GridImage to separate touching colonies (uses grid metadata):
 
-        >>> from phenotypic import Image
-        >>> from phenotypic.detect import OtsuDetector
+        >>> from phenotypic.detect import CompositeDetector
         >>> from phenotypic.refine import SeparateObjects
         >>> from phenotypic.data import load_synth_plate
         >>>
-        >>> # Load and detect
-        >>> image = load_synth_plate()
-        >>> detector = OtsuDetector()
+        >>> # Load GridImage with known grid structure
+        >>> image = load_synth_plate()  # Returns GridImage (6 rows × 10 cols)
+        >>> detector = CompositeDetector(...)
         >>> detected = detector.apply(image)
         >>>
-        >>> # Separate touching colonies using grid-based watershed
-        >>> separator = SeparateObjects(smoothing_sigma=2.0, erosion_radius=1)
+        >>> # Separate touching colonies using peak detection (one peak per cell)
+        >>> separator = SeparateObjects()
         >>> separated = separator.apply(detected)
         >>>
         >>> print(f"Before: {detected.objmap[:].max()} colonies")
         >>> print(f"After:  {separated.objmap[:].max()} colonies (touching separated)")
 
-        Integration into full processing pipeline with grid inference:
+        Integration into full processing pipeline:
 
-        >>> from phenotypic import Image, ImagePipeline
+        >>> from phenotypic import ImagePipeline
         >>> from phenotypic.enhance import GaussianBlur, CLAHE
-        >>> from phenotypic.detect import OtsuDetector
-        >>> from phenotypic.refine import SeparateObjects, SmallObjectRemover
+        >>> from phenotypic.detect import CompositeDetector
+        >>> from phenotypic.refine import SeparateObjects, MaskEroder
         >>> from phenotypic.measure import MeasureShape
         >>>
         >>> # Build pipeline with detection, separation, and measurement
-        >>> pipeline = ImagePipeline([
+        >>> pipeline = ImagePipeline(ops=[
         ...     GaussianBlur(sigma=1.5),
         ...     CLAHE(clip_limit=2.0),
-        ...     OtsuDetector(),
-        ...     SeparateObjects(smoothing_sigma=2.0, erosion_radius=1),
-        ...     SmallObjectRemover(min_size=50),
-        ...     MeasureShape()
-        ... ])
+        ...     CompositeDetector(...),
+        ...     SeparateObjects(),  # GridImage: one peak per cell
+        ...     MaskEroder(radius=2),
+        ...
+        ... ], meas=[MeasureShape()])
         >>>
-        >>> # Process image (grid inferred automatically)
-        >>> image = Image.imread("plate.jpg")
+        >>> # Process GridImage
+        >>> image = load_synth_plate()
         >>> result = pipeline.apply(image)
         >>>
         >>> print(f"Separated and measured: {len(result.objects)} individual colonies")
+
+        Usage with regular Image (non-grid):
+
+        >>> from phenotypic import Image
+        >>> from phenotypic.detect import OtsuDetector
+        >>> from phenotypic.refine import SeparateObjects
+        >>>
+        >>> # Load regular image (no grid metadata)
+        >>> image = Image.imread("colonies.jpg")
+        >>> detected = OtsuDetector().apply(image)
+        >>>
+        >>> # Separate using global peak detection with min_distance constraint
+        >>> separator = SeparateObjects(min_distance=20)
+        >>> separated = separator.apply(detected)
+        >>>
+        >>> print(f"Detected {separated.objmap[:].max()} separated colonies")
     """
 
     def __init__(
             self,
-            smoothing_sigma: float = 2.0,
-            min_peak_distance: int | None = None,
-            peak_prominence: float | None = None,
-            erosion_radius: int = 1,
+            min_distance: int = 10,
     ):
-        """Initialize SeparateObjects with grid inference and watershed parameters.
+        """Initialize SeparateObjects with distance-based peak detection.
 
         Args:
-            smoothing_sigma: Gaussian smoothing sigma for intensity profiles.
-            min_peak_distance: Minimum distance between grid peaks.
-            peak_prominence: Minimum prominence for peak detection.
-            erosion_radius: Radius for erosion footprint in boundary detection.
+            min_distance: Minimum pixel distance between peaks for regular Images.
+                Ignored for GridImages (one peak per cell). Default 10.
         """
         super().__init__()
-        self.smoothing_sigma = smoothing_sigma
-        self.min_peak_distance = min_peak_distance
-        self.peak_prominence = peak_prominence
-        self.erosion_radius = erosion_radius
-
-    @validate_operation_integrity("image.rgb", "image.gray", "image.enh_gray")
-    def apply(self, image: Image, inplace: bool = False) -> Image:
-        return super().apply(image=image, inplace=inplace)
+        self.min_distance = min_distance
 
     @staticmethod
-    def _make_elevation_map(objmask: np.ndarray) -> np.ndarray:
+    def _make_elevation_map(score_map: np.ndarray) -> np.ndarray:
         """Compute elevation map for watershed segmentation.
 
         Args:
-            objmask: Binary mask of detected objects.
+            score_map: Combined intensity/distance score map from peak detection.
 
         Returns:
-            Elevation map where higher values = colony centers, lower values = boundaries.
+            Elevation map where high-score regions become valleys (local minima).
 
         Note:
-            Current implementation uses distance transform (inverted for watershed).
-            This method is designed to be easily modified for alternative elevation
-            strategies without changing the main _operate() logic.
+            Inverts score_map so markers at high-score colony centers are placed
+            in valleys, allowing watershed to flood into adjacent regions.
         """
-        from scipy.ndimage import distance_transform_edt
-
-        # Distance transform: higher values at colony centers
-        distance = distance_transform_edt(objmask)
-        return -distance  # Negate for watershed (wants valleys at peaks)
+        # Invert score_map: high scores → low elevation (valleys)
+        # Markers at peaks (high score) become markers at valleys (low elevation)
+        # Watershed floods from valleys upward into surrounding regions
+        inverted = 1.0 - score_map
+        return inverted.astype(np.float32)
 
     @staticmethod
-    def _make_boundary_mask(objmask: np.ndarray, erosion_radius: int) -> np.ndarray:
-        """Compute boundary mask from object mask via erosion.
-
-        Args:
-            objmask: Binary mask of detected objects.
-            erosion_radius: Radius for erosion footprint.
-
-        Returns:
-            Binary mask where True indicates object boundaries.
-        """
-        from skimage import morphology
-
-        footprint = morphology.disk(erosion_radius)
-        eroded = morphology.erosion(objmask, footprint)
-        boundaries = objmask & ~eroded
-        return boundaries
-
-    @staticmethod
-    def _create_grid_seeds(
+    def _compute_peak_scores(
             objmask: np.ndarray,
-            row_peaks: np.ndarray,
-            col_peaks: np.ndarray,
+            distance: np.ndarray,
     ) -> np.ndarray:
-        """Create watershed seed markers at grid intersection points.
+        """Compute distance-based score for peak detection.
+
+        Uses distance transform to identify colony centers (far from edges).
+        Peaks are placed at positions maximizing distance from object boundaries.
 
         Args:
             objmask: Binary mask of detected objects.
-            row_peaks: Row positions for grid intersections.
-            col_peaks: Column positions for grid intersections.
+            distance: Distance transform (distance from edges).
 
         Returns:
-            Integer marker array with unique labels at valid seed positions.
+            Normalized score map where higher values indicate better peak positions.
+        """
+        # Normalize distance to [0, 1]
+        score = distance.astype(float)
+        if score.max() > 0:
+            score /= score.max()
+
+        # Constrain to objmask region
+        score[~objmask] = 0
+
+        return score
+
+    def _find_peaks_gridimage(
+            self,
+            score_map: np.ndarray,
+            objmask: np.ndarray,
+            row_edges: np.ndarray,
+            col_edges: np.ndarray,
+    ) -> np.ndarray:
+        """Find one peak per grid cell using grid boundaries.
+
+        Iterates through each grid cell and finds the position with maximum score.
+        Only creates peaks in cells that contain detected objects.
+
+        Args:
+            score_map: Combined intensity/distance score map.
+            objmask: Binary mask of detected objects.
+            row_edges: Grid row boundaries (nrows+1 values).
+            col_edges: Grid column boundaries (ncols+1 values).
+
+        Returns:
+            Array of shape (N, 2) with (row, col) peak positions in image coordinates.
+        """
+        peaks = []
+
+        # Iterate through each grid cell
+        for r in range(len(row_edges) - 1):
+            r0, r1 = row_edges[r], row_edges[r + 1]
+            for c in range(len(col_edges) - 1):
+                c0, c1 = col_edges[c], col_edges[c + 1]
+
+                # Extract cell region
+                cell_score = score_map[r0:r1, c0:c1]
+                cell_mask = objmask[r0:r1, c0:c1]
+
+                # Skip empty cells
+                if not cell_mask.any():
+                    continue
+
+                # Find peak in cell (constrained to objmask)
+                cell_score_masked = cell_score.copy()
+                cell_score_masked[~cell_mask] = -np.inf
+
+                # Get position of maximum score
+                peak_r_local, peak_c_local = np.unravel_index(
+                        cell_score_masked.argmax(), cell_score_masked.shape
+                )
+
+                # Convert to image coordinates
+                peak_r = r0 + peak_r_local
+                peak_c = c0 + peak_c_local
+
+                peaks.append([peak_r, peak_c])
+
+        return np.array(peaks, dtype=int)
+
+    def _find_peaks_regular(
+            self,
+            score_map: np.ndarray,
+            objmask: np.ndarray,
+            min_distance: int,
+    ) -> np.ndarray:
+        """Find peaks globally using minimum distance constraints.
+
+        Uses peak_local_max to find local maxima with specified minimum spacing.
+        Only finds peaks within detected object regions.
+
+        Args:
+            score_map: Combined intensity/distance score map.
+            objmask: Binary mask of detected objects.
+            min_distance: Minimum pixel distance between peaks.
+
+        Returns:
+            Array of shape (N, 2) with (row, col) peak positions.
+        """
+        from skimage.feature import peak_local_max
+
+        # Find peaks with minimum distance constraint
+        peaks = peak_local_max(
+                score_map,
+                min_distance=min_distance,
+                labels=objmask.astype(int),  # Constrain to objmask
+                exclude_border=False,
+        )
+
+        return peaks
+
+    @staticmethod
+    def _create_markers_from_peaks(
+            objmask: np.ndarray,
+            peaks: np.ndarray,
+    ) -> np.ndarray:
+        """Create watershed markers from peak positions.
+
+        Places unique integer labels at each peak position to serve as
+        watershed seed markers.
+
+        Args:
+            objmask: Binary mask of detected objects.
+            peaks: Array of shape (N, 2) with (row, col) peak coordinates.
+
+        Returns:
+            Integer marker array with unique labels at peak positions.
 
         Note:
-            Seeds are only placed where objmask is True, automatically
-            handling empty grid cells. Out-of-bounds positions are skipped.
+            Peaks are assumed to be within image bounds and objmask regions.
+            No validation or filtering is performed.
         """
         markers = np.zeros_like(objmask, dtype=np.int32)
-        label_id = 1
 
-        height, width = objmask.shape
-
-        for row_pos in row_peaks:
-            # Skip out-of-bounds rows
-            if row_pos < 0 or row_pos >= height:
-                continue
-            for col_pos in col_peaks:
-                # Skip out-of-bounds columns
-                if col_pos < 0 or col_pos >= width:
-                    continue
-                # Only place seed if there's an object at this position
-                if objmask[row_pos, col_pos]:
-                    markers[row_pos, col_pos] = label_id
-                    label_id += 1
+        # Place markers at peak positions
+        for idx, (peak_r, peak_c) in enumerate(peaks, start=1):
+            markers[peak_r, peak_c] = idx
 
         return markers
 
-    @staticmethod
-    def _operate(
-            image: Image,
-            smoothing_sigma: float,
-            min_peak_distance: int | None,
-            peak_prominence: float | None,
-            erosion_radius: int,
-    ) -> Image:
-        """Separate touching colonies using grid-based watershed segmentation.
+    def _operate(self, image: Image) -> Image:
+        """Separate touching colonies using intensity and distance-based peak detection.
 
-        This method infers grid structure from colony patterns and uses grid intersection
-        points as seed markers for watershed segmentation, effectively separating touching
-        colonies into distinct regions.
-
-        Args:
-            image: Image object with existing objmask and objmap from detection.
-            smoothing_sigma: Gaussian smoothing for grid inference.
-            min_peak_distance: Minimum distance between peaks.
-            peak_prominence: Minimum prominence for peaks.
-            erosion_radius: Radius for erosion in boundary detection.
+        This method finds peaks based on intensity and distance transform, then uses
+        watershed segmentation to separate touching colonies. For GridImages, peaks
+        are constrained to one per grid cell. For regular Images, peaks are spaced
+        by minimum distance.
 
         Returns:
             Image: Modified image with separated objmap and updated objmask.
+
+        Raises:
+            ValueError: If no peaks detected or watershed fails.
         """
+        from scipy.ndimage import distance_transform_edt
         from skimage import segmentation
+        import logging
+
+        logger = logging.getLogger(__name__)
 
         objmask = image.objmask[:]
+        logger.info(
+            f"SeparateObjects: objmask shape={objmask.shape}, True pixels={objmask.sum()}")
 
-        # Infer grid dimensions from colony patterns
-        nrows, ncols = SeparateObjects._infer_grid_shape(objmask)
+        # Compute distance transform for peak detection
+        distance = distance_transform_edt(objmask)
+        logger.info(
+            f"SeparateObjects: distance range=[{distance.min():.2f}, {distance.max():.2f}]")
 
-        # Estimate grid edges along both axes
-        row_edges = SeparateObjects._estimate_edges(
-                objmask,
-                axis=0,
-                n_bins=nrows,
-                smoothing_sigma=smoothing_sigma,
-                min_peak_distance=min_peak_distance,
-                peak_prominence=peak_prominence,
-        )
-        col_edges = SeparateObjects._estimate_edges(
-                objmask,
-                axis=1,
-                n_bins=ncols,
-                smoothing_sigma=smoothing_sigma,
-                min_peak_distance=min_peak_distance,
-                peak_prominence=peak_prominence,
-        )
+        score_map = self._compute_peak_scores(objmask, distance)
+        logger.info(
+            f"SeparateObjects: score_map range=[{score_map.min():.2f}, {score_map.max():.2f}], non-zero={np.count_nonzero(score_map)}")
 
-        # Calculate peak positions as midpoints between edges
-        row_peaks = ((row_edges[:-1] + row_edges[1:]) / 2).astype(int)
-        col_peaks = ((col_edges[:-1] + col_edges[1:]) / 2).astype(int)
+        # Peak detection: GridImage vs regular Image
+        try:
+            from phenotypic import GridImage
 
-        # Create seeds at grid intersections (handles empty cells automatically)
-        markers = SeparateObjects._create_grid_seeds(objmask, row_peaks, col_peaks)
+            is_gridimage = isinstance(image, GridImage)
+        except ImportError:
+            is_gridimage = False
 
-        # Compute boundary mask using helper
-        boundaries = SeparateObjects._make_boundary_mask(objmask, erosion_radius)
+        logger.info(f"SeparateObjects: is_gridimage={is_gridimage}")
 
-        # Compute elevation map (easy to swap strategy later)
-        elevation = SeparateObjects._make_elevation_map(boundaries)
+        if is_gridimage:
+            # Use grid boundaries to constrain peaks (one per cell)
+            row_edges = np.round(image.grid.get_row_edges()).astype(int)
+            col_edges = np.round(image.grid.get_col_edges()).astype(int)
+            logger.info(
+                f"SeparateObjects: grid={len(row_edges) - 1}x{len(col_edges) - 1} cells")
+            peaks = self._find_peaks_gridimage(score_map, objmask, row_edges, col_edges)
+        else:
+            # Use global peak detection with minimum distance
+            peaks = self._find_peaks_regular(score_map, objmask, self.min_distance)
+
+        logger.info(f"SeparateObjects: detected {len(peaks)} peaks")
+        if len(peaks) > 0:
+            logger.info(f"SeparateObjects: peak positions sample: {peaks[:5]}")
+
+        # Create markers from peaks
+        markers = self._create_markers_from_peaks(objmask, peaks)
+        logger.info(
+            f"SeparateObjects: markers max={markers.max()}, non-zero pixels={np.count_nonzero(markers)}")
+
+        # Validate that at least one marker was created
+        if markers.max() == 0:
+            raise ValueError(
+                    "No valid peaks detected - no local maxima found in score map. "
+                    "Check that image has detected objects (objmask) and try adjusting "
+                    "use_intensity/use_distance parameters or min_distance for regular Images."
+            )
+
+        logger.info(f"SeparateObjects: using {markers.max()} markers for watershed")
+
+        # Compute elevation map for watershed segmentation
+        # Use same metric as peak detection so markers are at local minima
+        elevation = self._make_elevation_map(score_map)
+        logger.info(
+            f"SeparateObjects: elevation range=[{elevation.min():.2f}, {elevation.max():.2f}]")
 
         # Watershed segmentation
         objmap = segmentation.watershed(
@@ -297,13 +389,28 @@ class SeparateObjects(GridInferenceMixin, ObjectRefiner):
                 mask=objmask,  # Limit to detected regions only
         )
 
+        n_regions = objmap.max()
+        n_labeled_pixels = np.sum(objmap > 0)
+        logger.info(
+            f"SeparateObjects: watershed result - max_label={n_regions}, labeled_pixels={n_labeled_pixels}")
+
+        # Validate result
+        if objmap.max() == 0:
+            n_markers = markers.max()
+            raise ValueError(
+                    f"Watershed produced empty result. Created {n_markers} markers but "
+                    f"got 0 regions. Labeled {n_labeled_pixels} pixels. "
+                    f"objmask has {objmask.sum()} True pixels."
+            )
+
         # Convert to proper dtype
         if objmap.dtype != image._OBJMAP_DTYPE:
             objmap = objmap.astype(image._OBJMAP_DTYPE)
 
         # Update image with separated map
+        # NOTE: Do NOT call relabel() - it would merge touching regions back together,
+        # undoing the watershed separation. Watershed already produces properly labeled regions.
         image.objmap[:] = objmap
-        image.objmap.relabel(connectivity=1)
 
         gc.collect()
 

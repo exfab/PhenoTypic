@@ -50,8 +50,7 @@ class ReduceMultipleGridObjects(GridObjectRefiner):
 
     # TODO: Add a setting to retain a certain number of objects in the event of removal
 
-    @staticmethod
-    def _operate(image: GridImage) -> GridImage:
+    def _operate(self, image: GridImage) -> GridImage:
         # Get the section objects in order of most amount. More objects in a section means
         # more potential spread that can affect linreg results.
         max_iter = (image.grid.nrows*image.grid.ncols)*4

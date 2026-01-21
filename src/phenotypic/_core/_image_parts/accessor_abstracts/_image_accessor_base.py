@@ -429,7 +429,9 @@ class ImageAccessorBase(ABC):
 
         Args:
             arr (np.ndarray): The image data to plot. Can be 2D or 3D array representing the image.
-            figsize ((int, int), optional): A tuple specifying the figure size. Defaults to (8, 6).
+            figsize ((int, int), optional): A tuple specifying the figure size in inches. If None, the figure size
+                is automatically calculated based on image resolution (at 100 DPI) to ensure all detail is visible
+                while maintaining reasonable plot dimensions (max 12 inches per dimension).
             title (None | str, optional): Plot title. If None, defaults to the name of the parent image. Defaults to None.
             cmap (str, optional): The colormap to be applied when the array is 2D. Defaults to 'gray'.
             ax (None | plt.Axes, optional): Existing Matplotlib axes to plot into. If None, a new figure is created. Defaults to None.
@@ -439,7 +441,27 @@ class ImageAccessorBase(ABC):
             tuple[plt.Figure, plt.Axes]: A tuple containing the created or passed Matplotlib `Figure` and `Axes` objects.
 
         """
-        figsize = figsize if figsize else MPL.FIGSIZE
+        if figsize is None:
+            # Calculate dynamic figsize based on image resolution
+            # Matplotlib default DPI is 100 pixels per inch
+            height, width = arr.shape[:2]
+
+            # Calculate figsize to show image at full resolution, but cap at reasonable maximums
+            max_display_size = 12.0  # Maximum inches for any dimension
+            pixels_per_inch = 100.0
+
+            # Calculate required figsize for full resolution
+            figsize_width = min(width / pixels_per_inch, max_display_size)
+            figsize_height = min(height / pixels_per_inch, max_display_size)
+
+            # If image is very large, scale down while maintaining aspect ratio
+            aspect_ratio = width / height
+            if figsize_width / figsize_height > aspect_ratio:
+                figsize_width = figsize_height * aspect_ratio
+            else:
+                figsize_height = figsize_width / aspect_ratio
+
+            figsize = (figsize_width, figsize_height)
 
         fig, ax = (ax.get_figure(), ax) if ax else plt.subplots(figsize=figsize)
 
