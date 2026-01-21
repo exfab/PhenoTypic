@@ -9,7 +9,7 @@ from phenotypic.abc_ import ObjectRefiner
 from phenotypic.tools_ import FootprintMixin
 
 import numpy as np
-from skimage.morphology import binary_closing
+from skimage.morphology import closing
 
 
 class MaskCloser(ObjectRefiner, FootprintMixin):
@@ -108,5 +108,5 @@ class MaskCloser(ObjectRefiner, FootprintMixin):
         else:
             raise AttributeError("Invalid shape type")
 
-        image.objmask[:] = binary_closing(image.objmask[:], footprint=footprint)
+        image.objmask[:] = closing(image.objmask[:], footprint=footprint)
         return image

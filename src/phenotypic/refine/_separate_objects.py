@@ -9,7 +9,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from phenotypic import Image
+    from phenotypic import GridImage, Image
 
 import gc
 import numpy as np
@@ -303,7 +303,7 @@ class SeparateObjects(ObjectRefiner):
 
         return markers
 
-    def _operate(self, image: Image) -> Image:
+    def _operate(self, image: Image | GridImage) -> Image:
         """Separate touching colonies using intensity and distance-based peak detection.
 
         This method finds peaks based on intensity and distance transform, then uses
@@ -325,16 +325,16 @@ class SeparateObjects(ObjectRefiner):
 
         objmask = image.objmask[:]
         logger.info(
-            f"SeparateObjects: objmask shape={objmask.shape}, True pixels={objmask.sum()}")
+                f"SeparateObjects: objmask shape={objmask.shape}, True pixels={objmask.sum()}")
 
         # Compute distance transform for peak detection
         distance = distance_transform_edt(objmask)
         logger.info(
-            f"SeparateObjects: distance range=[{distance.min():.2f}, {distance.max():.2f}]")
+                f"SeparateObjects: distance range=[{distance.min():.2f}, {distance.max():.2f}]")
 
         score_map = self._compute_peak_scores(objmask, distance)
         logger.info(
-            f"SeparateObjects: score_map range=[{score_map.min():.2f}, {score_map.max():.2f}], non-zero={np.count_nonzero(score_map)}")
+                f"SeparateObjects: score_map range=[{score_map.min():.2f}, {score_map.max():.2f}], non-zero={np.count_nonzero(score_map)}")
 
         # Peak detection: GridImage vs regular Image
         try:
@@ -351,7 +351,7 @@ class SeparateObjects(ObjectRefiner):
             row_edges = np.round(image.grid.get_row_edges()).astype(int)
             col_edges = np.round(image.grid.get_col_edges()).astype(int)
             logger.info(
-                f"SeparateObjects: grid={len(row_edges) - 1}x{len(col_edges) - 1} cells")
+                    f"SeparateObjects: grid={len(row_edges) - 1}x{len(col_edges) - 1} cells")
             peaks = self._find_peaks_gridimage(score_map, objmask, row_edges, col_edges)
         else:
             # Use global peak detection with minimum distance
@@ -364,7 +364,7 @@ class SeparateObjects(ObjectRefiner):
         # Create markers from peaks
         markers = self._create_markers_from_peaks(objmask, peaks)
         logger.info(
-            f"SeparateObjects: markers max={markers.max()}, non-zero pixels={np.count_nonzero(markers)}")
+                f"SeparateObjects: markers max={markers.max()}, non-zero pixels={np.count_nonzero(markers)}")
 
         # Validate that at least one marker was created
         if markers.max() == 0:
@@ -380,7 +380,7 @@ class SeparateObjects(ObjectRefiner):
         # Use same metric as peak detection so markers are at local minima
         elevation = self._make_elevation_map(score_map)
         logger.info(
-            f"SeparateObjects: elevation range=[{elevation.min():.2f}, {elevation.max():.2f}]")
+                f"SeparateObjects: elevation range=[{elevation.min():.2f}, {elevation.max():.2f}]")
 
         # Watershed segmentation
         objmap = segmentation.watershed(
@@ -392,7 +392,7 @@ class SeparateObjects(ObjectRefiner):
         n_regions = objmap.max()
         n_labeled_pixels = np.sum(objmap > 0)
         logger.info(
-            f"SeparateObjects: watershed result - max_label={n_regions}, labeled_pixels={n_labeled_pixels}")
+                f"SeparateObjects: watershed result - max_label={n_regions}, labeled_pixels={n_labeled_pixels}")
 
         # Validate result
         if objmap.max() == 0:

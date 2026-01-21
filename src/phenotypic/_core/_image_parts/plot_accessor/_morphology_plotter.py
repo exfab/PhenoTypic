@@ -12,10 +12,10 @@ from skimage.morphology import (
     disk,
     square,
     diamond,
-    binary_erosion,
-    binary_dilation,
-    binary_opening,
-    binary_closing,
+    erosion,
+    dilation,
+    opening,
+    closing,
 )
 
 from ._base_plotter import BasePlotter
@@ -110,19 +110,19 @@ class MorphologyPlotter(BasePlotter):
             # Apply morphological operation
             match operation:
                 case "opening":
-                    result = binary_opening(mask, footprint=selem)
+                    result = opening(mask, footprint=selem)
                 case "closing":
-                    result = binary_closing(mask, footprint=selem)
+                    result = closing(mask, footprint=selem)
                 case "erosion":
-                    result = binary_erosion(mask, footprint=selem)
+                    result = erosion(mask, footprint=selem)
                 case "dilation":
-                    result = binary_dilation(mask, footprint=selem)
+                    result = dilation(mask, footprint=selem)
                 case _:
                     raise ValueError(f"Unknown operation: {operation}")
 
             # Extract boundary (result - erosion of result)
             if result.any():
-                boundary = result & ~binary_erosion(result, footprint=disk(1))
+                boundary = result & ~erosion(result, footprint=disk(1))
             else:
                 boundary = np.zeros_like(result)
 
@@ -216,13 +216,13 @@ class MorphologyPlotter(BasePlotter):
 
             # Apply operation
             if operation == "opening":
-                result = binary_opening(mask_ref, footprint=selem)
+                result = opening(mask_ref, footprint=selem)
             elif operation == "closing":
-                result = binary_closing(mask_ref, footprint=selem)
+                result = closing(mask_ref, footprint=selem)
             elif operation == "erosion":
-                result = binary_erosion(mask_ref, footprint=selem)
+                result = erosion(mask_ref, footprint=selem)
             elif operation == "dilation":
-                result = binary_dilation(mask_ref, footprint=selem)
+                result = dilation(mask_ref, footprint=selem)
 
             # Label and compute metric
             labeled, num = ndi_label(result)
@@ -364,13 +364,13 @@ class MorphologyPlotter(BasePlotter):
 
             # Apply operation
             if operation == "opening":
-                result = binary_opening(mask, footprint=selem)
+                result = opening(mask, footprint=selem)
             elif operation == "closing":
-                result = binary_closing(mask, footprint=selem)
+                result = closing(mask, footprint=selem)
             elif operation == "erosion":
-                result = binary_erosion(mask, footprint=selem)
+                result = erosion(mask, footprint=selem)
             elif operation == "dilation":
-                result = binary_dilation(mask, footprint=selem)
+                result = dilation(mask, footprint=selem)
 
             # Compute signed distance transform (positive inside, negative outside)
             if result.any():

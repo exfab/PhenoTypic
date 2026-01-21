@@ -9,7 +9,7 @@ from phenotypic.abc_ import ObjectRefiner
 from phenotypic.tools_ import FootprintMixin
 
 import numpy as np
-from skimage.morphology import binary_dilation
+from skimage.morphology import dilation
 
 
 class MaskDilator(ObjectRefiner, FootprintMixin):
@@ -113,6 +113,5 @@ class MaskDilator(ObjectRefiner, FootprintMixin):
         else:
             raise AttributeError("Invalid shape type")
 
-        image.objmask[:] = binary_dilation(image.objmask[:],
-                                           footprint=footprint)
+        image.objmask[:] = dilation(image.objmask[:], footprint=footprint)
         return image

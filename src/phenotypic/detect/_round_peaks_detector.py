@@ -198,8 +198,8 @@ class RoundPeaksDetector(GridInferenceMixin, ObjectDetector):
         self._log_memory_usage("thresholding")
 
         if self.remove_noise:
-            objmask = morphology.binary_opening(
-                    objmask, morphology.diamond(radius=self.footprint_radius)
+            objmask = morphology.opening(
+                    objmask, footprint=morphology.diamond(radius=self.footprint_radius)
             )
             self._log_memory_usage("noise removal")
 

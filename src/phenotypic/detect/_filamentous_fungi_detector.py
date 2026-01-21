@@ -6,8 +6,8 @@ import gc
 if TYPE_CHECKING:
     from phenotypic import Image, ImagePipeline  # type: ignore
 
-from scipy.ndimage import center_of_mass, binary_erosion
-from skimage.morphology import disk
+from scipy.ndimage import center_of_mass
+from skimage.morphology import disk, erosion
 from skimage.segmentation import watershed
 from skimage.measure import label
 
@@ -304,7 +304,7 @@ class FilamentousFungiDetector(ObjectDetector):
 
         # Step 4: Compute boundaries via morphological erosion
         footprint = disk(self.erosion_radius)
-        eroded = binary_erosion(overall_objmask, structure=footprint)
+        eroded = erosion(overall_objmask, footprint=footprint)
         boundaries = overall_objmask & ~eroded
         del eroded, footprint
 

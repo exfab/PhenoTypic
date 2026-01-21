@@ -251,27 +251,26 @@ class ObjectRefiner(ImageOperation, ABC):
 
     **Common Morphological Refinement Patterns**
 
-    Use `_make_footprint()` with morphological operations from `scipy.ndimage` or `skimage.morphology`:
+    Use `_make_footprint()` with morphological operations from `skimage.morphology`:
 
     .. code-block:: python
 
-        from scipy.ndimage import binary_dilation, binary_erosion
-        from skimage.morphology import binary_closing, binary_opening
+        from skimage.morphology import dilation, erosion, closing, opening
         from phenotypic.abc_ import ObjectRefiner
 
         disk_fp = ObjectRefiner._make_footprint('disk', width=3)
 
         # Dilation: expand object regions (merge fragmented colonies)
-        dilated_mask = binary_dilation(binary_mask, structure=disk_fp)
+        dilated_mask = dilation(binary_mask, footprint=disk_fp)
 
         # Erosion: shrink object regions (remove thin protrusions, small noise)
-        eroded_mask = binary_erosion(binary_mask, structure=disk_fp)
+        eroded_mask = erosion(binary_mask, footprint=disk_fp)
 
         # Closing: dilation then erosion (fill small holes)
-        closed_mask = binary_closing(binary_mask, structure=disk_fp)
+        closed_mask = closing(binary_mask, footprint=disk_fp)
 
-        # GrayOpening: erosion then dilation (remove small noise)
-        opened_mask = binary_opening(binary_mask, structure=disk_fp)
+        # Opening: erosion then dilation (remove small noise)
+        opened_mask = opening(binary_mask, footprint=disk_fp)
 
     **Chaining Multiple Refinements**
 
@@ -494,7 +493,8 @@ class ObjectRefiner(ImageOperation, ABC):
 
                 from phenotypic.abc_ import ObjectRefiner
                 from phenotypic import Image
-                from scipy.ndimage import binary_dilation, label as ndi_label
+                from scipy.ndimage import label as ndi_label
+                from skimage.morphology import dilation
                 import numpy as np
 
                 class FragmentMerger(ObjectRefiner):
@@ -513,7 +513,7 @@ class ObjectRefiner(ImageOperation, ABC):
                         fp = ObjectRefiner._make_footprint('disk', dilation_radius)
 
                         # Dilate to bridge fragmented regions
-                        dilated = binary_dilation(mask, structure=fp)
+                        dilated = dilation(mask, footprint=fp)
 
                         # Relabel connected components
                         relabeled, _ = ndi_label(dilated)

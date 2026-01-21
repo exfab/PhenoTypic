@@ -7,6 +7,9 @@ if TYPE_CHECKING:
     from phenotypic import Image
 
 import warnings
+
+warnings.filterwarnings('ignore', category=SyntaxWarning, module='mahotas')
+
 import mahotas as mh
 import numpy as np
 import pandas as pd

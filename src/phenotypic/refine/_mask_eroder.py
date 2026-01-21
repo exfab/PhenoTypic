@@ -9,7 +9,7 @@ from phenotypic.abc_ import ObjectRefiner
 from phenotypic.tools_ import FootprintMixin
 
 import numpy as np
-from skimage.morphology import binary_erosion
+from skimage.morphology import erosion
 
 
 class MaskEroder(ObjectRefiner, FootprintMixin):
@@ -114,5 +114,5 @@ class MaskEroder(ObjectRefiner, FootprintMixin):
         else:
             raise AttributeError("Invalid shape type")
 
-        image.objmask[:] = binary_erosion(image.objmask[:], footprint=footprint)
+        image.objmask[:] = erosion(image.objmask[:], footprint=footprint)
         return image

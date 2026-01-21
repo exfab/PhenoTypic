@@ -9,7 +9,7 @@ from phenotypic.abc_ import ObjectRefiner
 from phenotypic.tools_ import FootprintMixin
 
 import numpy as np
-from skimage.morphology import binary_opening
+from skimage.morphology import opening
 from phenotypic.tools_.typing_ import FootprintShape
 
 
@@ -92,5 +92,5 @@ class MaskOpener(ObjectRefiner, FootprintMixin):
         else:
             raise AttributeError("Invalid shape type")
 
-        image.objmask[:] = binary_opening(image.objmask[:], footprint=footprint)
+        image.objmask[:] = opening(image.objmask[:], footprint=footprint)
         return image

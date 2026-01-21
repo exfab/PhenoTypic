@@ -179,16 +179,16 @@ class ImageEnhancer(FootprintMixin, ImageOperation, ABC):
 
     .. code-block:: python
 
-        from scipy.ndimage import binary_dilation, binary_erosion
+        from skimage.morphology import erosion, dilation
         from phenotypic.abc_ import ImageEnhancer
 
         disk_fp = ImageEnhancer._make_footprint('disk', width=5)
 
         # Erosion: shrink bright regions (removes small colonies/noise)
-        eroded = binary_erosion(binary_image, structure=disk_fp)
+        eroded = erosion(binary_image, footprint=disk_fp)
 
         # Dilation: expand bright regions (closes holes, merges nearby colonies)
-        dilated = binary_dilation(binary_image, structure=disk_fp)
+        dilated = dilation(binary_image, footprint=disk_fp)
 
     **When and Why to Chain Multiple Enhancements**
 
@@ -314,7 +314,7 @@ class ImageEnhancer(FootprintMixin, ImageOperation, ABC):
 
                 from phenotypic.abc_ import ImageEnhancer
                 from phenotypic import Image
-                from scipy.ndimage import binary_closing, binary_opening
+                from skimage.morphology import closing, opening
                 import numpy as np
 
                 class MorphologicalEnhancer(ImageEnhancer):
@@ -334,10 +334,10 @@ class ImageEnhancer(FootprintMixin, ImageOperation, ABC):
                         binary = enh > enh.mean()
                         if self.operation == 'closing':
                             # Close small holes within colonies
-                            refined = binary_closing(binary, structure=shape)
+                            refined = closing(binary, footprint=shape)
                         elif self.operation == 'opening':
                             # Remove small noise regions
-                            refined = binary_opening(binary, structure=shape)
+                            refined = opening(binary, footprint=shape)
                         else:
                             return image
 
