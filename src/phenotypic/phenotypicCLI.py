@@ -272,6 +272,142 @@ def _validate_resume_input_images(
     return True, None
 
 
+def _format_slurm_time(minutes: int) -> str:
+    """
+    Convert integer minutes to HH:MM:SS SLURM time format.
+
+    Args:
+        minutes: Time in minutes
+
+    Returns:
+        Formatted time string in HH:MM:SS format (or "X days" for multi-day times)
+
+    Examples:
+        >>> _format_slurm_time(90)
+        '01:30:00'
+        >>> _format_slurm_time(120)
+        '02:00:00'
+        >>> _format_slurm_time(1440)
+        '1 day'
+    """
+    if minutes >= 1440:  # 24 hours or more
+        days = minutes // 1440
+        remaining_minutes = minutes % 1440
+        if remaining_minutes == 0:
+            return f"{days} day{'s' if days > 1 else ''}"
+        else:
+            hours = remaining_minutes // 60
+            mins = remaining_minutes % 60
+            return f"{days}d {hours:02d}:{mins:02d}:00"
+    else:
+        hours = minutes // 60
+        mins = minutes % 60
+        return f"{hours:02d}:{mins:02d}:00"
+
+
+def _display_execution_config(
+    config: ExecutionConfig,
+    datasets: list
+) -> None:
+    """Display execution configuration in structured rich Table format.
+
+    Args:
+        config: ExecutionConfig containing pipeline and execution settings
+        datasets: List of Dataset objects being processed
+    """
+    from rich.console import Console
+    from rich.table import Table
+    from rich.panel import Panel
+
+    console = Console()
+
+    # Determine backend
+    backend = "SLURM Cluster" if config.is_slurm_mode() else "Local (joblib)"
+
+    # Create table
+    table = Table(
+        title="Execution Configuration",
+        show_header=False,
+        box=None,
+        padding=(0, 2)
+    )
+    table.add_column("Setting", style="cyan", no_wrap=True)
+    table.add_column("Value", style="white")
+
+    # Add configuration rows
+    table.add_row("Backend", f"[bold]{backend}[/bold]")
+    table.add_row("Pipeline", str(config.pipeline_json))
+    table.add_row("Input Path", str(config.input_path))
+    table.add_row("Output Dir", str(config.output_dir))
+    table.add_row("", "")  # Spacer
+
+    # Image settings
+    table.add_row("Image Type", config.image_type)
+    if config.image_type == "GridImage":
+        table.add_row("Grid Dimensions", f"{config.nrows} × {config.ncols}")
+    if config.bit_depth:
+        table.add_row("Bit Depth", str(config.bit_depth))
+    table.add_row("", "")  # Spacer
+
+    # Execution settings
+    if config.is_slurm_mode():
+        # Show key SLURM parameters
+        if "slurm_partition" in config.slurm_args:
+            table.add_row("SLURM Partition", config.slurm_args["slurm_partition"])
+        if "slurm_account" in config.slurm_args:
+            table.add_row("SLURM Account", config.slurm_args["slurm_account"])
+        if "mem_gb" in config.slurm_args:
+            table.add_row("Memory", f"{config.slurm_args['mem_gb']} GB")
+        if "time" in config.slurm_args:
+            time_str = _format_slurm_time(config.slurm_args["time"])
+            table.add_row("Time Limit", time_str)
+    else:
+        # Show joblib settings
+        n_jobs_str = "All cores" if config.n_jobs == -1 else str(config.n_jobs)
+        table.add_row("Parallel Jobs", n_jobs_str)
+    table.add_row("", "")  # Spacer
+
+    # Dataset info
+    total_images = sum(len(d.images) for d in datasets)
+    table.add_row("Datasets", str(len(datasets)))
+    table.add_row("Total Images", str(total_images))
+
+    # Optional layers
+    layers = []
+    if config.save_rgb:
+        layers.append("RGB")
+    if config.save_gray:
+        layers.append("Gray")
+    if config.save_enh_gray:
+        layers.append("Enhanced Gray")
+    if config.save_objmask:
+        layers.append("Object Mask")
+    if config.save_objmap:
+        layers.append("Object Map")
+    if config.save_objmap_rgb:
+        layers.append("Object Map RGB")
+
+    if layers:
+        table.add_row("", "")  # Spacer
+        table.add_row("Saving Layers", ", ".join(layers))
+
+    # Processing flags
+    if config.sample or config.resume or config.retry_failures:
+        table.add_row("", "")  # Spacer
+        if config.sample:
+            table.add_row("Sample Mode", f"{config.sample} images per dataset")
+        if config.resume:
+            resume_str = "Yes"
+            if config.retry_failures:
+                resume_str += " (with failures)"
+            table.add_row("Resume Mode", resume_str)
+
+    # Display the table in a panel
+    console.print()
+    console.print(Panel(table, border_style="blue", expand=False))
+    console.print()
+
+
 @click.command()
 @click.argument(
         "pipeline_json",
@@ -667,14 +803,30 @@ def main(
 
         # Validate configuration
         if not config.skip_validation:
-            click.echo("Validating pipeline configuration...")
-            is_valid, errors = full_validation(config, datasets)
+            from rich.console import Console
+
+            console = Console()
+
+            # Show validation steps with spinners
+            with console.status("[bold cyan]Validating configuration...", spinner="dots"):
+                is_valid, errors = full_validation(config, datasets)
+
             if not is_valid:
-                click.echo("Validation failed:", err=True)
+                console.print("[bold red]✗ Validation failed:", style="bold red")
                 for error in errors:
-                    click.echo(f"  - {error}", err=True)
+                    console.print(f"  - {error}", style="red")
                 sys.exit(1)
-            click.echo("✓ Validation passed")
+
+            # Show success
+            console.print("[bold green]✓ Configuration validated successfully")
+            console.print("[green]✓ Pipeline loaded successfully")
+            console.print("[green]✓ Test image processed successfully")
+        else:
+            from rich.console import Console
+            console = Console()
+
+        # Display execution configuration
+        _display_execution_config(config, datasets)
 
         # Handle dry-run mode
         if config.dry_run:

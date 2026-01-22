@@ -116,10 +116,27 @@ class LocalParallelStrategy(ExecutionStrategy):
             for image_path in dataset.images:
                 all_tasks.append((dataset, image_path))
 
-        click.echo(f"Processing {len(all_tasks)} images with joblib (n_jobs={self.config.n_jobs})...")
+        # Show dataset breakdown with rich
+        from rich.console import Console
 
-        # Process in parallel
-        results = Parallel(n_jobs=self.config.n_jobs)(
+        console = Console()
+        console.print("\n[bold cyan]Processing Images[/bold cyan]")
+        console.rule(style="cyan")
+
+        for dataset in datasets:
+            console.print(
+                f"  Dataset: [cyan]{dataset.name}[/cyan] "
+                f"([white]{len(dataset.images)} images[/white])"
+            )
+
+        console.rule(style="cyan")
+        console.print(
+            f"  Total: [bold]{len(all_tasks)} images[/bold] across "
+            f"[bold]{len(datasets)} datasets[/bold]\n"
+        )
+
+        # Process in parallel with verbose output
+        results = Parallel(n_jobs=self.config.n_jobs, verbose=11)(
             delayed(self._process_single_local)(
                 dataset, image_path, output_dir, event_log
             )
@@ -289,18 +306,61 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
         """
         start_time = datetime.now()
 
+        # Show dataset breakdown with rich
+        from rich.console import Console
+
+        console = Console()
+        console.print("\n[bold cyan]SLURM Job Submission[/bold cyan]")
+        console.rule(style="cyan")
+
+        for dataset in datasets:
+            console.print(
+                f"  Dataset: [cyan]{dataset.name}[/cyan] "
+                f"([white]{len(dataset.images)} images[/white])"
+            )
+
+        console.rule(style="cyan")
+        total_images = sum(len(d.images) for d in datasets)
+        console.print(
+            f"  Total: [bold]{total_images} images[/bold] across "
+            f"[bold]{len(datasets)} datasets[/bold]\n"
+        )
+
         # Query SLURM array limits
+        console.print("[cyan]Querying SLURM array limits...[/cyan]")
         array_limit = get_slurm_array_limit()
-        click.echo(f"SLURM array limit: {array_limit}")
+        console.print(f"[green]✓[/green] SLURM array limit: [bold]{array_limit}[/bold]\n")
 
         # Generate array job scripts for all datasets
-        click.echo("Generating SLURM array job scripts...")
+        console.print("[bold cyan]Generating array job scripts...[/bold cyan]")
         all_scripts = generate_all_array_job_scripts(
             datasets, self.config, output_dir, array_limit
         )
 
+        # Show per-dataset results
+        for dataset in datasets:
+            scripts = all_scripts.get(dataset.name, [])
+            num_images = len(dataset.images)
+
+            if len(scripts) == 0:
+                continue
+            elif len(scripts) == 1:
+                # Single script
+                console.print(
+                    f"  [green]✓[/green] {dataset.name}: 1 script "
+                    f"([white]{num_images} images[/white])"
+                )
+            else:
+                # Multiple scripts (chunked)
+                console.print(
+                    f"  [green]✓[/green] {dataset.name}: {len(scripts)} scripts "
+                    f"([white]{num_images} images[/white])"
+                )
+
         total_jobs = sum(len(scripts) for scripts in all_scripts.values())
-        click.echo(f"Generated {total_jobs} array job scripts")
+        console.print(
+            f"[green]✓ Generated {total_jobs} array job scripts[/green]\n"
+        )
 
         # Submit jobs with sequential dependencies
         click.echo("Submitting array jobs to SLURM...")
@@ -438,9 +498,17 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
         Raises:
             RuntimeError: If no jobs were submitted successfully
         """
+        from rich.console import Console
+
+        console = Console()
+        console.print("[bold cyan]Submitting jobs to SLURM...[/bold cyan]")
+
         all_job_ids = []
         last_dataset_final_job = None
         failed_submissions = []
+
+        submission_count = 0
+        total_submissions = sum(len(scripts) for scripts in all_scripts.values())
 
         for dataset in datasets:
             scripts = all_scripts.get(dataset.name, [])
@@ -452,6 +520,8 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
 
             # Submit all chunks for this dataset
             for i, script_path in enumerate(scripts):
+                submission_count += 1
+
                 # Determine dependency
                 if i == 0:
                     # First chunk of each dataset depends on previous dataset's last job
@@ -460,12 +530,24 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
                     # Subsequent chunks depend on previous chunk within dataset
                     dependency = dataset_job_ids[-1]
 
+                # Log submission
+                dep_str = f", depends on {dependency}" if dependency else ""
+                console.print(
+                    f"  [{submission_count}/{total_submissions}] {dataset.name} chunk {i}{dep_str}",
+                    end=""
+                )
+
                 # Submit array job with error handling
                 try:
                     job_id = self._submit_array_job_direct(script_path, dependency)
                     dataset_job_ids.append(job_id)
                     all_job_ids.append(job_id)
+
+                    # Show job ID
+                    console.print(f" → [green]Job {job_id}[/green]")
+
                 except RuntimeError as e:
+                    console.print(f" → [red]Failed[/red]")
                     failed_submissions.append((dataset.name, i, str(e)))
                     # Continue to next submission instead of failing immediately
 
@@ -473,12 +555,18 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
             if dataset_job_ids:
                 last_dataset_final_job = dataset_job_ids[-1]
 
+        console.print(
+            f"[green]✓ Submitted {len(all_job_ids)} jobs with dependency chain[/green]\n"
+        )
+
         # Report on submission results
         if failed_submissions:
-            import click
-            click.echo("\nWarning: Some jobs failed to submit:", err=True)
+            console.print(
+                "[bold yellow]Warning: Some jobs failed to submit:[/bold yellow]",
+                style="yellow"
+            )
             for ds_name, chunk_id, error in failed_submissions:
-                click.echo(f"  {ds_name} chunk {chunk_id}: {error}", err=True)
+                console.print(f"  {ds_name} chunk {chunk_id}: {error}", style="yellow")
 
         # Only fail if no jobs were submitted at all
         if not all_job_ids:
