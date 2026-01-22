@@ -1,6 +1,6 @@
-# AGENTS.md
+# CLAUDE.md
 
-This file provides guidance to agentic coding when working with code in
+This file provides guidance to Claude Code (claude.ai/code) when working with code in
 this repository.
 
 ---
@@ -137,12 +137,14 @@ output_results/
 
 **Breaking Change (v2.0):**
 
-The CLI now uses boolean flags instead of user-specified directories for optional outputs:
+The CLI now uses boolean flags instead of user-specified directories for optional
+outputs:
 
 - **Old (v1.x)**: `--save-rgb-dir ./custom/path/rgb`
 - **New (v2.0)**: `--save-rgb` (auto-creates `OUTPUT_DIR/rgb/`)
 
 This change:
+
 - Simplifies command-line usage
 - Enforces consistent directory structure
 - Aligns with `measurements/` and `overlays/` pattern
@@ -278,6 +280,7 @@ phenotypic/module_name/
 | `phenotypic.correction`    | Image quality improvements          | `ImageCorrector` (ABC), rotation, edge correction, etc.                                                                          |
 | `phenotypic.analysis`      | Downstream statistical analysis     | Growth curves, clustering, outlier detection                                                                                     |
 | `phenotypic.prefab`        | Pre-built pipelines                 | Complete workflows at ExFAB                                                                                                      |
+| `phenotypic.tools_`        | Utility mixins and helpers          | `FootprintMixin` for morphological structuring elements                                                                          |
 | `phenotypic.settings_`     | Global configuration                | `VALIDATE_OPS`, `MPL` (matplotlib defaults)                                                                                      |
 | `phenotypic.phenotypicCLI` | Command-line batch processing       | `main()`, `process_single_image()` for parallel pipeline execution                                                               |
 
@@ -318,7 +321,8 @@ phenotypic/module_name/
 
 ## Documentation and Code Standards
 
-This section consolidates all code style, design, and documentation rules for the project.
+This section consolidates all code style, design, and documentation rules for the
+project.
 
 ### Design Principles
 
@@ -326,7 +330,8 @@ This section consolidates all code style, design, and documentation rules for th
 - Framework is **extendable** and **standalone** (no external extensions required)
 - Examples should have **microbiology context** (arrayed microbe growth, agar plates)
 - Follow **duck typing** principles when reasonable
-- **Cross-platform support:** macOS, Windows, and Linux (watch for platform-specific optional dependencies in pyproject.toml)
+- **Cross-platform support:** macOS, Windows, and Linux (watch for platform-specific
+  optional dependencies in pyproject.toml)
 - Use **explicit matplotlib interface** (never use implicit pyplot)
 
 ### Code Style Rules
@@ -337,7 +342,8 @@ This section consolidates all code style, design, and documentation rules for th
 - Follow **duck typing** for type checks
 - **Never create separate example files/notebooks** - put all examples in docstrings
 - Don't create summary documents unless explicitly asked
-- For batch processing, use the CLI: `uv run python -m phenotypic` rather than custom scripts
+- For batch processing, use the CLI: `uv run python -m phenotypic` rather than custom
+  scripts
 - When modifying settings, import `phenotypic.settings_` before other modules
 
 ### Docstring Format (All Classes)
@@ -348,7 +354,8 @@ Use **Google-style docstrings** with this exact order:
 2. **Args** - Parameters and their effects
 3. **Returns** - What is returned
 4. **Raises** - Exceptions that can occur
-5. **Longer description** - Include intuition, use cases, limitations (especially for ImageOperation subclasses)
+5. **Longer description** - Include intuition, use cases, limitations (especially for
+   ImageOperation subclasses)
 6. **Examples** - Doctest-formatted, copy-pasteable code with microbiology context
 
 **Quick template:**
@@ -381,33 +388,41 @@ def function_name(param):
 - Use **doctest format** for all code examples (lines starting with `>>>` are code)
 - Output from code should appear on the next line(s) without prefix
 - All examples must be **fully runnable** and **copy-pasteable**
-- Use `load_synth_plate()` from `phenotypic.data` for image examples (returns a GridImage with detected colonies)
-- Use real microbiology context (colony detection, plate images) - not synthetic/abstract examples
-- Document parameter effects on colony visibility, edge sharpness, background suppression, or mask quality
+- Use `load_synth_plate()` from `phenotypic.data` for image examples (returns a
+  GridImage with detected colonies)
+- Use real microbiology context (colony detection, plate images) - not
+  synthetic/abstract examples
+- Document parameter effects on colony visibility, edge sharpness, background
+  suppression, or mask quality
 
 ### ImageOperation Subclasses (Special Rules)
 
-For `ObjectDetector`, `ImageEnhancer`, `ImageCorrector`, and related operation classes, use this specific order:
+For `ObjectDetector`, `ImageEnhancer`, `ImageCorrector`, and related operation classes,
+use this specific order:
 
 1. **One-line summary** at the top (what does it do?)
-2. **Args/Attributes section** - Concise parameter descriptions (1-2 sentences per param) with effects on image processing
+2. **Args/Attributes section** - Concise parameter descriptions (1-2 sentences per
+   param) with effects on image processing
 3. **Returns section** - What the operation returns
 4. **Raises section** - Exceptions that can be raised
 5. **Detailed explanation** - Comes AFTER exceptions. Include:
-   - **Use cases** (3-5 bullet points): Key scenarios when to use this operation
-   - **Limitations** (3-5 bullet points): Critical limitations, failure modes, when NOT to use
-   - **Parameter effects** (1-2 sentences per parameter): How tuning impacts results
+    - **Use cases** (3-5 bullet points): Key scenarios when to use this operation
+    - **Limitations** (3-5 bullet points): Critical limitations, failure modes, when NOT
+      to use
+    - **Parameter effects** (1-2 sentences per parameter): How tuning impacts results
 6. **Examples section** - 2 practical doctest code examples:
-   - Basic usage
-   - Pipeline/advanced usage
+    - Basic usage
+    - Pipeline/advanced usage
 
 **Documentation format:** Moderate conciseness (100-150 lines total per class)
+
 - Clear and informative without excessive verbosity
 - Concise parameter descriptions (1-2 sentences per param)
 - Use cases and limitations as bullet-point lists
 - Examples use doctest format and are fully runnable
 - Use `load_synth_plate()` from `phenotypic.data` when an image is needed
-- Reference: [HysteresisDetector](src/phenotypic/detect/_hysteresis_detector.py) in `phenotypic.detect` module as an example
+- Reference: [HysteresisDetector](src/phenotypic/detect/_hysteresis_detector.py) in
+  `phenotypic.detect` module as an example
 
 ---
 
@@ -523,8 +538,10 @@ results are cached.
 ## Image Enhancement Operations
 
 The `phenotypic.enhance` module provides 19+ preprocessing operations: denoising
-(GaussianBlur, MedianFilter, BilateralDenoise), background correction (RollingBallRemoveBG),
-contrast enhancement (CLAHE, UnsharpMask), morphological operations (MorphologicalOpening,
+(GaussianBlur, MedianFilter, BilateralDenoise), background correction (
+RollingBallRemoveBG),
+contrast enhancement (CLAHE, UnsharpMask), morphological operations (
+MorphologicalOpening,
 MorphologicalClosing, etc.), and edge detection (SobelFilter).
 
 **Key Principles:**
@@ -569,7 +586,7 @@ All `BaseOperation` subclasses automatically track:
 When running `ImagePipeline`:
 
 ```python
-results = pipeline.operate(images)
+results = pipeline.apply_and_measure(image)
 # Memory and timing automatically logged per operation
 ```
 
@@ -620,6 +637,13 @@ This allows profiling bottlenecks without explicit instrumentation.
 - `src/phenotypic/enhance/_gaussian_blur.py` - Simple enhancer example
 - `src/phenotypic/enhance/_morphological_opening.py` - Morphological operation example
 - Study these to understand the pattern for new operations
+
+### Utility Classes and Mixins
+
+- `src/phenotypic/tools_/_footprint_mixin.py` - FootprintMixin for morphological
+  structuring elements
+- Use this mixin for any operation requiring custom footprints (dilation, erosion,
+  opening, closing)
 
 ### Command-Line Interface and Configuration
 
@@ -729,7 +753,8 @@ from phenotypic.detect import OtsuDetector
 from phenotypic.data import load_synth_plate
 
 image = load_synth_plate()
-pipeline = ImagePipeline([GaussianBlur(sigma=1.5), CLAHE(clip_limit=2.0), OtsuDetector()])
+pipeline = ImagePipeline(
+        [GaussianBlur(sigma=1.5), CLAHE(clip_limit=2.0), OtsuDetector()])
 result = pipeline.apply_and_measure(image)
 pipeline.to_json("my_pipeline.json")  # Save for batch processing
 ```
@@ -745,7 +770,8 @@ uv run python -m phenotypic my_pipeline.json ./raw_plates ./results \
 
 - Test on diverse sample images before batch processing
 - Always review overlay images in `results/overlays/` for visual QC
-- Disable validation for large batches: set `settings_.VALIDATE_OPS = False` before importing operations
+- Disable validation for large batches: set `settings_.VALIDATE_OPS = False` before
+  importing operations
 - Use `--n-jobs -1` to utilize all CPU cores
 - Version control your pipeline JSON files with image acquisition settings documented
 
@@ -757,7 +783,8 @@ uv run python -m phenotypic my_pipeline.json ./raw_plates ./results \
 
 **Pattern for any operation (detector, enhancer, measurer):**
 
-1. Inherit from appropriate ABC in `phenotypic.abc_` (e.g., `ImageEnhancer`, `ObjectDetector`)
+1. Inherit from appropriate ABC in `phenotypic.abc_` (e.g., `ImageEnhancer`,
+   `ObjectDetector`)
 2. Implement `_operate(self, image: Image) -> Image`
 3. Access data via accessors: `image.rgb[:]`, `image.enh_gray[:]`, `image.objects`, etc.
 4. Never modify `image.rgb` or `image.gray` directly (only enhancers work on `enh_gray`)
@@ -770,14 +797,134 @@ uv run python -m phenotypic my_pipeline.json ./raw_plates ./results \
 
 - `src/phenotypic/detect/_otsu_detector.py` - Simple detector
 - `src/phenotypic/enhance/_gaussian_blur.py` - Simple enhancer
-- `src/phenotypic/enhance/_morphological_opening.py` - Morphological pattern
+- `src/phenotypic/enhance/_morphological_opening.py` - Morphological pattern with
+  FootprintMixin
+- `src/phenotypic/tools_/_footprint_mixin.py` - Utility mixin for structuring elements
+
+### Operation Implementation Pattern: Instance Methods
+
+**Standard Pattern (Recommended):**
+
+All operation subclasses should implement `_operate()` as an instance method:
+
+```python
+from phenotypic.abc_ import ImageEnhancer
+from phenotypic import Image
+from scipy.ndimage import gaussian_filter
+
+
+class MyEnhancer(ImageEnhancer):
+    def __init__(self, sigma: float = 1.0, threshold: int = 50):
+        super().__init__()
+        self.sigma = sigma
+        self.threshold = threshold
+
+    def _operate(self, image: Image) -> Image:
+        # Access parameters via self
+        filtered = gaussian_filter(image.enh_gray[:], sigma=self.sigma)
+        mask = filtered > self.threshold
+        image.enh_gray[:] = filtered
+        return image
+```
+
+**Key Points:**
+
+- Use `def _operate(self, image)` (instance method, not `@staticmethod`)
+- Access operation parameters directly via `self.param_name`
+
+### Using FootprintMixin for Morphological Operations
+
+Many image operations require **morphological structuring elements** (footprints) for
+operations like dilation, erosion, opening, and closing. The `FootprintMixin` class in
+`phenotypic.tools_` provides a standardized way to create these structuring elements.
+
+**When to Use FootprintMixin:**
+
+- Creating custom morphological enhancers (opening, closing, dilation, erosion)
+- Building edge detection or feature extraction operations
+- Implementing mask refinement operations
+- Any operation requiring structuring elements for convolution
+
+**Available Shapes:**
+
+The mixin supports three shapes optimized for colony analysis:
+
+- **`"square"`**: Emphasizes sharp edges, best for rectangular features
+- **`"diamond"`**: Enhances diagonal connections while reducing orthogonal sensitivity
+- **`"disk"`**: Preserves rounded colony shapes (recommended for most microbial work)
+
+**How to Use:**
+
+```python
+from phenotypic.abc_ import ImageEnhancer
+from phenotypic import Image
+from phenotypic.tools_ import FootprintMixin
+from skimage.morphology import binary_opening
+
+
+class MyMorphologicalEnhancer(ImageEnhancer, FootprintMixin):
+    """Custom morphological operation using FootprintMixin."""
+
+    def __init__(self, shape: str = "disk", radius: int = 3):
+        super().__init__()
+        self.shape = shape
+        self.radius = radius
+
+    def _operate(self, image: Image) -> Image:
+        # Create footprint using the mixin's static method
+        footprint = self._make_footprint(
+                shape=self.shape,
+                width=self.radius * 2 + 1
+        )
+
+        # Apply morphological operation
+        processed = binary_opening(
+                image.enh_gray[:] > 128,
+                footprint=footprint
+        )
+
+        image.enh_gray[:] = processed.astype(float) * 255
+        return image
+```
+
+**Key Points:**
+
+- Inherit from both the appropriate ABC (`ImageEnhancer`, `ObjectDetector`, etc.) **and
+  ** `FootprintMixin`
+- Call `self._make_footprint(shape, width)` to generate structuring elements
+- The `width` parameter defines the size (e.g., `radius * 2 + 1` for symmetric shapes)
+- Shape choice affects how operations interact with colony edges and morphology
+- Use `"disk"` for most microbial colony work to preserve circular shapes
+- Larger widths create broader morphological effects (good for noise reduction, bad for
+  small colonies)
+
+**Resolution Scaling Considerations:**
+
+When documenting operations that use footprints, always include guidance on how
+parameters scale with image resolution. For example:
+
+```python
+def __init__(self, radius: int = 5):
+    """
+    Args:
+        radius: Footprint radius in pixels. Scale with resolution:
+            - Low res (1024×768): radius=3-5
+            - Medium res (2048×1536): radius=6-10
+            - High res (4096×3072): radius=12-20
+    """
+```
+
+See existing morphological operations in `phenotypic.enhance` and `phenotypic.refine`
+modules for reference implementations.
 
 ### Key Principles
 
 - Leverage automatic memory/performance tracking from `BaseOperation`
 - Use duck typing for type checks
 - Follow the accessor pattern for consistent data access
-- Document parameter effects on colony visibility, edge sharpness, and mask quality (for operations)
+- Use `FootprintMixin` for any operation requiring morphological structuring elements
+- Document parameter effects on colony visibility, edge sharpness, and mask quality (for
+  operations)
 
 ---
 

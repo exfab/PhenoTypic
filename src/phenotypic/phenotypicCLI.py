@@ -138,6 +138,7 @@ from phenotypic._cli._cli_state_management import (
     get_remaining_images_for_datasets,
     load_processing_state,
     save_processing_state,
+    update_state_from_events,
     validate_resume_compatibility,
 )
 from phenotypic._cli._cli_types import ExecutionConfig
@@ -612,6 +613,8 @@ def main(
     INPUT_PATH: Image file or directory to process
     """
     try:
+        resume_state = None
+
         # Validate extension arguments
         try:
             rgb_ext = normalize_extension(rgb_ext, ".tiff")
@@ -784,8 +787,7 @@ def main(
             output_dir = generate_timestamped_output_dir()
             click.echo(f"Auto-generated output directory: {output_dir}")
 
-        # Create output directory (only if not resuming or doesn't exist)
-        output_dir.mkdir(parents=True, exist_ok=True)
+        config.output_dir = output_dir
 
         # Scan directory structure
         click.echo(f"Scanning {input_path}...")
@@ -826,7 +828,13 @@ def main(
             console = Console()
 
         # Display execution configuration
-        _display_execution_config(config, datasets)
+        try:
+            _display_execution_config(config, datasets)
+        except Exception as e:
+            click.echo(f"Error displaying configuration: {e}", err=True)
+            import traceback
+            traceback.print_exc()
+            sys.exit(1)
 
         # Handle dry-run mode
         if config.dry_run:
@@ -848,10 +856,16 @@ def main(
         # Handle resume mode - get remaining images
         if config.resume:
             # State was already validated earlier, just load it
-            state = load_processing_state(output_dir)
+            resume_state = load_processing_state(output_dir)
+            if resume_state is None:
+                click.echo(
+                        f"Error: No processing state found in {output_dir}",
+                        err=True
+                )
+                sys.exit(1)
 
             # Validate compatibility
-            is_compatible, error = validate_resume_compatibility(state, config)
+            is_compatible, error = validate_resume_compatibility(resume_state, config)
             if not is_compatible:
                 click.echo(f"Error: Cannot resume - {error}", err=True)
                 click.echo(
@@ -863,7 +877,9 @@ def main(
                 sys.exit(1)
 
             # Validate input image set hasn't changed
-            images_valid, image_error = _validate_resume_input_images(state, datasets)
+            images_valid, image_error = _validate_resume_input_images(
+                    resume_state, datasets
+            )
             if not images_valid:
                 click.echo(f"Error: Cannot resume - {image_error}", err=True)
                 click.echo(
@@ -875,7 +891,7 @@ def main(
 
             # Get remaining images
             datasets = get_remaining_images_for_datasets(
-                    state, datasets, config.retry_failures
+                    resume_state, datasets, config.retry_failures
             )
             remaining_images = sum(len(d.images) for d in datasets)
 
@@ -890,8 +906,34 @@ def main(
             if config.retry_failures:
                 click.echo("  - Including previously failed images")
 
+        # Ensure output directory exists for processing
+        output_dir.mkdir(parents=True, exist_ok=True)
+
         # Create initial state (or update if resuming)
-        state = create_initial_state(config, datasets, output_dir)
+        if config.resume:
+            state = update_state_from_events(resume_state, output_dir)
+            state.execution_mode = "slurm" if config.is_slurm_mode() else "local"
+            state.pipeline_path = config.pipeline_json
+            state.input_path = config.input_path
+            state.output_dir = output_dir
+            state.config = {
+                "image_type": config.image_type,
+                "nrows": config.nrows,
+                "ncols": config.ncols,
+                "bit_depth": config.bit_depth,
+                "n_jobs": config.n_jobs,
+                "slurm_args": config.slurm_args,
+                "save_layers": {
+                    "rgb": config.save_rgb,
+                    "gray": config.save_gray,
+                    "enh_gray": config.save_enh_gray,
+                    "objmask": config.save_objmask,
+                    "objmap": config.save_objmap,
+                    "objmap_rgb": config.save_objmap_rgb,
+                },
+            }
+        else:
+            state = create_initial_state(config, datasets, output_dir)
         save_processing_state(state, output_dir)
 
         # Create output manager
