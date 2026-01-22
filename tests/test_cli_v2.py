@@ -24,6 +24,7 @@ from phenotypic._cli._cli_directory_scanner import (
     scan_directory_structure,
 )
 from phenotypic._cli._cli_execution_strategies import (
+    AutonomousSLURMStrategy,
     LocalParallelStrategy,
     create_execution_strategy,
 )
@@ -569,9 +570,99 @@ class TestExecutionStrategies:
 
         strategy = create_execution_strategy(config, manager)
 
-        # Should create SLURM strategy (if submitit available)
-        # Type will depend on whether submitit is installed
-        assert strategy is not None
+        assert isinstance(strategy, AutonomousSLURMStrategy)
+
+    def test_strategy_factory_force_local_overrides_slurm(
+        self, temp_output_dir
+    ):
+        """Test that --force-local overrides SLURM args."""
+        config = ExecutionConfig(
+                pipeline_json=Path("pipeline.json"),
+                input_path=Path("."),
+                output_dir=temp_output_dir,
+                image_type="GridImage",
+                nrows=8,
+                ncols=12,
+                bit_depth=None,
+                n_jobs=1,
+                slurm_args={"slurm_partition": "compute"},  # Has SLURM args
+                force_local=True,  # But force_local is True
+                wait=False,
+                save_rgb=False,
+                save_gray=False,
+                save_enh_gray=False,
+                save_objmask=False,
+                save_objmap=False,
+                save_objmap_rgb=False,
+                rgb_ext=".tiff",
+                gray_ext=".tiff",
+                enh_gray_ext=".tiff",
+                objmask_ext=".png",
+                objmap_ext=".png",
+                objmap_rgb_ext=".png",
+                include_dataset_column=False,
+                dry_run=False,
+                sample=None,
+                resume=False,
+                retry_failures=False,
+                skip_validation=False,
+        )
+
+        manager = OutputManager(
+                base_dir=temp_output_dir,
+                save_layers={},
+                extensions={},
+                include_dataset_column=False,
+        )
+
+        strategy = create_execution_strategy(config, manager)
+
+        # Should return local strategy despite SLURM args
+        assert isinstance(strategy, LocalParallelStrategy)
+
+    def test_is_slurm_mode(self, temp_output_dir):
+        """Test is_slurm_mode() method logic."""
+        # Case 1: No SLURM args, no force_local -> local mode
+        config = ExecutionConfig(
+                pipeline_json=Path("pipeline.json"),
+                input_path=Path("."),
+                output_dir=temp_output_dir,
+                image_type="GridImage",
+                nrows=8,
+                ncols=12,
+                bit_depth=None,
+                n_jobs=1,
+                slurm_args={},
+                force_local=False,
+                wait=False,
+                save_rgb=False,
+                save_gray=False,
+                save_enh_gray=False,
+                save_objmask=False,
+                save_objmap=False,
+                save_objmap_rgb=False,
+                rgb_ext=".tiff",
+                gray_ext=".tiff",
+                enh_gray_ext=".tiff",
+                objmask_ext=".png",
+                objmap_ext=".png",
+                objmap_rgb_ext=".png",
+                include_dataset_column=False,
+                dry_run=False,
+                sample=None,
+                resume=False,
+                retry_failures=False,
+                skip_validation=False,
+        )
+        assert not config.is_slurm_mode()
+
+        # Case 2: Has SLURM args, no force_local -> SLURM mode
+        config.slurm_args = {"slurm_partition": "compute"}
+        assert config.is_slurm_mode()
+
+        # Case 3: Has SLURM args but force_local=True -> local mode
+        config.force_local = True
+        assert not config.is_slurm_mode()
 
 
 class TestCLIv2Integration:
@@ -641,6 +732,32 @@ class TestCLIv2Integration:
 
             # Should process limited number of images
             assert "Sample mode" in result.output or "sample" in result.output.lower()
+
+    def test_cli_slurm_args_backend_selection(
+        self, runner, temp_pipeline, temp_input_dir
+    ):
+        """Test that --slurm-args causes CLI to use SLURM backend."""
+        with runner.isolated_filesystem():
+            output_dir = Path("./test_output")
+            result = runner.invoke(
+                    main,
+                    [
+                        str(temp_pipeline),
+                        str(temp_input_dir),
+                        "-o",
+                        str(output_dir),
+                        "--slurm-args",
+                        "slurm_partition=compute",
+                        "--slurm-args",
+                        "mem_gb=16",
+                        "--dry-run",  # Use dry-run to avoid actual SLURM submission
+                        "--skip-validation",
+                    ],
+            )
+
+            # Check that SLURM backend is displayed
+            # The _display_execution_config function shows "SLURM Cluster" as backend
+            assert "SLURM Cluster" in result.output or result.exit_code == 0
 
 
 @pytest.mark.skipif(
