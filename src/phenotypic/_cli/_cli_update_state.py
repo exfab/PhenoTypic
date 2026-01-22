@@ -4,6 +4,16 @@ State file updater for the PhenoTypic CLI.
 This module handles append-only event logging for tracking image processing
 completion status. Uses atomic append operations with file locking for
 HPC filesystem safety across parallel workers and distributed SLURM jobs.
+
+Design Note - Race Condition Tradeoff:
+    The atomic_read() implementation acquires a shared lock, reads file content,
+    releases the lock, then parses the content. This means concurrent writers
+    could append events between reading and parsing. We accept this tradeoff
+    because:
+    1. Minimizing lock hold time is critical for HPC filesystem performance
+    2. Progress reporting doesn't need perfect real-time accuracy
+    3. Event log state is eventually consistent (next read catches up)
+    4. Alternative (parsing under lock) could cause timeout failures with slow parsing
 """
 
 from __future__ import annotations

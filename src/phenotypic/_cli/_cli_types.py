@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, Optional, Set, Literal
+from typing import Any, Dict, List, Optional, Set, Literal
 from datetime import datetime
 
 
@@ -28,6 +28,7 @@ class DatasetState:
     completed: Set[str] = field(default_factory=set)  # Completed image filenames
     failed: Set[str] = field(default_factory=set)  # Failed image filenames
     errors: Dict[str, str] = field(default_factory=dict)  # filename -> error message
+    initial_images: Set[str] = field(default_factory=set)  # Initial image set for resume validation
     
     @property
     def total_processed(self) -> int:
@@ -54,7 +55,7 @@ class ProcessingState:
     execution_mode: Literal["local", "slurm"]  # Execution mode
     last_updated: datetime  # Last state update time
     datasets: Dict[str, DatasetState]  # dataset_name -> state
-    config: Dict[str, any]  # Configuration used (for compatibility checking)
+    config: Dict[str, Any]  # Configuration used (for compatibility checking)
     
     def total_images(self) -> int:
         """Total number of images across all datasets."""
@@ -85,7 +86,7 @@ class ExecutionConfig:
     
     # Execution mode
     n_jobs: int
-    slurm_args: Dict[str, any]
+    slurm_args: Dict[str, Any]
     force_local: bool
     wait: bool  # Wait for SLURM jobs to complete
     

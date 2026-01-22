@@ -37,7 +37,7 @@ def process_single_image_core(
 ) -> bool:
     """
     Core processing logic for a single image.
-    
+
     Args:
         pipeline_path: Path to pipeline JSON file
         image_path: Path to input image
@@ -46,9 +46,15 @@ def process_single_image_core(
         image_type: "Image" or "GridImage"
         read_kwargs: Kwargs for imread (nrows, ncols, bit_depth)
         output_manager: OutputManager instance
-        
+
     Returns:
-        True if successful, False if failed
+        True if successful. This function always returns True on success;
+        failures are communicated by raising exceptions rather than returning False.
+
+    Raises:
+        Exception: Any exception from pipeline loading, image reading, or processing
+            will propagate to the caller. The caller is responsible for catching
+            exceptions and handling failures appropriately.
     """
     # Load pipeline
     pipeline = ImagePipeline.from_json(pipeline_path)
@@ -118,8 +124,11 @@ def process_single_image_core(
               help="File extension for object map saves")
 @click.option("--objmap-rgb-ext", default="png",
               help="File extension for object map RGB saves")
-@click.option("--include-dataset-column", is_flag=True,
-              help="Add Dataset column to measurements CSV")
+@click.option("--no-dataset-column", "include_dataset_column",
+              is_flag=True, flag_value=False, default=True,
+              help="Exclude Metadata_Dataset column from measurements CSV (included by default)")
+@click.option("--flat-mode", is_flag=True, default=False,
+              help="Use flat directory structure (no dataset subdirectories)")
 @click.option("--event-log", type=click.Path(path_type=Path), default=None,
               help="Path to event log file (for status updates)")
 def main(
@@ -144,6 +153,7 @@ def main(
     objmap_ext: str,
     objmap_rgb_ext: str,
     include_dataset_column: bool,
+    flat_mode: bool,
     event_log: Optional[Path]
 ):
     """
@@ -191,7 +201,8 @@ def main(
             base_dir=output_dir,
             save_layers=save_layers,
             extensions=extensions,
-            include_dataset_column=include_dataset_column
+            include_dataset_column=include_dataset_column,
+            flat_mode=flat_mode
         )
         
         # Process image

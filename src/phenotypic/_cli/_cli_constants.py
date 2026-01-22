@@ -23,3 +23,6 @@ MAX_SLURM_TIME_MINUTES = 10080  # 7 days
 
 # Job submission
 SBATCH_SUBMISSION_TIMEOUT = 30  # seconds
+
+# Dataset naming
+ROOT_DATASET = "_root"  # Special name for images directly in input directory

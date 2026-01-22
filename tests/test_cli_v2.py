@@ -381,18 +381,21 @@ class TestOutputManager:
 
         manager.create_structure(datasets)
 
-        # Check core directories
-        assert (temp_output_dir / "measurements").exists()
-        assert (temp_output_dir / "overlays").exists()
+        # Check logs directory at root level
         assert (temp_output_dir / "logs").exists()
 
-        # Check optional layer directories
-        assert (temp_output_dir / "rgb").exists()
-        assert (temp_output_dir / "objmask").exists()
-        assert not (temp_output_dir / "gray").exists()  # Not requested
+        # Check dataset-first structure (dataset1/layer/ not layer/dataset1/)
+        assert (temp_output_dir / "dataset1" / "measurements").exists()
+        assert (temp_output_dir / "dataset1" / "overlays").exists()
 
-        # Check dataset subdirectories
-        assert (temp_output_dir / "measurements" / "dataset1").exists()
+        # Check optional layer directories within dataset
+        assert (temp_output_dir / "dataset1" / "rgb").exists()
+        assert (temp_output_dir / "dataset1" / "objmask").exists()
+        assert not (temp_output_dir / "dataset1" / "gray").exists()  # Not requested
+
+        # Old structure should NOT exist
+        assert not (temp_output_dir / "measurements").exists()
+        assert not (temp_output_dir / "overlays").exists()
 
 
 class TestHTMLReportGenerator:
@@ -1064,17 +1067,15 @@ class TestEdgeCases:
         assert result.exit_code == 0
 
         # Verify output files created for the single image
-        measurements_file = (output_dir / "measurements" / "single.csv")
-        overlay_file = (output_dir / "overlays" / "single.png")
+        # Flat mode: single _root dataset creates output_dir/measurements/single.csv directly
+        measurements_file = output_dir / "measurements" / "single.csv"
+        overlay_file = output_dir / "overlays" / "single.png"
 
-        # Check if files exist in direct measurements/overlays or in _root subdirectory
-        if not measurements_file.exists():
-            measurements_file = (output_dir / "measurements" / "_root" / "single.csv")
-        if not overlay_file.exists():
-            overlay_file = (output_dir / "overlays" / "_root" / "single.png")
+        assert measurements_file.exists(), f"Expected {measurements_file} to exist"
+        assert overlay_file.exists(), f"Expected {overlay_file} to exist"
 
-        assert measurements_file.exists()
-        assert overlay_file.exists()
+        # Verify _root folder is NOT created (flat mode)
+        assert not (output_dir / "_root").exists(), "Flat mode should not create _root folder"
 
     def test_empty_input_directory(self, runner, tmp_path, temp_pipeline):
         """Test graceful handling of empty input directory."""
@@ -1158,3 +1159,355 @@ class TestEdgeCases:
             or "added" in error_msg
             or "mismatch" in error_msg
         )
+
+
+class TestNewCoverageGaps:
+    """Tests for previously uncovered edge cases and features."""
+
+    def test_sample_mode_deterministic(self, temp_output_dir):
+        """Test that sample mode with same seed produces same images."""
+        datasets = [
+            Dataset(
+                name="test",
+                images=[Path(f"img{i}.png") for i in range(20)],
+                input_dir=Path("."),
+                output_dir=temp_output_dir,
+            )
+        ]
+
+        # Sample with same seed twice
+        sample1 = get_sample_datasets(datasets, 5, temp_output_dir, random_seed=42)
+        sample2 = get_sample_datasets(datasets, 5, temp_output_dir, random_seed=42)
+
+        # Should get exact same images
+        assert [img.name for img in sample1[0].images] == [
+            img.name for img in sample2[0].images
+        ]
+
+        # Different seed should give different images
+        sample3 = get_sample_datasets(datasets, 5, temp_output_dir, random_seed=123)
+        assert [img.name for img in sample1[0].images] != [
+            img.name for img in sample3[0].images
+        ]
+
+    def test_output_manager_flat_mode_explicit(self, temp_output_dir):
+        """Test OutputManager with explicit flat_mode parameter."""
+        save_layers = {"rgb": False, "gray": False}
+        extensions = {"rgb": ".tiff", "gray": ".tiff"}
+
+        # Test with explicit flat_mode=True
+        manager_flat = OutputManager(
+            base_dir=temp_output_dir / "flat",
+            save_layers=save_layers,
+            extensions=extensions,
+            flat_mode=True,
+        )
+
+        # Path should be flat (no dataset subdirectory)
+        path = manager_flat.get_output_path("_root", "measurements", "image1")
+        assert path == temp_output_dir / "flat" / "measurements" / "image1.csv"
+
+        # Test with explicit flat_mode=False
+        manager_dataset = OutputManager(
+            base_dir=temp_output_dir / "dataset",
+            save_layers=save_layers,
+            extensions=extensions,
+            flat_mode=False,
+        )
+
+        # Path should include dataset subdirectory
+        path = manager_dataset.get_output_path("plate1", "measurements", "image1")
+        assert path == temp_output_dir / "dataset" / "plate1" / "measurements" / "image1.csv"
+
+    def test_initial_images_stored_in_state(self, temp_output_dir):
+        """Test that initial_images is stored when creating state."""
+        datasets = [
+            Dataset(
+                name="test",
+                images=[Path(f"img{i}.png") for i in range(5)],
+                input_dir=Path("."),
+                output_dir=temp_output_dir,
+            )
+        ]
+
+        config = ExecutionConfig(
+            pipeline_json=Path("pipeline.json"),
+            input_path=Path("."),
+            output_dir=temp_output_dir,
+            image_type="GridImage",
+            nrows=8,
+            ncols=12,
+            bit_depth=None,
+            n_jobs=1,
+            slurm_args={},
+            force_local=True,
+            wait=False,
+            save_rgb=False,
+            save_gray=False,
+            save_enh_gray=False,
+            save_objmask=False,
+            save_objmap=False,
+            save_objmap_rgb=False,
+            rgb_ext=".tiff",
+            gray_ext=".tiff",
+            enh_gray_ext=".tiff",
+            objmask_ext=".png",
+            objmap_ext=".png",
+            objmap_rgb_ext=".png",
+            include_dataset_column=True,
+            dry_run=False,
+            sample=None,
+            resume=False,
+            retry_failures=False,
+            skip_validation=False,
+        )
+
+        state = create_initial_state(config, datasets, temp_output_dir)
+
+        # Check initial_images is populated
+        assert "test" in state.datasets
+        assert len(state.datasets["test"].initial_images) == 5
+        assert "img0.png" in state.datasets["test"].initial_images
+
+    def test_resume_after_zero_processed(self, temp_output_dir):
+        """Test resume validation when no images were processed."""
+        datasets = [
+            Dataset(
+                name="test",
+                images=[Path(f"img{i}.png") for i in range(5)],
+                input_dir=Path("."),
+                output_dir=temp_output_dir,
+            )
+        ]
+
+        config = ExecutionConfig(
+            pipeline_json=Path("pipeline.json"),
+            input_path=Path("."),
+            output_dir=temp_output_dir,
+            image_type="GridImage",
+            nrows=8,
+            ncols=12,
+            bit_depth=None,
+            n_jobs=1,
+            slurm_args={},
+            force_local=True,
+            wait=False,
+            save_rgb=False,
+            save_gray=False,
+            save_enh_gray=False,
+            save_objmask=False,
+            save_objmap=False,
+            save_objmap_rgb=False,
+            rgb_ext=".tiff",
+            gray_ext=".tiff",
+            enh_gray_ext=".tiff",
+            objmask_ext=".png",
+            objmap_ext=".png",
+            objmap_rgb_ext=".png",
+            include_dataset_column=True,
+            dry_run=False,
+            sample=None,
+            resume=False,
+            retry_failures=False,
+            skip_validation=False,
+        )
+
+        # Create and save initial state (no processing done)
+        state = create_initial_state(config, datasets, temp_output_dir)
+        temp_output_dir.mkdir(parents=True, exist_ok=True)
+        save_processing_state(state, temp_output_dir)
+
+        # Try to resume with different images
+        different_datasets = [
+            Dataset(
+                name="test",
+                images=[Path(f"different{i}.png") for i in range(5)],
+                input_dir=Path("."),
+                output_dir=temp_output_dir,
+            )
+        ]
+
+        # Load state and validate
+        loaded_state = load_processing_state(temp_output_dir)
+        assert loaded_state is not None
+
+        # The initial_images should detect the mismatch even with zero completed
+        current_images = {img.name for img in different_datasets[0].images}
+        assert loaded_state.datasets["test"].initial_images != current_images
+
+    def test_large_dataset_chunking(self):
+        """Test that large datasets are properly chunked for SLURM."""
+        from phenotypic._cli._cli_slurm_config import calculate_optimal_array_chunks
+
+        # Dataset with 2500 images (should create 3 chunks with 1000 limit)
+        num_images = 2500
+        array_limit = 1000
+
+        chunks = calculate_optimal_array_chunks(num_images, array_limit)
+
+        # Should create 3 chunks
+        assert len(chunks) == 3
+        assert chunks[0] == (0, 1000)
+        assert chunks[1] == (1000, 2000)
+        assert chunks[2] == (2000, 2500)
+
+        # Total should equal num_images
+        total = sum(end - start for start, end in chunks)
+        assert total == num_images
+
+    def test_slurm_script_has_flat_mode_flag(self, temp_output_dir):
+        """Test that generated SLURM scripts include --flat-mode when appropriate."""
+        from phenotypic._cli._cli_slurm_array_scripts import generate_array_job_script
+
+        # Create single _root dataset (should trigger flat mode)
+        dataset = Dataset(
+            name="_root",
+            images=[Path(f"img{i}.png") for i in range(10)],
+            input_dir=Path("."),
+            output_dir=temp_output_dir,
+        )
+
+        config = ExecutionConfig(
+            pipeline_json=Path("pipeline.json"),
+            input_path=Path("."),
+            output_dir=temp_output_dir,
+            image_type="GridImage",
+            nrows=8,
+            ncols=12,
+            bit_depth=None,
+            n_jobs=1,
+            slurm_args={"partition": "test"},
+            force_local=False,
+            wait=False,
+            save_rgb=False,
+            save_gray=False,
+            save_enh_gray=False,
+            save_objmask=False,
+            save_objmap=False,
+            save_objmap_rgb=False,
+            rgb_ext="tiff",
+            gray_ext="tiff",
+            enh_gray_ext="tiff",
+            objmask_ext="png",
+            objmap_ext="png",
+            objmap_rgb_ext="png",
+            include_dataset_column=True,
+            dry_run=False,
+            sample=None,
+            resume=False,
+            retry_failures=False,
+            skip_validation=False,
+        )
+
+        script_path = generate_array_job_script(
+            dataset=dataset,
+            array_indices=(0, 10),
+            config=config,
+            output_dir=temp_output_dir,
+            flat_mode=True,
+        )
+
+        script_content = script_path.read_text()
+        assert "--flat-mode" in script_content
+
+    def test_slurm_script_bash_syntax(self, temp_output_dir):
+        """Test that generated SLURM scripts have valid bash syntax."""
+        import subprocess
+        from phenotypic._cli._cli_slurm_array_scripts import generate_array_job_script
+
+        dataset = Dataset(
+            name="test",
+            images=[Path(f"img{i}.png") for i in range(5)],
+            input_dir=Path("."),
+            output_dir=temp_output_dir,
+        )
+
+        config = ExecutionConfig(
+            pipeline_json=Path("pipeline.json"),
+            input_path=Path("."),
+            output_dir=temp_output_dir,
+            image_type="GridImage",
+            nrows=8,
+            ncols=12,
+            bit_depth=None,
+            n_jobs=1,
+            slurm_args={"partition": "test"},
+            force_local=False,
+            wait=False,
+            save_rgb=False,
+            save_gray=False,
+            save_enh_gray=False,
+            save_objmask=False,
+            save_objmap=False,
+            save_objmap_rgb=False,
+            rgb_ext="tiff",
+            gray_ext="tiff",
+            enh_gray_ext="tiff",
+            objmask_ext="png",
+            objmap_ext="png",
+            objmap_rgb_ext="png",
+            include_dataset_column=True,
+            dry_run=False,
+            sample=None,
+            resume=False,
+            retry_failures=False,
+            skip_validation=False,
+        )
+
+        script_path = generate_array_job_script(
+            dataset=dataset,
+            array_indices=(0, 5),
+            config=config,
+            output_dir=temp_output_dir,
+        )
+
+        # Run bash syntax check
+        result = subprocess.run(
+            ["bash", "-n", str(script_path)],
+            capture_output=True,
+            text=True,
+        )
+
+        assert result.returncode == 0, f"Bash syntax error: {result.stderr}"
+
+    def test_dry_run_creates_no_files(self, runner, tmp_path, temp_pipeline):
+        """Test that --dry-run truly creates no output files whatsoever."""
+        input_dir = tmp_path / "input"
+        output_dir = tmp_path / "output"
+        input_dir.mkdir()
+
+        # Create a test image
+        grid_image = load_synth_plate()
+        from PIL import Image as PILImage
+
+        pil_img = PILImage.fromarray(grid_image.rgb[:].astype("uint8"))
+        pil_img.save(input_dir / "test.jpg")
+
+        result = runner.invoke(
+            main,
+            [
+                str(temp_pipeline),
+                str(input_dir),
+                "-o",
+                str(output_dir),
+                "--dry-run",
+                "--skip-validation",
+            ],
+        )
+
+        assert result.exit_code == 0
+
+        # Stronger assertion: no files or directories created at all
+        if output_dir.exists():
+            all_files = list(output_dir.rglob("*"))
+            assert len(all_files) == 0, f"Dry run created files: {all_files}"
+
+    def test_root_dataset_constant_consistency(self):
+        """Test that ROOT_DATASET constant is used consistently."""
+        from phenotypic._cli._cli_constants import ROOT_DATASET
+
+        # Verify the constant value
+        assert ROOT_DATASET == "_root"
+
+        # This test ensures the constant exists and can be imported
+        # The actual replacement of magic strings is a code change, not tested here

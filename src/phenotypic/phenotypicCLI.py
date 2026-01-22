@@ -143,7 +143,12 @@ from phenotypic._cli._cli_state_management import (
 )
 from phenotypic._cli._cli_types import ExecutionConfig
 from phenotypic._cli._cli_utils import normalize_extension
-from phenotypic._cli._cli_validation import full_validation
+from phenotypic._cli._cli_validation import (
+    full_validation,
+    validate_execution_config,
+    validate_pipeline,
+    validate_pipeline_on_test_image,
+)
 from phenotypic._cli._cli_constants import (
     MIN_SLURM_TIME_MINUTES,
     MAX_SLURM_TIME_MINUTES,
@@ -251,14 +256,19 @@ def _validate_resume_input_images(
     # For each dataset, compare actual image names
     for ds_name, ds_state in state.datasets.items():
         # Get previous image names from state
-        prev_images = ds_state.completed | ds_state.failed
+        # Prefer initial_images (set at run start) for accurate validation,
+        # fallback to completed|failed for backward compatibility with older state files
+        if ds_state.initial_images:
+            prev_images = ds_state.initial_images
+        else:
+            prev_images = ds_state.completed | ds_state.failed
 
         # Get current image names from scan
         current_dataset = current_datasets_map[ds_name]
         curr_images = {img.name for img in current_dataset.images}
 
-        # Check if sets match exactly
-        if prev_images != curr_images:
+        # Check if sets match exactly (only if we have a valid previous set)
+        if prev_images and prev_images != curr_images:
             missing = prev_images - curr_images
             added = curr_images - prev_images
 
@@ -544,9 +554,12 @@ def _display_execution_config(
         help="File extension for object map RGB saves",
 )
 @click.option(
-        "--include-dataset-column",
+        "--no-dataset-column",
+        "include_dataset_column",
         is_flag=True,
-        help="Add 'Dataset' column to master_measurements.csv",
+        flag_value=False,
+        default=True,
+        help="Exclude 'Metadata_Dataset' column from master_measurements.csv (included by default)",
 )
 @click.option(
         "--dry-run",
@@ -558,6 +571,12 @@ def _display_execution_config(
         type=int,
         default=None,
         help="Process N random images per dataset for testing",
+)
+@click.option(
+        "--random-seed",
+        type=int,
+        default=None,
+        help="Random seed for --sample reproducibility",
 )
 @click.option(
         "--resume",
@@ -601,6 +620,7 @@ def main(
         include_dataset_column: bool,
         dry_run: bool,
         sample: Optional[int],
+        random_seed: Optional[int],
         resume: bool,
         retry_failures: bool,
         skip_validation: bool,
@@ -808,21 +828,72 @@ def main(
             from rich.console import Console
 
             console = Console()
+            console.print()  # Add blank line before validation
 
-            # Show validation steps with spinners
-            with console.status("[bold cyan]Validating configuration...", spinner="dots"):
-                is_valid, errors = full_validation(config, datasets)
+            # Step 1: Validate execution config
+            with console.status("[bold cyan]Validating execution configuration...", spinner="dots"):
+                config_valid, config_error = validate_execution_config(config)
 
-            if not is_valid:
-                console.print("[bold red]✗ Validation failed:", style="bold red")
-                for error in errors:
-                    console.print(f"  - {error}", style="red")
+            if not config_valid:
+                console.print("[bold red]✗ Execution config validation failed:", style="bold red")
+                console.print(f"  - {config_error}", style="red")
                 sys.exit(1)
+            console.print("[green]✓ Execution configuration validated")
 
-            # Show success
-            console.print("[bold green]✓ Configuration validated successfully")
+            # Step 2: Validate pipeline loading
+            with console.status("[bold cyan]Loading pipeline JSON...", spinner="dots"):
+                pipeline_valid, pipeline_error = validate_pipeline(
+                    config.pipeline_json,
+                    config.skip_validation
+                )
+
+            if not pipeline_valid:
+                console.print("[bold red]✗ Pipeline loading failed:", style="bold red")
+                console.print(f"  - {pipeline_error}", style="red")
+                sys.exit(1)
             console.print("[green]✓ Pipeline loaded successfully")
-            console.print("[green]✓ Test image processed successfully")
+
+            # Step 3: Test pipeline on sample image
+            test_image_path = None
+            if datasets:
+                for dataset in datasets:
+                    if dataset.images:
+                        test_image_path = dataset.images[0]
+                        break
+
+            if test_image_path:
+                # Determine image class
+                from phenotypic import Image, GridImage
+                image_cls = GridImage if config.image_type == "GridImage" else Image
+
+                # Prepare read kwargs
+                read_kwargs = {}
+                if config.image_type == "GridImage":
+                    read_kwargs["nrows"] = config.nrows
+                    read_kwargs["ncols"] = config.ncols
+                if config.bit_depth is not None:
+                    read_kwargs["bit_depth"] = config.bit_depth
+
+                console.print(f"[cyan]Testing pipeline on: {test_image_path.name}")
+
+                with console.status("[bold cyan]Processing test image...", spinner="dots"):
+                    test_valid, test_error = validate_pipeline_on_test_image(
+                        config.pipeline_json,
+                        test_image_path,
+                        image_cls,
+                        read_kwargs,
+                        config.skip_validation
+                    )
+
+                if not test_valid:
+                    console.print("[bold red]✗ Test image processing failed:", style="bold red")
+                    console.print(f"  - {test_error}", style="red")
+                    sys.exit(1)
+                console.print("[green]✓ Test image processed successfully")
+            else:
+                console.print("[yellow]⚠ No test image available - skipping pipeline test")
+
+            console.print()  # Add blank line after validation
         else:
             from rich.console import Console
             console = Console()
@@ -848,7 +919,7 @@ def main(
                     f"images per dataset"
             )
             datasets = get_sample_datasets(
-                    datasets, config.sample, output_dir
+                    datasets, config.sample, output_dir, random_seed
             )
             total_images = sum(len(d.images) for d in datasets)
             click.echo(f"Processing {total_images} sample images\n")

@@ -7,6 +7,7 @@ before running large batch processing jobs.
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Tuple, Optional, Dict, Any, TYPE_CHECKING
 
@@ -215,9 +216,5 @@ def full_validation(
         
         if not test_valid:
             errors.append(test_error)
-    
+
     return len(errors) == 0, errors
-
-
-# Import json for pipeline validation
-import json

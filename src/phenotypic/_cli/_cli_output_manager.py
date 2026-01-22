@@ -35,69 +35,73 @@ class OutputManager:
         base_dir: Path,
         save_layers: Dict[str, bool],
         extensions: Dict[str, str],
-        include_dataset_column: bool = False
+        include_dataset_column: bool = True,
+        flat_mode: Optional[bool] = None
     ):
         """
         Initialize OutputManager.
-        
+
         Args:
             base_dir: Base output directory for all results
             save_layers: Which layers to save {"rgb": True, "gray": False, ...}
             extensions: File extensions for each layer {"rgb": ".tiff", ...}
-            include_dataset_column: Whether to add dataset column to CSVs
+            include_dataset_column: Whether to add Metadata_Dataset column to CSVs (default: True)
+            flat_mode: If True, use flat directory structure (no dataset subdirs).
+                       If False, use dataset-first structure. If None (default),
+                       mode is determined during create_structure() based on datasets.
         """
         self.base_dir = Path(base_dir)
         self.save_layers = save_layers
         self.extensions = extensions
         self.include_dataset_column = include_dataset_column
-        
-        # Core directories (always created)
-        self.measurements_dir = self.base_dir / "measurements"
-        self.overlays_dir = self.base_dir / "overlays"
+
+        # Logs directory (always at root level)
         self.logs_dir = self.base_dir / "logs"
-        
-        # Optional layer directories
-        self.layer_dirs = {
-            "rgb": self.base_dir / "rgb" if save_layers.get("rgb") else None,
-            "gray": self.base_dir / "gray" if save_layers.get("gray") else None,
-            "enh_gray": self.base_dir / "enh_gray" if save_layers.get("enh_gray") else None,
-            "objmask": self.base_dir / "objmask" if save_layers.get("objmask") else None,
-            "objmap": self.base_dir / "objmap" if save_layers.get("objmap") else None,
-            "objmap_rgb": self.base_dir / "objmap_rgb" if save_layers.get("objmap_rgb") else None,
-        }
+
+        # Flat mode flag - can be set explicitly or determined during create_structure()
+        self._flat_mode = flat_mode if flat_mode is not None else False
+        self._flat_mode_explicit = flat_mode is not None
     
     def create_structure(self, datasets: List[Dataset]) -> None:
         """
         Create complete output directory structure.
-        
+
+        Uses dataset-first structure for multiple datasets or named subdirectories.
+        Uses flat structure (no dataset folder) for single _root dataset only.
+
         Args:
             datasets: List of datasets to create directories for
         """
         # Create base directory
         self.base_dir.mkdir(parents=True, exist_ok=True)
-        
-        # Create core directories
-        self.measurements_dir.mkdir(exist_ok=True)
-        self.overlays_dir.mkdir(exist_ok=True)
+
+        # Create logs directory at root level
         self.logs_dir.mkdir(exist_ok=True)
-        (self.logs_dir / "datasets").mkdir(exist_ok=True)
-        
-        # Create optional layer directories
-        for layer_dir in self.layer_dirs.values():
-            if layer_dir is not None:
-                layer_dir.mkdir(exist_ok=True)
-        
-        # Create dataset-specific subdirectories if needed
-        if len(datasets) > 1 or (len(datasets) == 1 and datasets[0].name != "_root"):
+        (self.logs_dir / "slurm").mkdir(exist_ok=True)
+
+        # Determine if flat mode (single _root dataset only)
+        # Only auto-detect if not explicitly set during __init__
+        if not self._flat_mode_explicit:
+            self._flat_mode = (len(datasets) == 1 and datasets[0].name == "_root")
+
+        if self._flat_mode:
+            # Flat mode: create layer directories directly in base_dir
+            (self.base_dir / "measurements").mkdir(exist_ok=True)
+            (self.base_dir / "overlays").mkdir(exist_ok=True)
+            for layer_name, enabled in self.save_layers.items():
+                if enabled:
+                    (self.base_dir / layer_name).mkdir(exist_ok=True)
+        else:
+            # Dataset mode: create dataset folders with subdirectories
             for dataset in datasets:
-                if dataset.name != "_root":
-                    (self.measurements_dir / dataset.name).mkdir(exist_ok=True)
-                    (self.overlays_dir / dataset.name).mkdir(exist_ok=True)
-                    
-                    # Create dataset subdirectories for optional layers
-                    for layer_dir in self.layer_dirs.values():
-                        if layer_dir is not None:
-                            (layer_dir / dataset.name).mkdir(exist_ok=True)
+                dataset_dir = self.base_dir / dataset.name
+                dataset_dir.mkdir(exist_ok=True)
+
+                (dataset_dir / "measurements").mkdir(exist_ok=True)
+                (dataset_dir / "overlays").mkdir(exist_ok=True)
+                for layer_name, enabled in self.save_layers.items():
+                    if enabled:
+                        (dataset_dir / layer_name).mkdir(exist_ok=True)
     
     def get_output_path(
         self,
@@ -107,33 +111,31 @@ class OutputManager:
     ) -> Path:
         """
         Get the output path for a specific file.
-        
+
         Args:
             dataset_name: Dataset name ("_root" for root images)
             layer: Layer type ("measurements", "overlays", "rgb", etc.)
             image_stem: Image filename without extension
-            
+
         Returns:
             Complete output path for the file
         """
-        # Get the appropriate directory
+        # Determine extension
         if layer == "measurements":
-            base = self.measurements_dir
             ext = ".csv"
         elif layer == "overlays":
-            base = self.overlays_dir
             ext = ".png"
         else:
-            base = self.layer_dirs.get(layer)
-            if base is None:
+            if not self.save_layers.get(layer):
                 raise ValueError(f"Layer '{layer}' is not enabled")
             ext = self.extensions.get(layer, ".png")
-        
-        # Add dataset subdirectory if not root
-        if dataset_name != "_root":
-            base = base / dataset_name
-        
-        return base / f"{image_stem}{ext}"
+
+        # Flat mode: base/layer/file
+        if self._flat_mode:
+            return self.base_dir / layer / f"{image_stem}{ext}"
+
+        # Dataset mode: base/dataset/layer/file
+        return self.base_dir / dataset_name / layer / f"{image_stem}{ext}"
     
     def save_measurements(
         self,
@@ -143,20 +145,20 @@ class OutputManager:
     ) -> Path:
         """
         Save measurements CSV for a single image.
-        
+
         Args:
             measurements: DataFrame with measurement data
             dataset_name: Dataset name
             image_stem: Image filename without extension
-            
+
         Returns:
             Path where measurements were saved
         """
         # Add dataset column if requested
-        if self.include_dataset_column and "Dataset" not in measurements.columns:
+        if self.include_dataset_column and "Metadata_Dataset" not in measurements.columns:
             measurements = measurements.copy()
-            measurements.insert(0, "Dataset", dataset_name)
-        
+            measurements.insert(0, "Metadata_Dataset", dataset_name)
+
         output_path = self.get_output_path(dataset_name, "measurements", image_stem)
         measurements.to_csv(output_path, index=False)
         return output_path
@@ -311,9 +313,11 @@ class OutputManager:
         skipped_files = []
 
         for dataset in datasets:
-            dataset_meas_dir = self.measurements_dir
-            if dataset.name != "_root":
-                dataset_meas_dir = dataset_meas_dir / dataset.name
+            # Path depends on flat_mode
+            if self._flat_mode:
+                dataset_meas_dir = self.base_dir / "measurements"
+            else:
+                dataset_meas_dir = self.base_dir / dataset.name / "measurements"
 
             # Read all CSV files in this dataset's measurement directory
             csv_files = list(dataset_meas_dir.glob("*.csv"))
@@ -323,8 +327,8 @@ class OutputManager:
                     df = pd.read_csv(csv_file)
 
                     # Add dataset column if requested and not already present
-                    if self.include_dataset_column and "Dataset" not in df.columns:
-                        df.insert(0, "Dataset", dataset.name)
+                    if self.include_dataset_column and "Metadata_Dataset" not in df.columns:
+                        df.insert(0, "Metadata_Dataset", dataset.name)
 
                     all_measurements.append(df)
 

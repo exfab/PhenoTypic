@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import random
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
 import click
 
@@ -291,7 +291,10 @@ def execute_dry_run(
 
 
 def get_sample_datasets(
-    datasets: List[Dataset], n_samples: int, output_dir: Path
+    datasets: List[Dataset],
+    n_samples: int,
+    output_dir: Path,
+    random_seed: Optional[int] = None
 ) -> List[Dataset]:
     """
     Create sample datasets with random subset of images.
@@ -300,10 +303,14 @@ def get_sample_datasets(
         datasets: Original datasets
         n_samples: Number of images to sample per dataset
         output_dir: Output directory
+        random_seed: Optional seed for reproducible sampling
 
     Returns:
         List of Dataset objects with sampled images
     """
+    if random_seed is not None:
+        random.seed(random_seed)
+
     sample_datasets = []
 
     for dataset in datasets:

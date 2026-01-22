@@ -53,7 +53,8 @@ def save_processing_state(
         state_dict["datasets"][dataset_name] = {
             "completed": list(ds_state.completed),
             "failed": list(ds_state.failed),
-            "errors": ds_state.errors
+            "errors": ds_state.errors,
+            "initial_images": list(ds_state.initial_images)
         }
     
     # Write atomically (temp file + rename)
@@ -96,16 +97,20 @@ def load_processing_state(output_dir: Path) -> Optional[ProcessingState]:
     # Merge with stored state (prefer event log as source of truth)
     datasets = {}
     for dataset_name in state_dict["datasets"].keys():
+        ds_dict = state_dict["datasets"][dataset_name]
         if dataset_name in latest_states:
-            # Use aggregated state from event log
-            datasets[dataset_name] = latest_states[dataset_name]
+            # Use aggregated state from event log, but preserve initial_images from stored state
+            event_state = latest_states[dataset_name]
+            event_state.initial_images = set(ds_dict.get("initial_images", []))
+            datasets[dataset_name] = event_state
         else:
             # Fallback to stored state
             ds_dict = state_dict["datasets"][dataset_name]
             datasets[dataset_name] = DatasetState(
                 completed=set(ds_dict.get("completed", [])),
                 failed=set(ds_dict.get("failed", [])),
-                errors=ds_dict.get("errors", {})
+                errors=ds_dict.get("errors", {}),
+                initial_images=set(ds_dict.get("initial_images", []))
             )
     
     # Create ProcessingState object
@@ -140,10 +145,11 @@ def create_initial_state(
     Returns:
         New ProcessingState object
     """
-    # Initialize empty dataset states
+    # Initialize dataset states with initial image list
     dataset_states = {}
     for dataset in datasets:
-        dataset_states[dataset.name] = DatasetState()
+        initial_images = {img.name for img in dataset.images}
+        dataset_states[dataset.name] = DatasetState(initial_images=initial_images)
     
     # Create state object
     state = ProcessingState(
