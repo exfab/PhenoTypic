@@ -85,7 +85,7 @@ class ExecutionConfig:
     
     # Execution mode
     n_jobs: int
-    slurm_kwds: Dict[str, any]
+    slurm_args: Dict[str, any]
     force_local: bool
     wait: bool  # Wait for SLURM jobs to complete
     
@@ -115,7 +115,7 @@ class ExecutionConfig:
         """Check if SLURM mode should be used."""
         if self.force_local:
             return False
-        return bool(self.slurm_kwds)
+        return bool(self.slurm_args)
 
 
 @dataclass

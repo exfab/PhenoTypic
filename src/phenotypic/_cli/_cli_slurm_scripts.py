@@ -15,7 +15,7 @@ from ._cli_types import Dataset, ExecutionConfig
 
 def generate_slurm_directives(
         job_name: str,
-        slurm_kwds: Dict[str, Any],
+        slurm_args: Dict[str, Any],
         output_log: Path,
         error_log: Path
 ) -> str:
@@ -26,7 +26,7 @@ def generate_slurm_directives(
 
     Args:
         job_name: Job name
-        slurm_kwds: SLURM parameters dict (submitit format)
+        slurm_args: SLURM parameters dict (submitit format)
         output_log: Path for stdout log
         error_log: Path for stderr log
 
@@ -45,7 +45,7 @@ def generate_slurm_directives(
     directives.append(f"#SBATCH --error={error_log}")
 
     # Add user-provided SLURM parameters
-    for key, value in slurm_kwds.items():
+    for key, value in slurm_args.items():
         # Convert submitit-style keys to SBATCH directive names
         directive_name = key.replace("slurm_", "").replace("_", "-")
 
@@ -114,7 +114,7 @@ def generate_image_processing_script(
     # Generate SBATCH directives
     directives = generate_slurm_directives(
             job_name=job_name,
-            slurm_kwds=config.slurm_kwds,
+            slurm_args=config.slurm_args,
             output_log=output_log,
             error_log=error_log
     )

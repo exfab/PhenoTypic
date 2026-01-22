@@ -134,10 +134,10 @@ def validate_execution_config(
         return False, "n_jobs cannot be 0 (use -1 for all cores or positive integer)"
     
     # Check SLURM parameters if provided
-    if config.slurm_kwds:
+    if config.slurm_args:
         # Warn about common missing parameters
         required_slurm_params = ["slurm_partition"]
-        missing = [p for p in required_slurm_params if p not in config.slurm_kwds]
+        missing = [p for p in required_slurm_params if p not in config.slurm_args]
         if missing:
             # This is a warning, not an error - let SLURM handle it
             pass

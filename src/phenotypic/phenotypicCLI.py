@@ -38,11 +38,14 @@ Examples:
 
     # SLURM execution (autonomous)
     uv run python -m phenotypic pipeline.json ./images \
-        --slurm-kwds slurm_partition=compute slurm_account=proj mem_gb=16
+        --slurm-args slurm_partition=compute \
+        --slurm-args slurm_account=proj \
+        --slurm-args mem_gb=16
 
     # SLURM with progress monitoring
     uv run python -m phenotypic pipeline.json ./images \
-        --slurm-kwds slurm_partition=compute slurm_account=proj \
+        --slurm-args slurm_partition=compute \
+        --slurm-args slurm_account=proj \
         --wait
 
     # Save intermediate layers
@@ -53,19 +56,69 @@ Examples:
     uv run python -m phenotypic pipeline.json ./plates \
         --image-type GridImage --nrows 16 --ncols 24
 
+SLURM Execution (Autonomous HPC Cluster Processing):
+    Use --slurm-args to submit jobs to an HPC cluster via SLURM. The CLI will:
+    1. Generate SBATCH scripts for each dataset
+    2. Create array jobs for parallel image processing
+    3. Automatically handle dependencies and chunking
+    4. Support optional job monitoring with --wait
+
+    Common Academic HPC SLURM Parameters:
+        slurm_partition    Partition/queue name (e.g., compute, gpu, highmem)
+        slurm_account      Account for billing/fairshare (required on most clusters)
+        slurm_qos          Quality of Service tier (e.g., normal, high)
+        time               Wall time in minutes (auto-converts to HH:MM:SS)
+        mem_gb             Memory per node in GB (convenience param, adds "G" suffix)
+        slurm_cpus_per_task CPUs per task (useful for joblib parallelism)
+        slurm_constraint   Node features/constraints (e.g., gpu_type, cpu_generation)
+        slurm_mail_type    Email notifications (e.g., END, FAIL, ALL)
+        slurm_mail_user    Email address for notifications
+
+    Advanced SLURM Parameters:
+        slurm_nodes        Number of nodes (default: 1)
+        slurm_mem          Memory with custom units (e.g., "32G", "1024M")
+        slurm_mem_per_cpu  Memory per CPU instead of per node
+        slurm_gpus_per_node GPUs per node for GPU-accelerated operations
+
+    Time Parameter Notes:
+        - Use 'time' or 'slurm_time' with integer minutes
+        - Automatically converts to HH:MM:SS format (e.g., time=120 → 02:00:00)
+        - Valid range: 1-10080 minutes (1 minute to 7 days)
+
+    Example: Submit with account, partition, memory, and time limits
+        uv run python -m phenotypic pipeline.json ./images \\
+            --slurm-args slurm_partition=compute \\
+            --slurm-args slurm_account=lab_proj \\
+            --slurm-args mem_gb=32 \\
+            --slurm-args time=120 \\
+            --slurm-args slurm_mail_type=END \\
+            --slurm-args slurm_mail_user=user@university.edu \\
+            --wait
+
+    Example: Dry-run to preview SLURM submission plan
+        uv run python -m phenotypic pipeline.json ./images \\
+            --slurm-args slurm_partition=compute \\
+            --slurm-args slurm_account=lab_proj \\
+            --dry-run
+
 Migration Notes (v1.x → v2.0):
     - OUTPUT_DIR is now optional (generates timestamped dir if not provided)
     - Use -o/--output-dir instead of positional OUTPUT_DIR argument
-    - --slurm-params KEY=VALUE replaced with --slurm-kwds KEY=VALUE (space-separated)
+    - --slurm-params KEY=VALUE replaced with --slurm-args KEY=VALUE
+    - --slurm-kwds renamed to --slurm-args (breaking change in v2.0)
     - Recursive directory processing now preserves subdirectory hierarchy
 """
 
 import sys
+import logging
 from datetime import datetime
 from pathlib import Path
 from typing import Optional, Sequence
 
 import click
+
+# Set up logger
+logger = logging.getLogger(__name__)
 
 from phenotypic import Image, GridImage, ImagePipeline
 from phenotypic._cli._cli_directory_scanner import (
@@ -90,14 +143,44 @@ from phenotypic._cli._cli_state_management import (
 from phenotypic._cli._cli_types import ExecutionConfig
 from phenotypic._cli._cli_utils import normalize_extension
 from phenotypic._cli._cli_validation import full_validation
+from phenotypic._cli._cli_constants import (
+    MIN_SLURM_TIME_MINUTES,
+    MAX_SLURM_TIME_MINUTES,
+)
 
 
-def _parse_slurm_kwds(slurm_kwds: Sequence[str]) -> dict:
+def setup_logging(debug: bool = False):
+    """Configure logging for CLI."""
+    level = logging.DEBUG if debug else logging.INFO
+    handler = logging.StreamHandler()
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    handler.setFormatter(formatter)
+
+    root_logger = logging.getLogger()
+    root_logger.setLevel(level)
+    root_logger.addHandler(handler)
+
+
+def error_exit(message: str, details: Optional[str] = None, code: int = 1) -> None:
+    """Exit with consistent error formatting.
+
+    Args:
+        message: Main error message
+        details: Optional additional details
+        code: Exit code (default: 1)
+    """
+    click.echo(f"Error: {message}", err=True)
+    if details:
+        click.echo(f"\n{details}", err=True)
+    sys.exit(code)
+
+
+def _parse_slurm_args(slurm_args: Sequence[str]) -> dict:
     """
     Parse space-separated KEY=VALUE pairs into dictionary.
 
     Args:
-        slurm_kwds: Sequence of "KEY=VALUE" strings
+        slurm_args: Sequence of "KEY=VALUE" strings
 
     Returns:
         Dictionary of parsed parameters
@@ -108,21 +191,21 @@ def _parse_slurm_kwds(slurm_kwds: Sequence[str]) -> dict:
     import ast
 
     parsed = {}
-    for kwd in slurm_kwds:
-        if "=" not in kwd:
+    for param in slurm_args:
+        if "=" not in param:
             raise click.BadParameter(
-                    "--slurm-kwds must be KEY=VALUE pairs",
-                    param_hint="--slurm-kwds",
+                    "--slurm-args must be KEY=VALUE pairs",
+                    param_hint="--slurm-args",
             )
 
-        key, value = kwd.split("=", 1)
+        key, value = param.split("=", 1)
         key = key.strip()
         value = value.strip()
 
         if not key:
             raise click.BadParameter(
                     "SLURM parameter keys cannot be empty",
-                    param_hint="--slurm-kwds",
+                    param_hint="--slurm-args",
             )
 
         # Try to parse value as Python literal
@@ -135,6 +218,58 @@ def _parse_slurm_kwds(slurm_kwds: Sequence[str]) -> dict:
         parsed[key] = parsed_value
 
     return parsed
+
+
+def _validate_resume_input_images(
+    state,
+    current_datasets
+) -> tuple[bool, Optional[str]]:
+    """
+    Validate that input image set matches between resume runs.
+
+    Checks:
+    1. All datasets from previous run are present
+    2. Image filenames match exactly (not just counts)
+
+    Args:
+        state: Saved processing state
+        current_datasets: Currently scanned datasets
+
+    Returns:
+        Tuple of (is_valid, error_message)
+        If valid, error_message is None
+    """
+    # Build mapping of current datasets
+    current_datasets_map = {ds.name: ds for ds in current_datasets}
+
+    # Check all previous datasets still exist
+    for ds_name in state.datasets.keys():
+        if ds_name not in current_datasets_map:
+            return False, f"Dataset '{ds_name}' from previous run not found in input directory"
+
+    # For each dataset, compare actual image names
+    for ds_name, ds_state in state.datasets.items():
+        # Get previous image names from state
+        prev_images = ds_state.completed | ds_state.failed
+
+        # Get current image names from scan
+        current_dataset = current_datasets_map[ds_name]
+        curr_images = {img.name for img in current_dataset.images}
+
+        # Check if sets match exactly
+        if prev_images != curr_images:
+            missing = prev_images - curr_images
+            added = curr_images - prev_images
+
+            error_parts = [f"Image set mismatch in dataset '{ds_name}':"]
+            if missing:
+                error_parts.append(f"  - Missing {len(missing)} images (e.g., {list(missing)[:3]})")
+            if added:
+                error_parts.append(f"  - Added {len(added)} new images (e.g., {list(added)[:3]})")
+
+            return False, "\n".join(error_parts)
+
+    return True, None
 
 
 @click.command()
@@ -162,17 +297,17 @@ def _parse_slurm_kwds(slurm_kwds: Sequence[str]) -> dict:
 )
 @click.option(
         "--nrows",
-        type=int,
+        type=click.IntRange(min=1),
         default=8,
         show_default=True,
-        help="Number of rows for GridImage",
+        help="Number of rows for GridImage (must be positive)",
 )
 @click.option(
         "--ncols",
-        type=int,
+        type=click.IntRange(min=1),
         default=12,
         show_default=True,
-        help="Number of columns for GridImage",
+        help="Number of columns for GridImage (must be positive)",
 )
 @click.option(
         "--bit-depth",
@@ -188,10 +323,12 @@ def _parse_slurm_kwds(slurm_kwds: Sequence[str]) -> dict:
         help="Number of parallel jobs for local execution (-1 = all cores)",
 )
 @click.option(
-        "--slurm-kwds",
+        "--slurm-args",
         multiple=True,
-        help="SLURM parameters as space-separated KEY=VALUE pairs "
-             "(e.g., --slurm-kwds slurm_partition=compute mem_gb=16)",
+        help="SLURM parameters as KEY=VALUE pairs. Pass multiple parameters with "
+             "repeated --slurm-args flags (e.g., --slurm-args slurm_partition=compute "
+             "--slurm-args mem_gb=16 --slurm-args time=60). Use slurm_ prefix for "
+             "standard SBATCH directives, or use convenience params like mem_gb and time.",
 )
 @click.option(
         "--force-local",
@@ -309,7 +446,7 @@ def main(
         ncols: int,
         bit_depth: Optional[int],
         n_jobs: int,
-        slurm_kwds: Sequence[str],
+        slurm_args: Sequence[str],
         force_local: bool,
         wait: bool,
         save_rgb: bool,
@@ -351,33 +488,33 @@ def main(
             click.echo(str(e), err=True)
             sys.exit(1)
 
-        # Parse SLURM kwargs
-        slurm_kwds_dict = {}
-        if slurm_kwds:
+        # Parse SLURM args
+        slurm_args_dict = {}
+        if slurm_args:
             try:
-                slurm_kwds_dict = _parse_slurm_kwds(slurm_kwds)
+                slurm_args_dict = _parse_slurm_args(slurm_args)
             except click.BadParameter as e:
                 click.echo(str(e), err=True)
                 sys.exit(1)
 
         # Validate SLURM time parameter if present
-        if slurm_kwds_dict:
+        if slurm_args_dict:
             # Check for deprecated parameters
-            if "time_min" in slurm_kwds_dict:
+            if "time_min" in slurm_args_dict:
                 click.echo(
                         "Warning: 'time_min' is deprecated. Use 'time' instead.",
                         err=True
                 )
                 # Auto-migrate
-                if "time" not in slurm_kwds_dict:
-                    slurm_kwds_dict["time"] = slurm_kwds_dict.pop("time_min")
+                if "time" not in slurm_args_dict:
+                    slurm_args_dict["time"] = slurm_args_dict.pop("time_min")
                 else:
-                    slurm_kwds_dict.pop("time_min")
+                    slurm_args_dict.pop("time_min")
 
-            # Validate time parameter type
+            # Validate time parameter type and range
             for time_key in ("time", "slurm_time"):
-                if time_key in slurm_kwds_dict:
-                    time_val = slurm_kwds_dict[time_key]
+                if time_key in slurm_args_dict:
+                    time_val = slurm_args_dict[time_key]
                     if not isinstance(time_val, int):
                         click.echo(
                                 f"Error: '{time_key}' must be an integer (minutes), "
@@ -385,6 +522,22 @@ def main(
                                 err=True
                         )
                         sys.exit(1)
+
+                    # Validate reasonable time range
+                    if time_val < MIN_SLURM_TIME_MINUTES:
+                        click.echo(
+                                f"Error: '{time_key}' must be >= {MIN_SLURM_TIME_MINUTES} minute, got {time_val}",
+                                err=True
+                        )
+                        sys.exit(1)
+                    elif time_val > MAX_SLURM_TIME_MINUTES:
+                        days = MAX_SLURM_TIME_MINUTES / 1440
+                        click.echo(
+                                f"Warning: '{time_key}' is {time_val} minutes "
+                                f"({time_val / 60:.1f} hours). This exceeds typical cluster limits "
+                                f"({MAX_SLURM_TIME_MINUTES} min / {days:.1f} days).",
+                                err=True
+                        )
 
         # Validate flags
         if retry_failures and not resume:
@@ -403,7 +556,7 @@ def main(
                 ncols=ncols,
                 bit_depth=bit_depth,
                 n_jobs=n_jobs,
-                slurm_kwds=slurm_kwds_dict,
+                slurm_args=slurm_args_dict,
                 force_local=force_local,
                 wait=wait,
                 save_rgb=save_rgb,
@@ -553,6 +706,17 @@ def main(
                         "\nThe pipeline or configuration has changed since the "
                         "previous run. Resume is only possible with the same "
                         "pipeline and compatible settings.",
+                        err=True
+                )
+                sys.exit(1)
+
+            # Validate input image set hasn't changed
+            images_valid, image_error = _validate_resume_input_images(state, datasets)
+            if not images_valid:
+                click.echo(f"Error: Cannot resume - {image_error}", err=True)
+                click.echo(
+                        "\nThe input image set has changed since the previous run. "
+                        "Resume is only possible with the same input images.",
                         err=True
                 )
                 sys.exit(1)

@@ -161,7 +161,7 @@ def create_initial_state(
             "ncols": config.ncols,
             "bit_depth": config.bit_depth,
             "n_jobs": config.n_jobs,
-            "slurm_kwds": config.slurm_kwds,
+            "slurm_args": config.slurm_args,
             "save_layers": {
                 "rgb": config.save_rgb,
                 "gray": config.save_gray,

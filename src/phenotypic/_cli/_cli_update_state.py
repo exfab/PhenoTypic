@@ -68,12 +68,17 @@ def append_completion_event(
 
     # Append with file locking for consistency
     try:
-        atomic_append(event_log, event_line, timeout=30.0)
+        atomic_append(event_log, event_line, timeout=60.0)
     except FileLockTimeout as e:
-        logger.warning(f"Timeout acquiring lock for event log: {e}")
-        # Fallback: append without lock (may cause race condition)
-        with open(event_log, 'a', encoding='utf-8') as f:
-            f.write(event_line)
+        logger.error(
+            f"Failed to acquire event log lock after 60s: {e}\n"
+            f"This may indicate filesystem issues or extremely high contention.\n"
+            f"Failed to record: {dataset}/{image} -> {status}"
+        )
+        raise RuntimeError(
+            f"Event log lock timeout after 60s. Cannot safely record processing status. "
+            f"Check filesystem performance or reduce parallel job count."
+        ) from e
 
 
 def parse_event_line(line: str) -> ProcessingEvent:
@@ -96,10 +101,16 @@ def parse_event_line(line: str) -> ProcessingEvent:
     parts = line.split('|')
     if len(parts) < 4:
         raise ValueError(f"Invalid line format: {line}")
-    
+
     timestamp_str, dataset, image, status = parts[:4]
     error_msg = parts[4] if len(parts) > 4 else ""
-    
+
+    # Validate status field
+    if status not in ("completed", "failed"):
+        raise ValueError(
+            f"Invalid status value: '{status}' (expected 'completed' or 'failed')"
+        )
+
     # Unescape error message
     error_msg = error_msg.replace("\\|", "|")
     
@@ -180,11 +191,13 @@ def aggregate_state_from_events(event_log: Path) -> Dict[str, DatasetState]:
 
     # Use atomic read with file locking
     try:
-        return atomic_read(event_log, _parse_event_log, timeout=30.0)
+        return atomic_read(event_log, _parse_event_log, timeout=60.0)
     except FileLockTimeout as e:
-        logger.warning(f"Timeout acquiring lock for reading event log: {e}")
-        # Fallback: read without lock
-        return _parse_event_log(event_log)
+        logger.error(f"Failed to acquire event log lock for reading after 60s: {e}")
+        raise RuntimeError(
+            f"Cannot read event log - file lock timeout after 60s. "
+            f"Check filesystem performance."
+        ) from e
 
 
 def get_remaining_images(

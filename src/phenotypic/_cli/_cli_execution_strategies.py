@@ -3,17 +3,18 @@ Execution strategies for the PhenoTypic CLI.
 
 This module implements the Strategy pattern for different execution modes:
 - LocalParallelStrategy: joblib-based local parallelization
-- AutonomousSLURMStrategy: SLURM cluster execution with bash scripts + submitit
+- AutonomousSLURMStrategy: SLURM cluster execution with array jobs via direct sbatch
 """
 
 from __future__ import annotations
 
+import re
 import subprocess
 import time
 from abc import ABC, abstractmethod
 from datetime import datetime
 from pathlib import Path
-from typing import List, TYPE_CHECKING
+from typing import Dict, List, Optional, TYPE_CHECKING
 
 import click
 from joblib import Parallel, delayed
@@ -30,8 +31,33 @@ from ._cli_types import (
 )
 from ._cli_output_manager import OutputManager
 from ._cli_process_single import process_single_image_core
-from ._cli_slurm_scripts import generate_all_image_scripts
+from ._cli_slurm_config import get_slurm_array_limit
+from ._cli_slurm_array_scripts import generate_all_array_job_scripts
 from ._cli_update_state import append_completion_event, aggregate_state_from_events
+from ._cli_constants import MAX_TRACEBACK_LINES, SLURM_PROGRESS_POLL_INTERVAL
+
+
+def _truncate_error_message(error_msg: str, max_lines: int = MAX_TRACEBACK_LINES) -> str:
+    """
+    Truncate error messages to prevent event log bloat.
+
+    For long error messages (e.g., full stack traces), keep first and last
+    few lines and truncate middle.
+
+    Args:
+        error_msg: Error message to truncate
+        max_lines: Maximum number of lines to keep (default: MAX_TRACEBACK_LINES)
+
+    Returns:
+        Truncated error message
+    """
+    lines = error_msg.split('\n')
+    if len(lines) <= max_lines:
+        return error_msg
+
+    # Keep first 5 and last 5 lines
+    kept_lines = lines[:5] + ['... (truncated) ...'] + lines[-5:]
+    return '\n'.join(kept_lines)
 
 
 class ExecutionStrategy(ABC):
@@ -161,8 +187,11 @@ class LocalParallelStrategy(ExecutionStrategy):
             error_msg = str(e)
             tb = traceback.format_exc()
 
+            # Truncate error message to prevent event log bloat
+            truncated_msg = _truncate_error_message(error_msg)
+
             append_completion_event(
-                event_log, dataset.name, image_path.name, "failed", error_msg
+                event_log, dataset.name, image_path.name, "failed", truncated_msg
             )
             return (dataset.name, image_path.name, False, tb)
 
@@ -239,16 +268,17 @@ class LocalParallelStrategy(ExecutionStrategy):
 
 
 class AutonomousSLURMStrategy(ExecutionStrategy):
-    """Session-independent SLURM execution with bash scripts."""
+    """Session-independent SLURM execution with array jobs via direct sbatch."""
 
     def execute(
         self, datasets: List[Dataset], output_dir: Path
     ) -> ExecutionResults:
         """
-        Execute processing on SLURM cluster.
+        Execute processing on SLURM cluster using array jobs.
 
-        Generates bash scripts for all images, submits via submitit with
-        dependency chains, and returns immediately (or waits if --wait flag set).
+        Generates array job scripts with automatic chunking based on SLURM
+        limits, submits via direct sbatch with sequential dataset dependencies,
+        and optionally monitors progress.
 
         Args:
             datasets: List of datasets to process
@@ -259,29 +289,34 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
         """
         start_time = datetime.now()
 
-        # Generate all bash scripts
-        click.echo("Generating SLURM job scripts...")
-        all_scripts = generate_all_image_scripts(
-            datasets, self.config, output_dir
+        # Query SLURM array limits
+        array_limit = get_slurm_array_limit()
+        click.echo(f"SLURM array limit: {array_limit}")
+
+        # Generate array job scripts for all datasets
+        click.echo("Generating SLURM array job scripts...")
+        all_scripts = generate_all_array_job_scripts(
+            datasets, self.config, output_dir, array_limit
         )
 
-        total_scripts = sum(len(scripts) for scripts in all_scripts.values())
-        click.echo(f"Generated {total_scripts} job scripts")
+        total_jobs = sum(len(scripts) for scripts in all_scripts.values())
+        click.echo(f"Generated {total_jobs} array job scripts")
 
-        # Submit jobs with submitit
-        click.echo("Submitting jobs to SLURM...")
-        job_ids = self._submit_jobs_with_dependencies(
+        # Submit jobs with sequential dependencies
+        click.echo("Submitting array jobs to SLURM...")
+        job_ids = self._submit_array_jobs_with_dependencies(
             all_scripts, datasets, output_dir
         )
 
-        click.echo(f"Submitted {len(job_ids)} jobs to SLURM")
+        click.echo(f"Submitted {len(job_ids)} array jobs to SLURM")
         if job_ids:
-            click.echo(
-                f"Job IDs: {', '.join(str(j) for j in job_ids[:5])}..."
-                f" (showing first 5)"
-                if len(job_ids) > 5
-                else f"Job IDs: {', '.join(str(j) for j in job_ids)}"
-            )
+            if len(job_ids) <= 10:
+                click.echo(f"Job IDs: {', '.join(job_ids)}")
+            else:
+                click.echo(
+                    f"Job IDs: {', '.join(job_ids[:5])} ... "
+                    f"{', '.join(job_ids[-2:])} ({len(job_ids)} total)"
+                )
 
         # Wait if requested
         if self.config.wait:
@@ -291,9 +326,8 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
             final_results = self._monitor_progress(output_dir, datasets)
         else:
             click.echo("\nJobs submitted. Monitor progress with:")
-            click.echo(
-                f"  python -m phenotypic.tools.monitor_slurm_jobs {output_dir}"
-            )
+            click.echo(f"  squeue -u $USER --array")
+            click.echo(f"  tail -f {output_dir}/processing_events.log")
             final_results = None
 
         end_time = datetime.now()
@@ -314,73 +348,145 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
             end_time=end_time,
         )
 
-    def _submit_jobs_with_dependencies(
+    def _submit_array_job_direct(
         self,
-        all_scripts: dict[str, List[Path]],
+        script_path: Path,
+        dependency_job_id: Optional[str] = None,
+    ) -> str:
+        """
+        Submit array job script directly to SLURM via sbatch.
+
+        Args:
+            script_path: Path to array job bash script
+            dependency_job_id: Optional job ID to depend on
+
+        Returns:
+            SLURM job ID (string)
+
+        Raises:
+            RuntimeError: If sbatch is not available or submission fails
+            RuntimeError: If job ID cannot be parsed from sbatch output
+        """
+        cmd = ["sbatch"]
+
+        # Add dependency if specified
+        if dependency_job_id:
+            cmd.extend(["--dependency", f"afterany:{dependency_job_id}"])
+
+        cmd.append(str(script_path))
+
+        try:
+            result = subprocess.run(
+                cmd, capture_output=True, text=True, check=True, timeout=30
+            )
+        except FileNotFoundError:
+            raise RuntimeError(
+                "sbatch command not found. SLURM does not appear to be available. "
+                "Use --force-local to run locally instead."
+            )
+        except subprocess.TimeoutExpired:
+            raise RuntimeError(
+                f"sbatch submission timed out for script: {script_path.name}"
+            )
+        except subprocess.CalledProcessError as e:
+            raise RuntimeError(
+                f"sbatch submission failed for {script_path.name}:\n"
+                f"{e.stderr}"
+            )
+
+        # Parse job ID from "Submitted batch job 12345"
+        match = re.search(r"Submitted batch job (\d+)", result.stdout)
+        if not match:
+            raise RuntimeError(
+                f"Could not parse job ID from sbatch output:\n{result.stdout}"
+            )
+
+        return match.group(1)
+
+    def _submit_array_jobs_with_dependencies(
+        self,
+        all_scripts: Dict[str, List[Path]],
         datasets: List[Dataset],
         output_dir: Path,
     ) -> List[str]:
         """
-        Submit jobs with SLURM dependency chains.
+        Submit array jobs with sequential dataset dependencies.
+
+        Creates a dependency chain where each dataset's jobs depend on the
+        completion of the previous dataset's final job. Within a dataset,
+        chunks depend on the previous chunk.
+
+        Workflow:
+        1. Dataset1: Submit all chunks (parallel within dataset)
+           - Chunk0: no dependency
+           - Chunk1: depends on Chunk0
+           - Chunk2: depends on Chunk1
+        2. Dataset2: First chunk depends on Dataset1's last chunk
+           - Chunk0: depends on Dataset1 Chunk(final)
+           - Chunk1: depends on Dataset2 Chunk0
+        3. Dataset3: First chunk depends on Dataset2's last chunk
+           ... and so on
 
         Args:
-            all_scripts: Dictionary mapping dataset names to script paths
-            datasets: List of datasets
+            all_scripts: Dictionary mapping dataset names to lists of script paths
+            datasets: List of datasets (preserves order)
             output_dir: Base output directory
 
         Returns:
-            List of job IDs
+            List of all submitted job IDs
+
+        Raises:
+            RuntimeError: If no jobs were submitted successfully
         """
-        try:
-            import submitit
-        except ImportError:
-            raise RuntimeError(
-                "submitit not installed. Install with: pip install submitit"
-            )
-
-        # Create executor
-        executor_folder = output_dir / "submitit_logs"
-        executor_folder.mkdir(parents=True, exist_ok=True)
-
-        executor = submitit.AutoExecutor(folder=executor_folder)
-        executor.update_parameters(**self.config.slurm_kwds)
-
-        # Submit jobs (one per bash script)
-        job_ids = []
+        all_job_ids = []
+        last_dataset_final_job = None
+        failed_submissions = []
 
         for dataset in datasets:
             scripts = all_scripts.get(dataset.name, [])
             if not scripts:
+                # Skip datasets with no scripts (empty datasets)
                 continue
 
-            # Submit all scripts for this dataset
-            for script_path in scripts:
-                # Submit bash script execution
-                job = executor.submit(self._run_bash_script, script_path)
-                job_ids.append(job.job_id)
+            dataset_job_ids = []
 
-        return job_ids
+            # Submit all chunks for this dataset
+            for i, script_path in enumerate(scripts):
+                # Determine dependency
+                if i == 0:
+                    # First chunk of each dataset depends on previous dataset's last job
+                    dependency = last_dataset_final_job
+                else:
+                    # Subsequent chunks depend on previous chunk within dataset
+                    dependency = dataset_job_ids[-1]
 
-    @staticmethod
-    def _run_bash_script(script_path: Path) -> int:
-        """
-        Execute a bash script (called by submitit).
+                # Submit array job with error handling
+                try:
+                    job_id = self._submit_array_job_direct(script_path, dependency)
+                    dataset_job_ids.append(job_id)
+                    all_job_ids.append(job_id)
+                except RuntimeError as e:
+                    failed_submissions.append((dataset.name, i, str(e)))
+                    # Continue to next submission instead of failing immediately
 
-        Args:
-            script_path: Path to bash script
+            # Update dependency for next dataset (last job of current dataset)
+            if dataset_job_ids:
+                last_dataset_final_job = dataset_job_ids[-1]
 
-        Returns:
-            Exit code
-        """
-        result = subprocess.run(
-            ["bash", str(script_path)],
-            capture_output=True,
-            text=True,
-        )
-        if result.returncode != 0:
-            click.echo(f"Script {script_path.name} failed:", err=True)
-            click.echo(result.stderr, err=True)
-        return result.returncode
+        # Report on submission results
+        if failed_submissions:
+            import click
+            click.echo("\nWarning: Some jobs failed to submit:", err=True)
+            for ds_name, chunk_id, error in failed_submissions:
+                click.echo(f"  {ds_name} chunk {chunk_id}: {error}", err=True)
+
+        # Only fail if no jobs were submitted at all
+        if not all_job_ids:
+            raise RuntimeError(
+                "No jobs were submitted successfully. Check cluster configuration and sbatch availability."
+            )
+
+        return all_job_ids
 
     def _monitor_progress(
         self, output_dir: Path, datasets: List[Dataset]

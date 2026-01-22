@@ -218,7 +218,7 @@ class TestStateManagement:
                 ncols=12,
                 bit_depth=None,
                 n_jobs=1,
-                slurm_kwds={},
+                slurm_args={},
                 force_local=False,
                 wait=False,
                 save_rgb=False,
@@ -267,7 +267,7 @@ class TestStateManagement:
                 ncols=12,
                 bit_depth=None,
                 n_jobs=1,
-                slurm_kwds={},
+                slurm_args={},
                 force_local=False,
                 wait=False,
                 save_rgb=False,
@@ -492,7 +492,7 @@ class TestExecutionStrategies:
                 ncols=12,
                 bit_depth=None,
                 n_jobs=1,
-                slurm_kwds={},  # Empty = local
+                slurm_args={},  # Empty = local
                 force_local=False,
                 wait=False,
                 save_rgb=False,
@@ -537,7 +537,7 @@ class TestExecutionStrategies:
                 ncols=12,
                 bit_depth=None,
                 n_jobs=1,
-                slurm_kwds={"slurm_partition": "compute"},  # Non-empty = SLURM
+                slurm_args={"slurm_partition": "compute"},  # Non-empty = SLURM
                 force_local=False,
                 wait=False,
                 save_rgb=False,
@@ -593,8 +593,8 @@ class TestCLIv2Integration:
             )
 
             assert result.exit_code == 0
-            assert "DRY RUN SUMMARY" in result.output
-            assert "To proceed" in result.output
+            assert "DRY-RUN MODE" in result.output
+            assert "To proceed with execution" in result.output
 
     def test_cli_auto_output_dir(
             self, runner, temp_pipeline, temp_input_dir
@@ -650,9 +650,9 @@ class TestCLIv2Integration:
 class TestSLURMFeatures:
     """Test SLURM-specific features (requires submitit)."""
 
-    def test_slurm_kwds_parsing(self):
-        """Test SLURM kwds parsing."""
-        from phenotypic.phenotypicCLI import _parse_slurm_kwds
+    def test_slurm_args_parsing(self):
+        """Test SLURM args parsing."""
+        from phenotypic.phenotypicCLI import _parse_slurm_args
 
         kwds = [
             "slurm_partition=compute",
@@ -660,8 +660,384 @@ class TestSLURMFeatures:
             "time_min=30",
         ]
 
-        result = _parse_slurm_kwds(kwds)
+        result = _parse_slurm_args(kwds)
 
         assert result["slurm_partition"] == "compute"
         assert result["mem_gb"] == 16
         assert result["time_min"] == 30
+
+
+class TestResumeMode:
+    """Tests for resume mode functionality."""
+
+    def test_resume_with_changed_input_images(self, runner, tmp_path):
+        """Test that resume fails when input images change (missing images)."""
+        import json
+        from datetime import datetime
+        from phenotypic._cli._cli_types import ProcessingState, DatasetState
+
+        # Create initial state
+        temp_input_dir = tmp_path / "images"
+        temp_input_dir.mkdir()
+
+        # Create initial images
+        image1 = temp_input_dir / "image1.jpg"
+        image2 = temp_input_dir / "image2.jpg"
+        image1.write_text("dummy")
+        image2.write_text("dummy")
+
+        # Create pipeline
+        temp_pipeline = tmp_path / "pipeline.json"
+        temp_pipeline.write_text(json.dumps({"operations": []}))
+
+        output_dir = tmp_path / "output"
+        output_dir.mkdir()
+
+        # Create state file with original images
+        state_dict = {
+            "version": "2.0.0",
+            "pipeline_path": str(temp_pipeline),
+            "input_path": str(temp_input_dir),
+            "output_dir": str(output_dir),
+            "timestamp": datetime.now().isoformat(),
+            "execution_mode": "local",
+            "last_updated": datetime.now().isoformat(),
+            "datasets": {
+                "_root": {
+                    "completed": ["image1.jpg", "image2.jpg"],
+                    "failed": [],
+                    "errors": {}
+                }
+            },
+            "config": {}
+        }
+
+        state_file = output_dir / "processing_state.json"
+        state_file.write_text(json.dumps(state_dict))
+
+        # Now delete one image
+        image1.unlink()
+
+        # Try to resume - should fail because input changed
+        result = runner.invoke(
+            main,
+            [
+                str(temp_pipeline),
+                str(temp_input_dir),
+                "-o",
+                str(output_dir),
+                "--resume",
+                "--skip-validation",
+            ],
+        )
+
+        # Should fail with input validation error
+        assert result.exit_code != 0
+        assert "changed" in result.output.lower() or "input" in result.output.lower()
+
+    def test_resume_with_no_state_file(self, runner, tmp_path):
+        """Test that resume fails gracefully when state file doesn't exist."""
+        import json
+
+        temp_input_dir = tmp_path / "images"
+        temp_input_dir.mkdir()
+        (temp_input_dir / "image.jpg").write_text("dummy")
+
+        temp_pipeline = tmp_path / "pipeline.json"
+        temp_pipeline.write_text(json.dumps({"operations": []}))
+
+        output_dir = tmp_path / "output"
+        output_dir.mkdir()  # Create directory but NO state file
+
+        result = runner.invoke(
+            main,
+            [
+                str(temp_pipeline),
+                str(temp_input_dir),
+                "-o",
+                str(output_dir),
+                "--resume",
+                "--skip-validation",
+            ],
+        )
+
+        assert result.exit_code != 0
+        assert "processing state" in result.output.lower()
+
+    def test_resume_without_output_dir_specified(self, runner, tmp_path):
+        """Test that resume requires --output-dir."""
+        import json
+
+        temp_input_dir = tmp_path / "images"
+        temp_input_dir.mkdir()
+        (temp_input_dir / "image.jpg").write_text("dummy")
+
+        temp_pipeline = tmp_path / "pipeline.json"
+        temp_pipeline.write_text(json.dumps({"operations": []}))
+
+        result = runner.invoke(
+            main,
+            [
+                str(temp_pipeline),
+                str(temp_input_dir),
+                "--resume",
+                "--skip-validation",
+            ],
+        )
+
+        assert result.exit_code != 0
+        assert "resume requires" in result.output.lower() or "output-dir" in result.output.lower()
+
+
+class TestDryRunMode:
+    """Tests for dry-run mode functionality."""
+
+    def test_dry_run_creates_no_output(self, runner, tmp_path):
+        """Test that dry-run doesn't actually process images."""
+        import json
+        from pathlib import Path
+
+        temp_input_dir = tmp_path / "images"
+        temp_input_dir.mkdir()
+        (temp_input_dir / "image1.jpg").write_text("dummy")
+        (temp_input_dir / "image2.jpg").write_text("dummy")
+
+        temp_pipeline = tmp_path / "pipeline.json"
+        temp_pipeline.write_text(json.dumps({"operations": []}))
+
+        output_dir = tmp_path / "output"
+
+        result = runner.invoke(
+            main,
+            [
+                str(temp_pipeline),
+                str(temp_input_dir),
+                "-o",
+                str(output_dir),
+                "--dry-run",
+                "--skip-validation",
+            ],
+        )
+
+        assert result.exit_code == 0
+        assert "dry" in result.output.lower() or "would process" in result.output.lower()
+
+        # Verify no output files created
+        assert not (output_dir / "measurements").exists()
+        assert not (output_dir / "overlays").exists()
+        assert not (output_dir / "processing_state.json").exists()
+
+    def test_dry_run_shows_processing_plan(self, runner, tmp_path):
+        """Test that dry-run displays what would be processed."""
+        import json
+
+        temp_input_dir = tmp_path / "images"
+        temp_input_dir.mkdir()
+        (temp_input_dir / "image1.jpg").write_text("dummy")
+        (temp_input_dir / "image2.jpg").write_text("dummy")
+
+        temp_pipeline = tmp_path / "pipeline.json"
+        temp_pipeline.write_text(json.dumps({"operations": []}))
+
+        output_dir = tmp_path / "output"
+
+        result = runner.invoke(
+            main,
+            [
+                str(temp_pipeline),
+                str(temp_input_dir),
+                "-o",
+                str(output_dir),
+                "--dry-run",
+                "--skip-validation",
+            ],
+        )
+
+        assert result.exit_code == 0
+        # Should show information about images to process
+        assert "2" in result.output or "image" in result.output.lower()
+
+
+# Edge Case Tests
+class TestEdgeCases:
+    """Test suite for edge cases and boundary conditions."""
+
+    def test_invalid_nrows_zero_rejected(self, runner, tmp_path, temp_pipeline):
+        """Test that nrows=0 is rejected by Click IntRange validation."""
+        input_dir = tmp_path / "input"
+        output_dir = tmp_path / "output"
+        input_dir.mkdir()
+
+        # Create a dummy image file
+        (input_dir / "test.jpg").write_text("dummy")
+
+        result = runner.invoke(
+            main,
+            [
+                str(temp_pipeline),
+                str(input_dir),
+                "-o",
+                str(output_dir),
+                "--image-type",
+                "GridImage",
+                "--nrows",
+                "0",  # Invalid
+                "--ncols",
+                "12",
+            ],
+        )
+
+        assert result.exit_code != 0
+        assert "Invalid value" in result.output or "out of range" in result.output.lower()
+
+    def test_invalid_ncols_negative_rejected(self, runner, tmp_path, temp_pipeline):
+        """Test that negative ncols is rejected by Click IntRange validation."""
+        input_dir = tmp_path / "input"
+        output_dir = tmp_path / "output"
+        input_dir.mkdir()
+
+        # Create a dummy image file
+        (input_dir / "test.jpg").write_text("dummy")
+
+        result = runner.invoke(
+            main,
+            [
+                str(temp_pipeline),
+                str(input_dir),
+                "-o",
+                str(output_dir),
+                "--image-type",
+                "GridImage",
+                "--nrows",
+                "8",
+                "--ncols",
+                "-5",  # Invalid
+            ],
+        )
+
+        assert result.exit_code != 0
+        assert "Invalid value" in result.output or "out of range" in result.output.lower()
+
+    def test_single_image_processing(self, runner, tmp_path, temp_pipeline):
+        """Test processing with exactly 1 image (boundary case)."""
+        input_dir = tmp_path / "input"
+        output_dir = tmp_path / "output"
+        input_dir.mkdir()
+
+        # Create a single synthetic image
+        grid_image = load_synth_plate()
+        from PIL import Image as PILImage
+
+        pil_img = PILImage.fromarray(grid_image.rgb[:].astype("uint8"))
+        pil_img.save(input_dir / "single.jpg")
+
+        result = runner.invoke(
+            main,
+            [
+                str(temp_pipeline),
+                str(input_dir),
+                "-o",
+                str(output_dir),
+                "--n-jobs",
+                "1",
+                "--skip-validation",
+            ],
+        )
+
+        assert result.exit_code == 0
+
+        # Verify output files created for the single image
+        measurements_file = (output_dir / "measurements" / "single.csv")
+        overlay_file = (output_dir / "overlays" / "single.png")
+
+        # Check if files exist in direct measurements/overlays or in _root subdirectory
+        if not measurements_file.exists():
+            measurements_file = (output_dir / "measurements" / "_root" / "single.csv")
+        if not overlay_file.exists():
+            overlay_file = (output_dir / "overlays" / "_root" / "single.png")
+
+        assert measurements_file.exists()
+        assert overlay_file.exists()
+
+    def test_empty_input_directory(self, runner, tmp_path, temp_pipeline):
+        """Test graceful handling of empty input directory."""
+        input_dir = tmp_path / "input"
+        output_dir = tmp_path / "output"
+        input_dir.mkdir()
+
+        result = runner.invoke(
+            main,
+            [
+                str(temp_pipeline),
+                str(input_dir),
+                "-o",
+                str(output_dir),
+                "--skip-validation",
+            ],
+        )
+
+        # Should fail gracefully with clear message
+        assert result.exit_code != 0
+        error_msg = result.output.lower()
+        assert (
+            "no valid images" in error_msg
+            or "empty" in error_msg
+            or "no images" in error_msg
+            or "not found" in error_msg
+        )
+
+    def test_resume_with_changed_images(self, runner, tmp_path, temp_pipeline):
+        """Test that resume fails when image set changes (same count, different images)."""
+        input_dir = tmp_path / "input"
+        output_dir = tmp_path / "output"
+        input_dir.mkdir()
+
+        # Create 3 initial images and process them
+        grid_image = load_synth_plate()
+        from PIL import Image as PILImage
+
+        for i in range(1, 4):
+            pil_img = PILImage.fromarray(grid_image.rgb[:].astype("uint8"))
+            pil_img.save(input_dir / f"image_{i:03d}.jpg")
+
+        # Initial processing
+        result = runner.invoke(
+            main,
+            [
+                str(temp_pipeline),
+                str(input_dir),
+                "-o",
+                str(output_dir),
+                "--n-jobs",
+                "1",
+                "--skip-validation",
+            ],
+        )
+        assert result.exit_code == 0
+
+        # Change image set: remove image_001, add image_004 (same count!)
+        (input_dir / "image_001.jpg").unlink()
+        pil_img = PILImage.fromarray(grid_image.rgb[:].astype("uint8"))
+        pil_img.save(input_dir / "image_004.jpg")
+
+        # Resume should fail with clear error about image set mismatch
+        result = runner.invoke(
+            main,
+            [
+                str(temp_pipeline),
+                str(input_dir),
+                "-o",
+                str(output_dir),
+                "--resume",
+                "--skip-validation",
+            ],
+        )
+
+        assert result.exit_code != 0
+        error_msg = result.output.lower()
+        assert (
+            "image set mismatch" in error_msg
+            or "missing" in error_msg
+            or "added" in error_msg
+            or "mismatch" in error_msg
+        )
