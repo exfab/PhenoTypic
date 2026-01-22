@@ -99,23 +99,11 @@ def _display_output_structure(config: ExecutionConfig, datasets: List[Dataset], 
     """Display the output directory structure that will be created."""
     click.echo("\nOutput Directory Structure:")
     click.echo(f"  {output_dir}/")
-    click.echo("    ├── measurements/")
-    click.echo("    │   ├── {dataset1}/")
-    click.echo("    │   │   ├── image1.csv")
-    click.echo("    │   │   ├── image2.csv")
-    click.echo("    │   │   └── ...")
 
-    if len(datasets) > 1:
-        click.echo("    │   ├── {dataset2}/")
-        click.echo("    │   │   └── ...")
+    # Determine if flat mode (single _root dataset only)
+    flat_mode = len(datasets) == 1 and datasets[0].name == "_root"
 
-    click.echo("    │   └── ...")
-    click.echo("    ├── overlays/")
-    click.echo("    │   ├── image1.png")
-    click.echo("    │   ├── image2.png")
-    click.echo("    │   └── ...")
-
-    # Show optional layer directories
+    # Collect optional layers
     layers_to_create = []
     if config.save_rgb:
         layers_to_create.append(("rgb", f"(*.{config.rgb_ext})"))
@@ -130,14 +118,43 @@ def _display_output_structure(config: ExecutionConfig, datasets: List[Dataset], 
     if config.save_objmap_rgb:
         layers_to_create.append(("objmap_rgb", f"(*.{config.objmap_rgb_ext})"))
 
-    for i, (layer_name, ext_note) in enumerate(layers_to_create):
-        is_last = (i == len(layers_to_create) - 1)
-        prefix = "    └── " if is_last else "    ├── "
-        click.echo(f"{prefix}{layer_name}/ {ext_note}")
+    if flat_mode:
+        # Flat mode: no dataset subdirectories
+        click.echo("    ├── measurements/")
+        click.echo("    │   ├── image1.csv")
+        click.echo("    │   └── ...")
+        click.echo("    ├── overlays/")
+        click.echo("    │   ├── image1.png")
+        click.echo("    │   └── ...")
+
+        for layer_name, ext_note in layers_to_create:
+            click.echo(f"    ├── {layer_name}/ {ext_note}")
+    else:
+        # Dataset-first mode: dataset folders contain layer subdirectories
+        dataset_names = [d.name for d in datasets[:2]]  # Show first 2 datasets
+        for i, ds_name in enumerate(dataset_names):
+            click.echo(f"    ├── {ds_name}/")
+            click.echo("    │   ├── measurements/")
+            click.echo("    │   │   ├── image1.csv")
+            click.echo("    │   │   └── ...")
+            click.echo("    │   ├── overlays/")
+            click.echo("    │   │   ├── image1.png")
+            click.echo("    │   │   └── ...")
+
+            for layer_name, ext_note in layers_to_create:
+                click.echo(f"    │   ├── {layer_name}/ {ext_note}")
+
+            if i == 0 and len(datasets) > 1:
+                click.echo("    │   └── ...")
+
+        if len(datasets) > 2:
+            click.echo("    ├── ... (more datasets)")
 
     click.echo("    ├── logs/")
     click.echo("    │   └── slurm/ (if using SLURM execution)")
+    click.echo("    ├── slurm_scripts/ (if using SLURM execution)")
     click.echo("    ├── processing_state.json")
+    click.echo("    ├── processing_events.log")
     click.echo("    ├── processing_report.html")
     click.echo("    ├── master_measurements.csv")
     click.echo("    └── ... (other results)")
@@ -169,7 +186,7 @@ def _display_save_configuration(config: ExecutionConfig) -> None:
         click.echo("  No optional layer saves enabled (measurements + overlays will be created)")
 
     if config.include_dataset_column:
-        click.echo("  Master CSV will include 'Dataset' column for multi-dataset analysis")
+        click.echo("  Master CSV will include 'Metadata_Dataset' column for multi-dataset analysis")
 
 
 def execute_dry_run(
