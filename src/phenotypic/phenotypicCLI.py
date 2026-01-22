@@ -316,6 +316,65 @@ def _format_slurm_time(minutes: int) -> str:
         return f"{hours:02d}:{mins:02d}:00"
 
 
+def _format_slurm_key(key: str) -> str:
+    """
+    Convert SLURM parameter key to user-friendly display name.
+
+    Args:
+        key: SLURM parameter key (e.g., 'slurm_partition', 'mem_gb')
+
+    Returns:
+        Human-readable display name (e.g., 'Partition', 'Memory')
+    """
+    # Map of known keys to friendly display names
+    key_mapping = {
+        "slurm_partition": "Partition",
+        "slurm_account": "Account",
+        "slurm_qos": "QoS",
+        "mem_gb": "Memory",
+        "slurm_mem": "Memory",
+        "slurm_mem_per_cpu": "Memory/CPU",
+        "time": "Time Limit",
+        "slurm_time": "Time Limit",
+        "slurm_cpus_per_task": "CPUs/Task",
+        "slurm_nodes": "Nodes",
+        "slurm_gpus_per_node": "GPUs/Node",
+        "slurm_constraint": "Constraint",
+        "slurm_mail_type": "Mail Type",
+        "slurm_mail_user": "Mail User",
+    }
+
+    if key in key_mapping:
+        return key_mapping[key]
+
+    # For unknown keys, convert to title case and remove slurm_ prefix
+    display = key.replace("slurm_", "").replace("_", " ").title()
+    return display
+
+
+def _format_slurm_value(key: str, value) -> str:
+    """
+    Format SLURM parameter value for display.
+
+    Args:
+        key: SLURM parameter key
+        value: Parameter value
+
+    Returns:
+        Formatted string for display
+    """
+    # Handle time parameters
+    if key in ("time", "slurm_time") and isinstance(value, int):
+        return _format_slurm_time(value)
+
+    # Handle memory in GB
+    if key == "mem_gb":
+        return f"{value} GB"
+
+    # Default: convert to string
+    return str(value)
+
+
 def _display_execution_config(
     config: ExecutionConfig,
     datasets: list
@@ -362,16 +421,13 @@ def _display_execution_config(
 
     # Execution settings
     if config.is_slurm_mode():
-        # Show key SLURM parameters
-        if "slurm_partition" in config.slurm_args:
-            table.add_row("SLURM Partition", config.slurm_args["slurm_partition"])
-        if "slurm_account" in config.slurm_args:
-            table.add_row("SLURM Account", config.slurm_args["slurm_account"])
-        if "mem_gb" in config.slurm_args:
-            table.add_row("Memory", f"{config.slurm_args['mem_gb']} GB")
-        if "time" in config.slurm_args:
-            time_str = _format_slurm_time(config.slurm_args["time"])
-            table.add_row("Time Limit", time_str)
+        # Show all SLURM parameters for debugging
+        table.add_row("[bold]SLURM Settings[/bold]", "")
+        for key in sorted(config.slurm_args.keys()):
+            value = config.slurm_args[key]
+            display_name = _format_slurm_key(key)
+            display_value = _format_slurm_value(key, value)
+            table.add_row(f"  {display_name}", display_value)
     else:
         # Show joblib settings
         n_jobs_str = "All cores" if config.n_jobs == -1 else str(config.n_jobs)

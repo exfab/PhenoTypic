@@ -11,6 +11,7 @@ from typing import Dict, List, Any
 import shlex
 
 from ._cli_types import Dataset, ExecutionConfig
+from ._cli_utils import get_python_command
 
 
 def generate_slurm_directives(
@@ -119,9 +120,12 @@ def generate_image_processing_script(
             error_log=error_log
     )
 
+    # Get Python command (uses uv run python if available)
+    python_cmd, _ = get_python_command()
+
     # Build command arguments
     cmd_parts = [
-        "python", "-m", "phenotypic._cli._cli_process_single",
+        *python_cmd, "-m", "phenotypic._cli._cli_process_single",
         "--pipeline", shlex.quote(str(config.pipeline_json.absolute())),
         "--image", shlex.quote(str(image_path.absolute())),
         "--output-dir", shlex.quote(str(output_dir.absolute())),

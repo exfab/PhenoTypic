@@ -14,6 +14,7 @@ from typing import Dict, List, Tuple
 
 from ._cli_slurm_scripts import generate_slurm_directives
 from ._cli_types import Dataset, ExecutionConfig
+from ._cli_utils import get_python_command
 
 
 def generate_array_job_script(
@@ -116,8 +117,11 @@ def generate_array_job_script(
     # Build command arguments for single-image processor
     event_log = output_dir / "processing_events.log"
 
+    # Get Python command (uses uv run python if available)
+    python_cmd, _ = get_python_command()
+
     cmd_parts = [
-        "python",
+        *python_cmd,
         "-m",
         "phenotypic._cli._cli_process_single",
         "--pipeline",

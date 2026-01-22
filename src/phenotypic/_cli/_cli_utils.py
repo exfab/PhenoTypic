@@ -19,8 +19,10 @@ Examples:
 
 from __future__ import annotations
 
+import shutil
+from typing import List, Set, Tuple
+
 import click
-from typing import Set
 
 # Allowed image file extensions for PhenoTypic processing
 ALLOWED_EXTENSIONS: Set[str] = {".png", ".tif", ".tiff", ".jpg", ".jpeg"}
@@ -71,3 +73,27 @@ def normalize_extension(ext: str, default: str = ".tiff") -> str:
         )
 
     return ext
+
+
+def get_python_command() -> Tuple[List[str], str]:
+    """
+    Detect available Python runner command for SLURM scripts.
+
+    Checks if uv is available and returns the appropriate command parts
+    for invoking Python in generated SLURM scripts. When uv is available,
+    uses 'uv run python' to ensure the correct virtual environment and
+    project context are used on worker nodes.
+
+    Returns:
+        Tuple of (command_parts, description) where:
+        - command_parts: List of command strings (e.g., ["uv", "run", "python"])
+        - description: Human-readable description for logging/display
+
+    Examples:
+        >>> cmd_parts, desc = get_python_command()
+        >>> len(cmd_parts) >= 1
+        True
+    """
+    if shutil.which("uv"):
+        return (["uv", "run", "python"], "uv run python (project environment)")
+    return (["python"], "python (system)")
