@@ -36,6 +36,9 @@ Examples:
     # Resume interrupted processing
     uv run python -m phenotypic pipeline.json ./images -o ./results --resume
 
+    # Restart processing from beginning (clears previous state)
+    uv run python -m phenotypic pipeline.json ./images -o ./results --restart
+
     # SLURM execution (autonomous)
     uv run python -m phenotypic pipeline.json ./images \
         --slurm-args slurm_partition=compute \
@@ -645,6 +648,11 @@ def _display_execution_config(
         help="Include failed images when resuming (requires --resume)",
 )
 @click.option(
+        "--restart",
+        is_flag=True,
+        help="Restart processing from beginning, clearing previous state (requires --output-dir)",
+)
+@click.option(
         "--skip-validation",
         is_flag=True,
         help="Skip pipeline validation (for advanced users)",
@@ -679,6 +687,7 @@ def main(
         random_seed: Optional[int],
         resume: bool,
         retry_failures: bool,
+        restart: bool,
         skip_validation: bool,
 ):
     """
@@ -758,6 +767,30 @@ def main(
         if retry_failures and not resume:
             click.echo(
                     "Error: --retry-failures requires --resume", err=True
+            )
+            sys.exit(1)
+
+        if restart and resume:
+            click.echo(
+                    "Error: --restart and --resume are mutually exclusive", err=True
+            )
+            sys.exit(1)
+
+        if restart and output_dir is None:
+            click.echo(
+                    "Error: --restart requires --output-dir to be specified", err=True
+            )
+            click.echo(
+                    "\nRestart mode clears previous processing state and starts fresh. "
+                    "You must specify the output directory to restart.",
+                    err=True
+            )
+            click.echo(
+                    "\nExample:\n"
+                    "  python -m phenotypic pipeline.json ./images \\\n"
+                    "    --output-dir ./results_2024-01-12_10-30-45 \\\n"
+                    "    --restart",
+                    err=True
             )
             sys.exit(1)
 
@@ -857,6 +890,18 @@ def main(
                 sys.exit(1)
 
             click.echo(f"✓ Resuming from {output_dir}")
+
+        # Handle restart mode - clear previous state
+        if restart:
+            state_file = output_dir / "processing_state.json"
+            if output_dir.exists():
+                if state_file.exists():
+                    state_file.unlink()
+                    click.echo(f"✓ Cleared previous processing state from {output_dir}")
+                else:
+                    click.echo(f"Note: No previous state found in {output_dir} (starting fresh)")
+            else:
+                click.echo(f"Note: Output directory {output_dir} does not exist yet (starting fresh)")
 
         # Generate or validate output directory
         if output_dir is None:

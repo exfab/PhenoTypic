@@ -91,7 +91,7 @@ def temp_input_dir():
 
 @pytest.fixture
 def temp_recursive_input_dir():
-    """Create temporary input directory with recursive structure."""
+    """Create temporary input directory with recursive structure (subdirectories only)."""
     with tempfile.TemporaryDirectory() as tmpdir:
         tmpdir = Path(tmpdir)
 
@@ -113,11 +113,31 @@ def temp_recursive_input_dir():
                 )
                 pil_img.save(img_path)
 
-        # Add a root-level image
+        yield tmpdir
+
+
+@pytest.fixture
+def temp_mixed_input_dir():
+    """Create temporary input directory with INVALID mixed structure (root images + subdirs)."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmpdir = Path(tmpdir)
+
+        # Create dataset subdirectory
+        (tmpdir / "dataset1").mkdir()
+
+        # Add images to subdirectory
+        dataset_dir = tmpdir / "dataset1"
+        for i in range(2):
+            img_path = dataset_dir / f"image_{i:03d}.png"
+            grid_image = load_synth_plate()
+            from PIL import Image as PILImage
+            pil_img = PILImage.fromarray(grid_image.rgb[:].astype("uint8"))
+            pil_img.save(img_path)
+
+        # Add a root-level image (makes this a mixed structure - invalid)
         img_path = tmpdir / "root_image.png"
         grid_image = load_synth_plate()
         from PIL import Image as PILImage
-
         pil_img = PILImage.fromarray(grid_image.rgb[:].astype("uint8"))
         pil_img.save(img_path)
 
@@ -153,27 +173,34 @@ class TestDirectoryScanning:
         image_path = next(temp_input_dir.glob("*.png"))
         result = scan_directory_structure(image_path)
 
-        assert "_root" in result
-        assert len(result["_root"]) == 1
-        assert result["_root"][0] == image_path
+        # Single files now use "single_image" as dataset name
+        assert "single_image" in result
+        assert len(result["single_image"]) == 1
+        assert result["single_image"][0] == image_path
 
     def test_scan_flat_directory(self, temp_input_dir):
         """Test scanning a flat directory of images."""
         result = scan_directory_structure(temp_input_dir)
 
-        assert "_root" in result
-        assert len(result["_root"]) == 3  # 3 images created
+        # Flat directories now use the directory name as dataset name
+        assert temp_input_dir.name in result
+        assert len(result[temp_input_dir.name]) == 3  # 3 images created
 
     def test_scan_recursive_directory(self, temp_recursive_input_dir):
-        """Test scanning recursive directory structure."""
+        """Test scanning recursive directory structure (subdirectories only)."""
         result = scan_directory_structure(temp_recursive_input_dir)
 
-        assert "_root" in result
+        # Recursive directories only have subdirectory datasets (no root images)
         assert "dataset1" in result
         assert "dataset2" in result
-        assert len(result["_root"]) == 1  # 1 root image
+        assert len(result) == 2  # Only the 2 subdirectories
         assert len(result["dataset1"]) == 2  # 2 images per dataset
         assert len(result["dataset2"]) == 2
+
+    def test_scan_mixed_directory_raises_error(self, temp_mixed_input_dir):
+        """Test that mixed directories (root images + subdirs) raise an error."""
+        with pytest.raises(ValueError, match="Mixed input structure not allowed"):
+            scan_directory_structure(temp_mixed_input_dir)
 
     def test_organize_by_dataset(
             self, temp_recursive_input_dir, temp_output_dir
@@ -182,9 +209,8 @@ class TestDirectoryScanning:
         image_paths = scan_directory_structure(temp_recursive_input_dir)
         datasets = organize_by_dataset(image_paths, temp_output_dir)
 
-        assert len(datasets) == 3  # _root + 2 datasets
+        assert len(datasets) == 2  # Only 2 subdirectory datasets
         dataset_names = {ds.name for ds in datasets}
-        assert "_root" in dataset_names
         assert "dataset1" in dataset_names
         assert "dataset2" in dataset_names
 
@@ -814,6 +840,7 @@ class TestResumeMode:
         output_dir.mkdir()
 
         # Create state file with original images
+        # Use the directory name ("images") as dataset name per new convention
         state_dict = {
             "version": "2.0.0",
             "pipeline_path": str(temp_pipeline),
@@ -823,7 +850,7 @@ class TestResumeMode:
             "execution_mode": "local",
             "last_updated": datetime.now().isoformat(),
             "datasets": {
-                "_root": {
+                "images": {
                     "completed": ["image1.jpg", "image2.jpg"],
                     "failed": [],
                     "errors": {}
@@ -1067,15 +1094,15 @@ class TestEdgeCases:
         assert result.exit_code == 0
 
         # Verify output files created for the single image
-        # Flat mode: single _root dataset creates output_dir/measurements/single.csv directly
-        measurements_file = output_dir / "measurements" / "single.csv"
-        overlay_file = output_dir / "overlays" / "single.png"
+        # Output should be in dataset folder named after input directory ("input")
+        measurements_file = output_dir / "input" / "measurements" / "single.csv"
+        overlay_file = output_dir / "input" / "overlays" / "single.png"
 
         assert measurements_file.exists(), f"Expected {measurements_file} to exist"
         assert overlay_file.exists(), f"Expected {overlay_file} to exist"
 
-        # Verify _root folder is NOT created (flat mode)
-        assert not (output_dir / "_root").exists(), "Flat mode should not create _root folder"
+        # Verify dataset folder is created with input directory name
+        assert (output_dir / "input").exists(), "Dataset folder should be created"
 
     def test_empty_input_directory(self, runner, tmp_path, temp_pipeline):
         """Test graceful handling of empty input directory."""
@@ -1190,34 +1217,26 @@ class TestNewCoverageGaps:
             img.name for img in sample3[0].images
         ]
 
-    def test_output_manager_flat_mode_explicit(self, temp_output_dir):
-        """Test OutputManager with explicit flat_mode parameter."""
+    def test_output_manager_hierarchical_paths(self, temp_output_dir):
+        """Test OutputManager always creates hierarchical paths with dataset subdirectories."""
         save_layers = {"rgb": False, "gray": False}
         extensions = {"rgb": ".tiff", "gray": ".tiff"}
 
-        # Test with explicit flat_mode=True
-        manager_flat = OutputManager(
-            base_dir=temp_output_dir / "flat",
+        manager = OutputManager(
+            base_dir=temp_output_dir / "output",
             save_layers=save_layers,
             extensions=extensions,
-            flat_mode=True,
         )
 
-        # Path should be flat (no dataset subdirectory)
-        path = manager_flat.get_output_path("_root", "measurements", "image1")
-        assert path == temp_output_dir / "flat" / "measurements" / "image1.csv"
+        # All paths should include dataset subdirectory
+        path = manager.get_output_path("single_image", "measurements", "image1")
+        assert path == temp_output_dir / "output" / "single_image" / "measurements" / "image1.csv"
 
-        # Test with explicit flat_mode=False
-        manager_dataset = OutputManager(
-            base_dir=temp_output_dir / "dataset",
-            save_layers=save_layers,
-            extensions=extensions,
-            flat_mode=False,
-        )
+        path = manager.get_output_path("plate1", "measurements", "image1")
+        assert path == temp_output_dir / "output" / "plate1" / "measurements" / "image1.csv"
 
-        # Path should include dataset subdirectory
-        path = manager_dataset.get_output_path("plate1", "measurements", "image1")
-        assert path == temp_output_dir / "dataset" / "plate1" / "measurements" / "image1.csv"
+        path = manager.get_output_path("my_dataset", "overlays", "image2")
+        assert path == temp_output_dir / "output" / "my_dataset" / "overlays" / "image2.png"
 
     def test_initial_images_stored_in_state(self, temp_output_dir):
         """Test that initial_images is stored when creating state."""
@@ -1355,13 +1374,12 @@ class TestNewCoverageGaps:
         total = sum(end - start for start, end in chunks)
         assert total == num_images
 
-    def test_slurm_script_has_flat_mode_flag(self, temp_output_dir):
-        """Test that generated SLURM scripts include --flat-mode when appropriate."""
+    def test_slurm_script_no_flat_mode_flag(self, temp_output_dir):
+        """Test that generated SLURM scripts do NOT include --flat-mode (feature removed)."""
         from phenotypic._cli._cli_slurm_array_scripts import generate_array_job_script
 
-        # Create single _root dataset (should trigger flat mode)
         dataset = Dataset(
-            name="_root",
+            name="plate1",
             images=[Path(f"img{i}.png") for i in range(10)],
             input_dir=Path("."),
             output_dir=temp_output_dir,
@@ -1404,11 +1422,14 @@ class TestNewCoverageGaps:
             array_indices=(0, 10),
             config=config,
             output_dir=temp_output_dir,
-            flat_mode=True,
         )
 
         script_content = script_path.read_text()
-        assert "--flat-mode" in script_content
+        # Flat mode flag was removed - verify it's not in the script
+        assert "--flat-mode" not in script_content
+        # Verify dataset name is used
+        assert "--dataset-name" in script_content
+        assert "plate1" in script_content
 
     def test_slurm_script_bash_syntax(self, temp_output_dir):
         """Test that generated SLURM scripts have valid bash syntax."""
@@ -1502,12 +1523,11 @@ class TestNewCoverageGaps:
             all_files = list(output_dir.rglob("*"))
             assert len(all_files) == 0, f"Dry run created files: {all_files}"
 
-    def test_root_dataset_constant_consistency(self):
-        """Test that ROOT_DATASET constant is used consistently."""
-        from phenotypic._cli._cli_constants import ROOT_DATASET
+    def test_single_image_dataset_constant(self):
+        """Test that SINGLE_IMAGE_DATASET constant exists and has correct value."""
+        from phenotypic._cli._cli_constants import SINGLE_IMAGE_DATASET
 
         # Verify the constant value
-        assert ROOT_DATASET == "_root"
+        assert SINGLE_IMAGE_DATASET == "single_image"
 
         # This test ensures the constant exists and can be imported
-        # The actual replacement of magic strings is a code change, not tested here

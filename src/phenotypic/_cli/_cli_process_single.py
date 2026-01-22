@@ -127,8 +127,6 @@ def process_single_image_core(
 @click.option("--no-dataset-column", "include_dataset_column",
               is_flag=True, flag_value=False, default=True,
               help="Exclude Metadata_Dataset column from measurements CSV (included by default)")
-@click.option("--flat-mode", is_flag=True, default=False,
-              help="Use flat directory structure (no dataset subdirectories)")
 @click.option("--event-log", type=click.Path(path_type=Path), default=None,
               help="Path to event log file (for status updates)")
 def main(
@@ -153,7 +151,6 @@ def main(
     objmap_ext: str,
     objmap_rgb_ext: str,
     include_dataset_column: bool,
-    flat_mode: bool,
     event_log: Optional[Path]
 ):
     """
@@ -201,8 +198,7 @@ def main(
             base_dir=output_dir,
             save_layers=save_layers,
             extensions=extensions,
-            include_dataset_column=include_dataset_column,
-            flat_mode=flat_mode
+            include_dataset_column=include_dataset_column
         )
         
         # Process image

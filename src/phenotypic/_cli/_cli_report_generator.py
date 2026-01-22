@@ -360,9 +360,7 @@ class HTMLReportGenerator:
             (ds.completed / ds.total * 100) if ds.total > 0 else 0
         )
 
-        display_name = (
-            "Root Directory Images" if name == "_root" else name
-        )
+        display_name = name
 
         html = f"""
         <div class="dataset">

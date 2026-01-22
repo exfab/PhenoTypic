@@ -35,8 +35,7 @@ class OutputManager:
         base_dir: Path,
         save_layers: Dict[str, bool],
         extensions: Dict[str, str],
-        include_dataset_column: bool = True,
-        flat_mode: Optional[bool] = None
+        include_dataset_column: bool = True
     ):
         """
         Initialize OutputManager.
@@ -46,9 +45,6 @@ class OutputManager:
             save_layers: Which layers to save {"rgb": True, "gray": False, ...}
             extensions: File extensions for each layer {"rgb": ".tiff", ...}
             include_dataset_column: Whether to add Metadata_Dataset column to CSVs (default: True)
-            flat_mode: If True, use flat directory structure (no dataset subdirs).
-                       If False, use dataset-first structure. If None (default),
-                       mode is determined during create_structure() based on datasets.
         """
         self.base_dir = Path(base_dir)
         self.save_layers = save_layers
@@ -57,17 +53,12 @@ class OutputManager:
 
         # Logs directory (always at root level)
         self.logs_dir = self.base_dir / "logs"
-
-        # Flat mode flag - can be set explicitly or determined during create_structure()
-        self._flat_mode = flat_mode if flat_mode is not None else False
-        self._flat_mode_explicit = flat_mode is not None
     
     def create_structure(self, datasets: List[Dataset]) -> None:
         """
         Create complete output directory structure.
 
-        Uses dataset-first structure for multiple datasets or named subdirectories.
-        Uses flat structure (no dataset folder) for single _root dataset only.
+        Always creates dataset-first structure with each dataset in its own folder.
 
         Args:
             datasets: List of datasets to create directories for
@@ -79,29 +70,16 @@ class OutputManager:
         self.logs_dir.mkdir(exist_ok=True)
         (self.logs_dir / "slurm").mkdir(exist_ok=True)
 
-        # Determine if flat mode (single _root dataset only)
-        # Only auto-detect if not explicitly set during __init__
-        if not self._flat_mode_explicit:
-            self._flat_mode = (len(datasets) == 1 and datasets[0].name == "_root")
+        # Create dataset folders with subdirectories
+        for dataset in datasets:
+            dataset_dir = self.base_dir / dataset.name
+            dataset_dir.mkdir(exist_ok=True)
 
-        if self._flat_mode:
-            # Flat mode: create layer directories directly in base_dir
-            (self.base_dir / "measurements").mkdir(exist_ok=True)
-            (self.base_dir / "overlays").mkdir(exist_ok=True)
+            (dataset_dir / "measurements").mkdir(exist_ok=True)
+            (dataset_dir / "overlays").mkdir(exist_ok=True)
             for layer_name, enabled in self.save_layers.items():
                 if enabled:
-                    (self.base_dir / layer_name).mkdir(exist_ok=True)
-        else:
-            # Dataset mode: create dataset folders with subdirectories
-            for dataset in datasets:
-                dataset_dir = self.base_dir / dataset.name
-                dataset_dir.mkdir(exist_ok=True)
-
-                (dataset_dir / "measurements").mkdir(exist_ok=True)
-                (dataset_dir / "overlays").mkdir(exist_ok=True)
-                for layer_name, enabled in self.save_layers.items():
-                    if enabled:
-                        (dataset_dir / layer_name).mkdir(exist_ok=True)
+                    (dataset_dir / layer_name).mkdir(exist_ok=True)
     
     def get_output_path(
         self,
@@ -113,7 +91,7 @@ class OutputManager:
         Get the output path for a specific file.
 
         Args:
-            dataset_name: Dataset name ("_root" for root images)
+            dataset_name: Dataset name (e.g., "single_image", directory name, or subdirectory name)
             layer: Layer type ("measurements", "overlays", "rgb", etc.)
             image_stem: Image filename without extension
 
@@ -130,11 +108,7 @@ class OutputManager:
                 raise ValueError(f"Layer '{layer}' is not enabled")
             ext = self.extensions.get(layer, ".png")
 
-        # Flat mode: base/layer/file
-        if self._flat_mode:
-            return self.base_dir / layer / f"{image_stem}{ext}"
-
-        # Dataset mode: base/dataset/layer/file
+        # Always use: base/dataset/layer/file
         return self.base_dir / dataset_name / layer / f"{image_stem}{ext}"
     
     def save_measurements(
@@ -313,11 +287,8 @@ class OutputManager:
         skipped_files = []
 
         for dataset in datasets:
-            # Path depends on flat_mode
-            if self._flat_mode:
-                dataset_meas_dir = self.base_dir / "measurements"
-            else:
-                dataset_meas_dir = self.base_dir / dataset.name / "measurements"
+            # Always use: base/dataset_name/measurements/
+            dataset_meas_dir = self.base_dir / dataset.name / "measurements"
 
             # Read all CSV files in this dataset's measurement directory
             csv_files = list(dataset_meas_dir.glob("*.csv"))

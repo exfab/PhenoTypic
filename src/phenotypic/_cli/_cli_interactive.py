@@ -21,10 +21,7 @@ def _display_datasets_detail(datasets: List[Dataset]) -> int:
     click.echo("Datasets Discovered:")
     total_images = 0
     for dataset in datasets:
-        display_name = (
-            "Root directory" if dataset.name == "_root" else f"Dataset: {dataset.name}"
-        )
-        click.echo(f"\n  {display_name}")
+        click.echo(f"\n  Dataset: {dataset.name}")
         click.echo(f"    Input directory:  {dataset.input_dir}")
         click.echo(f"    Output directory: {dataset.output_dir}")
         click.echo(f"    Images ({len(dataset.images)}):")
@@ -100,9 +97,6 @@ def _display_output_structure(config: ExecutionConfig, datasets: List[Dataset], 
     click.echo("\nOutput Directory Structure:")
     click.echo(f"  {output_dir}/")
 
-    # Determine if flat mode (single _root dataset only)
-    flat_mode = len(datasets) == 1 and datasets[0].name == "_root"
-
     # Collect optional layers
     layers_to_create = []
     if config.save_rgb:
@@ -118,37 +112,25 @@ def _display_output_structure(config: ExecutionConfig, datasets: List[Dataset], 
     if config.save_objmap_rgb:
         layers_to_create.append(("objmap_rgb", f"(*.{config.objmap_rgb_ext})"))
 
-    if flat_mode:
-        # Flat mode: no dataset subdirectories
-        click.echo("    ├── measurements/")
-        click.echo("    │   ├── image1.csv")
-        click.echo("    │   └── ...")
-        click.echo("    ├── overlays/")
-        click.echo("    │   ├── image1.png")
-        click.echo("    │   └── ...")
+    # Dataset-first mode: dataset folders contain layer subdirectories
+    dataset_names = [d.name for d in datasets[:2]]  # Show first 2 datasets
+    for i, ds_name in enumerate(dataset_names):
+        click.echo(f"    ├── {ds_name}/")
+        click.echo("    │   ├── measurements/")
+        click.echo("    │   │   ├── image1.csv")
+        click.echo("    │   │   └── ...")
+        click.echo("    │   ├── overlays/")
+        click.echo("    │   │   ├── image1.png")
+        click.echo("    │   │   └── ...")
 
         for layer_name, ext_note in layers_to_create:
-            click.echo(f"    ├── {layer_name}/ {ext_note}")
-    else:
-        # Dataset-first mode: dataset folders contain layer subdirectories
-        dataset_names = [d.name for d in datasets[:2]]  # Show first 2 datasets
-        for i, ds_name in enumerate(dataset_names):
-            click.echo(f"    ├── {ds_name}/")
-            click.echo("    │   ├── measurements/")
-            click.echo("    │   │   ├── image1.csv")
-            click.echo("    │   │   └── ...")
-            click.echo("    │   ├── overlays/")
-            click.echo("    │   │   ├── image1.png")
-            click.echo("    │   │   └── ...")
+            click.echo(f"    │   ├── {layer_name}/ {ext_note}")
 
-            for layer_name, ext_note in layers_to_create:
-                click.echo(f"    │   ├── {layer_name}/ {ext_note}")
+        if i == 0 and len(datasets) > 1:
+            click.echo("    │   └── ...")
 
-            if i == 0 and len(datasets) > 1:
-                click.echo("    │   └── ...")
-
-        if len(datasets) > 2:
-            click.echo("    ├── ... (more datasets)")
+    if len(datasets) > 2:
+        click.echo("    ├── ... (more datasets)")
 
     click.echo("    ├── logs/")
     click.echo("    │   └── slurm/ (if using SLURM execution)")

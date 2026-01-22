@@ -23,7 +23,6 @@ def generate_array_job_script(
     config: ExecutionConfig,
     output_dir: Path,
     chunk_id: int = 0,
-    flat_mode: bool = False,
 ) -> Path:
     """
     Generate a SLURM array job script for processing a dataset chunk.
@@ -38,7 +37,6 @@ def generate_array_job_script(
         config: Execution configuration with SLURM parameters
         output_dir: Base output directory
         chunk_id: Chunk number for multi-chunk datasets (default: 0)
-        flat_mode: If True, use flat directory structure (no dataset subdirs)
 
     Returns:
         Path to generated array job script
@@ -171,10 +169,6 @@ def generate_array_job_script(
     if not config.include_dataset_column:
         cmd_parts.append("--no-dataset-column")
 
-    # Add flat mode flag if enabled
-    if flat_mode:
-        cmd_parts.append("--flat-mode")
-
     # Add event log
     cmd_parts.extend(["--event-log", shlex.quote(str(event_log.absolute()))])
 
@@ -287,9 +281,6 @@ def generate_all_array_job_scripts(
 
     all_scripts = {}
 
-    # Determine if flat mode should be used (single _root dataset only)
-    flat_mode = (len(datasets) == 1 and datasets[0].name == "_root")
-
     for dataset in datasets:
         num_images = len(dataset.images)
 
@@ -308,7 +299,6 @@ def generate_all_array_job_scripts(
                 config=config,
                 output_dir=output_dir,
                 chunk_id=chunk_id,
-                flat_mode=flat_mode,
             )
             dataset_scripts.append(script_path)
 

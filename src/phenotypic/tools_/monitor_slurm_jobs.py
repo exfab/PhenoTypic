@@ -142,13 +142,7 @@ def main(output_dir: Path, refresh_interval: int, no_clear: bool):
                             "total", total_ds
                     )
 
-                    display_name = (
-                        "Root Directory"
-                        if dataset_name == "_root"
-                        else dataset_name
-                    )
-
-                    click.echo(f"\n  {display_name}:")
+                    click.echo(f"\n  {dataset_name}:")
                     click.echo(f"    Completed: {completed}")
                     click.echo(f"    Failed:    {failed}")
 

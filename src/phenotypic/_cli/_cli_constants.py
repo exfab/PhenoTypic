@@ -25,4 +25,5 @@ MAX_SLURM_TIME_MINUTES = 10080  # 7 days
 SBATCH_SUBMISSION_TIMEOUT = 30  # seconds
 
 # Dataset naming
-ROOT_DATASET = "_root"  # Special name for images directly in input directory
+SINGLE_IMAGE_DATASET = "single_image"  # Name for single file input
+# Note: ROOT_DATASET ("_root") is deprecated - we now use the input directory name

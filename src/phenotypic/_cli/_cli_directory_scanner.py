@@ -29,23 +29,23 @@ def generate_timestamped_output_dir() -> Path:
 def scan_directory_structure(input_path: Path) -> Dict[str, List[Path]]:
     """
     Scan directory structure and organize images by dataset.
-    
+
     Supports:
-    - Single file: returns {"_root": [file]}
-    - Flat directory: returns {"_root": [img1, img2, ...]}
+    - Single file: returns {"single_image": [file]}
+    - Flat directory: returns {"<dir_name>": [img1, img2, ...]}
     - Recursive (1 level): returns {"dataset1": [...], "dataset2": [...]}
-    - Mixed: returns {"_root": [...], "dataset1": [...], "dataset2": [...]}
-    
+
+    Mixed directories (root images + subdirectories) are NOT allowed.
+
     Args:
         input_path: Path to image file or directory
-        
+
     Returns:
         Dictionary mapping dataset names to lists of image paths
-        Use "_root" as dataset name for images in the root directory
-        
+
     Raises:
         FileNotFoundError: If input_path doesn't exist
-        ValueError: If no valid images found
+        ValueError: If no valid images found or mixed directory structure
     """
     input_path = Path(input_path)
 
@@ -61,7 +61,7 @@ def scan_directory_structure(input_path: Path) -> Dict[str, List[Path]]:
     # Case 1: Single file
     if input_path.is_file():
         if input_path.suffix.lower() in valid_exts:
-            datasets["_root"] = [input_path]
+            datasets["single_image"] = [input_path]
             return datasets
         else:
             raise ValueError(
@@ -78,10 +78,9 @@ def scan_directory_structure(input_path: Path) -> Dict[str, List[Path]]:
         p for p in input_path.iterdir()
         if p.is_file() and p.suffix.lower() in valid_exts
     ]
-    if root_images:
-        datasets["_root"] = sorted(root_images)
 
     # Scan one level of subdirectories
+    subdatasets = {}
     for subdir in input_path.iterdir():
         if not subdir.is_dir():
             continue
@@ -93,7 +92,24 @@ def scan_directory_structure(input_path: Path) -> Dict[str, List[Path]]:
         ]
 
         if sub_images:
-            datasets[subdir.name] = sorted(sub_images)
+            subdatasets[subdir.name] = sorted(sub_images)
+
+    # Validate: reject mixed directories (root images + subdirectories with images)
+    if root_images and subdatasets:
+        raise ValueError(
+            f"Mixed input structure not allowed: found {len(root_images)} image(s) "
+            f"in root directory AND {len(subdatasets)} subdirectory dataset(s). "
+            f"Use either a flat directory of images OR a directory containing "
+            f"dataset subdirectories, not both."
+        )
+
+    # Assign datasets based on structure
+    if root_images:
+        # Flat directory: use the directory name as dataset name
+        datasets[input_path.name] = sorted(root_images)
+    else:
+        # Recursive structure: use subdirectory names
+        datasets.update(subdatasets)
 
     # Validate we found at least some images
     if not datasets:
@@ -160,12 +176,12 @@ def collect_image_paths(input_path: Path) -> List[Path]:
 def get_input_structure_summary(input_path: Path) -> Dict[str, any]:
     """
     Get summary information about input structure without collecting files.
-    
+
     Useful for dry-run mode to quickly understand the input.
-    
+
     Args:
         input_path: Path to image file or directory
-        
+
     Returns:
         Dictionary with structure information:
         {
@@ -173,6 +189,10 @@ def get_input_structure_summary(input_path: Path) -> Dict[str, any]:
             "total_images": int,
             "datasets": {"dataset1": count1, "dataset2": count2, ...}
         }
+
+    Raises:
+        FileNotFoundError: If input_path doesn't exist
+        ValueError: If no valid images found or mixed directory structure
     """
     input_path = Path(input_path)
 
@@ -189,7 +209,7 @@ def get_input_structure_summary(input_path: Path) -> Dict[str, any]:
         return {
             "type"        : "single_file",
             "total_images": 1,
-            "datasets"    : {"_root": 1}
+            "datasets"    : {"single_image": 1}
         }
 
     # Directory case - count without loading
@@ -200,10 +220,9 @@ def get_input_structure_summary(input_path: Path) -> Dict[str, any]:
             1 for p in input_path.iterdir()
             if p.is_file() and p.suffix.lower() in valid_exts
     )
-    if root_count > 0:
-        dataset_counts["_root"] = root_count
 
     # Count subdirectory images
+    subdir_counts = {}
     for subdir in input_path.iterdir():
         if not subdir.is_dir():
             continue
@@ -214,23 +233,34 @@ def get_input_structure_summary(input_path: Path) -> Dict[str, any]:
         )
 
         if sub_count > 0:
-            dataset_counts[subdir.name] = sub_count
+            subdir_counts[subdir.name] = sub_count
 
-    if not dataset_counts:
+    # Validate: reject mixed directories
+    if root_count > 0 and subdir_counts:
+        raise ValueError(
+            f"Mixed input structure not allowed: found {root_count} image(s) "
+            f"in root directory AND {len(subdir_counts)} subdirectory dataset(s). "
+            f"Use either a flat directory of images OR a directory containing "
+            f"dataset subdirectories, not both."
+        )
+
+    # Assign dataset counts based on structure
+    if root_count > 0:
+        # Flat directory: use the directory name
+        dataset_counts[input_path.name] = root_count
+        structure_type = "flat_directory"
+    elif subdir_counts:
+        # Recursive structure: use subdirectory names
+        dataset_counts.update(subdir_counts)
+        structure_type = "recursive"
+    else:
         raise ValueError(f"No valid images found in {input_path}")
 
     total_images = sum(dataset_counts.values())
 
-    # Determine structure type
-    has_root = "_root" in dataset_counts
-    has_subdirs = len(dataset_counts) > 1 or not has_root
-
-    if total_images == 1:
+    # Special case: single file in flat directory
+    if total_images == 1 and structure_type == "flat_directory":
         structure_type = "single_file"
-    elif has_subdirs:
-        structure_type = "recursive"
-    else:
-        structure_type = "flat_directory"
 
     return {
         "type"        : structure_type,

@@ -16,7 +16,7 @@ from datetime import datetime
 @dataclass
 class Dataset:
     """Represents a collection of images to process (e.g., from a subdirectory)."""
-    name: str  # Dataset name (subdirectory name or "_root" for root images)
+    name: str  # Dataset name ("single_image" for single files, directory name for flat dirs, or subdirectory name)
     images: List[Path]  # List of image file paths
     input_dir: Path  # Source directory for this dataset
     output_dir: Path  # Output directory for this dataset's results
