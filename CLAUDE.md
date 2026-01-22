@@ -314,7 +314,7 @@ phenotypic/module_name/
     - Test code paths on multiple platforms
 
 5. **Reproducibility:** Pipelines can be serialized and re-executed
-    - Use `pipeline.to_yaml()` / `pipeline.from_yaml()` for reproducible workflows
+    - Use `pipeline.to_json()` / `pipeline.from_json()` for reproducible workflows
     - Fixed random seeds for stochastic operations
 
 ---
@@ -563,7 +563,7 @@ pipeline = ImagePipeline([
     CLAHE(clip_limit=2.0),
     MorphologicalOpening(shape='disk', radius=2)
 ])
-result = pipeline.operate(image)
+result = pipeline.apply(image)
 ```
 
 See `phenotypic.enhance` module docstrings for parameter tuning guidance and use cases.
@@ -684,10 +684,10 @@ detected_colonies = image_with_detection.objects
 
 ```python
 # ✗ DON'T do this:
-image.rgb[:] = modified_data  # Violates consistency
+image.rgb[:] = modified_image  # Violates consistency
 
 # ✓ DO this:
-image.color_handler.set_rgb(modified_data)  # Use handler methods if modification needed
+image.set_image(modified_image)  # Use handler methods if modification needed
 # Or better yet, use operations that return new Image instances
 ```
 
@@ -729,7 +729,7 @@ jupyter, ipykernel  # Development (not Windows)
 
 When writing code:
 
-- Don't assume `rawpy` is available on Windows
+- Don't assume `rawpy` and `pympler` is available on Windows
 - Use try/except for platform-specific imports if needed
 - Test cross-platform code paths
 

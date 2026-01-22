@@ -9,8 +9,6 @@ from typing import Literal
 
 import numpy as np
 import scipy.ndimage as ndimage
-from scipy.signal import find_peaks
-from scipy.ndimage import gaussian_filter1d
 
 from phenotypic.abc_ import ObjectDetector
 from phenotypic.tools_._grid_inference_mixin import GridInferenceMixin

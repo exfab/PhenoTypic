@@ -633,8 +633,9 @@ class ObjectMask(NapariLabelsMixin, SingleChannelAccessor):
 
             Intersect with another detection result:
 
-            >>> refined_detector = RefinedDetector()
-            >>> refined_result = refined_detector.operate(image)
+            >>> from phenotypic.detect import OtsuDetector
+            >>> detector = OtsuDetector()
+            >>> refined_result = detector.apply(image)
             >>> image.objmask &= refined_result.objmask
 
         Note:
