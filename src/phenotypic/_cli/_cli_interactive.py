@@ -109,8 +109,12 @@ def _display_output_structure(config: ExecutionConfig, datasets: List[Dataset], 
         layers_to_create.append(("objmask", f"(*.{config.objmask_ext})"))
     if config.save_objmap:
         layers_to_create.append(("objmap", f"(*.{config.objmap_ext})"))
-    if config.save_objmap_rgb:
-        layers_to_create.append(("objmap_rgb", f"(*.{config.objmap_rgb_ext})"))
+    if config.save_objmap_overlay:
+        layers_to_create.append(("objmap_overlay", f"(*.{config.objmap_overlay_ext})"))
+    if config.save_enh_gray_overlay:
+        layers_to_create.append(("enh_gray_overlay", "(*.png)"))
+    if config.save_objmask_overlay:
+        layers_to_create.append(("objmask_overlay", "(*.png)"))
 
     # Dataset-first mode: dataset folders contain layer subdirectories
     dataset_names = [d.name for d in datasets[:2]]  # Show first 2 datasets
@@ -157,8 +161,12 @@ def _display_save_configuration(config: ExecutionConfig) -> None:
         layers_enabled.append(f"Object masks (*.{config.objmask_ext})")
     if config.save_objmap:
         layers_enabled.append(f"Object maps (*.{config.objmap_ext})")
-    if config.save_objmap_rgb:
-        layers_enabled.append(f"Object map RGB (*.{config.objmap_rgb_ext})")
+    if config.save_objmap_overlay:
+        layers_enabled.append(f"Object map overlay (*.{config.objmap_overlay_ext})")
+    if config.save_enh_gray_overlay:
+        layers_enabled.append("Enhanced grayscale overlay (*.png)")
+    if config.save_objmask_overlay:
+        layers_enabled.append("Object mask overlay (*.png)")
 
     if layers_enabled:
         click.echo("  Optional layer saves enabled:")
@@ -270,17 +278,21 @@ def execute_dry_run(
         est_size_mb += layer_size_mb
         click.echo(f"  - Optional image layers: ~{layer_size_mb:.1f} MB")
 
-    if config.save_objmask or config.save_objmap or config.save_objmap_rgb:
+    if config.save_objmask or config.save_objmap or config.save_objmap_overlay:
         mask_size_mb = 0
         if config.save_objmask:
             mask_size_mb += total_images * 0.5
         if config.save_objmap:
             mask_size_mb += total_images * 0.5
-        if config.save_objmap_rgb:
+        if config.save_objmap_overlay:
+            mask_size_mb += total_images * 2
+        if config.save_enh_gray_overlay:
+            mask_size_mb += total_images * 2
+        if config.save_objmask_overlay:
             mask_size_mb += total_images * 2
 
         est_size_mb += mask_size_mb
-        click.echo(f"  - Mask/objmap layers: ~{mask_size_mb:.1f} MB")
+        click.echo(f"  - Mask/objmap/overlay layers: ~{mask_size_mb:.1f} MB")
 
     click.echo(f"\n  Estimated total: ~{est_size_mb:.1f} MB")
 

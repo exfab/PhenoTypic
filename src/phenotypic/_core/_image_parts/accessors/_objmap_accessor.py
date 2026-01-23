@@ -546,53 +546,52 @@ class ObjectMap(NapariLabelsMixin, SingleChannelAccessor):
                filepath: str | Path | None = None,
                bit_depth: Literal[8, 16] | None = None,
                use_label2rgb: bool = False) -> None:
-        """
-        Saves an array representing a microbe colony image to a specified file format while preserving or adjusting
-        metadata and pixel depth as needed. Supports JPEG, PNG, and TIFF formats.
+        """Save the object map to a file.
 
-        The behavior of the function is context-sensitive based on the
-        file format's restrictions and array properties. Proper file format selection
-        and bit depth adjustment can have an impact on the accuracy of image analysis
-        and preservation of data integrity.
+        Saves the object map array to a specified file format. The raw object map
+        contains integer labels (0 = background, 1+ = object IDs). When use_label2rgb
+        is True, labels are colorized for visualization but NOT blended with the
+        original image.
 
         Args:
-            filepath (str | Path | None): The destination file path where the image will be saved. The extension of the
-                file path determines the image format (e.g., .jpeg, .png, .tiff). Changing the file format influences how
-                the image data is handled during saving:
-                    1. `.jpeg`: Compression or loss of data may occur. Maximal value limit (255) for uint8 pixel
-                       depth affects the fidelity of rich intensity details in microbe colonies.
-                    2. `.png`: Retains high-quality output but supports only 8-bit or 16-bit images. Conversions may
-                       occur if the array has a different data type, which could result in data loss.
-                    3. `.tiff`: Ideal for high-bit-depth precision and analysis preservation; best for maintaining
-                       intricate morphological details of microbial colonies.
-            bit_depth (Literal[8, 16] | None, optional): Specifies the bit depth of the saved image (either 8-bit or
-                16-bit). The provided bit depth must align with the file format's
-                capabilities. Misalignment could trigger conversion with possible
-                data truncation or rounding. For example:
-                    - 8-bit: Useful for efficiently representing intensity when detail is moderate, suitable for JPEG
-                      or simple PNG outputs.
-                    - 16-bit: Allows for higher intensity ranges, especially valuable for preserving subtle
-                      morphological gradient differentiation when analyzing colonies.
-            use_label2rgb (bool): Converts the objmap to an rgb image that allows for high-resolution
-                inspection of the object map. This is useful for when matplotlib is not enough,
-                and you need to be able to zoom in on the individual pixels. Defaults to False.
+            filepath: Destination file path (.png, .jpeg, or .tiff).
+            bit_depth: Target bit depth (8 or 16). If None, uses image's bit depth.
+            use_label2rgb: If True, colorize labels using skimage.color.label2rgb
+                for visual inspection. Note: This does NOT blend with the original
+                image - it only colorizes the labels against a black background.
+                For overlays blended with the original image at full resolution,
+                use ``Image.rgb.save_overlay()`` or ``Image.gray.save_overlay()``
+                instead. Defaults to False.
 
         Raises:
-            ValueError: An error occurs when an unsupported file extension is provided in `filepath`.
+            ValueError: If the file extension is not supported.
 
-        Warns:
-            UserWarnings: Warnings are issued under the following conditions:
-                - Saving a 16-bit or floating-point array as JPEG, as these conversions may cause information loss due
-                  to format restrictions.
-                - Saving a floating-point array as PNG when conversions to 8-bit or 16-bit integers might lead to truncated
-                  or altered pixel intensity values.
+        See Also:
+            ImageAccessorBase.save_overlay: For saving overlays that blend the
+                object labels with the original image at full resolution.
+
+        Examples:
+            .. dropdown:: Save raw object map vs colorized
+
+                >>> from phenotypic.data import load_synth_plate
+                >>> image = load_synth_plate()
+                >>> # Save raw labeled map (integer values)
+                >>> image.objmap.imsave("objmap_raw.png")
+                >>> # Save colorized labels (no background image)
+                >>> image.objmap.imsave("objmap_colored.png", use_label2rgb=True)
+                >>> # For overlay with original image, use save_overlay:
+                >>> image.rgb.save_overlay("overlay.png", overlay_alpha=0.3)
         """
-
         if not use_label2rgb:
             super().imsave(filepath=filepath, bit_depth=bit_depth)
         else:
-            bit_depth = self._check_bit_depth(bit_depth)
-            self._save_image(filepath=filepath,
-                             arr=label2rgb(self._subject_arr, alpha=1),
-                             bit_depth=bit_depth,
-                             metadata_json=None)
+            # Colorize labels without background image
+            colored = label2rgb(self._subject_arr, bg_label=0)
+            # Convert float [0,1] to uint8 for saving
+            colored_uint8 = (colored * 255).astype(np.uint8)
+            self._save_image(
+                filepath=filepath,
+                arr=colored_uint8,
+                bit_depth=8,  # Always 8-bit for colorized output
+                metadata_json=None
+            )

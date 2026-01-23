@@ -454,8 +454,12 @@ def _display_execution_config(
         layers.append("Object Mask")
     if config.save_objmap:
         layers.append("Object Map")
-    if config.save_objmap_rgb:
-        layers.append("Object Map RGB")
+    if config.save_objmap_overlay:
+        layers.append("Object Map Overlay")
+    if config.save_enh_gray_overlay:
+        layers.append("Enhanced Gray Overlay")
+    if config.save_objmask_overlay:
+        layers.append("Object Mask Overlay")
 
     if layers:
         table.add_row("", "")  # Spacer
@@ -572,9 +576,19 @@ def _display_execution_config(
         help="Save object maps to OUTPUT_DIR/objmap/",
 )
 @click.option(
-        "--save-objmap-rgb",
+        "--save-objmap-overlay",
         is_flag=True,
-        help="Save object map RGB to OUTPUT_DIR/objmap_rgb/",
+        help="Save object map overlay (colorized labels) to OUTPUT_DIR/objmap_overlay/",
+)
+@click.option(
+        "--save-enh-gray-overlay",
+        is_flag=True,
+        help="Save enhanced grayscale overlay to OUTPUT_DIR/enh_gray_overlay/",
+)
+@click.option(
+        "--save-objmask-overlay",
+        is_flag=True,
+        help="Save object mask overlay to OUTPUT_DIR/objmask_overlay/",
 )
 @click.option(
         "--rgb-ext",
@@ -607,10 +621,24 @@ def _display_execution_config(
         help="File extension for object map saves",
 )
 @click.option(
-        "--objmap-rgb-ext",
+        "--objmap-overlay-ext",
         default="png",
         show_default=True,
-        help="File extension for object map RGB saves",
+        help="File extension for object map overlay saves",
+)
+@click.option(
+        "--overlay-mode",
+        type=click.Choice(["image", "figure"]),
+        default="image",
+        show_default=True,
+        help="Overlay saving mode: 'image' for full-resolution, 'figure' for matplotlib",
+)
+@click.option(
+        "--overlay-alpha",
+        type=float,
+        default=0.3,
+        show_default=True,
+        help="Alpha transparency for label overlay (0.0-1.0)",
 )
 @click.option(
         "--no-dataset-column",
@@ -674,13 +702,17 @@ def main(
         save_enh_gray: bool,
         save_objmask: bool,
         save_objmap: bool,
-        save_objmap_rgb: bool,
+        save_objmap_overlay: bool,
+        save_enh_gray_overlay: bool,
+        save_objmask_overlay: bool,
         rgb_ext: str,
         gray_ext: str,
         enh_gray_ext: str,
         objmask_ext: str,
         objmap_ext: str,
-        objmap_rgb_ext: str,
+        objmap_overlay_ext: str,
+        overlay_mode: str,
+        overlay_alpha: float,
         include_dataset_column: bool,
         dry_run: bool,
         sample: Optional[int],
@@ -707,7 +739,7 @@ def main(
             enh_gray_ext = normalize_extension(enh_gray_ext, ".tiff")
             objmask_ext = normalize_extension(objmask_ext, ".png")
             objmap_ext = normalize_extension(objmap_ext, ".png")
-            objmap_rgb_ext = normalize_extension(objmap_rgb_ext, ".png")
+            objmap_overlay_ext = normalize_extension(objmap_overlay_ext, ".png")
         except click.BadParameter as e:
             click.echo(str(e), err=True)
             sys.exit(1)
@@ -812,13 +844,17 @@ def main(
                 save_enh_gray=save_enh_gray,
                 save_objmask=save_objmask,
                 save_objmap=save_objmap,
-                save_objmap_rgb=save_objmap_rgb,
+                save_objmap_overlay=save_objmap_overlay,
+                save_enh_gray_overlay=save_enh_gray_overlay,
+                save_objmask_overlay=save_objmask_overlay,
                 rgb_ext=rgb_ext,
                 gray_ext=gray_ext,
                 enh_gray_ext=enh_gray_ext,
                 objmask_ext=objmask_ext,
                 objmap_ext=objmap_ext,
-                objmap_rgb_ext=objmap_rgb_ext,
+                objmap_overlay_ext=objmap_overlay_ext,
+                overlay_mode=overlay_mode,
+                overlay_alpha=overlay_alpha,
                 include_dataset_column=include_dataset_column,
                 dry_run=dry_run,
                 sample=sample,
@@ -1101,7 +1137,9 @@ def main(
                     "enh_gray": config.save_enh_gray,
                     "objmask": config.save_objmask,
                     "objmap": config.save_objmap,
-                    "objmap_rgb": config.save_objmap_rgb,
+                    "objmap_overlay": config.save_objmap_overlay,
+                    "enh_gray_overlay": config.save_enh_gray_overlay,
+                    "objmask_overlay": config.save_objmask_overlay,
                 },
             }
         else:
@@ -1112,22 +1150,26 @@ def main(
         output_manager = OutputManager(
                 base_dir=output_dir,
                 save_layers={
-                    "rgb"       : config.save_rgb,
-                    "gray"      : config.save_gray,
-                    "enh_gray"  : config.save_enh_gray,
-                    "objmask"   : config.save_objmask,
-                    "objmap"    : config.save_objmap,
-                    "objmap_rgb": config.save_objmap_rgb,
+                    "rgb"              : config.save_rgb,
+                    "gray"             : config.save_gray,
+                    "enh_gray"         : config.save_enh_gray,
+                    "objmask"          : config.save_objmask,
+                    "objmap"           : config.save_objmap,
+                    "objmap_overlay"   : config.save_objmap_overlay,
+                    "enh_gray_overlay" : config.save_enh_gray_overlay,
+                    "objmask_overlay"  : config.save_objmask_overlay,
                 },
                 extensions={
-                    "rgb"       : config.rgb_ext,
-                    "gray"      : config.gray_ext,
-                    "enh_gray"  : config.enh_gray_ext,
-                    "objmask"   : config.objmask_ext,
-                    "objmap"    : config.objmap_ext,
-                    "objmap_rgb": config.objmap_rgb_ext,
+                    "rgb"            : config.rgb_ext,
+                    "gray"           : config.gray_ext,
+                    "enh_gray"       : config.enh_gray_ext,
+                    "objmask"        : config.objmask_ext,
+                    "objmap"         : config.objmap_ext,
+                    "objmap_overlay" : config.objmap_overlay_ext,
                 },
                 include_dataset_column=config.include_dataset_column,
+                overlay_mode=config.overlay_mode,
+                overlay_alpha=config.overlay_alpha,
         )
         output_manager.create_structure(datasets)
 

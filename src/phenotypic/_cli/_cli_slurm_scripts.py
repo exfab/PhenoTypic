@@ -153,8 +153,12 @@ def generate_image_processing_script(
         cmd_parts.append("--save-objmask")
     if config.save_objmap:
         cmd_parts.append("--save-objmap")
-    if config.save_objmap_rgb:
-        cmd_parts.append("--save-objmap-rgb")
+    if config.save_objmap_overlay:
+        cmd_parts.append("--save-objmap-overlay")
+    if config.save_enh_gray_overlay:
+        cmd_parts.append("--save-enh-gray-overlay")
+    if config.save_objmask_overlay:
+        cmd_parts.append("--save-objmask-overlay")
 
     # Add extensions
     cmd_parts.extend(["--rgb-ext", config.rgb_ext])
@@ -162,7 +166,11 @@ def generate_image_processing_script(
     cmd_parts.extend(["--enh-gray-ext", config.enh_gray_ext])
     cmd_parts.extend(["--objmask-ext", config.objmask_ext])
     cmd_parts.extend(["--objmap-ext", config.objmap_ext])
-    cmd_parts.extend(["--objmap-rgb-ext", config.objmap_rgb_ext])
+    cmd_parts.extend(["--objmap-overlay-ext", config.objmap_overlay_ext])
+
+    # Add overlay options
+    cmd_parts.extend(["--overlay-mode", config.overlay_mode])
+    cmd_parts.extend(["--overlay-alpha", str(config.overlay_alpha)])
 
     # Add dataset column flag
     if config.include_dataset_column:

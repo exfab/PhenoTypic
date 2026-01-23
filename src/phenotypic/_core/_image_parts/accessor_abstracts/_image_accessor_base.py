@@ -704,6 +704,72 @@ class ImageAccessorBase(ABC):
             )
         return fig, ax
 
+    def _generate_overlay_array(
+            self,
+            overlay_alpha: float = 0.3,
+            bg_label: int = 0,
+            colors: list | None = None,
+            **label2rgb_kwargs,
+    ) -> np.ndarray:
+        """Generate a full-resolution overlay array blending objmap with the subject image.
+
+        Creates an RGB overlay by blending the object map labels with the underlying
+        image data using skimage.color.label2rgb. Unlike show_overlay() which returns
+        a matplotlib figure, this returns the raw array suitable for pixel-level
+        inspection and high-resolution saving.
+
+        Args:
+            overlay_alpha: Alpha value for label overlay (0.0 = transparent,
+                1.0 = opaque). Higher values make the colored labels more prominent.
+                Defaults to 0.3.
+            bg_label: Label value to treat as background (will be transparent).
+                Defaults to 0.
+            colors: List of RGB colors to use for labels. If None, uses default
+                label2rgb colormap.
+            **label2rgb_kwargs: Additional keyword arguments passed to
+                skimage.color.label2rgb.
+
+        Returns:
+            np.ndarray: 8-bit RGB array (dtype uint8, shape H x W x 3) containing
+                the blended overlay image.
+        """
+        arr = self._subject_arr
+        objmap = self._root_image.objmap[:]
+
+        # Handle grayscale images: normalize and convert to 3-channel for label2rgb
+        if arr.ndim == 2:
+            if np.issubdtype(arr.dtype, np.floating):
+                arr_norm = arr
+            else:
+                arr_norm = arr.astype(np.float64) / np.iinfo(arr.dtype).max
+            # Stack to create 3-channel grayscale image
+            arr_rgb = np.stack([arr_norm] * 3, axis=-1)
+        else:
+            # RGB image: normalize to [0, 1] for label2rgb
+            if np.issubdtype(arr.dtype, np.floating):
+                arr_rgb = arr
+            else:
+                arr_rgb = arr.astype(np.float64) / np.iinfo(arr.dtype).max
+
+        # Build label2rgb kwargs
+        kwargs = {
+            'label': objmap,
+            'image': arr_rgb,
+            'bg_label': bg_label,
+            'alpha': overlay_alpha,
+        }
+        if colors is not None:
+            kwargs['colors'] = colors
+        kwargs.update(label2rgb_kwargs)
+
+        # Generate overlay using label2rgb
+        overlay_arr = ski.color.label2rgb(**kwargs)
+
+        # Convert to 8-bit uint8 for saving
+        overlay_uint8 = (overlay_arr * 255).astype(np.uint8)
+
+        return overlay_uint8
+
     def _build_phenotypic_metadata(self) -> dict:
         """Build PhenoTypic metadata dictionary for embedding in saved images.
 
@@ -836,6 +902,8 @@ class ImageAccessorBase(ABC):
                 pil_img = PIL_Image.fromarray(arr2save)
                 if metadata_json:
                     self._write_jpeg_metadata(filepath, pil_img, metadata_json)
+                else:
+                    pil_img.save(filepath)
 
             case x if x in IO.PNG_FILE_EXTENSIONS:
                 match arr2save.dtype:
@@ -862,11 +930,15 @@ class ImageAccessorBase(ABC):
 
                 if metadata_json:
                     self._write_png_metadata(filepath, pil_img, metadata_json)
+                else:
+                    pil_img.save(filepath)
 
             case x if x in IO.TIFF_EXTENSIONS:
                 pil_img = PIL_Image.fromarray(arr2save)
                 if metadata_json:
                     self._write_tiff_metadata(filepath, pil_img, metadata_json)
+                else:
+                    pil_img.save(filepath)
 
             case _:
                 raise ValueError(f"unknown file extension for saving:{filepath.suffix}")
@@ -936,6 +1008,73 @@ class ImageAccessorBase(ABC):
             raise ValueError(f"Unsupported bit depth: {bit_depth}")
 
         return bit_depth
+
+    def save_overlay(
+            self,
+            filepath: str | Path,
+            overlay_alpha: float = 0.3,
+            bg_label: int = 0,
+            colors: list | None = None,
+            show_gridlines: bool = True,
+            gridline_color: tuple[int, int, int] = (0, 255, 255),
+            **label2rgb_kwargs,
+    ) -> None:
+        """Save a full-resolution overlay image blending objmap with the subject array.
+
+        Creates an RGB overlay by blending the object map labels with the underlying
+        image data and saves it to disk. Unlike show_overlay() which produces a
+        matplotlib figure, this method saves the raw pixel data at full resolution,
+        suitable for pixel-level quality validation of detection results.
+
+        For GridImage objects, gridlines are automatically drawn when show_gridlines
+        is True. The gridline width scales dynamically with image size.
+
+        Args:
+            filepath: Destination file path. Should have .png or .jpeg extension.
+            overlay_alpha: Alpha value for label overlay (0.0 = transparent,
+                1.0 = opaque). Defaults to 0.3.
+            bg_label: Label value to treat as background. Defaults to 0.
+            colors: List of RGB colors to use for labels. If None, uses default
+                colormap.
+            show_gridlines: Whether to draw gridlines on overlay for GridImage
+                objects. Ignored for regular Image objects. Defaults to True.
+            gridline_color: RGB color tuple for gridlines. Defaults to cyan
+                (0, 255, 255).
+            **label2rgb_kwargs: Additional keyword arguments for label2rgb.
+
+        Raises:
+            ValueError: If the file extension is not supported.
+
+        Examples:
+            .. dropdown:: Save full-resolution overlay
+
+                >>> from phenotypic.data import load_synth_plate
+                >>> image = load_synth_plate()
+                >>> image.rgb.save_overlay("overlay_rgb.png", overlay_alpha=0.4)
+        """
+        filepath = Path(filepath)
+
+        # Generate full-resolution overlay array
+        overlay_arr = self._generate_overlay_array(
+            overlay_alpha=overlay_alpha,
+            bg_label=bg_label,
+            colors=colors,
+            **label2rgb_kwargs,
+        )
+
+        # For GridImage, draw gridlines if requested (duck typing check)
+        if show_gridlines and hasattr(self._root_image, '_draw_gridlines_on_overlay'):
+            overlay_arr = self._root_image._draw_gridlines_on_overlay(
+                overlay_arr, gridline_color
+            )
+
+        # Save using existing _save_image infrastructure (no metadata for overlays)
+        self._save_image(
+            filepath=filepath,
+            arr=overlay_arr,
+            bit_depth=8,  # Overlays are always 8-bit
+            metadata_json=None,  # No phenotypic metadata for overlay images
+        )
 
     @property
     def nbytes(self) -> int:

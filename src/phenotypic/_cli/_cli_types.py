@@ -96,13 +96,19 @@ class ExecutionConfig:
     save_enh_gray: bool
     save_objmask: bool
     save_objmap: bool
-    save_objmap_rgb: bool
+    save_objmap_overlay: bool  # Renamed from save_objmap_rgb
+    save_enh_gray_overlay: bool
+    save_objmask_overlay: bool
     rgb_ext: str
     gray_ext: str
     enh_gray_ext: str
     objmask_ext: str
     objmap_ext: str
-    objmap_rgb_ext: str
+    objmap_overlay_ext: str  # Renamed from objmap_rgb_ext
+
+    # Overlay options
+    overlay_mode: str  # "image" or "figure"
+    overlay_alpha: float
     
     # Processing options
     include_dataset_column: bool

@@ -174,7 +174,9 @@ def create_initial_state(
                 "enh_gray": config.save_enh_gray,
                 "objmask": config.save_objmask,
                 "objmap": config.save_objmap,
-                "objmap_rgb": config.save_objmap_rgb
+                "objmap_overlay": config.save_objmap_overlay,
+                "enh_gray_overlay": config.save_enh_gray_overlay,
+                "objmask_overlay": config.save_objmask_overlay,
             }
         }
     )

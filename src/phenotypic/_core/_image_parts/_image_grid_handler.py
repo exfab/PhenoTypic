@@ -24,6 +24,11 @@ class ImageGridHandler(Image):
     with gridlines and annotations. It interacts with the provided grid handling utilities
     to determine grid structure and assign/overlay it effectively on the image.
 
+    Attributes:
+        _GRIDLINE_WIDTH_FACTOR: Tunable factor for gridline width calculation. The line
+            width is calculated as max(1, int(min(height, width) * factor)). Increase
+            this value for thicker gridlines on large images. Default is 0.002.
+
     Args:
             arr (Optional[Union[np.ndarray, Type[Image]]]): The im
                 image, which can be a NumPy array or an image-like object. If
@@ -42,6 +47,10 @@ class ImageGridHandler(Image):
         _accessors.grid (GridAccessor): An internal utility for managing grid-based operations such as
             accessing row and column edges and generating section maps for the image's grid system.
     """
+
+    # Tunable factor for gridline width. Line width = max(1, int(min(h, w) * factor))
+    # Increase for thicker gridlines on large/high-resolution images.
+    _GRIDLINE_WIDTH_FACTOR: float = 0.002
 
     def __init__(
             self,
@@ -369,3 +378,64 @@ class ImageGridHandler(Image):
                 )
 
         return fig, ax
+
+    def _draw_gridlines_on_overlay(
+            self,
+            overlay_arr: np.ndarray,
+            gridline_color: Tuple[int, int, int] = (0, 255, 255),
+    ) -> np.ndarray:
+        """Draw gridlines on an overlay array for GridImage visualization.
+
+        This method adds grid structure visualization to an overlay array by
+        drawing lines at row and column boundaries. Line width scales dynamically
+        with image size based on _GRIDLINE_WIDTH_FACTOR.
+
+        Args:
+            overlay_arr: 8-bit RGB array (H x W x 3) to draw gridlines on.
+            gridline_color: RGB tuple for gridline color. Defaults to cyan
+                (0, 255, 255).
+
+        Returns:
+            np.ndarray: Copy of overlay_arr with gridlines drawn.
+        """
+        from skimage.draw import line
+
+        arr = overlay_arr.copy()
+        h, w = arr.shape[:2]
+
+        # Calculate dynamic line width based on image size
+        line_width = max(1, int(min(h, w) * self._GRIDLINE_WIDTH_FACTOR))
+
+        # Get grid edges
+        col_edges = self.grid.get_col_edges()
+        row_edges = self.grid.get_row_edges()
+
+        if len(col_edges) == 0 or len(row_edges) == 0:
+            return arr
+
+        row_min = int(np.clip(row_edges.min(), 0, h - 1))
+        row_max = int(np.clip(row_edges.max(), 0, h - 1))
+        col_min = int(np.clip(col_edges.min(), 0, w - 1))
+        col_max = int(np.clip(col_edges.max(), 0, w - 1))
+
+        # Draw vertical lines at column edges
+        for x in col_edges:
+            x = int(np.clip(x, 0, w - 1))
+            for offset in range(-line_width // 2, line_width // 2 + 1):
+                x_off = int(np.clip(x + offset, 0, w - 1))
+                rr, cc = line(row_min, x_off, row_max - 1, x_off)
+                # Clip to valid array bounds
+                valid = (rr >= 0) & (rr < h) & (cc >= 0) & (cc < w)
+                arr[rr[valid], cc[valid]] = gridline_color
+
+        # Draw horizontal lines at row edges
+        for y in row_edges:
+            y = int(np.clip(y, 0, h - 1))
+            for offset in range(-line_width // 2, line_width // 2 + 1):
+                y_off = int(np.clip(y + offset, 0, h - 1))
+                rr, cc = line(y_off, col_min, y_off, col_max - 1)
+                # Clip to valid array bounds
+                valid = (rr >= 0) & (rr < h) & (cc >= 0) & (cc < w)
+                arr[rr[valid], cc[valid]] = gridline_color
+
+        return arr

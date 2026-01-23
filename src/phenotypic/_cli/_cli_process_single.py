@@ -110,8 +110,12 @@ def process_single_image_core(
               help="Save object mask")
 @click.option("--save-objmap", is_flag=True,
               help="Save object map")
-@click.option("--save-objmap-rgb", is_flag=True,
-              help="Save object map RGB visualization")
+@click.option("--save-objmap-overlay", is_flag=True,
+              help="Save object map overlay (colorized labels)")
+@click.option("--save-enh-gray-overlay", is_flag=True,
+              help="Save enhanced grayscale overlay")
+@click.option("--save-objmask-overlay", is_flag=True,
+              help="Save object mask overlay")
 @click.option("--rgb-ext", default="tiff",
               help="File extension for RGB saves")
 @click.option("--gray-ext", default="tiff",
@@ -122,8 +126,12 @@ def process_single_image_core(
               help="File extension for object mask saves")
 @click.option("--objmap-ext", default="png",
               help="File extension for object map saves")
-@click.option("--objmap-rgb-ext", default="png",
-              help="File extension for object map RGB saves")
+@click.option("--objmap-overlay-ext", default="png",
+              help="File extension for object map overlay saves")
+@click.option("--overlay-mode", type=click.Choice(["image", "figure"]), default="image",
+              help="Overlay saving mode: 'image' for full-resolution, 'figure' for matplotlib")
+@click.option("--overlay-alpha", type=float, default=0.3,
+              help="Alpha transparency for label overlay (0.0-1.0)")
 @click.option("--no-dataset-column", "include_dataset_column",
               is_flag=True, flag_value=False, default=True,
               help="Exclude Metadata_Dataset column from measurements CSV (included by default)")
@@ -143,13 +151,17 @@ def main(
     save_enh_gray: bool,
     save_objmask: bool,
     save_objmap: bool,
-    save_objmap_rgb: bool,
+    save_objmap_overlay: bool,
+    save_enh_gray_overlay: bool,
+    save_objmask_overlay: bool,
     rgb_ext: str,
     gray_ext: str,
     enh_gray_ext: str,
     objmask_ext: str,
     objmap_ext: str,
-    objmap_rgb_ext: str,
+    objmap_overlay_ext: str,
+    overlay_mode: str,
+    overlay_alpha: float,
     include_dataset_column: bool,
     event_log: Optional[Path]
 ):
@@ -175,9 +187,11 @@ def main(
             "enh_gray": save_enh_gray,
             "objmask": save_objmask,
             "objmap": save_objmap,
-            "objmap_rgb": save_objmap_rgb
+            "objmap_overlay": save_objmap_overlay,
+            "enh_gray_overlay": save_enh_gray_overlay,
+            "objmask_overlay": save_objmask_overlay,
         }
-        
+
         # Prepare extensions - validate all before processing
         try:
             extensions = {
@@ -186,19 +200,21 @@ def main(
                 "enh_gray": normalize_extension(enh_gray_ext, ".tiff"),
                 "objmask": normalize_extension(objmask_ext, ".png"),
                 "objmap": normalize_extension(objmap_ext, ".png"),
-                "objmap_rgb": normalize_extension(objmap_rgb_ext, ".png")
+                "objmap_overlay": normalize_extension(objmap_overlay_ext, ".png"),
             }
         except click.BadParameter as e:
             logger.error(f"Invalid extension parameter: {e}")
             click.echo(f"Error: {e}", err=True)
             sys.exit(1)
-        
+
         # Create output manager
         output_manager = OutputManager(
             base_dir=output_dir,
             save_layers=save_layers,
             extensions=extensions,
-            include_dataset_column=include_dataset_column
+            include_dataset_column=include_dataset_column,
+            overlay_mode=overlay_mode,
+            overlay_alpha=overlay_alpha,
         )
         
         # Process image

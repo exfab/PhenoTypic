@@ -35,7 +35,9 @@ class OutputManager:
         base_dir: Path,
         save_layers: Dict[str, bool],
         extensions: Dict[str, str],
-        include_dataset_column: bool = True
+        include_dataset_column: bool = True,
+        overlay_mode: str = "image",
+        overlay_alpha: float = 0.3,
     ):
         """
         Initialize OutputManager.
@@ -45,11 +47,15 @@ class OutputManager:
             save_layers: Which layers to save {"rgb": True, "gray": False, ...}
             extensions: File extensions for each layer {"rgb": ".tiff", ...}
             include_dataset_column: Whether to add Metadata_Dataset column to CSVs (default: True)
+            overlay_mode: "image" for full-resolution save_overlay(), "figure" for matplotlib (default: "image")
+            overlay_alpha: Alpha transparency for label overlay (0.0-1.0, default: 0.3)
         """
         self.base_dir = Path(base_dir)
         self.save_layers = save_layers
         self.extensions = extensions
         self.include_dataset_column = include_dataset_column
+        self.overlay_mode = overlay_mode
+        self.overlay_alpha = overlay_alpha
 
         # Logs directory (always at root level)
         self.logs_dir = self.base_dir / "logs"
@@ -145,22 +151,41 @@ class OutputManager:
     ) -> Path:
         """
         Save overlay visualization for a single image.
-        
+
+        Uses the configured overlay_mode:
+        - "image": Full-resolution save using accessor's save_overlay() method
+        - "figure": Matplotlib figure saving (original behavior)
+
+        Prefers RGB overlay if available, falls back to grayscale.
+
         Args:
             image: Image object with processing results
             dataset_name: Dataset name
             image_stem: Image filename without extension
-            
+
         Returns:
             Path where overlay was saved
         """
         output_path = self.get_output_path(dataset_name, "overlays", image_stem)
-        
-        # Generate overlay
-        fig, ax = image.show_overlay()
-        fig.savefig(output_path, bbox_inches="tight")
-        plt.close(fig)
-        
+
+        if self.overlay_mode == "figure":
+            # Use matplotlib (original behavior)
+            fig, ax = image.show_overlay()
+            fig.savefig(output_path, bbox_inches="tight", dpi=150)
+            plt.close(fig)
+        else:
+            # Use full-resolution save_overlay (new default)
+            if not image.rgb.isempty():
+                image.rgb.save_overlay(
+                    filepath=output_path,
+                    overlay_alpha=self.overlay_alpha
+                )
+            else:
+                image.gray.save_overlay(
+                    filepath=output_path,
+                    overlay_alpha=self.overlay_alpha
+                )
+
         return output_path
 
     def _save_layer_safely(
@@ -259,14 +284,34 @@ class OutputManager:
             if path:
                 saved_paths["objmap"] = path
 
-        # Save object map RGB visualization if requested
-        if self.save_layers.get("objmap_rgb") and not image.objmap.isempty():
+        # Save object map overlay (label2rgb colorized, renamed from objmap_rgb)
+        # Support both old "objmap_rgb" and new "objmap_overlay" keys for backward compatibility
+        if (self.save_layers.get("objmap_overlay") or self.save_layers.get("objmap_rgb")) and not image.objmap.isempty():
+            layer_name = "objmap_overlay" if self.save_layers.get("objmap_overlay") else "objmap_rgb"
             path = self._save_layer_safely(
-                "objmap_rgb", image, dataset_name, image_stem,
+                layer_name, image, dataset_name, image_stem,
                 lambda p: image.objmap.imsave(filepath=p, use_label2rgb=True)
             )
             if path:
-                saved_paths["objmap_rgb"] = path
+                saved_paths[layer_name] = path
+
+        # Save enhanced grayscale overlay if requested
+        if self.save_layers.get("enh_gray_overlay") and not image.enh_gray.isempty():
+            path = self._save_layer_safely(
+                "enh_gray_overlay", image, dataset_name, image_stem,
+                lambda p: image.enh_gray.save_overlay(filepath=p, overlay_alpha=self.overlay_alpha)
+            )
+            if path:
+                saved_paths["enh_gray_overlay"] = path
+
+        # Save object mask overlay if requested
+        if self.save_layers.get("objmask_overlay") and not image.objmask.isempty():
+            path = self._save_layer_safely(
+                "objmask_overlay", image, dataset_name, image_stem,
+                lambda p: image.objmask.save_overlay(filepath=p, overlay_alpha=self.overlay_alpha)
+            )
+            if path:
+                saved_paths["objmask_overlay"] = path
 
         return saved_paths
     
