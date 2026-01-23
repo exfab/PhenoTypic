@@ -1,7 +1,7 @@
 import pickle
 import pytest
 
-from .test_fixtures import _public
+from unit.test_fixtures import _public
 
 # Filter out CLI objects that aren't meant to be pickled
 _pickleable_public = [

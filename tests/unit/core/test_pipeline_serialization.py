@@ -6,7 +6,7 @@ import pytest
 import pandas as pd
 
 from phenotypic import ImagePipeline, Image
-from phenotypic.data import load_colony
+from phenotypic.data import load_colony, load_synth_plate
 from phenotypic.detect import OtsuDetector, CannyDetector
 from phenotypic.enhance import GaussianBlur, CLAHE
 from phenotypic.measure import MeasureShape, MeasureIntensity, MeasureColor
@@ -562,9 +562,9 @@ class TestNestedOperationsSerialization:
 
         # Create composite detector with nested detectors
         composite = CompositeDetector(
-            detectors=[OtsuDetector(), CannyDetector(sigma=2.0)],
-            mode='overlap',
-            min_overlap_ratio=0.6
+                detectors=[OtsuDetector(), CannyDetector(sigma=2.0)],
+                mode='overlap',
+                min_overlap_ratio=0.6
         )
 
         pipeline = ImagePipeline([composite])
@@ -608,11 +608,11 @@ class TestNestedOperationsSerialization:
 
         # Create composite detector
         composite = CompositeDetector(
-            detectors=[
-                OtsuDetector(ignore_zeros=True),
-                CannyDetector(sigma=2)
-            ],
-            mode='union'
+                detectors=[
+                    OtsuDetector(ignore_zeros=True),
+                    CannyDetector(sigma=2)
+                ],
+                mode='union'
         )
 
         pipeline = ImagePipeline([composite])
@@ -637,14 +637,13 @@ class TestNestedOperationsSerialization:
     def test_nested_operations_functional_equivalence(self):
         """Test that serialized/deserialized nested operations work identically."""
         from phenotypic.detect import CompositeDetector
-        from phenotypic.data import load_synth_plate
 
         image = load_synth_plate()
 
         # Original detector
         composite = CompositeDetector(
-            detectors=[OtsuDetector(), CannyDetector(sigma=2)],
-            mode='intersection'
+                detectors=[OtsuDetector(), CannyDetector(sigma=2)],
+                mode='intersection'
         )
         original_result = composite.apply(image)
 
@@ -658,13 +657,14 @@ class TestNestedOperationsSerialization:
 
         # Results should be identical
         import numpy as np
+
         np.testing.assert_array_equal(
-            original_result.objmask[:],
-            restored_result.objmask[:]
+                original_result.objmask[:],
+                restored_result.objmask[:]
         )
         np.testing.assert_array_equal(
-            original_result.objmap[:],
-            restored_result.objmap[:]
+                original_result.objmap[:],
+                restored_result.objmap[:]
         )
 
     def test_single_nested_operation(self):
@@ -673,8 +673,8 @@ class TestNestedOperationsSerialization:
 
         # Single detector in CompositeDetector
         composite = CompositeDetector(
-            detectors=[OtsuDetector()],
-            mode='union'
+                detectors=[OtsuDetector()],
+                mode='union'
         )
 
         pipeline = ImagePipeline([composite])

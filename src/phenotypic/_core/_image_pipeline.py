@@ -21,7 +21,7 @@ class ImagePipeline(SerializablePipeline):
 
         .. code-block:: python
 
-            >>> import phenotypic as pht
+            >>> from phenotypic.data import _synthetic_data            >>> import phenotypic as pht
             >>> from phenotypic.enhance import GaussianBlur
             >>> from phenotypic.detect import OtsuDetector
             >>> from phenotypic.measure import MeasureShape, MeasureIntensity
@@ -31,7 +31,7 @@ class ImagePipeline(SerializablePipeline):
             >>>     meas=[MeasureShape(), MeasureIntensity()]
             >>> )
             >>>
-            >>> image = pht.data.load_synth_plate()
+            >>> image = _synthetic_data.load_synth_plate()
             >>> pipe.apply(image)
 
     """

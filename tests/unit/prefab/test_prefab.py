@@ -1,5 +1,5 @@
 import pytest
-from .resources.TestHelper import walk_package_for_class, timeit
+from ..resources.TestHelper import walk_package_for_class, timeit
 import phenotypic
 from phenotypic.abc_ import PrefabPipeline
 

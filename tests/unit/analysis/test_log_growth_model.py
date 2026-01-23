@@ -14,7 +14,7 @@ class TestLogGrowthModel:
     def measurement_data(self):
         """Load measurement data for testing."""
         data_path = (
-                Path(__file__).parent.parent
+                Path(__file__).parents[3]
                 /"src"
                 /"phenotypic"
                 /"data"
@@ -28,7 +28,7 @@ class TestLogGrowthModel:
     def expected_results(self):
         """Load expected fitted results for validation."""
         data_path = (
-                Path(__file__).parent.parent
+                Path(__file__).parents[3]
                 /"src"
                 /"phenotypic"
                 /"data"

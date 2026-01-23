@@ -19,7 +19,7 @@ from phenotypic.refine import (
     ReduceMultipleGridObjects,
 )
 from phenotypic.grid import GridApply
-from .resources.TestHelper import timeit
+from ..resources.TestHelper import timeit
 
 # Configure logging to see all debug information
 logging.basicConfig(

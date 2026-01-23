@@ -448,7 +448,7 @@ class ImageAccessorBase(ABC):
 
             # Calculate figsize to show image at full resolution, but cap at reasonable maximums
             max_display_size = 12.0  # Maximum inches for any dimension
-            pixels_per_inch = 100.0
+            pixels_per_inch = 300.0
 
             # Calculate required figsize for full resolution
             figsize_width = min(width / pixels_per_inch, max_display_size)
@@ -619,7 +619,7 @@ class ImageAccessorBase(ABC):
             the display. If an existing Axes is provided, its corresponding Figure is returned.
         """
         overlay_settings = overlay_settings if overlay_settings else {}
-        overlay_alpha = overlay_settings.get("beta", 0.15)
+        overlay_alpha = overlay_settings.get("alpha", 0.15)
         overlay_arr = ski.color.label2rgb(
                 label=objmap, image=arr, bg_label=0, alpha=overlay_alpha,
                 **overlay_settings

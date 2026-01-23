@@ -5,7 +5,7 @@ from phenotypic.grid import AutoGridFinder
 from phenotypic.detect import OtsuDetector
 from phenotypic.tools_.exceptions_ import IllegalAssignmentError
 
-from .resources.TestHelper import timeit
+from ..resources.TestHelper import timeit
 
 
 @timeit

@@ -5,7 +5,7 @@ import skimage
 
 import phenotypic
 
-from .resources.TestHelper import timeit
+from ..resources.TestHelper import timeit
 
 
 

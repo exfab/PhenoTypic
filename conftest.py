@@ -2,7 +2,7 @@
 import logging
 
 # Share test fixtures defined in tests/test_fixtures.py across the suite.
-pytest_plugins = ["tests.test_fixtures"]
+pytest_plugins = ["tests.unit.test_fixtures"]
 
 
 def pytest_configure(config):

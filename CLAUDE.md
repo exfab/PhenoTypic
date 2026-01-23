@@ -71,85 +71,17 @@ source .venv/bin/activate
 
 ### Command-Line Interface (CLI)
 
-PhenoTypic includes a CLI for batch processing directories of images:
-
 ```bash
-# Basic usage
-uv run python -m phenotypic pipeline.json ./input_images ./output_results
+# Basic usage (auto-generates timestamped output directory)
+uv run python -m phenotypic pipeline.json ./images
 
-# With options (parallel processing, grid configuration)
-uv run python -m phenotypic pipeline.json ./input_images ./output_results \
-    --image-type GridImage \
-    --nrows 8 \
-    --ncols 12 \
-    --n-jobs 4
-
-# Process standard images (non-grid)
-uv run python -m phenotypic pipeline.json ./input_images ./output_results \
-    --image-type Image \
-    --n-jobs -1  # Use all available cores
-
-# Save intermediate processing layers
-uv run python -m phenotypic pipeline.json ./input_images ./output_results \
-    --save-rgb \
-    --save-gray \
-    --save-objmask \
-    --rgb-ext png
+# With output directory and grid options
+uv run python -m phenotypic pipeline.json ./images -o ./results \
+    --image-type GridImage --nrows 8 --ncols 12 --n-jobs -1
 ```
 
-**CLI Features:**
-
-- Parallel processing with joblib (specify `--n-jobs`)
-- Automatic generation of measurement CSVs per image
-- Visual QC overlays saved as PNGs
-- Master measurements file aggregating all results
-- Supports both `Image` and `GridImage` types
-- Configurable grid dimensions for plate-based experiments
-- Optional intermediate outputs (RGB, grayscale, enhanced grayscale, masks, object maps)
-
-**Output Structure:**
-
-```
-output_results/
-├── measurements/
-│   ├── image1.csv
-│   ├── image2.csv
-│   └── ...
-├── overlays/
-│   ├── image1.png
-│   ├── image2.png
-│   └── ...
-├── rgb/                     # Optional: created with --save-rgb
-│   ├── image1.tiff
-│   └── ...
-├── gray/                    # Optional: created with --save-gray
-│   └── ...
-├── enh_gray/                # Optional: created with --save-enh-gray
-│   └── ...
-├── objmask/                 # Optional: created with --save-objmask
-│   └── ...
-├── objmap/                  # Optional: created with --save-objmap
-│   └── ...
-├── objmap_rgb/              # Optional: created with --save-objmap-rgb
-│   └── ...
-└── master_measurements.csv  # Aggregated results
-```
-
-**Breaking Change (v2.0):**
-
-The CLI now uses boolean flags instead of user-specified directories for optional
-outputs:
-
-- **Old (v1.x)**: `--save-rgb-dir ./custom/path/rgb`
-- **New (v2.0)**: `--save-rgb` (auto-creates `OUTPUT_DIR/rgb/`)
-
-This change:
-
-- Simplifies command-line usage
-- Enforces consistent directory structure
-- Aligns with `measurements/` and `overlays/` pattern
-
-If you need custom paths, use symlinks: `ln -s /custom/path OUTPUT_DIR/rgb`
+**See [src/phenotypic/_cli/CLAUDE.md](src/phenotypic/_cli/CLAUDE.md) for complete CLI
+documentation** including all flags, output structure, and SLURM cluster execution
 
 ---
 
@@ -273,7 +205,7 @@ phenotypic/module_name/
 | Module                     | Purpose                             | Key Classes                                                                                                                      |
 |----------------------------|-------------------------------------|----------------------------------------------------------------------------------------------------------------------------------|
 | `phenotypic.detect`        | Object detection (11+ detectors)    | `ObjectDetector` (ABC), `OtsuDetector`, `CannyDetector`, etc.                                                                    |
-| `phenotypic.enhance`       | Image preprocessing (19+ enhancers) | `ImageEnhancer` (ABC), `GaussianBlur`, `CLAHE`, `MorphologicalOpening`, `BilateralDenoise`, `UnsharpMask`, `BlackTophatEnhancer` |
+| `phenotypic.enhance`       | Image preprocessing (19+ enhancers) | `ImageEnhancer` (ABC), `GaussianBlur`, `CLAHE`, `GrayOpening`, `BilateralDenoise`, `UnsharpMask`, `WhiteTophatSubtract` |
 | `phenotypic.refine`        | Post-detection refinement           | `GridObjectRefiner`, morphology operations, mask editing                                                                         |
 | `phenotypic.measure`       | Feature extraction                  | `MeasureFeatures` (ABC), color composition, morphology, etc.                                                                     |
 | `phenotypic.grid`          | Grid detection and alignment        | `GridFinder`, `GridCorrector`                                                                                                    |
@@ -428,110 +360,34 @@ use this specific order:
 
 ## Testing Strategy
 
-### Test Organization
+Test files in `tests/` mirror the module structure under `src/phenotypic/`.
 
-- Test files in `tests/` mirror the module structure under `src/phenotypic/`
-- 28 test modules covering all major functionality
-- Test resources (sample images, data) in `tests/resources/`
-
-### Key Test Files to Know
-
-- `test_image.py` - Core Image class functionality
-- `test_image_pipeline.py` - Pipeline operations and chaining
-- `test_image_pipeline_batch.py` - Batch processing
-- `test_pipeline_serialization.py` - Pipeline save/load (YAML/JSON)
-- `test_accessor_numpy_interface.py` - Accessor NumPy compatibility
-- `test_gitter_detector.py` - Detection algorithm tests
-- `test_measure_color_composition.py` - Color measurement tests
-- `test_morphological_enhancers.py` - Morphological operations (opening, closing, etc.)
-- `test_phenotypic_cli.py` - CLI batch processing tests
-
-### Test Configuration
-
-- **Framework:** Pytest with parallel execution support (`pytest-xdist`)
-- **Pytest config:** `pyproject.toml [tool.pytest.ini_options]`
-- **Conftest:** `conftest.py` enables specific loggers and benchmarking
-- **Run in parallel:** `uv run pytest -n auto` (faster for CI)
+**See [tests/CLAUDE.md](tests/CLAUDE.md) for complete testing documentation** including
+test organization, configuration, and how to write new tests
 
 ---
 
 ## Global Settings and Configuration
 
-### Settings Module (src/phenotypic/settings_.py)
-
-The `settings_` module provides global configuration for PhenoTypic:
+Configure settings **before** importing other PhenoTypic modules:
 
 ```python
-from phenotypic import settings_
-
-# Operation validation
-settings_.VALIDATE_OPS = True  # Default: validate operation inputs/outputs
-
-# Matplotlib defaults
-settings_.MPL.FIGSIZE = (8, 6)  # Default figure size for plots
-```
-
-**Key Configuration Options:**
-
-- **`VALIDATE_OPS`**: When `True` (default), operations validate inputs and outputs to
-  ensure data consistency. Set to `False` for performance-critical applications where
-  validation overhead is unacceptable.
-
-- **`MPL`**: Container class for matplotlib defaults:
-    - `FIGSIZE`: Default figure size for visualizations `(width, height)` in inches
-
-**Usage Pattern:**
-
-```python
-# Disable validation for batch processing performance
 import phenotypic.settings_ as settings
-
-settings.VALIDATE_OPS = False
-
-# Customize default plot size
-settings.MPL.FIGSIZE = (12, 8)
-
-# Then proceed with normal operations
-from phenotypic import ImagePipeline
-from phenotypic.data import load_synth_plate
-
-image = load_synth_plate()
+settings.VALIDATE_OPS = False  # Disable for batch performance
 ```
 
-**Important Notes:**
-
-- Settings should be configured **before** importing other PhenoTypic modules
-- Changes to settings affect global behavior across all operations
-- For reproducibility, document any non-default settings in your analysis scripts
+**See [src/phenotypic/settings_/CLAUDE.md](src/phenotypic/settings_/CLAUDE.md) for
+complete settings documentation**
 
 ---
 
 ## Color Space and Image Data Handling
 
-### Color Space Support
+Access color spaces via `image.color`: Lab, HSV, XYZ, XYZ_D65, xy chromaticity.
+All conversions are lazy-evaluated and cached.
 
-The framework handles sophisticated color operations with lazy evaluation:
-
-- **Native RGB:** Input format (e.g., from JPEG, PNG)
-- **Grayscale:** Automatic weighted luminance conversion
-- **Color Spaces:**
-    - **XYZ / XYZ-D65:** Standard illuminant-based
-    - **Lab:** Perceptually uniform color space
-    - **HSV:** Hue/Saturation/Value
-    - **xy chromaticity:** 2D color without brightness
-
-### Key Implementation Detail: ImageColorHandler
-
-Color conversions are managed by `ImageColorHandler` in
-`core/_image_parts/_image_color_handler.py`. It handles:
-
-- Gamma correction (sRGB support with linear fallback)
-- Illuminant specifications (D65 standard, D50 for imaging)
-- CIE Observer (1931 2° Standard Observer)
-- Lazy evaluation with caching
-
-**Example:** `image.color.Lab[:]` triggers XYZ → Lab conversion only when accessed,
-results are cached.
+**See [src/phenotypic/_core/CLAUDE.md](src/phenotypic/_core/CLAUDE.md) for complete
+Image class and color space documentation**
 
 ---
 
@@ -540,9 +396,8 @@ results are cached.
 The `phenotypic.enhance` module provides 19+ preprocessing operations: denoising
 (GaussianBlur, MedianFilter, BilateralDenoise), background correction (
 RollingBallRemoveBG),
-contrast enhancement (CLAHE, UnsharpMask), morphological operations (
-MorphologicalOpening,
-MorphologicalClosing, etc.), and edge detection (SobelFilter).
+contrast enhancement (CLAHE, UnsharpMask), morphological operations (GrayOpening,
+WhiteTophatSubtract, etc.), and edge detection (SobelFilter).
 
 **Key Principles:**
 
@@ -554,14 +409,14 @@ MorphologicalClosing, etc.), and edge detection (SobelFilter).
 
 ```python
 from phenotypic import ImagePipeline
-from phenotypic.enhance import GaussianBlur, CLAHE, MorphologicalOpening
+from phenotypic.enhance import GaussianBlur, CLAHE, GrayOpening
 from phenotypic.data import load_synth_plate
 
 image = load_synth_plate()
 pipeline = ImagePipeline([
     GaussianBlur(sigma=1.5),
     CLAHE(clip_limit=2.0),
-    MorphologicalOpening(shape='disk', radius=2)
+    GrayOpening(shape='disk', radius=2)
 ])
 result = pipeline.apply(image)
 ```
@@ -635,7 +490,7 @@ This allows profiling bottlenecks without explicit instrumentation.
 
 - `src/phenotypic/detect/_otsu_detector.py` - Simple detector example
 - `src/phenotypic/enhance/_gaussian_blur.py` - Simple enhancer example
-- `src/phenotypic/enhance/_morphological_opening.py` - Morphological operation example
+- `src/phenotypic/enhance/_gray_opening.py` - Morphological operation example
 - Study these to understand the pattern for new operations
 
 ### Utility Classes and Mixins
@@ -661,57 +516,23 @@ This allows profiling bottlenecks without explicit instrumentation.
 
 ## Working with the `Image` Class
 
-### Basic Usage Pattern
-
 ```python
-from phenotypic import Image
-from phenotypic.detect import OtsuDetector
 from phenotypic.data import load_synth_plate
 
-# Load image
 image = load_synth_plate()
-
-# Apply operations
-detector = OtsuDetector()
-image_with_detection = detector.operate(image)
-
-# Access data through accessors
-colony_mask = image_with_detection.objmask[:]
-detected_colonies = image_with_detection.objects
+image.rgb[:]       # RGB array
+image.gray[:]      # Grayscale
+image.enh_gray[:]  # Enhanced grayscale
+image.objmask[:]   # Binary mask
+image.objmap[:]    # Labeled objects
+image.color.Lab[:] # Color spaces
 ```
 
-### Important: Never Modify image.rgb or image.gray Data Directly
+**Important:** Never modify `image.rgb` or `image.gray` directly. Use operations that
+return new Image instances.
 
-```python
-# ✗ DON'T do this:
-image.rgb[:] = modified_image  # Violates consistency
-
-# ✓ DO this:
-image.set_image(modified_image)  # Use handler methods if modification needed
-# Or better yet, use operations that return new Image instances
-```
-
-### Accessing Different Image Representations
-
-```python
-# All return numpy arrays
-rgb_data = image.rgb[:]  # Original color data
-gray_data = image.gray[:]  # Luminance grayscale
-enhanced = image.enh_gray[:]  # Enhanced for processing
-
-# Color spaces (lazy-evaluated, cached)
-lab_data = image.color.Lab[:]
-hsv_data = image.color.HSV[:]
-xyz_data = image.color.XYZ[:]
-
-# Grid and detection data
-if image.grid is not None:
-    rows, cols = image.grid.shape
-
-if image.objects is not None:
-    for obj in image.objects:
-        area = obj.area
-```
+**See [src/phenotypic/_core/CLAUDE.md](src/phenotypic/_core/CLAUDE.md) for complete
+Image class documentation** including accessor pattern and color spaces
 
 ---
 
@@ -753,27 +574,19 @@ from phenotypic.detect import OtsuDetector
 from phenotypic.data import load_synth_plate
 
 image = load_synth_plate()
-pipeline = ImagePipeline(
-        [GaussianBlur(sigma=1.5), CLAHE(clip_limit=2.0), OtsuDetector()])
-result = pipeline.apply_and_measure(image)
+pipeline = ImagePipeline([GaussianBlur(sigma=1.5), CLAHE(clip_limit=2.0), OtsuDetector()])
 pipeline.to_json("my_pipeline.json")  # Save for batch processing
 ```
 
 **2. Run batch processing:**
 
 ```bash
-uv run python -m phenotypic my_pipeline.json ./raw_plates ./results \
+uv run python -m phenotypic my_pipeline.json ./raw_plates -o ./results \
     --image-type GridImage --nrows 8 --ncols 12 --n-jobs -1
 ```
 
-**Best Practices:**
-
-- Test on diverse sample images before batch processing
-- Always review overlay images in `results/overlays/` for visual QC
-- Disable validation for large batches: set `settings_.VALIDATE_OPS = False` before
-  importing operations
-- Use `--n-jobs -1` to utilize all CPU cores
-- Version control your pipeline JSON files with image acquisition settings documented
+**See [src/phenotypic/_cli/CLAUDE.md](src/phenotypic/_cli/CLAUDE.md) for complete CLI
+documentation**
 
 ---
 
@@ -797,8 +610,7 @@ uv run python -m phenotypic my_pipeline.json ./raw_plates ./results \
 
 - `src/phenotypic/detect/_otsu_detector.py` - Simple detector
 - `src/phenotypic/enhance/_gaussian_blur.py` - Simple enhancer
-- `src/phenotypic/enhance/_morphological_opening.py` - Morphological pattern with
-  FootprintMixin
+- `src/phenotypic/enhance/_gray_opening.py` - Morphological pattern with FootprintMixin
 - `src/phenotypic/tools_/_footprint_mixin.py` - Utility mixin for structuring elements
 
 ### Operation Implementation Pattern: Instance Methods
@@ -834,88 +646,11 @@ class MyEnhancer(ImageEnhancer):
 
 ### Using FootprintMixin for Morphological Operations
 
-Many image operations require **morphological structuring elements** (footprints) for
-operations like dilation, erosion, opening, and closing. The `FootprintMixin` class in
-`phenotypic.tools_` provides a standardized way to create these structuring elements.
+Use `FootprintMixin` when creating operations requiring morphological structuring
+elements (dilation, erosion, opening, closing).
 
-**When to Use FootprintMixin:**
-
-- Creating custom morphological enhancers (opening, closing, dilation, erosion)
-- Building edge detection or feature extraction operations
-- Implementing mask refinement operations
-- Any operation requiring structuring elements for convolution
-
-**Available Shapes:**
-
-The mixin supports three shapes optimized for colony analysis:
-
-- **`"square"`**: Emphasizes sharp edges, best for rectangular features
-- **`"diamond"`**: Enhances diagonal connections while reducing orthogonal sensitivity
-- **`"disk"`**: Preserves rounded colony shapes (recommended for most microbial work)
-
-**How to Use:**
-
-```python
-from phenotypic.abc_ import ImageEnhancer
-from phenotypic import Image
-from phenotypic.tools_ import FootprintMixin
-from skimage.morphology import binary_opening
-
-
-class MyMorphologicalEnhancer(ImageEnhancer, FootprintMixin):
-    """Custom morphological operation using FootprintMixin."""
-
-    def __init__(self, shape: str = "disk", radius: int = 3):
-        super().__init__()
-        self.shape = shape
-        self.radius = radius
-
-    def _operate(self, image: Image) -> Image:
-        # Create footprint using the mixin's static method
-        footprint = self._make_footprint(
-                shape=self.shape,
-                width=self.radius * 2 + 1
-        )
-
-        # Apply morphological operation
-        processed = binary_opening(
-                image.enh_gray[:] > 128,
-                footprint=footprint
-        )
-
-        image.enh_gray[:] = processed.astype(float) * 255
-        return image
-```
-
-**Key Points:**
-
-- Inherit from both the appropriate ABC (`ImageEnhancer`, `ObjectDetector`, etc.) **and
-  ** `FootprintMixin`
-- Call `self._make_footprint(shape, width)` to generate structuring elements
-- The `width` parameter defines the size (e.g., `radius * 2 + 1` for symmetric shapes)
-- Shape choice affects how operations interact with colony edges and morphology
-- Use `"disk"` for most microbial colony work to preserve circular shapes
-- Larger widths create broader morphological effects (good for noise reduction, bad for
-  small colonies)
-
-**Resolution Scaling Considerations:**
-
-When documenting operations that use footprints, always include guidance on how
-parameters scale with image resolution. For example:
-
-```python
-def __init__(self, radius: int = 5):
-    """
-    Args:
-        radius: Footprint radius in pixels. Scale with resolution:
-            - Low res (1024×768): radius=3-5
-            - Medium res (2048×1536): radius=6-10
-            - High res (4096×3072): radius=12-20
-    """
-```
-
-See existing morphological operations in `phenotypic.enhance` and `phenotypic.refine`
-modules for reference implementations.
+**See [src/phenotypic/tools_/CLAUDE.md](src/phenotypic/tools_/CLAUDE.md) for complete
+FootprintMixin documentation** including shapes, resolution scaling, and examples
 
 ### Key Principles
 

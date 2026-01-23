@@ -4,8 +4,8 @@ import phenotypic
 from phenotypic.data import load_synth_plate
 from phenotypic.detect import RoundPeaksDetector
 
-from .test_fixtures import walk_package_for_class
-from .resources.TestHelper import timeit
+from ..test_fixtures import walk_package_for_class
+from ..resources.TestHelper import timeit
 
 ops = walk_package_for_class(pkg=phenotypic,
                              target_class=phenotypic.abc_.ImageOperation)

@@ -7,8 +7,8 @@ from phenotypic.data import load_synth_plate
 from phenotypic.detect import OtsuDetector
 from phenotypic.refine import MaskOpener
 
-from .test_fixtures import _image_measurements
-from .resources.TestHelper import timeit
+from ..test_fixtures import _image_measurements
+from ..resources.TestHelper import timeit
 
 
 @pytest.mark.parametrize("qualname,obj", _image_measurements)
