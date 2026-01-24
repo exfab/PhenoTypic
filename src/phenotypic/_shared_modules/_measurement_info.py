@@ -254,4 +254,5 @@ class MeasurementInfo(str, Enum):
         if isinstance(module, str):
             return module + "\n\n" + cls.rst_table()
         else:
-            return module.__doc__ + "\n\n" + cls.rst_table()
+            doc = module.__doc__ or ""
+            return doc + "\n\n" + cls.rst_table()

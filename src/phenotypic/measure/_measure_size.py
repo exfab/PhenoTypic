@@ -10,26 +10,8 @@ if TYPE_CHECKING:
 import pandas as pd
 import numpy as np
 
-from phenotypic.abc_ import MeasurementInfo, MeasureFeatures
-
-
-class SIZE(MeasurementInfo):
-    """The labels and descriptions of the size measurements."""
-
-    @classmethod
-    def category(cls):
-        return "Size"
-
-    AREA = (
-        "Area",
-        "Total number of pixels occupied by the microbial colony."
-        "Larger areas typically indicate more robust growth or longer incubation times.",
-    )
-    INTEGRATED_INTENSITY = (
-        "IntegratedIntensity",
-        r"The sum of the object\'s grayscale pixels. Calculated as"
-        r"$\sum{pixel values}*area$",
-    )
+from phenotypic.abc_ import MeasureFeatures
+from ..tools_.measurement_info_ import SIZE
 
 
 class MeasureSize(MeasureFeatures):
@@ -125,6 +107,8 @@ class MeasureSize(MeasureFeatures):
                 print("Average colony area over time:")
                 print(avg_area)
     """
+
+    _measurement_info_class = SIZE
 
     def _operate(self, image: Image) -> pd.DataFrame:
         # Create empty numpy arrays to store measurements

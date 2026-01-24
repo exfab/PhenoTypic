@@ -14,37 +14,7 @@ from sklearn.metrics import (
 )
 
 from phenotypic.analysis.abc_ import ModelFitter
-from phenotypic.tools_.constants_ import MeasurementInfo
-
-
-class LOG_GROWTH_MODEL(MeasurementInfo):
-    @classmethod
-    def category(cls) -> str:
-        return "LogGrowthModel"
-
-    R_FIT = "r", "The intrinsic growth rate"
-    K_FIT = "K", "The carrying capacity"
-    N0_FIT = "N0", "The initial number of the colony size metric being fitted"
-    LAM = (
-        "lambda",
-        "The regularization factor applied to the max specific growth rate "
-        "and initial population size",
-    )
-    BETA = (
-        "beta",
-        (
-            "The penalty factor applied to relative difference of "
-            "the carrying capacity from the largest measurement"
-        ),
-    )
-    GROWTH_RATE = "µmax", "The growth rate of the colony calculated as (K*r)/4"
-    K_MAX = "Kmax", "The upper bound of the carrying capacity for model fitting"
-    NUM_SAMPLES = "NumSamples", "The number of samples used for model fitting"
-    LOSS = "OptimizerLoss", "The loss of model fitting"
-    STATUS = "OptimizerStatus", "The output of the optimizer status"
-    MAE = "MAE", "The mean absolute error"
-    MSE = "MSE", "The mean squared error"
-    RMSE = "RMSE", "The root mean squared error"
+from phenotypic.tools_.measurement_info_ import LOG_GROWTH_MODEL
 
 
 class LogGrowthModel(ModelFitter):
@@ -109,6 +79,8 @@ class LogGrowthModel(ModelFitter):
         Kmax_label (str | None): The column name for the maximum carrying capacity
             values, if provided.
     """
+
+    _measurement_info_class = LOG_GROWTH_MODEL
 
     def __init__(
             self,

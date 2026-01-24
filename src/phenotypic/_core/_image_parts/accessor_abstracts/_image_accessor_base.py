@@ -1017,6 +1017,8 @@ class ImageAccessorBase(ABC):
             colors: list | None = None,
             show_gridlines: bool = True,
             gridline_color: tuple[int, int, int] = (0, 255, 255),
+            show_section_boxes: bool = True,
+            section_box_colors: list[tuple[int, int, int]] | None = None,
             **label2rgb_kwargs,
     ) -> None:
         """Save a full-resolution overlay image blending objmap with the subject array.
@@ -1026,8 +1028,9 @@ class ImageAccessorBase(ABC):
         matplotlib figure, this method saves the raw pixel data at full resolution,
         suitable for pixel-level quality validation of detection results.
 
-        For GridImage objects, gridlines are automatically drawn when show_gridlines
-        is True. The gridline width scales dynamically with image size.
+        For GridImage objects, gridlines and section boxes are automatically drawn
+        when their respective show_ flags are True. The line widths scale dynamically
+        with image size.
 
         Args:
             filepath: Destination file path. Should have .png or .jpeg extension.
@@ -1040,6 +1043,11 @@ class ImageAccessorBase(ABC):
                 objects. Ignored for regular Image objects. Defaults to True.
             gridline_color: RGB color tuple for gridlines. Defaults to cyan
                 (0, 255, 255).
+            show_section_boxes: Whether to draw colored bounding boxes around
+                each grid section's detected objects. Only applies to GridImage.
+                Defaults to True.
+            section_box_colors: List of RGB tuples for cycling through section
+                box colors. Defaults to tab20 colormap colors.
             **label2rgb_kwargs: Additional keyword arguments for label2rgb.
 
         Raises:
@@ -1066,6 +1074,12 @@ class ImageAccessorBase(ABC):
         if show_gridlines and hasattr(self._root_image, '_draw_gridlines_on_overlay'):
             overlay_arr = self._root_image._draw_gridlines_on_overlay(
                 overlay_arr, gridline_color
+            )
+
+        # For GridImage, draw section boxes if requested (duck typing check)
+        if show_section_boxes and hasattr(self._root_image, '_draw_section_boxes_on_overlay'):
+            overlay_arr = self._root_image._draw_section_boxes_on_overlay(
+                overlay_arr, section_box_colors
             )
 
         # Save using existing _save_image infrastructure (no metadata for overlays)

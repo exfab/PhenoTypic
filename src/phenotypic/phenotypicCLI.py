@@ -1201,6 +1201,19 @@ def main(
         report_gen.generate_report(results, report_path)
         click.echo(f"✓ Report: {report_path}")
 
+        # Generate README documentation
+        click.echo("Generating README documentation...")
+        try:
+            from phenotypic._cli._cli_readme_generator import READMEGenerator
+
+            pipeline = ImagePipeline.from_json(config.pipeline_json)
+            readme_gen = READMEGenerator(config, pipeline)
+            readme_path = readme_gen.generate(output_dir, datasets)
+            click.echo(f"✓ README: {readme_path}")
+        except Exception as e:
+            logger.warning(f"Failed to generate README: {e}")
+            click.echo(f"⚠ Warning: Could not generate README ({e})", err=True)
+
         # Print summary
         click.echo("\n" + "=" * 60)
         click.echo("PROCESSING COMPLETE")

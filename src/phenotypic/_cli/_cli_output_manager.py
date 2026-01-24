@@ -57,6 +57,9 @@ class OutputManager:
         self.overlay_mode = overlay_mode
         self.overlay_alpha = overlay_alpha
 
+        # Results directory for dataset outputs (images, measurements, overlays)
+        self.results_dir = self.base_dir / "results"
+
         # Logs directory (always at root level)
         self.logs_dir = self.base_dir / "logs"
     
@@ -72,13 +75,16 @@ class OutputManager:
         # Create base directory
         self.base_dir.mkdir(parents=True, exist_ok=True)
 
+        # Create results directory for dataset outputs
+        self.results_dir.mkdir(exist_ok=True)
+
         # Create logs directory at root level
         self.logs_dir.mkdir(exist_ok=True)
         (self.logs_dir / "slurm").mkdir(exist_ok=True)
 
-        # Create dataset folders with subdirectories
+        # Create dataset folders with subdirectories under results/
         for dataset in datasets:
-            dataset_dir = self.base_dir / dataset.name
+            dataset_dir = self.results_dir / dataset.name
             dataset_dir.mkdir(exist_ok=True)
 
             (dataset_dir / "measurements").mkdir(exist_ok=True)
@@ -114,8 +120,8 @@ class OutputManager:
                 raise ValueError(f"Layer '{layer}' is not enabled")
             ext = self.extensions.get(layer, ".png")
 
-        # Always use: base/dataset/layer/file
-        return self.base_dir / dataset_name / layer / f"{image_stem}{ext}"
+        # Always use: results/dataset/layer/file
+        return self.results_dir / dataset_name / layer / f"{image_stem}{ext}"
     
     def save_measurements(
         self,
@@ -332,8 +338,8 @@ class OutputManager:
         skipped_files = []
 
         for dataset in datasets:
-            # Always use: base/dataset_name/measurements/
-            dataset_meas_dir = self.base_dir / dataset.name / "measurements"
+            # Always use: results/dataset_name/measurements/
+            dataset_meas_dir = self.results_dir / dataset.name / "measurements"
 
             # Read all CSV files in this dataset's measurement directory
             csv_files = list(dataset_meas_dir.glob("*.csv"))

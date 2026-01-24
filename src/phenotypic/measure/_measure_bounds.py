@@ -9,7 +9,8 @@ from skimage.measure import regionprops_table
 
 from phenotypic.abc_ import MeasureFeatures
 
-from ..tools_.constants_ import OBJECT, BBOX
+from ..tools_.constants_ import OBJECT
+from ..tools_.measurement_info_ import BBOX
 
 
 class MeasureBounds(MeasureFeatures):
@@ -80,21 +81,26 @@ class MeasureBounds(MeasureFeatures):
                     # Process ROI independently (e.g., color analysis, morphology)
     """
 
+    _measurement_info_class = BBOX
+
     def _operate(self, image: Image) -> pd.DataFrame:
         results = pd.DataFrame(
                 data=regionprops_table(
                         label_image=image.objmap[:],
-                        properties=["label", "centroid", "bbox"]
+                        intensity_image=image.gray[:],
+                        properties=["label", "centroid", "bbox", "centroid_weighted"]
                 )
         ).rename(
                 columns={
-                    "label"     : OBJECT.LABEL,
-                    "centroid-0": str(BBOX.CENTER_RR),
-                    "centroid-1": str(BBOX.CENTER_CC),
-                    "bbox-0"    : str(BBOX.MIN_RR),
-                    "bbox-1"    : str(BBOX.MIN_CC),
-                    "bbox-2"    : str(BBOX.MAX_RR),
-                    "bbox-3"    : str(BBOX.MAX_CC),
+                    "label"              : OBJECT.LABEL,
+                    "centroid-0"         : str(BBOX.CENTER_RR),
+                    "centroid-1"         : str(BBOX.CENTER_CC),
+                    "centroid_weighted-0": BBOX.WEIGHTED_CENTER_RR,
+                    "centroid_weighted-1": BBOX.WEIGHTED_CENTER_CC,
+                    "bbox-0"             : str(BBOX.MIN_RR),
+                    "bbox-1"             : str(BBOX.MIN_CC),
+                    "bbox-2"             : str(BBOX.MAX_RR),
+                    "bbox-3"             : str(BBOX.MAX_CC),
                 }
         )
 

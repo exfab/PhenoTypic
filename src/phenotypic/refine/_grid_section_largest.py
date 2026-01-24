@@ -9,7 +9,7 @@ if TYPE_CHECKING:
 
 from phenotypic.abc_ import ObjectRefiner
 from phenotypic.measure import MeasureSize
-from phenotypic.measure._measure_size import SIZE
+from phenotypic.tools_.measurement_info_ import SIZE
 from phenotypic.tools_.constants_ import GRID, OBJECT
 
 

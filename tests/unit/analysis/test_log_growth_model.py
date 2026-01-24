@@ -4,7 +4,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from pathlib import Path
 
-from phenotypic.analysis._log_growth_model import LogGrowthModel, LOG_GROWTH_MODEL
+from phenotypic.analysis._log_growth_model import LogGrowthModel
+from phenotypic.tools_.measurement_info_ import LOG_GROWTH_MODEL
 
 
 class TestLogGrowthModel:

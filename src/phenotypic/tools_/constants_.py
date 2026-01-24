@@ -9,7 +9,7 @@ Note: Class names are defined in ALL_CAPS to avoid namespace conflicts with actu
         from PhenoTypic.tools_.constants import IMAGE_MODE, OBJECT
 """
 
-from phenotypic._shared_modules._measurement_info import MeasurementInfo
+from .measurement_info_ import BBOX, PIPE_STATUS, GRID, METADATA
 import phenotypic
 from enum import Enum
 from packaging.version import Version
@@ -64,19 +64,6 @@ class OBJECT:
     LABEL = "ObjectLabel"
 
 
-class BBOX(MeasurementInfo):
-    @classmethod
-    def category(cls) -> str:
-        return "Bbox"
-
-    CENTER_RR = "CenterRR", "The row coordinate of the center of the bounding box."
-    MIN_RR = "MinRR", "The smallest row coordinate of the bounding box."
-    MAX_RR = "MaxRR", "The largest row coordinate of the bounding box."
-    CENTER_CC = "CenterCC", " The column coordinate of the center of the bounding box."
-    MIN_CC = "MinCC", " The smallest column coordinate of the bounding box."
-    MAX_CC = "MaxCC", " The largest column coordinate of the bounding box."
-
-
 class IO:
     RAW_FILE_EXTENSIONS = (".cr3", ".CR3")
     PNG_FILE_EXTENSIONS = (".png", ".PNG")
@@ -100,51 +87,6 @@ class IO:
     IMAGE_STATUS_SUBGROUP_KEY = "status"
 
 
-class PIPE_STATUS(MeasurementInfo):
-    """Constants for image set status."""
-
-    @classmethod
-    def category(cls) -> str:
-        return "Status"
-
-    PROCESSED = "Processed", "Whether the image has been processed successfully."
-    MEASURED = "Measured", "Whether the image has been measured successfully."
-    # ERROR = 'Error', "Whether the image has encountered an error during processing."
-    # INVALID_ANALYSIS = (
-    #     'AnalysisInvalid',
-    #     'Whether the image measurements are considered invalid. '
-    #     'This can be set during measurement extraction or post-processing.'
-    # )
-    # INVALID_SEGMENTATION = 'SegmentationInvalid', "Whether the image segmentation is considered valid."
-
-
-class GRID(MeasurementInfo):
-    """Constants for grid structure in the PhenoTypic module."""
-
-    @classmethod
-    def category(cls) -> str:
-        return "Grid"
-
-    ROW_NUM = "RowNum", "The row idx of the object"
-    ROW_INTERVAL_START = (
-        "RowIntervalStart",
-        "The start of the row interval of the object",
-    )
-    ROW_INTERVAL_END = "RowIntervalEnd", "The end of the row interval of the object"
-
-    COL_NUM = "ColNum", "The column idx of the object"
-    COL_INTERVAL_START = (
-        "ColIntervalStart",
-        "The start of the column interval of the object",
-    )
-    COL_INTERVAL_END = "ColIntervalEnd", "The end of the column interval of the object"
-
-    SECTION_NUM = (
-        "SectionNum",
-        "The section number of the object. Ordered left to right, top to bottom",
-    )
-
-
 # Feature extraction constants
 # TODO: Fix this constant access pattern
 class GRID_LINREG_STATS_EXTRACTOR:
@@ -154,36 +96,6 @@ class GRID_LINREG_STATS_EXTRACTOR:
     COL_LINREG_M, COL_LINREG_B = "ColLinReg_M", "ColLinReg_B"
     PRED_RR, PRED_CC = "RowLinReg_PredRR", "ColLinReg_PredCC"
     RESIDUAL_ERR = "LinReg_ResidualError"
-
-
-# Metadata constants
-class METADATA(MeasurementInfo):
-    @classmethod
-    def category(cls) -> str:
-        return "Metadata"
-
-    # Metadata values are not prepended with the category
-    def __new__(cls, label: str, desc: str | None = None):
-        full = f"{label}"
-        obj = str.__new__(cls, full)
-        obj._value_ = label
-        obj.label = label
-        obj.desc = desc or label
-        obj.pair = (label, obj.desc)
-        return obj
-
-    """Constants for metadata labels."""
-    UUID = "UUID", "The unique identifier of the image."
-    IMAGE_NAME = "ImageName", "The name of the image."
-    PARENT_IMAGE_NAME = "ParentImageName", "The name of the parent image."
-    PARENT_UUID = "ParentUUID", "The UUID of the parent image."
-    IMFORMAT = "ImageFormat", "The format of the image."
-    IMAGE_TYPE = "ImageType", "The type of the image."
-    BIT_DEPTH = "BitDepth", "The bit depth of the image."
-    SUFFIX = (
-        "FileSuffix",
-        "The file suffix of the original file the image was imported from",
-    )
 
 
 class IMAGE_TYPES(Enum):

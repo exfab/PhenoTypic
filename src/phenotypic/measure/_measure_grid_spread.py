@@ -3,29 +3,13 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from phenotypic import GridImage
-from phenotypic.abc_ import GridMeasureFeatures, MeasurementInfo
+from phenotypic.abc_ import GridMeasureFeatures
+from ..tools_.measurement_info_ import GRID_SPREAD
 
 import pandas as pd
 import numpy as np
 from scipy.spatial import distance_matrix
 from phenotypic.tools_.constants_ import BBOX, GRID
-
-
-class GRID_SPREAD(MeasurementInfo):
-    """Grid section spatial spread measurements.
-
-    Provides measurements for evaluating spatial distribution of colonies within
-    grid sections of arrayed microbial assays.
-    """
-
-    @classmethod
-    def category(cls):
-        return "GridSpread"
-
-    OBJECT_SPREAD = (
-        "ObjectSpread",
-        "Sum of squared pairwise Euclidean distances between all unique colony pairs within a grid section. Quantifies spatial dispersion of colonies in a grid cell. Higher values indicate greater spread from the section center, suggesting over-segmentation, multi-detections, or colonies growing beyond expected boundaries. Used to identify problematic grid sections requiring refinement or quality review.",
-    )
 
 
 class MeasureGridSpread(GridMeasureFeatures):
@@ -103,6 +87,8 @@ class MeasureGridSpread(GridMeasureFeatures):
                 ]
                 print(f"Wells needing refinement: {list(high_spread_multi.index)}")
     """
+
+    _measurement_info_class = GRID_SPREAD
 
     def _operate(self, image: GridImage) -> pd.DataFrame:
         gs_table = image.grid.info()

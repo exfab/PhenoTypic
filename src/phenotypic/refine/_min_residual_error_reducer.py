@@ -8,7 +8,7 @@ import numpy as np
 
 from phenotypic.abc_ import GridObjectRefiner
 from phenotypic.measure import MeasureGridLinRegStats
-from phenotypic.measure._measure_grid_linreg_stats import GRID_LINREG_STATS
+from phenotypic.tools_.measurement_info_ import GRID_LINREG_STATS
 
 
 class ReduceMultipleGridObjects(GridObjectRefiner):

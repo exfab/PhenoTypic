@@ -418,16 +418,20 @@ class TestOutputManager:
         # Check logs directory at root level
         assert (temp_output_dir / "logs").exists()
 
-        # Check dataset-first structure (dataset1/layer/ not layer/dataset1/)
-        assert (temp_output_dir / "dataset1" / "measurements").exists()
-        assert (temp_output_dir / "dataset1" / "overlays").exists()
+        # Check results/ directory exists
+        assert (temp_output_dir / "results").exists()
+
+        # Check dataset-first structure under results/ (results/dataset1/layer/)
+        assert (temp_output_dir / "results" / "dataset1" / "measurements").exists()
+        assert (temp_output_dir / "results" / "dataset1" / "overlays").exists()
 
         # Check optional layer directories within dataset
-        assert (temp_output_dir / "dataset1" / "rgb").exists()
-        assert (temp_output_dir / "dataset1" / "objmask").exists()
-        assert not (temp_output_dir / "dataset1" / "gray").exists()  # Not requested
+        assert (temp_output_dir / "results" / "dataset1" / "rgb").exists()
+        assert (temp_output_dir / "results" / "dataset1" / "objmask").exists()
+        assert not (temp_output_dir / "results" / "dataset1" / "gray").exists()  # Not requested
 
-        # Old structure should NOT exist
+        # Old structure should NOT exist (datasets at root level)
+        assert not (temp_output_dir / "dataset1").exists()
         assert not (temp_output_dir / "measurements").exists()
         assert not (temp_output_dir / "overlays").exists()
 
@@ -1118,15 +1122,16 @@ class TestEdgeCases:
         assert result.exit_code == 0
 
         # Verify output files created for the single image
-        # Output should be in dataset folder named after input directory ("input")
-        measurements_file = output_dir / "input" / "measurements" / "single.csv"
-        overlay_file = output_dir / "input" / "overlays" / "single.png"
+        # Output should be in results/dataset folder named after input directory ("input")
+        measurements_file = output_dir / "results" / "input" / "measurements" / "single.csv"
+        overlay_file = output_dir / "results" / "input" / "overlays" / "single.png"
 
         assert measurements_file.exists(), f"Expected {measurements_file} to exist"
         assert overlay_file.exists(), f"Expected {overlay_file} to exist"
 
-        # Verify dataset folder is created with input directory name
-        assert (output_dir / "input").exists(), "Dataset folder should be created"
+        # Verify results and dataset folder is created
+        assert (output_dir / "results").exists(), "Results folder should be created"
+        assert (output_dir / "results" / "input").exists(), "Dataset folder should be created under results/"
 
     def test_empty_input_directory(self, runner, tmp_path, temp_pipeline):
         """Test graceful handling of empty input directory."""
@@ -1252,15 +1257,15 @@ class TestNewCoverageGaps:
             extensions=extensions,
         )
 
-        # All paths should include dataset subdirectory
+        # All paths should include results/ and dataset subdirectory
         path = manager.get_output_path("single_image", "measurements", "image1")
-        assert path == temp_output_dir / "output" / "single_image" / "measurements" / "image1.csv"
+        assert path == temp_output_dir / "output" / "results" / "single_image" / "measurements" / "image1.csv"
 
         path = manager.get_output_path("plate1", "measurements", "image1")
-        assert path == temp_output_dir / "output" / "plate1" / "measurements" / "image1.csv"
+        assert path == temp_output_dir / "output" / "results" / "plate1" / "measurements" / "image1.csv"
 
         path = manager.get_output_path("my_dataset", "overlays", "image2")
-        assert path == temp_output_dir / "output" / "my_dataset" / "overlays" / "image2.png"
+        assert path == temp_output_dir / "output" / "results" / "my_dataset" / "overlays" / "image2.png"
 
     def test_initial_images_stored_in_state(self, temp_output_dir):
         """Test that initial_images is stored when creating state."""

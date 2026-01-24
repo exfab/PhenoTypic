@@ -115,14 +115,16 @@ class AutoGridFinder(GridFinder):
                     image=image, row_edges=row_edges, col_edges=col_edges
             )
             current_obj_midpoints = (
-                current_grid_info.loc[:, [str(BBOX.CENTER_RR), str(GRID.ROW_NUM)]]
-                .groupby(str(GRID.ROW_NUM), observed=False)[str(BBOX.CENTER_RR)]
+                current_grid_info.loc[
+                    :, [str(BBOX.WEIGHTED_CENTER_RR), str(GRID.ROW_NUM)]]
+                .groupby(str(GRID.ROW_NUM), observed=False)[
+                    str(BBOX.WEIGHTED_CENTER_RR)]
                 .mean()
                 .values
             )
 
             bin_edges = np.histogram_bin_edges(
-                    a=current_grid_info.loc[:, str(BBOX.CENTER_RR)].values,
+                    a=current_grid_info.loc[:, str(BBOX.WEIGHTED_CENTER_RR)].values,
                     bins=self.nrows,
                     range=(
                         current_grid_info.loc[:, str(BBOX.MIN_RR)].min() - pad_sz,
@@ -144,14 +146,15 @@ class AutoGridFinder(GridFinder):
                     image=image, row_edges=row_edges, col_edges=col_edges
             )
             current_obj_midpoints = (
-                current_grid_info.loc[:, [str(BBOX.CENTER_CC), str(GRID.COL_NUM)]]
-                .groupby(str(GRID.COL_NUM), observed=False)[str(BBOX.CENTER_CC)]
+                current_grid_info.loc[:, [BBOX.WEIGHTED_CENTER_CC, GRID.COL_NUM]]
+                .groupby(str(GRID.COL_NUM), observed=False)[
+                    str(BBOX.WEIGHTED_CENTER_CC)]
                 .mean()
                 .values
             )
 
             bin_edges = np.histogram_bin_edges(
-                    a=current_grid_info.loc[:, str(BBOX.CENTER_CC)].values,
+                    a=current_grid_info.loc[:, BBOX.WEIGHTED_CENTER_CC].values,
                     bins=self.ncols,
                     range=(
                         current_grid_info.loc[:, str(BBOX.MIN_CC)].min() - pad_sz,
@@ -238,7 +241,7 @@ class AutoGridFinder(GridFinder):
         )
 
         row_edges = np.histogram_bin_edges(
-                a=info_table.loc[:, str(BBOX.CENTER_RR)],
+                a=info_table.loc[:, str(BBOX.WEIGHTED_CENTER_RR)],
                 bins=self.nrows,
                 range=tuple(obj_row_range),
         )
@@ -303,7 +306,7 @@ class AutoGridFinder(GridFinder):
                 a_max=image.shape[1] - 1,
         )
         col_edges = np.histogram_bin_edges(
-                a=info_table.loc[:, str(BBOX.CENTER_CC)],
+                a=info_table.loc[:, str(BBOX.WEIGHTED_CENTER_CC)],
                 bins=self.ncols,
                 range=tuple(obj_col_range),
         )

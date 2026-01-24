@@ -439,3 +439,94 @@ class ImageGridHandler(Image):
                 arr[rr[valid], cc[valid]] = gridline_color
 
         return arr
+
+    def _draw_section_boxes_on_overlay(
+            self,
+            overlay_arr: np.ndarray,
+            box_colors: list[Tuple[int, int, int]] | None = None,
+    ) -> np.ndarray:
+        """Draw colored bounding boxes around each grid section's detected objects.
+
+        This method adds colored rectangular boxes around each grid section that
+        contains detected colonies, similar to the Rectangle patches in
+        show_overlay(). Uses skimage.draw for pixel-level drawing. Line width
+        scales dynamically with image size based on _GRIDLINE_WIDTH_FACTOR.
+
+        Args:
+            overlay_arr: 8-bit RGB array (H x W x 3) to draw boxes on.
+            box_colors: Optional list of RGB tuples for cycling through section
+                colors. Defaults to tab20 colormap colors (avoiding cyan to
+                differentiate from gridlines).
+
+        Returns:
+            np.ndarray: Copy of overlay_arr with section boxes drawn.
+        """
+        from skimage.draw import rectangle_perimeter
+
+        arr = overlay_arr.copy()
+        h, w = arr.shape[:2]
+
+        # Calculate dynamic line width based on image size
+        line_width = max(1, int(min(h, w) * self._GRIDLINE_WIDTH_FACTOR))
+
+        # Default colors from tab20 (0-255 RGB)
+        if box_colors is None:
+            cmap = plt.get_cmap("tab20")
+            box_colors = [
+                tuple(int(c * 255) for c in cmap(i)[:3])
+                for i in range(cmap.N)
+            ]
+
+        # Get section map and measure bounds per section
+        try:
+            img_copy = self.copy()
+            img_copy.objmap = self.grid.get_section_map()
+
+            if img_copy.num_objects == 0:
+                return arr
+
+            gs_table = MeasureBounds().measure(img_copy)
+        except Exception:
+            return arr  # Return unchanged if measurement fails
+
+        # Draw bounding box for each section
+        color_idx = 0
+        for section_label in gs_table.index.unique():
+            subtable = gs_table.loc[section_label, :]
+
+            # Handle both single-row and multi-row subtables
+            if isinstance(subtable, pd.Series):
+                min_rr = int(subtable.loc[str(BBOX.MIN_RR)])
+                max_rr = int(subtable.loc[str(BBOX.MAX_RR)])
+                min_cc = int(subtable.loc[str(BBOX.MIN_CC)])
+                max_cc = int(subtable.loc[str(BBOX.MAX_CC)])
+            else:
+                min_rr = int(subtable[str(BBOX.MIN_RR)].min())
+                max_rr = int(subtable[str(BBOX.MAX_RR)].max())
+                min_cc = int(subtable[str(BBOX.MIN_CC)].min())
+                max_cc = int(subtable[str(BBOX.MAX_CC)].max())
+
+            # Clip to valid bounds
+            min_rr = max(0, min_rr)
+            max_rr = min(h - 1, max_rr)
+            min_cc = max(0, min_cc)
+            max_cc = min(w - 1, max_cc)
+
+            # Get color for this section
+            color = box_colors[color_idx % len(box_colors)]
+            color_idx += 1
+
+            # Draw rectangle perimeter with line width
+            for offset in range(-line_width // 2, line_width // 2 + 1):
+                try:
+                    rr, cc = rectangle_perimeter(
+                        start=(min_rr + offset, min_cc + offset),
+                        end=(max_rr - offset, max_cc - offset),
+                        shape=(h, w),
+                    )
+                    valid = (rr >= 0) & (rr < h) & (cc >= 0) & (cc < w)
+                    arr[rr[valid], cc[valid]] = color
+                except (ValueError, IndexError):
+                    continue
+
+        return arr

@@ -821,22 +821,9 @@ class ObjectsAccessor:
                     print(f"Average colony width: {info['BBox_Width'].mean():.1f} pixels")
                     print(f"Average colony height: {info['BBox_Height'].mean():.1f} pixels")
         """
-        info = pd.DataFrame(
-                data=regionprops_table(
-                        label_image=self._root_image.objmap[:],
-                        properties=["label", "centroid", "bbox"],
-                ),
-        ).rename(
-                columns={
-                    "label"     : OBJECT.LABEL,
-                    "centroid-0": str(BBOX.CENTER_RR),
-                    "centroid-1": str(BBOX.CENTER_CC),
-                    "bbox-0"    : str(BBOX.MIN_RR),
-                    "bbox-1"    : str(BBOX.MIN_CC),
-                    "bbox-2"    : str(BBOX.MAX_RR),
-                    "bbox-3"    : str(BBOX.MAX_CC),
-                },
-        )
+        from phenotypic.measure import MeasureBounds
+
+        info = MeasureBounds().measure(self._root_image)
         if include_metadata:
             return self._root_image.metadata.insert_metadata(info)
         else:

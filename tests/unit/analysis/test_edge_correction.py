@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 
 from phenotypic.analysis import EdgeCorrector
-from phenotypic.analysis._edge_correction import EDGE_CORRECTION
+from phenotypic.tools_.measurement_info_ import EDGE_CORRECTION
 from phenotypic.tools_.constants_ import GRID
 
 

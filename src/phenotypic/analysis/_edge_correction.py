@@ -7,23 +7,8 @@ from scipy.stats import permutation_test
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
 
-from phenotypic.tools_.constants_ import MeasurementInfo
+from phenotypic.tools_.measurement_info_ import EDGE_CORRECTION
 from .abc_ import SetAnalyzer
-
-
-class EDGE_CORRECTION(MeasurementInfo):
-    """Measurement info container for edge correction analysis results.
-
-    Provides metadata for measurement values produced by the EdgeCorrector,
-    organizing corrected colony measurements under the "EdgeCorrection" category.
-    """
-
-    @classmethod
-    def category(cls) -> str:
-        return "EdgeCorrection"
-
-    CORRECTED_CAP = "Cap", "The carrying capacity for the target measurement"
-    NEW_VAL = "NewVal", "The new value of the target measurement"
 
 
 class EdgeCorrector(SetAnalyzer):
@@ -67,6 +52,8 @@ class EdgeCorrector(SetAnalyzer):
         on (str): Name of measurement column to analyze and correct.
         groupby (list[str]): Column names for grouping data by experiment/plate/condition.
     """
+
+    _measurement_info_class = EDGE_CORRECTION
 
     def __init__(
             self,
