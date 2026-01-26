@@ -7,7 +7,7 @@ from phenotypic.detect import (
     CompositeDetector,
     TriangleDetector,
 )
-from phenotypic.data import load_synth_plate
+from phenotypic.data import load_synth_yeast_plate
 
 
 class TestCompositeDetector:
@@ -15,11 +15,11 @@ class TestCompositeDetector:
 
     def test_union_mode(self):
         """Test that union mode combines masks with logical OR."""
-        image = load_synth_plate()
+        image = load_synth_yeast_plate()
 
         composite = CompositeDetector(
-            detectors=[OtsuDetector(), CannyDetector(sigma=2)],
-            mode='union'
+                detectors=[OtsuDetector(), CannyDetector(sigma=2)],
+                mode='union'
         )
         result = composite.apply(image)
 
@@ -33,11 +33,11 @@ class TestCompositeDetector:
 
     def test_intersection_mode(self):
         """Test that intersection mode combines masks with logical AND."""
-        image = load_synth_plate()
+        image = load_synth_yeast_plate()
 
         composite = CompositeDetector(
-            detectors=[OtsuDetector(), CannyDetector(sigma=2)],
-            mode='intersection'
+                detectors=[OtsuDetector(), CannyDetector(sigma=2)],
+                mode='intersection'
         )
         result = composite.apply(image)
 
@@ -50,12 +50,12 @@ class TestCompositeDetector:
 
     def test_overlap_mode(self):
         """Test that overlap mode filters objects by overlap threshold."""
-        image = load_synth_plate()
+        image = load_synth_yeast_plate()
 
         composite = CompositeDetector(
-            detectors=[OtsuDetector(), CannyDetector(sigma=2)],
-            mode='overlap',
-            min_overlap_ratio=0.7
+                detectors=[OtsuDetector(), CannyDetector(sigma=2)],
+                mode='overlap',
+                min_overlap_ratio=0.7
         )
         result = composite.apply(image)
 
@@ -65,11 +65,11 @@ class TestCompositeDetector:
 
     def test_objmask_objmap_consistency(self):
         """Test that objmask and objmap are consistent."""
-        image = load_synth_plate()
+        image = load_synth_yeast_plate()
 
         composite = CompositeDetector(
-            detectors=[OtsuDetector(), CannyDetector(sigma=2)],
-            mode='union'
+                detectors=[OtsuDetector(), CannyDetector(sigma=2)],
+                mode='union'
         )
         result = composite.apply(image)
 
@@ -81,11 +81,11 @@ class TestCompositeDetector:
 
     def test_single_detector(self):
         """Test that single detector in CompositeDetector works."""
-        image = load_synth_plate()
+        image = load_synth_yeast_plate()
 
         composite = CompositeDetector(
-            detectors=[OtsuDetector()],
-            mode='union'
+                detectors=[OtsuDetector()],
+                mode='union'
         )
         result = composite.apply(image)
 
@@ -96,15 +96,15 @@ class TestCompositeDetector:
 
     def test_three_detector_ensemble(self):
         """Test ensemble with three detectors."""
-        image = load_synth_plate()
+        image = load_synth_yeast_plate()
 
         composite = CompositeDetector(
-            detectors=[
-                OtsuDetector(),
-                CannyDetector(sigma=2),
-                TriangleDetector()
-            ],
-            mode='union'
+                detectors=[
+                    OtsuDetector(),
+                    CannyDetector(sigma=2),
+                    TriangleDetector()
+                ],
+                mode='union'
         )
         result = composite.apply(image)
 
@@ -115,25 +115,25 @@ class TestCompositeDetector:
     def test_empty_detectors_raises(self):
         """Test that empty detectors list raises an error."""
         with pytest.raises(Exception, match="At least one detector"):
-            CompositeDetector(detectors=[]).apply(load_synth_plate())
+            CompositeDetector(detectors=[]).apply(load_synth_yeast_plate())
 
     def test_invalid_mode_raises(self):
         """Test that invalid mode raises an error."""
         with pytest.raises(Exception, match="Invalid mode"):
             CompositeDetector(
-                detectors=[OtsuDetector()],
-                mode='invalid'
-            ).apply(load_synth_plate())
+                    detectors=[OtsuDetector()],
+                    mode='invalid'
+            ).apply(load_synth_yeast_plate())
 
     def test_serialization_roundtrip(self):
         """Test that CompositeDetector serializes and deserializes correctly."""
         # Create composite detector with nested detectors
         composite = CompositeDetector(
-            detectors=[
-                OtsuDetector(ignore_zeros=True),
-                CannyDetector(sigma=2)
-            ],
-            mode='union'
+                detectors=[
+                    OtsuDetector(ignore_zeros=True),
+                    CannyDetector(sigma=2)
+                ],
+                mode='union'
         )
 
         # Create pipeline
@@ -160,12 +160,12 @@ class TestCompositeDetector:
 
     def test_serialization_functional_equivalence(self):
         """Test that serialized/deserialized CompositeDetector produces identical results."""
-        image = load_synth_plate()
+        image = load_synth_yeast_plate()
 
         # Original detector
         composite = CompositeDetector(
-            detectors=[OtsuDetector(), CannyDetector(sigma=2)],
-            mode='intersection'
+                detectors=[OtsuDetector(), CannyDetector(sigma=2)],
+                mode='intersection'
         )
         original_result = composite.apply(image, inplace=False)
 
@@ -179,31 +179,31 @@ class TestCompositeDetector:
 
         # Results should be identical
         np.testing.assert_array_equal(
-            original_result.objmask[:],
-            restored_result.objmask[:]
+                original_result.objmask[:],
+                restored_result.objmask[:]
         )
         np.testing.assert_array_equal(
-            original_result.objmap[:],
-            restored_result.objmap[:]
+                original_result.objmap[:],
+                restored_result.objmap[:]
         )
 
     def test_overlap_ratio_effects(self):
         """Test that min_overlap_ratio parameter has effect in overlap mode."""
-        image = load_synth_plate()
+        image = load_synth_yeast_plate()
 
         # Conservative overlap (high ratio)
         conservative = CompositeDetector(
-            detectors=[OtsuDetector(), CannyDetector(sigma=2)],
-            mode='overlap',
-            min_overlap_ratio=0.9
+                detectors=[OtsuDetector(), CannyDetector(sigma=2)],
+                mode='overlap',
+                min_overlap_ratio=0.9
         )
         conservative_result = conservative.apply(image)
 
         # Permissive overlap (low ratio)
         permissive = CompositeDetector(
-            detectors=[OtsuDetector(), CannyDetector(sigma=2)],
-            mode='overlap',
-            min_overlap_ratio=0.1
+                detectors=[OtsuDetector(), CannyDetector(sigma=2)],
+                mode='overlap',
+                min_overlap_ratio=0.1
         )
         permissive_result = permissive.apply(image)
 
@@ -212,12 +212,12 @@ class TestCompositeDetector:
 
     def test_inplace_false_preserves_original(self):
         """Test that inplace=False preserves original image."""
-        image = load_synth_plate()
+        image = load_synth_yeast_plate()
         original_objmask = image.objmask[:]
 
         composite = CompositeDetector(
-            detectors=[OtsuDetector()],
-            mode='union'
+                detectors=[OtsuDetector()],
+                mode='union'
         )
         result = composite.apply(image, inplace=False)
 
@@ -229,11 +229,11 @@ class TestCompositeDetector:
 
     def test_inplace_true_modifies_original(self):
         """Test that inplace=True modifies original image."""
-        image = load_synth_plate()
+        image = load_synth_yeast_plate()
 
         composite = CompositeDetector(
-            detectors=[OtsuDetector()],
-            mode='union'
+                detectors=[OtsuDetector()],
+                mode='union'
         )
         result = composite.apply(image, inplace=True)
 
@@ -248,12 +248,12 @@ class TestCompositeDetector:
         import json
 
         composite = CompositeDetector(
-            detectors=[
-                OtsuDetector(ignore_zeros=True),
-                CannyDetector(sigma=2)
-            ],
-            mode='overlap',
-            min_overlap_ratio=0.6
+                detectors=[
+                    OtsuDetector(ignore_zeros=True),
+                    CannyDetector(sigma=2)
+                ],
+                mode='overlap',
+                min_overlap_ratio=0.6
         )
 
         pipeline = ImagePipeline([composite])
@@ -290,13 +290,13 @@ class TestCompositeDetector:
         from phenotypic.enhance import GaussianBlur
         from phenotypic.refine import SmallObjectRemover
 
-        image = load_synth_plate()
+        image = load_synth_yeast_plate()
 
         pipeline = ImagePipeline([
             GaussianBlur(sigma=2),
             CompositeDetector(
-                detectors=[OtsuDetector(), CannyDetector(sigma=2)],
-                mode='union'
+                    detectors=[OtsuDetector(), CannyDetector(sigma=2)],
+                    mode='union'
             ),
             SmallObjectRemover(min_size=50)
         ])
@@ -316,15 +316,15 @@ class TestCompositeDetector:
 
         # Results should be identical
         np.testing.assert_array_equal(
-            result.objmask[:],
-            restored_result.objmask[:]
+                result.objmask[:],
+                restored_result.objmask[:]
         )
 
     def test_pipeline_as_detector(self):
         """Test that CompositeDetector accepts ImagePipeline as detector."""
         from phenotypic.enhance import GaussianBlur
 
-        image = load_synth_plate()
+        image = load_synth_yeast_plate()
 
         # Pipeline with preprocessing + detection
         pipeline = ImagePipeline([
@@ -333,8 +333,8 @@ class TestCompositeDetector:
         ])
 
         composite = CompositeDetector(
-            detectors=[pipeline],
-            mode='union'
+                detectors=[pipeline],
+                mode='union'
         )
         result = composite.apply(image)
 
@@ -345,17 +345,17 @@ class TestCompositeDetector:
         """Test mixing ObjectDetector and ImagePipeline."""
         from phenotypic.enhance import GaussianBlur
 
-        image = load_synth_plate()
+        image = load_synth_yeast_plate()
 
         composite = CompositeDetector(
-            detectors=[
-                OtsuDetector(),  # Direct detector
-                ImagePipeline([  # Pipeline
-                    GaussianBlur(sigma=2),
-                    CannyDetector(sigma=2)
-                ])
-            ],
-            mode='union'
+                detectors=[
+                    OtsuDetector(),  # Direct detector
+                    ImagePipeline([  # Pipeline
+                        GaussianBlur(sigma=2),
+                        CannyDetector(sigma=2)
+                    ])
+                ],
+                mode='union'
         )
         result = composite.apply(image)
 
@@ -369,14 +369,14 @@ class TestCompositeDetector:
         import json
 
         composite = CompositeDetector(
-            detectors=[
-                OtsuDetector(),
-                ImagePipeline([
-                    GaussianBlur(sigma=2),
-                    CannyDetector(sigma=2)
-                ])
-            ],
-            mode='intersection'
+                detectors=[
+                    OtsuDetector(),
+                    ImagePipeline([
+                        GaussianBlur(sigma=2),
+                        CannyDetector(sigma=2)
+                    ])
+                ],
+                mode='intersection'
         )
 
         pipeline = ImagePipeline([composite])
@@ -399,17 +399,17 @@ class TestCompositeDetector:
         """Test functional equivalence after serialization with pipelines."""
         from phenotypic.enhance import GaussianBlur
 
-        image = load_synth_plate()
+        image = load_synth_yeast_plate()
 
         composite = CompositeDetector(
-            detectors=[
-                OtsuDetector(),
-                ImagePipeline([
-                    GaussianBlur(sigma=2),
-                    CannyDetector(sigma=2)
-                ])
-            ],
-            mode='union'
+                detectors=[
+                    OtsuDetector(),
+                    ImagePipeline([
+                        GaussianBlur(sigma=2),
+                        CannyDetector(sigma=2)
+                    ])
+                ],
+                mode='union'
         )
         original_result = composite.apply(image, inplace=False)
 
@@ -423,8 +423,8 @@ class TestCompositeDetector:
 
         # Results should be identical
         np.testing.assert_array_equal(
-            original_result.objmask[:],
-            restored_result.objmask[:]
+                original_result.objmask[:],
+                restored_result.objmask[:]
         )
 
     def test_json_structure_with_pipelines(self):
@@ -433,14 +433,14 @@ class TestCompositeDetector:
         import json
 
         composite = CompositeDetector(
-            detectors=[
-                OtsuDetector(),
-                ImagePipeline([
-                    GaussianBlur(sigma=2),
-                    OtsuDetector()
-                ])
-            ],
-            mode='union'
+                detectors=[
+                    OtsuDetector(),
+                    ImagePipeline([
+                        GaussianBlur(sigma=2),
+                        OtsuDetector()
+                    ])
+                ],
+                mode='union'
         )
 
         pipeline = ImagePipeline([composite])

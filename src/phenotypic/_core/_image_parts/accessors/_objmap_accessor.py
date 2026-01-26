@@ -573,8 +573,8 @@ class ObjectMap(NapariLabelsMixin, SingleChannelAccessor):
         Examples:
             .. dropdown:: Save raw object map vs colorized
 
-                >>> from phenotypic.data import load_synth_plate
-                >>> image = load_synth_plate()
+                >>> from phenotypic.data import load_synth_yeast_plate
+                >>> image = load_synth_yeast_plate()
                 >>> # Save raw labeled map (integer values)
                 >>> image.objmap.imsave("objmap_raw.png")
                 >>> # Save colorized labels (no background image)
@@ -590,8 +590,8 @@ class ObjectMap(NapariLabelsMixin, SingleChannelAccessor):
             # Convert float [0,1] to uint8 for saving
             colored_uint8 = (colored * 255).astype(np.uint8)
             self._save_image(
-                filepath=filepath,
-                arr=colored_uint8,
-                bit_depth=8,  # Always 8-bit for colorized output
-                metadata_json=None
+                    filepath=filepath,
+                    arr=colored_uint8,
+                    bit_depth=8,  # Always 8-bit for colorized output
+                    metadata_json=None
             )

@@ -74,10 +74,10 @@ class SeparateObjects(ObjectRefiner):
 
         >>> from phenotypic.detect import CompositeDetector
         >>> from phenotypic.refine import SeparateObjects
-        >>> from phenotypic.data import load_synth_plate
+        >>> from phenotypic.data import load_synth_yeast_plate
         >>>
         >>> # Load GridImage with known grid structure
-        >>> image = load_synth_plate()  # Returns GridImage (6 rows × 10 cols)
+        >>> image = load_synth_yeast_plate()  # Returns GridImage (6 rows × 10 cols)
         >>> detector = CompositeDetector(...)
         >>> detected = detector.apply(image)
         >>>
@@ -107,7 +107,7 @@ class SeparateObjects(ObjectRefiner):
         ... ], meas=[MeasureShape()])
         >>>
         >>> # Process GridImage
-        >>> image = load_synth_plate()
+        >>> image = load_synth_yeast_plate()
         >>> result = pipeline.apply(image)
         >>>
         >>> print(f"Separated and measured: {len(result.objects)} individual colonies")

@@ -8,7 +8,7 @@ from phenotypic.detect import (
     FilamentousFungiDetector,
 )
 from phenotypic.enhance import GaussianBlur, CLAHE
-from phenotypic.data import load_synth_plate
+from phenotypic.data import load_synth_yeast_plate
 
 
 class TestFilamentousFungiDetector:
@@ -16,13 +16,13 @@ class TestFilamentousFungiDetector:
 
     def test_basic_detection(self):
         """Test basic detection with two detectors produces valid result."""
-        image = load_synth_plate()
+        image = load_synth_yeast_plate()
 
         detector = FilamentousFungiDetector(
-            center_detector=OtsuDetector(ignore_zeros=True),
-            overall_detector=TriangleDetector(),
-            erosion_radius=1,
-            boundary_cost=1e6
+                center_detector=OtsuDetector(ignore_zeros=True),
+                overall_detector=TriangleDetector(),
+                erosion_radius=1,
+                boundary_cost=1e6
         )
         result = detector.apply(image)
 
@@ -32,11 +32,11 @@ class TestFilamentousFungiDetector:
 
     def test_objmask_objmap_consistency(self):
         """Test that objmask and objmap are consistent after detection."""
-        image = load_synth_plate()
+        image = load_synth_yeast_plate()
 
         detector = FilamentousFungiDetector(
-            center_detector=OtsuDetector(),
-            overall_detector=TriangleDetector(),
+                center_detector=OtsuDetector(),
+                overall_detector=TriangleDetector(),
         )
         result = detector.apply(image)
 
@@ -48,7 +48,7 @@ class TestFilamentousFungiDetector:
 
     def test_no_centers_detected_raises(self):
         """Test that error is raised when center_detector finds nothing."""
-        image = load_synth_plate()
+        image = load_synth_yeast_plate()
 
         # Create a custom detector that always returns empty mask
         class EmptyCenterDetector(OtsuDetector):
@@ -57,8 +57,8 @@ class TestFilamentousFungiDetector:
                 return img
 
         detector = FilamentousFungiDetector(
-            center_detector=EmptyCenterDetector(),
-            overall_detector=TriangleDetector(),
+                center_detector=EmptyCenterDetector(),
+                overall_detector=TriangleDetector(),
         )
 
         # apply() wraps exceptions in RuntimeError per framework's error handling
@@ -67,7 +67,7 @@ class TestFilamentousFungiDetector:
 
     def test_no_overall_detected_raises(self):
         """Test that error is raised when overall_detector finds nothing."""
-        image = load_synth_plate()
+        image = load_synth_yeast_plate()
 
         # Create a custom detector that always returns empty mask
         class EmptyOverallDetector(TriangleDetector):
@@ -76,8 +76,8 @@ class TestFilamentousFungiDetector:
                 return img
 
         detector = FilamentousFungiDetector(
-            center_detector=OtsuDetector(),
-            overall_detector=EmptyOverallDetector(),
+                center_detector=OtsuDetector(),
+                overall_detector=EmptyOverallDetector(),
         )
 
         # apply() wraps exceptions in RuntimeError per framework's error handling
@@ -86,11 +86,11 @@ class TestFilamentousFungiDetector:
 
     def test_center_and_overall_produce_results(self):
         """Test that both center and overall detectors produce results."""
-        image = load_synth_plate()
+        image = load_synth_yeast_plate()
 
         detector = FilamentousFungiDetector(
-            center_detector=OtsuDetector(),
-            overall_detector=TriangleDetector(),
+                center_detector=OtsuDetector(),
+                overall_detector=TriangleDetector(),
         )
 
         # Should successfully detect both centers and overall structure
@@ -104,32 +104,32 @@ class TestFilamentousFungiDetector:
         """Test that TypeError is raised for invalid center_detector type."""
         with pytest.raises(TypeError, match="center_detector must be"):
             FilamentousFungiDetector(
-                center_detector="not_a_detector",
-                overall_detector=TriangleDetector(),
+                    center_detector="not_a_detector",
+                    overall_detector=TriangleDetector(),
             )
 
     def test_invalid_overall_detector_type_raises(self):
         """Test that TypeError is raised for invalid overall_detector type."""
         with pytest.raises(TypeError, match="overall_detector must be"):
             FilamentousFungiDetector(
-                center_detector=OtsuDetector(),
-                overall_detector=123,
+                    center_detector=OtsuDetector(),
+                    overall_detector=123,
             )
 
     def test_erosion_radius_effects(self):
         """Test that erosion_radius parameter affects boundary computation."""
-        image = load_synth_plate()
+        image = load_synth_yeast_plate()
 
         detector_radius1 = FilamentousFungiDetector(
-            center_detector=OtsuDetector(),
-            overall_detector=TriangleDetector(),
-            erosion_radius=1,
+                center_detector=OtsuDetector(),
+                overall_detector=TriangleDetector(),
+                erosion_radius=1,
         )
 
         detector_radius2 = FilamentousFungiDetector(
-            center_detector=OtsuDetector(),
-            overall_detector=TriangleDetector(),
-            erosion_radius=2,
+                center_detector=OtsuDetector(),
+                overall_detector=TriangleDetector(),
+                erosion_radius=2,
         )
 
         result1 = detector_radius1.apply(image.copy())
@@ -142,18 +142,18 @@ class TestFilamentousFungiDetector:
 
     def test_boundary_cost_effects(self):
         """Test that boundary_cost parameter affects segmentation."""
-        image = load_synth_plate()
+        image = load_synth_yeast_plate()
 
         detector_high_cost = FilamentousFungiDetector(
-            center_detector=OtsuDetector(),
-            overall_detector=TriangleDetector(),
-            boundary_cost=1e8,  # Very high cost
+                center_detector=OtsuDetector(),
+                overall_detector=TriangleDetector(),
+                boundary_cost=1e8,  # Very high cost
         )
 
         detector_low_cost = FilamentousFungiDetector(
-            center_detector=OtsuDetector(),
-            overall_detector=TriangleDetector(),
-            boundary_cost=1e3,  # Lower cost
+                center_detector=OtsuDetector(),
+                overall_detector=TriangleDetector(),
+                boundary_cost=1e3,  # Lower cost
         )
 
         result_high = detector_high_cost.apply(image.copy())
@@ -165,18 +165,18 @@ class TestFilamentousFungiDetector:
 
     def test_connectivity_effects(self):
         """Test that connectivity parameter affects labeling."""
-        image = load_synth_plate()
+        image = load_synth_yeast_plate()
 
         detector_4conn = FilamentousFungiDetector(
-            center_detector=OtsuDetector(),
-            overall_detector=TriangleDetector(),
-            connectivity=1,  # 4-connected
+                center_detector=OtsuDetector(),
+                overall_detector=TriangleDetector(),
+                connectivity=1,  # 4-connected
         )
 
         detector_8conn = FilamentousFungiDetector(
-            center_detector=OtsuDetector(),
-            overall_detector=TriangleDetector(),
-            connectivity=2,  # 8-connected
+                center_detector=OtsuDetector(),
+                overall_detector=TriangleDetector(),
+                connectivity=2,  # 8-connected
         )
 
         result_4 = detector_4conn.apply(image.copy())
@@ -189,12 +189,12 @@ class TestFilamentousFungiDetector:
 
     def test_inplace_false_preserves_original(self):
         """Test that inplace=False preserves original image."""
-        image = load_synth_plate()
+        image = load_synth_yeast_plate()
         original_rgb = image.rgb[:].copy()
 
         detector = FilamentousFungiDetector(
-            center_detector=OtsuDetector(),
-            overall_detector=TriangleDetector(),
+                center_detector=OtsuDetector(),
+                overall_detector=TriangleDetector(),
         )
         result = detector.apply(image, inplace=False)
 
@@ -207,11 +207,11 @@ class TestFilamentousFungiDetector:
 
     def test_inplace_true_modifies_original(self):
         """Test that inplace=True modifies the original image."""
-        image = load_synth_plate()
+        image = load_synth_yeast_plate()
 
         detector = FilamentousFungiDetector(
-            center_detector=OtsuDetector(),
-            overall_detector=TriangleDetector(),
+                center_detector=OtsuDetector(),
+                overall_detector=TriangleDetector(),
         )
         result = detector.apply(image, inplace=True)
 
@@ -222,7 +222,7 @@ class TestFilamentousFungiDetector:
 
     def test_with_imagepipeline_center_detector(self):
         """Test that ImagePipeline works as center_detector."""
-        image = load_synth_plate()
+        image = load_synth_yeast_plate()
 
         # Create pipeline for center detection with preprocessing
         center_pipeline = ImagePipeline([
@@ -231,8 +231,8 @@ class TestFilamentousFungiDetector:
         ])
 
         detector = FilamentousFungiDetector(
-            center_detector=center_pipeline,
-            overall_detector=TriangleDetector(),
+                center_detector=center_pipeline,
+                overall_detector=TriangleDetector(),
         )
         result = detector.apply(image)
 
@@ -242,7 +242,7 @@ class TestFilamentousFungiDetector:
 
     def test_with_imagepipeline_overall_detector(self):
         """Test that ImagePipeline works as overall_detector."""
-        image = load_synth_plate()
+        image = load_synth_yeast_plate()
 
         # Create pipeline for overall detection with preprocessing
         overall_pipeline = ImagePipeline([
@@ -251,8 +251,8 @@ class TestFilamentousFungiDetector:
         ])
 
         detector = FilamentousFungiDetector(
-            center_detector=OtsuDetector(),
-            overall_detector=overall_pipeline,
+                center_detector=OtsuDetector(),
+                overall_detector=overall_pipeline,
         )
         result = detector.apply(image)
 
@@ -262,7 +262,7 @@ class TestFilamentousFungiDetector:
 
     def test_with_both_imagepipeline_detectors(self):
         """Test that ImagePipeline works for both detectors."""
-        image = load_synth_plate()
+        image = load_synth_yeast_plate()
 
         center_pipeline = ImagePipeline([
             GaussianBlur(sigma=0.5),
@@ -274,8 +274,8 @@ class TestFilamentousFungiDetector:
         ])
 
         detector = FilamentousFungiDetector(
-            center_detector=center_pipeline,
-            overall_detector=overall_pipeline,
+                center_detector=center_pipeline,
+                overall_detector=overall_pipeline,
         )
         result = detector.apply(image)
 
@@ -286,11 +286,11 @@ class TestFilamentousFungiDetector:
     def test_serialization_roundtrip(self):
         """Test that detector serializes and deserializes correctly."""
         detector = FilamentousFungiDetector(
-            center_detector=OtsuDetector(ignore_zeros=True),
-            overall_detector=TriangleDetector(),
-            erosion_radius=1,
-            boundary_cost=1e6,
-            connectivity=1
+                center_detector=OtsuDetector(ignore_zeros=True),
+                overall_detector=TriangleDetector(),
+                erosion_radius=1,
+                boundary_cost=1e6,
+                connectivity=1
         )
 
         # Create pipeline
@@ -311,12 +311,12 @@ class TestFilamentousFungiDetector:
 
     def test_serialization_functional_equivalence(self):
         """Test that serialized/deserialized detector produces identical results."""
-        image = load_synth_plate()
+        image = load_synth_yeast_plate()
 
         # Original detector
         detector = FilamentousFungiDetector(
-            center_detector=OtsuDetector(),
-            overall_detector=TriangleDetector(),
+                center_detector=OtsuDetector(),
+                overall_detector=TriangleDetector(),
         )
         original_result = detector.apply(image, inplace=False)
 
@@ -330,24 +330,24 @@ class TestFilamentousFungiDetector:
 
         # Results should be identical
         np.testing.assert_array_equal(
-            original_result.objmask[:],
-            restored_result.objmask[:]
+                original_result.objmask[:],
+                restored_result.objmask[:]
         )
         np.testing.assert_array_equal(
-            original_result.objmap[:],
-            restored_result.objmap[:]
+                original_result.objmap[:],
+                restored_result.objmap[:]
         )
 
     def test_pipeline_integration(self):
         """Test that detector integrates into full processing pipeline."""
-        image = load_synth_plate()
+        image = load_synth_yeast_plate()
 
         # Build pipeline with enhancement, detection, and cleanup
         pipeline = ImagePipeline([
             GaussianBlur(sigma=1.0),
             FilamentousFungiDetector(
-                center_detector=OtsuDetector(),
-                overall_detector=TriangleDetector(),
+                    center_detector=OtsuDetector(),
+                    overall_detector=TriangleDetector(),
             ),
         ])
 
@@ -359,7 +359,7 @@ class TestFilamentousFungiDetector:
 
     def test_different_detector_combinations(self):
         """Test various detector combinations work correctly."""
-        image = load_synth_plate()
+        image = load_synth_yeast_plate()
 
         combinations = [
             (OtsuDetector(), TriangleDetector()),
@@ -369,8 +369,8 @@ class TestFilamentousFungiDetector:
 
         for center, overall in combinations:
             detector = FilamentousFungiDetector(
-                center_detector=center,
-                overall_detector=overall,
+                    center_detector=center,
+                    overall_detector=overall,
             )
             result = detector.apply(image.copy())
 
@@ -385,11 +385,11 @@ class TestFilamentousFungiDetector:
         the algorithm allocates marker IDs. We check that labels are present
         and represent distinct objects rather than checking for consecutiveness.
         """
-        image = load_synth_plate()
+        image = load_synth_yeast_plate()
 
         detector = FilamentousFungiDetector(
-            center_detector=OtsuDetector(),
-            overall_detector=TriangleDetector(),
+                center_detector=OtsuDetector(),
+                overall_detector=TriangleDetector(),
         )
         result = detector.apply(image)
 
@@ -415,11 +415,11 @@ class TestFilamentousFungiDetector:
 
     def test_no_memory_leaks(self):
         """Test that operation cleans up memory properly."""
-        image = load_synth_plate()
+        image = load_synth_yeast_plate()
 
         detector = FilamentousFungiDetector(
-            center_detector=OtsuDetector(),
-            overall_detector=TriangleDetector(),
+                center_detector=OtsuDetector(),
+                overall_detector=TriangleDetector(),
         )
 
         # Apply multiple times and verify consistent memory usage
@@ -431,13 +431,13 @@ class TestFilamentousFungiDetector:
 
     def test_reproducibility(self):
         """Test that same input produces same output."""
-        image = load_synth_plate()
+        image = load_synth_yeast_plate()
 
         detector = FilamentousFungiDetector(
-            center_detector=OtsuDetector(ignore_zeros=True),
-            overall_detector=TriangleDetector(),
-            erosion_radius=1,
-            boundary_cost=1e6,
+                center_detector=OtsuDetector(ignore_zeros=True),
+                overall_detector=TriangleDetector(),
+                erosion_radius=1,
+                boundary_cost=1e6,
         )
 
         result1 = detector.apply(image.copy())

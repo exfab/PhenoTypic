@@ -202,19 +202,19 @@ phenotypic/module_name/
 
 #### Key Modules
 
-| Module                     | Purpose                             | Key Classes                                                                                                                      |
-|----------------------------|-------------------------------------|----------------------------------------------------------------------------------------------------------------------------------|
-| `phenotypic.detect`        | Object detection (11+ detectors)    | `ObjectDetector` (ABC), `OtsuDetector`, `CannyDetector`, etc.                                                                    |
+| Module                     | Purpose                             | Key Classes                                                                                                             |
+|----------------------------|-------------------------------------|-------------------------------------------------------------------------------------------------------------------------|
+| `phenotypic.detect`        | Object detection (11+ detectors)    | `ObjectDetector` (ABC), `OtsuDetector`, `CannyDetector`, etc.                                                           |
 | `phenotypic.enhance`       | Image preprocessing (19+ enhancers) | `ImageEnhancer` (ABC), `GaussianBlur`, `CLAHE`, `GrayOpening`, `BilateralDenoise`, `UnsharpMask`, `WhiteTophatSubtract` |
-| `phenotypic.refine`        | Post-detection refinement           | `GridObjectRefiner`, morphology operations, mask editing                                                                         |
-| `phenotypic.measure`       | Feature extraction                  | `MeasureFeatures` (ABC), color composition, morphology, etc.                                                                     |
-| `phenotypic.grid`          | Grid detection and alignment        | `GridFinder`, `GridCorrector`                                                                                                    |
-| `phenotypic.correction`    | Image quality improvements          | `ImageCorrector` (ABC), rotation, edge correction, etc.                                                                          |
-| `phenotypic.analysis`      | Downstream statistical analysis     | Growth curves, clustering, outlier detection                                                                                     |
-| `phenotypic.prefab`        | Pre-built pipelines                 | Complete workflows at ExFAB                                                                                                      |
-| `phenotypic.tools_`        | Utility mixins and helpers          | `FootprintMixin` for morphological structuring elements                                                                          |
-| `phenotypic.settings_`     | Global configuration                | `VALIDATE_OPS`, `MPL` (matplotlib defaults)                                                                                      |
-| `phenotypic.phenotypicCLI` | Command-line batch processing       | `main()`, `process_single_image()` for parallel pipeline execution                                                               |
+| `phenotypic.refine`        | Post-detection refinement           | `GridObjectRefiner`, morphology operations, mask editing                                                                |
+| `phenotypic.measure`       | Feature extraction                  | `MeasureFeatures` (ABC), color composition, morphology, etc.                                                            |
+| `phenotypic.grid`          | Grid detection and alignment        | `GridFinder`, `GridCorrector`                                                                                           |
+| `phenotypic.correction`    | Image quality improvements          | `ImageCorrector` (ABC), rotation, edge correction, etc.                                                                 |
+| `phenotypic.analysis`      | Downstream statistical analysis     | Growth curves, clustering, outlier detection                                                                            |
+| `phenotypic.prefab`        | Pre-built pipelines                 | Complete workflows at ExFAB                                                                                             |
+| `phenotypic.tools_`        | Utility mixins and helpers          | `FootprintMixin` for morphological structuring elements                                                                 |
+| `phenotypic.settings_`     | Global configuration                | `VALIDATE_OPS`, `MPL` (matplotlib defaults)                                                                             |
+| `phenotypic.phenotypicCLI` | Command-line batch processing       | `main()`, `process_single_image()` for parallel pipeline execution                                                      |
 
 ### Design Patterns
 
@@ -309,8 +309,8 @@ def function_name(param):
     Include limitations and how parameters affect results.
 
     Examples:
-        >>> from phenotypic.data import load_synth_plate
-        >>> image = load_synth_plate()
+        >>> from phenotypic.data import load_synth_yeast_plate
+        >>> image = load_synth_yeast_plate()
         >>> result = function_name(image, param=value)
     """
 ```
@@ -320,7 +320,7 @@ def function_name(param):
 - Use **doctest format** for all code examples (lines starting with `>>>` are code)
 - Output from code should appear on the next line(s) without prefix
 - All examples must be **fully runnable** and **copy-pasteable**
-- Use `load_synth_plate()` from `phenotypic.data` for image examples (returns a
+- Use `load_synth_yeast_plate()` from `phenotypic.data` for image examples (returns a
   GridImage with detected colonies)
 - Use real microbiology context (colony detection, plate images) - not
   synthetic/abstract examples
@@ -352,7 +352,7 @@ use this specific order:
 - Concise parameter descriptions (1-2 sentences per param)
 - Use cases and limitations as bullet-point lists
 - Examples use doctest format and are fully runnable
-- Use `load_synth_plate()` from `phenotypic.data` when an image is needed
+- Use `load_synth_yeast_plate()` from `phenotypic.data` when an image is needed
 - Reference: [HysteresisDetector](src/phenotypic/detect/_hysteresis_detector.py) in
   `phenotypic.detect` module as an example
 
@@ -410,9 +410,9 @@ WhiteTophatSubtract, etc.), and edge detection (SobelFilter).
 ```python
 from phenotypic import ImagePipeline
 from phenotypic.enhance import GaussianBlur, CLAHE, GrayOpening
-from phenotypic.data import load_synth_plate
+from phenotypic.data import load_synth_yeast_plate
 
-image = load_synth_plate()
+image = load_synth_yeast_plate()
 pipeline = ImagePipeline([
     GaussianBlur(sigma=1.5),
     CLAHE(clip_limit=2.0),
@@ -517,15 +517,15 @@ This allows profiling bottlenecks without explicit instrumentation.
 ## Working with the `Image` Class
 
 ```python
-from phenotypic.data import load_synth_plate
+from phenotypic.data import load_synth_yeast_plate
 
-image = load_synth_plate()
-image.rgb[:]       # RGB array
-image.gray[:]      # Grayscale
+image = load_synth_yeast_plate()
+image.rgb[:]  # RGB array
+image.gray[:]  # Grayscale
 image.enh_gray[:]  # Enhanced grayscale
-image.objmask[:]   # Binary mask
-image.objmap[:]    # Labeled objects
-image.color.Lab[:] # Color spaces
+image.objmask[:]  # Binary mask
+image.objmap[:]  # Labeled objects
+image.color.Lab[:]  # Color spaces
 ```
 
 **Important:** Never modify `image.rgb` or `image.gray` directly. Use operations that
@@ -571,10 +571,11 @@ When writing code:
 from phenotypic import ImagePipeline
 from phenotypic.enhance import GaussianBlur, CLAHE
 from phenotypic.detect import OtsuDetector
-from phenotypic.data import load_synth_plate
+from phenotypic.data import load_synth_yeast_plate
 
-image = load_synth_plate()
-pipeline = ImagePipeline([GaussianBlur(sigma=1.5), CLAHE(clip_limit=2.0), OtsuDetector()])
+image = load_synth_yeast_plate()
+pipeline = ImagePipeline(
+        [GaussianBlur(sigma=1.5), CLAHE(clip_limit=2.0), OtsuDetector()])
 pipeline.to_json("my_pipeline.json")  # Save for batch processing
 ```
 

@@ -31,7 +31,7 @@ class ImagePipeline(SerializablePipeline):
             >>>     meas=[MeasureShape(), MeasureIntensity()]
             >>> )
             >>>
-            >>> image = _synthetic_data.load_synth_plate()
+            >>> image = _synthetic_data.load_synth_yeast_plate()
             >>> pipe.apply(image)
 
     """

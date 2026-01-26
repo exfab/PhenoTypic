@@ -81,10 +81,10 @@ class GridAlignmentRefiner(GridInferenceMixin, ObjectRefiner):
         >>> from phenotypic import GridImage
         >>> from phenotypic.detect import OtsuDetector
         >>> from phenotypic.refine import GridAlignmentRefiner
-        >>> from phenotypic.data import load_synth_plate
+        >>> from phenotypic.data import load_synth_yeast_plate
         >>>
         >>> # Load gridded plate image
-        >>> grid_image = load_synth_plate()  # Returns GridImage with 8x12 grid
+        >>> grid_image = load_synth_yeast_plate()  # Returns GridImage with 8x12 grid
         >>> detector = OtsuDetector()
         >>> detected = detector.apply(grid_image)
         >>>

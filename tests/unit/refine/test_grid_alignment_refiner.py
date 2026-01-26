@@ -7,7 +7,7 @@ import numpy as np
 from phenotypic import Image, GridImage
 from phenotypic.detect import OtsuDetector, RoundPeaksDetector
 from phenotypic.refine import GridAlignmentRefiner
-from phenotypic.data import load_synth_plate
+from phenotypic.data import load_synth_yeast_plate
 
 
 class TestGridAlignmentRefinerBasics:
@@ -24,10 +24,10 @@ class TestGridAlignmentRefinerBasics:
     def test_refiner_with_custom_parameters(self):
         """Test GridAlignmentRefiner with custom grid inference parameters."""
         refiner = GridAlignmentRefiner(
-            smoothing_sigma=1.5,
-            min_peak_distance=20,
-            peak_prominence=0.15,
-            edge_refinement=False,
+                smoothing_sigma=1.5,
+                min_peak_distance=20,
+                peak_prominence=0.15,
+                edge_refinement=False,
         )
         assert refiner.smoothing_sigma == 1.5
         assert refiner.min_peak_distance == 20
@@ -37,7 +37,7 @@ class TestGridAlignmentRefinerBasics:
     def test_grid_alignment_with_gridimage(self):
         """Test GridAlignmentRefiner with explicit GridImage (known grid dimensions)."""
         # Load synthetic plate with explicit 8x12 grid
-        grid_image = load_synth_plate()
+        grid_image = load_synth_yeast_plate()
         assert isinstance(grid_image, GridImage)
 
         # Detect colonies with basic detector
@@ -61,8 +61,9 @@ class TestGridAlignmentRefinerBasics:
     def test_grid_alignment_with_regular_image(self):
         """Test GridAlignmentRefiner with regular Image (grid inference)."""
         # Load synthetic plate as regular Image (without grid info)
-        grid_image = load_synth_plate()
-        image = Image.imread(grid_image.path) if hasattr(grid_image, 'path') else grid_image
+        grid_image = load_synth_yeast_plate()
+        image = Image.imread(grid_image.path) if hasattr(grid_image,
+                                                         'path') else grid_image
 
         # Detect colonies
         detector = RoundPeaksDetector()
@@ -80,7 +81,7 @@ class TestGridAlignmentRefinerBasics:
 
     def test_objmask_objmap_consistency(self):
         """Test that objmask and objmap remain consistent after refinement."""
-        grid_image = load_synth_plate()
+        grid_image = load_synth_yeast_plate()
         detector = OtsuDetector()
         detected = detector.apply(grid_image)
 
@@ -96,7 +97,7 @@ class TestGridAlignmentRefinerBasics:
 
     def test_inplace_vs_copy(self):
         """Test inplace vs copy behavior."""
-        grid_image = load_synth_plate()
+        grid_image = load_synth_yeast_plate()
         detector = OtsuDetector()
         detected = detector.apply(grid_image)
 
@@ -112,14 +113,14 @@ class TestGridAlignmentRefinerBasics:
         assert not np.array_equal(result_copy.objmap[:], original_objmap)
 
         # Inplace should modify original
-        detected2 = load_synth_plate()
+        detected2 = load_synth_yeast_plate()
         detector.apply(detected2, inplace=True)
         refiner.apply(detected2, inplace=True)
         assert not np.array_equal(detected2.objmap[:], original_objmap)
 
     def test_protected_image_data(self):
         """Test that rgb, gray, and enh_gray are protected from modification."""
-        grid_image = load_synth_plate()
+        grid_image = load_synth_yeast_plate()
         detector = OtsuDetector()
         detected = detector.apply(grid_image)
 
@@ -143,8 +144,9 @@ class TestGridAlignmentRefinerGridInference:
 
     def test_grid_inference_with_regular_image(self):
         """Test that grid inference works for regular Image without explicit dimensions."""
-        grid_image = load_synth_plate()
-        image = Image.imread(grid_image.path) if hasattr(grid_image, 'path') else grid_image
+        grid_image = load_synth_yeast_plate()
+        image = Image.imread(grid_image.path) if hasattr(grid_image,
+                                                         'path') else grid_image
 
         detector = RoundPeaksDetector()
         detected = detector.apply(image)
@@ -157,7 +159,7 @@ class TestGridAlignmentRefinerGridInference:
 
     def test_smoothing_sigma_effect(self):
         """Test effect of smoothing_sigma parameter on grid detection."""
-        grid_image = load_synth_plate()
+        grid_image = load_synth_yeast_plate()
         detector = RoundPeaksDetector()
         detected = detector.apply(grid_image)
 
@@ -175,7 +177,7 @@ class TestGridAlignmentRefinerGridInference:
 
     def test_edge_refinement_effect(self):
         """Test effect of edge_refinement parameter."""
-        grid_image = load_synth_plate()
+        grid_image = load_synth_yeast_plate()
         detector = RoundPeaksDetector()
         detected = detector.apply(grid_image)
 
@@ -214,7 +216,7 @@ class TestGridAlignmentRefinerEdgeCases:
     def test_single_object(self):
         """Test refinement with a single detected object."""
         # Create image with single colony in one grid cell
-        grid_image = load_synth_plate()
+        grid_image = load_synth_yeast_plate()
 
         # Create sparse detection (only one object)
         objmap = np.zeros_like(grid_image.objmap[:])
@@ -230,7 +232,7 @@ class TestGridAlignmentRefinerEdgeCases:
 
     def test_multiple_objects_per_cell(self):
         """Test that refiner keeps only dominant object per cell."""
-        grid_image = load_synth_plate()
+        grid_image = load_synth_yeast_plate()
         detector = OtsuDetector()
         detected = detector.apply(grid_image)
 
@@ -265,7 +267,7 @@ class TestGridAlignmentRefinerPipeline:
             GridAlignmentRefiner(),
         ])
 
-        grid_image = load_synth_plate()
+        grid_image = load_synth_yeast_plate()
         result = pipeline.apply(grid_image)
 
         # Should have processed successfully
@@ -276,7 +278,7 @@ class TestGridAlignmentRefinerPipeline:
         """Test chaining multiple refinement operations."""
         from phenotypic.refine import SmallObjectRemover, MaskFill
 
-        grid_image = load_synth_plate()
+        grid_image = load_synth_yeast_plate()
         detector = OtsuDetector()
         detected = detector.apply(grid_image)
 
@@ -291,7 +293,7 @@ class TestGridAlignmentRefinerPipeline:
         # Should maintain consistency
         assert small_removed.objmap[:].max() >= 0
         np.testing.assert_array_equal(
-            small_removed.rgb[:], detected.rgb[:]
+                small_removed.rgb[:], detected.rgb[:]
         )
 
 
@@ -300,7 +302,7 @@ class TestGridAlignmentRefinerLabelingConsistency:
 
     def test_contiguous_labels(self):
         """Test that refined labels are contiguous (1, 2, 3, ...)."""
-        grid_image = load_synth_plate()
+        grid_image = load_synth_yeast_plate()
         detector = OtsuDetector()
         detected = detector.apply(grid_image)
 
@@ -318,7 +320,7 @@ class TestGridAlignmentRefinerLabelingConsistency:
 
     def test_label_relabeling(self):
         """Test that objects are relabeled contiguously after refinement."""
-        grid_image = load_synth_plate()
+        grid_image = load_synth_yeast_plate()
         detector = RoundPeaksDetector()
         detected = detector.apply(grid_image)
 
@@ -348,7 +350,7 @@ class TestGridAlignmentRefinerMemoryAndPerformance:
 
     def test_garbage_collection_called(self):
         """Test that garbage collection is invoked in _operate."""
-        grid_image = load_synth_plate()
+        grid_image = load_synth_yeast_plate()
         detector = OtsuDetector()
         detected = detector.apply(grid_image)
 
@@ -361,7 +363,7 @@ class TestGridAlignmentRefinerMemoryAndPerformance:
     def test_large_image_handling(self):
         """Test that refiner handles larger images without issues."""
         # Create a larger synthetic image
-        grid_image = load_synth_plate()
+        grid_image = load_synth_yeast_plate()
 
         detector = RoundPeaksDetector()
         detected = detector.apply(grid_image)

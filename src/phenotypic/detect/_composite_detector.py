@@ -54,12 +54,12 @@ class CompositeDetector(ObjectDetector):
         - **min_overlap_ratio** (overlap mode only): Higher values = more conservative filtering
 
     Examples:
-        >>> from phenotypic.data import load_synth_plate
+        >>> from phenotypic.data import load_synth_yeast_plate
         >>> from phenotypic import ImagePipeline
         >>> from phenotypic.detect import OtsuDetector, CannyDetector, CompositeDetector
         >>> from phenotypic.enhance import GaussianBlur
         >>>
-        >>> image = load_synth_plate()
+        >>> image = load_synth_yeast_plate()
         >>>
         >>> # Union: detect colonies found by either method (high sensitivity)
         >>> composite = CompositeDetector(

@@ -11,7 +11,7 @@ from ._synthetic_data import *
 
 __all__ = [
     "load_synthetic_colony",
-    "load_synth_plate",
+    "load_synth_yeast_plate",
     "make_synthetic_colony",
     "make_synthetic_plate",
     "make_synthetic_filamentous_plate",

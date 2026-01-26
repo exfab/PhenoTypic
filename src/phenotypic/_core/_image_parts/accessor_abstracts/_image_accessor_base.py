@@ -753,10 +753,10 @@ class ImageAccessorBase(ABC):
 
         # Build label2rgb kwargs
         kwargs = {
-            'label': objmap,
-            'image': arr_rgb,
+            'label'   : objmap,
+            'image'   : arr_rgb,
             'bg_label': bg_label,
-            'alpha': overlay_alpha,
+            'alpha'   : overlay_alpha,
         }
         if colors is not None:
             kwargs['colors'] = colors
@@ -1056,38 +1056,39 @@ class ImageAccessorBase(ABC):
         Examples:
             .. dropdown:: Save full-resolution overlay
 
-                >>> from phenotypic.data import load_synth_plate
-                >>> image = load_synth_plate()
+                >>> from phenotypic.data import load_synth_yeast_plate
+                >>> image = load_synth_yeast_plate()
                 >>> image.rgb.save_overlay("overlay_rgb.png", overlay_alpha=0.4)
         """
         filepath = Path(filepath)
 
         # Generate full-resolution overlay array
         overlay_arr = self._generate_overlay_array(
-            overlay_alpha=overlay_alpha,
-            bg_label=bg_label,
-            colors=colors,
-            **label2rgb_kwargs,
+                overlay_alpha=overlay_alpha,
+                bg_label=bg_label,
+                colors=colors,
+                **label2rgb_kwargs,
         )
 
         # For GridImage, draw gridlines if requested (duck typing check)
         if show_gridlines and hasattr(self._root_image, '_draw_gridlines_on_overlay'):
             overlay_arr = self._root_image._draw_gridlines_on_overlay(
-                overlay_arr, gridline_color
+                    overlay_arr, gridline_color
             )
 
         # For GridImage, draw section boxes if requested (duck typing check)
-        if show_section_boxes and hasattr(self._root_image, '_draw_section_boxes_on_overlay'):
+        if show_section_boxes and hasattr(self._root_image,
+                                          '_draw_section_boxes_on_overlay'):
             overlay_arr = self._root_image._draw_section_boxes_on_overlay(
-                overlay_arr, section_box_colors
+                    overlay_arr, section_box_colors
             )
 
         # Save using existing _save_image infrastructure (no metadata for overlays)
         self._save_image(
-            filepath=filepath,
-            arr=overlay_arr,
-            bit_depth=8,  # Overlays are always 8-bit
-            metadata_json=None,  # No phenotypic metadata for overlay images
+                filepath=filepath,
+                arr=overlay_arr,
+                bit_depth=8,  # Overlays are always 8-bit
+                metadata_json=None,  # No phenotypic metadata for overlay images
         )
 
     @property

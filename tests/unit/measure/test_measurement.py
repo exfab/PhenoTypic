@@ -3,7 +3,7 @@ import pytest
 import pandas as pd
 
 import phenotypic
-from phenotypic.data import load_synth_plate
+from phenotypic.data import load_synth_yeast_plate
 from phenotypic.detect import OtsuDetector
 from phenotypic.refine import MaskOpener
 
@@ -16,6 +16,6 @@ from ..resources.TestHelper import timeit
 def test_measurement(qualname, obj):
     """The goal of this test is to ensure that all operations are callable with basic functionality,
     and return a valid dataframe object. This does not check for accuracy"""
-    image = load_synth_plate()
+    image = load_synth_yeast_plate()
     MaskOpener().apply(image, inplace=True)
     assert isinstance(obj().measure(image), pd.DataFrame)

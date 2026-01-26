@@ -6,7 +6,7 @@ import pytest
 import pandas as pd
 
 from phenotypic import ImagePipeline, Image
-from phenotypic.data import load_colony, load_synth_plate
+from phenotypic.data import load_colony, load_synth_yeast_plate
 from phenotypic.detect import OtsuDetector, CannyDetector
 from phenotypic.enhance import GaussianBlur, CLAHE
 from phenotypic.measure import MeasureShape, MeasureIntensity, MeasureColor
@@ -638,7 +638,7 @@ class TestNestedOperationsSerialization:
         """Test that serialized/deserialized nested operations work identically."""
         from phenotypic.detect import CompositeDetector
 
-        image = load_synth_plate()
+        image = load_synth_yeast_plate()
 
         # Original detector
         composite = CompositeDetector(

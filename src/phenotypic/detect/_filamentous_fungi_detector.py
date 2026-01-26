@@ -122,7 +122,7 @@ class FilamentousFungiDetector(ObjectDetector):
         Detect and separate filamentous fungi with center and overall detection:
 
         >>> from phenotypic.detect import FilamentousFungiDetector, OtsuDetector, TriangleDetector
-        >>> from phenotypic.data import load_synth_plate
+        >>> from phenotypic.data import load_synth_yeast_plate
         >>>
         >>> # Create detector: centers detected via OtsuDetector, overall via TriangleDetector
         >>> detector = FilamentousFungiDetector(
@@ -133,7 +133,7 @@ class FilamentousFungiDetector(ObjectDetector):
         ... )
         >>>
         >>> # Note: load_synth_plate returns circular colonies; example is illustrative
-        >>> image = load_synth_plate()
+        >>> image = load_synth_yeast_plate()
         >>> result = detector.apply(image)
         >>> num_fungi = result.objmap[:].max()
         >>> print(f"Detected and separated {num_fungi} fungal colonies")
@@ -143,7 +143,7 @@ class FilamentousFungiDetector(ObjectDetector):
         >>> from phenotypic import ImagePipeline
         >>> from phenotypic.enhance import GaussianBlur, CLAHE
         >>> from phenotypic.refine import SmallObjectRemover
-        >>> from phenotypic.data import load_synth_plate
+        >>> from phenotypic.data import load_synth_yeast_plate
         >>>
         >>> # Build pipeline with enhancement, two-stage fungi detection, and cleanup
         >>> pipeline = ImagePipeline([
@@ -160,7 +160,7 @@ class FilamentousFungiDetector(ObjectDetector):
         ...     SmallObjectRemover(min_size=100)
         ... ])
         >>>
-        >>> image = load_synth_plate()
+        >>> image = load_synth_yeast_plate()
         >>> result = pipeline.apply(image)
         >>> print(f"Final separated fungi: {result.objmap[:].max()}")
     """
@@ -223,7 +223,7 @@ class FilamentousFungiDetector(ObjectDetector):
 
         self.overall_detector = overall_detector if overall_detector \
             else self.__overall_pipe
-        
+
         self.erosion_radius = erosion_radius
         self.boundary_cost = boundary_cost
         self.compactness = compactness
