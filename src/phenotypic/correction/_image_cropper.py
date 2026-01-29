@@ -50,65 +50,49 @@ class ImageCropper(ImageCorrector):
             bottom cropping is performed (equivalent to 0).
 
     Examples:
-        .. dropdown:: Basic usage: crop scanner border from all edges
+        Basic usage: crop scanner border from all edges:
 
-            .. code-block:: python
+        >>> from phenotypic import Image
+        >>> from phenotypic.correction import ImageCropper
+        >>> # Load a scanned plate image (may include scanner margins)
+        >>> image = Image.imread('plate_with_border.tiff')  # doctest: +SKIP
+        >>> print(f"Original size: {image.shape}")  # doctest: +SKIP
+        >>> # Remove 50 pixels from all edges
+        >>> cropper = ImageCropper(left=50, right=50, top=50, bottom=50)
+        >>> cropped = cropper.apply(image)  # doctest: +SKIP
+        >>> print(f"Cropped size: {cropped.shape}")  # doctest: +SKIP
 
-                from phenotypic import Image
-                from phenotypic.correction import ImageCropper
+        Asymmetric cropping: remove only top/right margins:
 
-                # Load a scanned plate image (may include scanner margins)
-                image = Image.imread('plate_with_border.tiff')
-                print(f"Original size: {image.shape}")  # (1200, 1600, 3)
+        >>> from phenotypic import Image
+        >>> from phenotypic.correction import ImageCropper
+        >>> image = Image.imread('plate_image.jpg')  # doctest: +SKIP
+        >>> # Remove top margin (label text) and right margin (edge artifact)
+        >>> # Keep left and bottom edges intact
+        >>> cropper = ImageCropper(top=80, right=60, left=None, bottom=None)
+        >>> cropped = cropper.apply(image)  # doctest: +SKIP
 
-                # Remove 50 pixels from all edges
-                cropper = ImageCropper(left=50, right=50, top=50, bottom=50)
-                cropped = cropper.apply(image)
+        Crop after detection to isolate plate region:
 
-                print(f"Cropped size: {cropped.shape}")  # (1100, 1500, 3)
-
-        .. dropdown:: Asymmetric cropping: remove only top/right margins
-
-            .. code-block:: python
-
-                from phenotypic import Image
-                from phenotypic.correction import ImageCropper
-
-                image = Image.imread('plate_image.jpg')
-
-                # Remove top margin (label text) and right margin (edge artifact)
-                # Keep left and bottom edges intact
-                cropper = ImageCropper(top=80, right=60, left=None, bottom=None)
-                cropped = cropper.apply(image)
-
-        .. dropdown:: Crop after detection to isolate plate region
-
-            .. code-block:: python
-
-                from phenotypic import Image, ImagePipeline
-                from phenotypic.enhance import GaussianBlur
-                from phenotypic.detect import OtsuDetector
-                from phenotypic.correction import ImageCropper
-
-                # Load and process a plate image
-                image = Image.imread('raw_plate.tiff')
-
-                # Build preprocessing pipeline
-                pipeline = ImagePipeline([
-                    GaussianBlur(sigma=1.5),
-                    OtsuDetector()
-                ])
-
-                # Apply processing
-                detected = pipeline.operate(image)
-
-                # Now crop to remove edge noise
-                cropper = ImageCropper(left=40, right=40, top=40, bottom=40)
-                final = cropper.apply(detected)
-
-                # Detection results are preserved in cropped image
-                colonies = final.objects
-                print(f"Detected {len(colonies)} colonies in cropped region")
+        >>> from phenotypic import Image, ImagePipeline
+        >>> from phenotypic.enhance import GaussianBlur
+        >>> from phenotypic.detect import OtsuDetector
+        >>> from phenotypic.correction import ImageCropper
+        >>> # Load and process a plate image
+        >>> image = Image.imread('raw_plate.tiff')  # doctest: +SKIP
+        >>> # Build preprocessing pipeline
+        >>> pipeline = ImagePipeline([
+        ...     GaussianBlur(sigma=1.5),
+        ...     OtsuDetector()
+        ... ])
+        >>> # Apply processing
+        >>> detected = pipeline.operate(image)  # doctest: +SKIP
+        >>> # Now crop to remove edge noise
+        >>> cropper = ImageCropper(left=40, right=40, top=40, bottom=40)
+        >>> final = cropper.apply(detected)  # doctest: +SKIP
+        >>> # Detection results are preserved in cropped image
+        >>> colonies = final.objects  # doctest: +SKIP
+        >>> print(f"Detected {len(colonies)} colonies in cropped region")  # doctest: +SKIP
     """
 
     def __init__(self,
@@ -142,32 +126,23 @@ class ImageCropper(ImageCorrector):
                 non-negative integers (or None).
 
         Examples:
-            .. dropdown:: Create a cropper for symmetric margins
+            Create a cropper for symmetric margins:
 
-                .. code-block:: python
+            >>> from phenotypic.correction import ImageCropper
+            >>> # Remove 50 pixels from all four edges
+            >>> cropper = ImageCropper(left=50, right=50, top=50, bottom=50)
 
-                    from phenotypic.correction import ImageCropper
+            Create a cropper for asymmetric margins:
 
-                    # Remove 50 pixels from all four edges
-                    cropper = ImageCropper(left=50, right=50, top=50, bottom=50)
+            >>> from phenotypic.correction import ImageCropper
+            >>> # Remove top (label) and right (artifact), keep left and bottom
+            >>> cropper = ImageCropper(top=100, right=75, left=None, bottom=None)
 
-            .. dropdown:: Create a cropper for asymmetric margins
+            Create a cropper that only removes top margin:
 
-                .. code-block:: python
-
-                    from phenotypic.correction import ImageCropper
-
-                    # Remove top (label) and right (artifact), keep left and bottom
-                    cropper = ImageCropper(top=100, right=75, left=None, bottom=None)
-
-            .. dropdown:: Create a cropper that only removes top margin
-
-                .. code-block:: python
-
-                    from phenotypic.correction import ImageCropper
-
-                    cropper = ImageCropper(top=80)
-                    # Equivalent to ImageCropper(left=None, right=None, top=80, bottom=None)
+            >>> from phenotypic.correction import ImageCropper
+            >>> cropper = ImageCropper(top=80)
+            >>> # Equivalent to ImageCropper(left=None, right=None, top=80, bottom=None)
         """
         self.left = left
         self.right = right
@@ -212,42 +187,32 @@ class ImageCropper(ImageCorrector):
                 top edge >= bottom edge or left edge >= right edge after cropping).
 
         Examples:
-            .. dropdown:: Basic cropping of a loaded image
+            Basic cropping of a loaded image:
 
-                .. code-block:: python
+            >>> from phenotypic import Image
+            >>> from phenotypic.correction import ImageCropper
+            >>> image = Image.imread('plate.jpg')  # doctest: +SKIP
+            >>> cropper = ImageCropper(top=50, bottom=50, left=40, right=40)
+            >>> # Returns new cropped Image; original is unchanged
+            >>> cropped = cropper.apply(image)  # doctest: +SKIP
+            >>> print(f"Original shape: {image.shape}")  # doctest: +SKIP
+            >>> print(f"Cropped shape: {cropped.shape}")  # doctest: +SKIP
 
-                    from phenotypic import Image
-                    from phenotypic.correction import ImageCropper
+            Cropping a GridImage preserves grid settings:
 
-                    image = Image.imread('plate.jpg')
-                    cropper = ImageCropper(top=50, bottom=50, left=40, right=40)
-
-                    # Returns new cropped Image; original is unchanged
-                    cropped = cropper.apply(image)
-
-                    print(f"Original shape: {image.shape}")
-                    print(f"Cropped shape: {cropped.shape}")
-
-            .. dropdown:: Cropping a GridImage preserves grid settings
-
-                .. code-block:: python
-
-                    from phenotypic import GridImage
-                    from phenotypic.correction import ImageCropper
-
-                    # Load plate image with scanner border
-                    grid_img = GridImage('plate_with_border.tiff', nrows=8, ncols=12)
-
-                    # Remove scanner border
-                    cropper = ImageCropper(left=50, right=50, top=50, bottom=50)
-                    cropped = cropper.apply(grid_img)
-
-                    # GridImage type and settings preserved
-                    assert isinstance(cropped, GridImage)
-                    assert cropped.nrows == 8
-                    assert cropped.ncols == 12
-                    # Grid positions are recalculated for cropped image
-                    cropped.show_overlay(show_gridlines=True)
+            >>> from phenotypic import GridImage
+            >>> from phenotypic.correction import ImageCropper
+            >>> # Load plate image with scanner border
+            >>> grid_img = GridImage('plate_with_border.tiff', nrows=8, ncols=12)  # doctest: +SKIP
+            >>> # Remove scanner border
+            >>> cropper = ImageCropper(left=50, right=50, top=50, bottom=50)
+            >>> cropped = cropper.apply(grid_img)  # doctest: +SKIP
+            >>> # GridImage type and settings preserved
+            >>> assert isinstance(cropped, GridImage)  # doctest: +SKIP
+            >>> assert cropped.nrows == 8  # doctest: +SKIP
+            >>> assert cropped.ncols == 12  # doctest: +SKIP
+            >>> # Grid positions are recalculated for cropped image
+            >>> cropped.plot.overlay(show_gridlines=True)  # doctest: +SKIP
         """
         top, bottom_idx, left, right_idx = self._get_idxes(image)
 
@@ -326,27 +291,22 @@ class ImageCropper(ImageCorrector):
                 from a 150-pixel tall image).
 
         Examples:
-            .. dropdown:: Understanding slice indices from crop parameters
+            Understanding slice indices from crop parameters:
 
-                .. code-block:: python
-
-                    from phenotypic import Image
-                    from phenotypic.correction import ImageCropper
-
-                    # Example: 1000x1200 image, crop 50 from all edges
-                    image = Image.imread('large_plate.tiff')
-                    cropper = ImageCropper(top=50, bottom=50, left=50, right=50)
-
-                    # Internal calculation:
-                    # height=1000, width=1200
-                    # top_idx = 0 + 50 = 50
-                    # bottom_idx = 1000 - 50 - 1 = 949
-                    # left_idx = 0 + 50 = 50
-                    # right_idx = 1200 - 50 - 1 = 1149
-                    # Result: image[50:949, 50:1149] extracts central 899x1099 region
-
-                    cropped = cropper.apply(image)
-                    print(cropped.shape)  # (899, 1099, 3) for 3-channel image
+            >>> from phenotypic import Image
+            >>> from phenotypic.correction import ImageCropper
+            >>> # Example: 1000x1200 image, crop 50 from all edges
+            >>> image = Image.imread('large_plate.tiff')  # doctest: +SKIP
+            >>> cropper = ImageCropper(top=50, bottom=50, left=50, right=50)
+            >>> # Internal calculation:
+            >>> # height=1000, width=1200
+            >>> # top_idx = 0 + 50 = 50
+            >>> # bottom_idx = 1000 - 50 - 1 = 949
+            >>> # left_idx = 0 + 50 = 50
+            >>> # right_idx = 1200 - 50 - 1 = 1149
+            >>> # Result: image[50:949, 50:1149] extracts central 899x1099 region
+            >>> cropped = cropper.apply(image)  # doctest: +SKIP
+            >>> print(cropped.shape)  # doctest: +SKIP
         """
         height, width = image.shape[:2]
 

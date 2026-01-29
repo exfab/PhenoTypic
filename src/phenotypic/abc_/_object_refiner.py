@@ -21,6 +21,27 @@ class ObjectRefiner(ImageOperation, ABC):
     (which analyzes image data to create initial detections), ObjectRefiner only modifies the
     object mask and labeled map, leaving preprocessing data untouched.
 
+    **Quick Decision Guide: ObjectRefiner vs Alternatives**
+
+    - **Use ObjectRefiner if:** Detector produces mostly correct detections with manageable noise/artifacts
+      (small objects, fragmented regions, holes, low circularity) that can be characterized and filtered.
+    - **Use ObjectDetector if:** Detector fundamentally fails to detect colonies or produces too much noise
+      to salvage via post-hoc cleanup.
+    - **Use ImageEnhancer if:** Problem is image quality (blur, contrast, noise) affecting detection;
+      improve input before detection rather than refining output.
+    - **ObjectRefiner vs ObjectDetector:** Refiners work on existing masks (objmask/objmap), detectors create
+      masks from image data. Refiners are for cleanup, detectors are for initial analysis.
+    - **Size filtering:** Use for removing dust, noise, agar artifacts (too small) or unrealistic regions
+      (too large). Example: [SmallObjectRemover](src/phenotypic/refine/_small_object_modifier.py).
+    - **Morphological cleanup:** Use for fragmented edges, thin protrusions, internal gaps. Example:
+      [MaskDilator](src/phenotypic/refine/_mask_dilator.py) (uses FootprintMixin).
+    - **Hole filling:** Use for voids from uneven illumination or pigment patterns within colonies.
+    - **Shape filtering:** Use for removing elongated artifacts, merged colonies, low-circularity debris.
+    - **Merging operations:** Use for bridging fragmented colonies or combining nearby regions. Example:
+      [NearestNeighborMerger](src/phenotypic/refine/_nearest_neighbor_merger.py).
+    - **When to chain:** Combine multiple refiners in ImagePipeline (remove small noise before filling holes,
+      filter shapes before morphological operations) for clearer, divide-and-conquer approach.
+
     **What is ObjectRefiner?**
 
     ObjectRefiner operates on the principle of **non-destructive post-processing**: all modifications
@@ -112,23 +133,24 @@ class ObjectRefiner(ImageOperation, ABC):
 
     Common ObjectRefiner implementations address specific issues:
 
-    - **Size filtering:** Remove objects below/above size thresholds (e.g., `SmallObjectRemover`).
-      Targets: spurious noise, dust, agar artifacts, or unrealistically large regions.
+    - **Size filtering:** [SmallObjectRemover](src/phenotypic/refine/_small_object_modifier.py) removes
+      objects below/above thresholds. Targets: spurious noise, dust, agar artifacts, oversized regions.
 
-    - **Shape filtering:** Remove objects with poor morphology (low circularity, low solidity).
-      Targets: elongated artifacts, merged colonies, debris. Example: `LowCircularityRemover`.
+    - **Shape filtering:** Remove objects with poor morphology (low circularity, low solidity, high
+      aspect ratio). Targets: elongated artifacts, merged colonies, debris.
 
-    - **Hole filling:** Fill holes within colony masks for solid shape representation (e.g., `MaskFill`).
-      Targets: voids from uneven illumination, pigment patterns. Improves area measurements.
+    - **Hole filling:** Fill interior voids within colony masks for solid shape representation.
+      Targets: voids from uneven illumination, pigment heterogeneity. Improves area measurements.
 
-    - **Morphological operations:** Erosion, dilation, opening, closing to refine mask edges.
-      Targets: fragmented edges, small protrusions, internal gaps. Uses `_make_footprint()`.
+    - **Morphological operations:** Erosion, dilation, opening, closing with [MaskDilator](src/phenotypic/refine/_mask_dilator.py),
+      [MaskEroder](src/phenotypic/refine/_mask_eroder.py), [MaskOpener](src/phenotypic/refine/_mask_opener.py).
+      Targets: fragmented edges, thin protrusions, internal gaps. Uses FootprintMixin for shape control.
 
     - **Border removal:** Remove or exclude objects touching image/well boundaries.
-      Targets: incomplete colonies in arrayed formats. Example: clear_border operations.
+      Targets: incomplete colonies in arrayed formats.
 
-    - **Merging/splitting:** Combine nearby objects (dilation + relabeling) or separate touching regions
-      (watershed, distance transform). Targets: fragmented colonies, merged colonies.
+    - **Merging/splitting:** [NearestNeighborMerger](src/phenotypic/refine/_nearest_neighbor_merger.py)
+      combines nearby objects via dilation and relabeling. Targets: fragmented colonies, nearby regions.
 
     **Integrity Validation: Protection of Core Data**
 
@@ -173,6 +195,37 @@ class ObjectRefiner(ImageOperation, ABC):
                 # objmask will be auto-updated from objmap via relabel()
                 refined_map = remove_small_objects(image.objmap[:], min_size=min_size)
                 image.objmap[:] = refined_map
+                return image
+
+    **Morphological Operations with FootprintMixin**
+
+    For operations requiring morphological structuring elements (dilation, erosion, opening, closing),
+    inherit from FootprintMixin. See [MaskDilator](src/phenotypic/refine/_mask_dilator.py) for example:
+
+    .. code-block:: python
+
+        from phenotypic.abc_ import ObjectRefiner
+        from phenotypic.tools_ import FootprintMixin
+        from phenotypic import Image
+        from skimage.morphology import dilation
+
+        class MyMorphRefiner(ObjectRefiner, FootprintMixin):
+            def __init__(self, footprint_shape: str = 'disk', footprint_width: int = 2):
+                super().__init__()
+                self.footprint_shape = footprint_shape
+                self.footprint_width = footprint_width
+
+            @staticmethod
+            def _operate(image: Image, footprint_shape: str = 'disk',
+                        footprint_width: int = 2) -> Image:
+                # Use _make_footprint from ObjectRefiner or FootprintMixin
+                fp = ObjectRefiner._make_footprint(footprint_shape, footprint_width)
+                dilated = dilation(image.objmask[:], footprint=fp)
+                image.objmask[:] = dilated
+                # Reconstruct objmap from dilated mask
+                from scipy.ndimage import label as ndi_label
+                relabeled, _ = ndi_label(dilated)
+                image.objmap[:] = relabeled
                 return image
 
     **Key Rules for Implementation:**
@@ -349,231 +402,221 @@ class ObjectRefiner(ImageOperation, ABC):
           ``mask = np.isin(objmap, keep_labels); filtered_map = objmap * mask``
 
     Examples:
-        .. dropdown:: Removing small spurious objects below minimum size
+        Removing small spurious objects below minimum size:
 
-            .. code-block:: python
+        >>> from phenotypic.abc_ import ObjectRefiner
+        >>> from phenotypic import Image
+        >>> from skimage.morphology import remove_small_objects
+        >>> from scipy import ndimage
+        >>> class SimpleSmallObjectRemover(ObjectRefiner):
+        ...     '''Remove objects smaller than a minimum size threshold.'''
+        ...
+        ...     def __init__(self, min_size: int = 50):
+        ...         super().__init__()
+        ...         self.min_size = min_size
+        ...
+        ...     @staticmethod
+        ...     def _operate(image: Image, min_size: int = 50) -> Image:
+        ...         '''Remove small objects from labeled map.'''
+        ...         # Get current labeled map
+        ...         objmap = image.objmap[:]
+        ...         # Remove small objects (automatically updates objmap)
+        ...         refined = remove_small_objects(objmap, min_size=min_size)
+        ...         # Set refined result
+        ...         image.objmap[:] = refined
+        ...         return image
+        >>> # Usage
+        >>> from phenotypic.detect import OtsuDetector
+        >>> image = Image.imread('plate.jpg')
+        >>> detected = OtsuDetector().apply(image)
+        >>> # Remove noise below 100 pixels
+        >>> refiner = SimpleSmallObjectRemover(min_size=100)
+        >>> cleaned = refiner.apply(detected)
+        >>> print(f"Before: {detected.objmap[:].max()} objects")
+        >>> print(f"After: {cleaned.objmap[:].max()} objects")
 
-                from phenotypic.abc_ import ObjectRefiner
-                from phenotypic import Image
-                from skimage.morphology import remove_small_objects
-                from scipy import ndimage
+        Removing low-circularity objects (merged colonies, artifacts):
 
-                class SimpleSmallObjectRemover(ObjectRefiner):
-                    '''Remove objects smaller than a minimum size threshold.'''
+        >>> from phenotypic.abc_ import ObjectRefiner
+        >>> from phenotypic import Image
+        >>> from skimage.measure import regionprops_table
+        >>> import pandas as pd
+        >>> import numpy as np
+        >>> import math
+        >>> class CircularityFilter(ObjectRefiner):
+        ...     '''Remove objects with low circularity (merged colonies, artifacts).'''
+        ...
+        ...     def __init__(self, min_circularity: float = 0.7):
+        ...         super().__init__()
+        ...         self.min_circularity = min_circularity
+        ...
+        ...     @staticmethod
+        ...     def _operate(image: Image, min_circularity: float = 0.7) -> Image:
+        ...         '''Filter objects by circularity using Polsby-Popper metric.'''
+        ...         objmap = image.objmap[:]
+        ...         # Measure shape properties
+        ...         props = regionprops_table(
+        ...             label_image=objmap,
+        ...             properties=['label', 'area', 'perimeter']
+        ...         )
+        ...         df = pd.DataFrame(props)
+        ...         # Calculate circularity (Polsby-Popper: 4*pi*area / perimeter^2)
+        ...         df['circularity'] = (4 * math.pi * df['area']) / (df['perimeter'] ** 2)
+        ...         # Keep only circular objects
+        ...         keep_labels = df[df['circularity'] >= min_circularity]['label'].values
+        ...         # Filter map: keep only selected labels
+        ...         refined_map = np.where(np.isin(objmap, keep_labels), objmap, 0)
+        ...         image.objmap[:] = refined_map
+        ...         return image
+        >>> # Usage
+        >>> image = Image.imread('plate.jpg')
+        >>> from phenotypic.detect import OtsuDetector
+        >>> detected = OtsuDetector().apply(image)
+        >>> # Keep only well-formed circular colonies
+        >>> refiner = CircularityFilter(min_circularity=0.75)
+        >>> refined = refiner.apply(detected)
+        >>> print(f"Removed elongated artifacts: {detected.objmap[:].max()} -> {refined.objmap[:].max()}")
 
-                    def __init__(self, min_size: int = 50):
-                        super().__init__()
-                        self.min_size = min_size
+        Filling holes in colony masks for solid shape representation:
 
-                    @staticmethod
-                    def _operate(image: Image, min_size: int = 50) -> Image:
-                        '''Remove small objects from labeled map.'''
-                        # Get current labeled map
-                        objmap = image.objmap[:]
+        >>> from phenotypic.abc_ import ObjectRefiner
+        >>> from phenotypic import Image
+        >>> from scipy.ndimage import binary_fill_holes
+        >>> class HoleFiller(ObjectRefiner):
+        ...     '''Fill holes within colony masks for solid shape representation.'''
+        ...
+        ...     def __init__(self):
+        ...         super().__init__()
+        ...
+        ...     @staticmethod
+        ...     def _operate(image: Image) -> Image:
+        ...         '''Fill holes in binary mask.'''
+        ...         mask = image.objmask[:]
+        ...         # Fill holes (interior voids within objects)
+        ...         filled = binary_fill_holes(mask)
+        ...         # Update mask
+        ...         image.objmask[:] = filled
+        ...         # Reconstruct labeled map from filled mask
+        ...         from scipy import ndimage
+        ...         labeled, _ = ndimage.label(filled)
+        ...         image.objmap[:] = labeled
+        ...         return image
+        >>> # Usage
+        >>> image = Image.imread('plate.jpg')
+        >>> from phenotypic.detect import OtsuDetector
+        >>> detected = OtsuDetector().apply(image)
+        >>> # Fill holes from uneven illumination or pigmentation
+        >>> refiner = HoleFiller()
+        >>> refined = refiner.apply(detected)
+        >>> # Result: solid, contiguous colony shapes better for area measurements
+        >>> print(f"Holes filled; colonies now solid")
 
-                        # Remove small objects (automatically updates objmap)
-                        refined = remove_small_objects(objmap, min_size=min_size)
+        Morphological refinement with dilation to merge fragmented colonies:
 
-                        # Set refined result
-                        image.objmap[:] = refined
-                        return image
+        >>> from phenotypic.abc_ import ObjectRefiner
+        >>> from phenotypic import Image
+        >>> from scipy.ndimage import label as ndi_label
+        >>> from skimage.morphology import dilation
+        >>> import numpy as np
+        >>> class FragmentMerger(ObjectRefiner):
+        ...     '''Merge fragmented colonies via morphological dilation and relabeling.'''
+        ...
+        ...     def __init__(self, dilation_radius: int = 2):
+        ...         super().__init__()
+        ...         self.dilation_radius = dilation_radius
+        ...
+        ...     @staticmethod
+        ...     def _operate(image: Image, dilation_radius: int = 2) -> Image:
+        ...         '''Dilate mask and relabel to merge nearby fragments.'''
+        ...         mask = image.objmask[:]
+        ...         # Create disk shape for isotropic dilation
+        ...         fp = ObjectRefiner._make_footprint('disk', dilation_radius)
+        ...         # Dilate to bridge fragmented regions
+        ...         dilated = dilation(mask, footprint=fp)
+        ...         # Relabel connected components
+        ...         relabeled, _ = ndi_label(dilated)
+        ...         # Set refined results
+        ...         image.objmask[:] = dilated
+        ...         image.objmap[:] = relabeled
+        ...         return image
+        >>> # Usage
+        >>> image = Image.imread('plate.jpg')
+        >>> from phenotypic.detect import OtsuDetector
+        >>> detected = OtsuDetector().apply(image)
+        >>> # Merge fragments from uneven lighting
+        >>> refiner = FragmentMerger(dilation_radius=3)
+        >>> merged = refiner.apply(detected)
+        >>> print(f"Merged fragments: {detected.objmap[:].max()} -> {merged.objmap[:].max()} objects")
 
-                # Usage
-                from phenotypic.detect import OtsuDetector
+        Merging nearby objects via nearest-neighbor distance:
 
-                image = Image.imread('plate.jpg')
-                detected = OtsuDetector().apply(image)
+        >>> from phenotypic.abc_ import ObjectRefiner
+        >>> from phenotypic import Image
+        >>> from scipy.ndimage import label as ndi_label, distance_transform_edt
+        >>> from skimage.morphology import dilation
+        >>> import numpy as np
+        >>> class TransitiveDistanceMerger(ObjectRefiner):
+        ...     '''Merge objects within specified distance via distance transform.'''
+        ...
+        ...     def __init__(self, merge_distance: int = 5):
+        ...         super().__init__()
+        ...         self.merge_distance = merge_distance
+        ...
+        ...     @staticmethod
+        ...     def _operate(image: Image, merge_distance: int = 5) -> Image:
+        ...         '''Merge objects closer than merge_distance via dilation of distance map.'''
+        ...         mask = image.objmask[:]
+        ...         # Compute distance transform from object interior
+        ...         dist_map = distance_transform_edt(mask)
+        ...         # Dilate distance map to bridge nearby objects
+        ...         fp = ObjectRefiner._make_footprint('disk', merge_distance)
+        ...         dilated_dist = dilation(dist_map > 0, footprint=fp)
+        ...         # Relabel connected components in dilated region
+        ...         relabeled, _ = ndi_label(dilated_dist)
+        ...         # Set refined results
+        ...         image.objmask[:] = dilated_dist
+        ...         image.objmap[:] = relabeled
+        ...         return image
+        >>> # Usage: merge nearby fragments from partial colonies
+        >>> from phenotypic.data import load_synth_yeast_plate
+        >>> from phenotypic.detect import OtsuDetector
+        >>> image = load_synth_yeast_plate()
+        >>> detected = OtsuDetector().apply(image)
+        >>> # Merge fragments within 10-pixel distance
+        >>> merger = TransitiveDistanceMerger(merge_distance=10)
+        >>> merged = merger.apply(detected)
+        >>> print(f"Merged nearby objects: {detected.objmap[:].max()} -> {merged.objmap[:].max()}")
 
-                # Remove noise below 100 pixels
-                refiner = SimpleSmallObjectRemover(min_size=100)
-                cleaned = refiner.apply(detected)
+        Chaining multiple refinements in a pipeline:
 
-                print(f"Before: {detected.objmap[:].max()} objects")
-                print(f"After: {cleaned.objmap[:].max()} objects")
-
-        .. dropdown:: Removing low-circularity objects (merged colonies, artifacts)
-
-            .. code-block:: python
-
-                from phenotypic.abc_ import ObjectRefiner
-                from phenotypic import Image
-                from skimage.measure import regionprops_table
-                import pandas as pd
-                import numpy as np
-                import math
-
-                class CircularityFilter(ObjectRefiner):
-                    '''Remove objects with low circularity (merged colonies, artifacts).'''
-
-                    def __init__(self, min_circularity: float = 0.7):
-                        super().__init__()
-                        self.min_circularity = min_circularity
-
-                    @staticmethod
-                    def _operate(image: Image, min_circularity: float = 0.7) -> Image:
-                        '''Filter objects by circularity using Polsby-Popper metric.'''
-                        objmap = image.objmap[:]
-
-                        # Measure shape properties
-                        props = regionprops_table(
-                            label_image=objmap,
-                            properties=['label', 'area', 'perimeter']
-                        )
-                        df = pd.DataFrame(props)
-
-                        # Calculate circularity (Polsby-Popper: 4*pi*area / perimeter^2)
-                        df['circularity'] = (4 * math.pi * df['area']) / (df['perimeter'] ** 2)
-
-                        # Keep only circular objects
-                        keep_labels = df[df['circularity'] >= min_circularity]['label'].values
-
-                        # Filter map: keep only selected labels
-                        refined_map = np.where(np.isin(objmap, keep_labels), objmap, 0)
-                        image.objmap[:] = refined_map
-                        return image
-
-                # Usage
-                image = Image.imread('plate.jpg')
-                from phenotypic.detect import OtsuDetector
-                detected = OtsuDetector().apply(image)
-
-                # Keep only well-formed circular colonies
-                refiner = CircularityFilter(min_circularity=0.75)
-                refined = refiner.apply(detected)
-
-                print(f"Removed elongated artifacts: {detected.objmap[:].max()} -> {refined.objmap[:].max()}")
-
-        .. dropdown:: Filling holes in colony masks for solid shape representation
-
-            .. code-block:: python
-
-                from phenotypic.abc_ import ObjectRefiner
-                from phenotypic import Image
-                from scipy.ndimage import binary_fill_holes
-
-                class HoleFiller(ObjectRefiner):
-                    '''Fill holes within colony masks for solid shape representation.'''
-
-                    def __init__(self):
-                        super().__init__()
-
-                    @staticmethod
-                    def _operate(image: Image) -> Image:
-                        '''Fill holes in binary mask.'''
-                        mask = image.objmask[:]
-
-                        # Fill holes (interior voids within objects)
-                        filled = binary_fill_holes(mask)
-
-                        # Update mask
-                        image.objmask[:] = filled
-
-                        # Reconstruct labeled map from filled mask
-                        from scipy import ndimage
-                        labeled, _ = ndimage.label(filled)
-                        image.objmap[:] = labeled
-
-                        return image
-
-                # Usage
-                image = Image.imread('plate.jpg')
-                from phenotypic.detect import OtsuDetector
-                detected = OtsuDetector().apply(image)
-
-                # Fill holes from uneven illumination or pigmentation
-                refiner = HoleFiller()
-                refined = refiner.apply(detected)
-
-                # Result: solid, contiguous colony shapes better for area measurements
-                print(f"Holes filled; colonies now solid")
-
-        .. dropdown:: Morphological refinement with dilation to merge fragmented colonies
-
-            .. code-block:: python
-
-                from phenotypic.abc_ import ObjectRefiner
-                from phenotypic import Image
-                from scipy.ndimage import label as ndi_label
-                from skimage.morphology import dilation
-                import numpy as np
-
-                class FragmentMerger(ObjectRefiner):
-                    '''Merge fragmented colonies via morphological dilation and relabeling.'''
-
-                    def __init__(self, dilation_radius: int = 2):
-                        super().__init__()
-                        self.dilation_radius = dilation_radius
-
-                    @staticmethod
-                    def _operate(image: Image, dilation_radius: int = 2) -> Image:
-                        '''Dilate mask and relabel to merge nearby fragments.'''
-                        mask = image.objmask[:]
-
-                        # Create disk shape for isotropic dilation
-                        fp = ObjectRefiner._make_footprint('disk', dilation_radius)
-
-                        # Dilate to bridge fragmented regions
-                        dilated = dilation(mask, footprint=fp)
-
-                        # Relabel connected components
-                        relabeled, _ = ndi_label(dilated)
-
-                        # Set refined results
-                        image.objmask[:] = dilated
-                        image.objmap[:] = relabeled
-                        return image
-
-                # Usage
-                image = Image.imread('plate.jpg')
-                from phenotypic.detect import OtsuDetector
-                detected = OtsuDetector().apply(image)
-
-                # Merge fragments from uneven lighting
-                refiner = FragmentMerger(dilation_radius=3)
-                merged = refiner.apply(detected)
-
-                print(f"Merged fragments: {detected.objmap[:].max()} -> {merged.objmap[:].max()} objects")
-
-        .. dropdown:: Chaining multiple refinements in a pipeline
-
-            .. code-block:: python
-
-                from phenotypic import Image, ImagePipeline
-                from phenotypic.enhance import GaussianBlur
-                from phenotypic.detect import OtsuDetector
-                from phenotypic.refine import (
-                    SmallObjectRemover, MaskFill, LowCircularityRemover
-                )
-                from phenotypic.measure import MeasureColor
-
-                # Build complete processing pipeline with enhancement, detection, and refinement
-                pipeline = ImagePipeline()
-
-                # Preprocessing
-                pipeline.add(GaussianBlur(sigma=1.5))
-
-                # Detection
-                pipeline.add(OtsuDetector())
-
-                # Refinement (chain multiple cleanup operations)
-                pipeline.add(SmallObjectRemover(min_size=100))          # Remove dust
-                pipeline.add(MaskFill())                                 # Fill internal holes
-                pipeline.add(LowCircularityRemover(cutoff=0.75))        # Remove merged/irregular
-
-                # Measurement
-                pipeline.add(MeasureColor())
-
-                # Load images and process
-                image = Image.imread('plate.jpg')
-                results = pipeline.operate([image])
-                final = results[0]
-
-                # Access final clean detection results
-                colonies = final.objects
-                measurements = final.measurements
-
-                print(f"Detected and cleaned: {len(colonies)} colonies")
-                print(f"Color measurements: {measurements.shape}")
+        >>> from phenotypic import Image, ImagePipeline
+        >>> from phenotypic.enhance import GaussianBlur
+        >>> from phenotypic.detect import OtsuDetector
+        >>> from phenotypic.refine import (
+        ...     SmallObjectRemover, MaskFill, LowCircularityRemover
+        ... )
+        >>> from phenotypic.measure import MeasureColor
+        >>> # Build complete processing pipeline with enhancement, detection, and refinement
+        >>> pipeline = ImagePipeline()
+        >>> # Preprocessing
+        >>> pipeline.add(GaussianBlur(sigma=1.5))
+        >>> # Detection
+        >>> pipeline.add(OtsuDetector())
+        >>> # Refinement (chain multiple cleanup operations)
+        >>> pipeline.add(SmallObjectRemover(min_size=100))          # Remove dust
+        >>> pipeline.add(MaskFill())                                 # Fill internal holes
+        >>> pipeline.add(LowCircularityRemover(cutoff=0.75))        # Remove merged/irregular
+        >>> # Measurement
+        >>> pipeline.add(MeasureColor())
+        >>> # Load images and process
+        >>> image = Image.imread('plate.jpg')
+        >>> results = pipeline.operate([image])
+        >>> final = results[0]
+        >>> # Access final clean detection results
+        >>> colonies = final.objects
+        >>> measurements = final.measurements
+        >>> print(f"Detected and cleaned: {len(colonies)} colonies")
+        >>> print(f"Color measurements: {measurements.shape}")
     """
     _footprint_shapes = {"square", "diamond", "disk"}
 

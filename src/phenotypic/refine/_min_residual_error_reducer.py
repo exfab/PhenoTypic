@@ -41,11 +41,11 @@ class ReduceMultipleGridObjects(GridObjectRefiner):
         (No public attributes)
 
     Examples:
-        .. dropdown:: Reduce multi-detections per grid cell using residual error
+        Reduce multi-detections per grid cell using residual error:
 
-            >>> from phenotypic.refine import ReduceMultipleGridObjects
-            >>> op = ReduceMultipleGridObjects()
-            >>> image = op.apply(image, inplace=True)  # doctest: +SKIP
+        >>> from phenotypic.refine import ReduceMultipleGridObjects
+        >>> op = ReduceMultipleGridObjects()
+        >>> image = op.apply(image, inplace=True)  # doctest: +SKIP
     """
 
     # TODO: Add a setting to retain a certain number of objects in the event of removal

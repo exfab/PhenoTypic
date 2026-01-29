@@ -9,7 +9,7 @@ import numpy as np
 from skimage.morphology import white_tophat
 
 from phenotypic.abc_ import ObjectRefiner
-from phenotypic.tools_ import FootprintMixin
+from phenotypic.tools_.mixin import FootprintMixin
 
 
 class WhiteTophat(ObjectRefiner, FootprintMixin):
@@ -46,11 +46,11 @@ class WhiteTophat(ObjectRefiner, FootprintMixin):
             appendages. ``None`` auto-scales with image size.
 
     Examples:
-        .. dropdown:: Suppress small bright structures in the mask using white tophat
+        Suppress small bright structures in the mask using white tophat:
 
-            >>> from phenotypic.refine import WhiteTophat
-            >>> op = WhiteTophat(shape='disk', width=5)
-            >>> image = op.apply(image, inplace=True)  # doctest: +SKIP
+        >>> from phenotypic.refine import WhiteTophat
+        >>> op = WhiteTophat(shape='disk', width=5)
+        >>> image = op.apply(image, inplace=True)  # doctest: +SKIP
     """
 
     def __init__(self,

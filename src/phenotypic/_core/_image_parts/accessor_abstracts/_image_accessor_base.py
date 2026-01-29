@@ -90,12 +90,12 @@ class ImageAccessorBase(ABC):
                 from a different accessor type.
 
         Examples:
-            .. dropdown:: Load a grayscale image from file
+            Load a grayscale image from file:
 
-                >>> from phenotypic import Image
-                >>> image = Image(arr)
-                >>> # load an object map you saved or hand-graded
-                >>> image.objmap.load("path/to/map.png")
+            >>> from phenotypic import Image
+            >>> image = Image(arr)
+            >>> # load an object map you saved or hand-graded
+            >>> image.objmap.load("path/to/map.png")
         """
         filepath = Path(filepath)
         expected_property = f"Image.{cls._accessor_property_name_value()}"
@@ -1054,11 +1054,11 @@ class ImageAccessorBase(ABC):
             ValueError: If the file extension is not supported.
 
         Examples:
-            .. dropdown:: Save full-resolution overlay
+            Save full-resolution overlay:
 
-                >>> from phenotypic.data import load_synth_yeast_plate
-                >>> image = load_synth_yeast_plate()
-                >>> image.rgb.save_overlay("overlay_rgb.png", overlay_alpha=0.4)
+            >>> from phenotypic.data import load_synth_yeast_plate
+            >>> image = load_synth_yeast_plate()
+            >>> image.rgb.save_overlay("overlay_rgb.png", overlay_alpha=0.4)
         """
         filepath = Path(filepath)
 
@@ -1120,27 +1120,27 @@ class ImageAccessorBase(ABC):
                 image added as a new layer.
 
         Examples:
-            .. dropdown:: View multiple image transformations in one viewer
+            View multiple image transformations in one viewer:
 
-                >>> from phenotypic import Image
-                >>> img = Image(arr)
-                >>> # Add grayscale version to viewer
-                >>> viewer = img.gray.napari()
-                >>> # Add RGB version to same viewer
-                >>> viewer = img.rgb.napari()
-                >>> # Add binary segmentation with custom name
-                >>> viewer = img.objmask.napari(name="segmentation_v2")
+            >>> from phenotypic import Image
+            >>> img = Image(arr)
+            >>> # Add grayscale version to viewer
+            >>> viewer = img.gray.napari()
+            >>> # Add RGB version to same viewer
+            >>> viewer = img.rgb.napari()
+            >>> # Add binary segmentation with custom name
+            >>> viewer = img.objmask.napari(name="segmentation_v2")
 
-            .. dropdown:: Using custom names for comparison
+            Using custom names for comparison:
 
-                >>> viewer = img.gray.napari(name="raw_grayscale")
-                >>> viewer = img.objmask.napari(name="segmentation_v2")
+            >>> viewer = img.gray.napari(name="raw_grayscale")
+            >>> viewer = img.objmask.napari(name="segmentation_v2")
 
-            .. dropdown:: Resetting the viewer for a fresh session
+            Resetting the viewer for a fresh session:
 
-                >>> viewer = img.gray.napari()
-                >>> viewer = img.rgb.napari()  # Same viewer, added layer
-                >>> viewer = img.gray.napari(reset=True)  # Fresh viewer, old layers gone
+            >>> viewer = img.gray.napari()
+            >>> viewer = img.rgb.napari()  # Same viewer, added layer
+            >>> viewer = img.gray.napari(reset=True)  # Fresh viewer, old layers gone
 
         Note:
             Layers are named using the pattern ``{accessor}_{image_name}`` to

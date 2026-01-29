@@ -50,52 +50,38 @@ class VisuShrinkCorrector(ImageCorrector):
         convert2ycbcr (bool): Denoise RGB in YCbCr space. Default True.
 
     Examples:
-        .. dropdown:: Denoise RGB image for archival quality
+        Denoise RGB image for archival quality:
 
-            .. code-block:: python
+        >>> from phenotypic import Image
+        >>> from phenotypic.correction import VisuShrinkCorrector
+        >>> image = Image.imread('raw_plate_scan.jpg')  # doctest: +SKIP
+        >>> corrector = VisuShrinkCorrector()
+        >>> denoised = corrector.apply(image)  # doctest: +SKIP
+        >>> # All components modified
+        >>> assert not np.array_equal(denoised.rgb[:], image.rgb[:])  # doctest: +SKIP
+        >>> assert not np.array_equal(denoised.gray[:], image.gray[:])  # doctest: +SKIP
 
-                from phenotypic import Image
-                from phenotypic.correction import VisuShrinkCorrector
+        Denoise grayscale-only image gracefully:
 
-                image = Image.imread('raw_plate_scan.jpg')
-                corrector = VisuShrinkCorrector()
-                denoised = corrector.apply(image)
+        >>> from phenotypic import Image
+        >>> from phenotypic.correction import VisuShrinkCorrector
+        >>> # Grayscale image (no RGB)
+        >>> image = Image.imread('gray_plate.tif')  # doctest: +SKIP
+        >>> # Works without error, denoises gray and enh_gray
+        >>> corrector = VisuShrinkCorrector()
+        >>> denoised = corrector.apply(image)  # doctest: +SKIP
+        >>> # Only gray and enh_gray modified (no RGB to modify)
+        >>> assert not np.array_equal(denoised.gray[:], image.gray[:])  # doctest: +SKIP
 
-                # All components modified
-                assert not np.array_equal(denoised.rgb[:], image.rgb[:])
-                assert not np.array_equal(denoised.gray[:], image.gray[:])
+        Color-preserving denoising with YCbCr conversion:
 
-        .. dropdown:: Denoise grayscale-only image gracefully
-
-            .. code-block:: python
-
-                from phenotypic import Image
-                from phenotypic.correction import VisuShrinkCorrector
-
-                # Grayscale image (no RGB)
-                image = Image.imread('gray_plate.tif')
-
-                # Works without error, denoises gray and enh_gray
-                corrector = VisuShrinkCorrector()
-                denoised = corrector.apply(image)
-
-                # Only gray and enh_gray modified (no RGB to modify)
-                assert not np.array_equal(denoised.gray[:], image.gray[:])
-
-        .. dropdown:: Color-preserving denoising with YCbCr conversion
-
-            .. code-block:: python
-
-                from phenotypic import Image
-                from phenotypic.correction import VisuShrinkCorrector
-
-                image = Image.imread('color_plate.jpg')
-
-                # Default: denoise in YCbCr (better color preservation)
-                corrector = VisuShrinkCorrector(convert2ycbcr=True)
-                result = corrector.apply(image)
-
-                # Colony colors preserved better than RGB-space denoising
+        >>> from phenotypic import Image
+        >>> from phenotypic.correction import VisuShrinkCorrector
+        >>> image = Image.imread('color_plate.jpg')  # doctest: +SKIP
+        >>> # Default: denoise in YCbCr (better color preservation)
+        >>> corrector = VisuShrinkCorrector(convert2ycbcr=True)
+        >>> result = corrector.apply(image)  # doctest: +SKIP
+        >>> # Colony colors preserved better than RGB-space denoising
     """
 
     def __init__(

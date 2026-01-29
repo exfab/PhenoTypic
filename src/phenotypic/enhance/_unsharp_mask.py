@@ -63,79 +63,58 @@ class UnsharpMask(ImageEnhancer):
             (False by default).
 
     Examples:
-        .. dropdown:: Sharpening low-contrast fungal colonies before detection
+        Sharpening low-contrast fungal colonies before detection:
 
-            .. code-block:: python
+        >>> from phenotypic import Image
+        >>> from phenotypic.enhance import UnsharpMask
+        >>> from phenotypic.detect import OtsuDetector
+        >>> # Load image of low-contrast plate (e.g., translucent yeasts)
+        >>> image = Image("yeast_plate.jpg")  # doctest: +SKIP
+        >>> # Apply unsharp masking with moderate settings
+        >>> sharpener = UnsharpMask(radius=2.0, amount=1.2)
+        >>> sharpened = sharpener.apply(image)  # doctest: +SKIP
+        >>> # Detect colonies in sharpened enhanced grayscale
+        >>> detector = OtsuDetector()
+        >>> detected = detector.apply(sharpened)  # doctest: +SKIP
+        >>> # Original image untouched, detection on enhanced data
+        >>> colonies = detected.objects  # doctest: +SKIP
+        >>> print(f"Detected {len(colonies)} colonies")  # doctest: +SKIP
 
-                from phenotypic import Image
-                from phenotypic.enhance import UnsharpMask
-                from phenotypic.detect import OtsuDetector
+        Tuning width and amount for dense high-throughput plates:
 
-                # Load image of low-contrast plate (e.g., translucent yeasts)
-                image = Image("yeast_plate.jpg")
+        >>> from phenotypic import Image, ImagePipeline
+        >>> from phenotypic.enhance import UnsharpMask, GaussianBlur
+        >>> from phenotypic.detect import OtsuDetector
+        >>> # For high-resolution 384-well plate scans with tiny colonies,
+        >>> # use small width to avoid merging adjacent growth
+        >>> pipeline = ImagePipeline()
+        >>> # Step 1: Light blur to reduce scanner noise
+        >>> pipeline.add(GaussianBlur(sigma=1))
+        >>> # Step 2: Enhance edges with small width for dense plates
+        >>> # radius=1.0 emphasizes only fine features (individual colonies)
+        >>> pipeline.add(UnsharpMask(radius=1.0, amount=1.5))
+        >>> # Step 3: Detect in enhanced grayscale
+        >>> pipeline.add(OtsuDetector())
+        >>> # Process a batch of images
+        >>> images = [Image(f) for f in image_paths]  # doctest: +SKIP
+        >>> results = pipeline.operate(images)  # doctest: +SKIP
+        >>> for i, result in enumerate(results):  # doctest: +SKIP
+        ...     print(f"Plate {i}: {len(result.objects)} colonies")
 
-                # Apply unsharp masking with moderate settings
-                sharpener = UnsharpMask(width=2.0, amount=1.2)
-                sharpened = sharpener.apply(image)
+        Aggressive sharpening for very translucent colonies:
 
-                # Detect colonies in sharpened enhanced grayscale
-                detector = OtsuDetector()
-                detected = detector.apply(sharpened)
-
-                # Original image untouched, detection on enhanced data
-                colonies = detected.objects
-                print(f"Detected {len(colonies)} colonies")
-
-        .. dropdown:: Tuning width and amount for dense high-throughput plates
-
-            .. code-block:: python
-
-                from phenotypic import Image, ImagePipeline
-                from phenotypic.enhance import UnsharpMask, GaussianBlur
-                from phenotypic.detect import OtsuDetector
-
-                # For high-resolution 384-well plate scans with tiny colonies,
-                # use small width to avoid merging adjacent growth
-
-                pipeline = ImagePipeline()
-
-                # Step 1: Light blur to reduce scanner noise
-                pipeline.add(GaussianBlur(sigma=1))
-
-                # Step 2: Enhance edges with small width for dense plates
-                # width=1.0 emphasizes only fine features (individual colonies)
-                pipeline.add(UnsharpMask(width=1.0, amount=1.5))
-
-                # Step 3: Detect in enhanced grayscale
-                pipeline.add(OtsuDetector())
-
-                # Process a batch of images
-                images = [Image(f) for f in image_paths]
-                results = pipeline.operate(images)
-
-                for i, result in enumerate(results):
-                    print(f"Plate {i}: {len(result.objects)} colonies")
-
-        .. dropdown:: Aggressive sharpening for very translucent colonies
-
-            .. code-block:: python
-
-                from phenotypic import Image
-                from phenotypic.enhance import UnsharpMask
-
-                # For extremely low-contrast colonies (e.g., slow-growing mutants,
-                # low-turbidity liquid culture plates), use higher amount
-
-                image = Image("faint_colonies.jpg")
-
-                # Aggressive parameters: larger width for broader features,
-                # higher amount for stronger enhancement
-                aggressive_sharpener = UnsharpMask(width=5.0, amount=2.5)
-                enhanced = aggressive_sharpener.apply(image)
-
-                # Inspect result for artifacts (halos); adjust if needed
-                # If halos appear, reduce amount to 1.5–2.0
-                print("Sharpening applied. Check for halo artifacts around large colonies.")
+        >>> from phenotypic import Image
+        >>> from phenotypic.enhance import UnsharpMask
+        >>> # For extremely low-contrast colonies (e.g., slow-growing mutants,
+        >>> # low-turbidity liquid culture plates), use higher amount
+        >>> image = Image("faint_colonies.jpg")  # doctest: +SKIP
+        >>> # Aggressive parameters: larger width for broader features,
+        >>> # higher amount for stronger enhancement
+        >>> aggressive_sharpener = UnsharpMask(radius=5.0, amount=2.5)
+        >>> enhanced = aggressive_sharpener.apply(image)  # doctest: +SKIP
+        >>> # Inspect result for artifacts (halos); adjust if needed
+        >>> # If halos appear, reduce amount to 1.5-2.0
+        >>> print("Sharpening applied. Check for halo artifacts around large colonies.")  # doctest: +SKIP
     """
 
     def __init__(

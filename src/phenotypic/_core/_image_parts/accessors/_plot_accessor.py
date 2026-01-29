@@ -6,14 +6,16 @@ if TYPE_CHECKING:
     from phenotypic import Image
 
 from phenotypic._core._image_parts.plot_accessor import (
+    AllDataPlotter,
     MorphologyPlotter,
+    OverlayPlotter,
     SizeDistributionPlotter,
     SpatialPlotter,
     ThresholdPlotter,
 )
 
 
-class PlotAccessor(MorphologyPlotter, SizeDistributionPlotter, SpatialPlotter, ThresholdPlotter):
+class PlotAccessor(AllDataPlotter, MorphologyPlotter, OverlayPlotter, SizeDistributionPlotter, SpatialPlotter, ThresholdPlotter):
     """Provides quality-of-life plots for developing image processing pipelines.
 
     This accessor offers sophisticated visualization methods to help understand how
@@ -32,26 +34,21 @@ class PlotAccessor(MorphologyPlotter, SizeDistributionPlotter, SpatialPlotter, T
         objects in memory.
 
     Examples:
-        .. dropdown:: Access plot methods through an Image instance
+        Access plot methods through an Image instance:
 
-            .. code-block:: python
-
-                from phenotypic import Image
-                from phenotypic.detect import OtsuDetector
-
-                # Load and detect colonies
-                image = Image.imread('plate.jpg')
-                detector = OtsuDetector()
-                detected = detector.apply(image)
-
-                # Access plot methods
-                fig, axes = detected.plot.morph_progression()
-                plt.savefig('morph.png')
-                plt.close(fig)  # Important: free memory
-
-                fig, ax = detected.plot.size_distribution()
-                plt.savefig('size.png')
-                plt.close(fig)
+        >>> from phenotypic import Image
+        >>> from phenotypic.detect import OtsuDetector
+        >>> # Load and detect colonies
+        >>> image = Image.imread('plate.jpg')
+        >>> detector = OtsuDetector()
+        >>> detected = detector.apply(image)
+        >>> # Access plot methods
+        >>> fig, axes = detected.plot.morph_progression()
+        >>> plt.savefig('morph.png')
+        >>> plt.close(fig)  # Important: free memory
+        >>> fig, ax = detected.plot.size_distribution()
+        >>> plt.savefig('size.png')
+        >>> plt.close(fig)
     """
 
     def __init__(self, root_image: Image) -> None:
@@ -62,7 +59,9 @@ class PlotAccessor(MorphologyPlotter, SizeDistributionPlotter, SpatialPlotter, T
                 and image data.
         """
         # Initialize all parent classes
+        AllDataPlotter.__init__(self, root_image)
         MorphologyPlotter.__init__(self, root_image)
+        OverlayPlotter.__init__(self, root_image)
         SizeDistributionPlotter.__init__(self, root_image)
         SpatialPlotter.__init__(self, root_image)
         ThresholdPlotter.__init__(self, root_image)

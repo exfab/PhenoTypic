@@ -53,17 +53,13 @@ class EnhancedGrayscale(SingleChannelAccessor):
             EmptyImageError: If the image has no data loaded (empty shape).
 
         Examples:
-            .. dropdown:: Retrieve a single pixel value
+            Retrieve a single pixel value:
 
-                .. code-block:: python
+            >>> pixel_value = enh_gray[100, 200]
 
-                    pixel_value = enh_gray[100, 200]
+            Retrieve a rectangular region:
 
-            .. dropdown:: Retrieve a rectangular region
-
-                .. code-block:: python
-
-                    region = enh_gray[100:200, 50:150]
+            >>> region = enh_gray[100:200, 50:150]
         """
         if self.isempty():
             raise EmptyImageError
@@ -96,24 +92,18 @@ class EnhancedGrayscale(SingleChannelAccessor):
             TypeError: If value is neither a scalar (int or float) nor a NumPy array.
 
         Examples:
-            .. dropdown:: Set a single pixel to a scalar value
+            Set a single pixel to a scalar value:
 
-                .. code-block:: python
+            >>> enh_gray[100, 200] = 128
 
-                    enh_gray[100, 200] = 128
+            Set a rectangular region with an array:
 
-            .. dropdown:: Set a rectangular region with an array
+            >>> region_data = np.ones((100, 100), dtype=np.uint8) * 150
+            >>> enh_gray[100:200, 50:150] = region_data
 
-                .. code-block:: python
+            Broadcast a scalar to a region:
 
-                    region_data = np.ones((100, 100), dtype=np.uint8) * 150
-                    enh_gray[100:200, 50:150] = region_data
-
-            .. dropdown:: Broadcast a scalar to a region
-
-                .. code-block:: python
-
-                    enh_gray[0:50, 0:50] = 255  # Set all pixels in region to 255
+            >>> enh_gray[0:50, 0:50] = 255  # Set all pixels in region to 255
         """
         if isinstance(value, np.ndarray):
             if self._root_image._data.enh_gray[key].shape != value.shape:
@@ -160,10 +150,8 @@ class EnhancedGrayscale(SingleChannelAccessor):
         original.
 
         Examples:
-            .. dropdown:: Reset after applying unsuccessful enhancement
+            Reset after applying unsuccessful enhancement:
 
-                .. code-block:: python
-
-                    enh_gray.reset()  # Revert to original grayscale
+            >>> enh_gray.reset()  # Revert to original grayscale
         """
         self._root_image._data.enh_gray = self._root_image._data.gray.copy()

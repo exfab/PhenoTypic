@@ -158,7 +158,7 @@ operation.
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 6))
     img.show(ax=ax1)
     ax1.set_title('Original')
-    processed.show_overlay(ax=ax2)
+    processed.plot.overlay(ax=ax2)
     ax2.set_title('Processed')
 
 .. automethod:: ImagePipeline.measure

@@ -111,15 +111,13 @@ class ObjectMap(NapariLabelsMixin, SingleChannelAccessor):
                 with shape matching the image dimensions (height, width).
 
         Examples:
-            .. dropdown:: Using ObjectMap with NumPy functions
+            Using ObjectMap with NumPy functions:
 
-                .. code-block:: python
-
-                    import numpy as np
-                    objmap = image.objmap
-                    max_label = np.max(objmap)
-                    unique_labels = np.unique(objmap)
-                    arr = np.asarray(objmap, dtype=np.uint32)
+            >>> import numpy as np
+            >>> objmap = image.objmap
+            >>> max_label = np.max(objmap)
+            >>> unique_labels = np.unique(objmap)
+            >>> arr = np.asarray(objmap, dtype=np.uint32)
         """
         arr = self._backend.toarray()
         if dtype is not None:
@@ -147,15 +145,13 @@ class ObjectMap(NapariLabelsMixin, SingleChannelAccessor):
                 if a single element is indexed, otherwise returns an ndarray.
 
         Examples:
-            .. dropdown:: NumPy-style indexing and slicing
+            NumPy-style indexing and slicing:
 
-                .. code-block:: python
-
-                    objmap = image.objmap
-                    row = objmap[5]  # Get row 5
-                    region = objmap[10:20, 30:40]  # Get a rectangular region
-                    pixel = objmap[5, 10]  # Get a single pixel
-                    mask = objmap[objmap > 0]  # Boolean indexing
+            >>> objmap = image.objmap
+            >>> row = objmap[5]  # Get row 5
+            >>> region = objmap[10:20, 30:40]  # Get a rectangular region
+            >>> pixel = objmap[5, 10]  # Get a single pixel
+            >>> mask = objmap[objmap > 0]  # Boolean indexing
         """
         return self._backend.toarray()[key]
 
@@ -191,21 +187,16 @@ class ObjectMap(NapariLabelsMixin, SingleChannelAccessor):
               modified.
 
         Examples:
-            .. dropdown:: Assigning values to the object map
+            Assigning values to the object map:
 
-                .. code-block:: python
-
-                    objmap = image.objmap
-
-                    # Set a single pixel
-                    objmap[5, 10] = 3
-
-                    # Set a region with a scalar value
-                    objmap[10:20, 30:40] = 0
-
-                    # Set a region with an array
-                    region_labels = np.array([[1, 1], [1, 1]])
-                    objmap[10:12, 30:32] = region_labels
+            >>> objmap = image.objmap
+            >>> # Set a single pixel
+            >>> objmap[5, 10] = 3
+            >>> # Set a region with a scalar value
+            >>> objmap[10:20, 30:40] = 0
+            >>> # Set a region with an array
+            >>> region_labels = np.array([[1, 1], [1, 1]])
+            >>> objmap[10:12, 30:32] = region_labels
         """
         # Get current backend and convert to dense once
         dense = self._backend.toarray()
@@ -261,12 +252,10 @@ class ObjectMap(NapariLabelsMixin, SingleChannelAccessor):
                 dimensions of the object map.
 
         Examples:
-            .. dropdown:: Getting object map dimensions
+            Getting object map dimensions:
 
-                .. code-block:: python
-
-                    height, width = image.objmap.shape
-                    print(f"Object map dimensions: {width}x{height}")
+            >>> height, width = image.objmap.shape
+            >>> print(f"Object map dimensions: {width}x{height}")
         """
         return self._backend.shape
 
@@ -282,13 +271,11 @@ class ObjectMap(NapariLabelsMixin, SingleChannelAccessor):
                 and dtype uint16.
 
         Examples:
-            .. dropdown:: Creating an independent copy of the object map
+            Creating an independent copy of the object map:
 
-                .. code-block:: python
-
-                    objmap_copy = image.objmap.copy()
-                    objmap_copy[0, 0] = 999  # Modifications don't affect the original
-                    assert image.objmap[0, 0] != 999
+            >>> objmap_copy = image.objmap.copy()
+            >>> objmap_copy[0, 0] = 999  # Modifications don't affect the original
+            >>> assert image.objmap[0, 0] != 999
         """
         return self._backend.toarray().copy()
 
@@ -303,13 +290,11 @@ class ObjectMap(NapariLabelsMixin, SingleChannelAccessor):
             scipy.sparse.csc_matrix: A copy of the object map in CSC sparse format.
 
         Examples:
-            .. dropdown:: Converting to CSC sparse format
+            Converting to CSC sparse format:
 
-                .. code-block:: python
-
-                    sparse_csc = image.objmap.as_csc()
-                    # Efficient column operations
-                    first_column = sparse_csc[:, 0].toarray()
+            >>> sparse_csc = image.objmap.as_csc()
+            >>> # Efficient column operations
+            >>> first_column = sparse_csc[:, 0].toarray()
         """
         return self._backend.tocsc()
 
@@ -325,14 +310,12 @@ class ObjectMap(NapariLabelsMixin, SingleChannelAccessor):
             scipy.sparse.coo_matrix: A copy of the object map in COO sparse format.
 
         Examples:
-            .. dropdown:: Converting to COO sparse format and accessing entries
+            Converting to COO sparse format and accessing entries:
 
-                .. code-block:: python
-
-                    sparse_coo = image.objmap.as_coo()
-                    # Access non-zero entries directly
-                    for i, j, v in zip(sparse_coo.row, sparse_coo.col, sparse_coo.data):
-                        print(f"Object label {v} at position ({i}, {j})")
+            >>> sparse_coo = image.objmap.as_coo()
+            >>> # Access non-zero entries directly
+            >>> for i, j, v in zip(sparse_coo.row, sparse_coo.col, sparse_coo.data):
+            ...     print(f"Object label {v} at position ({i}, {j})")
         """
         return self._backend.tocoo()
 
@@ -375,23 +358,18 @@ class ObjectMap(NapariLabelsMixin, SingleChannelAccessor):
                 axes was provided, its parent figure is returned.
 
         Examples:
-            .. dropdown:: Displaying the object map with various options
+            Displaying the object map with various options:
 
-                .. code-block:: python
-
-                    # Basic visualization
-                    fig, ax = image.objmap.show()
-
-                    # Custom figure size and title
-                    fig, ax = image.objmap.show(figsize=(10, 8), title='Labeled Objects')
-
-                    # Use a different colormap
-                    fig, ax = image.objmap.show(cmap='tab20')
-
-                    # Plot on an existing axes
-                    fig, ax = plt.subplots(1, 2, figsize=(12, 5))
-                    image.objmap.show(ax=ax[0])
-                    image.gray.show(ax=ax[1])
+            >>> # Basic visualization
+            >>> fig, ax = image.objmap.show()
+            >>> # Custom figure size and title
+            >>> fig, ax = image.objmap.show(figsize=(10, 8), title='Labeled Objects')
+            >>> # Use a different colormap
+            >>> fig, ax = image.objmap.show(cmap='tab20')
+            >>> # Plot on an existing axes
+            >>> fig, ax = plt.subplots(1, 2, figsize=(12, 5))
+            >>> image.objmap.show(ax=ax[0])
+            >>> image.gray.show(ax=ax[1])
         """
         cmap = plt.get_cmap(cmap)
         cmap.set_bad(color="black")
@@ -417,13 +395,11 @@ class ObjectMap(NapariLabelsMixin, SingleChannelAccessor):
         and prepare for a new detection or labeling operation.
 
         Examples:
-            .. dropdown:: Clearing all objects from the object map
+            Clearing all objects from the object map:
 
-                .. code-block:: python
-
-                    image.objmap.reset()
-                    # Now image.objmap contains no objects
-                    assert image.objmap[:].max() == 0
+            >>> image.objmap.reset()
+            >>> # Now image.objmap contains no objects
+            >>> assert image.objmap[:].max() == 0
         """
         self._root_image._data.sparse_object_map = self._dense_to_sparse(
                 self._root_image.gray.shape
@@ -461,15 +437,12 @@ class ObjectMap(NapariLabelsMixin, SingleChannelAccessor):
             - The relabeling process may change existing label values.
 
         Examples:
-            .. dropdown:: Relabeling connected components
+            Relabeling connected components:
 
-                .. code-block:: python
-
-                    # Relabel with 4-connectivity
-                    image.objmap.relabel(connectivity=1)
-
-                    # Relabel with 8-connectivity for diagonal neighbors
-                    image.objmap.relabel(connectivity=2)
+            >>> # Relabel with 4-connectivity
+            >>> image.objmap.relabel(connectivity=1)
+            >>> # Relabel with 8-connectivity for diagonal neighbors
+            >>> image.objmap.relabel(connectivity=2)
 
         See Also:
             - `scikit-image.measure.label()`: The underlying function used for
@@ -527,16 +500,13 @@ class ObjectMap(NapariLabelsMixin, SingleChannelAccessor):
             - The uint16 dtype allows labels from 0 (background) to 65,535.
 
         Examples:
-            .. dropdown:: Converting between dense and sparse representations
+            Converting between dense and sparse representations:
 
-                .. code-block:: python
-
-                    # Create empty sparse matrix with specific shape
-                    sparse = ObjectMap._dense_to_sparse((512, 512))
-
-                    # Convert dense array to sparse
-                    dense_map = np.array([[0, 1, 1], [0, 2, 2]])
-                    sparse = ObjectMap._dense_to_sparse(dense_map)
+            >>> # Create empty sparse matrix with specific shape
+            >>> sparse = ObjectMap._dense_to_sparse((512, 512))
+            >>> # Convert dense array to sparse
+            >>> dense_map = np.array([[0, 1, 1], [0, 2, 2]])
+            >>> sparse = ObjectMap._dense_to_sparse(dense_map)
         """
         sparse = csc_matrix(arg, dtype=self._root_image._OBJMAP_DTYPE)
         sparse.eliminate_zeros()
@@ -571,16 +541,16 @@ class ObjectMap(NapariLabelsMixin, SingleChannelAccessor):
                 object labels with the original image at full resolution.
 
         Examples:
-            .. dropdown:: Save raw object map vs colorized
+            Save raw object map vs colorized:
 
-                >>> from phenotypic.data import load_synth_yeast_plate
-                >>> image = load_synth_yeast_plate()
-                >>> # Save raw labeled map (integer values)
-                >>> image.objmap.imsave("objmap_raw.png")
-                >>> # Save colorized labels (no background image)
-                >>> image.objmap.imsave("objmap_colored.png", use_label2rgb=True)
-                >>> # For overlay with original image, use save_overlay:
-                >>> image.rgb.save_overlay("overlay.png", overlay_alpha=0.3)
+            >>> from phenotypic.data import load_synth_yeast_plate
+            >>> image = load_synth_yeast_plate()
+            >>> # Save raw labeled map (integer values)
+            >>> image.objmap.imsave("objmap_raw.png")
+            >>> # Save colorized labels (no background image)
+            >>> image.objmap.imsave("objmap_colored.png", use_label2rgb=True)
+            >>> # For overlay with original image, use save_overlay:
+            >>> image.rgb.save_overlay("overlay.png", overlay_alpha=0.3)
         """
         if not use_label2rgb:
             super().imsave(filepath=filepath, bit_depth=bit_depth)

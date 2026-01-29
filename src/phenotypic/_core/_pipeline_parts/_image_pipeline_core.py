@@ -18,7 +18,7 @@ import time
 import sys
 
 from phenotypic.abc_ import MeasureFeatures, BaseOperation, ImageOperation
-from phenotypic.tools_._lazy_widget_mixin import LazyWidgetMixin
+from phenotypic.tools_.mixin import LazyWidgetMixin
 
 
 class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
@@ -54,6 +54,7 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
             verbose: bool = False,
             name: Optional[str] = None,
             desc: Optional[str] = None,
+            reset: bool = False,
     ):
         """
         This class represents a processing and measurement abc_ for Image operations
@@ -75,6 +76,9 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
                 a randomly generated UUID4 string will be assigned automatically.
             desc: An optional description for this pipeline. If not provided, the
                 class docstring will be used when accessing the desc property.
+            reset: Default reset behavior for the apply() method. When True, the image
+                will be reset before applying operations. Can be overridden per-call
+                in apply() and apply_and_measure(). Defaults to False.
         """
         # If pipe_cfgs is a list of operations convert to a dictionary
         self._ops: Dict[str, ImageOperation] = {}
@@ -85,9 +89,10 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
         if meas is not None:
             self.set_meas(meas)
 
-        # Store benchmark and verbose flags
+        # Store benchmark, verbose, and reset flags
         self._benchmark = benchmark
         self._verbose = verbose
+        self._reset = reset
 
         # Set pipeline name (generate UUID4 if not provided)
         self.name = name if name is not None else str(uuid.uuid4())
@@ -212,7 +217,7 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
         return result
 
     def apply(
-            self, image: Image, inplace: bool = False, reset: bool = True
+            self, image: Image, inplace: bool = False, reset: Optional[bool] = None
     ) -> Union[GridImage, Image]:
         """
         The class provides an abc_ to process and apply a series of operations on
@@ -226,10 +231,15 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
                 transformations directly on the provided Image (`True`) or create a
                 copy of the Image before performing transformations (`False`). Defaults
                 to `False`.
-            reset (bool): Whether to reset the image before applying the pipeline
+            reset (bool, optional): Whether to reset the image before applying the pipeline.
+                If None (default), uses the pipeline's reset setting from __init__.
+                If explicitly set to True or False, overrides the pipeline setting.
         """
+        # Resolve reset: use explicit value if provided, otherwise use pipeline default
+        effective_reset = reset if reset is not None else self._reset
+
         img = image if inplace else image.copy()
-        if reset:
+        if effective_reset:
             image.reset()
 
         # Reset operation times for new apply run if benchmarking is enabled
@@ -422,7 +432,7 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
             self,
             image: Image,
             inplace: bool = False,
-            reset: bool = True,
+            reset: Optional[bool] = None,
             include_metadata: bool = True,
     ) -> pd.DataFrame:
         """
@@ -437,8 +447,9 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
             image (Image): The image to process and measure.
             inplace (bool): Whether to modify the original image directly or
                 work on a copy. Default is False.
-            reset (bool): Whether to reset any previous processing on the image
-                before applying the current method. Default is True.
+            reset (bool, optional): Whether to reset any previous processing on the image
+                before applying the current method. If None (default), uses the pipeline's
+                reset setting. If explicitly set, overrides the pipeline setting.
             include_metadata (bool): Whether to include metadata in the
                 measurement results. Default is True.
 

@@ -11,7 +11,7 @@ import numpy as np
 import scipy.ndimage as ndimage
 
 from phenotypic.abc_ import ObjectDetector
-from phenotypic.tools_._grid_inference_mixin import GridInferenceMixin
+from phenotypic.tools_.mixin import GridInferenceMixin
 import skimage.filters as filters
 import skimage.morphology as morphology
 

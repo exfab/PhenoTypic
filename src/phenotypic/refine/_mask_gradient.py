@@ -6,7 +6,7 @@ if TYPE_CHECKING:
     from phenotypic import Image
 
 from phenotypic.abc_ import ObjectRefiner
-from phenotypic.tools_ import FootprintMixin
+from phenotypic.tools_.mixin import FootprintMixin
 
 import numpy as np
 from skimage.morphology import dilation, erosion
@@ -54,19 +54,19 @@ class MaskGradient(ObjectRefiner, FootprintMixin):
             less precise boundaries.
 
     Examples:
-        .. dropdown:: Extract colony boundaries for edge analysis
+        Extract colony boundaries for edge analysis:
 
-            >>> from phenotypic.refine import MaskGradient
-            >>> from phenotypic import Image
-            >>> from phenotypic.detect import OtsuDetector
-            >>> image = Image.imread("colony_plate.jpg")  # doctest: +SKIP
-            >>> detected = OtsuDetector().apply(image)  # doctest: +SKIP
-            >>> # Extract edges with auto-scaled shape
-            >>> refiner = MaskGradient(shape='auto')  # doctest: +SKIP
-            >>> edges = refiner.apply(detected)  # doctest: +SKIP
-            >>> # Or use a small disk shape (width 1) for thin, precise edges
-            >>> refiner = MaskGradient(shape='disk', width=1)  # doctest: +SKIP
-            >>> edges = refiner.apply(detected, inplace=False)  # doctest: +SKIP
+        >>> from phenotypic.refine import MaskGradient
+        >>> from phenotypic import Image
+        >>> from phenotypic.detect import OtsuDetector
+        >>> image = Image.imread("colony_plate.jpg")  # doctest: +SKIP
+        >>> detected = OtsuDetector().apply(image)  # doctest: +SKIP
+        >>> # Extract edges with auto-scaled shape
+        >>> refiner = MaskGradient(shape='auto')  # doctest: +SKIP
+        >>> edges = refiner.apply(detected)  # doctest: +SKIP
+        >>> # Or use a small disk shape (width 1) for thin, precise edges
+        >>> refiner = MaskGradient(shape='disk', width=1)  # doctest: +SKIP
+        >>> edges = refiner.apply(detected, inplace=False)  # doctest: +SKIP
 
     Raises:
         AttributeError: If an invalid ``shape`` type is provided (checked

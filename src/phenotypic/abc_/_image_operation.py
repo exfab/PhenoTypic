@@ -6,7 +6,7 @@ if TYPE_CHECKING:
     from phenotypic import Image, GridImage
 
 from ._base_operation import BaseOperation
-from phenotypic.tools_._lazy_widget_mixin import LazyWidgetMixin
+from phenotypic.tools_.mixin import LazyWidgetMixin
 
 from abc import ABC, abstractmethod
 import traceback
@@ -255,166 +255,132 @@ class ImageOperation(BaseOperation, LazyWidgetMixin, ABC):
           development-time safety without production overhead.
 
     Examples:
-        .. dropdown:: Implementing a custom ImageEnhancer
+        Implementing a custom ImageEnhancer:
 
-            .. code-block:: python
+        >>> from phenotypic.abc_ import ImageEnhancer
+        >>> from phenotypic import Image
+        >>> from scipy.ndimage import gaussian_filter
+        >>> class GaussianEnhancer(ImageEnhancer):
+        ...     '''Custom enhancer applying Gaussian blur to enh_gray.'''
+        ...
+        ...     def __init__(self, sigma: float = 1.0):
+        ...         super().__init__()
+        ...         self.sigma = sigma  # Instance attribute
+        ...
+        ...     def _operate(self, image: Image) -> Image:
+        ...         '''Apply Gaussian blur to enh_gray.'''
+        ...         # Read enhanced grayscale
+        ...         enh = image.enh_gray[:]
+        ...         # Apply Gaussian filter (access parameter via self)
+        ...         blurred = gaussian_filter(enh.astype(float), sigma=self.sigma)
+        ...         # Modify enh_gray through accessor
+        ...         image.enh_gray[:] = blurred.astype(enh.dtype)
+        ...         return image
+        >>> # Usage
+        >>> enhancer = GaussianEnhancer(sigma=2.5)
+        >>> enhanced = enhancer.apply(image)  # Original unchanged
+        >>> enhanced_inplace = enhancer.apply(image, inplace=True)  # Original modified
 
-                from phenotypic.abc_ import ImageEnhancer
-                from phenotypic import Image
-                from scipy.ndimage import gaussian_filter
+        Implementing a custom ObjectDetector:
 
-                class GaussianEnhancer(ImageEnhancer):
-                    '''Custom enhancer applying Gaussian blur to enh_gray.'''
+        >>> from phenotypic.abc_ import ObjectDetector
+        >>> from phenotypic import Image
+        >>> from skimage.feature import peak_local_max
+        >>> from skimage.measure import label as measure_label
+        >>> import numpy as np
+        >>> class PeakDetector(ObjectDetector):
+        ...     '''Detector using local peak finding to locate colonies.'''
+        ...
+        ...     def __init__(self, min_distance: int = 10, threshold_abs: int = 100):
+        ...         super().__init__()
+        ...         self.min_distance = min_distance
+        ...         self.threshold_abs = threshold_abs
+        ...
+        ...     def _operate(self, image: Image) -> Image:
+        ...         '''Find peaks in enh_gray and create object mask/map.'''
+        ...         # Find local maxima (colony peaks) - access parameters via self
+        ...         coords = peak_local_max(
+        ...             image.enh_gray[:],
+        ...             min_distance=self.min_distance,
+        ...             threshold_abs=self.threshold_abs
+        ...         )
+        ...         # Create binary mask from peaks
+        ...         mask = np.zeros(image.enh_gray.shape, dtype=bool)
+        ...         for y, x in coords:
+        ...             mask[y, x] = True
+        ...         # Create labeled map from mask
+        ...         labeled_map = measure_label(mask)
+        ...         # Set detection results
+        ...         image.objmask[:] = mask
+        ...         image.objmap[:] = labeled_map
+        ...         return image
+        >>> # Usage - automatic integrity validation in ImageDetector
+        >>> detector = PeakDetector(min_distance=15, threshold_abs=120)
+        >>> detected = detector.apply(image)
+        >>> colonies = detected.objects
+        >>> print(f"Detected {len(colonies)} colonies")
 
-                    def __init__(self, sigma: float = 1.0):
-                        super().__init__()
-                        self.sigma = sigma  # Instance attribute
+        Understanding inplace parameter and memory efficiency:
 
-                    def _operate(self, image: Image) -> Image:
-                        '''Apply Gaussian blur to enh_gray.'''
-                        # Read enhanced grayscale
-                        enh = image.enh_gray[:]
+        >>> from phenotypic.enhance import GaussianBlur
+        >>> from phenotypic import Image
+        >>> image = Image.imread('colony_plate.jpg')
+        >>> enhancer = GaussianBlur(sigma=2.0)
+        >>> # Default: inplace=False (safe, creates copy)
+        >>> enhanced = enhancer.apply(image)
+        >>> print(f"Same object? {id(image) == id(enhanced)}")  # False
+        >>> # For memory efficiency with large images
+        >>> result = enhancer.apply(image, inplace=True)
+        >>> print(f"Same object? {id(image) == id(result)}")  # True
+        # inplace=True is useful in pipelines with many large images
+        # to minimize memory overhead, but modifies the original
 
-                        # Apply Gaussian filter (access parameter via self)
-                        blurred = gaussian_filter(enh.astype(float), sigma=self.sigma)
+        Using operations in a processing pipeline:
 
-                        # Modify enh_gray through accessor
-                        image.enh_gray[:] = blurred.astype(enh.dtype)
+        >>> from phenotypic import Image, ImagePipeline
+        >>> from phenotypic.enhance import GaussianBlur
+        >>> from phenotypic.detect import OtsuDetector
+        >>> from phenotypic.grid import GridFinder
+        >>> # Load image
+        >>> image = Image.imread('colony_plate.jpg')
+        >>> # Sequential chaining
+        >>> enhanced = GaussianBlur(sigma=2).apply(image)
+        >>> detected = OtsuDetector().apply(enhanced)
+        >>> grid = GridFinder().apply(detected)
+        >>> # Or use ImagePipeline for batch processing
+        >>> pipeline = ImagePipeline()
+        >>> pipeline.add(GaussianBlur(sigma=2))
+        >>> pipeline.add(OtsuDetector())
+        >>> pipeline.add(GridFinder())
+        >>> # Process multiple images with automatic parallelization
+        >>> images = [Image.imread(f) for f in image_files]
+        >>> results = pipeline.operate(images)
+        # Results are fully processed images
 
-                        return image
+        How instance methods work with parallel execution:
 
-                # Usage
-                enhancer = GaussianEnhancer(sigma=2.5)
-                enhanced = enhancer.apply(image)  # Original unchanged
-                enhanced_inplace = enhancer.apply(image, inplace=True)  # Original modified
-
-        .. dropdown:: Implementing a custom ObjectDetector
-
-            .. code-block:: python
-
-                from phenotypic.abc_ import ObjectDetector
-                from phenotypic import Image
-                from skimage.feature import peak_local_max
-                from skimage.measure import label as measure_label
-                import numpy as np
-
-                class PeakDetector(ObjectDetector):
-                    '''Detector using local peak finding to locate colonies.'''
-
-                    def __init__(self, min_distance: int = 10, threshold_abs: int = 100):
-                        super().__init__()
-                        self.min_distance = min_distance
-                        self.threshold_abs = threshold_abs
-
-                    def _operate(self, image: Image) -> Image:
-                        '''Find peaks in enh_gray and create object mask/map.'''
-                        # Find local maxima (colony peaks) - access parameters via self
-                        coords = peak_local_max(
-                            image.enh_gray[:],
-                            min_distance=self.min_distance,
-                            threshold_abs=self.threshold_abs
-                        )
-
-                        # Create binary mask from peaks
-                        mask = np.zeros(image.enh_gray.shape, dtype=bool)
-                        for y, x in coords:
-                            mask[y, x] = True
-
-                        # Create labeled map from mask
-                        labeled_map = measure_label(mask)
-
-                        # Set detection results
-                        image.objmask[:] = mask
-                        image.objmap[:] = labeled_map
-
-                        return image
-
-                # Usage - automatic integrity validation in ImageDetector
-                detector = PeakDetector(min_distance=15, threshold_abs=120)
-                detected = detector.apply(image)
-                colonies = detected.objects
-                print(f"Detected {len(colonies)} colonies")
-
-        .. dropdown:: Understanding inplace parameter and memory efficiency
-
-            .. code-block:: python
-
-                from phenotypic.enhance import GaussianBlur
-                from phenotypic import Image
-
-                image = Image.imread('colony_plate.jpg')
-                enhancer = GaussianBlur(sigma=2.0)
-
-                # Default: inplace=False (safe, creates copy)
-                enhanced = enhancer.apply(image)
-                print(f"Same object? {id(image) == id(enhanced)}")  # False
-
-                # For memory efficiency with large images
-                result = enhancer.apply(image, inplace=True)
-                print(f"Same object? {id(image) == id(result)}")  # True
-
-                # inplace=True is useful in pipelines with many large images
-                # to minimize memory overhead, but modifies the original
-
-        .. dropdown:: Using operations in a processing pipeline
-
-            .. code-block:: python
-
-                from phenotypic import Image, ImagePipeline
-                from phenotypic.enhance import GaussianBlur
-                from phenotypic.detect import OtsuDetector
-                from phenotypic.grid import GridFinder
-
-                # Load image
-                image = Image.imread('colony_plate.jpg')
-
-                # Sequential chaining
-                enhanced = GaussianBlur(sigma=2).apply(image)
-                detected = OtsuDetector().apply(enhanced)
-                grid = GridFinder().apply(detected)
-
-                # Or use ImagePipeline for batch processing
-                pipeline = ImagePipeline()
-                pipeline.add(GaussianBlur(sigma=2))
-                pipeline.add(OtsuDetector())
-                pipeline.add(GridFinder())
-
-                # Process multiple images with automatic parallelization
-                images = [Image.imread(f) for f in image_files]
-                results = pipeline.operate(images)
-                # Results are fully processed images
-
-        .. dropdown:: How instance methods work with parallel execution
-
-            .. code-block:: python
-
-                from phenotypic.abc_ import ImageOperation
-                from phenotypic import Image
-
-                class CustomThreshold(ImageOperation):
-                    def __init__(self, threshold: int, min_size: int = 5):
-                        super().__init__()
-                        self.threshold = threshold
-                        self.min_size = min_size
-
-                    def _operate(self, image: Image) -> Image:
-                        # Access parameters via self
-                        binary = image.enh_gray[:] > self.threshold
-                        image.objmask[:] = binary
-                        return image
-
-                # When apply() is called:
-                op = CustomThreshold(threshold=100, min_size=10)
-
-                # apply() internally:
-                # 1. Calls _apply_to_single_image() with self._operate (bound method)
-                # 2. _apply_to_single_image calls operation(image)
-                # 3. The bound method includes self, so all parameters are available
-
-                result = op.apply(image)
-
-                # For parallel execution, the entire operation object (with all
-                # attributes) is pickled and sent to worker processes
+        >>> from phenotypic.abc_ import ImageOperation
+        >>> from phenotypic import Image
+        >>> class CustomThreshold(ImageOperation):
+        ...     def __init__(self, threshold: int, min_size: int = 5):
+        ...         super().__init__()
+        ...         self.threshold = threshold
+        ...         self.min_size = min_size
+        ...
+        ...     def _operate(self, image: Image) -> Image:
+        ...         # Access parameters via self
+        ...         binary = image.enh_gray[:] > self.threshold
+        ...         image.objmask[:] = binary
+        ...         return image
+        >>> # When apply() is called:
+        >>> op = CustomThreshold(threshold=100, min_size=10)
+        # apply() internally:
+        # 1. Calls _apply_to_single_image() with self._operate (bound method)
+        # 2. _apply_to_single_image calls operation(image)
+        # 3. The bound method includes self, so all parameters are available
+        >>> result = op.apply(image)
+        # For parallel execution, the entire operation object (with all
+        # attributes) is pickled and sent to worker processes
     """
 
     def __init__(self, *args, **kwargs) -> None:

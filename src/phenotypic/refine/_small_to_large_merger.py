@@ -72,20 +72,20 @@ class SmallToLargeMerger(ObjectRefiner):
             anchors; larger values classify more as small fragments.
 
     Examples:
-        .. dropdown:: Merge small fragments into parent colonies
+        Merge small fragments into parent colonies:
 
-            >>> from phenotypic.refine import SmallToLargeMerger
-            >>> from phenotypic import Image
-            >>> from phenotypic.detect import OtsuDetector
-            >>> image = Image('fragmented_plate.jpg')
-            >>> detected = OtsuDetector().apply(image)
-            >>> # Merge fragments <100px into nearby colonies >100px
-            >>> merger = SmallToLargeMerger(
-            ...     distance_threshold=40,
-            ...     size_threshold=100
-            ... )
-            >>> refined = merger.apply(detected)  # doctest: +SKIP
-            >>> print(f"Consolidated fragments: {detected.objmap[:].max()} -> {refined.objmap[:].max()}")  # doctest: +SKIP
+        >>> from phenotypic.refine import SmallToLargeMerger
+        >>> from phenotypic import Image
+        >>> from phenotypic.detect import OtsuDetector
+        >>> image = Image('fragmented_plate.jpg')
+        >>> detected = OtsuDetector().apply(image)
+        >>> # Merge fragments <100px into nearby colonies >100px
+        >>> merger = SmallToLargeMerger(
+        ...     distance_threshold=40,
+        ...     size_threshold=100
+        ... )
+        >>> refined = merger.apply(detected)  # doctest: +SKIP
+        >>> print(f"Consolidated fragments: {detected.objmap[:].max()} -> {refined.objmap[:].max()}")  # doctest: +SKIP
     """
 
     def __init__(self, distance_threshold: float = 30.0, size_threshold: int = 100):

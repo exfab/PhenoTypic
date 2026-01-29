@@ -11,7 +11,7 @@ from phenotypic.tools_.funcs_ import validate_operation_integrity
 from abc import ABC
 from skimage.morphology import disk, diamond
 from skimage import morphology
-from phenotypic.tools_ import FootprintMixin
+from phenotypic.tools_.mixin import FootprintMixin
 
 
 class ImageEnhancer(FootprintMixin, ImageOperation, ABC):
@@ -21,6 +21,20 @@ class ImageEnhancer(FootprintMixin, ImageOperation, ABC):
     grayscale channel (`image.enh_gray`) to improve colony visibility and detection quality. Unlike
     ImageCorrector (which transforms the entire Image), ImageEnhancer leaves the original RGB and
     grayscale data untouched, protecting image integrity while enabling targeted preprocessing.
+
+    **Quick Decision Guide: Which Operation Type?**
+
+    - **ImageEnhancer (this class):** Modify only ``image.enh_gray`` for preprocessing.
+      Use for: noise reduction, contrast enhancement, illumination correction.
+      Examples: [GaussianBlur](src/phenotypic/enhance/_gaussian_blur.py),
+      [CLAHE](src/phenotypic/enhance/_clahe.py),
+      [BilateralDenoise](src/phenotypic/enhance/_bilateral_denoise.py).
+    - **ImageCorrector:** Transform entire image (rotation, cropping, perspective).
+      Use for: geometric corrections, global color transformations.
+    - **ObjectDetector:** Analyze image, produce only ``objmask`` and ``objmap``.
+      Use for: colony/object detection and labeling.
+    - **ObjectRefiner:** Edit mask and map (filtering, merging, removing objects).
+      Use for: post-detection cleanup and refinement.
 
     **What is ImageEnhancer?**
 
@@ -49,32 +63,23 @@ class ImageEnhancer(FootprintMixin, ImageOperation, ABC):
 
     **Why Enhancement Matters for Colony Phenotyping**
 
-    Real agar plate imaging introduces several challenges:
+    Real agar plate imaging introduces several challenges that enhancement operations address:
 
-    - **Uneven illumination:** Vignetting, shadows, and scanner lighting gradients make colonies
-      appear faint in dark regions and over-exposed elsewhere.
-    - **Noise and texture:** Scanner noise, agar granularity, condensation droplets, and dust create
-      artifacts that confuse thresholding or edge detection.
+    - **Uneven illumination:** Vignetting, shadows, and scanner lighting gradients make colonies appear faint in dark regions.
+    - **Noise and texture:** Scanner noise, agar granularity, dust, and condensation create artifacts confusing detection.
     - **Faint colonies:** Small or translucent colonies blend into background, reducing detectability.
     - **Poor contrast:** Low-contrast colonies on dense plates require local contrast enhancement.
 
-    Enhancement operations target these issues in a **domain-specific way**: they preserve colony
-    morphology while suppressing artifacts, enabling robust detection in downstream algorithms.
+    Enhancement operations preserve colony morphology while suppressing artifacts for robust detection.
 
-    **When to Use ImageEnhancer vs Other Operations**
+    **Subclass References**
 
-    - **ImageEnhancer:** You only modify `enh_gray` for preprocessing. Use for: noise reduction
-      (Gaussian blur, median filtering), contrast enhancement (CLAHE), illumination compensation
-      (background subtraction), edge enhancement (Sobel, Laplacian). Typical use: before detection.
+    The following are canonical examples of ImageEnhancer implementations:
 
-    - **ImageCorrector:** You transform the entire Image (rotation, cropping, color correction).
-      Typical use: geometric corrections or global color transformations.
-
-    - **ObjectDetector:** You analyze image data and produce only `objmask` and `objmap`. Input
-      image data is protected. Typical use: colony detection and labeling.
-
-    - **ObjectRefiner:** You edit mask and map (filtering, merging, removing objects). Typical use:
-      post-detection cleanup and validation.
+    - [GaussianBlur](src/phenotypic/enhance/_gaussian_blur.py): Noise reduction via Gaussian filtering.
+    - [CLAHE](src/phenotypic/enhance/_clahe.py): Contrast-limited adaptive histogram equalization for local contrast.
+    - [GrayOpening](src/phenotypic/enhance/_gray_opening.py): Morphological opening using [FootprintMixin](src/phenotypic/tools_/_footprint_mixin.py).
+    - [BilateralDenoise](src/phenotypic/enhance/_bilateral_denoise.py): Edge-preserving denoising.
 
     **Integrity Validation: Protection of Core Data**
 
@@ -273,164 +278,68 @@ class ImageEnhancer(FootprintMixin, ImageOperation, ABC):
           automatically invalidated to prevent stale results.
 
     Examples:
-        .. dropdown:: Implementing a custom noise-reduction enhancer with Gaussian blur
+        Basic usage with noise reduction:
 
-            .. code-block:: python
+        >>> from phenotypic.abc_ import ImageEnhancer
+        >>> from phenotypic.data import load_synth_yeast_plate
+        >>> from scipy.ndimage import gaussian_filter
+        >>>
+        >>> class GaussianEnhancer(ImageEnhancer):
+        ...     def __init__(self, sigma=1.5):
+        ...         super().__init__()
+        ...         self.sigma = sigma
+        ...     def _operate(self, image):
+        ...         enh = image.enh_gray[:]
+        ...         filtered = gaussian_filter(enh.astype(float), sigma=self.sigma)
+        ...         image.enh_gray[:] = filtered.astype(enh.dtype)
+        ...         return image
+        >>>
+        >>> image = load_synth_yeast_plate()
+        >>> enhancer = GaussianEnhancer(sigma=2.0)
+        >>> enhanced = enhancer.apply(image)
+        >>> # Original RGB and gray are unchanged
+        >>> assert (image.gray[:] == enhanced.gray[:]).all()
 
-                from phenotypic.abc_ import ImageEnhancer
-                from phenotypic import Image
-                from scipy.ndimage import gaussian_filter
-                import numpy as np
+        Morphological enhancement with FootprintMixin for colony hole-filling:
 
-                class CustomGaussianEnhancer(ImageEnhancer):
-                    '''Enhance by applying Gaussian blur to reduce noise.'''
+        >>> from phenotypic.abc_ import ImageEnhancer
+        >>> from phenotypic.data import load_synth_yeast_plate
+        >>> from skimage.morphology import closing
+        >>>
+        >>> class MorphologicalEnhancer(ImageEnhancer):
+        ...     def __init__(self, operation='closing', width=3):
+        ...         super().__init__()
+        ...         self.operation = operation
+        ...         self.width = width
+        ...     def _operate(self, image):
+        ...         enh = image.enh_gray[:]
+        ...         footprint = ImageEnhancer._make_footprint('disk', self.width)
+        ...         binary = enh > enh.mean()
+        ...         refined = closing(binary, footprint=footprint)
+        ...         image.enh_gray[:] = (refined * 255).astype(enh.dtype)
+        ...         return image
+        >>>
+        >>> image = load_synth_yeast_plate()
+        >>> enhancer = MorphologicalEnhancer(operation='closing', width=5)
+        >>> enhanced = enhancer.apply(image)
 
-                    def __init__(self, sigma: float = 1.5):
-                        super().__init__()
-                        self.sigma = sigma
+        Chaining multiple enhancements in pipeline:
 
-                    def _operate(self, image: Image) -> Image:
-                        enh = image.enh_gray[:]
-                        # Convert to float for processing
-                        filtered = gaussian_filter(enh.astype(float), sigma=self.sigma)
-                        # Restore original dtype
-                        image.enh_gray[:] = filtered.astype(enh.dtype)
-                        return image
-
-                # Usage
-                from phenotypic import Image
-                from phenotypic.detect import OtsuDetector
-
-                image = Image.imread('agar_plate.jpg')
-                enhancer = CustomGaussianEnhancer(sigma=2.0)
-                enhanced = enhancer.apply(image)  # Original unchanged
-                detected = OtsuDetector().apply(enhanced)  # Detect in enhanced data
-                colonies = detected.objects
-                print(f"Detected {len(colonies)} colonies")
-
-        .. dropdown:: Morphological operations using _make_footprint for colony refinement
-
-            .. code-block:: python
-
-                from phenotypic.abc_ import ImageEnhancer
-                from phenotypic import Image
-                from skimage.morphology import closing, opening
-                import numpy as np
-
-                class MorphologicalEnhancer(ImageEnhancer):
-                    '''Enhance by applying morphological closing/opening to fill holes and remove noise.'''
-
-                    def __init__(self, operation: str = 'closing', width: int = 3):
-                        super().__init__()
-                        self.operation = operation  # 'closing' or 'opening'
-                        self.width = width
-
-                    def _operate(self, image: Image) -> Image:
-                        enh = image.enh_gray[:]
-                        # Create a disk shape for isotropic processing
-                        shape = ImageEnhancer._make_footprint('disk', self.width)
-
-                        # Apply morphological operation to binary image
-                        binary = enh > enh.mean()
-                        if self.operation == 'closing':
-                            # Close small holes within colonies
-                            refined = closing(binary, footprint=shape)
-                        elif self.operation == 'opening':
-                            # Remove small noise regions
-                            refined = opening(binary, footprint=shape)
-                        else:
-                            return image
-
-                        # Convert back to grayscale (refined mask as 0/255)
-                        image.enh_gray[:] = (refined * 255).astype(enh.dtype)
-                        return image
-
-                # Usage
-                enhancer = MorphologicalEnhancer(operation='closing', width=5)
-                result = enhancer.apply(image)
-
-        .. dropdown:: Chaining multiple enhancements to handle complex agar plate imaging conditions
-
-            .. code-block:: python
-
-                from phenotypic import Image, ImagePipeline
-                from phenotypic.enhance import (
-                    RollingBallRemoveBG, CLAHE, GaussianBlur
-                )
-                from phenotypic.detect import OtsuDetector
-
-                # Scenario: Agar plate image with vignetting, dust, and low contrast
-
-                # Build a processing pipeline
-                pipeline = ImagePipeline()
-
-                # Step 1: Remove illumination gradient (vignetting)
-                pipeline.add(RollingBallRemoveBG(width=80))
-
-                # Step 2: Boost local contrast for faint colonies
-                pipeline.add(CLAHE(kernel_size=50, clip_limit=0.02))
-
-                # Step 3: Smooth dust and scanner noise
-                pipeline.add(GaussianBlur(sigma=1.5))
-
-                # Step 4: Detect colonies
-                pipeline.add(OtsuDetector())
-
-                # Process a batch of plate images
-                image_paths = ['plate1.tif', 'plate2.tif', 'plate3.tif']
-                images = [Image.imread(p) for p in image_paths]
-                results = pipeline.operate(images)
-
-                # Each result has cleaned detection results
-                for i, result in enumerate(results):
-                    colonies = result.objects
-                    print(f"Plate {i}: {len(colonies)} colonies detected")
-
-        .. dropdown:: Using different shape shapes for specialized morphological filtering
-
-            .. code-block:: python
-
-                from phenotypic.abc_ import ImageEnhancer
-                from phenotypic import Image
-                from skimage.filters.rank import median
-                from skimage.util import img_as_ubyte, img_as_float
-                import numpy as np
-
-                class SelectiveMedianEnhancer(ImageEnhancer):
-                    '''Enhance by applying median filtering with configurable shape shape.'''
-
-                    def __init__(self, shape: str = 'disk', width: int = 3):
-                        super().__init__()
-                        self.shape = shape  # 'disk', 'square', or 'diamond'
-                        self.width = width
-
-                    def _operate(self, image: Image) -> Image:
-                        enh = image.enh_gray[:]
-
-                        # Create footprint with specified shape
-                        footprint = ImageEnhancer._make_footprint(self.shape, self.width)
-
-                        # Apply median filter (rank filter)
-                        # Convert to uint8 for rank filter compatibility
-                        as_uint8 = img_as_ubyte(enh)
-                        filtered = median(as_uint8, shape=shape)
-
-                        # Restore original dtype
-                        image.enh_gray[:] = img_as_float(filtered) if enh.dtype == np.float64 else filtered
-                        return image
-
-                # Usage with different shapes
-                image = Image.imread('plate.jpg')
-
-                # Isotropic smoothing (preserves round colony shapes)
-                result1 = SelectiveMedianEnhancer(shape='disk', width=3).apply(image)
-
-                # Grid-aligned smoothing (for hardware artifacts)
-                result2 = SelectiveMedianEnhancer(shape='square', width=3).apply(image)
-
-                # Both preserve original image.rgb and image.gray
-                assert np.array_equal(image.gray[:], result1.gray[:])
-                assert np.array_equal(image.rgb[:], result1.rgb[:])
+        >>> from phenotypic import ImagePipeline
+        >>> from phenotypic.enhance import GaussianBlur, CLAHE
+        >>> from phenotypic.detect import OtsuDetector
+        >>> from phenotypic.data import load_synth_yeast_plate
+        >>>
+        >>> image = load_synth_yeast_plate()
+        >>> pipeline = ImagePipeline([
+        ...     GaussianBlur(sigma=1.5),
+        ...     CLAHE(clip_limit=2.0),
+        ...     OtsuDetector()
+        ... ])
+        >>> result = pipeline.apply(image)
+        >>> colonies = result.objects
+        >>> len(colonies) > 0
+        True
 
     """
 

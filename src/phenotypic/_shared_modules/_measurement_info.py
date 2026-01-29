@@ -18,12 +18,20 @@ class MeasurementInfo(str, Enum):
     prefixes measurement labels with a category name, ensuring consistent naming across code
     and outputs.
 
-    Key purposes:
+    **Key Purposes:**
 
     - Standardize measurement naming conventions (category_label format) to reduce errors
     - Centralize measurement definitions with labels and descriptions in one place
     - Automatically generate RST documentation tables from measurement definitions
     - Provide easy access to headers, labels, and category information for analysis workflows
+    - Enable type-safe column names in measurement DataFrames
+
+    **Usage with MeasureFeatures Subclasses:**
+
+    MeasurementInfo enums are used internally by measurement operations ([MeasureSize](src/phenotypic/measure/_measure_size.py),
+    [MeasureShape](src/phenotypic/measure/_measure_shape.py), [MeasureColor](src/phenotypic/measure/_measure_color.py), etc.)
+    to define column names in output DataFrames. Each measurement class defines its own enum
+    and uses the enum values as DataFrame column headers.
 
     Attributes:
         label (str): The short label for the measurement (without category prefix). Set
@@ -39,7 +47,7 @@ class MeasurementInfo(str, Enum):
     Examples:
         Define a custom measurement enumeration:
 
-        >>> from phenotypic.abc_ import MeasurementInfo
+        >>> from phenotypic._shared_modules import MeasurementInfo
         >>> class SHAPE(MeasurementInfo):
         ...     @classmethod
         ...     def category(cls):
@@ -64,6 +72,20 @@ class MeasurementInfo(str, Enum):
         ['Area', 'Perimeter']
         >>> SHAPE.get_headers()
         ['Shape_Area', 'Shape_Perimeter']
+
+        Use in DataFrame column naming (as MeasureFeatures do internally):
+
+        >>> import pandas as pd
+        >>> measurements = pd.DataFrame({
+        ...     str(SHAPE.AREA): [1024, 956, 1101],
+        ...     str(SHAPE.PERIMETER): [128, 120, 135]
+        ... })
+        >>> measurements.columns.tolist()
+        ['Shape_Area', 'Shape_Perimeter']
+        >>> measurements[str(SHAPE.AREA)]
+        0    1024
+        1     956
+        2    1101
 
         Generate and append RST documentation:
 

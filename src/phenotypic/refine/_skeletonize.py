@@ -50,11 +50,11 @@ class Skeletonize(ObjectRefiner):
             - None: Auto-select based on image dimensionality (Zhang for 2D, Lee for 3D).
 
     Examples:
-        .. dropdown:: Reduce filamentous colony to medial axis skeleton
+        Reduce filamentous colony to medial axis skeleton:
 
-            >>> from phenotypic.refine import Skeletonize
-            >>> op = Skeletonize(method="zhang")
-            >>> image = op.apply(image, inplace=True) # doctest: +SKIP
+        >>> from phenotypic.refine import Skeletonize
+        >>> op = Skeletonize(method="zhang")
+        >>> image = op.apply(image, inplace=True) # doctest: +SKIP
 
     Raises:
         ValueError: If an invalid ``method`` is provided (checked during operation).

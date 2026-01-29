@@ -28,6 +28,36 @@ class TestBasicSerialization:
         assert config["pipe_cfgs"] == {}
         assert config["meas"] == {}
 
+    def test_json_key_order(self):
+        """Test that JSON keys are in the expected order: version, name, desc, reset, pipe_cfgs, meas."""
+        import phenotypic
+
+        pipe = ImagePipeline(ops=[OtsuDetector()], name="test_pipe", desc="Test description")
+        json_str = pipe.to_json()
+        config = json.loads(json_str)
+
+        # Verify key order (Python 3.7+ preserves dict insertion order)
+        keys = list(config.keys())
+        expected_order = ["version", "name", "desc", "reset", "pipe_cfgs", "meas"]
+        assert keys == expected_order, f"Expected order {expected_order}, got {keys}"
+
+        # Verify benchmark and verbose are not in the output
+        assert "benchmark" not in config
+        assert "verbose" not in config
+
+        # Verify version is correct
+        assert config["version"] == phenotypic.__version__
+
+    def test_str_returns_json(self):
+        """Test that str(pipeline) returns valid JSON."""
+        pipe = ImagePipeline(ops=[OtsuDetector()], name="test")
+        json_str = str(pipe)
+
+        # Should be valid JSON
+        config = json.loads(json_str)
+        assert config["name"] == "test"
+        assert "OtsuDetector" in config["pipe_cfgs"]
+
     def test_empty_pipeline_roundtrip(self):
         """Test roundtrip serialization of an empty pipeline."""
         pipe = ImagePipeline()
@@ -197,14 +227,15 @@ class TestRoundtripFunctionality:
         img = Image(load_colony(), name="test")
         original_results = pipe.apply_and_measure(img)
 
-        # Roundtrip
+        # Roundtrip - benchmark and verbose are not serialized, defaults to False
         json_str = pipe.to_json()
         loaded_pipe = ImagePipeline.from_json(json_str)
 
         # Verify configuration
         assert len(loaded_pipe._ops) == 4
         assert len(loaded_pipe._meas) == 3
-        assert loaded_pipe._benchmark is True
+        # benchmark and verbose default to False when loading
+        assert loaded_pipe._benchmark is False
         assert loaded_pipe._verbose is False
 
         # Verify results
@@ -315,14 +346,25 @@ class TestEdgeCases:
         assert "GaussianBlur_1" in op_names
         assert "GaussianBlur_2" in op_names
 
-    def test_benchmark_and_verbose_flags(self):
-        """Test that benchmark and verbose flags are preserved."""
+    def test_benchmark_and_verbose_flags_not_serialized(self):
+        """Test that benchmark and verbose flags are not serialized but can be passed as params."""
         pipe = ImagePipeline(ops=[OtsuDetector()], benchmark=True, verbose=True)
         json_str = pipe.to_json()
 
+        # Verify benchmark and verbose are NOT in the serialized JSON
+        config = json.loads(json_str)
+        assert "benchmark" not in config
+        assert "verbose" not in config
+
+        # Default load should have False for both
         loaded_pipe = ImagePipeline.from_json(json_str)
-        assert loaded_pipe._benchmark is True
-        assert loaded_pipe._verbose is True
+        assert loaded_pipe._benchmark is False
+        assert loaded_pipe._verbose is False
+
+        # Can override with parameters
+        loaded_pipe_with_flags = ImagePipeline.from_json(json_str, benchmark=True, verbose=True)
+        assert loaded_pipe_with_flags._benchmark is True
+        assert loaded_pipe_with_flags._verbose is True
 
     def test_internal_state_excluded(self):
         """Test that internal state (attributes starting with _) is excluded."""

@@ -9,7 +9,7 @@ if TYPE_CHECKING:
     from phenotypic import Image
 
 from phenotypic.abc_ import ImageEnhancer
-from phenotypic.tools_ import FootprintMixin
+from phenotypic.tools_.mixin import FootprintMixin
 
 
 class GrayOpening(ImageEnhancer, FootprintMixin):

@@ -6,7 +6,7 @@ if TYPE_CHECKING:
     from phenotypic import Image
 
 from phenotypic.abc_ import ObjectRefiner
-from phenotypic.tools_ import FootprintMixin
+from phenotypic.tools_.mixin import FootprintMixin
 
 import numpy as np
 from skimage.morphology import opening
@@ -43,11 +43,11 @@ class MaskOpener(ObjectRefiner, FootprintMixin):
             thin connections and specks but risks eroding colony boundaries.
 
     Examples:
-        .. dropdown:: Morphologically open masks to separate touching colonies
+        Morphologically open masks to separate touching colonies:
 
-            >>> from phenotypic.refine import MaskOpener
-            >>> op = MaskOpener(shape='auto')
-            >>> image = op.apply(image, inplace=True)  # doctest: +SKIP
+        >>> from phenotypic.refine import MaskOpener
+        >>> op = MaskOpener(shape='auto')
+        >>> image = op.apply(image, inplace=True)  # doctest: +SKIP
 
     Raises:
         AttributeError: If an invalid ``footprint`` type is provided (checked

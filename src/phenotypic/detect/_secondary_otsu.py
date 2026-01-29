@@ -1,22 +1,35 @@
 from __future__ import annotations
 
-from typing import Literal, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from phenotypic import Image
 
+import numpy as np
+from scipy.ndimage import labeled_comprehension
 from skimage.filters import threshold_otsu
+from skimage.measure import label
 from phenotypic.abc_ import ThresholdDetector
 
 
+def _safe_otsu(values: np.ndarray) -> float:
+    """Compute Otsu threshold, returning -inf if not possible."""
+    if len(values) < 2 or values.min() == values.max():
+        return -np.inf
+    try:
+        return threshold_otsu(values)
+    except ValueError:
+        return -np.inf
+
+
 class SecondaryOtsuDetector(ThresholdDetector):
-    """Two-stage Otsu refinement detector for improved boundary accuracy.
+    """Two-stage Otsu refinement detector with per-object thresholding.
 
     SecondaryOtsuDetector applies Otsu's threshold in two stages: (1) initial Otsu
-    on full image (or use existing objmask), (2) re-apply Otsu to intensities within
-    detected objects only. This refines boundaries by focusing the second threshold
-    on the colony intensity distribution, improving edge sharpness when the initial
-    detection is coarse or blurred.
+    on full image (or use existing objmask), (2) re-apply Otsu independently to each
+    detected object. This refines boundaries by computing a local threshold for each
+    colony based on its own intensity distribution, improving edge accuracy when
+    colonies have varying intensities or backgrounds.
 
     Args:
         None
@@ -25,7 +38,7 @@ class SecondaryOtsuDetector(ThresholdDetector):
         None
 
     Returns:
-        Image: Input image with objmask refined via two-stage Otsu thresholding.
+        Image: Input image with objmask refined via per-object Otsu thresholding.
 
     Raises:
         ValueError: If threshold computation fails (e.g., all pixels same value).
@@ -33,11 +46,11 @@ class SecondaryOtsuDetector(ThresholdDetector):
     **Use cases**
 
     - **Boundary refinement:** Initial detection is correct but blurry at edges.
-      Secondary Otsu sharpens colony boundaries within detected regions.
-    - **Two-peak distributions:** Colony intensities form distinct peak; applying
-      Otsu twice focuses on colony pixels, ignoring background tail.
+      Per-object Otsu sharpens colony boundaries using local intensity distribution.
+    - **Heterogeneous plates:** Colonies vary in intensity across the plate. Each
+      object gets its own threshold adapted to local conditions.
     - **Halo suppression:** Soft halos around colonies from preprocessing can blur
-      edges. Secondary thresholding removes halo while keeping colony centers.
+      edges. Per-object thresholding removes halo while keeping colony centers.
 
     **Limitations**
 
@@ -45,16 +58,16 @@ class SecondaryOtsuDetector(ThresholdDetector):
       or small objects; secondary stage can't recover them.
     - Requires prior detection. If no objects initially detected (objmask all zeros),
       falls back to applying Otsu twice on full image, which may not improve results.
-    - Assumes two-phase intensity distribution. If colony pixels span wide intensity
-      range or background overlaps with colonies, secondary Otsu may over-segment.
-    - Not suitable for isolated detections. If only scattered pixels detected,
-      secondary Otsu may aggressively threshold remnants.
+    - Small objects may fail thresholding. Objects with too few pixels or uniform
+      intensity cannot compute a meaningful Otsu threshold and are preserved as-is.
+    - Per-object processing adds overhead. For plates with many objects (>1000),
+      consider whether global secondary thresholding might suffice.
 
     **Parameter effects on colony detection**
 
-    - No user-tunable parameters. Behavior is deterministic: apply Otsu twice.
-      Results depend entirely on input image intensity distribution and initial
-      objmask quality.
+    - No user-tunable parameters. Behavior is deterministic: apply Otsu to each
+      object independently. Results depend on input image intensity distribution
+      and initial objmask quality.
 
     Examples:
         Refine initial detection with secondary Otsu::
@@ -68,7 +81,7 @@ class SecondaryOtsuDetector(ThresholdDetector):
             detector1 = OtsuDetector()
             intermediate = detector1.apply(plate)
 
-            # Refine boundaries with secondary Otsu
+            # Refine boundaries with per-object secondary Otsu
             detector2 = SecondaryOtsuDetector()
             refined = detector2.apply(intermediate)
             mask = refined.objmask[:]
@@ -91,16 +104,41 @@ class SecondaryOtsuDetector(ThresholdDetector):
     """
 
     def _operate(self, image: Image) -> Image:
-        """Applies otsu thresholding again to an image that already has an object map. If no,
-        object map is found, it will apply the otsu threshold twice"""
+        """Apply Otsu thresholding independently to each object in the mask.
 
-        # If there are no objects in the image already perform an initial otsu
+        If no object map exists, performs initial Otsu on the full image first,
+        then applies per-object Otsu refinement to each detected region.
+        """
         enh_gray = image.enh_gray[:]
-        if image.num_objects == 0:
-            objmask = enh_gray >= threshold_otsu(enh_gray)
-        else:
-            objmask = image.objmask[:]
 
-        objvals = enh_gray * objmask
-        image.objmask = objvals >= threshold_otsu(objvals[objvals.nonzero()])
+        # If there are no objects, perform an initial global Otsu
+        if image.num_objects == 0:
+            initial_mask = enh_gray >= threshold_otsu(enh_gray)
+        else:
+            initial_mask = image.objmask[:]
+
+        # Label connected components in the initial mask
+        labeled_mask = label(initial_mask)
+        num_objects = labeled_mask.max()
+
+        if num_objects == 0:
+            image.objmask = initial_mask
+            return image
+
+        # Compute Otsu threshold for each object (vectorized across all objects)
+        # Returns array of thresholds indexed by object id (1 to num_objects)
+        thresholds = labeled_comprehension(
+            enh_gray, labeled_mask, range(1, num_objects + 1),
+            _safe_otsu, float, -np.inf
+        )
+
+        # Build threshold lookup: index 0 = background (inf), indices 1..n = object thresholds
+        # Using inf for background ensures those pixels stay False
+        threshold_lookup = np.concatenate([[np.inf], thresholds])
+
+        # Create per-pixel threshold map via label indexing (vectorized)
+        threshold_map = threshold_lookup[labeled_mask]
+
+        # Vectorized comparison: pixels above their object's threshold
+        image.objmask = enh_gray >= threshold_map
         return image

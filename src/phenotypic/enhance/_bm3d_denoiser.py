@@ -65,6 +65,7 @@ class BM3DDenoiser(ImageEnhancer):
             sigma_psd: float = 0.02,
             *,
             stage_arg: Literal["all_stages", "hard_thresholding"] = "all_stages",
+            clip: bool = True,
     ):
         """
         Parameters:
@@ -76,6 +77,9 @@ class BM3DDenoiser(ImageEnhancer):
                 stages to run. 'all_stages' gives best quality at the cost of
                 speed; 'hard_thresholding' is faster and adequate for routine
                 plate analysis.
+            clip (bool): Whether to clip output to [0, 1] range. Default True.
+                Set to False when using with variance-stabilizing transforms
+                (e.g., GAT) that require preserving the original scale.
         """
         if not isinstance(sigma_psd, (int, float)):
             raise TypeError("sigma_psd must be a number or None")
@@ -88,6 +92,8 @@ class BM3DDenoiser(ImageEnhancer):
         else:
             self.stage_arg = stage_arg
 
+        self.clip = clip
+
     def _operate(self, image: Image) -> Image:
         # enh_gray is guaranteed to be in [0, 1] range, which BM3D expects
 
@@ -97,7 +103,9 @@ class BM3DDenoiser(ImageEnhancer):
                 stage_arg=self._convert_stage_arg(self.stage_arg),
         )
 
-        image.enh_gray[:] = denoised.clip(0.0, 1.0)
+        if self.clip:
+            denoised = denoised.clip(0.0, 1.0)
+        image.enh_gray[:] = denoised
         return image
 
     def _convert_stage_arg(self, stage_arg: Literal["all_stages", "hard_thresholding"]):

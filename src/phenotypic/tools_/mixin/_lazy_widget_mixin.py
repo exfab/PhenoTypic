@@ -662,7 +662,7 @@ class LazyWidgetMixin:
                     view = self._view_dropdown.value
 
                     if view == "overlay":
-                        img_copy.show_overlay()
+                        img_copy.plot.overlay()
                     elif view == "rgb":
                         if not img_copy.rgb.isempty():
                             img_copy.rgb.show()

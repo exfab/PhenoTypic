@@ -61,40 +61,32 @@ class MeasureIntensity(MeasureFeatures):
             - CoefficientVarianceIntensity: Normalized variability (std dev / mean, unitless).
 
     Examples:
-        .. dropdown:: Measure colony biomass via intensity
+        Measure colony biomass via intensity:
 
-            .. code-block:: python
+        >>> from phenotypic import Image
+        >>> from phenotypic.detect import OtsuDetector
+        >>> from phenotypic.measure import MeasureIntensity
+        >>> # Load and process plate image
+        >>> image = Image.imread("colony_plate_t24h.jpg")  # doctest: +SKIP
+        >>> detector = OtsuDetector()
+        >>> image = detector.operate(image)  # doctest: +SKIP
+        >>> # Measure intensity to estimate biomass
+        >>> measurer = MeasureIntensity()
+        >>> intensity = measurer.operate(image)  # doctest: +SKIP
+        >>> # Track colonies by integrated intensity (proxy for biomass)
+        >>> high_biomass = intensity[intensity['Intensity_IntegratedIntensity'] > 100000]  # doctest: +SKIP
+        >>> print(f"Colonies with high biomass (>100k): {len(high_biomass)}")  # doctest: +SKIP
 
-                from phenotypic import Image
-                from phenotypic.detect import OtsuDetector
-                from phenotypic.measure import MeasureIntensity
+        Identify heterogeneous or sectored colonies:
 
-                # Load and process plate image
-                image = Image.imread("colony_plate_t24h.jpg")
-                detector = OtsuDetector()
-                image = detector.operate(image)
-
-                # Measure intensity to estimate biomass
-                measurer = MeasureIntensity()
-                intensity = measurer.operate(image)
-
-                # Track colonies by integrated intensity (proxy for biomass)
-                high_biomass = intensity[intensity['Intensity_IntegratedIntensity'] > 100000]
-                print(f"Colonies with high biomass (>100k): {len(high_biomass)}")
-
-        .. dropdown:: Identify heterogeneous or sectored colonies
-
-            .. code-block:: python
-
-                # Measure intensity variance to detect sectoring
-                intensity = measurer.operate(image)
-
-                # Colonies with high variance may be sectored or chimeric
-                sectored = intensity[
-                    intensity['Intensity_CoefficientVarianceIntensity'] >
-                    intensity['Intensity_CoefficientVarianceIntensity'].quantile(0.75)
-                ]
-                print(f"Potentially sectored colonies: {list(sectored.index)}")
+        >>> # Measure intensity variance to detect sectoring
+        >>> intensity = measurer.operate(image)  # doctest: +SKIP
+        >>> # Colonies with high variance may be sectored or chimeric
+        >>> sectored = intensity[
+        ...     intensity['Intensity_CoefficientVarianceIntensity'] >
+        ...     intensity['Intensity_CoefficientVarianceIntensity'].quantile(0.75)
+        ... ]  # doctest: +SKIP
+        >>> print(f"Potentially sectored colonies: {list(sectored.index)}")  # doctest: +SKIP
     """
 
     _measurement_info_class = INTENSITY

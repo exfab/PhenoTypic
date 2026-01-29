@@ -27,26 +27,20 @@ class CieLabAccessor(ColorSpaceAccessor):
             used for metadata tracking when saving color space arrays.
 
     Examples:
-        .. dropdown:: Access Lab color space data from an image
+        Access Lab color space data from an image:
 
-            .. code-block:: python
+        >>> lab_array = image.color.Lab
+        >>> lightness = lab_array[:, :, 0]  # Extract L* channel
+        >>> green_red = lab_array[:, :, 1]  # Extract a* channel
+        >>> blue_yellow = lab_array[:, :, 2]  # Extract b* channel
 
-                lab_array = image.color.Lab
-                lightness = lab_array[:, :, 0]  # Extract L* channel
-                green_red = lab_array[:, :, 1]  # Extract a* channel
-                blue_yellow = lab_array[:, :, 2]  # Extract b* channel
+        Save Lab data to a TIFF file:
 
-        .. dropdown:: Save Lab data to a TIFF file
+        >>> image.color.Lab.imsave("output_lab.tif")
 
-            .. code-block:: python
+        Create a histogram of the L* channel:
 
-                image.color.Lab.imsave("output_lab.tif")
-
-        .. dropdown:: Create a histogram of the L* channel
-
-            .. code-block:: python
-
-                fig, axes = image.color.Lab.histogram(channel_names=["L*", "a*", "b*"])
+        >>> fig, axes = image.color.Lab.histogram(channel_names=["L*", "a*", "b*"])
     """
 
     @property

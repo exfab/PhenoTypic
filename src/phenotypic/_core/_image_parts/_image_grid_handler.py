@@ -1,10 +1,8 @@
-from itertools import cycle
 from typing import Union, Tuple, Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from matplotlib.patches import Rectangle
 
 from phenotypic.abc_ import GridFinder
 from phenotypic._core._image_parts.accessors import GridAccessor
@@ -122,16 +120,13 @@ class ImageGridHandler(Image):
             GridFinder: The grid finding/alignment algorithm currently in use for this image.
 
         Examples:
-            .. dropdown:: Access and inspect grid finder
+            Access and inspect grid finder:
 
-                .. code-block:: python
-
-                    from phenotypic import GridImage
-                    from phenotypic.grid import AutoGridFinder
-
-                    grid_img = GridImage('plate.jpg')
-                    finder = grid_img.grid_finder
-                    print(type(finder))  # GridFinder instance
+            >>> from phenotypic import GridImage
+            >>> from phenotypic.grid import AutoGridFinder
+            >>> grid_img = GridImage('plate.jpg')
+            >>> finder = grid_img.grid_finder
+            >>> print(type(finder))  # GridFinder instance
 
         See Also:
             GridFinder: Base class for grid finding algorithms.
@@ -153,16 +148,13 @@ class ImageGridHandler(Image):
             TypeError: If value is not a GridFinder instance.
 
         Examples:
-            .. dropdown:: Replace grid finder with custom implementation
+            Replace grid finder with custom implementation:
 
-                .. code-block:: python
-
-                    from phenotypic import GridImage
-                    from phenotypic.grid import AutoGridFinder
-
-                    grid_img = GridImage('plate.jpg')
-                    new_finder = AutoGridFinder(nrows=16, ncols=24)
-                    grid_img.grid_finder = new_finder
+            >>> from phenotypic import GridImage
+            >>> from phenotypic.grid import AutoGridFinder
+            >>> grid_img = GridImage('plate.jpg')
+            >>> new_finder = AutoGridFinder(nrows=16, ncols=24)
+            >>> grid_img.grid_finder = new_finder
         """
         if isinstance(value, GridFinder):
             self._grid_finder = value
@@ -199,15 +191,12 @@ class ImageGridHandler(Image):
             TypeError: If nrows is not of type int.
 
         Examples:
-            .. dropdown:: Adjust grid rows for different plate formats
+            Adjust grid rows for different plate formats:
 
-                .. code-block:: python
-
-                    from phenotypic import GridImage
-
-                    grid_img = GridImage('plate.jpg')
-                    grid_img.nrows = 16  # Switch to 384-well format
-                    print(grid_img.nrows)  # Output: 16
+            >>> from phenotypic import GridImage
+            >>> grid_img = GridImage('plate.jpg')
+            >>> grid_img.nrows = 16  # Switch to 384-well format
+            >>> print(grid_img.nrows)  # Output: 16
         """
         if not isinstance(nrows, int):
             raise TypeError(f"Expected int, got {type(nrows)}")
@@ -243,15 +232,12 @@ class ImageGridHandler(Image):
             TypeError: If ncols is not of type int.
 
         Examples:
-            .. dropdown:: Adjust grid columns for different plate formats
+            Adjust grid columns for different plate formats:
 
-                .. code-block:: python
-
-                    from phenotypic import GridImage
-
-                    grid_img = GridImage('plate.jpg')
-                    grid_img.ncols = 24  # Switch to 384-well format
-                    print(grid_img.ncols)  # Output: 24
+            >>> from phenotypic import GridImage
+            >>> grid_img = GridImage('plate.jpg')
+            >>> grid_img.ncols = 24  # Switch to 384-well format
+            >>> print(grid_img.ncols)  # Output: 24
         """
         if not isinstance(ncols, int):
             raise TypeError(f"Expected int, got {type(ncols)}")
@@ -271,113 +257,6 @@ class ImageGridHandler(Image):
         subimage.enh_gray[:] = self.enh_gray[key]
         subimage.objmap[:] = self.objmap[key]
         return subimage
-
-    def show_overlay(
-            self,
-            object_label: Optional[int] = None,
-            show_gridlines: bool = True,
-            show_linreg: bool = False,
-            figsize: Tuple[int, int] = (9, 10),
-            show_labels: bool = False,
-            label_settings: None | dict = None,
-            ax: plt.Axes = None,
-    ) -> (plt.Figure, plt.Axes):
-        """
-        Displays an overlay of data with optional annotations, linear regression lines, and gridlines on a
-        grid-based figure. The figure can be customized with various parameters to suit visualization needs.
-
-        Args:
-            object_label (Optional): Specific label of the object to highlight or focus on in the overlay.
-            show_gridlines (bool): Whether to include gridlines on the overlay. Defaults to True.
-            show_linreg (bool): Indicate whether to display linear regression lines on the overlay. Defaults to False.
-            figsize (Tuple[int, int]): Size of the figure, specified as a tuple of width and height values (in inches).
-                Defaults to (9, 10).
-            show_labels (bool): Determines whether points or objects should be annotated. Defaults to False.
-            label_settings (None | dict): Additional parameters for customization of the
-                object annotations. Defaults: size=12, color='white', facecolor='red'. Other kwargs
-                are passed to the matplotlib.axes.text () method.
-            ax (plt.Axes, optional): Axis on which to draw the overlay; can be provided externally. Defaults to None.
-
-        Returns:
-            Tuple[plt.Figure, plt.Axes]: Modified figure and axis containing the rendered overlay.
-        """
-        fig, ax = super().show_overlay(
-                object_label=object_label,
-                ax=ax,
-                figsize=figsize,
-                show_labels=show_labels,
-                label_settings=label_settings,
-        )
-
-        if show_gridlines and self.num_objects > 0:
-            col_edges = self.grid.get_col_edges()
-            upper_col_edges = col_edges[1:]
-            lower_col_edges = col_edges[:-1]
-
-            # Set x-axes labels to grid column numbers
-            secax_x = ax.secondary_xaxis("top")
-            secax_x.set_xlabel("Grid Column Number")
-
-            col_centers = ((upper_col_edges - lower_col_edges) // 2) + lower_col_edges
-            secax_x.set_xticks(col_centers)
-            secax_x.set_xticklabels(np.arange(self.ncols))
-
-            row_edges = self.grid.get_row_edges()
-            upper_row_edges = row_edges[1:]
-            lower_row_edges = row_edges[:-1]
-
-            # Set y-axis labels to grid row numbers
-            secax_y = ax.secondary_yaxis("right")
-            secax_y.set_ylabel("Grid Row Number", rotation=270, labelpad=10)
-
-            row_centers = ((upper_row_edges - lower_row_edges) // 2) + lower_row_edges
-            secax_y.set_yticks(row_centers)
-            secax_y.set_yticklabels(np.arange(self.nrows))
-
-            # Draw grid lines
-            ax.vlines(
-                    x=col_edges,
-                    ymin=row_edges.min(),
-                    ymax=row_edges.max(),
-                    colors="c",
-                    linestyles="--",
-            )
-            ax.hlines(
-                    y=row_edges,
-                    xmin=col_edges.min(),
-                    xmax=col_edges.max(),
-                    color="c",
-                    linestyles="--",
-            )
-
-            cmap = plt.get_cmap("tab20")
-            cmap_cycle = cycle(cmap(i) for i in range(cmap.N))
-            img = self.copy()
-            img.objmap = self.grid.get_section_map()
-            gs_table = MeasureBounds().measure(img)
-
-            # Add squares that denote object grid belonging. Useful for cases where objects are larger than grid sections
-            for obj_label in gs_table.index.unique():
-                subtable = gs_table.loc[obj_label, :]
-                min_rr = subtable.loc[str(BBOX.MIN_RR)]
-                max_rr = subtable.loc[str(BBOX.MAX_RR)]
-                min_cc = subtable.loc[str(BBOX.MIN_CC)]
-                max_cc = subtable.loc[str(BBOX.MAX_CC)]
-
-                width = max_cc - min_cc
-                height = max_rr - min_rr
-
-                ax.add_patch(
-                        Rectangle(
-                                (min_cc, min_rr),
-                                width=width,
-                                height=height,
-                                edgecolor=next(cmap_cycle),
-                                facecolor="none",
-                        ),
-                )
-
-        return fig, ax
 
     def _draw_gridlines_on_overlay(
             self,

@@ -61,9 +61,9 @@ class NonLocalMeansDenoiser(ImageEnhancer):
 
     def __init__(
             self,
-            patch_size: int = 7,
+            patch_size: int = 5,
             patch_distance: int = 11,
-            h: float = 0.1,
+            h: float = 0.5,
             *,
             fast_mode: bool = True,
             sigma: float = 0.0,

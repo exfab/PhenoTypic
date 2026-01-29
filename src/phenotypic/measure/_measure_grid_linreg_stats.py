@@ -56,38 +56,30 @@ class MeasureGridLinRegStats(GridMeasureFeatures):
             - ResidualError: Euclidean distance between actual and predicted centroid.
 
     Examples:
-        .. dropdown:: Measure grid alignment for an arrayed plate
+        Measure grid alignment for an arrayed plate:
 
-            .. code-block:: python
+        >>> from phenotypic import GridImage
+        >>> from phenotypic.detect import OtsuDetector
+        >>> from phenotypic.measure import MeasureGridLinRegStats
+        >>> # Load a plate image with grid information
+        >>> grid_image = GridImage.imread("plate_96well.jpg", nrows=8, ncols=12)  # doctest: +SKIP
+        >>> # Detect colonies
+        >>> detector = OtsuDetector()
+        >>> grid_image = detector.operate(grid_image)  # doctest: +SKIP
+        >>> # Measure grid alignment quality
+        >>> measurer = MeasureGridLinRegStats()
+        >>> results = measurer.operate(grid_image)  # doctest: +SKIP
+        >>> # Identify off-grid colonies
+        >>> outliers = results[results['GridLinReg_ResidualError'] > 10.0]  # doctest: +SKIP
+        >>> print(f"Found {len(outliers)} colonies with high misalignment")  # doctest: +SKIP
 
-                from phenotypic import GridImage
-                from phenotypic.detect import OtsuDetector
-                from phenotypic.measure import MeasureGridLinRegStats
+        Measure alignment within a single section/well:
 
-                # Load a plate image with grid information
-                grid_image = GridImage.imread("plate_96well.jpg", nrows=8, ncols=12)
-
-                # Detect colonies
-                detector = OtsuDetector()
-                grid_image = detector.operate(grid_image)
-
-                # Measure grid alignment quality
-                measurer = MeasureGridLinRegStats()
-                results = measurer.operate(grid_image)
-
-                # Identify off-grid colonies
-                outliers = results[results['GridLinReg_ResidualError'] > 10.0]
-                print(f"Found {len(outliers)} colonies with high misalignment")
-
-        .. dropdown:: Measure alignment within a single section/well
-
-            .. code-block:: python
-
-                # Measure only colonies in section 5 (useful for troubleshooting
-                # a specific well or region)
-                measurer = MeasureGridLinRegStats(section_num=5)
-                section_results = measurer.operate(grid_image)
-                # Results contain grid stats and residual errors only for section 5
+        >>> # Measure only colonies in section 5 (useful for troubleshooting
+        >>> # a specific well or region)
+        >>> measurer = MeasureGridLinRegStats(section_num=5)
+        >>> section_results = measurer.operate(grid_image)  # doctest: +SKIP
+        >>> # Results contain grid stats and residual errors only for section 5
     """
 
     _measurement_info_class = GRID_LINREG_STATS

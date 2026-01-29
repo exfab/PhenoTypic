@@ -65,16 +65,16 @@ class TransitiveDistanceMerger(ObjectRefiner):
             density.
 
     Examples:
-        .. dropdown:: Merge fragmented colonies using transitive distance threshold
+        Merge fragmented colonies using transitive distance threshold:
 
-            >>> from phenotypic.refine import TransitiveDistanceMerger
-            >>> from phenotypic import Image
-            >>> from phenotypic.detect import OtsuDetector
-            >>> image = Image.imread('fragmented_plate.jpg')
-            >>> detected = OtsuDetector().apply(image)
-            >>> merger = TransitiveDistanceMerger(distance_threshold=25.0)
-            >>> merged = merger.apply(detected)  # doctest: +SKIP
-            >>> print(f"Merged {detected.objmap[:].max()} fragments into {merged.objmap[:].max()} colonies")  # doctest: +SKIP
+        >>> from phenotypic.refine import TransitiveDistanceMerger
+        >>> from phenotypic import Image
+        >>> from phenotypic.detect import OtsuDetector
+        >>> image = Image.imread('fragmented_plate.jpg')
+        >>> detected = OtsuDetector().apply(image)
+        >>> merger = TransitiveDistanceMerger(distance_threshold=25.0)
+        >>> merged = merger.apply(detected)  # doctest: +SKIP
+        >>> print(f"Merged {detected.objmap[:].max()} fragments into {merged.objmap[:].max()} colonies")  # doctest: +SKIP
     """
 
     def __init__(self, distance_threshold: float = 20.0):

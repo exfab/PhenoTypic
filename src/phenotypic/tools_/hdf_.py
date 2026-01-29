@@ -321,14 +321,10 @@ class HDF:
         Note:
             If using SWMR mode, don't forget to enable SWMR mode:
 
-            .. dropdown:: Enable SWMR mode
-
-                .. code-block:: python
-
-                    hdf = HDF(filepath)
-                    with hdf.writer as writer:
-                        writer.swmr_mode = True
-                        # rest of your code
+            >>> hdf = HDF(filepath)  # doctest: +SKIP
+            >>> with hdf.writer as writer:  # doctest: +SKIP
+            ...     writer.swmr_mode = True
+            ...     # rest of your code
 
         Returns:
             h5py.File: An HDF5 file object opened in 'r+' mode, enabling reading and writing.

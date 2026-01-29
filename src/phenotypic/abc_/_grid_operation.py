@@ -15,6 +15,26 @@ class GridOperation(ImageOperation, ABC):
     ImageOperation that overrides the apply() method to require a GridImage input instead
     of a generic Image.
 
+    **Quick Decision Guide**
+
+    Use GridOperation when:
+    - Your operation requires grid structure information (well positions, row/column layout)
+    - You're processing arrayed plate images with regular grid layouts (96-well, 384-well)
+    - Your algorithm needs per-well analysis or grid-aligned regions
+    - You want to enforce that input must be GridImage (type safety)
+
+    Use ImageOperation when:
+    - Your operation works on general Image objects regardless of grid state
+    - You're doing global preprocessing, detection, or measurement
+    - Your algorithm doesn't depend on well structure or grid alignment
+    - Your operation should accept both Image and GridImage inputs
+
+    Combining GridOperation with ImageOperation:
+    - GridOperation is typically paired with other ABCs (ObjectDetector, ImageCorrector, etc.)
+    - Use multiple inheritance: class GridObjectDetector(ObjectDetector, GridOperation, ABC)
+    - GridOperation adds type safety without changing algorithm implementation
+    - Most grid operations inherit from both a specific ABC and GridOperation
+
     **What is GridOperation?**
 
     GridOperation exists to distinguish between two categories of image operations:
@@ -30,7 +50,7 @@ class GridOperation(ImageOperation, ABC):
 
     **Why GridOperation exists**
 
-    GridOperation provides three benefits:
+    GridOperation provides three key benefits:
 
     1. **Type Safety:** The apply() method signature requires a GridImage argument, catching
        misuse at runtime if someone tries to apply a grid operation to a plain Image.
@@ -59,39 +79,62 @@ class GridOperation(ImageOperation, ABC):
     - **Grid accessors:** Via ``image.grid``, provides row/column counts, well positions, and
       grid-related metadata.
 
-    **GridOperation subclasses**
+    **GridOperation Subclasses**
 
     Most concrete grid operations inherit from BOTH a specific operation ABC (like ObjectDetector)
     AND GridOperation to create specialized grid-aware variants:
 
-    .. code-block:: text
+    - [GridObjectDetector](src/phenotypic/abc_/_grid_object_detector.py): Detects objects using
+      grid structure. Subclasses implement well-level colony detection on gridded plates.
+    - [GridCorrector](src/phenotypic/abc_/_grid_corrector.py): Corrects grid alignment, rotation,
+      and per-well color correction. Improves grid positioning and well-level alignment.
+    - [GridObjectRefiner](src/phenotypic/abc_/_grid_object_refiner.py): Refines detection masks at
+      the well level. Filters and adjusts masks based on well location and size constraints.
+    - [GridMeasureFeatures](src/phenotypic/abc_/_grid_measure.py): Extracts per-well measurements.
+      Computes features organized by grid coordinates rather than globally.
+    - [GridFinder](src/phenotypic/abc_/_grid_finder.py): Detects grid structure from object
+      positions. Assigns detected objects to grid cells and determines well locations.
 
-        GridOperation (marker ABC)
-        ├── GridObjectDetector (inherits ObjectDetector + GridOperation)
-        │   ├── GridInstanceDetector, GridThresholdDetector, GridCannyDetector, ...
-        │   └── Use for: well-level colony detection on gridded plates
-        │
-        ├── GridCorrector (inherits ImageCorrector + GridOperation)
-        │   ├── GridAligner, ...
-        │   └── Use for: grid alignment, rotation, color correction per-well
-        │
-        └── GridObjectRefiner (inherits ObjectRefiner + GridOperation)
-            ├── GridSizeRefiner, ...
-            └── Use for: per-well mask refinement, filtering by well location
+    **Multiple Inheritance Pattern**
 
-    **When to use GridOperation vs ImageOperation**
+    Most GridOperation subclasses use multiple inheritance to combine operation behavior with
+    grid type safety:
 
-    - **ImageOperation:** Input is a plain Image with unknown grid state.
-      Typical use: preprocessing (blur, contrast), general-purpose detection,
-      color measurements that don't depend on grid layout.
+    - Combine with ObjectDetector: class GridObjectDetector(ObjectDetector, GridOperation, ABC)
+    - Combine with ImageCorrector: class GridCorrector(ImageCorrector, GridOperation, ABC)
+    - Combine with any operation ABC: class CustomGridOp(SomeABC, GridOperation, ABC)
 
-    - **GridOperation:** Input is a GridImage with detected/specified grid structure.
-      Typical use: well-level analysis, grid-based refinement, operations that
-      reference well positions or grid-aligned regions.
+    The inheritance order matters: specific ABC first, then GridOperation.
 
-    - **Overlap:** Some operations work on both. E.g., a ColorComposition measurement
-      can apply to an Image, but a GridColorComposition can specialize to per-well
-      measurements on a GridImage.
+    Example of multiple inheritance pattern:
+
+        >>> from phenotypic.abc_ import ImageOperation, GridOperation
+        >>> from phenotypic import GridImage, Image
+        >>> # Concrete implementation combining ObjectDetector + GridOperation
+        >>> # class GridObjectDetector(ObjectDetector, GridOperation, ABC):
+        >>> #     def _operate(self, image: GridImage) -> GridImage:
+        >>> #         # Implementation uses grid structure from image.grid
+        >>> #         return image
+
+    This combines:
+
+    - **Operation behavior:** Sets image.objmask and image.objmap, with integrity checks.
+    - **GridOperation type safety:** Requires GridImage input, enforced at runtime.
+    - **ABC pattern:** Subclasses implement _operate() with grid-aware logic.
+
+    The key insight: GridOperation is just a type annotation layer over ImageOperation that
+    makes the grid requirement explicit in the method signature.
+
+    **Type Safety Example**
+
+    GridOperation enforces type checking at apply() time to catch errors early:
+
+        >>> from phenotypic import Image, GridImage
+        >>> from phenotypic.abc_ import GridOperation
+        >>> # When a GridOperation is called with wrong type:
+        >>> # detector = SomeGridOperation()  # subclass of GridOperation
+        >>> # result = detector.apply(Image('plain.jpg'))  # Raises GridImageInputError
+        >>> # result = detector.apply(GridImage('plate.jpg', nrows=8, ncols=12))  # OK
 
     **When to subclass GridOperation**
 
@@ -109,28 +152,6 @@ class GridOperation(ImageOperation, ABC):
     Otherwise, subclass ImageOperation instead. GridOperation operations are more specialized
     and less broadly applicable.
 
-    **Multiple inheritance pattern**
-
-    Most GridOperation subclasses use multiple inheritance:
-
-    .. code-block:: python
-
-        class GridObjectDetector(ObjectDetector, GridOperation, ABC):
-            '''Detects objects using grid structure.'''
-            def apply(self, image: GridImage, inplace=False) -> GridImage:
-                if not isinstance(image, GridImage):
-                    raise GridImageInputError
-                return super().apply(image=image, inplace=inplace)
-
-    This combines:
-
-    - **ObjectDetector behavior:** Sets image.objmask and image.objmap, with integrity checks.
-    - **GridOperation type safety:** Requires GridImage input, enforced at runtime.
-    - **ABC pattern:** Subclasses implement _operate() with grid-aware logic.
-
-    The key insight: GridOperation is just a type annotation layer over ImageOperation that
-    makes the grid requirement explicit in the method signature.
-
     Notes:
         - GridOperation is a marker class with no implementation. It only overrides apply()
           to specify the GridImage type and enforce input validation.
@@ -142,52 +163,39 @@ class GridOperation(ImageOperation, ABC):
           algorithm fundamentally depend on grid structure?" If yes, use GridOperation.
           If it works equally well on plain Images, use ImageOperation.
 
-        - GridImage is typically created with ImageGridHandler or GridFinder operations
-          that detect grid structure. GridFinder is an ImageOperation, but the result
-          is a GridImage suitable for downstream GridOperation subclasses.
+        - GridImage is typically created with GridFinder operations that detect grid structure.
+          GridFinder detects grid positions and creates a GridImage suitable for downstream
+          GridOperation subclasses.
 
     Examples:
-        .. dropdown:: Using a GridOperation subclass
+        Using a GridOperation subclass with GridImage:
 
-            .. code-block:: python
+        >>> from phenotypic import GridImage
+        >>> from phenotypic.data import load_synth_yeast_plate
+        >>> from phenotypic.detect import GridObjectDetector
+        >>> # Load plate image with grid info
+        >>> image = load_synth_yeast_plate()  # GridImage with detected colonies
+        >>> grid_image = image
+        >>> # Apply a grid-aware detector (subclass of GridObjectDetector)
+        >>> # GridImage is required - type-safe operation
+        >>> # detector = GridObjectDetector()  # Concrete subclass in practice
+        >>> # detected = detector.apply(grid_image)
 
-                from phenotypic import GridImage
-                from phenotypic.detect import GridObjectDetector
+        Type safety: GridOperation prevents misuse:
 
-                # Load plate image (96-well)
-                grid_image = GridImage('plate_scan.jpg', nrows=8, ncols=12)
-
-                # Apply a grid-aware detector (subclass of GridObjectDetector)
-                # This operation requires GridImage and uses well structure
-                detector = GridObjectDetector()  # Concrete subclass
-                detected = detector.apply(grid_image)  # Type-safe: GridImage -> GridImage
-
-                # Access detected colonies per well
-                for well_row in range(grid_image.nrows):
-                    for well_col in range(grid_image.ncols):
-                        # Per-well analysis available because operation is grid-aware
-                        pass
-
-        .. dropdown:: Understanding the type safety benefit
-
-            .. code-block:: python
-
-                from phenotypic import Image, GridImage
-                from phenotypic.enhance import GaussianBlur
-                from phenotypic.detect import GridObjectDetector
-
-                image = Image('generic.jpg')  # Plain Image
-                grid_image = GridImage('plate.jpg')           # GridImage
-
-                # ImageOperation (GaussianBlur) accepts both
-                enhancer = GaussianBlur(sigma=2)
-                result1 = enhancer.apply(image)       # OK: Image -> Image
-                result2 = enhancer.apply(grid_image)  # OK: GridImage -> GridImage
-
-                # GridOperation requires GridImage
-                detector = GridObjectDetector()  # Subclass of GridOperation
-                result3 = detector.apply(grid_image)  # OK: GridImage -> GridImage
-                # result4 = detector.apply(image)  # ERROR: raises GridImageInputError
+        >>> from phenotypic import Image, GridImage
+        >>> from phenotypic.enhance import GaussianBlur
+        >>> from phenotypic.data import load_synth_yeast_plate
+        >>> image = Image('generic.jpg')  # Plain Image
+        >>> grid_image = load_synth_yeast_plate()  # GridImage
+        >>> # ImageOperation (GaussianBlur) accepts both
+        >>> enhancer = GaussianBlur(sigma=2)
+        >>> result1 = enhancer.apply(image)       # OK: Image -> Image
+        >>> result2 = enhancer.apply(grid_image)  # OK: GridImage -> GridImage
+        >>> # GridOperation requires GridImage only
+        >>> # detector = SomeGridOperation()  # subclass of GridOperation
+        >>> # result3 = detector.apply(grid_image)  # OK: GridImage -> GridImage
+        >>> # result4 = detector.apply(image)  # ERROR: raises GridImageInputError
     """
 
     def apply(self, image: GridImage, inplace: bool = False) -> GridImage:

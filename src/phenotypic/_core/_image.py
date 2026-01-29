@@ -38,24 +38,19 @@ class Image(ImageIOHandler):
         - HSV color space support added in v0.5.0.
 
     Examples:
-        .. dropdown:: Create from array
+        Create from array:
 
-            .. code-block:: python
+        >>> import numpy as np
+        >>> from phenotypic import Image
+        >>> arr = np.random.randint(0, 256, (480, 640, 3), dtype=np.uint8)
+        >>> img = Image(arr, name='sample')
+        >>> img.show()
 
-                import numpy as np
-                from phenotypic import Image
+        Load from file:
 
-                arr = np.random.randint(0, 256, (480, 640, 3), dtype=np.uint8)
-                img = Image(arr, name='sample')
-                img.show()
-
-        .. dropdown:: Load from file
-
-            .. code-block:: python
-
-                img = Image.imread('photo.jpg')
-                print(img.shape)  # Image dimensions
-                img.save2pickle('saved.pkl')
+        >>> img = Image.imread('photo.jpg')
+        >>> print(img.shape)  # Image dimensions
+        >>> img.save2pickle('saved.pkl')
     """
 
     def __init__(
@@ -99,32 +94,24 @@ class Image(ImageIOHandler):
             TypeError: If arr is provided but is not a NumPy array or Image instance.
 
         Examples:
-            .. dropdown:: Create empty image
+            Create empty image:
 
-                .. code-block:: python
+            >>> img = Image(name='empty_image')
 
-                    img = Image(name='empty_image')
+            Create from grayscale array:
 
-            .. dropdown:: Create from grayscale array
+            >>> gray_arr = np.random.randint(0, 256, (480, 640), dtype=np.uint8)
+            >>> img = Image(gray_arr, name='grayscale_photo')
 
-                .. code-block:: python
+            Create from RGB array:
 
-                    gray_arr = np.random.randint(0, 256, (480, 640), dtype=np.uint8)
-                    img = Image(gray_arr, name='grayscale_photo')
+            >>> rgb_arr = np.random.randint(0, 256, (480, 640, 3), dtype=np.uint8)
+            >>> img = Image(rgb_arr, name='color_photo', gamma='sRGB')
 
-            .. dropdown:: Create from RGB array
+            Copy another image:
 
-                .. code-block:: python
-
-                    rgb_arr = np.random.randint(0, 256, (480, 640, 3), dtype=np.uint8)
-                    img = Image(rgb_arr, name='color_photo', gamma='sRGB')
-
-            .. dropdown:: Copy another image
-
-                .. code-block:: python
-
-                    img1 = Image.imread('original.jpg')
-                    img2 = Image(img1, name='copy_of_original')
+            >>> img1 = Image.imread('original.jpg')
+            >>> img2 = Image(img1, name='copy_of_original')
         """
         super().__init__(
                 arr=arr,

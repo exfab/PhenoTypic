@@ -77,26 +77,20 @@ class GridImage(ImageGridHandler):
             TypeError: If arr is provided but is not a valid image type.
 
         Examples:
-            .. dropdown:: Create from a plate image file
+            Create from a plate image file:
 
-                .. code-block:: python
+            >>> from phenotypic import GridImage
+            >>> # Load plate image with 96-well grid (8 rows x 12 cols)
+            >>> grid_img = GridImage('plate_scan.jpg', nrows=8, ncols=12)
+            >>> grid_img.plot.overlay(show_gridlines=True)
 
-                    from phenotypic import GridImage
+            Create with custom grid finder:
 
-                    # Load plate image with 96-well grid (8 rows x 12 cols)
-                    grid_img = GridImage('plate_scan.jpg', nrows=8, ncols=12)
-                    grid_img.show_overlay(show_gridlines=True)
-
-            .. dropdown:: Create with custom grid finder
-
-                .. code-block:: python
-
-                    from phenotypic import GridImage
-                    from phenotypic.grid import AutoGridFinder
-
-                    finder = AutoGridFinder(nrows=16, ncols=24)  # 384-well plate
-                    grid_img = GridImage('plate_384.jpg', grid_finder=finder)
-                    print(grid_img.nrows, grid_img.ncols)  # Output: 16 24
+            >>> from phenotypic import GridImage
+            >>> from phenotypic.grid import AutoGridFinder
+            >>> finder = AutoGridFinder(nrows=16, ncols=24)  # 384-well plate
+            >>> grid_img = GridImage('plate_384.jpg', grid_finder=finder)
+            >>> print(grid_img.nrows, grid_img.ncols)  # Output: 16 24
         """
         super().__init__(
                 arr=arr,

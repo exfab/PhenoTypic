@@ -51,10 +51,10 @@ class ColorSpaceAccessor(ImageAccessorBase):
                 from a different accessor type.
 
         Examples:
-            .. dropdown:: Load a Lab color space array from file
+            Load a Lab color space array from file:
 
-                >>> from phenotypic._core._image_parts.color_space_accessors import CieLabAccessor
-                >>> lab_arr = CieLabAccessor.load("my_lab_image.tif")
+            >>> from phenotypic._core._image_parts.color_space_accessors import CieLabAccessor
+            >>> lab_arr = CieLabAccessor.load("my_lab_image.tif")
         """
         filepath = Path(filepath)
         expected_property = f"Image.{cls._accessor_property_name_value()}"

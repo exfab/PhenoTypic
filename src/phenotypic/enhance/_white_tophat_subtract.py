@@ -79,8 +79,5 @@ class WhiteTophatSubtract(ImageEnhancer):
             # Use shared ImageEnhancer utility for common 2D shapes
             case "disk" | "square" | "diamond":
                 return self._make_footprint(shape=self.shape, width=width)
-            # Preserve volumetric alternatives
-            case "sphere":
-                return ball(radius)
-            case "cube":
-                return cube(radius * 2)
+            case _:
+                raise ValueError(f"Unsupported footprint shape: {self.shape}")

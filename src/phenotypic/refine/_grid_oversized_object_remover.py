@@ -40,11 +40,11 @@ class GridOversizedObjectRemover(GridObjectRefiner):
         (No public attributes)
 
     Examples:
-        .. dropdown:: Remove objects larger than their grid cell allows
+        Remove objects larger than their grid cell allows:
 
-            >>> from phenotypic.refine import GridOversizedObjectRemover
-            >>> op = GridOversizedObjectRemover()
-            >>> image = op.apply(image, inplace=True)  # doctest: +SKIP
+        >>> from phenotypic.refine import GridOversizedObjectRemover
+        >>> op = GridOversizedObjectRemover()
+        >>> image = op.apply(image, inplace=True)  # doctest: +SKIP
     """
 
     def _operate(self, image: GridImage) -> GridImage:

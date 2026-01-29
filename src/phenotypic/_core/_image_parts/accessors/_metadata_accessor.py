@@ -24,25 +24,21 @@ class MetadataAccessor:
         _parent_image (Image): The parent Image instance containing the metadata storage.
 
     Examples:
-        .. dropdown:: Access metadata like a dictionary
+        Access metadata like a dictionary:
 
-            .. code-block:: python
+        >>> img = Image(arr, name='sample')
+        >>> # Get metadata value
+        >>> image_name = img.metadata['ImageName']
+        >>> # Set public metadata
+        >>> img.metadata['user_notes'] = 'A sample image'
+        >>> # Check if key exists
+        >>> if 'user_notes' in img.metadata:
+        ...     print(img.metadata['user_notes'])
 
-                img = Image(arr, name='sample')
-                # Get metadata value
-                image_name = img.metadata['ImageName']
-                # Set public metadata
-                img.metadata['user_notes'] = 'A sample image'
-                # Check if key exists
-                if 'user_notes' in img.metadata:
-                    print(img.metadata['user_notes'])
+        Iterate through metadata:
 
-        .. dropdown:: Iterate through metadata
-
-            .. code-block:: python
-
-                for key, value in img.metadata.items():
-                    print(f'{key}: {value}')
+        >>> for key, value in img.metadata.items():
+        ...     print(f'{key}: {value}')
     """
 
     def __init__(self, image: Image) -> None:
@@ -189,12 +185,10 @@ class MetadataAccessor:
             PermissionError: If attempting to modify private metadata.
 
         Examples:
-            .. dropdown:: Set metadata values with permission checking
+            Set metadata values with permission checking:
 
-                .. code-block:: python
-
-                    img.metadata['resolution'] = 300  # Creates public metadata
-                    img.metadata['ImageName'] = 'updated_name'  # Updates protected metadata
+            >>> img.metadata['resolution'] = 300  # Creates public metadata
+            >>> img.metadata['ImageName'] = 'updated_name'  # Updates protected metadata
         """
         if not isinstance(value, (str, int, float, bool, type(None))):
             raise ValueError("Metadata values must be of scalar types or None.")
@@ -219,11 +213,9 @@ class MetadataAccessor:
             KeyError: If the key does not exist in public metadata.
 
         Examples:
-            .. dropdown:: Delete public metadata entries
+            Delete public metadata entries:
 
-                .. code-block:: python
-
-                    del img.metadata['user_notes']  # Deletes public metadata
+            >>> del img.metadata['user_notes']  # Deletes public metadata
         """
         if key in self._private_metadata or key in self._protected_metadata:
             raise PermissionError("Private and protected metadata cannot be removed.")
@@ -249,11 +241,9 @@ class MetadataAccessor:
             KeyError: If the key does not exist in public metadata.
 
         Examples:
-            .. dropdown:: Remove and return a public metadata value
+            Remove and return a public metadata value:
 
-                .. code-block:: python
-
-                    old_value = img.metadata.pop('user_notes')
+            >>> old_value = img.metadata.pop('user_notes')
         """
         if key in self._private_metadata or key in self._protected_metadata:
             raise PermissionError("Private and protected metadata cannot be removed.")
@@ -276,12 +266,10 @@ class MetadataAccessor:
             Any: The metadata value if found, otherwise the default value.
 
         Examples:
-            .. dropdown:: Retrieve metadata with default fallback
+            Retrieve metadata with default fallback:
 
-                .. code-block:: python
-
-                    resolution = img.metadata.get('resolution', 100)
-                    name = img.metadata.get('ImageName')  # Returns None if not found
+            >>> resolution = img.metadata.get('resolution', 100)
+            >>> name = img.metadata.get('ImageName')  # Returns None if not found
         """
         if key in self._combined_metadata:
             return self._combined_metadata[key]
@@ -316,16 +304,14 @@ class MetadataAccessor:
             - Metadata columns without 'Metadata_' prefix are automatically prefixed
 
         Examples:
-            .. dropdown:: Insert metadata as DataFrame columns
+            Insert metadata as DataFrame columns:
 
-                .. code-block:: python
-
-                    import pandas as pd
-                    df = pd.DataFrame({'data': [1, 2, 3]})
-                    img = Image(arr, name='sample')
-                    img.metadata['resolution'] = 300
-                    result_df = img.metadata.insert_metadata(df)
-                    # result_df now has Metadata_ImageName and Metadata_resolution columns at position 0
+            >>> import pandas as pd
+            >>> df = pd.DataFrame({'data': [1, 2, 3]})
+            >>> img = Image(arr, name='sample')
+            >>> img.metadata['resolution'] = 300
+            >>> result_df = img.metadata.insert_metadata(df)
+            >>> # result_df now has Metadata_ImageName and Metadata_resolution columns at position 0
         """
         working_df = df if inplace else df.copy()
         for key, value in self._public_protected_metadata.items():
@@ -355,15 +341,13 @@ class MetadataAccessor:
                 metadata values. The Series name is the parent image name.
 
         Examples:
-            .. dropdown:: Convert metadata to pandas Series
+            Convert metadata to pandas Series:
 
-                .. code-block:: python
-
-                    img = Image(arr, name='sample_image')
-                    img.metadata['resolution'] = 300
-                    series = img.metadata.table()
-                    print(series.name)  # 'sample_image'
-                    print(series['ImageName'])  # 'sample_image'
+            >>> img = Image(arr, name='sample_image')
+            >>> img.metadata['resolution'] = 300
+            >>> series = img.metadata.table()
+            >>> print(series.name)  # 'sample_image'
+            >>> print(series['ImageName'])  # 'sample_image'
         """
         return pd.Series(
                 self._combined_metadata,

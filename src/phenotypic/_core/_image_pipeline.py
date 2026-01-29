@@ -16,23 +16,19 @@ class ImagePipeline(SerializablePipeline):
         verbose (bool): Whether to enable verbose logging during pipeline execution.
 
     Example:
+        Create a pipeline with detector and measurements:
 
-    .. dropdown:: Create a pipeline with detector and measurements
-
-        .. code-block:: python
-
-            >>> from phenotypic.data import _synthetic_data            >>> import phenotypic as pht
-            >>> from phenotypic.enhance import GaussianBlur
-            >>> from phenotypic.detect import OtsuDetector
-            >>> from phenotypic.measure import MeasureShape, MeasureIntensity
-            >>>
-            >>> pipe = pht.ImagePipeline(
-            >>>     ops=[GaussianBlur(),OtsuDetector()],
-            >>>     meas=[MeasureShape(), MeasureIntensity()]
-            >>> )
-            >>>
-            >>> image = _synthetic_data.load_synth_yeast_plate()
-            >>> pipe.apply(image)
+        >>> from phenotypic.data import _synthetic_data
+        >>> import phenotypic as pht
+        >>> from phenotypic.enhance import GaussianBlur
+        >>> from phenotypic.detect import OtsuDetector
+        >>> from phenotypic.measure import MeasureShape, MeasureIntensity
+        >>> pipe = pht.ImagePipeline(
+        ...     ops=[GaussianBlur(), OtsuDetector()],
+        ...     meas=[MeasureShape(), MeasureIntensity()]
+        ... )
+        >>> image = _synthetic_data.load_synth_yeast_plate()
+        >>> pipe.apply(image)
 
     """
 

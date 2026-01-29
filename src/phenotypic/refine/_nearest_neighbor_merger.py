@@ -65,20 +65,20 @@ class NearestNeighborMerger(ObjectRefiner):
             None to merge all objects regardless of size (usually not recommended).
 
     Examples:
-        .. dropdown:: Remove small noise by merging only small objects to neighbors
+        Remove small noise by merging only small objects to neighbors:
 
-            >>> from phenotypic.refine import NearestNeighborMerger
-            >>> from phenotypic import Image
-            >>> from phenotypic.detect import OtsuDetector
-            >>> image = Image('noisy_plate.jpg')
-            >>> detected = OtsuDetector().apply(image)
-            >>> # Merge only objects smaller than 50 pixels to their nearest colony
-            >>> merger = NearestNeighborMerger(
-            ...     distance_threshold=25,
-            ...     min_size=50
-            ... )
-            >>> cleaned = merger.apply(detected)  # doctest: +SKIP
-            >>> print(f"Removed small artifacts: {detected.objmap[:].max()} -> {cleaned.objmap[:].max()}")  # doctest: +SKIP
+        >>> from phenotypic.refine import NearestNeighborMerger
+        >>> from phenotypic import Image
+        >>> from phenotypic.detect import OtsuDetector
+        >>> image = Image('noisy_plate.jpg')
+        >>> detected = OtsuDetector().apply(image)
+        >>> # Merge only objects smaller than 50 pixels to their nearest colony
+        >>> merger = NearestNeighborMerger(
+        ...     distance_threshold=25,
+        ...     min_size=50
+        ... )
+        >>> cleaned = merger.apply(detected)  # doctest: +SKIP
+        >>> print(f"Removed small artifacts: {detected.objmap[:].max()} -> {cleaned.objmap[:].max()}")  # doctest: +SKIP
     """
 
     def __init__(self, distance_threshold: float = 20.0, min_size: Optional[int] = 50):

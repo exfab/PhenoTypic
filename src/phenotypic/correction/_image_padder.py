@@ -67,39 +67,29 @@ class ImagePadder(ImageCorrector):
       risk to reflect.
 
     Examples:
-        .. dropdown:: Basic usage: add 50px black border to all edges
+        Basic usage: add 50px black border to all edges:
 
-            .. code-block:: python
+        >>> from phenotypic import Image
+        >>> from phenotypic.correction import ImagePadder
+        >>> image = Image.imread('plate_image.tiff')  # doctest: +SKIP
+        >>> print(f"Original size: {image.shape}")  # doctest: +SKIP
+        >>> padder = ImagePadder(left=50, right=50, top=50, bottom=50)
+        >>> padded = padder.apply(image)  # doctest: +SKIP
+        >>> print(f"Padded size: {padded.shape}")  # doctest: +SKIP
 
-                from phenotypic import Image
-                from phenotypic.correction import ImagePadder
+        Pipeline: pad before rotation to prevent clipping:
 
-                image = Image.imread('plate_image.tiff')
-                print(f"Original size: {image.shape}")  # (800, 1200, 3)
-
-                padder = ImagePadder(left=50, right=50, top=50, bottom=50)
-                padded = padder.apply(image)
-
-                print(f"Padded size: {padded.shape}")  # (900, 1300, 3)
-
-        .. dropdown:: Pipeline: pad before rotation to prevent clipping
-
-            .. code-block:: python
-
-                from phenotypic import Image, ImagePipeline
-                from phenotypic.correction import ImagePadder
-                from phenotypic.detect import OtsuDetector
-
-                image = Image.imread('rotated_plate.jpg')
-
-                # Add 100px safety margin with reflection to avoid artifacts
-                pipeline = ImagePipeline([
-                    ImagePadder(left=100, right=100, top=100, bottom=100, mode='reflect'),
-                    OtsuDetector()
-                ])
-
-                result = pipeline.operate(image)
-                print(f"Detected {len(result.objects)} colonies")
+        >>> from phenotypic import Image, ImagePipeline
+        >>> from phenotypic.correction import ImagePadder
+        >>> from phenotypic.detect import OtsuDetector
+        >>> image = Image.imread('rotated_plate.jpg')  # doctest: +SKIP
+        >>> # Add 100px safety margin with reflection to avoid artifacts
+        >>> pipeline = ImagePipeline([
+        ...     ImagePadder(left=100, right=100, top=100, bottom=100, mode='reflect'),
+        ...     OtsuDetector()
+        ... ])
+        >>> result = pipeline.operate(image)  # doctest: +SKIP
+        >>> print(f"Detected {len(result.objects)} colonies")  # doctest: +SKIP
     """
 
     def __init__(self,
@@ -138,35 +128,26 @@ class ImagePadder(ImageCorrector):
             ValueError: If mode is not a valid np.pad mode.
 
         Examples:
-            .. dropdown:: Create a padder for symmetric margins
+            Create a padder for symmetric margins:
 
-                .. code-block:: python
+            >>> from phenotypic.correction import ImagePadder
+            >>> # Add 50 pixels to all four edges
+            >>> padder = ImagePadder(left=50, right=50, top=50, bottom=50)
 
-                    from phenotypic.correction import ImagePadder
+            Create a padder for asymmetric margins:
 
-                    # Add 50 pixels to all four edges
-                    padder = ImagePadder(left=50, right=50, top=50, bottom=50)
+            >>> from phenotypic.correction import ImagePadder
+            >>> # Add padding on top and right, keep left and bottom minimal
+            >>> padder = ImagePadder(top=100, right=75, left=0, bottom=0)
 
-            .. dropdown:: Create a padder for asymmetric margins
+            Create a padder with reflection to avoid artifacts:
 
-                .. code-block:: python
-
-                    from phenotypic.correction import ImagePadder
-
-                    # Add padding on top and right, keep left and bottom minimal
-                    padder = ImagePadder(top=100, right=75, left=0, bottom=0)
-
-            .. dropdown:: Create a padder with reflection to avoid artifacts
-
-                .. code-block:: python
-
-                    from phenotypic.correction import ImagePadder
-
-                    padder = ImagePadder(
-                        left=80, right=80, top=80, bottom=80,
-                        mode='reflect'
-                    )
-                    # Reflection preserves edge patterns, good for convolutions
+            >>> from phenotypic.correction import ImagePadder
+            >>> padder = ImagePadder(
+            ...     left=80, right=80, top=80, bottom=80,
+            ...     mode='reflect'
+            ... )
+            >>> # Reflection preserves edge patterns, good for convolutions
         """
         self.left = left
         self.right = right
@@ -269,40 +250,30 @@ class ImagePadder(ImageCorrector):
             ValueError: If mode is not supported by np.pad.
 
         Examples:
-            .. dropdown:: Basic padding of a loaded image
+            Basic padding of a loaded image:
 
-                .. code-block:: python
+            >>> from phenotypic import Image
+            >>> from phenotypic.correction import ImagePadder
+            >>> image = Image.imread('plate.jpg')  # doctest: +SKIP
+            >>> padder = ImagePadder(left=50, right=50, top=50, bottom=50)
+            >>> # Returns new padded Image; original is unchanged
+            >>> padded = padder.apply(image)  # doctest: +SKIP
+            >>> print(f"Original shape: {image.shape}")  # doctest: +SKIP
+            >>> print(f"Padded shape: {padded.shape}")  # doctest: +SKIP
 
-                    from phenotypic import Image
-                    from phenotypic.correction import ImagePadder
+            Padding a GridImage preserves grid settings:
 
-                    image = Image.imread('plate.jpg')
-                    padder = ImagePadder(left=50, right=50, top=50, bottom=50)
-
-                    # Returns new padded Image; original is unchanged
-                    padded = padder.apply(image)
-
-                    print(f"Original shape: {image.shape}")
-                    print(f"Padded shape: {padded.shape}")
-
-            .. dropdown:: Padding a GridImage preserves grid settings
-
-                .. code-block:: python
-
-                    from phenotypic import GridImage
-                    from phenotypic.correction import ImagePadder
-
-                    # Load plate image
-                    grid_img = GridImage('plate.tiff', nrows=8, ncols=12)
-
-                    # Add safety margin
-                    padder = ImagePadder(left=50, right=50, top=50, bottom=50)
-                    padded = padder.apply(grid_img)
-
-                    # GridImage type and settings preserved
-                    assert isinstance(padded, GridImage)
-                    assert padded.nrows == 8
-                    assert padded.ncols == 12
+            >>> from phenotypic import GridImage
+            >>> from phenotypic.correction import ImagePadder
+            >>> # Load plate image
+            >>> grid_img = GridImage('plate.tiff', nrows=8, ncols=12)  # doctest: +SKIP
+            >>> # Add safety margin
+            >>> padder = ImagePadder(left=50, right=50, top=50, bottom=50)
+            >>> padded = padder.apply(grid_img)  # doctest: +SKIP
+            >>> # GridImage type and settings preserved
+            >>> assert isinstance(padded, GridImage)  # doctest: +SKIP
+            >>> assert padded.nrows == 8  # doctest: +SKIP
+            >>> assert padded.ncols == 12  # doctest: +SKIP
         """
         # Get padding widths
         pad_width_2d = self._get_pad_width_2d()

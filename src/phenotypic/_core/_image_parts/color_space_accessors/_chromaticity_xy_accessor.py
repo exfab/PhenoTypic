@@ -23,14 +23,12 @@ class xyChromaticityAccessor(ColorSpaceAccessor):
             this accessor. Set to "color.xy" for CIE xy chromaticity access.
 
     Examples:
-        .. dropdown:: Access CIE xy chromaticity coordinates from an image
+        Access CIE xy chromaticity coordinates from an image:
 
-            .. code-block:: python
-
-                image = Image(...)
-                xy_coords = image.color.xy[:]  # Get full xy array
-                xy_subset = image.color.xy[100:200, 50:150]  # Get region of interest
-                shape = image.color.xy.shape  # (height, width, 2)
+        >>> image = Image(...)
+        >>> xy_coords = image.color.xy[:]  # Get full xy array
+        >>> xy_subset = image.color.xy[100:200, 50:150]  # Get region of interest
+        >>> shape = image.color.xy.shape  # (height, width, 2)
     """
 
     @property

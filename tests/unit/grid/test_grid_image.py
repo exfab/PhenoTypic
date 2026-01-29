@@ -53,9 +53,9 @@ def test_image_grid_section_retrieval(plate_grid_images_with_detection):
 
 
 @timeit
-def test_grid_show_overlay(plate_grid_images_with_detection):
+def test_grid_plot_overlay(plate_grid_images_with_detection):
     grid_image = plate_grid_images_with_detection
-    fig, ax = grid_image.show_overlay(show_labels=False)
+    fig, ax = grid_image.plot.overlay(show_labels=False)
     assert fig is not None
     assert ax is not None
 
@@ -173,7 +173,7 @@ class TestGridImageBitDepthInheritance:
         original_bit_depth = grid_image.bit_depth
 
         # Perform grid operations
-        fig, ax = grid_image.show_overlay(show_labels=False)
+        fig, ax = grid_image.plot.overlay(show_labels=False)
 
         # Bit depth should remain unchanged
         assert grid_image.bit_depth == original_bit_depth

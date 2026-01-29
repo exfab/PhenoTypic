@@ -41,25 +41,19 @@ class ObjectMask(NapariLabelsMixin, SingleChannelAccessor):
         are directly modified.
 
     Examples:
-        .. dropdown:: Basic access and slicing
+        Basic access and slicing:
 
-            .. code-block:: python
+        >>> # Access the mask as a dense array
+        >>> mask_array = np.array(objmask)
+        >>> # Slice operations
+        >>> region = objmask[10:50, 20:60]
+        >>> # Modify mask regions
+        >>> objmask[10:50, 20:60] = np.zeros((40, 40))
 
-                # Access the mask as a dense array
-                mask_array = np.array(objmask)
+        Creating foreground images:
 
-                # Slice operations
-                region = objmask[10:50, 20:60]
-
-                # Modify mask regions
-                objmask[10:50, 20:60] = np.zeros((40, 40))
-
-        .. dropdown:: Creating foreground images
-
-            .. code-block:: python
-
-                # Get foreground of a grayscale channel
-                foreground = image.gray.foreground()
+        >>> # Get foreground of a grayscale channel
+        >>> foreground = image.gray.foreground()
     """
 
     @property
@@ -99,16 +93,13 @@ class ObjectMask(NapariLabelsMixin, SingleChannelAccessor):
                 int dtype (0 and 1 values), or the specified dtype.
 
         Examples:
-            .. dropdown:: Using with NumPy functions and type conversion
+            Using with NumPy functions and type conversion:
 
-                .. code-block:: python
-
-                    # Use with NumPy functions
-                    num_foreground_pixels = np.count_nonzero(objmask)
-                    total_pixels = np.sum(objmask)
-
-                    # Explicit type conversion
-                    mask_float = np.array(objmask, dtype=np.float32)
+            >>> # Use with NumPy functions
+            >>> num_foreground_pixels = np.count_nonzero(objmask)
+            >>> total_pixels = np.sum(objmask)
+            >>> # Explicit type conversion
+            >>> mask_float = np.array(objmask, dtype=np.float32)
         """
         arr = (self._backend.toarray() > 0).astype(int)
         if dtype is not None:
@@ -133,21 +124,16 @@ class ObjectMask(NapariLabelsMixin, SingleChannelAccessor):
                 the mask, with the same shape as the indexed region.
 
         Examples:
-            .. dropdown:: NumPy slicing and indexing operations
+            NumPy slicing and indexing operations:
 
-                .. code-block:: python
-
-                    # Single row
-                    row = objmask[10]
-
-                    # Rectangular region
-                    region = objmask[10:50, 20:60]
-
-                    # Column
-                    col = objmask[:, 5]
-
-                    # Boolean indexing
-                    foreground_indices = objmask > 0
+            >>> # Single row
+            >>> row = objmask[10]
+            >>> # Rectangular region
+            >>> region = objmask[10:50, 20:60]
+            >>> # Column
+            >>> col = objmask[:, 5]
+            >>> # Boolean indexing
+            >>> foreground_indices = objmask > 0
         """
         return (self._backend.toarray()[key] > 0).astype(int)
 
@@ -178,19 +164,15 @@ class ObjectMask(NapariLabelsMixin, SingleChannelAccessor):
                 match the shape of the indexed mask region.
 
         Examples:
-            .. dropdown:: Setting mask regions with scalars and arrays
+            Setting mask regions with scalars and arrays:
 
-                .. code-block:: python
-
-                    # Set a rectangular region to background (0)
-                    objmask[10:50, 20:60] = 0
-
-                    # Set with a matching array
-                    region_mask = np.ones((40, 40))
-                    objmask[10:50, 20:60] = region_mask
-
-                    # Set single pixel
-                    objmask[5, 10] = True
+            >>> # Set a rectangular region to background (0)
+            >>> objmask[10:50, 20:60] = 0
+            >>> # Set with a matching array
+            >>> region_mask = np.ones((40, 40))
+            >>> objmask[10:50, 20:60] = region_mask
+            >>> # Set single pixel
+            >>> objmask[5, 10] = True
 
         Note:
             The entire mask is relabeled after any modification. This ensures
@@ -236,12 +218,10 @@ class ObjectMask(NapariLabelsMixin, SingleChannelAccessor):
                 parent image dimensions.
 
         Examples:
-            .. dropdown:: Accessing mask shape
+            Accessing mask shape:
 
-                .. code-block:: python
-
-                    height, width = objmask.shape
-                    assert objmask.shape == image.gray.shape
+            >>> height, width = objmask.shape
+            >>> assert objmask.shape == image.gray.shape
         """
         return self._root_image.objmap.shape
 
@@ -257,13 +237,11 @@ class ObjectMask(NapariLabelsMixin, SingleChannelAccessor):
                 of the original sparse representation.
 
         Examples:
-            .. dropdown:: Creating an independent mask copy
+            Creating an independent mask copy:
 
-                .. code-block:: python
-
-                    # Create a modifiable copy for processing
-                    mask_copy = objmask.copy()
-                    mask_copy[10:50, 20:60] = 0  # Doesn't affect objmask
+            >>> # Create a modifiable copy for processing
+            >>> mask_copy = objmask.copy()
+            >>> mask_copy[10:50, 20:60] = 0  # Doesn't affect objmask
         """
         return (self._backend.toarray() > 0).astype(int).copy()
 
@@ -275,13 +253,11 @@ class ObjectMask(NapariLabelsMixin, SingleChannelAccessor):
         re-segmenting the image or clearing previous detection results.
 
         Examples:
-            .. dropdown:: Resetting the mask to cleared state
+            Resetting the mask to cleared state:
 
-                .. code-block:: python
-
-                    # Clear the mask and object map
-                    objmask.reset()
-                    # Now objmask contains only background (0s)
+            >>> # Clear the mask and object map
+            >>> objmask.reset()
+            >>> # Now objmask contains only background (0s)
 
         Note:
             This operation affects both the object mask and the parent image's object
@@ -318,20 +294,16 @@ class ObjectMask(NapariLabelsMixin, SingleChannelAccessor):
                 the rendered mask.
 
         Examples:
-            .. dropdown:: Displaying the mask with various options
+            Displaying the mask with various options:
 
-                .. code-block:: python
-
-                    # Display with default settings
-                    fig, ax = objmask.show()
-
-                    # Display with custom size and title
-                    fig, ax = objmask.show(figsize=(8, 8), title='Object Mask')
-
-                    # Display on existing axes
-                    fig, (ax1, ax2) = plt.subplots(1, 2)
-                    objmask.show(ax=ax1, title='Mask')
-                    image.gray.show(ax=ax2, title='Original')
+            >>> # Display with default settings
+            >>> fig, ax = objmask.show()
+            >>> # Display with custom size and title
+            >>> fig, ax = objmask.show(figsize=(8, 8), title='Object Mask')
+            >>> # Display on existing axes
+            >>> fig, (ax1, ax2) = plt.subplots(1, 2)
+            >>> objmask.show(ax=ax1, title='Mask')
+            >>> image.gray.show(ax=ax2, title='Original')
         """
         cmap = plt.get_cmap(cmap)
         cmap.set_bad(color="black")
@@ -358,18 +330,14 @@ class ObjectMask(NapariLabelsMixin, SingleChannelAccessor):
                 Foreground pixels retain their original values.
 
         Examples:
-            .. dropdown:: Extracting foreground from various array types
+            Extracting foreground from various array types:
 
-                .. code-block:: python
-
-                    # Extract foreground from a grayscale image
-                    foreground = objmask._create_foreground(image.gray[:])
-
-                    # Extract foreground from RGB image
-                    foreground_rgb = objmask._create_foreground(image.rgb[:])
-
-                    # Set background to white (255 for uint8)
-                    foreground = objmask._create_foreground(image.gray[:], bg_label=255)
+            >>> # Extract foreground from a grayscale image
+            >>> foreground = objmask._create_foreground(image.gray[:])
+            >>> # Extract foreground from RGB image
+            >>> foreground_rgb = objmask._create_foreground(image.rgb[:])
+            >>> # Set background to white (255 for uint8)
+            >>> foreground = objmask._create_foreground(image.gray[:], bg_label=255)
 
         Note:
             This is an internal method used by the parent image's accessor classes

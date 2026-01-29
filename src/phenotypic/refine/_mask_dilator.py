@@ -6,7 +6,7 @@ if TYPE_CHECKING:
     from phenotypic import Image
 
 from phenotypic.abc_ import ObjectRefiner
-from phenotypic.tools_ import FootprintMixin
+from phenotypic.tools_.mixin import FootprintMixin
 
 import numpy as np
 from skimage.morphology import dilation
@@ -51,19 +51,19 @@ class MaskDilator(ObjectRefiner, FootprintMixin):
             but risk over-connecting separate objects.
 
     Examples:
-        .. dropdown:: Merge fragmented colonies via dilation
+        Merge fragmented colonies via dilation:
 
-            >>> from phenotypic.refine import MaskDilator
-            >>> from phenotypic import Image
-            >>> from phenotypic.detect import OtsuDetector
-            >>> image = Image.imread("colony_plate.jpg")  # doctest: +SKIP
-            >>> detected = OtsuDetector().apply(image)  # doctest: +SKIP
-            >>> # Dilate with auto-scaled shape to bridge nearby fragments
-            >>> refiner = MaskDilator(shape='auto')  # doctest: +SKIP
-            >>> dilated = refiner.apply(detected)  # doctest: +SKIP
-            >>> # Or use a fixed disk shape with width 2 for moderate expansion
-            >>> refiner = MaskDilator(shape='disk', width=2)  # doctest: +SKIP
-            >>> dilated = refiner.apply(detected, inplace=False)  # doctest: +SKIP
+        >>> from phenotypic.refine import MaskDilator
+        >>> from phenotypic import Image
+        >>> from phenotypic.detect import OtsuDetector
+        >>> image = Image.imread("colony_plate.jpg")  # doctest: +SKIP
+        >>> detected = OtsuDetector().apply(image)  # doctest: +SKIP
+        >>> # Dilate with auto-scaled shape to bridge nearby fragments
+        >>> refiner = MaskDilator(shape='auto')  # doctest: +SKIP
+        >>> dilated = refiner.apply(detected)  # doctest: +SKIP
+        >>> # Or use a fixed disk shape with width 2 for moderate expansion
+        >>> refiner = MaskDilator(shape='disk', width=2)  # doctest: +SKIP
+        >>> dilated = refiner.apply(detected, inplace=False)  # doctest: +SKIP
 
     Raises:
         AttributeError: If an invalid ``shape`` type is provided (checked

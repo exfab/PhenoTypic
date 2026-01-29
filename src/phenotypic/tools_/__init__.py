@@ -13,9 +13,7 @@ from .funcs_ import timed_execution, is_binary_mask
 from . import constants_, exceptions_, colourspace
 from .hdf_ import HDF
 from . import slurm_
-from ._grid_inference_mixin import GridInferenceMixin
-from ._lazy_widget_mixin import LazyWidgetMixin
-from ._footprint_mixin import FootprintMixin
+from .mixin import GridInferenceMixin, LazyWidgetMixin, FootprintMixin, ClipControlMixin
 
 __all__ = [
     "timed_execution",
@@ -28,4 +26,5 @@ __all__ = [
     "GridInferenceMixin",
     "LazyWidgetMixin",
     "FootprintMixin",
+    "ClipControlMixin",
 ]

@@ -73,49 +73,39 @@ class MeasureShape(MeasureFeatures):
             - Orientation: Angle of major axis (radians, –π/2 to π/2).
 
     Examples:
-        .. dropdown:: Measure colony morphology for phenotypic classification
+        Measure colony morphology for phenotypic classification:
 
-            .. code-block:: python
+        >>> from phenotypic import Image
+        >>> from phenotypic.detect import OtsuDetector
+        >>> from phenotypic.measure import MeasureShape
+        >>> # Load plate with multiple morphotype colonies
+        >>> image = Image.imread("morphotype_plate.jpg")  # doctest: +SKIP
+        >>> detector = OtsuDetector()
+        >>> image = detector.operate(image)  # doctest: +SKIP
+        >>> # Measure morphology
+        >>> shaper = MeasureShape()
+        >>> shapes = shaper.operate(image)  # doctest: +SKIP
+        >>> # Classify morphotypes by circularity and solidity
+        >>> smooth_round = shapes[
+        ...     (shapes['Shape_Circularity'] > 0.8) &
+        ...     (shapes['Shape_Solidity'] > 0.95)
+        ... ]  # doctest: +SKIP
+        >>> invasive = shapes[shapes['Shape_Solidity'] < 0.85]  # doctest: +SKIP
+        >>> print(f"Smooth/round colonies: {len(smooth_round)}")  # doctest: +SKIP
+        >>> print(f"Invasive/spreading colonies: {len(invasive)}")  # doctest: +SKIP
 
-                from phenotypic import Image
-                from phenotypic.detect import OtsuDetector
-                from phenotypic.measure import MeasureShape
+        Detect elongated or directional growth:
 
-                # Load plate with multiple morphotype colonies
-                image = Image.imread("morphotype_plate.jpg")
-                detector = OtsuDetector()
-                image = detector.operate(image)
-
-                # Measure morphology
-                shaper = MeasureShape()
-                shapes = shaper.operate(image)
-
-                # Classify morphotypes by circularity and solidity
-                smooth_round = shapes[
-                    (shapes['Shape_Circularity'] > 0.8) &
-                    (shapes['Shape_Solidity'] > 0.95)
-                ]
-                invasive = shapes[shapes['Shape_Solidity'] < 0.85]
-
-                print(f"Smooth/round colonies: {len(smooth_round)}")
-                print(f"Invasive/spreading colonies: {len(invasive)}")
-
-        .. dropdown:: Detect elongated or directional growth
-
-            .. code-block:: python
-
-                # Use eccentricity and max width to find elongated colonies
-                shapes = shaper.operate(image)
-
-                elongated = shapes[shapes['Shape_Eccentricity'] > 0.7]
-                print(f"Highly elongated colonies: {len(elongated)}")
-
-                # Visualize growth directionality
-                import numpy as np
-                for idx, row in elongated.iterrows():
-                    angle = np.degrees(row['Shape_Orientation'])
-                    aspect = row['Shape_MajorAxisLength'] / row['Shape_MinorAxisLength']
-                    print(f"Colony {row['OBJECT_Label']}: angle={angle:.1f}°, aspect={aspect:.2f}")
+        >>> # Use eccentricity and max width to find elongated colonies
+        >>> shapes = shaper.operate(image)  # doctest: +SKIP
+        >>> elongated = shapes[shapes['Shape_Eccentricity'] > 0.7]  # doctest: +SKIP
+        >>> print(f"Highly elongated colonies: {len(elongated)}")  # doctest: +SKIP
+        >>> # Visualize growth directionality
+        >>> import numpy as np
+        >>> for idx, row in elongated.iterrows():  # doctest: +SKIP
+        ...     angle = np.degrees(row['Shape_Orientation'])
+        ...     aspect = row['Shape_MajorAxisLength'] / row['Shape_MinorAxisLength']
+        ...     print(f"Colony {row['OBJECT_Label']}: angle={angle:.1f}deg, aspect={aspect:.2f}")
     """
 
     _measurement_info_class = SHAPE

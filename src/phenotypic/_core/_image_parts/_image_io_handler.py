@@ -54,11 +54,11 @@ class ImageIOHandler(ImageColorSpace):
     extraction supports round-trip storage and recovery of PhenoTypic-specific data.
 
     Examples:
-        .. dropdown:: Basic usage
+        Basic usage:
 
-            >>> img = ImageIOHandler.imread('photo.jpg')
-            >>> img.save2hdf5('output.h5')
-            >>> loaded = ImageIOHandler.load_hdf5('output.h5', 'photo')
+        >>> img = ImageIOHandler.imread('photo.jpg')
+        >>> img.save2hdf5('output.h5')
+        >>> loaded = ImageIOHandler.load_hdf5('output.h5', 'photo')
     """
 
     def __init__(
@@ -633,11 +633,11 @@ class ImageIOHandler(ImageColorSpace):
             - All numeric data types are preserved when storing.
 
         Examples:
-            .. dropdown:: Save to HDF5
+            Save to HDF5:
 
-                >>> img = Image.imread('photo.jpg')
-                >>> img.save2hdf5('output.h5')
-                >>> img.save2hdf5('output.h5', compression='szip')
+            >>> img = Image.imread('photo.jpg')
+            >>> img.save2hdf5('output.h5')
+            >>> img.save2hdf5('output.h5', compression='szip')
         """
         with h5py.File(filename, mode="a") as filehandler:
             # 1) Create image group if it doesnt already exist & sets grp obj
@@ -728,11 +728,11 @@ class ImageIOHandler(ImageColorSpace):
             - Pickle files may not be compatible across Python versions.
 
         Examples:
-            .. dropdown:: Save to pickle
+            Save to pickle:
 
-                >>> img = Image.imread('photo.jpg')
-                >>> img.save2pickle('image.pkl')
-                >>> loaded = Image.load_pickle('image.pkl')
+            >>> img = Image.imread('photo.jpg')
+            >>> img.save2pickle('image.pkl')
+            >>> loaded = Image.load_pickle('image.pkl')
         """
         with open(filename, "wb") as filehandler:
             data2save = {
@@ -779,28 +779,26 @@ class ImageIOHandler(ImageColorSpace):
             - Backward compatible: Old pickles without grid_finder load as regular Image.
 
         Examples:
-            .. dropdown:: Load GridImage from pickle
+            Load GridImage from pickle:
 
-                >>> from phenotypic import Image, GridImage
-                >>> from phenotypic.grid import AutoGridFinder
-                >>>
-                >>> # Save a GridImage
-                >>> finder = AutoGridFinder(nrows=16, ncols=24)
-                >>> grid_img = GridImage('plate.jpg', grid_finder=finder)
-                >>> grid_img.save2pickle('plate.pkl')
-                >>>
-                >>> # Load automatically returns GridImage
-                >>> loaded = Image.load_pickle('plate.pkl')
-                >>> isinstance(loaded, GridImage)  # True
-                >>> loaded.nrows  # 16
-                >>> loaded.ncols  # 24
+            >>> from phenotypic import Image, GridImage
+            >>> from phenotypic.grid import AutoGridFinder
+            >>> # Save a GridImage
+            >>> finder = AutoGridFinder(nrows=16, ncols=24)
+            >>> grid_img = GridImage('plate.jpg', grid_finder=finder)
+            >>> grid_img.save2pickle('plate.pkl')
+            >>> # Load automatically returns GridImage
+            >>> loaded = Image.load_pickle('plate.pkl')
+            >>> isinstance(loaded, GridImage)  # True
+            >>> loaded.nrows  # 16
+            >>> loaded.ncols  # 24
 
-            .. dropdown:: Load regular Image from pickle
+            Load regular Image from pickle:
 
-                >>> img = Image.imread('photo.jpg')
-                >>> img.save2pickle('photo.pkl')
-                >>> loaded = Image.load_pickle('photo.pkl')
-                >>> isinstance(loaded, Image)  # True
+            >>> img = Image.imread('photo.jpg')
+            >>> img.save2pickle('photo.pkl')
+            >>> loaded = Image.load_pickle('photo.pkl')
+            >>> isinstance(loaded, Image)  # True
         """
         with open(filename, "rb") as f:
             loaded = pickle.load(f)

@@ -52,40 +52,32 @@ class MeasureGridSpread(GridMeasureFeatures):
                 Sorted in descending order by ObjectSpread.
 
     Examples:
-        .. dropdown:: Measure colony spread across a plate
+        Measure colony spread across a plate:
 
-            .. code-block:: python
+        >>> from phenotypic import GridImage
+        >>> from phenotypic.detect import OtsuDetector
+        >>> from phenotypic.measure import MeasureGridSpread
+        >>> # Load a plate with grid
+        >>> grid_image = GridImage.imread("plate_384well.jpg", nrows=16, ncols=24)  # doctest: +SKIP
+        >>> # Detect colonies
+        >>> detector = OtsuDetector()
+        >>> grid_image = detector.operate(grid_image)  # doctest: +SKIP
+        >>> # Measure spread per well
+        >>> spreader = MeasureGridSpread()
+        >>> spread_results = spreader.operate(grid_image)  # doctest: +SKIP
+        >>> # Find wells with high spread (potential over-segmentation)
+        >>> high_spread = spread_results.nlargest(10, 'GridSpread_ObjectSpread')  # doctest: +SKIP
+        >>> print(f"Top 10 problematic wells:")  # doctest: +SKIP
+        >>> print(high_spread)  # doctest: +SKIP
 
-                from phenotypic import GridImage
-                from phenotypic.detect import OtsuDetector
-                from phenotypic.measure import MeasureGridSpread
+        Identify over-segmented wells:
 
-                # Load a plate with grid
-                grid_image = GridImage.imread("plate_384well.jpg", nrows=16, ncols=24)
-
-                # Detect colonies
-                detector = OtsuDetector()
-                grid_image = detector.operate(grid_image)
-
-                # Measure spread per well
-                spreader = MeasureGridSpread()
-                spread_results = spreader.operate(grid_image)
-
-                # Find wells with high spread (potential over-segmentation)
-                high_spread = spread_results.nlargest(10, 'GridSpread_ObjectSpread')
-                print(f"Top 10 problematic wells:")
-                print(high_spread)
-
-        .. dropdown:: Identify over-segmented wells
-
-            .. code-block:: python
-
-                # Flag wells with both multiple detections AND high spread
-                multi_obj = spread_results[spread_results['count'] > 1]
-                high_spread_multi = multi_obj[
-                    multi_obj['GridSpread_ObjectSpread'] > spread_results['GridSpread_ObjectSpread'].quantile(0.75)
-                ]
-                print(f"Wells needing refinement: {list(high_spread_multi.index)}")
+        >>> # Flag wells with both multiple detections AND high spread
+        >>> multi_obj = spread_results[spread_results['count'] > 1]  # doctest: +SKIP
+        >>> high_spread_multi = multi_obj[
+        ...     multi_obj['GridSpread_ObjectSpread'] > spread_results['GridSpread_ObjectSpread'].quantile(0.75)
+        ... ]  # doctest: +SKIP
+        >>> print(f"Wells needing refinement: {list(high_spread_multi.index)}")  # doctest: +SKIP
     """
 
     _measurement_info_class = GRID_SPREAD

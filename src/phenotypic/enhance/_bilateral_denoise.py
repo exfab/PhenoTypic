@@ -80,97 +80,71 @@ class BilateralDenoise(ImageEnhancer):
         cval (float): Constant fill value when mode='constant'.
 
     Examples:
-        .. dropdown:: Denoising a grainy agar plate scan before colony detection
+        Denoising a grainy agar plate scan before colony detection:
 
-            .. code-block:: python
+        >>> from phenotypic import Image
+        >>> from phenotypic.enhance import BilateralDenoise
+        >>> from phenotypic.detect import OtsuDetector
+        >>> # Load a noisy scan (e.g., high-ISO smartphone image or old scanner)
+        >>> image = Image("noisy_plate.jpg")  # doctest: +SKIP
+        >>> # Apply bilateral denoising with moderate settings
+        >>> denoiser = BilateralDenoise(sigma_color=0.1, sigma_spatial=15)
+        >>> denoised = denoiser.apply(image)  # doctest: +SKIP
+        >>> # Detect colonies in cleaned enhanced grayscale
+        >>> detector = OtsuDetector()
+        >>> detected = detector.apply(denoised)  # doctest: +SKIP
+        >>> colonies = detected.objects  # doctest: +SKIP
+        >>> print(f"Detected {len(colonies)} colonies in denoised image")  # doctest: +SKIP
 
-                from phenotypic import Image
-                from phenotypic.enhance import BilateralDenoise
-                from phenotypic.detect import OtsuDetector
+        Chaining denoising and sharpening for challenging images:
 
-                # Load a noisy scan (e.g., high-ISO smartphone image or old scanner)
-                image = Image("noisy_plate.jpg")
+        >>> from phenotypic import Image, ImagePipeline
+        >>> from phenotypic.enhance import BilateralDenoise, UnsharpMask
+        >>> from phenotypic.detect import OtsuDetector
+        >>> # Scenario: Noisy image with low-contrast colonies
+        >>> # Solution: Denoise first (remove artifacts), then sharpen (enhance edges)
+        >>> pipeline = ImagePipeline()
+        >>> # Step 1: Remove noise while preserving colony edges
+        >>> # sigma_color=0.08 balances denoising and edge sharpness
+        >>> pipeline.add(BilateralDenoise(sigma_color=0.08, sigma_spatial=15))
+        >>> # Step 2: Sharpen remaining edges for better segmentation
+        >>> pipeline.add(UnsharpMask(radius=2.0, amount=1.5))
+        >>> # Step 3: Detect
+        >>> pipeline.add(OtsuDetector())
+        >>> images = [Image(f) for f in image_paths]  # doctest: +SKIP
+        >>> results = pipeline.operate(images)  # doctest: +SKIP
 
-                # Apply bilateral denoising with moderate settings
-                denoiser = BilateralDenoise(sigma_color=0.1, sigma_spatial=15)
-                denoised = denoiser.apply(image)
+        Heavy denoising for very grainy plates with large colonies:
 
-                # Detect colonies in cleaned enhanced grayscale
-                detector = OtsuDetector()
-                detected = detector.apply(denoised)
+        >>> from phenotypic import Image
+        >>> from phenotypic.enhance import BilateralDenoise
+        >>> # For large-colony plates (e.g., petri dishes, sparse growth) with heavy
+        >>> # scanner noise or texture, use larger sigma_spatial to smooth broader regions
+        >>> image = Image("sparse_grainy_plate.jpg")  # doctest: +SKIP
+        >>> # Heavy denoising: large spatial neighborhood, moderate color tolerance
+        >>> heavy_denoiser = BilateralDenoise(
+        ...     sigma_color=0.15,      # Blend pixels across wider brightness range
+        ...     sigma_spatial=30,      # Smooth over large neighborhoods
+        ... )
+        >>> denoised = heavy_denoiser.apply(image)  # doctest: +SKIP
+        >>> # Result: Agar grain and dust removed, but large colony edges preserved
+        >>> print("Heavy denoising applied.")  # doctest: +SKIP
 
-                colonies = detected.objects
-                print(f"Detected {len(colonies)} colonies in denoised image")
+        Selective denoising for high-resolution dense plates:
 
-        .. dropdown:: Chaining denoising and sharpening for challenging images
-
-            .. code-block:: python
-
-                from phenotypic import Image, ImagePipeline
-                from phenotypic.enhance import BilateralDenoise, UnsharpMask
-                from phenotypic.detect import OtsuDetector
-
-                # Scenario: Noisy image with low-contrast colonies
-                # Solution: Denoise first (remove artifacts), then sharpen (enhance edges)
-
-                pipeline = ImagePipeline()
-
-                # Step 1: Remove noise while preserving colony edges
-                # sigma_color=0.08 balances denoising and edge sharpness
-                pipeline.add(BilateralDenoise(sigma_color=0.08, sigma_spatial=15))
-
-                # Step 2: Sharpen remaining edges for better segmentation
-                pipeline.add(UnsharpMask(width=2.0, amount=1.5))
-
-                # Step 3: Detect
-                pipeline.add(OtsuDetector())
-
-                images = [Image(f) for f in image_paths]
-                results = pipeline.operate(images)
-
-        .. dropdown:: Heavy denoising for very grainy plates with large colonies
-
-            .. code-block:: python
-
-                from phenotypic import Image
-                from phenotypic.enhance import BilateralDenoise
-
-                # For large-colony plates (e.g., petri dishes, sparse growth) with heavy
-                # scanner noise or texture, use larger sigma_spatial to smooth broader regions
-
-                image = Image("sparse_grainy_plate.jpg")
-
-                # Heavy denoising: large spatial neighborhood, moderate color tolerance
-                heavy_denoiser = BilateralDenoise(
-                    sigma_color=0.15,      # Blend pixels across wider brightness range
-                    sigma_spatial=30,      # Smooth over large neighborhoods
-                )
-                denoised = heavy_denoiser.apply(image)
-
-                # Result: Agar grain and dust removed, but large colony edges preserved
-                print("Heavy denoising applied.")
-
-        .. dropdown:: Selective denoising for high-resolution dense plates
-
-            .. code-block:: python
-
-                from phenotypic import Image
-                from phenotypic.enhance import BilateralDenoise
-
-                # For high-resolution 384-well plates with tiny colonies, small sigma_spatial
-                # preserves fine structure while removing only local speckles
-
-                image = Image("dense_hires_plate.jpg")
-
-                # Conservative denoising: small spatial neighborhood, strict color matching
-                conservative_denoiser = BilateralDenoise(
-                    sigma_color=0.04,      # Only average similar pixels
-                    sigma_spatial=8,       # Small neighborhood, preserves fine details
-                )
-                denoised = conservative_denoiser.apply(image)
-
-                # Result: Local speckles removed, but colony boundaries and microstructure intact
-                print("Light denoising applied; fine morphology preserved.")
+        >>> from phenotypic import Image
+        >>> from phenotypic.enhance import BilateralDenoise
+        >>> # For high-resolution 384-well plates with tiny colonies, small sigma_spatial
+        >>> # preserves fine structure while removing only local speckles
+        >>> image = Image("dense_hires_plate.jpg")  # doctest: +SKIP
+        >>> # Conservative denoising: small spatial neighborhood, strict color matching
+        >>> conservative_denoiser = BilateralDenoise(
+        ...     sigma_color=0.04,      # Only average similar pixels
+        ...     sigma_spatial=8,       # Small neighborhood, preserves fine details
+        ... )
+        >>> denoised = conservative_denoiser.apply(image)  # doctest: +SKIP
+        >>> # Result: Local speckles removed, but colony boundaries and microstructure intact
+        >>> print("Light denoising applied; fine morphology preserved.")  # doctest: +SKIP
     """
 
     def __init__(
@@ -181,6 +155,7 @@ class BilateralDenoise(ImageEnhancer):
             win_size: int | None = None,
             mode: str = "constant",
             cval: float = 0,
+            clip: bool = True,
     ):
         """
         Parameters:
@@ -213,6 +188,9 @@ class BilateralDenoise(ImageEnhancer):
                 'reflect' mirrors edges, useful for non-border regions.
             cval (float): Constant fill value for boundaries when mode='constant'. Default
                 is 0 (black), appropriate for agar backgrounds.
+            clip (bool): Whether to clip output to [0, 1] range. Default True. Set to
+                False when using with variance-stabilizing transforms (e.g., GAT) that
+                require preserving the original scale of transformed data.
         """
         if sigma_spatial <= 0:
             raise ValueError("sigma_spatial must be > 0")
@@ -231,11 +209,12 @@ class BilateralDenoise(ImageEnhancer):
         self.win_size = win_size
         self.mode = mode
         self.cval = cval
+        self.clip = clip
 
     def _operate(self, image: Image) -> Image:
         """Apply bilateral denoising to reduce noise while preserving colony edges in the enhanced grayscale channel."""
         # denoise_bilateral may require a writable array, so create a copy
-        image.enh_gray[:] = denoise_bilateral(
+        result = denoise_bilateral(
                 image=image.enh_gray[:].copy(),
                 sigma_color=self.sigma_color,
                 sigma_spatial=self.sigma_spatial,
@@ -243,5 +222,8 @@ class BilateralDenoise(ImageEnhancer):
                 mode=self.mode,
                 cval=self.cval,
                 channel_axis=None,
-        ).clip(0.0, 1.0)
+        )
+        if self.clip:
+            result = result.clip(0.0, 1.0)
+        image.enh_gray[:] = result
         return image

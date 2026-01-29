@@ -176,7 +176,7 @@ class OutputManager:
 
         if self.overlay_mode == "figure":
             # Use matplotlib (original behavior)
-            fig, ax = image.show_overlay()
+            fig, ax = image.plot.overlay()
             fig.savefig(output_path, bbox_inches="tight", dpi=150)
             plt.close(fig)
         else:

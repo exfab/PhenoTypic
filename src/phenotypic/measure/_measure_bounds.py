@@ -49,36 +49,30 @@ class MeasureBounds(MeasureFeatures):
             - MaxRR, MaxCC: Maximum (bottom-right) row and column of bounding box.
 
     Examples:
-        .. dropdown:: Extract colony boundaries for a plate image
+        Extract colony boundaries for a plate image:
 
-            .. code-block:: python
+        >>> from phenotypic import Image
+        >>> from phenotypic.detect import OtsuDetector
+        >>> from phenotypic.measure import MeasureBounds
+        >>> # Load image and detect colonies
+        >>> image = Image.imread("colony_plate.jpg")  # doctest: +SKIP
+        >>> detector = OtsuDetector()
+        >>> image = detector.operate(image)  # doctest: +SKIP
+        >>> # Extract boundaries
+        >>> boundsizer = MeasureBounds()
+        >>> bounds = boundsizer.operate(image)  # doctest: +SKIP
+        >>> print(bounds.head())  # doctest: +SKIP
+        # Output: Label, CenterRR, CenterCC, MinRR, MinCC, MaxRR, MaxCC
 
-                from phenotypic import Image
-                from phenotypic.detect import OtsuDetector
-                from phenotypic.measure import MeasureBounds
+        Use boundaries to extract colony ROIs:
 
-                # Load image and detect colonies
-                image = Image.imread("colony_plate.jpg")
-                detector = OtsuDetector()
-                image = detector.operate(image)
-
-                # Extract boundaries
-                boundsizer = MeasureBounds()
-                bounds = boundsizer.operate(image)
-                print(bounds.head())
-                # Output: Label, CenterRR, CenterCC, MinRR, MinCC, MaxRR, MaxCC
-
-        .. dropdown:: Use boundaries to extract colony ROIs
-
-            .. code-block:: python
-
-                # Extract a region for each colony for detailed analysis
-                bounds = boundsizer.operate(image)
-                for idx, row in bounds.iterrows():
-                    min_rr, max_rr = int(row['BBOX_MinRR']), int(row['BBOX_MaxRR'])
-                    min_cc, max_cc = int(row['BBOX_MinCC']), int(row['BBOX_MaxCC'])
-                    colony_roi = image.rgb[min_rr:max_rr, min_cc:max_cc]
-                    # Process ROI independently (e.g., color analysis, morphology)
+        >>> # Extract a region for each colony for detailed analysis
+        >>> bounds = boundsizer.operate(image)  # doctest: +SKIP
+        >>> for idx, row in bounds.iterrows():  # doctest: +SKIP
+        ...     min_rr, max_rr = int(row['BBOX_MinRR']), int(row['BBOX_MaxRR'])
+        ...     min_cc, max_cc = int(row['BBOX_MinCC']), int(row['BBOX_MaxCC'])
+        ...     colony_roi = image.rgb[min_rr:max_rr, min_cc:max_cc]
+        ...     # Process ROI independently (e.g., color analysis, morphology)
     """
 
     _measurement_info_class = BBOX

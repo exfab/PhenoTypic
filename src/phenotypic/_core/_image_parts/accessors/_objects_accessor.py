@@ -35,28 +35,22 @@ class ObjectsAccessor:
         _root_image (Image): The parent Image containing the labeled colony map (objmap).
 
     Examples:
-        .. dropdown:: Access detected colonies and measure their properties
+        Access detected colonies and measure their properties:
 
-            .. code-block:: python
-
-                from phenotypic import Image
-                from phenotypic.detect import RoundPeaksDetector
-
-                # Load plate image and detect colonies
-                plate = Image.from_file("colony_array.png")
-                detector = RoundPeaksDetector()
-                detector.apply(plate)
-
-                # Access colony properties
-                print(f"Detected {len(plate.objects)} colonies")
-
-                # Iterate over all colonies
-                for colony in plate.objects:
-                    print(f"Colony area: {colony.gray.sum()}")
-
-                # Get information for all colonies
-                colony_info = plate.objects.info()
-                print(colony_info[["ObjectLabel", "Bbox_CenterRR", "Bbox_CenterCC"]])
+        >>> from phenotypic import Image
+        >>> from phenotypic.detect import RoundPeaksDetector
+        >>> # Load plate image and detect colonies
+        >>> plate = Image.from_file("colony_array.png")
+        >>> detector = RoundPeaksDetector()
+        >>> detector.apply(plate)
+        >>> # Access colony properties
+        >>> print(f"Detected {len(plate.objects)} colonies")
+        >>> # Iterate over all colonies
+        >>> for colony in plate.objects:
+        ...     print(f"Colony area: {colony.gray.sum()}")
+        >>> # Get information for all colonies
+        >>> colony_info = plate.objects.info()
+        >>> print(colony_info[["ObjectLabel", "Bbox_CenterRR", "Bbox_CenterCC"]])
     """
 
     def __init__(self, root_image: Image):
@@ -72,20 +66,16 @@ class ObjectsAccessor:
                 identify and label individual colonies.
 
         Examples:
-            .. dropdown:: Accessor is created automatically when accessing colonies
+            Accessor is created automatically when accessing colonies:
 
-                .. code-block:: python
-
-                    from phenotypic import Image
-                    from phenotypic.detect import RoundPeaksDetector
-
-                    plate = Image.from_file("plate.png")
-                    detector = RoundPeaksDetector()
-                    detector.apply(plate)
-
-                    # ObjectsAccessor is automatically initialized
-                    accessor = plate.objects  # Uses __init__ internally
-                    print(f"Found {len(accessor)} colonies")
+            >>> from phenotypic import Image
+            >>> from phenotypic.detect import RoundPeaksDetector
+            >>> plate = Image.from_file("plate.png")
+            >>> detector = RoundPeaksDetector()
+            >>> detector.apply(plate)
+            >>> # ObjectsAccessor is automatically initialized
+            >>> accessor = plate.objects  # Uses __init__ internally
+            >>> print(f"Found {len(accessor)} colonies")
         """
         self._root_image = root_image
 
@@ -101,29 +91,23 @@ class ObjectsAccessor:
                 colonies have been detected.
 
         Examples:
-            .. dropdown:: Check colony count after detection
+            Check colony count after detection:
 
-                .. code-block:: python
+            >>> from phenotypic import Image
+            >>> from phenotypic.detect import RoundPeaksDetector
+            >>> plate = Image.from_file("96well_array.png")
+            >>> detector = RoundPeaksDetector()
+            >>> detector.apply(plate)
+            >>> # Check if expected number of colonies detected
+            >>> colony_count = len(plate.objects)
+            >>> expected_count = 96
+            >>> if colony_count != expected_count:
+            ...     print(f"Warning: Expected {expected_count} colonies, found {colony_count}")
 
-                    from phenotypic import Image
-                    from phenotypic.detect import RoundPeaksDetector
+            Use in conditional logic:
 
-                    plate = Image.from_file("96well_array.png")
-                    detector = RoundPeaksDetector()
-                    detector.apply(plate)
-
-                    # Check if expected number of colonies detected
-                    colony_count = len(plate.objects)
-                    expected_count = 96
-                    if colony_count != expected_count:
-                        print(f"Warning: Expected {expected_count} colonies, found {colony_count}")
-
-            .. dropdown:: Use in conditional logic
-
-                .. code-block:: python
-
-                    if len(plate.objects) == 0:
-                        raise RuntimeError("No colonies detected. Check detector parameters.")
+            >>> if len(plate.objects) == 0:
+            ...     raise RuntimeError("No colonies detected. Check detector parameters.")
         """
         return self._root_image.num_objects
 
@@ -145,44 +129,35 @@ class ObjectsAccessor:
                 pixels set to 0.
 
         Examples:
-            .. dropdown:: Compute average intensity for each colony
+            Compute average intensity for each colony:
 
-                .. code-block:: python
+            >>> from phenotypic import Image
+            >>> from phenotypic.detect import RoundPeaksDetector
+            >>> plate = Image.from_file("fluorescent_colonies.png")
+            >>> detector = RoundPeaksDetector()
+            >>> detector.apply(plate)
+            >>> # Calculate mean fluorescence for each colony
+            >>> intensities = []
+            >>> for colony in plate.objects:
+            ...     mean_intensity = colony.gray.mean()
+            ...     intensities.append(mean_intensity)
+            >>> print(f"Average colony intensity: {sum(intensities) / len(intensities)}")
 
-                    from phenotypic import Image
-                    from phenotypic.detect import RoundPeaksDetector
+            Filter colonies by size:
 
-                    plate = Image.from_file("fluorescent_colonies.png")
-                    detector = RoundPeaksDetector()
-                    detector.apply(plate)
+            >>> # Get all colonies larger than 500 pixels
+            >>> large_colonies = [
+            ...     colony for colony in plate.objects
+            ...     if (colony.objmap > 0).sum() > 500
+            ... ]
+            >>> print(f"Found {len(large_colonies)} large colonies")
 
-                    # Calculate mean fluorescence for each colony
-                    intensities = []
-                    for colony in plate.objects:
-                        mean_intensity = colony.gray.mean()
-                        intensities.append(mean_intensity)
+            Extract colony names for tracking:
 
-                    print(f"Average colony intensity: {sum(intensities) / len(intensities)}")
-
-            .. dropdown:: Filter colonies by size
-
-                .. code-block:: python
-
-                    # Get all colonies larger than 500 pixels
-                    large_colonies = [
-                        colony for colony in plate.objects
-                        if (colony.objmap > 0).sum() > 500
-                    ]
-                    print(f"Found {len(large_colonies)} large colonies")
-
-            .. dropdown:: Extract colony names for tracking
-
-                .. code-block:: python
-
-                    colony_names = [
-                        obj.metadata[METADATA.IMAGE_NAME]
-                        for obj in plate.objects
-                    ]
+            >>> colony_names = [
+            ...     obj.metadata[METADATA.IMAGE_NAME]
+            ...     for obj in plate.objects
+            ... ]
         """
         for i in range(self._root_image.num_objects):
             yield self[i]
@@ -211,41 +186,32 @@ class ObjectsAccessor:
             IndexError: If index is negative or >= the total number of colonies.
 
         Examples:
-            .. dropdown:: Extract the first detected colony
+            Extract the first detected colony:
 
-                .. code-block:: python
+            >>> from phenotypic import Image
+            >>> from phenotypic.detect import RoundPeaksDetector
+            >>> plate = Image.from_file("colony_plate.png")
+            >>> detector = RoundPeaksDetector()
+            >>> detector.apply(plate)
+            >>> # Get first colony
+            >>> first_colony = plate.objects[0]
+            >>> print(f"First colony label: {first_colony.objmap.max()}")
+            >>> print(f"Colony size: {(first_colony.objmap > 0).sum()} pixels")
 
-                    from phenotypic import Image
-                    from phenotypic.detect import RoundPeaksDetector
+            Access specific colonies for comparison:
 
-                    plate = Image.from_file("colony_plate.png")
-                    detector = RoundPeaksDetector()
-                    detector.apply(plate)
+            >>> # Compare first and last colonies
+            >>> first = plate.objects[0]
+            >>> last = plate.objects[len(plate.objects) - 1]
+            >>> print(f"First colony mean intensity: {first.gray.mean()}")
+            >>> print(f"Last colony mean intensity: {last.gray.mean()}")
 
-                    # Get first colony
-                    first_colony = plate.objects[0]
-                    print(f"First colony label: {first_colony.objmap.max()}")
-                    print(f"Colony size: {(first_colony.objmap > 0).sum()} pixels")
+            Use with enumerate for indexed processing:
 
-            .. dropdown:: Access specific colonies for comparison
-
-                .. code-block:: python
-
-                    # Compare first and last colonies
-                    first = plate.objects[0]
-                    last = plate.objects[len(plate.objects) - 1]
-
-                    print(f"First colony mean intensity: {first.gray.mean()}")
-                    print(f"Last colony mean intensity: {last.gray.mean()}")
-
-            .. dropdown:: Use with enumerate for indexed processing
-
-                .. code-block:: python
-
-                    for idx, colony in enumerate(plate.objects):
-                        if idx % 10 == 0:
-                            # Process every 10th colony
-                            colony.show()
+            >>> for idx, colony in enumerate(plate.objects):
+            ...     if idx % 10 == 0:
+            ...         # Process every 10th colony
+            ...         colony.show()
         """
         current_object = self.props[index]
         label = current_object.label
@@ -281,43 +247,35 @@ class ObjectsAccessor:
                 Refer to scikit-image documentation for the complete list of available properties.
 
         Examples:
-            .. dropdown:: Extract colony areas
+            Extract colony areas:
 
-                .. code-block:: python
+            >>> from phenotypic import Image
+            >>> from phenotypic.detect import RoundPeaksDetector
+            >>> plate = Image.from_file("colony_array.png")
+            >>> detector = RoundPeaksDetector()
+            >>> detector.apply(plate)
+            >>> # Get areas of all colonies
+            >>> areas = [prop.area for prop in plate.objects.props]
+            >>> print(f"Colony sizes: {areas}")
+            >>> print(f"Mean colony size: {sum(areas) / len(areas):.1f} pixels")
 
-                    from phenotypic import Image
-                    from phenotypic.detect import RoundPeaksDetector
+            Access multiple properties per colony:
 
-                    plate = Image.from_file("colony_array.png")
-                    detector = RoundPeaksDetector()
-                    detector.apply(plate)
+            >>> for prop in plate.objects.props:
+            ...     print(f"Colony {prop.label}:")
+            ...     print(f"  Area: {prop.area} pixels")
+            ...     print(f"  Centroid: ({prop.centroid[0]:.1f}, {prop.centroid[1]:.1f})")
+            ...     print(f"  Mean intensity: {prop.mean_intensity:.2f}")
+            ...     print(f"  Eccentricity: {prop.eccentricity:.3f}")
 
-                    # Get areas of all colonies
-                    areas = [prop.area for prop in plate.objects.props]
-                    print(f"Colony sizes: {areas}")
-                    print(f"Mean colony size: {sum(areas) / len(areas):.1f} pixels")
+            Filter colonies by morphology:
 
-            .. dropdown:: Access multiple properties per colony
-
-                .. code-block:: python
-
-                    for prop in plate.objects.props:
-                        print(f"Colony {prop.label}:")
-                        print(f"  Area: {prop.area} pixels")
-                        print(f"  Centroid: ({prop.centroid[0]:.1f}, {prop.centroid[1]:.1f})")
-                        print(f"  Mean intensity: {prop.mean_intensity:.2f}")
-                        print(f"  Eccentricity: {prop.eccentricity:.3f}")
-
-            .. dropdown:: Filter colonies by morphology
-
-                .. code-block:: python
-
-                    # Find circular colonies (low eccentricity)
-                    circular_colonies = [
-                        prop for prop in plate.objects.props
-                        if prop.eccentricity < 0.5
-                    ]
-                    print(f"Found {len(circular_colonies)} circular colonies")
+            >>> # Find circular colonies (low eccentricity)
+            >>> circular_colonies = [
+            ...     prop for prop in plate.objects.props
+            ...     if prop.eccentricity < 0.5
+            ... ]
+            >>> print(f"Found {len(circular_colonies)} circular colonies")
         """
         return regionprops(
                 label_image=self._root_image.objmap[:],
@@ -341,41 +299,33 @@ class ObjectsAccessor:
                 if no colonies have been detected. Background pixels (labeled 0) are excluded.
 
         Examples:
-            .. dropdown:: Check which colonies are present
+            Check which colonies are present:
 
-                .. code-block:: python
+            >>> from phenotypic import Image
+            >>> from phenotypic.detect import RoundPeaksDetector
+            >>> plate = Image.from_file("colony_array.png")
+            >>> detector = RoundPeaksDetector()
+            >>> detector.apply(plate)
+            >>> labels = plate.objects.labels
+            >>> print(f"Detected colonies with labels: {labels}")
+            >>> print(f"Labels range from {min(labels)} to {max(labels)}")
 
-                    from phenotypic import Image
-                    from phenotypic.detect import RoundPeaksDetector
+            Check if a specific colony exists:
 
-                    plate = Image.from_file("colony_array.png")
-                    detector = RoundPeaksDetector()
-                    detector.apply(plate)
+            >>> if 5 in plate.objects.labels:
+            ...     colony_5 = plate.objects.loc(5)
+            ...     print(f"Colony 5 area: {colony_5.gray.sum()}")
+            ... else:
+            ...     print("Colony 5 not found")
 
-                    labels = plate.objects.labels
-                    print(f"Detected colonies with labels: {labels}")
-                    print(f"Labels range from {min(labels)} to {max(labels)}")
+            Verify contiguous labeling:
 
-            .. dropdown:: Check if a specific colony exists
-
-                .. code-block:: python
-
-                    if 5 in plate.objects.labels:
-                        colony_5 = plate.objects.loc(5)
-                        print(f"Colony 5 area: {colony_5.gray.sum()}")
-                    else:
-                        print("Colony 5 not found")
-
-            .. dropdown:: Verify contiguous labeling
-
-                .. code-block:: python
-
-                    labels = plate.objects.labels
-                    expected_labels = list(range(1, len(labels) + 1))
-                    if labels == expected_labels:
-                        print("Labels are contiguous")
-                    else:
-                        print("Labels have gaps - consider using relabel()")
+            >>> labels = plate.objects.labels
+            >>> expected_labels = list(range(1, len(labels) + 1))
+            >>> if labels == expected_labels:
+            ...     print("Labels are contiguous")
+            ... else:
+            ...     print("Labels have gaps - consider using relabel()")
         """
         # considered using a simple numpy.unique() call on the object map, but wanted to guarantee that the labels will always be consistent
         # with any skimage outputs.
@@ -401,42 +351,34 @@ class ObjectsAccessor:
                 - col_slice: slice(min_col, max_col) - includes cols from min_col to max_col-1
 
         Examples:
-            .. dropdown:: Extract bounding box regions from the grayscale image
+            Extract bounding box regions from the grayscale image:
 
-                .. code-block:: python
+            >>> from phenotypic import Image
+            >>> from phenotypic.detect import RoundPeaksDetector
+            >>> plate = Image.from_file("colony_array.png")
+            >>> detector = RoundPeaksDetector()
+            >>> detector.apply(plate)
+            >>> # Get the bounding box region for the first colony
+            >>> first_slice = plate.objects.slices[0]
+            >>> first_colony_region = plate.gray[first_slice]
+            >>> print(f"First colony bounding box shape: {first_colony_region.shape}")
 
-                    from phenotypic import Image
-                    from phenotypic.detect import RoundPeaksDetector
+            Process all colonies using their bounding boxes:
 
-                    plate = Image.from_file("colony_array.png")
-                    detector = RoundPeaksDetector()
-                    detector.apply(plate)
+            >>> for idx, bbox_slice in enumerate(plate.objects.slices):
+            ...     colony_region = plate.gray[bbox_slice]
+            ...     mean_intensity = colony_region.mean()
+            ...     print(f"Colony {idx}: mean intensity = {mean_intensity:.2f}")
 
-                    # Get the bounding box region for the first colony
-                    first_slice = plate.objects.slices[0]
-                    first_colony_region = plate.gray[first_slice]
-                    print(f"First colony bounding box shape: {first_colony_region.shape}")
+            Extract bounding boxes from multiple image channels:
 
-            .. dropdown:: Process all colonies using their bounding boxes
-
-                .. code-block:: python
-
-                    for idx, bbox_slice in enumerate(plate.objects.slices):
-                        colony_region = plate.gray[bbox_slice]
-                        mean_intensity = colony_region.mean()
-                        print(f"Colony {idx}: mean intensity = {mean_intensity:.2f}")
-
-            .. dropdown:: Extract bounding boxes from multiple image channels
-
-                .. code-block:: python
-
-                    # Process RGB channels for each colony
-                    for bbox_slice in plate.objects.slices:
-                        r_channel = plate.rgb[bbox_slice][..., 0]
-                        g_channel = plate.rgb[bbox_slice][..., 1]
-                        b_channel = plate.rgb[bbox_slice][..., 2]
-                        print(f"R: {r_channel.mean():.1f}, G: {g_channel.mean():.1f}, "
-                              f"B: {b_channel.mean():.1f}")
+            >>> # Process RGB channels for each colony
+            >>> for bbox_slice in plate.objects.slices:
+            ...     r_channel = plate.rgb[bbox_slice][..., 0]
+            ...     g_channel = plate.rgb[bbox_slice][..., 1]
+            ...     b_channel = plate.rgb[bbox_slice][..., 2]
+            ...     print(f"R: {r_channel.mean():.1f}, G: {g_channel.mean():.1f}, "
+            ...           f"B: {b_channel.mean():.1f}")
         """
         return [x.slice for x in self.props]
 
@@ -463,47 +405,37 @@ class ObjectsAccessor:
                 colony.
 
         Examples:
-            .. dropdown:: Map label to index for accessing properties
+            Map label to index for accessing properties:
 
-                .. code-block:: python
+            >>> from phenotypic import Image
+            >>> from phenotypic.detect import RoundPeaksDetector
+            >>> plate = Image.from_file("colony_array.png")
+            >>> detector = RoundPeaksDetector()
+            >>> detector.apply(plate)
+            >>> # Find the position index for colony label 5
+            >>> idx = plate.objects.get_label_idx(5)
+            >>> print(f"Colony with label 5 is at position {idx}")
+            >>> # Use the index to access properties
+            >>> colony_slice = plate.objects.slices[idx]
+            >>> colony_props = plate.objects.props[idx]
+            >>> print(f"Colony 5 area: {colony_props.area}")
 
-                    from phenotypic import Image
-                    from phenotypic.detect import RoundPeaksDetector
+            Use with non-contiguous labels:
 
-                    plate = Image.from_file("colony_array.png")
-                    detector = RoundPeaksDetector()
-                    detector.apply(plate)
+            >>> # After filtering, labels may not be contiguous
+            >>> labels = plate.objects.labels  # e.g., [1, 2, 5, 8, 10]
+            >>> # Get position index for label 8 (which is at position 3)
+            >>> idx = plate.objects.get_label_idx(8)  # Returns 3
+            >>> colony_8 = plate.objects.iloc(idx)
 
-                    # Find the position index for colony label 5
-                    idx = plate.objects.get_label_idx(5)
-                    print(f"Colony with label 5 is at position {idx}")
+            Verify label exists before accessing:
 
-                    # Use the index to access properties
-                    colony_slice = plate.objects.slices[idx]
-                    colony_props = plate.objects.props[idx]
-                    print(f"Colony 5 area: {colony_props.area}")
-
-            .. dropdown:: Use with non-contiguous labels
-
-                .. code-block:: python
-
-                    # After filtering, labels may not be contiguous
-                    labels = plate.objects.labels  # e.g., [1, 2, 5, 8, 10]
-
-                    # Get position index for label 8 (which is at position 3)
-                    idx = plate.objects.get_label_idx(8)  # Returns 3
-                    colony_8 = plate.objects.iloc(idx)
-
-            .. dropdown:: Verify label exists before accessing
-
-                .. code-block:: python
-
-                    desired_label = 42
-                    if desired_label in plate.objects.labels:
-                        idx = plate.objects.get_label_idx(desired_label)
-                        print(f"Found colony {desired_label} at index {idx}")
-                    else:
-                        print(f"Colony {desired_label} not found")
+            >>> desired_label = 42
+            >>> if desired_label in plate.objects.labels:
+            ...     idx = plate.objects.get_label_idx(desired_label)
+            ...     print(f"Found colony {desired_label} at index {idx}")
+            ... else:
+            ...     print(f"Colony {desired_label} not found")
         """
         return np.where(self.labels == object_label)[0][0]
 
@@ -520,28 +452,22 @@ class ObjectsAccessor:
                 if no colonies have been detected.
 
         Examples:
-            .. dropdown:: Verify expected colony count
+            Verify expected colony count:
 
-                .. code-block:: python
+            >>> from phenotypic import Image
+            >>> from phenotypic.detect import RoundPeaksDetector
+            >>> plate = Image.from_file("96well_plate.png")
+            >>> detector = RoundPeaksDetector()
+            >>> detector.apply(plate)
+            >>> # Check if detection found the expected number of colonies
+            >>> expected = 96
+            >>> actual = plate.objects.num_objects
+            >>> if actual != expected:
+            ...     print(f"Warning: Expected {expected} colonies, found {actual}")
 
-                    from phenotypic import Image
-                    from phenotypic.detect import RoundPeaksDetector
+            Verify consistency with len():
 
-                    plate = Image.from_file("96well_plate.png")
-                    detector = RoundPeaksDetector()
-                    detector.apply(plate)
-
-                    # Check if detection found the expected number of colonies
-                    expected = 96
-                    actual = plate.objects.num_objects
-                    if actual != expected:
-                        print(f"Warning: Expected {expected} colonies, found {actual}")
-
-            .. dropdown:: Verify consistency with len()
-
-                .. code-block:: python
-
-                    assert plate.objects.num_objects == len(plate.objects)
+            >>> assert plate.objects.num_objects == len(plate.objects)
         """
         return self._root_image.num_objects
 
@@ -561,36 +487,28 @@ class ObjectsAccessor:
                 is returned.
 
         Examples:
-            .. dropdown:: Clear detections to re-run with different parameters
+            Clear detections to re-run with different parameters:
 
-                .. code-block:: python
+            >>> from phenotypic import Image
+            >>> from phenotypic.detect import RoundPeaksDetector
+            >>> plate = Image.from_file("colony_array.png")
+            >>> # First detection attempt
+            >>> detector1 = RoundPeaksDetector(thresh_method="otsu")
+            >>> detector1.apply(plate)
+            >>> print(f"First attempt: {plate.objects.num_objects} colonies")
+            >>> # Clear and try with different parameters
+            >>> plate.objects.reset()
+            >>> print(f"After reset: {plate.objects.num_objects} colonies")  # 0
+            >>> detector2 = RoundPeaksDetector(thresh_method="mean")
+            >>> detector2.apply(plate)
+            >>> print(f"Second attempt: {plate.objects.num_objects} colonies")
 
-                    from phenotypic import Image
-                    from phenotypic.detect import RoundPeaksDetector
+            Verify reset clears all colonies:
 
-                    plate = Image.from_file("colony_array.png")
-
-                    # First detection attempt
-                    detector1 = RoundPeaksDetector(thresh_method="otsu")
-                    detector1.apply(plate)
-                    print(f"First attempt: {plate.objects.num_objects} colonies")
-
-                    # Clear and try with different parameters
-                    plate.objects.reset()
-                    print(f"After reset: {plate.objects.num_objects} colonies")  # 0
-
-                    detector2 = RoundPeaksDetector(thresh_method="mean")
-                    detector2.apply(plate)
-                    print(f"Second attempt: {plate.objects.num_objects} colonies")
-
-            .. dropdown:: Verify reset clears all colonies
-
-                .. code-block:: python
-
-                    plate.objects.reset()
-                    assert plate.num_objects == 0
-                    assert len(plate.objects.labels) == 0
-                    assert plate.objmap.max() == 0
+            >>> plate.objects.reset()
+            >>> assert plate.num_objects == 0
+            >>> assert len(plate.objects.labels) == 0
+            >>> assert plate.objmap.max() == 0
         """
         self._root_image.objmap.reset()
 
@@ -619,42 +537,33 @@ class ObjectsAccessor:
             IndexError: If index is negative or >= num_objects.
 
         Examples:
-            .. dropdown:: Access first colony with pandas-style syntax
+            Access first colony with pandas-style syntax:
 
-                .. code-block:: python
+            >>> from phenotypic import Image
+            >>> from phenotypic.detect import RoundPeaksDetector
+            >>> plate = Image.from_file("colony_array.png")
+            >>> detector = RoundPeaksDetector()
+            >>> detector.apply(plate)
+            >>> # Access first colony
+            >>> first = plate.objects.iloc(0)
+            >>> print(f"Bounding box shape: {first.shape}")
 
-                    from phenotypic import Image
-                    from phenotypic.detect import RoundPeaksDetector
+            Compare iloc() vs __getitem__:
 
-                    plate = Image.from_file("colony_array.png")
-                    detector = RoundPeaksDetector()
-                    detector.apply(plate)
+            >>> # iloc preserves all labels in the crop
+            >>> crop_iloc = plate.objects.iloc(5)
+            >>> print(f"All labels in crop (iloc): {set(crop_iloc.objmap.flatten())}")
+            >>> # May show {0, 5} if other colonies are nearby
+            >>> # __getitem__ zeros out non-matching labels for isolation
+            >>> crop_getitem = plate.objects[5]
+            >>> print(f"Labels in isolated crop ([5]): {crop_getitem.objmap.max()}")
+            >>> # Shows only label 5 (others zeroed)
 
-                    # Access first colony
-                    first = plate.objects.iloc(0)
-                    print(f"Bounding box shape: {first.shape}")
+            Extract multiple specific colonies:
 
-            .. dropdown:: Compare iloc() vs __getitem__
-
-                .. code-block:: python
-
-                    # iloc preserves all labels in the crop
-                    crop_iloc = plate.objects.iloc(5)
-                    print(f"All labels in crop (iloc): {set(crop_iloc.objmap.flatten())}")
-                    # May show {0, 5} if other colonies are nearby
-
-                    # __getitem__ zeros out non-matching labels for isolation
-                    crop_getitem = plate.objects[5]
-                    print(f"Labels in isolated crop ([5]): {crop_getitem.objmap.max()}")
-                    # Shows only label 5 (others zeroed)
-
-            .. dropdown:: Extract multiple specific colonies
-
-                .. code-block:: python
-
-                    # Get colonies at positions 0, 5, and 10 with preserved context
-                    selected_indices = [0, 5, 10]
-                    selected_colonies = [plate.objects.iloc(i) for i in selected_indices]
+            >>> # Get colonies at positions 0, 5, and 10 with preserved context
+            >>> selected_indices = [0, 5, 10]
+            >>> selected_colonies = [plate.objects.iloc(i) for i in selected_indices]
         """
         return self._root_image[self.props[index].slice]
 
@@ -683,54 +592,41 @@ class ObjectsAccessor:
             IndexError: If label_number does not exist in the current labels list.
 
         Examples:
-            .. dropdown:: Access colony by its label
+            Access colony by its label:
 
-                .. code-block:: python
+            >>> from phenotypic import Image
+            >>> from phenotypic.detect import RoundPeaksDetector
+            >>> plate = Image.from_file("colony_array.png")
+            >>> detector = RoundPeaksDetector()
+            >>> detector.apply(plate)
+            >>> # Access colony with label 5
+            >>> colony_5 = plate.objects.loc(5)
+            >>> print(f"Colony 5 bounding box: {colony_5.shape}")
 
-                    from phenotypic import Image
-                    from phenotypic.detect import RoundPeaksDetector
+            Access first colony by its label (not position):
 
-                    plate = Image.from_file("colony_array.png")
-                    detector = RoundPeaksDetector()
-                    detector.apply(plate)
+            >>> # Get the label of the first colony
+            >>> first_label = plate.objects.labels[0]  # e.g., could be 1
+            >>> # Access by that label
+            >>> first_colony = plate.objects.loc(first_label)
 
-                    # Access colony with label 5
-                    colony_5 = plate.objects.loc(5)
-                    print(f"Colony 5 bounding box: {colony_5.shape}")
+            Use with non-contiguous labels:
 
-            .. dropdown:: Access first colony by its label (not position)
+            >>> # Labels might be: [1, 2, 5, 8, 10] after filtering
+            >>> labels = plate.objects.labels
+            >>> # Access colony with label 8 (not position 8)
+            >>> colony_8 = plate.objects.loc(8)
+            >>> # Compare with position-based access
+            >>> colony_at_pos_3 = plate.objects.iloc(3)  # Also gets label 8
 
-                .. code-block:: python
+            Safe access with label validation:
 
-                    # Get the label of the first colony
-                    first_label = plate.objects.labels[0]  # e.g., could be 1
-
-                    # Access by that label
-                    first_colony = plate.objects.loc(first_label)
-
-            .. dropdown:: Use with non-contiguous labels
-
-                .. code-block:: python
-
-                    # Labels might be: [1, 2, 5, 8, 10] after filtering
-                    labels = plate.objects.labels
-
-                    # Access colony with label 8 (not position 8)
-                    colony_8 = plate.objects.loc(8)
-
-                    # Compare with position-based access
-                    colony_at_pos_3 = plate.objects.iloc(3)  # Also gets label 8
-
-            .. dropdown:: Safe access with label validation
-
-                .. code-block:: python
-
-                    desired_label = 42
-                    if desired_label in plate.objects.labels:
-                        colony = plate.objects.loc(desired_label)
-                        print(f"Found colony {desired_label}")
-                    else:
-                        print(f"Colony {desired_label} not found")
+            >>> desired_label = 42
+            >>> if desired_label in plate.objects.labels:
+            ...     colony = plate.objects.loc(desired_label)
+            ...     print(f"Found colony {desired_label}")
+            ... else:
+            ...     print(f"Colony {desired_label} not found")
         """
         idx = self.get_label_idx(label_number)
         return self._root_image[self.props[idx].slice]
@@ -766,60 +662,45 @@ class ObjectsAccessor:
                 If include_metadata=True, additional metadata columns are prepended.
 
         Examples:
-            .. dropdown:: Get basic colony information
+            Get basic colony information:
 
-                .. code-block:: python
+            >>> from phenotypic import Image
+            >>> from phenotypic.detect import RoundPeaksDetector
+            >>> plate = Image.from_file("colony_array.png")
+            >>> detector = RoundPeaksDetector()
+            >>> detector.apply(plate)
+            >>> # Get colony information
+            >>> colony_info = plate.objects.info()
+            >>> print(colony_info.head())
+            >>> print(f"Columns: {colony_info.columns.tolist()}")
 
-                    from phenotypic import Image
-                    from phenotypic.detect import RoundPeaksDetector
+            Access specific columns:
 
-                    plate = Image.from_file("colony_array.png")
-                    detector = RoundPeaksDetector()
-                    detector.apply(plate)
+            >>> # Get just labels and centroids
+            >>> labels_centroids = colony_info[["ObjectLabel", "Bbox_CenterRR", "Bbox_CenterCC"]]
+            >>> print(labels_centroids)
 
-                    # Get colony information
-                    colony_info = plate.objects.info()
-                    print(colony_info.head())
-                    print(f"Columns: {colony_info.columns.tolist()}")
+            Export colony positions for other tools:
 
-            .. dropdown:: Access specific columns
+            >>> # Get info without metadata for cleaner export
+            >>> colony_positions = plate.objects.info(include_metadata=False)
+            >>> colony_positions.to_csv("colony_positions.csv", index=False)
 
-                .. code-block:: python
+            Filter colonies by position:
 
-                    # Get just labels and centroids
-                    labels_centroids = colony_info[["ObjectLabel", "Bbox_CenterRR", "Bbox_CenterCC"]]
-                    print(labels_centroids)
+            >>> info = plate.objects.info(include_metadata=False)
+            >>> # Find colonies in the upper half of the image
+            >>> upper_colonies = info[info["Bbox_CenterRR"] < 500]
+            >>> print(f"Found {len(upper_colonies)} colonies in upper half")
 
-            .. dropdown:: Export colony positions for other tools_
+            Calculate bounding box dimensions:
 
-                .. code-block:: python
-
-                    # Get info without metadata for cleaner export
-                    colony_positions = plate.objects.info(include_metadata=False)
-                    colony_positions.to_csv("colony_positions.csv", index=False)
-
-            .. dropdown:: Filter colonies by position
-
-                .. code-block:: python
-
-                    info = plate.objects.info(include_metadata=False)
-
-                    # Find colonies in the upper half of the image
-                    upper_colonies = info[info["Bbox_CenterRR"] < 500]
-                    print(f"Found {len(upper_colonies)} colonies in upper half")
-
-            .. dropdown:: Calculate bounding box dimensions
-
-                .. code-block:: python
-
-                    info = plate.objects.info(include_metadata=False)
-
-                    # Calculate width and height of each colony's bounding box
-                    info["BBox_Width"] = info["Bbox_MaxCC"] - info["Bbox_MinCC"]
-                    info["BBox_Height"] = info["Bbox_MaxRR"] - info["Bbox_MinRR"]
-
-                    print(f"Average colony width: {info['BBox_Width'].mean():.1f} pixels")
-                    print(f"Average colony height: {info['BBox_Height'].mean():.1f} pixels")
+            >>> info = plate.objects.info(include_metadata=False)
+            >>> # Calculate width and height of each colony's bounding box
+            >>> info["BBox_Width"] = info["Bbox_MaxCC"] - info["Bbox_MinCC"]
+            >>> info["BBox_Height"] = info["Bbox_MaxRR"] - info["Bbox_MinRR"]
+            >>> print(f"Average colony width: {info['BBox_Width'].mean():.1f} pixels")
+            >>> print(f"Average colony height: {info['BBox_Height'].mean():.1f} pixels")
         """
         from phenotypic.measure import MeasureBounds
 
@@ -847,67 +728,51 @@ class ObjectsAccessor:
                 - name: 'ObjectLabel' for proper DataFrame column naming
 
         Examples:
-            .. dropdown:: Join labels with measurement data
+            Join labels with measurement data:
 
-                .. code-block:: python
+            >>> from phenotypic import Image
+            >>> from phenotypic.detect import RoundPeaksDetector
+            >>> from phenotypic.measure import AreaMeasurer
+            >>> import pandas as pd
+            >>> plate = Image.from_file("colony_array.png")
+            >>> detector = RoundPeaksDetector()
+            >>> detector.apply(plate)
+            >>> # Calculate measurements (indexed by position)
+            >>> measurer = AreaMeasurer()
+            >>> measurements = measurer.measure(plate)
+            >>> # Add labels to measurements
+            >>> labels = plate.objects.labels2series()
+            >>> measurements_with_labels = measurements.join(labels)
+            >>> print(measurements_with_labels.head())
 
-                    from phenotypic import Image
-                    from phenotypic.detect import RoundPeaksDetector
-                    from phenotypic.measure import AreaMeasurer
-                    import pandas as pd
+            Merge with custom analysis results:
 
-                    plate = Image.from_file("colony_array.png")
-                    detector = RoundPeaksDetector()
-                    detector.apply(plate)
+            >>> import numpy as np
+            >>> import pandas as pd
+            >>> # Custom analysis results indexed by position
+            >>> custom_analysis = pd.DataFrame({
+            ...     'mean_intensity': [125.3, 142.7, 98.1],
+            ...     'max_intensity': [255, 243, 189]
+            ... }, index=range(len(plate.objects)))
+            >>> # Add colony labels
+            >>> labels_series = plate.objects.labels2series()
+            >>> analysis_with_labels = custom_analysis.join(labels_series)
+            >>> # Now can group or filter by label
+            >>> print(analysis_with_labels)
 
-                    # Calculate measurements (indexed by position)
-                    measurer = AreaMeasurer()
-                    measurements = measurer.measure(plate)
+            Use as a lookup table:
 
-                    # Add labels to measurements
-                    labels = plate.objects.labels2series()
-                    measurements_with_labels = measurements.join(labels)
+            >>> labels_series = plate.objects.labels2series()
+            >>> # Get label for position 5
+            >>> label_at_pos_5 = labels_series.iloc[5]
+            >>> print(f"Colony at position 5 has label {label_at_pos_5}")
 
-                    print(measurements_with_labels.head())
+            Handle potential label suffix conflicts:
 
-            .. dropdown:: Merge with custom analysis results
-
-                .. code-block:: python
-
-                    import numpy as np
-                    import pandas as pd
-
-                    # Custom analysis results indexed by position
-                    custom_analysis = pd.DataFrame({
-                        'mean_intensity': [125.3, 142.7, 98.1, ...],
-                        'max_intensity': [255, 243, 189, ...]
-                    }, index=range(len(plate.objects)))
-
-                    # Add colony labels
-                    labels_series = plate.objects.labels2series()
-                    analysis_with_labels = custom_analysis.join(labels_series)
-
-                    # Now can group or filter by label
-                    print(analysis_with_labels)
-
-            .. dropdown:: Use as a lookup table
-
-                .. code-block:: python
-
-                    labels_series = plate.objects.labels2series()
-
-                    # Get label for position 5
-                    label_at_pos_5 = labels_series.iloc[5]
-                    print(f"Colony at position 5 has label {label_at_pos_5}")
-
-            .. dropdown:: Handle potential label suffix conflicts
-
-                .. code-block:: python
-
-                    # If DataFrame already has an 'ObjectLabel' column
-                    labels = plate.objects.labels2series()
-                    measurements_with_labels = measurements.join(labels, rsuffix="_new")
-                    # Creates 'ObjectLabel' and 'ObjectLabel_new' columns
+            >>> # If DataFrame already has an 'ObjectLabel' column
+            >>> labels = plate.objects.labels2series()
+            >>> measurements_with_labels = measurements.join(labels, rsuffix="_new")
+            >>> # Creates 'ObjectLabel' and 'ObjectLabel_new' columns
         """
         labels = self.labels
         return pd.Series(
@@ -933,66 +798,50 @@ class ObjectsAccessor:
                 renumbered directly in the object map, and no value is returned.
 
         Examples:
-            .. dropdown:: Relabel after filtering to remove gaps
+            Relabel after filtering to remove gaps:
 
-                .. code-block:: python
+            >>> from phenotypic import Image
+            >>> from phenotypic.detect import RoundPeaksDetector
+            >>> plate = Image.from_file("colony_array.png")
+            >>> detector = RoundPeaksDetector()
+            >>> detector.apply(plate)
+            >>> # Before relabeling (may have gaps)
+            >>> print(f"Labels before: {plate.objects.labels}")
+            >>> # e.g., [1, 2, 5, 7, 10, 15]
+            >>> # Relabel to make sequential
+            >>> plate.objects.relabel()
+            >>> # After relabeling (sequential)
+            >>> print(f"Labels after: {plate.objects.labels}")
+            >>> # e.g., [1, 2, 3, 4, 5, 6]
 
-                    from phenotypic import Image
-                    from phenotypic.detect import RoundPeaksDetector
+            Ensure consistent labeling for reproducibility:
 
-                    plate = Image.from_file("colony_array.png")
-                    detector = RoundPeaksDetector()
-                    detector.apply(plate)
+            >>> # After any colony filtering or modification
+            >>> plate.objects.relabel()
+            >>> # Now labels are guaranteed to be 1, 2, 3, ..., N
+            >>> assert plate.objects.labels == list(range(1, len(plate.objects) + 1))
 
-                    # Before relabeling (may have gaps)
-                    print(f"Labels before: {plate.objects.labels}")
-                    # e.g., [1, 2, 5, 7, 10, 15]
+            Relabel after manual objmap modifications:
 
-                    # Relabel to make sequential
-                    plate.objects.relabel()
+            >>> # After custom filtering or editing the objmap
+            >>> import numpy as np
+            >>> # Remove small colonies (custom filtering)
+            >>> for prop in plate.objects.props:
+            ...     if prop.area < 100:
+            ...         mask = plate.objmap[:] == prop.label
+            ...         plate.objmap[:][mask] = 0
+            >>> # Relabel to clean up the label sequence
+            >>> plate.objects.relabel()
+            >>> print(f"Remaining colonies: {len(plate.objects)}")
+            >>> print(f"New labels: {plate.objects.labels}")
 
-                    # After relabeling (sequential)
-                    print(f"Labels after: {plate.objects.labels}")
-                    # e.g., [1, 2, 3, 4, 5, 6]
+            Compare before and after relabeling:
 
-            .. dropdown:: Ensure consistent labeling for reproducibility
-
-                .. code-block:: python
-
-                    # After any colony filtering or modification
-                    plate.objects.relabel()
-
-                    # Now labels are guaranteed to be 1, 2, 3, ..., N
-                    assert plate.objects.labels == list(range(1, len(plate.objects) + 1))
-
-            .. dropdown:: Relabel after manual objmap modifications
-
-                .. code-block:: python
-
-                    # After custom filtering or editing the objmap
-                    import numpy as np
-
-                    # Remove small colonies (custom filtering)
-                    for prop in plate.objects.props:
-                        if prop.area < 100:
-                            mask = plate.objmap[:] == prop.label
-                            plate.objmap[:][mask] = 0
-
-                    # Relabel to clean up the label sequence
-                    plate.objects.relabel()
-                    print(f"Remaining colonies: {len(plate.objects)}")
-                    print(f"New labels: {plate.objects.labels}")
-
-            .. dropdown:: Compare before and after relabeling
-
-                .. code-block:: python
-
-                    labels_before = plate.objects.labels.copy()
-                    plate.objects.relabel()
-                    labels_after = plate.objects.labels
-
-                    print(f"Before: {labels_before}")
-                    print(f"After: {labels_after}")
-                    print(f"Same count: {len(labels_before) == len(labels_after)}")
+            >>> labels_before = plate.objects.labels.copy()
+            >>> plate.objects.relabel()
+            >>> labels_after = plate.objects.labels
+            >>> print(f"Before: {labels_before}")
+            >>> print(f"After: {labels_after}")
+            >>> print(f"Same count: {len(labels_before) == len(labels_after)}")
         """
         self._root_image.objmap.relabel()

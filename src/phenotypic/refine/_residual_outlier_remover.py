@@ -52,11 +52,11 @@ class ResidualOutlierRemover(GridObjectRefiner):
             clean severely noisy lines.
 
     Examples:
-        .. dropdown:: Remove objects with large regression residuals
+        Remove objects with large regression residuals:
 
-            >>> from phenotypic.refine import ResidualOutlierRemover
-            >>> op = ResidualOutlierRemover(axis=None, stddev_multiplier=1.5, max_coeff_variance=1)
-            >>> image = op.apply(image, inplace=True)  # doctest: +SKIP
+        >>> from phenotypic.refine import ResidualOutlierRemover
+        >>> op = ResidualOutlierRemover(axis=None, stddev_multiplier=1.5, max_coeff_variance=1)
+        >>> image = op.apply(image, inplace=True)  # doctest: +SKIP
     """
 
     def __init__(

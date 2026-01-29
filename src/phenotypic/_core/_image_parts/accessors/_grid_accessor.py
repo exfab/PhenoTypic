@@ -34,38 +34,29 @@ class GridAccessor:
             number of column pins in a colony pinning robot. Must be >= 1.
 
     Examples:
-        .. dropdown:: Access grid information for a 96-well colony plate
+        Access grid information for a 96-well colony plate:
 
-            .. code-block:: python
+        >>> from phenotypic import GridImage
+        >>> # Load image and create grid accessor
+        >>> grid_image = GridImage('agar_plate.png', nrows=8, ncols=12)
+        >>> # Get grid information as a DataFrame
+        >>> grid_info = grid_image.grid.info()
+        >>> print(f"Found {len(grid_info)} colonies across {grid_image.grid.nrows} rows "
+        ...       f"and {grid_image.grid.ncols} columns")
+        >>> # Extract a single grid section (colony at row 2, column 3)
+        >>> section_idx = 2 * grid_image.grid.ncols + 3  # Flattened index
+        >>> colony_image = grid_image.grid[section_idx]
+        >>> # Visualize grid columns with color-coded labels
+        >>> fig, ax = grid_image.grid.show_column_overlay(show_gridlines=True)
 
-                from phenotypic import GridImage
+        Get colony counts by grid section:
 
-                # Load image and create grid accessor
-                grid_image = GridImage('agar_plate.png', nrows=8, ncols=12)
-
-                # Get grid information as a DataFrame
-                grid_info = grid_image.grid.info()
-                print(f"Found {len(grid_info)} colonies across {grid_image.grid.nrows} rows "
-                      f"and {grid_image.grid.ncols} columns")
-
-                # Extract a single grid section (colony at row 2, column 3)
-                section_idx = 2 * grid_image.grid.ncols + 3  # Flattened index
-                colony_image = grid_image.grid[section_idx]
-
-                # Visualize grid columns with color-coded labels
-                fig, ax = grid_image.grid.show_column_overlay(show_gridlines=True)
-
-        .. dropdown:: Get colony counts by grid section
-
-            .. code-block:: python
-
-                # Count colonies in each grid section
-                section_counts = grid_image.grid.get_section_counts(ascending=False)
-                print("Colonies per section (sorted):")
-                print(section_counts)
-
-                # Get all colony information for row 0
-                row_info = grid_image.grid.get_info_by_section((0, slice(None)))
+        >>> # Count colonies in each grid section
+        >>> section_counts = grid_image.grid.get_section_counts(ascending=False)
+        >>> print("Colonies per section (sorted):")
+        >>> print(section_counts)
+        >>> # Get all colony information for row 0
+        >>> row_info = grid_image.grid.get_info_by_section((0, slice(None)))
     """
 
     def __init__(self, root_image: GridImage):
@@ -155,22 +146,17 @@ class GridAccessor:
                 - Additional columns if include_metadata=True
 
         Examples:
-            .. dropdown:: Retrieve and analyze grid information
+            Retrieve and analyze grid information:
 
-                .. code-block:: python
-
-                    # Get full grid information
-                    grid_info = grid_image.grid.info()
-
-                    # Count colonies by row
-                    colonies_per_row = grid_info.groupby('RowNum').size()
-
-                    # Find largest colony in grid section 10
-                    section_10 = grid_info[grid_info['SectionNum'] == 10]
-                    largest = section_10.loc[section_10['Area'].idxmax()]
-
-                    # Get colonies without metadata
-                    grid_info_minimal = grid_image.grid.info(include_metadata=False)
+            >>> # Get full grid information
+            >>> grid_info = grid_image.grid.info()
+            >>> # Count colonies by row
+            >>> colonies_per_row = grid_info.groupby('RowNum').size()
+            >>> # Find largest colony in grid section 10
+            >>> section_10 = grid_info[grid_info['SectionNum'] == 10]
+            >>> largest = section_10.loc[section_10['Area'].idxmax()]
+            >>> # Get colonies without metadata
+            >>> grid_info_minimal = grid_image.grid.info(include_metadata=False)
         """
         info = self._root_image.grid_finder.measure(self._root_image)
         if include_metadata:
@@ -584,22 +570,18 @@ class GridAccessor:
             ValueError: If axis is neither 0 nor 1.
 
         Examples:
-            .. dropdown:: Analyze colony alignment across grid axes
+            Analyze colony alignment across grid axes:
 
-                .. code-block:: python
-
-                    # Check row alignment (horizontal drift of colonies across each row)
-                    row_slopes, row_intercepts = grid_image.grid.get_centroid_alignment_info(axis=0)
-                    print(f"Row alignment slopes (pixels/column): {row_slopes}")
-
-                    # Check column alignment (vertical drift of colonies across each column)
-                    col_slopes, col_intercepts = grid_image.grid.get_centroid_alignment_info(axis=1)
-                    print(f"Column alignment slopes (pixels/row): {col_slopes}")
-
-                    # Identify rows with significant drift indicating pinning issues
-                    drift_threshold = 0.05  # pixels per grid position
-                    problematic_rows = np.where(np.abs(row_slopes) > drift_threshold)[0]
-                    print(f"Rows with significant drift: {problematic_rows}")
+            >>> # Check row alignment (horizontal drift of colonies across each row)
+            >>> row_slopes, row_intercepts = grid_image.grid.get_centroid_alignment_info(axis=0)
+            >>> print(f"Row alignment slopes (pixels/column): {row_slopes}")
+            >>> # Check column alignment (vertical drift of colonies across each column)
+            >>> col_slopes, col_intercepts = grid_image.grid.get_centroid_alignment_info(axis=1)
+            >>> print(f"Column alignment slopes (pixels/row): {col_slopes}")
+            >>> # Identify rows with significant drift indicating pinning issues
+            >>> drift_threshold = 0.05  # pixels per grid position
+            >>> problematic_rows = np.where(np.abs(row_slopes) > drift_threshold)[0]
+            >>> print(f"Rows with significant drift: {problematic_rows}")
         """
         if self._root_image.objects.num_objects == 0:
             raise NoObjectsError(self._root_image.name)
@@ -661,26 +643,21 @@ class GridAccessor:
                 of the first column, last value is the image width or right boundary.
 
         Examples:
-            .. dropdown:: Retrieve and use column edge positions
+            Retrieve and use column edge positions:
 
-                .. code-block:: python
-
-                    col_edges = grid_image.grid.get_col_edges()
-                    print(f"Column edges: {col_edges}")
-                    # Output: [0.0, 106.5, 213.0, 319.5, ...]  for a 12-column grid
-
-                    # Calculate column width
-                    col_width = col_edges[1] - col_edges[0]
-                    print(f"Column width: {col_width} pixels")
-
-                    # Extract pixels for column 3
-                    col_3_min, col_3_max = int(col_edges[3]), int(col_edges[4])
-                    column_3_data = grid_image.gray[:, col_3_min:col_3_max]
-
-                    # Visualize grid column positions
-                    fig, ax = plt.subplots()
-                    ax.imshow(grid_image.gray)
-                    ax.vlines(x=col_edges, ymin=0, ymax=grid_image.shape[0], colors='cyan')
+            >>> col_edges = grid_image.grid.get_col_edges()
+            >>> print(f"Column edges: {col_edges}")
+            >>> # Output: [0.0, 106.5, 213.0, 319.5, ...]  for a 12-column grid
+            >>> # Calculate column width
+            >>> col_width = col_edges[1] - col_edges[0]
+            >>> print(f"Column width: {col_width} pixels")
+            >>> # Extract pixels for column 3
+            >>> col_3_min, col_3_max = int(col_edges[3]), int(col_edges[4])
+            >>> column_3_data = grid_image.gray[:, col_3_min:col_3_max]
+            >>> # Visualize grid column positions
+            >>> fig, ax = plt.subplots()
+            >>> ax.imshow(grid_image.gray)
+            >>> ax.vlines(x=col_edges, ymin=0, ymax=grid_image.shape[0], colors='cyan')
         """
         return self._root_image.grid_finder.get_col_edges(self._root_image)
 
@@ -699,25 +676,20 @@ class GridAccessor:
                 colony are 0. Can be passed directly to label2rgb for visualization.
 
         Examples:
-            .. dropdown:: Get and visualize column-labeled colony map
+            Get and visualize column-labeled colony map:
 
-                .. code-block:: python
-
-                    col_map = grid_image.grid.get_col_map()
-
-                    # All colonies in column 0 have value 1, column 1 have value 2, etc.
-                    print(f"Unique values in col_map: {np.unique(col_map)}")
-                    # Output: [0, 1, 2, 3, ..., 12]  for a 12-column grid
-
-                    # Count total pixels belonging to each column
-                    for col_num in range(1, grid_image.grid.ncols + 1):
-                        col_pixels = np.sum(col_map == col_num)
-                        print(f"Column {col_num}: {col_pixels} pixels")
-
-                    # Visualize columns with distinct colors
-                    from skimage.color import label2rgb
-                    colored_columns = label2rgb(label=col_map, image=grid_image.gray[:])
-                    plt.imshow(colored_columns)
+            >>> col_map = grid_image.grid.get_col_map()
+            >>> # All colonies in column 0 have value 1, column 1 have value 2, etc.
+            >>> print(f"Unique values in col_map: {np.unique(col_map)}")
+            >>> # Output: [0, 1, 2, 3, ..., 12]  for a 12-column grid
+            >>> # Count total pixels belonging to each column
+            >>> for col_num in range(1, grid_image.grid.ncols + 1):
+            ...     col_pixels = np.sum(col_map == col_num)
+            ...     print(f"Column {col_num}: {col_pixels} pixels")
+            >>> # Visualize columns with distinct colors
+            >>> from skimage.color import label2rgb
+            >>> colored_columns = label2rgb(label=col_map, image=grid_image.gray[:])
+            >>> plt.imshow(colored_columns)
         """
         grid_info = self.info()
         col_map = self._root_image.objmap[:].copy()
@@ -768,26 +740,22 @@ class GridAccessor:
                 returns the newly created figure and axes.
 
         Examples:
-            .. dropdown:: Display column overlay visualization with options
+            Display column overlay visualization with options:
 
-                .. code-block:: python
-
-                    # Display column overlay with gridlines
-                    fig, ax = grid_image.grid.show_column_overlay(show_gridlines=True)
-                    plt.title("Colony Array - Column Overlay")
-                    plt.show()
-
-                    # Use enhanced image for better contrast
-                    fig, ax = grid_image.grid.show_column_overlay(
-                        use_enhanced=True,
-                        show_gridlines=True,
-                        figsize=(12, 14)
-                    )
-
-                    # Plot on existing axes
-                    fig, axes = plt.subplots(1, 2, figsize=(16, 10))
-                    grid_image.grid.show_column_overlay(ax=axes[0])
-                    grid_image.grid.show_row_overlay(ax=axes[1])
+            >>> # Display column overlay with gridlines
+            >>> fig, ax = grid_image.grid.show_column_overlay(show_gridlines=True)
+            >>> plt.title("Colony Array - Column Overlay")
+            >>> plt.show()
+            >>> # Use enhanced image for better contrast
+            >>> fig, ax = grid_image.grid.show_column_overlay(
+            ...     use_enhanced=True,
+            ...     show_gridlines=True,
+            ...     figsize=(12, 14)
+            ... )
+            >>> # Plot on existing axes
+            >>> fig, axes = plt.subplots(1, 2, figsize=(16, 10))
+            >>> grid_image.grid.show_column_overlay(ax=axes[0])
+            >>> grid_image.grid.show_row_overlay(ax=axes[1])
         """
         if ax is None:
             fig, func_ax = plt.subplots(tight_layout=True, figsize=figsize)
@@ -837,26 +805,21 @@ class GridAccessor:
                 of the first row, last value is the image height or bottom boundary.
 
         Examples:
-            .. dropdown:: Retrieve and use row edge positions
+            Retrieve and use row edge positions:
 
-                .. code-block:: python
-
-                    row_edges = grid_image.grid.get_row_edges()
-                    print(f"Row edges: {row_edges}")
-                    # Output: [0.0, 95.2, 190.4, 285.6, ...]  for an 8-row grid
-
-                    # Calculate row height
-                    row_height = row_edges[1] - row_edges[0]
-                    print(f"Row height: {row_height} pixels")
-
-                    # Extract pixels for row 4
-                    row_4_min, row_4_max = int(row_edges[4]), int(row_edges[5])
-                    row_4_data = grid_image.gray[row_4_min:row_4_max, :]
-
-                    # Visualize grid row positions
-                    fig, ax = plt.subplots()
-                    ax.imshow(grid_image.gray)
-                    ax.hlines(y=row_edges, xmin=0, xmax=grid_image.shape[1], colors='cyan')
+            >>> row_edges = grid_image.grid.get_row_edges()
+            >>> print(f"Row edges: {row_edges}")
+            >>> # Output: [0.0, 95.2, 190.4, 285.6, ...]  for an 8-row grid
+            >>> # Calculate row height
+            >>> row_height = row_edges[1] - row_edges[0]
+            >>> print(f"Row height: {row_height} pixels")
+            >>> # Extract pixels for row 4
+            >>> row_4_min, row_4_max = int(row_edges[4]), int(row_edges[5])
+            >>> row_4_data = grid_image.gray[row_4_min:row_4_max, :]
+            >>> # Visualize grid row positions
+            >>> fig, ax = plt.subplots()
+            >>> ax.imshow(grid_image.gray)
+            >>> ax.hlines(y=row_edges, xmin=0, xmax=grid_image.shape[1], colors='cyan')
         """
         return self._root_image.grid_finder.get_row_edges(self._root_image)
 
@@ -875,25 +838,20 @@ class GridAccessor:
                 colony are 0. Can be passed directly to label2rgb for visualization.
 
         Examples:
-            .. dropdown:: Get and visualize row-labeled colony map
+            Get and visualize row-labeled colony map:
 
-                .. code-block:: python
-
-                    row_map = grid_image.grid.get_row_map()
-
-                    # All colonies in row 0 have value 1, row 1 have value 2, etc.
-                    print(f"Unique values in row_map: {np.unique(row_map)}")
-                    # Output: [0, 1, 2, 3, ..., 8]  for an 8-row grid
-
-                    # Count total pixels belonging to each row
-                    for row_num in range(1, grid_image.grid.nrows + 1):
-                        row_pixels = np.sum(row_map == row_num)
-                        print(f"Row {row_num}: {row_pixels} pixels")
-
-                    # Visualize rows with distinct colors
-                    from skimage.color import label2rgb
-                    colored_rows = label2rgb(label=row_map, image=grid_image.gray[:])
-                    plt.imshow(colored_rows)
+            >>> row_map = grid_image.grid.get_row_map()
+            >>> # All colonies in row 0 have value 1, row 1 have value 2, etc.
+            >>> print(f"Unique values in row_map: {np.unique(row_map)}")
+            >>> # Output: [0, 1, 2, 3, ..., 8]  for an 8-row grid
+            >>> # Count total pixels belonging to each row
+            >>> for row_num in range(1, grid_image.grid.nrows + 1):
+            ...     row_pixels = np.sum(row_map == row_num)
+            ...     print(f"Row {row_num}: {row_pixels} pixels")
+            >>> # Visualize rows with distinct colors
+            >>> from skimage.color import label2rgb
+            >>> colored_rows = label2rgb(label=row_map, image=grid_image.gray[:])
+            >>> plt.imshow(colored_rows)
         """
         grid_info = self.info()
         row_map = self._root_image.objmap[:].copy()
@@ -943,28 +901,24 @@ class GridAccessor:
                 If ax is provided, returns the created figure and the input ax object.
 
         Examples:
-            .. dropdown:: Display row overlay visualization with options
+            Display row overlay visualization with options:
 
-                .. code-block:: python
-
-                    # Display row overlay with gridlines
-                    fig, ax = grid_image.grid.show_row_overlay(show_gridlines=True)
-                    plt.title("Colony Array - Row Overlay")
-                    plt.show()
-
-                    # Use enhanced image for better contrast
-                    fig, ax = grid_image.grid.show_row_overlay(
-                        use_enhanced=True,
-                        show_gridlines=True,
-                        figsize=(12, 14)
-                    )
-
-                    # Create side-by-side comparison
-                    fig, axes = plt.subplots(1, 2, figsize=(16, 10))
-                    grid_image.grid.show_column_overlay(ax=axes[0])
-                    grid_image.grid.show_row_overlay(ax=axes[1])
-                    plt.suptitle("Column vs Row Grid Visualization")
-                    plt.show()
+            >>> # Display row overlay with gridlines
+            >>> fig, ax = grid_image.grid.show_row_overlay(show_gridlines=True)
+            >>> plt.title("Colony Array - Row Overlay")
+            >>> plt.show()
+            >>> # Use enhanced image for better contrast
+            >>> fig, ax = grid_image.grid.show_row_overlay(
+            ...     use_enhanced=True,
+            ...     show_gridlines=True,
+            ...     figsize=(12, 14)
+            ... )
+            >>> # Create side-by-side comparison
+            >>> fig, axes = plt.subplots(1, 2, figsize=(16, 10))
+            >>> grid_image.grid.show_column_overlay(ax=axes[0])
+            >>> grid_image.grid.show_row_overlay(ax=axes[1])
+            >>> plt.suptitle("Column vs Row Grid Visualization")
+            >>> plt.show()
         """
         if ax is None:
             fig, func_ax = plt.subplots(tight_layout=True, figsize=figsize)
@@ -1019,29 +973,24 @@ class GridAccessor:
                 for visualization.
 
         Examples:
-            .. dropdown:: Get and visualize section-labeled colony map
+            Get and visualize section-labeled colony map:
 
-                .. code-block:: python
-
-                    section_map = grid_image.grid.get_section_map()
-
-                    # For an 8x12 grid:
-                    # Section 0: top-left (row 0, col 0)
-                    # Section 11: top-right (row 0, col 11)
-                    # Section 84: bottom-left (row 7, col 0)
-                    # Section 95: bottom-right (row 7, col 11)
-
-                    # Identify empty sections
-                    empty_sections = []
-                    for section_num in range(grid_image.grid.nrows * grid_image.grid.ncols):
-                        if np.sum(section_map == section_num) == 0:
-                            empty_sections.append(section_num)
-                    print(f"Empty sections: {empty_sections}")
-
-                    # Visualize section distribution
-                    from skimage.color import label2rgb
-                    colored_sections = label2rgb(label=section_map, image=grid_image.gray[:])
-                    plt.imshow(colored_sections)
+            >>> section_map = grid_image.grid.get_section_map()
+            >>> # For an 8x12 grid:
+            >>> # Section 0: top-left (row 0, col 0)
+            >>> # Section 11: top-right (row 0, col 11)
+            >>> # Section 84: bottom-left (row 7, col 0)
+            >>> # Section 95: bottom-right (row 7, col 11)
+            >>> # Identify empty sections
+            >>> empty_sections = []
+            >>> for section_num in range(grid_image.grid.nrows * grid_image.grid.ncols):
+            ...     if np.sum(section_map == section_num) == 0:
+            ...         empty_sections.append(section_num)
+            >>> print(f"Empty sections: {empty_sections}")
+            >>> # Visualize section distribution
+            >>> from skimage.color import label2rgb
+            >>> colored_sections = label2rgb(label=section_map, image=grid_image.gray[:])
+            >>> plt.imshow(colored_sections)
         """
         grid_info = self.info()
 
@@ -1079,32 +1028,27 @@ class GridAccessor:
                 - Index name: GRID.SECTION_NUM constant
 
         Examples:
-            .. dropdown:: Count and analyze colonies per grid section
+            Count and analyze colonies per grid section:
 
-                .. code-block:: python
-
-                    section_counts = grid_image.grid.get_section_counts()
-
-                    # Find sections with multiple colonies (potential pinning errors)
-                    problem_sections = section_counts[section_counts > 1]
-                    print(f"Sections with multiple colonies: {problem_sections}")
-                    # Output:
-                    # SectionNum
-                    # 5      2
-                    # 12     3
-                    # dtype: int64
-
-                    # Find empty sections (no colony detected)
-                    expected_sections = set(range(grid_image.grid.nrows * grid_image.grid.ncols))
-                    detected_sections = set(section_counts.index)
-                    empty_sections = expected_sections - detected_sections
-                    print(f"Empty sections: {empty_sections}")
-
-                    # Statistics on detection completeness
-                    num_expected = grid_image.grid.nrows * grid_image.grid.ncols
-                    num_detected = len(section_counts)
-                    completeness = 100 * num_detected / num_expected
-                    print(f"Array completeness: {completeness:.1f}%")
+            >>> section_counts = grid_image.grid.get_section_counts()
+            >>> # Find sections with multiple colonies (potential pinning errors)
+            >>> problem_sections = section_counts[section_counts > 1]
+            >>> print(f"Sections with multiple colonies: {problem_sections}")
+            >>> # Output:
+            >>> # SectionNum
+            >>> # 5      2
+            >>> # 12     3
+            >>> # dtype: int64
+            >>> # Find empty sections (no colony detected)
+            >>> expected_sections = set(range(grid_image.grid.nrows * grid_image.grid.ncols))
+            >>> detected_sections = set(section_counts.index)
+            >>> empty_sections = expected_sections - detected_sections
+            >>> print(f"Empty sections: {empty_sections}")
+            >>> # Statistics on detection completeness
+            >>> num_expected = grid_image.grid.nrows * grid_image.grid.ncols
+            >>> num_detected = len(section_counts)
+            >>> completeness = 100 * num_detected / num_expected
+            >>> print(f"Array completeness: {completeness:.1f}%")
         """
         return (
             self.info()
@@ -1140,31 +1084,26 @@ class GridAccessor:
             ValueError: If section_number is neither an int nor a 2-tuple.
 
         Examples:
-            .. dropdown:: Retrieve colony information for specific grid sections
+            Retrieve colony information for specific grid sections:
 
-                .. code-block:: python
-
-                    # Get colonies using flattened index (section 25)
-                    section_info = grid_image.grid.get_info_by_section(25)
-                    print(f"Colonies in section 25: {len(section_info)}")
-
-                    # Get colonies using (row, column) notation
-                    # Get colonies in grid position (row=2, col=5)
-                    section_info = grid_image.grid.get_info_by_section((2, 5))
-
-                    if len(section_info) > 0:
-                        # Analyze properties of colonies in this section
-                        colony = section_info.iloc[0]
-                        print(f"Colony area: {colony['Area']} pixels")
-                        print(f"Colony center: ({colony['CenterRR']}, {colony['CenterCC']})")
-                    else:
-                        print("No colony detected in this section")
-
-                    # Find largest colony in section 10
-                    section_10 = grid_image.grid.get_info_by_section(10)
-                    if len(section_10) > 0:
-                        largest = section_10.loc[section_10['Area'].idxmax()]
-                        print(f"Largest colony: label={largest.name}, area={largest['Area']}")
+            >>> # Get colonies using flattened index (section 25)
+            >>> section_info = grid_image.grid.get_info_by_section(25)
+            >>> print(f"Colonies in section 25: {len(section_info)}")
+            >>> # Get colonies using (row, column) notation
+            >>> # Get colonies in grid position (row=2, col=5)
+            >>> section_info = grid_image.grid.get_info_by_section((2, 5))
+            >>> if len(section_info) > 0:
+            ...     # Analyze properties of colonies in this section
+            ...     colony = section_info.iloc[0]
+            ...     print(f"Colony area: {colony['Area']} pixels")
+            ...     print(f"Colony center: ({colony['CenterRR']}, {colony['CenterCC']})")
+            ... else:
+            ...     print("No colony detected in this section")
+            >>> # Find largest colony in section 10
+            >>> section_10 = grid_image.grid.get_info_by_section(10)
+            >>> if len(section_10) > 0:
+            ...     largest = section_10.loc[section_10['Area'].idxmax()]
+            ...     print(f"Largest colony: label={largest.name}, area={largest['Area']}")
         """
         if isinstance(section_number, int):  # Access by section number
             grid_info = self.info()

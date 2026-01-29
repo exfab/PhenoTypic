@@ -92,20 +92,16 @@ class XyzAccessor(ColorSpaceAccessor):
               implementation.
 
         Examples:
-            .. dropdown:: Basic access to XYZ data
+            Basic access to XYZ data:
 
-                .. code-block:: python
+            >>> image = Image('photo.jpg')  # sRGB, D65
+            >>> xyz_data = image.color.XYZ[:]
+            >>> print(xyz_data.shape)  # (height, width, 3)
+            >>> print(xyz_data.dtype)  # float64
 
-                    image = Image('photo.jpg')  # sRGB, D65
-                    xyz_data = image.color.XYZ[:]
-                    print(xyz_data.shape)  # (height, width, 3)
-                    print(xyz_data.dtype)  # float64
+            Access specific region:
 
-            .. dropdown:: Access specific region
-
-                .. code-block:: python
-
-                    xyz_region = image.color.XYZ[100:200, 50:150, :]
+            >>> xyz_region = image.color.XYZ[100:200, 50:150, :]
         """
         if self._root_image.rgb.isempty():
             raise AttributeError("XYZ conversion is not available for grayscale images")
@@ -172,18 +168,14 @@ class XyzAccessor(ColorSpaceAccessor):
                 reflected the next time the XYZ property is accessed.
 
         Examples:
-            .. dropdown:: This operation always fails
+            This operation always fails:
 
-                .. code-block:: python
+            >>> image = Image('photo.jpg')
+            >>> image.color.XYZ[0, 0, 0] = 50  # Raises IllegalAssignmentError
 
-                    image = Image('photo.jpg')
-                    image.color.XYZ[0, 0, 0] = 50  # Raises IllegalAssignmentError
+            To modify color data, work with the RGB accessor instead:
 
-            .. dropdown:: To modify color data, work with the RGB accessor instead
-
-                .. code-block:: python
-
-                    image.rgb[0, 0, :] = [255, 128, 64]  # Valid
-                    xyz_updated = image.color.XYZ[:]  # Recomputed automatically
+            >>> image.rgb[0, 0, :] = [255, 128, 64]  # Valid
+            >>> xyz_updated = image.color.XYZ[:]  # Recomputed automatically
         """
         raise IllegalAssignmentError("XYZ")

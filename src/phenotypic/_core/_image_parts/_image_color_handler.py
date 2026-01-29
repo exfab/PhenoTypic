@@ -107,11 +107,11 @@ class ImageColorSpace(ImagePlotHandler):
             ColorAccessor: Unified accessor for all color space representations.
 
         Examples:
-            .. dropdown:: Access color spaces
+            Access color spaces:
 
-                >>> img = Image.imread('sample.jpg')
-                >>> xyz_data = img.color.XYZ[:]
-                >>> lab_data = img.color.Lab[:]
-                >>> hue = img.color.hsv[..., 0] # hue is the first matrix in the array
+            >>> img = Image.imread('sample.jpg')
+            >>> xyz_data = img.color.XYZ[:]
+            >>> lab_data = img.color.Lab[:]
+            >>> hue = img.color.hsv[..., 0] # hue is the first matrix in the array
         """
         return self._accessors.color

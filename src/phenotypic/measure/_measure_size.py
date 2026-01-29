@@ -52,60 +52,50 @@ class MeasureSize(MeasureFeatures):
             - IntegratedIntensity: Sum of grayscale pixel values in the colony (proxy for biomass/OD).
 
     Examples:
-        .. dropdown:: Quick size assessment and filtering
+        Quick size assessment and filtering:
 
-            .. code-block:: python
+        >>> from phenotypic import Image
+        >>> from phenotypic.detect import OtsuDetector
+        >>> from phenotypic.measure import MeasureSize
+        >>> # Load and detect colonies
+        >>> image = Image("colony_plate.jpg")  # doctest: +SKIP
+        >>> detector = OtsuDetector()
+        >>> image = detector.operate(image)  # doctest: +SKIP
+        >>> # Measure size
+        >>> sizer = MeasureSize()
+        >>> sizes = sizer.operate(image)  # doctest: +SKIP
+        >>> # Filter colonies by size (exclude very small or very large)
+        >>> min_area, max_area = 50, 5000  # pixels
+        >>> good_colonies = sizes[
+        ...     (sizes['Size_Area'] >= min_area) &
+        ...     (sizes['Size_Area'] <= max_area)
+        ... ]  # doctest: +SKIP
+        >>> print(f"Colonies within size range: {len(good_colonies)}/{len(sizes)}")  # doctest: +SKIP
 
-                from phenotypic import Image
-                from phenotypic.detect import OtsuDetector
-                from phenotypic.measure import MeasureSize
+        Track colony growth over time:
 
-                # Load and detect colonies
-                image = Image("colony_plate.jpg")
-                detector = OtsuDetector()
-                image = detector.operate(image)
-
-                # Measure size
-                sizer = MeasureSize()
-                sizes = sizer.operate(image)
-
-                # Filter colonies by size (exclude very small or very large)
-                min_area, max_area = 50, 5000  # pixels
-                good_colonies = sizes[
-                    (sizes['Size_Area'] >= min_area) &
-                    (sizes['Size_Area'] <= max_area)
-                ]
-                print(f"Colonies within size range: {len(good_colonies)}/{len(sizes)}")
-
-        .. dropdown:: Track colony growth over time
-
-            .. code-block:: python
-
-                # Load images from multiple time points
-                import pandas as pd
-                from phenotypic import Image
-                from phenotypic.detect import OtsuDetector
-                from phenotypic.measure import MeasureSize
-
-                detector = OtsuDetector()
-                sizer = MeasureSize()
-
-                # Simulate time-series measurements
-                growth_data = []
-                for timepoint_h in [0, 6, 12, 24, 48]:
-                    img_path = f"plate_t{timepoint_h}h.jpg"
-                    image = Image(img_path)
-                    image = detector.operate(image)
-                    sizes = sizer.operate(image)
-                    sizes['TimePoint_h'] = timepoint_h
-                    growth_data.append(sizes)
-
-                # Combine and analyze
-                growth_df = pd.concat(growth_data, ignore_index=True)
-                # Track individual colonies and compute growth rate (simplified)
-                avg_area = growth_df.groupby('TimePoint_h')['Size_Area'].mean()
-                print("Average colony area over time:")
-                print(avg_area)
+        >>> # Load images from multiple time points
+        >>> import pandas as pd
+        >>> from phenotypic import Image
+        >>> from phenotypic.detect import OtsuDetector
+        >>> from phenotypic.measure import MeasureSize
+        >>> detector = OtsuDetector()
+        >>> sizer = MeasureSize()
+        >>> # Simulate time-series measurements
+        >>> growth_data = []
+        >>> for timepoint_h in [0, 6, 12, 24, 48]:  # doctest: +SKIP
+        ...     img_path = f"plate_t{timepoint_h}h.jpg"
+        ...     image = Image(img_path)
+        ...     image = detector.operate(image)
+        ...     sizes = sizer.operate(image)
+        ...     sizes['TimePoint_h'] = timepoint_h
+        ...     growth_data.append(sizes)
+        >>> # Combine and analyze
+        >>> growth_df = pd.concat(growth_data, ignore_index=True)  # doctest: +SKIP
+        >>> # Track individual colonies and compute growth rate (simplified)
+        >>> avg_area = growth_df.groupby('TimePoint_h')['Size_Area'].mean()  # doctest: +SKIP
+        >>> print("Average colony area over time:")  # doctest: +SKIP
+        >>> print(avg_area)  # doctest: +SKIP
     """
 
     _measurement_info_class = SIZE

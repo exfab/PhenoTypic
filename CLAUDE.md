@@ -17,15 +17,6 @@ uv run pytest
 
 # Run tests in parallel (faster)
 uv run pytest -n auto
-
-# Run a single test file
-uv run pytest tests/test_image.py
-
-# Run a specific test function
-uv run pytest tests/test_image.py::test_image_load
-
-# Run tests with coverage
-uv run pytest --cov=src/phenotypic --cov-report=html
 ```
 
 ### Linting and Type Checking
@@ -423,47 +414,6 @@ result = pipeline.apply(image)
 
 See `phenotypic.enhance` module docstrings for parameter tuning guidance and use cases.
 
----
-
-## Performance and Memory Optimization
-
-### Built-In Monitoring
-
-All `BaseOperation` subclasses automatically track:
-
-- **Memory usage:** Via `tracemalloc` (Python built-in)
-- **Execution time:** Automatic benchmarking per operation
-- **Object memory:** Via `pympler` (detailed object analysis)
-- **Process memory:** Via `psutil` (system-wide memory)
-
-### Memory Tracking in Pipelines
-
-When running `ImagePipeline`:
-
-```python
-results = pipeline.apply_and_measure(image)
-# Memory and timing automatically logged per operation
-```
-
-This allows profiling bottlenecks without explicit instrumentation.
-
----
-
-## GitHub Actions and CI/CD
-
-### Testing Pipeline (run-pytest.yml)
-
-- **Triggers:** PRs to main/dev branches, manual dispatch
-- **Matrix Testing:**
-    - **Linux:** Python 3.10, 3.11, 3.12
-    - **Windows:** Python 3.12 only
-    - **macOS:** Python 3.12 only
-- **Key Steps:**
-    1. Install exiftool on Linux (for metadata extraction)
-    2. Install Python and uv
-    3. Install dependencies with `uv`
-    4. Run tests: `pytest -n auto` (parallel)
-    5. Build documentation with Pandoc support
 
 ### Documentation Pipeline (documentation.yml)
 

@@ -47,11 +47,11 @@ class MaskFill(ObjectRefiner):
             influence edge behavior at colony boundaries.
 
     Examples:
-        .. dropdown:: Fill holes in colony masks to produce solid shapes
+        Fill holes in colony masks to produce solid shapes:
 
-            >>> from phenotypic.refine import MaskFill
-            >>> op = MaskFill()
-            >>> image = op.apply(image, inplace=True)  # doctest: +SKIP
+        >>> from phenotypic.refine import MaskFill
+        >>> op = MaskFill()
+        >>> image = op.apply(image, inplace=True)  # doctest: +SKIP
     """
 
     def __init__(self, structure: Optional[np.ndarray] = None, origin: int = 0):

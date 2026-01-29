@@ -400,7 +400,7 @@ def main(pipeline_json: Path, image_path: Path, output_dir: Path, nrows: int, nc
     try:
         stem = image_path.stem
         meas.to_csv(meas_dir / f"{stem}.csv", index=False)
-        fig, ax = image.show_overlay()
+        fig, ax = image.plot.overlay()
         fig.savefig(overlay_dir / f"{stem}.png", bbox_inches='tight')
         plt.close(fig)
     except Exception as e:

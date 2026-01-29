@@ -6,7 +6,7 @@ if TYPE_CHECKING:
     from phenotypic import Image
 
 from phenotypic.abc_ import ObjectRefiner
-from phenotypic.tools_ import FootprintMixin
+from phenotypic.tools_.mixin import FootprintMixin
 
 import numpy as np
 from skimage.morphology import erosion
@@ -53,19 +53,19 @@ class MaskEroder(ObjectRefiner, FootprintMixin):
             but risk eliminating small colonies entirely.
 
     Examples:
-        .. dropdown:: Remove thin protrusions and noise from colony masks
+        Remove thin protrusions and noise from colony masks:
 
-            >>> from phenotypic.refine import MaskEroder
-            >>> from phenotypic import Image
-            >>> from phenotypic.detect import OtsuDetector
-            >>> image = Image.imread("colony_plate.jpg")  # doctest: +SKIP
-            >>> detected = OtsuDetector().apply(image)  # doctest: +SKIP
-            >>> # Erode with auto-scaled shape to remove specks
-            >>> refiner = MaskEroder(shape='auto')  # doctest: +SKIP
-            >>> eroded = refiner.apply(detected)  # doctest: +SKIP
-            >>> # Or use a small fixed disk shape (width 1) for gentle erosion
-            >>> refiner = MaskEroder(shape='disk', width=1)  # doctest: +SKIP
-            >>> eroded = refiner.apply(detected, inplace=True)  # doctest: +SKIP
+        >>> from phenotypic.refine import MaskEroder
+        >>> from phenotypic import Image
+        >>> from phenotypic.detect import OtsuDetector
+        >>> image = Image.imread("colony_plate.jpg")  # doctest: +SKIP
+        >>> detected = OtsuDetector().apply(image)  # doctest: +SKIP
+        >>> # Erode with auto-scaled shape to remove specks
+        >>> refiner = MaskEroder(shape='auto')  # doctest: +SKIP
+        >>> eroded = refiner.apply(detected)  # doctest: +SKIP
+        >>> # Or use a small fixed disk shape (width 1) for gentle erosion
+        >>> refiner = MaskEroder(shape='disk', width=1)  # doctest: +SKIP
+        >>> eroded = refiner.apply(detected, inplace=True)  # doctest: +SKIP
 
     Raises:
         AttributeError: If an invalid ``shape`` type is provided (checked

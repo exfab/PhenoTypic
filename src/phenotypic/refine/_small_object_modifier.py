@@ -42,11 +42,11 @@ class SmallObjectRemover(ObjectRefiner):
         (No public attributes)
 
     Examples:
-        .. dropdown:: Remove small spurious objects below a minimum size
+        Remove small spurious objects below a minimum size:
 
-            >>> from phenotypic.refine import SmallObjectRemover
-            >>> op = SmallObjectRemover(min_size=100)
-            >>> image = op.apply(image, inplace=True)  # doctest: +SKIP
+        >>> from phenotypic.refine import SmallObjectRemover
+        >>> op = SmallObjectRemover(min_size=100)
+        >>> image = op.apply(image, inplace=True)  # doctest: +SKIP
     """
 
     def __init__(self, min_size=64):

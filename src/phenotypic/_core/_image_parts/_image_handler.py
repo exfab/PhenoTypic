@@ -254,25 +254,19 @@ class ImageHandler(ImageDataManager):
             NoArrayError: If no multichannel image data is set as arr.
 
         Example:
-            .. dropdown:: Image.rgb
+            Image.rgb:
 
-                .. code-block:: python
-
-                    from phenotypic import Image
-                    from phenotypic.data import load_colony
-
-                    image = Image(load_colony())
-
-                    # get the rgb data
-                    arr = image.rgb[:]
-                    print(type(arr))
-
-                    # set the rgb data
-                    # the shape of the new rgb must be the same shape as the original rgb
-                    image.rgb[:] = arr
-
-                    # without the bracket indexing the accessor is returned instead
-                    sprint(image.rgb[:])
+            >>> from phenotypic import Image
+            >>> from phenotypic.data import load_colony
+            >>> image = Image(load_colony())
+            >>> # get the rgb data
+            >>> arr = image.rgb[:]
+            >>> print(type(arr))
+            >>> # set the rgb data
+            >>> # the shape of the new rgb must be the same shape as the original rgb
+            >>> image.rgb[:] = arr
+            >>> # without the bracket indexing the accessor is returned instead
+            >>> print(image.rgb[:])
 
 
         See Also: :class:`ImageArray`
@@ -705,142 +699,6 @@ class ImageHandler(ImageDataManager):
             return self.rgb.show(ax=ax, figsize=figsize, **kwargs)
         else:
             return self.gray.show(ax=ax, figsize=figsize, **kwargs)
-
-    def show_overlay(
-            self,
-            object_label: Optional[int] = None,
-            figsize: Tuple[int, int] = (10, 5),
-            title: str | None = None,
-            show_labels: bool = False,
-            ax: plt.Axes = None,
-            *,
-            label_settings: None | dict = None,
-            overlay_settings: None | dict = None,
-            imshow_settings: None | dict = None,
-    ) -> (plt.Figure, plt.Axes):
-        """
-        Displays an overlay of the provided object label and image using the specified settings.
-
-        This method combines an image and its segmentation or annotation mask overlay
-        for visualization. The specific behavior is adjusted based on the instance's
-        underlying image format (e.g., whether it operates on arrays or matrices).
-
-        Args:
-            object_label (Optional[int]): The label of the object to overlay. If None,
-                overlays all available objects.
-            figsize (Tuple[int, int]): A tuple specifying the figure size in inches.
-            title (str | None): The title of the overlay figure. If None, no title will
-                be displayed.
-            show_labels (bool): Whether to display object labels on the overlay. Defaults
-                to False.
-            ax (plt.Axes): An optional Matplotlib axes object. If provided, the overlay
-                will be plotted on this axes. If None, a new axes object will be created.
-            label_settings (None | dict): A dictionary specifying configurations for
-                displaying object labels. If None, default settings will be used.
-            overlay_settings (None | dict): A dictionary specifying configurations for
-                the overlay appearance. If None, default settings will be used.
-            imshow_settings (None | dict): A dictionary specifying configurations for
-                the image display (e.g., color map or interpolation). If None, default
-                settings will be used.
-
-        Returns:
-            Tuple[plt.Figure, plt.Axes]: A tuple containing the Matplotlib figure and
-                axes used for the overlay. This allows further customization or saving
-                of the visualization outside this method.
-        """
-
-        if not self.rgb.isempty():
-            return self.rgb.show_overlay(
-                    object_label=object_label,
-                    figsize=figsize,
-                    title=title,
-                    show_labels=show_labels,
-                    ax=ax,
-                    label_settings=label_settings,
-                    overlay_settings=overlay_settings,
-                    imshow_settings=imshow_settings,
-            )
-        else:
-            return self.gray.show_overlay(
-                    object_label=object_label,
-                    figsize=figsize,
-                    title=title,
-                    show_labels=show_labels,
-                    ax=ax,
-                    label_settings=label_settings,
-                    overlay_settings=overlay_settings,
-                    imshow_settings=imshow_settings,
-            )
-
-    def show_data(self,
-                  mode: Literal["objmap", "overlay"] = "objmap",
-                  figsize: Tuple[int, int] | None = (12, 8), **kwargs):
-        """
-        Displays multiple data representations in a single figure.
-
-        The `show_data` method generates a matplotlib figure containing multiple
-        representations of the image data, which can help analyze microbe colonies
-        cultured on solid media agar. By visualizing various properties such as
-        grayscale images, processed (enhanced) images, object maps, or overlays,
-        the user can better understand and interpret spatial patterns, colony size,
-        and distribution. The choice of `mode` and adjustments to `figsize` can
-        significantly impact how information is displayed, affecting the clarity
-        and detail available for inspection.
-
-        Args:
-            mode (Literal["objmap", "overlay"]): Defines the type of data to display
-                in the final subplot.
-                - "objmap": Displays the object map, which can highlight detected
-                  regions of interest such as individual colonies or features
-                  extracted from the image.
-                - "overlay": Adds an overlay of detected features on top of the
-                  base image, helping to contextualize detected objects.
-
-                The selected mode alters how colony regions or boundaries are
-                visualized, potentially making some aspects of the colonies more
-                or less prominent.
-
-            figsize (Tuple[int, int] | None): Specifies the dimensions of the
-                entire rendered figure. Larger values yield a more spread-out
-                figure, which can enhance visibility of fine details, such as
-                small colonies or intricate boundary structures. Smaller values
-                create a compact layout that may be faster to interpret but could
-                reduce visibility of intricate features.
-
-            **kwargs: Additional keyword arguments passed to the underlying
-                visualization methods. These could customize aspects like
-                colormap, scaling, or annotation settings. Precise customization
-                ensures better fit for varying experiment conditions or specific
-                analysis goals.
-
-        Returns:
-            Tuple[matplotlib.figure.Figure, ndarray]: A tuple containing:
-                - The matplotlib `Figure` instance representing the generated
-                  visualization.
-                - The axes array (`ndarray`) associated with the figure, which
-                  can be used for further customization or additional plotting.
-
-        """
-        if self.rgb.isempty():
-            fig, axes = plt.subplots(nrows=3, ncols=1, figsize=figsize)
-            ax = axes.ravel()
-            idxer_helper = 1
-        else:
-            fig, axes = plt.subplots(nrows=2, ncols=2, figsize=figsize)
-            idxer_helper = 0
-            ax = axes.ravel()
-            self.rgb.show(ax=ax[0], **kwargs)
-
-        self.gray.show(ax=ax[1 - idxer_helper], **kwargs)
-        self.enh_gray.show(ax=ax[2 - idxer_helper], **kwargs)
-
-        match mode:
-            case "overlay":
-                self.show_overlay(ax=ax[3 - idxer_helper], **kwargs)
-            case "objmap":
-                self.objmap.show(ax=ax[3 - idxer_helper], **kwargs)
-
-        return fig, axes
 
     def rotate(
             self,

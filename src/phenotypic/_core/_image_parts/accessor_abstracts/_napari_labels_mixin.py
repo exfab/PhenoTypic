@@ -166,47 +166,47 @@ class NapariLabelsMixin:
             ValueError: If opacity is not in [0.0, 1.0] range or contour is negative.
 
         Examples:
-            .. dropdown:: Basic labels visualization
+            Basic labels visualization:
 
-                >>> from phenotypic import Image
-                >>> from phenotypic.detect import OtsuDetector
-                >>> img = Image.imread("colonies.jpg")
-                >>> detector = OtsuDetector()
-                >>> img = detector.apply(img)
-                >>>
-                >>> # View detected colonies as labels
-                >>> viewer = img.objmap.napari()
+            >>> from phenotypic import Image
+            >>> from phenotypic.detect import OtsuDetector
+            >>> img = Image.imread("colonies.jpg")
+            >>> detector = OtsuDetector()
+            >>> img = detector.apply(img)
+            >>>
+            >>> # View detected colonies as labels
+            >>> viewer = img.objmap.napari()
 
-            .. dropdown:: Customizing labels appearance
+            Customizing labels appearance:
 
-                >>> # Semi-transparent labels with contours
-                >>> viewer = img.objmap.napari(opacity=0.5, contour=2)
-                >>>
-                >>> # Custom color mapping for specific colonies
-                >>> cmap = {
-                ...     1: [1.0, 0, 0],      # Red for colony 1
-                ...     2: [0, 1.0, 0],      # Green for colony 2
-                ...     3: [0, 0, 1.0],      # Blue for colony 3
-                ... }
-                >>> viewer = img.objmap.napari(colormap=cmap)
+            >>> # Semi-transparent labels with contours
+            >>> viewer = img.objmap.napari(opacity=0.5, contour=2)
+            >>>
+            >>> # Custom color mapping for specific colonies
+            >>> cmap = {
+            ...     1: [1.0, 0, 0],      # Red for colony 1
+            ...     2: [0, 1.0, 0],      # Green for colony 2
+            ...     3: [0, 0, 1.0],      # Blue for colony 3
+            ... }
+            >>> viewer = img.objmap.napari(colormap=cmap)
 
-            .. dropdown:: Comparing masks and maps in same viewer
+            Comparing masks and maps in same viewer:
 
-                >>> # Add grayscale base image
-                >>> viewer = img.gray.napari()
-                >>>
-                >>> # Overlay binary mask with transparency
-                >>> viewer = img.objmask.napari(opacity=0.4)
-                >>>
-                >>> # Add full object map with contours only
-                >>> viewer = img.objmap.napari(name="boundaries", contour=1)
+            >>> # Add grayscale base image
+            >>> viewer = img.gray.napari()
+            >>>
+            >>> # Overlay binary mask with transparency
+            >>> viewer = img.objmask.napari(opacity=0.4)
+            >>>
+            >>> # Add full object map with contours only
+            >>> viewer = img.objmap.napari(name="boundaries", contour=1)
 
-            .. dropdown:: Using reset for fresh visualization sessions
+            Using reset for fresh visualization sessions:
 
-                >>> viewer = img.objmap.napari()
-                >>> # ... do some analysis ...
-                >>> # Start fresh without old layers
-                >>> viewer = img.objmap.napari(reset=True)
+            >>> viewer = img.objmap.napari()
+            >>> # ... do some analysis ...
+            >>> # Start fresh without old layers
+            >>> viewer = img.objmap.napari(reset=True)
 
         Note:
             Labels layers are specifically designed for discrete/categorical data where

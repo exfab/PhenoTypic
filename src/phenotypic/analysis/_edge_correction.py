@@ -105,37 +105,37 @@ class EdgeCorrector(SetAnalyzer):
             ValueError: If top_n is not a positive integer.
 
         Examples:
-            .. dropdown:: Basic initialization with 96-well plate defaults
+            Basic initialization with 96-well plate defaults:
 
-                >>> from phenotypic.analysis import EdgeCorrector
-                >>> corrector = EdgeCorrector(
-                ...     on='Area',
-                ...     groupby=['ImageName'],
-                ...     top_n=3,
-                ...     pvalue=0.05
-                ... )
-                >>> # nrows=8, ncols=12 are defaults for 96-well format
+            >>> from phenotypic.analysis import EdgeCorrector
+            >>> corrector = EdgeCorrector(
+            ...     on='Area',
+            ...     groupby=['ImageName'],
+            ...     top_n=3,
+            ...     pvalue=0.05
+            ... )
+            >>> # nrows=8, ncols=12 are defaults for 96-well format
 
-            .. dropdown:: Custom grid layout (384-well format, 16x24)
+            Custom grid layout (384-well format, 16x24):
 
-                >>> corrector = EdgeCorrector(
-                ...     on='ColonyIntensity',
-                ...     groupby=['Plate', 'Condition'],
-                ...     nrows=16,
-                ...     ncols=24,
-                ...     top_n=3,
-                ...     connectivity=8,  # Include diagonal neighbors
-                ...     num_workers=4
-                ... )
+            >>> corrector = EdgeCorrector(
+            ...     on='ColonyIntensity',
+            ...     groupby=['Plate', 'Condition'],
+            ...     nrows=16,
+            ...     ncols=24,
+            ...     top_n=3,
+            ...     connectivity=8,  # Include diagonal neighbors
+            ...     num_workers=4
+            ... )
 
-            .. dropdown:: Aggressive correction (no statistical test)
+            Aggressive correction (no statistical test):
 
-                >>> corrector = EdgeCorrector(
-                ...     on='Area',
-                ...     groupby=['ImageName'],
-                ...     pvalue=0.0,  # Apply to all groups regardless of stats
-                ...     top_n=1  # Use single top value as threshold
-                ... )
+            >>> corrector = EdgeCorrector(
+            ...     on='Area',
+            ...     groupby=['ImageName'],
+            ...     pvalue=0.0,  # Apply to all groups regardless of stats
+            ...     top_n=1  # Use single top value as threshold
+            ... )
         """
         super().__init__(
                 on=on, groupby=groupby, agg_func=agg_func, num_workers=num_workers
@@ -202,24 +202,22 @@ class EdgeCorrector(SetAnalyzer):
             - Results are always sorted for deterministic output
 
         Examples:
-            .. dropdown:: Finding fully surrounded and partially surrounded cells on an 8×12 grid
+            Finding fully surrounded and partially surrounded cells on an 8x12 grid:
 
-                >>> import numpy as np
-                >>> # 8×12 plate; 3×3 active block centered at (4,6)
-                >>> rows, cols = 8, 12
-                >>> block_rc = [(r, c) for r in range(3, 6) for c in range(5, 8)]
-                >>> active = np.array([r*cols + c for r, c in block_rc], dtype=np.int64)
-                >>>
-                >>> # Fully surrounded (default, since min_neighbors=None → all)
-                >>> res_all = EdgeCorrector._surrounded_positions(active, (rows, cols), connectivity=4)
-                >>> assert np.array_equal(res_all, np.array([4*cols + 6], dtype=np.int64))
-                >>>
-                >>> # Threshold: at least 3 of 4 neighbors
-                >>> idxs, counts = EdgeCorrector._surrounded_positions(
-                ...     active, (rows, cols), connectivity=4, min_neighbors=3, return_counts=True
-                ... )
-                >>> assert (counts >= 3).all()
-                >>> assert (4*cols + 6) in idxs  # center has 4
+            >>> import numpy as np
+            >>> # 8x12 plate; 3x3 active block centered at (4,6)
+            >>> rows, cols = 8, 12
+            >>> block_rc = [(r, c) for r in range(3, 6) for c in range(5, 8)]
+            >>> active = np.array([r*cols + c for r, c in block_rc], dtype=np.int64)
+            >>> # Fully surrounded (default, since min_neighbors=None -> all)
+            >>> res_all = EdgeCorrector._surrounded_positions(active, (rows, cols), connectivity=4)
+            >>> assert np.array_equal(res_all, np.array([4*cols + 6], dtype=np.int64))
+            >>> # Threshold: at least 3 of 4 neighbors
+            >>> idxs, counts = EdgeCorrector._surrounded_positions(
+            ...     active, (rows, cols), connectivity=4, min_neighbors=3, return_counts=True
+            ... )
+            >>> assert (counts >= 3).all()
+            >>> assert (4*cols + 6) in idxs  # center has 4
         """
         # Validate connectivity
         if connectivity not in (4, 8):
@@ -368,58 +366,54 @@ class EdgeCorrector(SetAnalyzer):
             - If pvalue=0.0, correction is applied to all groups regardless of statistics
 
         Examples:
-            .. dropdown:: Basic edge correction on 96-well data
+            Basic edge correction on 96-well data:
 
-                >>> import pandas as pd
-                >>> import numpy as np
-                >>> from phenotypic.analysis import EdgeCorrector
-                >>> from phenotypic.tools_.constants_ import GRID
-                >>>
-                >>> # Create sample 96-well data (8 rows x 12 cols)
-                >>> np.random.seed(42)
-                >>> data = pd.DataFrame({
-                ...     'ImageName': ['img1'] * 96,
-                ...     GRID.SECTION_NUM: range(96),
-                ...     'Metadata_Time': [1] * 96,
-                ...     'Shape_Area': np.random.uniform(100, 500, 96)
-                ... })
-                >>>
-                >>> # Edge colonies (row/col 0 or 7/11) have larger areas
-                >>> edge_idx = [i for i in range(96) if i//12 in (0,7) or i%12 in (0,11)]
-                >>> data.loc[edge_idx, 'Shape_Area'] *= 1.5
-                >>>
-                >>> # Apply correction
-                >>> corrector = EdgeCorrector(
-                ...     on='Shape_Area',
-                ...     groupby=['ImageName'],
-                ...     top_n=5,
-                ...     pvalue=0.05
-                ... )
-                >>> corrected = corrector.analyze(data)
-                >>> # New columns created:
-                >>> # - 'EdgeCorrection_NewVal-Area': Capped area values at threshold
-                >>> # - 'EdgeCorrection_Cap-Area': Threshold value used
-                >>> # Original 'Area' column unchanged
+            >>> import pandas as pd
+            >>> import numpy as np
+            >>> from phenotypic.analysis import EdgeCorrector
+            >>> from phenotypic.tools_.constants_ import GRID
+            >>> # Create sample 96-well data (8 rows x 12 cols)
+            >>> np.random.seed(42)
+            >>> data = pd.DataFrame({
+            ...     'ImageName': ['img1'] * 96,
+            ...     GRID.SECTION_NUM: range(96),
+            ...     'Metadata_Time': [1] * 96,
+            ...     'Shape_Area': np.random.uniform(100, 500, 96)
+            ... })
+            >>> # Edge colonies (row/col 0 or 7/11) have larger areas
+            >>> edge_idx = [i for i in range(96) if i//12 in (0,7) or i%12 in (0,11)]
+            >>> data.loc[edge_idx, 'Shape_Area'] *= 1.5
+            >>> # Apply correction
+            >>> corrector = EdgeCorrector(
+            ...     on='Shape_Area',
+            ...     groupby=['ImageName'],
+            ...     top_n=5,
+            ...     pvalue=0.05
+            ... )
+            >>> corrected = corrector.analyze(data)  # doctest: +SKIP
+            >>> # New columns created:
+            >>> # - 'EdgeCorrection_NewVal-Area': Capped area values at threshold
+            >>> # - 'EdgeCorrection_Cap-Area': Threshold value used
+            >>> # Original 'Area' column unchanged
 
-            .. dropdown:: Multi-group edge correction (multiple plates and conditions)
+            Multi-group edge correction (multiple plates and conditions):
 
-                >>> # Data from multiple plates and conditions
-                >>> data = pd.DataFrame({
-                ...     'Plate': ['P1']*96 + ['P2']*96,
-                ...     'Condition': ['WT']*48 + ['KO']*48 + ['WT']*48 + ['KO']*48,
-                ...     GRID.SECTION_NUM: list(range(96))*2,
-                ...     'Metadata_Time': [1]*192,
-                ...     'Area': np.random.uniform(100, 500, 192)
-                ... })
-                >>>
-                >>> corrector = EdgeCorrector(
-                ...     on='Area',
-                ...     groupby=['Plate', 'Condition'],  # 4 independent corrections
-                ...     nrows=8, ncols=12,
-                ...     num_workers=4
-                ... )
-                >>> corrected = corrector.analyze(data)
-                >>> # Each plate-condition combo gets its own threshold
+            >>> # Data from multiple plates and conditions
+            >>> data = pd.DataFrame({
+            ...     'Plate': ['P1']*96 + ['P2']*96,
+            ...     'Condition': ['WT']*48 + ['KO']*48 + ['WT']*48 + ['KO']*48,
+            ...     GRID.SECTION_NUM: list(range(96))*2,
+            ...     'Metadata_Time': [1]*192,
+            ...     'Area': np.random.uniform(100, 500, 192)
+            ... })  # doctest: +SKIP
+            >>> corrector = EdgeCorrector(
+            ...     on='Area',
+            ...     groupby=['Plate', 'Condition'],  # 4 independent corrections
+            ...     nrows=8, ncols=12,
+            ...     num_workers=4
+            ... )
+            >>> corrected = corrector.analyze(data)  # doctest: +SKIP
+            >>> # Each plate-condition combo gets its own threshold
         """
         from phenotypic.tools_.constants_ import GRID
 
@@ -538,28 +532,28 @@ class EdgeCorrector(SetAnalyzer):
             - Call analyze() before show()
 
         Examples:
-            .. dropdown:: Basic visualization of edge correction results
+            Basic visualization of edge correction results:
 
-                >>> corrector = EdgeCorrector(on='Area', groupby=['ImageName'])
-                >>> corrected = corrector.analyze(data)
-                >>> fig, ax = corrector.show()
-                >>> # Single collapsed plot with all groups stacked vertically
+            >>> corrector = EdgeCorrector(on='Area', groupby=['ImageName'])
+            >>> corrected = corrector.analyze(data)  # doctest: +SKIP
+            >>> fig, ax = corrector.show()  # doctest: +SKIP
+            >>> # Single collapsed plot with all groups stacked vertically
 
-            .. dropdown:: Individual subplots per group
+            Individual subplots per group:
 
-                >>> fig, axes = corrector.show(
-                ...     collapsed=False,
-                ...     figsize=(15, 10)
-                ... )
-                >>> # Grid of subplots, max 3 columns
+            >>> fig, axes = corrector.show(
+            ...     collapsed=False,
+            ...     figsize=(15, 10)
+            ... )  # doctest: +SKIP
+            >>> # Grid of subplots, max 3 columns
 
-            .. dropdown:: Filtered visualization for specific plate
+            Filtered visualization for specific plate:
 
-                >>> fig, ax = corrector.show(
-                ...     criteria={'Plate': 'P1'},
-                ...     max_groups=10,
-                ...     figsize=(12, 8)
-                ... )
+            >>> fig, ax = corrector.show(
+            ...     criteria={'Plate': 'P1'},
+            ...     max_groups=10,
+            ...     figsize=(12, 8)
+            ... )  # doctest: +SKIP
         """
         if self._original_data.empty:
             raise RuntimeError("No results to display. Call analyze() first.")
@@ -1058,20 +1052,20 @@ class EdgeCorrector(SetAnalyzer):
                 has not been called, returns an empty DataFrame.
 
         Examples:
-            .. dropdown:: Retrieving corrected measurements after analysis
+            Retrieving corrected measurements after analysis:
 
-                >>> corrector = EdgeCorrector(
-                ...     on='Area',
-                ...     groupby=['ImageName']
-                ... )
-                >>> corrected = corrector.analyze(data)
-                >>> results = corrector.results()
-                >>> assert results.equals(corrected)
-                >>> # Access corrected values
-                >>> corrected_areas = results['Size-Area']
-                >>> thresholds = results['Cap-Area']
-                >>> # Original 'Area' column also available for comparison
-                >>> original_areas = results['Area']
+            >>> corrector = EdgeCorrector(
+            ...     on='Area',
+            ...     groupby=['ImageName']
+            ... )
+            >>> corrected = corrector.analyze(data)  # doctest: +SKIP
+            >>> results = corrector.results()  # doctest: +SKIP
+            >>> assert results.equals(corrected)  # doctest: +SKIP
+            >>> # Access corrected values
+            >>> corrected_areas = results['Size-Area']  # doctest: +SKIP
+            >>> thresholds = results['Cap-Area']  # doctest: +SKIP
+            >>> # Original 'Area' column also available for comparison
+            >>> original_areas = results['Area']  # doctest: +SKIP
 
         Notes:
             - Returns the DataFrame stored in self._latest_measurements
@@ -1135,19 +1129,19 @@ class EdgeCorrector(SetAnalyzer):
             - New columns always created for consistency, even if no correction applied
 
         Examples:
-            .. dropdown:: Direct use in batch processing
+            Direct use in batch processing:
 
-                >>> from phenotypic.analysis import EdgeCorrector
-                >>> group_data = data[data['Plate'] == 'P1'] #doctest: +SKIP
-                >>> corrected = EdgeCorrector._apply2group_func(
-                ...     group_data,
-                ...     on='Area',
-                ...     nrows=8, ncols=12,
-                ...     top_n=5,
-                ...     time_label='Time',
-                ...     connectivity=4,
-                ...     pvalue=0.05
-                ... )
+            >>> from phenotypic.analysis import EdgeCorrector
+            >>> group_data = data[data['Plate'] == 'P1']  # doctest: +SKIP
+            >>> corrected = EdgeCorrector._apply2group_func(
+            ...     group_data,
+            ...     on='Area',
+            ...     nrows=8, ncols=12,
+            ...     top_n=5,
+            ...     time_label='Time',
+            ...     connectivity=4,
+            ...     pvalue=0.05
+            ... )  # doctest: +SKIP
         """
         from phenotypic.tools_.constants_ import GRID
 

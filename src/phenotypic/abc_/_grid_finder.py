@@ -23,7 +23,27 @@ class GridFinder(GridMeasureFeatures, ABC):
     high-throughput phenotyping experiments where samples are arranged in regular grids
     (e.g., 96-well, 384-well formats).
 
-    **What it does:**
+    **Quick Decision Guide**
+
+    Use [AutoGridFinder](src/phenotypic/grid/_auto_grid_finder.py) when:
+    - Grid position is unknown or image is rotated/shifted
+    - Colonies are detected but well boundaries are unclear
+    - You want automatic optimization of row/column edge positions
+    - Tolerance parameter allows tuning optimization precision
+
+    Use [ManualGridFinder](src/phenotypic/grid/_manual_grid_finder.py) when:
+    - You know exact grid geometry from microscope calibration
+    - Grid position is fixed and repeatable across images
+    - You have pre-measured row and column edge coordinates
+    - You want deterministic, non-optimized grid assignment
+
+    Combining with detection pipelines:
+    - Use GridFinder after ObjectDetector to map colonies to wells
+    - AutoGridFinder works with any detection result
+    - ManualGridFinder requires pre-computed edge coordinates
+    - Grid assignment is independent of detection algorithm
+
+    **What it does**
 
     GridFinder implementations analyze the spatial distribution of detected objects in
     an image and determine the underlying grid structure. They compute pixel coordinates
@@ -31,177 +51,203 @@ class GridFinder(GridMeasureFeatures, ABC):
     edges to assign each object to a row number, column number, and section number
     (unique well identifier).
 
-    **Why it's important for colony phenotyping:**
+    **Why it's important for colony phenotyping**
 
     In arrayed plate experiments, colonies are grown at fixed positions corresponding to
     wells in a microplate. By mapping detected colonies to grid positions, downstream
     analysis can:
 
-    - Correlate colony measurements with sample metadata (what was inoculated in each well)
-    - Track growth across replicate wells
-    - Identify spatial patterns or contamination
-    - Export results organized by well coordinates for database import
+    - **Sample tracking:** Correlate colony measurements with sample metadata inoculated
+      in each well
+    - **Replicate analysis:** Track growth across identical replicate wells
+    - **Spatial detection:** Identify contamination patterns or edge effects
+    - **Data export:** Organize results by well coordinates for database import and
+      statistical analysis
 
     Without grid assignment, measurements are just unorganized lists of objects with no
     link to experimental design.
 
-    **Grid concepts:**
+    **Grid concepts**
 
-    - **Row edges:** Array of pixel row coordinates where rows begin/end. For an 8-row
-      grid, this is an array of 9 values: [0, y1, y2, ..., y8, image_height].
-    - **Column edges:** Array of pixel column coordinates where columns begin/end. For a
-      12-column grid, this is an array of 13 values: [0, x1, x2, ..., x12, image_width].
-    - **Grid cell assignment:** Each object's center is tested against row/column edges
-      using pd.cut(), assigning it to row i (0 to nrows-1) and column j (0 to ncols-1).
-    - **Section number:** A unique well ID computed as row*ncols + col, ordered from
-      top-left (0) to bottom-right (nrows*ncols - 1).
+    - **Row edges:** Array of pixel row coordinates marking row boundaries. For 8 rows,
+      array has 9 values: [0, y1, y2, ..., y8, image_height]. Objects between row_edges[i]
+      and row_edges[i+1] belong to row i.
+    - **Column edges:** Array of pixel column coordinates marking column boundaries. For
+      12 columns, array has 13 values: [0, x1, x2, ..., x12, image_width]. Objects between
+      col_edges[j] and col_edges[j+1] belong to column j.
+    - **Grid cell assignment:** Each object's centroid (center_rr, center_cc) is tested
+      against row/column edges using pd.cut(), assigning it to row i (0 to nrows-1) and
+      column j (0 to ncols-1).
+    - **Section number:** A unique well ID computed as row*ncols + col, ordered left-to-right,
+      top-to-bottom (top-left well = 0, bottom-right well = nrows*ncols - 1).
 
-    **Typical plate formats:**
+    **Typical plate formats**
 
-    - 96-well plate: 8 rows × 12 columns (A1-H12)
-    - 384-well plate: 16 rows × 24 columns (A1-P24)
+    - **96-well plate:** 8 rows × 12 columns (A1-H12)
+    - **384-well plate:** 16 rows × 24 columns (A1-P24)
+    - **1536-well plate:** 32 rows × 48 columns (very high-throughput)
 
     **Attributes:**
-        nrows (int): Number of rows in the grid. For 96-well plates, this is 8.
-        ncols (int): Number of columns in the grid. For 96-well plates, this is 12.
+        nrows (int): Number of rows in the grid. For 96-well plates, typically 8.
+        ncols (int): Number of columns in the grid. For 96-well plates, typically 12.
 
-    **Abstract Methods:**
+    **Abstract Methods**
 
-        You must implement these two methods in subclasses:
+    Subclasses must implement these methods:
 
-        - _operate(image: Image) -> pd.DataFrame: Main entry point. Should compute
-          row and column edges, then call _get_grid_info() to assemble and return
-          the complete grid DataFrame.
-        - get_row_edges(image: Image) -> np.ndarray: Return array of row edge pixel
-          coordinates. Length must be nrows + 1.
-        - get_col_edges(image: Image) -> np.ndarray: Return array of column edge pixel
-          coordinates. Length must be ncols + 1.
+    - **_operate(image: Image) -> pd.DataFrame:** Main entry point. Compute row and
+      column edges, then call _get_grid_info() to assemble the complete grid DataFrame.
+      Return the DataFrame with all grid assignments.
+    - **get_row_edges(image: Image) -> np.ndarray:** Return array of row edge pixel
+      coordinates. Length must be exactly nrows + 1 (e.g., 9 values for 8 rows).
+    - **get_col_edges(image: Image) -> np.ndarray:** Return array of column edge pixel
+      coordinates. Length must be exactly ncols + 1 (e.g., 13 values for 12 columns).
 
-    **Helper Methods for Implementation:**
+    **Helper Methods for Implementation**
 
-        These protected methods reduce code duplication when implementing _operate():
+    These protected methods reduce code duplication and handle grid assignment:
 
-        - _get_grid_info(image, row_edges, col_edges) -> pd.DataFrame: Assembles
-          complete grid information from pre-computed edge coordinates. This method
-          automatically calls _add_row_number_info(), _add_col_number_info(), and
-          _add_section_number_info() to populate all required columns. Use this in
-          your _operate() implementation after computing edges.
+    - **_get_grid_info(image, row_edges, col_edges) -> pd.DataFrame:** Assembles
+      complete grid information from pre-computed edge coordinates. Calls internal
+      methods to populate ROW_NUM, COL_NUM, and SECTION_NUM columns. Use this after
+      computing edges in your _operate() implementation.
+    - **_add_row_number_info():** Assigns row indices using pd.cut() with object
+      centroids and row edges.
+    - **_add_col_number_info():** Assigns column indices using pd.cut() with object
+      centroids and column edges.
+    - **_add_section_number_info():** Computes section numbers from row and column
+      indices using vectorized operations.
+    - **_clip_row_edges() / _clip_col_edges():** Ensures edge coordinates are clipped
+      to image bounds (prevents indexing errors).
 
-    **Output Format:**
+    **Output Format**
 
-        The _operate() method returns a pandas DataFrame with detected objects and
-        their grid assignments:
+    The _operate() method returns a pandas DataFrame with detected objects and their
+    grid assignments:
 
-        - ROW_NUM: Grid row index (0 to nrows-1)
-        - COL_NUM: Grid column index (0 to ncols-1)
-        - SECTION_NUM: Well identifier (0 to nrows*ncols-1), ordered left-to-right,
-          top-to-bottom
-        - Additional columns: Object metadata (centroid, bounding box, etc.) from
-          image.objects.info()
+    - **ROW_NUM:** Grid row index (0 to nrows-1), representing vertical well position
+    - **COL_NUM:** Grid column index (0 to ncols-1), representing horizontal well position
+    - **SECTION_NUM:** Well identifier (0 to nrows*ncols-1), ordered left-to-right,
+      top-to-bottom for convenient database mapping
+    - **Additional columns:** Object metadata (centroid, bounding box, morphology) from
+      image.objects.info()
 
-        Objects that fall outside all grid cells (due to edge clipping or misalignment)
-        will have NaN values in grid columns.
+    Objects that fall outside all grid cells (due to edge clipping or misalignment)
+    have NaN values in ROW_NUM, COL_NUM, and SECTION_NUM columns.
 
-    **Concrete Implementations:**
+    **Concrete Implementations**
 
-        PhenoTypic provides two built-in implementations:
+    PhenoTypic provides two built-in GridFinder implementations:
 
-        - **AutoGridFinder:** Automatically optimizes row and column edge positions
-          using scipy.optimize.minimize_scalar to minimize the MSE between object
-          centroids and grid bin midpoints. Useful when grid position is unknown.
-        - **ManualGridFinder:** User specifies exact row and column edge coordinates
-          (e.g., from manual measurement or calibration). Use when you know the exact
-          grid position.
+    - [AutoGridFinder](src/phenotypic/grid/_auto_grid_finder.py): Automatically optimizes
+      row and column edge positions using scipy.optimize.minimize_scalar. Minimizes MSE
+      between object centroids and grid bin midpoints. Use when grid position is unknown.
+    - [ManualGridFinder](src/phenotypic/grid/_manual_grid_finder.py): User specifies exact
+      row and column edge coordinates from calibration or measurement. Use when grid geometry
+      is known and fixed.
 
-    **Notes:**
+    **Optimization Strategy (for AutoGridFinder)**
 
-        - GridFinder subclasses can work with regular Image objects, not just GridImage.
-        - Edge coordinates should always be sorted in ascending order (handled by
-          _clip_row_edges and _clip_col_edges).
-        - Ensure row_edges and col_edges are clipped to image bounds to prevent indexing
-          errors.
-        - Grid assignment uses pandas.cut() with include_lowest=True and right=True,
-          meaning objects are assigned based on which interval they fall into.
+    AutoGridFinder uses an iterative optimization approach:
 
-    **Examples:**
+    - **Objective function:** Minimize mean squared error (MSE) between object centroids
+      and their nearest grid bin midpoints
+    - **Optimization method:** scipy.optimize.minimize_scalar with bounded search
+    - **Starting point:** Heuristic estimates from object distribution (dividing image
+      into nrows/ncols regions)
+    - **Convergence:** Stops when relative tolerance is met or max iterations reached
+    - **Result:** Optimal row_edges and col_edges that best align detected colonies to
+      grid structure
 
-        .. dropdown:: Create a ManualGridFinder for a 96-well plate with known geometry
+    Example optimization pattern:
 
-            For example, if a microscope image of a 96-well plate is 2048×3072 pixels
-            and wells are evenly spaced, you might manually define:
+        >>> from scipy.optimize import minimize_scalar
+        >>> # Pseudo-code for optimization loop
+        >>> # def objective(edges): return mse(colony_positions, grid_bins(edges))
+        >>> # result = minimize_scalar(objective, bounds=(min_edge, max_edge), method='bounded')
+        >>> # optimal_edges = result.x
 
-            .. code-block:: python
+    **Notes**
 
-                import numpy as np
-                from phenotypic import Image
-                from phenotypic.grid import ManualGridFinder
-                from phenotypic.detect import OtsuDetector
+    - GridFinder subclasses work with regular Image objects (not just GridImage)
+    - Edge coordinates must be sorted in ascending order (handled by _clip_row_edges
+      and _clip_col_edges)
+    - Ensure row_edges and col_edges are clipped to image bounds to prevent indexing
+      errors
+    - Grid assignment uses pandas.cut() with include_lowest=True and right=True, meaning
+      objects are assigned based on which interval they fall into
+    - NaN values in grid columns indicate objects outside all grid cells
 
-                # Load image of 96-well plate
-                image = Image("plate_scan.jpg")
+    **Examples**
 
-                # Detect colonies
-                detector = OtsuDetector()
-                image_with_objects = detector.operate(image)
+        Use AutoGridFinder when grid position is unknown:
 
-                # Define grid for 8 rows × 12 columns
-                # Rows: 8 wells vertically, spaced from pixel 100 to 2000
-                row_edges = np.array([100, 350, 600, 850, 1100, 1350, 1600, 1850, 2100])
-                # Columns: 12 wells horizontally, spaced from pixel 50 to 3050
-                col_edges = np.linspace(50, 3050, 13, dtype=int)
+        When the image is rotated, shifted, or geometry is unclear, let AutoGridFinder
+        automatically compute optimal edge positions by optimizing alignment:
 
-                # Create grid finder and assign colonies to wells
-                grid_finder = ManualGridFinder(row_edges=row_edges, col_edges=col_edges)
-                grid_df = grid_finder.measure(image_with_objects)
+        >>> from phenotypic.grid import AutoGridFinder
+        >>> from phenotypic.data import load_synth_yeast_plate
+        >>> from phenotypic.detect import OtsuDetector
+        >>> # Load and detect colonies on plate
+        >>> image = load_synth_yeast_plate()
+        >>> detector = OtsuDetector()
+        >>> image_with_objects = detector.apply(image)
+        >>> # AutoGridFinder optimizes edge positions to align with colonies
+        >>> grid_finder = AutoGridFinder(nrows=8, ncols=12, tol=0.01)
+        >>> grid_df = grid_finder.measure(image_with_objects)
+        >>> # Access well assignments
+        >>> print(f"Found {len(grid_df)} colonies assigned to grid")
+        >>> print(grid_df[['ROW_NUM', 'COL_NUM', 'SECTION_NUM']].head())
 
-                # Result has columns: ROW_NUM, COL_NUM, SECTION_NUM, plus object info
-                print(grid_df[['ROW_NUM', 'COL_NUM', 'SECTION_NUM']])
+        Create a ManualGridFinder for a 96-well plate with known geometry:
 
-        .. dropdown:: Use AutoGridFinder when grid position is unknown
+        When grid geometry is known from microscope calibration, manually specify
+        row and column edges for reproducible grid assignment:
 
-            When the image is rotated, shifted, or otherwise misaligned, let
-            AutoGridFinder automatically compute optimal edge positions:
+        >>> import numpy as np
+        >>> from phenotypic.grid import ManualGridFinder
+        >>> from phenotypic.data import load_synth_yeast_plate
+        >>> from phenotypic.detect import OtsuDetector
+        >>> # Load and detect colonies
+        >>> image = load_synth_yeast_plate()
+        >>> detector = OtsuDetector()
+        >>> image_with_objects = detector.apply(image)
+        >>> # Define grid for 8 rows x 12 columns (96-well)
+        >>> # Rows: 8 wells vertically, evenly spaced from pixel 100 to 2000
+        >>> row_edges = np.linspace(100, 2000, 9, dtype=int)
+        >>> # Columns: 12 wells horizontally, evenly spaced from pixel 50 to 3050
+        >>> col_edges = np.linspace(50, 3050, 13, dtype=int)
+        >>> # Create grid finder with known edge coordinates
+        >>> grid_finder = ManualGridFinder(row_edges=row_edges, col_edges=col_edges)
+        >>> grid_df = grid_finder.measure(image_with_objects)
+        >>> # Result includes grid assignments plus object metadata
+        >>> print(grid_df[['ROW_NUM', 'COL_NUM', 'SECTION_NUM']].head())
 
-            .. code-block:: python
+        Understanding SECTION_NUM for well mapping:
 
-                from phenotypic.grid import AutoGridFinder
-                from phenotypic import Image
-                from phenotypic.detect import OtsuDetector
+        SECTION_NUM provides a single integer ID for each well, useful for organizing
+        results and correlating with sample metadata:
 
-                # Load and detect colonies
-                image = Image("rotated_plate.jpg")
-                detector = OtsuDetector()
-                image_with_objects = detector.operate(image)
-
-                # AutoGridFinder optimizes edge positions to align with detected colonies
-                grid_finder = AutoGridFinder(nrows=8, ncols=12, tol=0.01)
-                grid_df = grid_finder.measure(image_with_objects)
-
-                # Grid assignment is robust to rotation and minor misalignment
-                print(f"Found {len(grid_df)} colonies assigned to grid")
-
-        .. dropdown:: Understanding SECTION_NUM for well mapping
-
-            SECTION_NUM provides a single integer ID for each well, useful for
-            organizing results or looking up sample metadata:
-
-            .. code-block:: python
-
-                # Example: 8×12 grid (96-well plate)
-                # SECTION_NUM runs 0-95, numbered left-to-right, top-to-bottom
-                # Section 0 = Row 0, Col 0 (top-left, A1)
-                # Section 11 = Row 0, Col 11 (top-right, A12)
-                # Section 12 = Row 1, Col 0 (second row left, B1)
-                # Section 95 = Row 7, Col 11 (bottom-right, H12)
-
-                grid_df = grid_finder.measure(image_with_objects)
-
-                # Filter colonies in a specific well
-                section_5_objects = grid_df[grid_df['SectionNum'] == 5]
-
-                # Map section numbers back to well coordinates
-                well_row = section_num // 12
-                well_col = section_num % 12
+        >>> from phenotypic.grid import AutoGridFinder
+        >>> from phenotypic.data import load_synth_yeast_plate
+        >>> from phenotypic.detect import OtsuDetector
+        >>> # Detect and assign colonies to grid
+        >>> image = load_synth_yeast_plate()
+        >>> detector = OtsuDetector()
+        >>> image_with_objects = detector.apply(image)
+        >>> grid_finder = AutoGridFinder(nrows=8, ncols=12)
+        >>> grid_df = grid_finder.measure(image_with_objects)
+        >>> # Example: 8x12 grid (96-well plate)
+        >>> # SECTION_NUM runs 0-95, numbered left-to-right, top-to-bottom
+        >>> # Section 0 = Row 0, Col 0 (top-left, A1)
+        >>> # Section 11 = Row 0, Col 11 (top-right, A12)
+        >>> # Section 12 = Row 1, Col 0 (second row left, B1)
+        >>> # Section 95 = Row 7, Col 11 (bottom-right, H12)
+        >>> # Filter colonies in a specific well
+        >>> section_5_objects = grid_df[grid_df['SECTION_NUM'] == 5]
+        >>> # Map section numbers back to well coordinates
+        >>> well_row = 5 // 12  # Row index
+        >>> well_col = 5 % 12   # Column index
     """
 
     def __init__(self, nrows: int, ncols: int) -> None:

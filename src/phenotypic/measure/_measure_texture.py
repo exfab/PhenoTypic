@@ -81,45 +81,37 @@ class MeasureTexture(MeasureFeatures):
             doi: 10.1109/TSMC.1973.4309314.
 
     Examples:
-        .. dropdown:: Measure texture to distinguish morphotypes
+        Measure texture to distinguish morphotypes:
 
-            .. code-block:: python
+        >>> from phenotypic import Image
+        >>> from phenotypic.detect import OtsuDetector
+        >>> from phenotypic.measure import MeasureTexture
+        >>> # Load plate with smooth and wrinkled colonies
+        >>> image = Image.imread("morphotype_plate.jpg")  # doctest: +SKIP
+        >>> detector = OtsuDetector()
+        >>> image = detector.operate(image)  # doctest: +SKIP
+        >>> # Measure texture at a single scale with default quantization
+        >>> measurer = MeasureTexture(scale=3, quant_lvl=32, enhance=False)
+        >>> texture = measurer.operate(image)  # doctest: +SKIP
+        >>> # High contrast and energy indicate wrinkled/rough morphology
+        >>> wrinkled = texture[
+        ...     texture['TextureGray_Contrast-avg-scale03'] > texture['TextureGray_Contrast-avg-scale03'].quantile(0.75)
+        ... ]  # doctest: +SKIP
+        >>> print(f"Wrinkled colonies: {len(wrinkled)}")  # doctest: +SKIP
 
-                from phenotypic import Image
-                from phenotypic.detect import OtsuDetector
-                from phenotypic.measure import MeasureTexture
+        Multi-scale texture analysis for fine/coarse features:
 
-                # Load plate with smooth and wrinkled colonies
-                image = Image.imread("morphotype_plate.jpg")
-                detector = OtsuDetector()
-                image = detector.operate(image)
-
-                # Measure texture at a single scale with default quantization
-                measurer = MeasureTexture(scale=3, quant_lvl=32, enhance=False)
-                texture = measurer.operate(image)
-
-                # High contrast and energy indicate wrinkled/rough morphology
-                wrinkled = texture[
-                    texture['TextureGray_Contrast-avg-scale03'] > texture['TextureGray_Contrast-avg-scale03'].quantile(0.75)
-                ]
-                print(f"Wrinkled colonies: {len(wrinkled)}")
-
-        .. dropdown:: Multi-scale texture analysis for fine/coarse features
-
-            .. code-block:: python
-
-                # Use multiple scales to capture fine and coarse texture
-                measurer = MeasureTexture(scale=[1, 3, 5], quant_lvl=32, enhance=True, warn=False)
-                texture = measurer.operate(image)
-
-                # Compare entropy across scales to assess texture organization
-                # Fine texture (scale 1): high entropy -> many small features
-                # Coarse texture (scale 5): low entropy -> organized large structures
-                for scale in [1, 3, 5]:
-                    col = f'TextureGray_Entropy-avg-scale0{scale}'
-                    if col in texture.columns:
-                        avg_entropy = texture[col].mean()
-                        print(f"Scale {scale}px: avg entropy = {avg_entropy:.2f}")
+        >>> # Use multiple scales to capture fine and coarse texture
+        >>> measurer = MeasureTexture(scale=[1, 3, 5], quant_lvl=32, enhance=True, warn=False)
+        >>> texture = measurer.operate(image)  # doctest: +SKIP
+        >>> # Compare entropy across scales to assess texture organization
+        >>> # Fine texture (scale 1): high entropy -> many small features
+        >>> # Coarse texture (scale 5): low entropy -> organized large structures
+        >>> for scale in [1, 3, 5]:  # doctest: +SKIP
+        ...     col = f'TextureGray_Entropy-avg-scale0{scale}'
+        ...     if col in texture.columns:
+        ...         avg_entropy = texture[col].mean()
+        ...         print(f"Scale {scale}px: avg entropy = {avg_entropy:.2f}")
     """
 
     _measurement_info_class = TEXTURE

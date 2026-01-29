@@ -15,7 +15,7 @@ import gc
 import numpy as np
 
 from phenotypic.abc_ import ObjectRefiner
-from phenotypic.tools_._grid_inference_mixin import GridInferenceMixin
+from phenotypic.tools_.mixin import GridInferenceMixin
 from phenotypic.tools_.funcs_ import validate_operation_integrity
 
 

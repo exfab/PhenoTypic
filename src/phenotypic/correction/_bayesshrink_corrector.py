@@ -49,53 +49,38 @@ class BayesShrinkCorrector(ImageCorrector):
         convert2ycbcr (bool): Denoise RGB in YCbCr space. Default True.
 
     Examples:
-        .. dropdown:: High-quality RGB denoising for publication
+        High-quality RGB denoising for publication:
 
-            .. code-block:: python
+        >>> from phenotypic import Image
+        >>> from phenotypic.correction import BayesShrinkCorrector
+        >>> image = Image.imread('raw_plate_scan.jpg')  # doctest: +SKIP
+        >>> # BayesShrink preserves more detail than VisuShrink
+        >>> corrector = BayesShrinkCorrector()
+        >>> denoised = corrector.apply(image)  # doctest: +SKIP
+        >>> # All components denoised with adaptive thresholding
+        >>> assert not np.array_equal(denoised.rgb[:], image.rgb[:])  # doctest: +SKIP
+        >>> assert not np.array_equal(denoised.gray[:], image.gray[:])  # doctest: +SKIP
 
-                from phenotypic import Image
-                from phenotypic.correction import BayesShrinkCorrector
+        Fine detail preservation with db4 wavelet:
 
-                image = Image.imread('raw_plate_scan.jpg')
+        >>> from phenotypic import Image
+        >>> from phenotypic.correction import BayesShrinkCorrector
+        >>> image = Image.imread('high_res_plate.jpg')  # doctest: +SKIP
+        >>> # db4 preserves finer details than default db2
+        >>> corrector = BayesShrinkCorrector(wavelet='db4')
+        >>> denoised = corrector.apply(image)  # doctest: +SKIP
+        >>> # Better detail preservation for texture analysis
 
-                # BayesShrink preserves more detail than VisuShrink
-                corrector = BayesShrinkCorrector()
-                denoised = corrector.apply(image)
+        Spatially varying noise handling:
 
-                # All components denoised with adaptive thresholding
-                assert not np.array_equal(denoised.rgb[:], image.rgb[:])
-                assert not np.array_equal(denoised.gray[:], image.gray[:])
-
-        .. dropdown:: Fine detail preservation with db4 wavelet
-
-            .. code-block:: python
-
-                from phenotypic import Image
-                from phenotypic.correction import BayesShrinkCorrector
-
-                image = Image.imread('high_res_plate.jpg')
-
-                # db4 preserves finer details than default db2
-                corrector = BayesShrinkCorrector(wavelet='db4')
-                denoised = corrector.apply(image)
-
-                # Better detail preservation for texture analysis
-
-        .. dropdown:: Spatially varying noise handling
-
-            .. code-block:: python
-
-                from phenotypic import Image
-                from phenotypic.correction import BayesShrinkCorrector
-
-                # Image with uneven illumination (varying noise levels)
-                image = Image.imread('vignette_plate.jpg')
-
-                # BayesShrink adapts to local noise levels
-                corrector = BayesShrinkCorrector()
-                denoised = corrector.apply(image)
-
-                # Aggressive denoising in high-noise regions, conservative in low-noise
+        >>> from phenotypic import Image
+        >>> from phenotypic.correction import BayesShrinkCorrector
+        >>> # Image with uneven illumination (varying noise levels)
+        >>> image = Image.imread('vignette_plate.jpg')  # doctest: +SKIP
+        >>> # BayesShrink adapts to local noise levels
+        >>> corrector = BayesShrinkCorrector()
+        >>> denoised = corrector.apply(image)  # doctest: +SKIP
+        >>> # Aggressive denoising in high-noise regions, conservative in low-noise
     """
 
     def __init__(

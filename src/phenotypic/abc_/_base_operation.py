@@ -120,69 +120,52 @@ class BaseOperation(ABC):
           will fall back gracefully. psutil is available on all platforms.
 
     Examples:
-        .. dropdown:: Enabling memory tracking for an operation
+        Enabling memory tracking for an operation:
 
-            .. code-block:: python
+        >>> import logging
+        >>> from phenotypic.detect import OtsuDetector
+        >>> # Set up logging to see memory usage
+        >>> logging.basicConfig(level=logging.INFO)
+        >>> # Create detector instance
+        >>> detector = OtsuDetector()
+        >>> # Apply operation - memory usage is logged automatically
+        >>> result = detector.apply(image)
+        # Console output shows:
+        # INFO: Memory usage after <step>: XX.XX MB (objects), YY.YY MB (process)
 
-                import logging
-                from phenotypic.detect import OtsuDetector
+        Accessing memory information programmatically:
 
-                # Set up logging to see memory usage
-                logging.basicConfig(level=logging.INFO)
+        >>> import logging
+        >>> from phenotypic.enhance import GaussianBlur
+        >>> # Create custom logger to capture memory messages
+        >>> logger = logging.getLogger('phenotypic.enhance.GaussianBlur')
+        >>> logger.setLevel(logging.INFO)
+        >>> handler = logging.StreamHandler()
+        >>> handler.setLevel(logging.INFO)
+        >>> logger.addHandler(handler)
+        >>> # Use operation
+        >>> blur = GaussianBlur(sigma=2)
+        >>> enhanced = blur.apply(image)
+        # Memory tracking happens automatically during operation
 
-                # Create detector instance
-                detector = OtsuDetector()
+        Custom operation with parameter matching for parallel execution:
 
-                # Apply operation - memory usage is logged automatically
-                result = detector.apply(image)
-
-                # Console output shows:
-                # INFO: Memory usage after <step>: XX.XX MB (objects), YY.YY MB (process)
-
-        .. dropdown:: Accessing memory information programmatically
-
-            .. code-block:: python
-
-                import logging
-                from phenotypic.enhance import GaussianBlur
-
-                # Create custom logger to capture memory messages
-                logger = logging.getLogger('phenotypic.enhance.GaussianBlur')
-                logger.setLevel(logging.INFO)
-
-                handler = logging.StreamHandler()
-                handler.setLevel(logging.INFO)
-                logger.addHandler(handler)
-
-                # Use operation
-                blur = GaussianBlur(sigma=2)
-                enhanced = blur.apply(image)
-
-                # Memory tracking happens automatically during operation
-
-        .. dropdown:: Custom operation with parameter matching for parallel execution
-
-            .. code-block:: python
-
-                from phenotypic.abc_ import ImageOperation
-                from phenotypic import Image
-
-                class CustomThreshold(ImageOperation):
-                    def __init__(self, threshold_value: int):
-                        super().__init__()
-                        self.threshold_value = threshold_value
-
-                    @staticmethod
-                    def _operate(image: Image, threshold_value: int = 128) -> Image:
-                        # Apply threshold algorithm
-                        image.enh_gray[:] = image.enh_gray[:] > threshold_value
-                        return image
-
-                # When operation is applied via pipeline:
-                operation = CustomThreshold(threshold_value=100)
-
-                # The operation object is serialized with all attributes
-                # for parallel execution in worker processes
+        >>> from phenotypic.abc_ import ImageOperation
+        >>> from phenotypic import Image
+        >>> class CustomThreshold(ImageOperation):
+        ...     def __init__(self, threshold_value: int):
+        ...         super().__init__()
+        ...         self.threshold_value = threshold_value
+        ...
+        ...     @staticmethod
+        ...     def _operate(image: Image, threshold_value: int = 128) -> Image:
+        ...         # Apply threshold algorithm
+        ...         image.enh_gray[:] = image.enh_gray[:] > threshold_value
+        ...         return image
+        >>> # When operation is applied via pipeline:
+        >>> operation = CustomThreshold(threshold_value=100)
+        # The operation object is serialized with all attributes
+        # for parallel execution in worker processes
     """
 
     def __init__(self, *args, **kwargs) -> None:

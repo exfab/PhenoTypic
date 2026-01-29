@@ -6,7 +6,7 @@ if TYPE_CHECKING:
     from phenotypic import Image
 
 from phenotypic.abc_ import ObjectRefiner
-from phenotypic.tools_ import FootprintMixin
+from phenotypic.tools_.mixin import FootprintMixin
 
 import numpy as np
 from skimage.morphology import closing
@@ -48,19 +48,19 @@ class MaskCloser(ObjectRefiner, FootprintMixin):
             but risk over-connecting separate objects.
 
     Examples:
-        .. dropdown:: Fill small gaps in colony masks
+        Fill small gaps in colony masks:
 
-            >>> from phenotypic.refine import MaskCloser
-            >>> from phenotypic import Image
-            >>> from phenotypic.detect import OtsuDetector
-            >>> image = Image.imread("colony_plate.jpg")  # doctest: +SKIP
-            >>> detected = OtsuDetector().apply(image)  # doctest: +SKIP
-            >>> # Fill gaps from uneven staining with auto-scaled shape
-            >>> refiner = MaskCloser(shape='auto')  # doctest: +SKIP
-            >>> refined = refiner.apply(detected)  # doctest: +SKIP
-            >>> # Or use a fixed disk shape with width 3
-            >>> refiner = MaskCloser(shape='disk', width=3)  # doctest: +SKIP
-            >>> refined = refiner.apply(detected, inplace=False)  # doctest: +SKIP
+        >>> from phenotypic.refine import MaskCloser
+        >>> from phenotypic import Image
+        >>> from phenotypic.detect import OtsuDetector
+        >>> image = Image.imread("colony_plate.jpg")  # doctest: +SKIP
+        >>> detected = OtsuDetector().apply(image)  # doctest: +SKIP
+        >>> # Fill gaps from uneven staining with auto-scaled shape
+        >>> refiner = MaskCloser(shape='auto')  # doctest: +SKIP
+        >>> refined = refiner.apply(detected)  # doctest: +SKIP
+        >>> # Or use a fixed disk shape with width 3
+        >>> refiner = MaskCloser(shape='disk', width=3)  # doctest: +SKIP
+        >>> refined = refiner.apply(detected, inplace=False)  # doctest: +SKIP
 
     Raises:
         AttributeError: If an invalid ``shape`` type is provided (checked

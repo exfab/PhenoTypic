@@ -67,41 +67,33 @@ class MeasureColor(MeasureFeatures):
             For each channel: Min, Q1, Mean, Median, Q3, Max, StdDev, CoeffVar.
 
     Examples:
-        .. dropdown:: Measure colony color to detect pigmented mutants
+        Measure colony color to detect pigmented mutants:
 
-            .. code-block:: python
+        >>> from phenotypic import Image
+        >>> from phenotypic.detect import OtsuDetector
+        >>> from phenotypic.measure import MeasureColor
+        >>> # Load image of colonies (may include pigmented and non-pigmented strains)
+        >>> image = Image.imread("mixed_pigment_plate.jpg")  # doctest: +SKIP
+        >>> detector = OtsuDetector()
+        >>> image = detector.operate(image)  # doctest: +SKIP
+        >>> # Measure color
+        >>> measurer = MeasureColor(include_XYZ=False)
+        >>> colors = measurer.operate(image)  # doctest: +SKIP
+        >>> # Identify pigmented colonies by hue and saturation
+        >>> pigmented = colors[colors['ColorHSV_SaturationMean'] > 15]  # doctest: +SKIP
+        >>> print(f"Found {len(pigmented)} pigmented colonies")  # doctest: +SKIP
 
-                from phenotypic import Image
-                from phenotypic.detect import OtsuDetector
-                from phenotypic.measure import MeasureColor
+        Use Lab color space for perceptually uniform analysis:
 
-                # Load image of colonies (may include pigmented and non-pigmented strains)
-                image = Image.imread("mixed_pigment_plate.jpg")
-                detector = OtsuDetector()
-                image = detector.operate(image)
-
-                # Measure color
-                measurer = MeasureColor(include_XYZ=False)
-                colors = measurer.operate(image)
-
-                # Identify pigmented colonies by hue and saturation
-                pigmented = colors[colors['ColorHSV_SaturationMean'] > 15]
-                print(f"Found {len(pigmented)} pigmented colonies")
-
-        .. dropdown:: Use Lab color space for perceptually uniform analysis
-
-            .. code-block:: python
-
-                # Measure using Lab space (perceptually uniform)
-                measurer = MeasureColor()
-                colors = measurer.operate(image)
-
-                # Chroma estimates reflect perceived "colorfulness"
-                bright_red = colors[
-                    (colors['ColorLab_L*Mean'] > 50) &
-                    (colors['ColorLab_ChromaEstimatedMean'] > 20)
-                ]
-                print(f"Bright red colonies: {len(bright_red)}")
+        >>> # Measure using Lab space (perceptually uniform)
+        >>> measurer = MeasureColor()
+        >>> colors = measurer.operate(image)  # doctest: +SKIP
+        >>> # Chroma estimates reflect perceived "colorfulness"
+        >>> bright_red = colors[
+        ...     (colors['ColorLab_L*Mean'] > 50) &
+        ...     (colors['ColorLab_ChromaEstimatedMean'] > 20)
+        ... ]  # doctest: +SKIP
+        >>> print(f"Bright red colonies: {len(bright_red)}")  # doctest: +SKIP
     """
 
     _measurement_info_classes = [ColorXYZ, Colorxy, ColorLab, ColorHSV]

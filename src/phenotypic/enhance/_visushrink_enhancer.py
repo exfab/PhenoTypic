@@ -54,60 +54,48 @@ class VisuShrinkEnhancer(ImageEnhancer):
         wavelet_levels (int | None): Decomposition levels. None = max-3 (auto).
 
     Examples:
-        .. dropdown:: Basic denoising of scanner noise with defaults
+        Basic denoising of scanner noise with defaults:
 
-            .. code-block:: python
+        >>> from phenotypic import Image
+        >>> from phenotypic.enhance import VisuShrinkEnhancer
+        >>> image = Image.imread('agar_plate.jpg')  # doctest: +SKIP
+        >>> enhancer = VisuShrinkEnhancer()
+        >>> denoised = enhancer.apply(image)  # doctest: +SKIP
+        >>> # Original RGB/gray untouched, enh_gray is denoised
+        >>> assert np.array_equal(image.rgb[:], denoised.rgb[:])  # doctest: +SKIP
+        >>> assert np.array_equal(image.gray[:], denoised.gray[:])  # doctest: +SKIP
+        >>> # enh_gray is different
+        >>> assert not np.array_equal(image.enh_gray[:], denoised.enh_gray[:])  # doctest: +SKIP
 
-                from phenotypic import Image
-                from phenotypic.enhance import VisuShrinkEnhancer
+        Custom parameters for heavily noisy images:
 
-                image = Image.imread('agar_plate.jpg')
-                enhancer = VisuShrinkEnhancer()
-                denoised = enhancer.apply(image)
+        >>> from phenotypic import Image
+        >>> from phenotypic.enhance import VisuShrinkEnhancer
+        >>> image = Image.imread('high_noise_plate.jpg')  # doctest: +SKIP
+        >>> # Use db4 for finer details, more decomposition levels
+        >>> enhancer = VisuShrinkEnhancer(
+        ...     wavelet='db4',
+        ...     wavelet_levels=5,
+        ...     sigma=0.08  # Higher noise estimate
+        ... )
+        >>> denoised = enhancer.apply(image)  # doctest: +SKIP
 
-                # Original RGB/gray untouched, enh_gray is denoised
-                assert np.array_equal(image.rgb[:], denoised.rgb[:])
-                assert np.array_equal(image.gray[:], denoised.gray[:])
-                # enh_gray is different
-                assert not np.array_equal(image.enh_gray[:], denoised.enh_gray[:])
+        Chaining with other enhancers for robust preprocessing:
 
-        .. dropdown:: Custom parameters for heavily noisy images
-
-            .. code-block:: python
-
-                from phenotypic import Image
-                from phenotypic.enhance import VisuShrinkEnhancer
-
-                image = Image.imread('high_noise_plate.jpg')
-                # Use db4 for finer details, more decomposition levels
-                enhancer = VisuShrinkEnhancer(
-                    wavelet='db4',
-                    wavelet_levels=5,
-                    sigma=0.08  # Higher noise estimate
-                )
-                denoised = enhancer.apply(image)
-
-        .. dropdown:: Chaining with other enhancers for robust preprocessing
-
-            .. code-block:: python
-
-                from phenotypic import Image, ImagePipeline
-                from phenotypic.enhance import (
-                    VisuShrinkEnhancer, CLAHE, GaussianSubtract
-                )
-                from phenotypic.detect import OtsuDetector
-
-                image = Image.imread('plate.jpg')
-
-                # Build preprocessing pipeline
-                pipeline = ImagePipeline()
-                pipeline.add(GaussianSubtract(width=50))  # Remove background
-                pipeline.add(VisuShrinkEnhancer(sigma=0.03))  # Denoise
-                pipeline.add(CLAHE(clip_limit=0.02))  # Enhance local contrast
-                pipeline.add(OtsuDetector())  # Detect colonies
-
-                result = pipeline.apply(image)
-                colonies = result.objects
+        >>> from phenotypic import Image, ImagePipeline
+        >>> from phenotypic.enhance import (
+        ...     VisuShrinkEnhancer, CLAHE, GaussianSubtract
+        ... )
+        >>> from phenotypic.detect import OtsuDetector
+        >>> image = Image.imread('plate.jpg')  # doctest: +SKIP
+        >>> # Build preprocessing pipeline
+        >>> pipeline = ImagePipeline()
+        >>> pipeline.add(GaussianSubtract(sigma=50))  # Remove background
+        >>> pipeline.add(VisuShrinkEnhancer(sigma=0.03))  # Denoise
+        >>> pipeline.add(CLAHE(clip_limit=0.02))  # Enhance local contrast
+        >>> pipeline.add(OtsuDetector())  # Detect colonies
+        >>> result = pipeline.apply(image)  # doctest: +SKIP
+        >>> colonies = result.objects  # doctest: +SKIP
     """
 
     def __init__(
@@ -116,6 +104,7 @@ class VisuShrinkEnhancer(ImageEnhancer):
             wavelet: str = "db2",
             mode: Literal["soft", "hard"] = "soft",
             wavelet_levels: int | None = None,
+            clip: bool = True,
     ):
         """Initialize VisuShrink wavelet denoiser.
 
@@ -133,11 +122,15 @@ class VisuShrinkEnhancer(ImageEnhancer):
                 edges more but may leave noise artifacts.
             wavelet_levels (int | None): Decomposition depth. None (default)
                 uses max-3 automatically. Higher = finer denoising, slower.
+            clip (bool): Whether to clip output to [0, 1] range. Default True.
+                Set to False when using with variance-stabilizing transforms
+                (e.g., GAT) that require preserving the original scale.
         """
         self.sigma = sigma
         self.wavelet = wavelet
         self.mode = mode
         self.wavelet_levels = wavelet_levels
+        self.clip = clip
 
     def _operate(self, image: Image) -> Image:
         """Apply VisuShrink wavelet denoising to enhanced grayscale.
@@ -155,5 +148,7 @@ class VisuShrinkEnhancer(ImageEnhancer):
                 channel_axis=None,
                 rescale_sigma=True,
         )
-        image.enh_gray[:] = denoised.clip(0.0, 1.0)
+        if self.clip:
+            denoised = denoised.clip(0.0, 1.0)
+        image.enh_gray[:] = denoised
         return image

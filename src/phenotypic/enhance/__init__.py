@@ -11,6 +11,7 @@ enhancement, and more for clean plates. All operate on copies of the grayscale v
 raw data intact.
 """
 
+from ._anscombe_denoise import AnscombeTransformDenoise
 from ._bilateral_denoise import BilateralDenoise
 from ._bayesshrink_enhancer import BayesShrinkEnhancer
 from ._bm3d_denoiser import BM3DDenoiser
@@ -23,6 +24,7 @@ from ._gaussian_subtract import GaussianSubtract
 from ._image_inverter import ImageInverter
 from ._laplace_enhancer import LaplaceEnhancer
 from ._median_filter import MedianFilter
+from ._phase_congruency import PhaseCongruencyEnhancer
 from ._meijering_ridge_filter import MeijeringRidgeFilter
 from ._non_local_means import NonLocalMeansDenoiser
 from ._rank_median_enhancer import RankMedianEnhancer
@@ -32,9 +34,11 @@ from ._sobel_filter import SobelFilter
 from ._unsharp_mask import UnsharpMask
 from ._visushrink_enhancer import VisuShrinkEnhancer
 from ._white_tophat_subtract import WhiteTophatSubtract
+from ._white_tophat_enhance import WhiteTophatEnhance
 from ._gray_opening import GrayOpening
 
 __all__ = [
+    "AnscombeTransformDenoise",
     "BayesShrinkEnhancer",
     "BilateralDenoise",
     "BM3DDenoiser",
@@ -50,11 +54,13 @@ __all__ = [
     "MedianFilter",
     "MeijeringRidgeFilter",
     "NonLocalMeansDenoiser",
+    "PhaseCongruencyEnhancer",
     "RankMedianEnhancer",
     "RollingBallRemoveBG",
     "SatoRidgeFilter",
     "SobelFilter",
     "UnsharpMask",
     "VisuShrinkEnhancer",
+    "WhiteTophatEnhance",
     "WhiteTophatSubtract",
 ]

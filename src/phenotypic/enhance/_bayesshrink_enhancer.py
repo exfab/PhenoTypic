@@ -52,60 +52,44 @@ class BayesShrinkEnhancer(ImageEnhancer):
         wavelet_levels (int | None): Decomposition levels. None = max-3.
 
     Examples:
-        .. dropdown:: Basic denoising with adaptive BayesShrink
+        Basic denoising with adaptive BayesShrink:
 
-            .. code-block:: python
+        >>> from phenotypic import Image
+        >>> from phenotypic.enhance import BayesShrinkEnhancer
+        >>> image = Image.imread('agar_plate.jpg')  # doctest: +SKIP
+        >>> enhancer = BayesShrinkEnhancer()
+        >>> denoised = enhancer.apply(image)  # doctest: +SKIP
+        >>> # Original data preserved, enh_gray denoised
+        >>> assert np.array_equal(image.rgb[:], denoised.rgb[:])  # doctest: +SKIP
+        >>> assert np.array_equal(image.gray[:], denoised.gray[:])  # doctest: +SKIP
 
-                from phenotypic import Image
-                from phenotypic.enhance import BayesShrinkEnhancer
+        BayesShrink vs VisuShrink comparison:
 
-                image = Image.imread('agar_plate.jpg')
-                enhancer = BayesShrinkEnhancer()
-                denoised = enhancer.apply(image)
+        >>> from phenotypic import Image
+        >>> from phenotypic.enhance import BayesShrinkEnhancer, VisuShrinkEnhancer
+        >>> image = Image.imread('plate.jpg')  # doctest: +SKIP
+        >>> # BayesShrink: Adaptive, preserves more detail
+        >>> bayes = BayesShrinkEnhancer().apply(image)  # doctest: +SKIP
+        >>> # VisuShrink: Universal threshold, more aggressive smoothing
+        >>> visu = VisuShrinkEnhancer().apply(image)  # doctest: +SKIP
+        >>> # Results are different
+        >>> assert not np.array_equal(bayes.enh_gray[:], visu.enh_gray[:])  # doctest: +SKIP
+        >>> # BayesShrink typically preserves more fine structure
 
-                # Original data preserved, enh_gray denoised
-                assert np.array_equal(image.rgb[:], denoised.rgb[:])
-                assert np.array_equal(image.gray[:], denoised.gray[:])
+        Fine detail preservation for texture analysis:
 
-        .. dropdown:: BayesShrink vs VisuShrink comparison
-
-            .. code-block:: python
-
-                from phenotypic import Image
-                from phenotypic.enhance import BayesShrinkEnhancer, VisuShrinkEnhancer
-
-                image = Image.imread('plate.jpg')
-
-                # BayesShrink: Adaptive, preserves more detail
-                bayes = BayesShrinkEnhancer().apply(image)
-
-                # VisuShrink: Universal threshold, more aggressive smoothing
-                visu = VisuShrinkEnhancer().apply(image)
-
-                # Results are different
-                assert not np.array_equal(bayes.enh_gray[:], visu.enh_gray[:])
-                # BayesShrink typically preserves more fine structure
-
-        .. dropdown:: Fine detail preservation for texture analysis
-
-            .. code-block:: python
-
-                from phenotypic import Image, ImagePipeline
-                from phenotypic.enhance import BayesShrinkEnhancer, UnsharpMask
-                from phenotypic.measure import MeasureFeatures
-
-                image = Image.imread('high_res_plate.jpg')
-
-                # Denoise while preserving colony texture
-                pipeline = ImagePipeline()
-                pipeline.add(BayesShrinkEnhancer(wavelet='db4'))  # Fine details
-                pipeline.add(UnsharpMask(width=1.5, amount=1.0))  # Enhance edges
-
-                result = pipeline.apply(image)
-
-                # Now measure morphology with full texture information
-                measured = MeasureFeatures().apply(result)
-                features = measured.objects
+        >>> from phenotypic import Image, ImagePipeline
+        >>> from phenotypic.enhance import BayesShrinkEnhancer, UnsharpMask
+        >>> from phenotypic.measure import MeasureFeatures
+        >>> image = Image.imread('high_res_plate.jpg')  # doctest: +SKIP
+        >>> # Denoise while preserving colony texture
+        >>> pipeline = ImagePipeline()
+        >>> pipeline.add(BayesShrinkEnhancer(wavelet='db4'))  # Fine details
+        >>> pipeline.add(UnsharpMask(radius=1.5, amount=1.0))  # Enhance edges
+        >>> result = pipeline.apply(image)  # doctest: +SKIP
+        >>> # Now measure morphology with full texture information
+        >>> measured = MeasureFeatures().apply(result)  # doctest: +SKIP
+        >>> features = measured.objects  # doctest: +SKIP
     """
 
     def __init__(
@@ -114,6 +98,7 @@ class BayesShrinkEnhancer(ImageEnhancer):
             wavelet: str = "db2",
             mode: Literal["soft", "hard"] = "soft",
             wavelet_levels: int | None = None,
+            clip: bool = True,
     ):
         """Initialize BayesShrink adaptive wavelet denoiser.
 
@@ -127,11 +112,15 @@ class BayesShrinkEnhancer(ImageEnhancer):
                 denoising, 'hard' for sharper edges with possible noise residue.
             wavelet_levels (int | None): Decomposition depth. None (default)
                 uses max-3. Increase for very noisy images.
+            clip (bool): Whether to clip output to [0, 1] range. Default True.
+                Set to False when using with variance-stabilizing transforms
+                (e.g., GAT) that require preserving the original scale.
         """
         self.sigma = sigma
         self.wavelet = wavelet
         self.mode = mode
         self.wavelet_levels = wavelet_levels
+        self.clip = clip
 
     def _operate(self, image: Image) -> Image:
         """Apply BayesShrink adaptive wavelet denoising to enhanced grayscale.
@@ -149,5 +138,7 @@ class BayesShrinkEnhancer(ImageEnhancer):
                 channel_axis=None,
                 rescale_sigma=True,
         )
-        image.enh_gray[:] = denoised.clip(0.0, 1.0)
+        if self.clip:
+            denoised = denoised.clip(0.0, 1.0)
+        image.enh_gray[:] = denoised
         return image
