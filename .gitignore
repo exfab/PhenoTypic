@@ -12,6 +12,7 @@ phenotypic.egg-info/
 # Virtual environments
 .venv/
 .junie/
+.ai/
 
 # Jupyter Notebook
 .ipynb_checkpoints/

@@ -140,12 +140,12 @@ class AnscombeTransformDenoise(ClipControlMixin, ImageEnhancer):
     """
 
     def __init__(
-        self,
-        inner_enhancer: Union[ImageEnhancer, "ImagePipeline"],
-        gain: float = 1.0,
-        mu: float = 0.0,
-        sigma: float = 0.0,
-        scale_factor: float | None = None,
+            self,
+            inner_enhancer: Union[ImageEnhancer, "ImagePipeline"] = None,
+            gain: float = 1.0,
+            mu: float = 0.0,
+            sigma: float = 0.0,
+            scale_factor: float | None = None,
     ):
         """
         Parameters:
@@ -168,10 +168,18 @@ class AnscombeTransformDenoise(ClipControlMixin, ImageEnhancer):
                 Set manually if auto-detection fails or for raw count data (use 1.0).
         """
         # Validate inner_enhancer has apply method (duck typing)
+        if inner_enhancer is None:
+            from phenotypic.enhance import NonLocalMeansDenoiser
+
+            inner_enhancer = NonLocalMeansDenoiser(
+                    patch_size=3,
+                    patch_distance=5
+            )
+
         if not hasattr(inner_enhancer, "apply") or not callable(inner_enhancer.apply):
             raise TypeError(
-                f"inner_enhancer must be an ImageEnhancer or ImagePipeline with an "
-                f"apply() method, got {type(inner_enhancer).__name__}"
+                    f"inner_enhancer must be an ImageEnhancer or ImagePipeline with an "
+                    f"apply() method, got {type(inner_enhancer).__name__}"
             )
 
         # Validate gain
@@ -250,7 +258,7 @@ class AnscombeTransformDenoise(ClipControlMixin, ImageEnhancer):
 
         # 6. Apply inverse Generalized Anscombe Transform
         denoised = self._inverse_generalized_anscombe(
-            image.enh_gray[:], self.mu, self.sigma, self.gain
+                image.enh_gray[:], self.mu, self.sigma, self.gain
         )
 
         # 7. Scale back to [0, 1] range and clip
@@ -260,7 +268,7 @@ class AnscombeTransformDenoise(ClipControlMixin, ImageEnhancer):
 
     @staticmethod
     def _generalized_anscombe(
-        x: np.ndarray, mu: float, sigma: float, gain: float = 1.0
+            x: np.ndarray, mu: float, sigma: float, gain: float = 1.0
     ) -> np.ndarray:
         """Forward Generalized Anscombe Transform (variance stabilization).
 
@@ -289,12 +297,12 @@ class AnscombeTransformDenoise(ClipControlMixin, ImageEnhancer):
         Reference:
             https://github.com/broxtronix/pymultiscale
         """
-        y = gain * x + (gain**2) * 3.0 / 8.0 + sigma**2 - gain * mu
+        y = gain * x + (gain ** 2) * 3.0 / 8.0 + sigma ** 2 - gain * mu
         return (2.0 / gain) * np.sqrt(np.maximum(y, 0.0))
 
     @staticmethod
     def _inverse_generalized_anscombe(
-        x: np.ndarray, mu: float, sigma: float, gain: float = 1.0
+            x: np.ndarray, mu: float, sigma: float, gain: float = 1.0
     ) -> np.ndarray:
         """Inverse Generalized Anscombe Transform (closed-form approximation).
 
@@ -322,12 +330,12 @@ class AnscombeTransformDenoise(ClipControlMixin, ImageEnhancer):
         """
         test = np.maximum(x, 1.0)
         exact_inverse = (
-            np.power(test / 2.0, 2.0)
-            + 1.0 / 4.0 * np.sqrt(3.0 / 2.0) * np.power(test, -1.0)
-            - 11.0 / 8.0 * np.power(test, -2.0)
-            + 5.0 / 8.0 * np.sqrt(3.0 / 2.0) * np.power(test, -3.0)
-            - 1.0 / 8.0
-            - sigma**2
+                np.power(test / 2.0, 2.0)
+                + 1.0 / 4.0 * np.sqrt(3.0 / 2.0) * np.power(test, -1.0)
+                - 11.0 / 8.0 * np.power(test, -2.0)
+                + 5.0 / 8.0 * np.sqrt(3.0 / 2.0) * np.power(test, -3.0)
+                - 1.0 / 8.0
+                - sigma ** 2
         )
         exact_inverse = np.maximum(0.0, exact_inverse)
         exact_inverse *= gain

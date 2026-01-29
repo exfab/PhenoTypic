@@ -63,6 +63,7 @@ class BM3DDenoiser(ImageEnhancer):
     def __init__(
             self,
             sigma_psd: float = 0.02,
+            block_size: int = 8,
             *,
             stage_arg: Literal["all_stages", "hard_thresholding"] = "all_stages",
             clip: bool = True,
@@ -73,6 +74,7 @@ class BM3DDenoiser(ImageEnhancer):
                 scale. Start with 0.02-0.05 for typical scanner noise on
                 plates (equivalent to σ=5-12 on 8-bit).
                 Higher value -> more noise.
+            block_size (int): Block size for BM3D denoising. Default is 8.
             stage_arg (Literal["all_stages", "hard_thresholding"]): Denoising
                 stages to run. 'all_stages' gives best quality at the cost of
                 speed; 'hard_thresholding' is faster and adequate for routine
@@ -92,13 +94,17 @@ class BM3DDenoiser(ImageEnhancer):
         else:
             self.stage_arg = stage_arg
 
+        self.block_size = block_size
         self.clip = clip
 
     def _operate(self, image: Image) -> Image:
         # enh_gray is guaranteed to be in [0, 1] range, which BM3D expects
-
+        profile = bm3d.BM3DProfile()
+        profile.bs_ht = self.block_size
+        profile.bs_wiener = self.block_size
         denoised = bm3d.bm3d(
                 image.enh_gray[:],
+                profile=profile,
                 sigma_psd=self.sigma_psd,
                 stage_arg=self._convert_stage_arg(self.stage_arg),
         )

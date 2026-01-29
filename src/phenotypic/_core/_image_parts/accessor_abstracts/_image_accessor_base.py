@@ -447,7 +447,8 @@ class ImageAccessorBase(ABC):
             height, width = arr.shape[:2]
 
             # Calculate figsize to show image at full resolution, but cap at reasonable maximums
-            max_display_size = 12.0  # Maximum inches for any dimension
+            max_display_size = 30.0  # Maximum inches for any dimension
+            min_display_size = 6.0  # Minimum inches for any dimension
             pixels_per_inch = 300.0
 
             # Calculate required figsize for full resolution
@@ -460,6 +461,12 @@ class ImageAccessorBase(ABC):
                 figsize_width = figsize_height * aspect_ratio
             else:
                 figsize_height = figsize_width / aspect_ratio
+
+            # Ensure minimum size constraint while maintaining aspect ratio
+            if figsize_width < min_display_size or figsize_height < min_display_size:
+                scale_factor = min_display_size / min(figsize_width, figsize_height)
+                figsize_width *= scale_factor
+                figsize_height *= scale_factor
 
             figsize = (figsize_width, figsize_height)
 
