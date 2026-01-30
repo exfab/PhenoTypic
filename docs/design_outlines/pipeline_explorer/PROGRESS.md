@@ -2,7 +2,7 @@
 
 ## Summary
 
-The **programmatic Python API** is complete and fully tested. The **GUI components** (ReactFlow node editor, Panel widgets, HTML viewer) are not yet implemented.
+The **programmatic Python API** and **GUI components** are now complete and tested. This includes the ReactFlow node editor, Panel widgets, comparison viewer, and HTML exporter.
 
 ---
 
@@ -56,12 +56,46 @@ Batch execution engine:
 - Manifest generation with full configuration
 - Pipeline JSON export for each variant
 
-**Manual test:** Successfully ran sweep with 2 variants, saved overlays and objmasks
+**Tests:** 32 tests in `tests/unit/gui/explorer/test_sweep_executor.py` - ALL PASSING
 
-### 6. Dependencies
+### 6. PipelineNodeEditor (`_node_editor.py`)
+ReactFlow-based JSComponent for visual graph editing:
+- Custom operation node rendering with type-specific colors
+- Drag-and-drop node placement
+- Edge creation via click-and-drag
+- Node selection for parameter editing
+- Bi-directional state sync with Python
+- Helper functions for converting between ReactFlow and PipelineGraph formats
+
+### 7. PipelineExplorer Widget (`_explorer_widget.py`)
+Main Panel widget combining all components:
+- Operations sidebar (categorized list from OperationRegistry)
+- Central graph editor (PipelineNodeEditor)
+- Parameters sidebar with sweep configuration
+- Footer with image input, output directory, and run button
+- Summary showing path and variant counts
+- Progress indicator during sweep execution
+
+### 8. Viewer Module (`viewer/`)
+Results comparison and export:
+- `SweepComparisonWidget` - interactive side-by-side comparison
+  - Variant selection dropdowns
+  - View type selection (overlay, objmask, etc.)
+  - Image selection for multi-image sweeps
+  - Difference visualization mode
+  - Metrics display
+- `SweepHTMLExporter` - static HTML with keyboard navigation
+  - Grid view of all variants
+  - Side-by-side comparison mode
+  - Keyboard navigation (arrow keys, number keys)
+  - Sortable metrics table
+  - Image/view filtering
+  - Optional base64 image embedding
+
+### 9. Dependencies
 - Added `networkx>=3.0` to gui optional dependencies in `pyproject.toml`
 
-### 7. Module Exports
+### 10. Module Exports
 - Updated `src/phenotypic/gui/__init__.py` with lazy imports for:
   - `PipelineGraph`
   - `SweepSpec`
@@ -69,49 +103,42 @@ Batch execution engine:
   - `SweepResult`
   - `SweepResults`
   - `GraphNode`
+  - `PipelineNodeEditor`
+  - `PipelineExplorer`
+  - `SweepComparisonWidget`
+  - `SweepHTMLExporter`
 
 ---
 
-## Remaining 🔲
+## File Locations
 
-### 1. PipelineNodeEditor (`_node_editor.py`)
-ReactFlow-based JSComponent for visual graph editing:
-- Custom operation node rendering with type colors
-- Drag-and-drop node placement
-- Edge creation via click-and-drag
-- Node selection for parameter editing
-- Bi-directional state sync with Python
+### Implementation Files
+- `src/phenotypic/gui/explorer/__init__.py` ✅
+- `src/phenotypic/gui/explorer/_sweep_spec.py` ✅
+- `src/phenotypic/gui/explorer/_sweep_results.py` ✅
+- `src/phenotypic/gui/explorer/_pipeline_graph.py` ✅
+- `src/phenotypic/gui/explorer/_sweep_executor.py` ✅
+- `src/phenotypic/gui/explorer/_node_editor.py` ✅
+- `src/phenotypic/gui/explorer/_explorer_widget.py` ✅
+- `src/phenotypic/gui/viewer/__init__.py` ✅
+- `src/phenotypic/gui/viewer/_comparison_widget.py` ✅
+- `src/phenotypic/gui/viewer/_html_exporter.py` ✅
 
-**Complexity:** Medium-High (requires React/JSComponent expertise)
+### Test Files
+- `tests/unit/gui/explorer/__init__.py` ✅
+- `tests/unit/gui/explorer/test_sweep_spec.py` ✅
+- `tests/unit/gui/explorer/test_pipeline_graph.py` ✅
+- `tests/unit/gui/explorer/test_sweep_executor.py` ✅
 
-### 2. PipelineExplorer Widget (`_explorer_widget.py`)
-Main Panel widget combining all components:
-- Operations sidebar (categorized list from OperationRegistry)
-- Central graph editor (PipelineNodeEditor)
-- Parameters sidebar (reuse existing param editor with sweep mode)
-- Footer with summary and run button
-- Progress indicator during sweep execution
-
-**Complexity:** Medium
-
-### 3. Viewer Module (`viewer/`)
-Results comparison and export:
-- `SweepComparisonWidget` - interactive side-by-side comparison
-- `SweepHTMLExporter` - static HTML with keyboard navigation
-- Jinja2 template for HTML viewer
-
-**Complexity:** Medium
-
-### 4. Additional Tests
-- `test_sweep_executor.py` - unit tests for executor
-- `test_node_editor.py` - tests for ReactFlow component (requires Panel)
-- Integration tests in Jupyter notebook
+### Updated Files
+- `src/phenotypic/gui/__init__.py` ✅ (added lazy imports)
+- `pyproject.toml` ✅ (added networkx dependency)
 
 ---
 
 ## Usage Examples
 
-### Programmatic API (Working Now)
+### Programmatic API
 
 ```python
 from phenotypic.gui.explorer import PipelineGraph, SweepSpec, SweepExecutor
@@ -161,6 +188,34 @@ graph.to_json('./my_exploration.graph.json')
 loaded = PipelineGraph.from_json('./my_exploration.graph.json')
 ```
 
+### GUI Usage
+
+```python
+from phenotypic.gui import PipelineExplorer
+
+# Launch the interactive explorer
+explorer = PipelineExplorer()
+explorer.panel()  # Display in Jupyter notebook
+```
+
+### Results Comparison
+
+```python
+from phenotypic.gui.viewer import SweepComparisonWidget, SweepHTMLExporter
+from phenotypic.gui.explorer import SweepResults
+
+# Load results
+results = SweepResults.load_manifest('./sweep_results/manifest.json')
+
+# Interactive comparison
+widget = SweepComparisonWidget(results=results)
+widget.panel()
+
+# Export to static HTML
+exporter = SweepHTMLExporter(results)
+exporter.export('./sweep_results/viewer.html')
+```
+
 ### Convenience Constructors
 
 ```python
@@ -175,30 +230,6 @@ from phenotypic import ImagePipeline
 pipeline = ImagePipeline([GaussianBlur(sigma=1.5), OtsuDetector()])
 graph = PipelineGraph.from_pipeline(pipeline)
 ```
-
----
-
-## File Locations
-
-### Implementation Files
-- `src/phenotypic/gui/explorer/__init__.py` ✅
-- `src/phenotypic/gui/explorer/_sweep_spec.py` ✅
-- `src/phenotypic/gui/explorer/_sweep_results.py` ✅
-- `src/phenotypic/gui/explorer/_pipeline_graph.py` ✅
-- `src/phenotypic/gui/explorer/_sweep_executor.py` ✅
-- `src/phenotypic/gui/explorer/_node_editor.py` 🔲 TODO
-- `src/phenotypic/gui/explorer/_explorer_widget.py` 🔲 TODO
-- `src/phenotypic/gui/viewer/` 🔲 TODO (entire module)
-
-### Test Files
-- `tests/unit/gui/explorer/__init__.py` ✅
-- `tests/unit/gui/explorer/test_sweep_spec.py` ✅
-- `tests/unit/gui/explorer/test_pipeline_graph.py` ✅
-- `tests/unit/gui/explorer/test_sweep_executor.py` 🔲 TODO
-
-### Updated Files
-- `src/phenotypic/gui/__init__.py` ✅ (added lazy imports)
-- `pyproject.toml` ✅ (added networkx dependency)
 
 ---
 
@@ -217,14 +248,22 @@ uv run pytest tests/unit/gui/explorer/ --cov=phenotypic.gui.explorer
 
 ---
 
-## Notes for Continuation
+## Architecture Summary
 
-1. **ReactFlow Integration**: The JSComponent approach is outlined in the plan. Key challenge is bi-directional state sync between React and Python via param.
-
-2. **Sweep Mode for Parameters**: The existing `_param_editor.py` component can be extended with a checkbox to enable sweep mode, which shows start/stop/step fields.
-
-3. **Progress Indicator**: Use Panel's `pn.indicators.Progress` or `pn.widgets.Progress` with a background thread for non-blocking execution.
-
-4. **HTML Viewer**: Use Jinja2 templating. The template should include embedded JavaScript for keyboard navigation and filtering.
-
-5. **Ground Truth Comparison**: Already implemented in `SweepExecutor._compute_gt_metrics()`. Just needs GT directory with labeled PNG masks.
+```
+src/phenotypic/gui/
+├── __init__.py                     # Lazy imports for all components
+├── explorer/                       # Pipeline Variant Explorer
+│   ├── __init__.py                 # ✅ Exports all components
+│   ├── _pipeline_graph.py          # ✅ Graph data model (networkx)
+│   ├── _sweep_spec.py              # ✅ Parameter sweep specification
+│   ├── _sweep_executor.py          # ✅ Batch execution engine
+│   ├── _sweep_results.py           # ✅ Results data structure
+│   ├── _node_editor.py             # ✅ ReactFlow JSComponent
+│   └── _explorer_widget.py         # ✅ Main Panel widget
+│
+└── viewer/                         # Results Comparison
+    ├── __init__.py                 # ✅ Exports viewer components
+    ├── _comparison_widget.py       # ✅ Interactive Panel viewer
+    └── _html_exporter.py           # ✅ Static HTML generation
+```

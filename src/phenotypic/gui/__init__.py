@@ -147,6 +147,39 @@ def __getattr__(name: str):
 
             return GraphNode
 
+    # Explorer GUI components (require Panel)
+    if name in ("PipelineExplorer", "PipelineNodeEditor"):
+        if not GUI_AVAILABLE:
+            raise ImportError(
+                f"GUI component '{name}' requires optional dependencies. "
+                "Install with: pip install phenotypic[gui]"
+            )
+        if name == "PipelineExplorer":
+            from .explorer import PipelineExplorer
+
+            return PipelineExplorer
+        elif name == "PipelineNodeEditor":
+            from .explorer import PipelineNodeEditor
+
+            return PipelineNodeEditor
+
+    # Viewer components (require Panel)
+    if name in ("SweepComparisonWidget", "SweepHTMLExporter"):
+        if name == "SweepHTMLExporter":
+            # HTML exporter only needs Jinja2, not Panel
+            from .viewer import SweepHTMLExporter
+
+            return SweepHTMLExporter
+        elif name == "SweepComparisonWidget":
+            if not GUI_AVAILABLE:
+                raise ImportError(
+                    f"GUI component '{name}' requires optional dependencies. "
+                    "Install with: pip install phenotypic[gui]"
+                )
+            from .viewer import SweepComparisonWidget
+
+            return SweepComparisonWidget
+
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
@@ -165,4 +198,10 @@ __all__ = [
     "SweepResult",
     "SweepResults",
     "GraphNode",
+    # Explorer GUI components
+    "PipelineExplorer",
+    "PipelineNodeEditor",
+    # Viewer components
+    "SweepComparisonWidget",
+    "SweepHTMLExporter",
 ]
