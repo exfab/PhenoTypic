@@ -45,13 +45,11 @@ def _check_gui_deps() -> bool:
     Returns:
         True if panel and param are installed, False otherwise
     """
-    try:
-        import panel  # noqa: F401
-        import param  # noqa: F401
+    import importlib.util
 
-        return True
-    except ImportError:
-        return False
+    return all(
+        importlib.util.find_spec(pkg) is not None for pkg in ["panel", "param"]
+    )
 
 
 GUI_AVAILABLE = _check_gui_deps()

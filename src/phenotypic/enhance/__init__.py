@@ -16,6 +16,7 @@ from ._bilateral_denoise import BilateralDenoise
 from ._bayesshrink_enhancer import BayesShrinkEnhancer
 from ._bm3d_denoiser import BM3DDenoiser
 from ._clahe import CLAHE
+from ._coherence_enhancing_diffusion import CoherenceEnhancingDiffusion
 from ._contrast_streching import ContrastStretching
 from ._frangi_vesselness import FrangiVesselness
 from ._gaussian_blur import GaussianBlur
@@ -43,6 +44,7 @@ __all__ = [
     "BilateralDenoise",
     "BM3DDenoiser",
     "CLAHE",
+    "CoherenceEnhancingDiffusion",
     "ContrastStretching",
     "FrangiVesselness",
     "GaussianBlur",

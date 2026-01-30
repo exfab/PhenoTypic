@@ -131,7 +131,8 @@ class PreviewPanel:
 
         # Image display (left-aligned)
         self._image_pane = pn.pane.Matplotlib(
-            sizing_mode="scale_both",
+            sizing_mode="stretch_width",
+            height=420,
             align="start",  # Left-align the image
         )
 
@@ -145,7 +146,7 @@ class PreviewPanel:
             load_section,
             self._controls_row,
             self._image_pane,
-            sizing_mode="stretch_both",
+            sizing_mode="stretch_width",
             align="start",  # Left-align content
         )
 

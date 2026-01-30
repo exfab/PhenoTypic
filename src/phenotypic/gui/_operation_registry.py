@@ -270,10 +270,20 @@ class OperationRegistry:
         """
         try:
             sig = inspect.signature(cls.__init__)
-            hints = typing.get_type_hints(cls.__init__)
         except Exception:
             # If signature extraction fails, return empty dict
             return {}
+
+        # Try to get resolved type hints, fall back to signature annotations
+        try:
+            hints = typing.get_type_hints(cls.__init__)
+        except Exception:
+            # Fall back to raw annotations from signature (handles forward refs)
+            hints = {
+                name: p.annotation
+                for name, p in sig.parameters.items()
+                if p.annotation is not inspect.Parameter.empty
+            }
 
         # Parse parameter descriptions from docstring
         param_descriptions = self._parse_docstring_params(cls)
@@ -288,33 +298,8 @@ class OperationRegistry:
             default = p.default if p.default is not inspect.Parameter.empty else None
             has_default = p.default is not inspect.Parameter.empty
 
-            # Detect operation/pipeline types
-            is_operation = False
-            is_pipeline = False
-            is_optional = False
-
-            # Handle Union types (e.g., Union[ObjectDetector, ImagePipeline, None])
-            origin = get_origin(hint)
-            if origin is Union:
-                args = get_args(hint)
-                is_optional = type(None) in args
-                for arg in args:
-                    if arg is type(None):
-                        continue
-                    # Check if argument is ImageOperation subclass
-                    if isinstance(arg, type) and issubclass(arg, ImageOperation):
-                        is_operation = True
-                    # Check if argument is ImagePipeline
-                    if arg is ImagePipeline or (
-                        isinstance(arg, type) and issubclass(arg, ImagePipeline)
-                    ):
-                        is_pipeline = True
-            elif isinstance(hint, type):
-                # Non-Union types
-                if issubclass(hint, ImageOperation):
-                    is_operation = True
-                elif issubclass(hint, ImagePipeline):
-                    is_pipeline = True
+            # Detect operation/pipeline types (enhanced for forward refs)
+            is_operation, is_pipeline, is_optional = self._detect_operation_types(hint)
 
             params[name] = ParamInfo(
                 name=name,
@@ -328,6 +313,76 @@ class OperationRegistry:
             )
 
         return params
+
+    def _detect_operation_types(
+        self, hint: Any
+    ) -> tuple[bool, bool, bool]:
+        """Detect if type hint is operation/pipeline, handling forward refs.
+
+        Args:
+            hint: Type hint to analyze
+
+        Returns:
+            Tuple of (is_operation, is_pipeline, is_optional)
+        """
+        is_operation = False
+        is_pipeline = False
+        is_optional = False
+
+        origin = get_origin(hint)
+        if origin is Union:
+            args = get_args(hint)
+            is_optional = type(None) in args
+            for arg in args:
+                if arg is type(None):
+                    continue
+                # Check resolved types
+                if isinstance(arg, type):
+                    try:
+                        if issubclass(arg, ImageOperation):
+                            is_operation = True
+                        if arg is ImagePipeline or issubclass(arg, ImagePipeline):
+                            is_pipeline = True
+                    except TypeError:
+                        pass  # Not a class, skip
+                # Check string forward references
+                elif isinstance(arg, str):
+                    if "ImagePipeline" in arg or "Pipeline" in arg:
+                        is_pipeline = True
+                    if any(
+                        kw in arg
+                        for kw in ("Enhancer", "Detector", "Operation", "Refiner")
+                    ):
+                        is_operation = True
+                # Check ForwardRef objects
+                elif hasattr(arg, "__forward_arg__"):
+                    ref_name = arg.__forward_arg__
+                    if "ImagePipeline" in ref_name or "Pipeline" in ref_name:
+                        is_pipeline = True
+                    if any(
+                        kw in ref_name
+                        for kw in ("Enhancer", "Detector", "Operation", "Refiner")
+                    ):
+                        is_operation = True
+        elif isinstance(hint, type):
+            try:
+                if issubclass(hint, ImageOperation):
+                    is_operation = True
+                elif issubclass(hint, ImagePipeline):
+                    is_pipeline = True
+            except TypeError:
+                pass  # Not a class
+        # Handle string annotations (from __annotations__ without resolution)
+        elif isinstance(hint, str):
+            if "ImagePipeline" in hint or "Pipeline" in hint:
+                is_pipeline = True
+            if any(
+                kw in hint
+                for kw in ("Enhancer", "Detector", "Operation", "Refiner")
+            ):
+                is_operation = True
+
+        return is_operation, is_pipeline, is_optional
 
     def get_categories(self) -> List[str]:
         """Get list of all operation categories.

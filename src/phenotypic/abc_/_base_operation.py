@@ -5,24 +5,20 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     pass
 
+import importlib.util
 import logging
 import tracemalloc
-
-try:
-    from pympler import muppy, summary
-
-    PYMPLER_AVAILABLE = True
-except ImportError:
-    PYMPLER_AVAILABLE = False
-
-try:
-    import psutil
-
-    PSUTIL_AVAILABLE = True
-except ImportError:
-    PSUTIL_AVAILABLE = False
-
 from abc import ABC
+
+# Check for optional dependencies
+PYMPLER_AVAILABLE = importlib.util.find_spec("pympler") is not None
+PSUTIL_AVAILABLE = importlib.util.find_spec("psutil") is not None
+
+# Import if available
+if PYMPLER_AVAILABLE:
+    from pympler import muppy, summary
+if PSUTIL_AVAILABLE:
+    import psutil
 
 
 class BaseOperation(ABC):

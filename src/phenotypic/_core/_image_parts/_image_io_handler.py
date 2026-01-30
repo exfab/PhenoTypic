@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib.util
 import json
 import shutil
 import subprocess
@@ -11,9 +12,10 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from phenotypic import Image, GridImage
 
-try:
+# Check for optional dependencies and import if available
+if importlib.util.find_spec("exifread") is not None:
     import exifread
-except ImportError:
+else:
     exifread = None
 
 import h5py
@@ -24,9 +26,9 @@ from pathlib import Path
 from PIL import Image as PIL_Image
 from PIL.TiffTags import TAGS as TIFF_TAGS
 
-try:
+if importlib.util.find_spec("rawpy") is not None:
     import rawpy
-except ImportError:
+else:
     rawpy = None
 
 import skimage as ski

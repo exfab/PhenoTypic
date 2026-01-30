@@ -1041,6 +1041,22 @@ wheels = [
 ]
 
 [[package]]
+name = "findiff"
+version = "0.12.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "numpy", version = "2.3.5", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+    { name = "scipy", version = "1.15.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "scipy", version = "1.16.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+    { name = "sympy" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/1e/b6/a48a72e751594366cd01263144ea4bfba2b0e082fca30828d89c2a472575/findiff-0.12.2.tar.gz", hash = "sha256:ccfbcd5ac8efce496ff9e789018db1f385c53489b42ef8f4eda14487cd8cdea4", size = 1630783, upload-time = "2025-12-03T09:59:32.44Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/f4/92/29a08a3281a87ae04e9ff266d869f568241075744290d46e7666ec816c0b/findiff-0.12.2-py3-none-any.whl", hash = "sha256:df29142703ec793333b095c8213ff23effe7746715e89302a8d1ef627c19ec13", size = 26700, upload-time = "2025-12-03T09:59:30.552Z" },
+]
+
+[[package]]
 name = "flexcache"
 version = "0.3"
 source = { registry = "https://pypi.org/simple" }
@@ -2345,6 +2361,15 @@ wheels = [
 ]
 
 [[package]]
+name = "mpmath"
+version = "1.3.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/e0/47/dd32fa426cc72114383ac549964eecb20ecfd886d1e5ccf5340b55b02f57/mpmath-1.3.0.tar.gz", hash = "sha256:7a28eb2a9774d00c7bc92411c19a89209d5da7c4c9a9e227be8330a23a25b91f", size = 508106, upload-time = "2023-03-07T16:47:11.061Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/43/e3/7d92a15f894aa0c9c4b49b8ee9ac9850d6e63b03c9c32c0367a13ae62209/mpmath-1.3.0-py3-none-any.whl", hash = "sha256:a0b2b9fe80bbcd81a6647ff13108738cfb482d481d826cc0e02f5b35e5c88d2c", size = 536198, upload-time = "2023-03-07T16:47:09.197Z" },
+]
+
+[[package]]
 name = "msgpack"
 version = "1.1.2"
 source = { registry = "https://pypi.org/simple" }
@@ -3466,10 +3491,10 @@ dependencies = [
     { name = "click" },
     { name = "colour-science" },
     { name = "exifread" },
+    { name = "findiff" },
     { name = "h5py" },
     { name = "imagecodecs", version = "2025.3.30", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "imagecodecs", version = "2026.1.14", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
-    { name = "jupyter-bokeh" },
     { name = "mahotas" },
     { name = "mmh3" },
     { name = "napari", version = "0.5.4", source = { registry = "https://pypi.org/simple" }, extra = ["all"], marker = "platform_machine == 'x86_64' and sys_platform == 'win32'" },
@@ -3499,6 +3524,7 @@ dependencies = [
 gui = [
     { name = "bokeh" },
     { name = "jinja2" },
+    { name = "jupyter-bokeh" },
     { name = "panel" },
     { name = "param" },
 ]
@@ -3554,12 +3580,13 @@ requires-dist = [
     { name = "click", specifier = ">=8.3.0" },
     { name = "colour-science", specifier = ">=0.4.6" },
     { name = "exifread", specifier = ">=3.5.1" },
+    { name = "findiff", specifier = ">=0.12.2" },
     { name = "h5py" },
     { name = "imagecodecs", specifier = ">=2025.3.30" },
     { name = "ipywidgets", marker = "extra == 'jupyter'", specifier = ">=8.1.7" },
     { name = "jinja2", marker = "extra == 'gui'", specifier = ">=3.1" },
     { name = "jupyter", marker = "extra == 'jupyter'", specifier = ">=1.1.1" },
-    { name = "jupyter-bokeh", extras = ["gui"], specifier = ">=4.0.5" },
+    { name = "jupyter-bokeh", marker = "extra == 'gui'", specifier = ">=4.0.5" },
     { name = "mahotas" },
     { name = "mmh3" },
     { name = "napari", extras = ["all"], specifier = ">=0.5.4" },
@@ -5560,6 +5587,18 @@ wheels = [
 [package.optional-dependencies]
 iconify = [
     { name = "pyconify" },
+]
+
+[[package]]
+name = "sympy"
+version = "1.14.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "mpmath" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/83/d3/803453b36afefb7c2bb238361cd4ae6125a569b4db67cd9e79846ba2d68c/sympy-1.14.0.tar.gz", hash = "sha256:d3d3fe8df1e5a0b42f0e7bdf50541697dbe7d23746e894990c030e2b05e72517", size = 7793921, upload-time = "2025-04-27T18:05:01.611Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/a2/09/77d55d46fd61b4a135c444fc97158ef34a095e5681d0a6c10b75bf356191/sympy-1.14.0-py3-none-any.whl", hash = "sha256:e091cc3e99d2141a0ba2847328f5479b05d94a6635cb96148ccb3f34671bd8f5", size = 6299353, upload-time = "2025-04-27T18:04:59.103Z" },
 ]
 
 [[package]]

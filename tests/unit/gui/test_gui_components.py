@@ -3,15 +3,14 @@
 These tests are skipped if Panel is not installed.
 """
 
+import importlib.util
 import pytest
 
 # Check if Panel is available
-try:
-    import panel as pn
+PANEL_AVAILABLE = importlib.util.find_spec("panel") is not None
 
-    PANEL_AVAILABLE = True
-except ImportError:
-    PANEL_AVAILABLE = False
+if PANEL_AVAILABLE:
+    import panel as pn
 
 pytestmark = pytest.mark.skipif(
     not PANEL_AVAILABLE, reason="Panel not installed (optional dependency)"
@@ -113,7 +112,9 @@ class TestPipelineBuilder:
         builder = PipelineBuilder(pipeline=pipeline)
         assert len(builder._operations) == 1
 
-        builder._delete_operation(0)
+        # Select and delete operation using new API
+        builder._selected_index = 0
+        builder._delete_selected()
         assert len(builder._operations) == 0
 
     def test_move_operation(self):
@@ -129,8 +130,9 @@ class TestPipelineBuilder:
         assert builder._operations[0][1].__class__.__name__ == "GaussianBlur"
         assert builder._operations[1][1].__class__.__name__ == "CLAHE"
 
-        # Move first down
-        builder._move_operation(0, 1)
+        # Move first down using new API (direction +1 = down)
+        builder._selected_index = 0
+        builder._move_selected(1)
         assert builder._operations[0][1].__class__.__name__ == "CLAHE"
         assert builder._operations[1][1].__class__.__name__ == "GaussianBlur"
 

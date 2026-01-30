@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib.util
 import traceback
 import uuid
 from typing import TYPE_CHECKING, Union, Optional
@@ -182,6 +183,28 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
                     f"measurements must be a list or a dictionary, got {type(measurements)}"
             )
 
+    def get_ops(self) -> Dict[str, ImageOperation]:
+        """Get a copy of the operations dictionary.
+
+        Returns a shallow copy to prevent accidental mutation of internal state.
+
+        Returns:
+            Dict[str, ImageOperation]: Dictionary mapping operation names to
+                ImageOperation instances.
+        """
+        return dict(self._ops)
+
+    def get_meas(self) -> Dict[str, MeasureFeatures]:
+        """Get a copy of the measurements dictionary.
+
+        Returns a shallow copy to prevent accidental mutation of internal state.
+
+        Returns:
+            Dict[str, MeasureFeatures]: Dictionary mapping measurement names to
+                MeasureFeatures instances.
+        """
+        return dict(self._meas)
+
     @staticmethod
     def __make_unique(class_names):
         """
@@ -248,7 +271,8 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
 
         # Create progress bar if verbose and benchmark are enabled
         if self._benchmark and self._verbose:
-            try:
+            has_tqdm = importlib.util.find_spec("tqdm") is not None
+            if has_tqdm:
                 from tqdm import tqdm
 
                 # Create a tqdm instance without items to manually update it
@@ -256,11 +280,9 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
                 pbar = tqdm(
                         total=total_ops, desc="Applying operations", file=sys.stdout
                 )
-                has_tqdm = True
-            except ImportError:
+            else:
                 # If tqdm is not available, fall back to simple printing
                 print("Applying operations...")
-                has_tqdm = False
         else:
             has_tqdm = False
 
@@ -368,7 +390,8 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
 
         # Create progress bar if verbose and benchmark are enabled
         if self._benchmark and self._verbose:
-            try:
+            has_tqdm = importlib.util.find_spec("tqdm") is not None
+            if has_tqdm:
                 from tqdm import tqdm
 
                 # Create a tqdm instance without items to manually update it
@@ -378,11 +401,9 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
                         desc="Applying measurements",
                         file=sys.stdout,
                 )
-                has_tqdm = True
-            except ImportError:
+            else:
                 # If tqdm is not available, fall back to simple printing
                 print("Applying measurements...")
-                has_tqdm = False
         else:
             has_tqdm = False
 

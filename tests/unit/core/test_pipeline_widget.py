@@ -36,9 +36,9 @@ def image():
 
 def test_pipeline_widget_creation(pipe):
     """Test that pipeline widgets are created recursively."""
-    try:
-        import ipywidgets
-    except ImportError:
+    import importlib.util
+
+    if importlib.util.find_spec("ipywidgets") is None:
         pytest.skip("ipywidgets not installed")
 
     # Initialize widgets (show=False to avoid display in test)
@@ -64,9 +64,9 @@ def test_pipeline_widget_creation(pipe):
 
 def test_recursive_widget_structure(pipe):
     """Test nested pipelines."""
-    try:
-        import ipywidgets
-    except ImportError:
+    import importlib.util
+
+    if importlib.util.find_spec("ipywidgets") is None:
         pytest.skip("ipywidgets not installed")
 
     parent_pipe = ImagePipeline(ops=[pipe])  # Pipe inside pipe
@@ -84,9 +84,9 @@ def test_recursive_widget_structure(pipe):
 
 def test_pipeline_viz_update(pipe, image):
     """Test visualization update on pipeline."""
-    try:
-        import ipywidgets
-    except ImportError:
+    import importlib.util
+
+    if importlib.util.find_spec("ipywidgets") is None:
         pytest.skip("ipywidgets not installed")
 
     pipe.widget(image=image, show=False)

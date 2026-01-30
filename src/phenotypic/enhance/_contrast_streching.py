@@ -66,6 +66,8 @@ class ContrastStretching(ImageEnhancer):
             image.enh_gray[:], (self.lower_percentile, self.upper_percentile)
         )
         image.enh_gray[:] = rescale_intensity(
-            image=image.enh_gray[:], in_range=(p_lower, p_upper)
+            image=image.enh_gray[:],
+            in_range=(p_lower, p_upper),
+            out_range=(0, 1),
         )
         return image

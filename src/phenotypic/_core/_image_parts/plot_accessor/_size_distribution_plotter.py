@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib.util
 from typing import Optional, Tuple, Any
 
 import numpy as np
@@ -8,14 +9,15 @@ from matplotlib.gridspec import GridSpec
 from scipy.stats import gaussian_kde
 from skimage.measure import regionprops_table
 
-# Optional interactive widgets
-try:
+# Check for optional interactive widgets
+HAS_WIDGETS = all(
+    importlib.util.find_spec(pkg) is not None
+    for pkg in ["ipywidgets", "IPython.display"]
+)
+
+if HAS_WIDGETS:
     import ipywidgets as widgets
     from IPython.display import display
-
-    HAS_WIDGETS = True
-except ImportError:
-    HAS_WIDGETS = False
 
 from ._base_plotter import BasePlotter
 

@@ -6,7 +6,7 @@ operations, and pipelines with nesting depth tracking.
 
 from __future__ import annotations
 
-from typing import Any, Callable, List, Optional, get_args, get_origin
+from typing import Any, Callable, Dict, List, Optional, get_args, get_origin
 from typing_extensions import Literal, Union
 
 # Maximum nesting depth for editable operations/pipelines
@@ -71,6 +71,19 @@ class ParamEditor:
         hint = self.param_info.type_hint
         value = self.value
 
+        # Check for Union types with multiple basic types (show type selector)
+        origin = get_origin(hint)
+        if origin is Union:
+            args = get_args(hint)
+            # Filter to basic types (exclude None and operation/pipeline types)
+            basic_types = [
+                a for a in args
+                if a is not type(None) and not self._is_operation_type(a)
+            ]
+            # If multiple basic types, show type selector dropdown
+            if len(basic_types) > 1:
+                return self._build_union_editor(basic_types)
+
         # Warning display (shown when type validation fails)
         warning_pane = pn.pane.HTML(
             "",
@@ -86,7 +99,6 @@ class ParamEditor:
             self._handle_change(new_value)
 
         # Handle Literal types (dropdown)
-        origin = get_origin(hint)
         if origin is Literal:
             options = list(get_args(hint))
             widget = pn.widgets.Select(
@@ -205,6 +217,9 @@ class ParamEditor:
                         if info:
                             op_instance = info.cls()
                             self.value = op_instance
+                            # Clear previous operation cards (keep dropdown at index 0)
+                            while len(content.objects) > 1:
+                                content.pop(-1)
                             # Show nested editor with incremented depth
                             from ._operation_card import OperationCard
 
@@ -214,9 +229,30 @@ class ParamEditor:
                                 nesting_depth=self._nesting_depth + 1,
                             )
                             content.append(nested.panel())
+                            self._handle_change(self.value)
 
                 op_select.param.watch(on_op_select, "value")
                 content.append(op_select)
+
+                # If we already have an operation value, show its card immediately
+                if self.value is not None:
+                    from phenotypic.abc_ import ImageOperation
+
+                    if isinstance(self.value, ImageOperation):
+                        # Pre-select the current operation in dropdown
+                        # Use param.update() to avoid triggering on_op_select callback
+                        op_name = type(self.value).__name__
+                        if op_name in available_ops:
+                            op_select.param.update(value=op_name)
+                        # Show nested editor
+                        from ._operation_card import OperationCard
+
+                        nested = OperationCard(
+                            operation=self.value,
+                            show_controls=False,
+                            nesting_depth=self._nesting_depth + 1,
+                        )
+                        content.append(nested.panel())
 
             elif mode == "Create Inline":
                 # Show mini pipeline builder (only if within depth limit)
@@ -227,7 +263,20 @@ class ParamEditor:
                     on_change=lambda p: setattr(self, "value", p),
                     nesting_depth=self._nesting_depth + 1,
                 )
-                content.append(inline_editor.panel())
+
+                # Wrap in distinctive Card for visual distinction
+                embedded_card = pn.Card(
+                    inline_editor.panel(),
+                    header="📦 Embedded Pipeline",
+                    collapsed=False,
+                    sizing_mode="stretch_width",
+                    styles={
+                        "border": "2px solid #4a90d9",
+                        "border-radius": "8px",
+                        "background": "#f0f7ff",
+                    },
+                )
+                content.append(embedded_card)
 
             elif mode == "Load Pipeline":
                 # Dropdown of saved pipelines
@@ -243,6 +292,9 @@ class ParamEditor:
                         if e.new:
                             loaded = self._manager.load_pipeline(e.new)
                             self.value = loaded
+                            # Clear previous summary cards (keep dropdown at index 0)
+                            while len(content.objects) > 1:
+                                content.pop(-1)
                             # Show as non-editable summary card
                             from phenotypic.gui._pipeline_summary_card import (
                                 PipelineSummaryCard,
@@ -250,13 +302,15 @@ class ParamEditor:
 
                             summary = PipelineSummaryCard(pipeline=loaded, name=e.new)
                             content.append(summary.panel())
+                            self._handle_change(self.value)
 
                     pipe_select.param.watch(on_pipe_select, "value")
                     content.append(pipe_select)
                 else:
                     content.append(pn.pane.Markdown("*No InstanceManager configured*"))
 
-            self._handle_change(self.value)
+            if event is not None:
+                self._handle_change(self.value)
 
         mode_select.param.watch(update_content, "value")
         update_content(None)  # Initial render
@@ -269,21 +323,69 @@ class ParamEditor:
 
     def _get_compatible_operations(self) -> List[str]:
         """Get operations compatible with this parameter's type hint."""
-        from phenotypic.abc_ import ImageOperation
+        from phenotypic.abc_ import (
+            ImageOperation,
+            ImageEnhancer,
+            ObjectDetector,
+            ObjectRefiner,
+            ImageCorrector,
+        )
         from phenotypic.gui._operation_registry import get_registry
 
         registry = get_registry()
         hint = self.param_info.type_hint
 
-        # Extract allowed base classes from Union
+        # Extract allowed base classes from Union (handle forward refs)
         allowed_bases = []
         origin = get_origin(hint)
         if origin is Union:
             for arg in get_args(hint):
-                if isinstance(arg, type) and arg is not type(None):
+                if arg is type(None):
+                    continue
+                # Handle resolved types
+                if isinstance(arg, type):
                     allowed_bases.append(arg)
+                # Handle string forward references
+                elif isinstance(arg, str):
+                    if "ImageEnhancer" in arg or "Enhancer" in arg:
+                        allowed_bases.append(ImageEnhancer)
+                    elif "ObjectDetector" in arg or "Detector" in arg:
+                        allowed_bases.append(ObjectDetector)
+                    elif "ObjectRefiner" in arg or "Refiner" in arg:
+                        allowed_bases.append(ObjectRefiner)
+                    elif "ImageCorrector" in arg or "Corrector" in arg:
+                        allowed_bases.append(ImageCorrector)
+                    elif "ImageOperation" in arg or "Operation" in arg:
+                        allowed_bases.append(ImageOperation)
+                # Handle ForwardRef objects
+                elif hasattr(arg, "__forward_arg__"):
+                    ref_name = arg.__forward_arg__
+                    if "ImageEnhancer" in ref_name or "Enhancer" in ref_name:
+                        allowed_bases.append(ImageEnhancer)
+                    elif "ObjectDetector" in ref_name or "Detector" in ref_name:
+                        allowed_bases.append(ObjectDetector)
+                    elif "ObjectRefiner" in ref_name or "Refiner" in ref_name:
+                        allowed_bases.append(ObjectRefiner)
+                    elif "ImageCorrector" in ref_name or "Corrector" in ref_name:
+                        allowed_bases.append(ImageCorrector)
+                    elif "ImageOperation" in ref_name or "Operation" in ref_name:
+                        allowed_bases.append(ImageOperation)
         elif isinstance(hint, type):
             allowed_bases.append(hint)
+        # Handle bare string annotations
+        elif isinstance(hint, str):
+            if "ImageEnhancer" in hint or "Enhancer" in hint:
+                allowed_bases.append(ImageEnhancer)
+            elif "ObjectDetector" in hint or "Detector" in hint:
+                allowed_bases.append(ObjectDetector)
+            elif "ImageCorrector" in hint or "Corrector" in hint:
+                allowed_bases.append(ImageCorrector)
+            elif "ImageOperation" in hint or "Operation" in hint:
+                allowed_bases.append(ImageOperation)
+
+        # If no bases found but param is flagged as operation, allow all operations
+        if not allowed_bases and self.param_info.is_operation:
+            allowed_bases.append(ImageOperation)
 
         # Filter operations by compatibility
         compatible = []
@@ -314,3 +416,156 @@ class ParamEditor:
         self.value = new_value
         if self._on_change:
             self._on_change(new_value)
+
+    def _is_operation_type(self, type_cls: Any) -> bool:
+        """Check if type is an operation or pipeline type."""
+        from phenotypic.abc_ import ImageOperation
+        from phenotypic import ImagePipeline
+
+        if not isinstance(type_cls, type):
+            return False
+        try:
+            return issubclass(type_cls, (ImageOperation, ImagePipeline))
+        except TypeError:
+            return False
+
+    def _build_union_editor(self, basic_types: List[type]):
+        """Build widget for Union types with type selector dropdown.
+
+        Args:
+            basic_types: List of basic types from the Union (excluding None)
+        """
+        import panel as pn
+
+        # Build type map: display_name -> type
+        type_map: Dict[str, type] = {}
+        for t in basic_types:
+            if hasattr(t, "__name__"):
+                type_map[t.__name__] = t
+            else:
+                type_map[str(t)] = t
+
+        # Check if None is allowed
+        hint = self.param_info.type_hint
+        args = get_args(hint)
+        if type(None) in args:
+            type_map["None"] = type(None)
+
+        if not type_map:
+            return self._build_basic_editor()  # Fallback
+
+        # Infer initial type from value
+        initial_type_name = self._infer_type_name(self.value, type_map)
+
+        # Type selector dropdown
+        type_select = pn.widgets.Select(
+            name=f"{self.param_info.name} type",
+            options=list(type_map.keys()),
+            value=initial_type_name,
+            width=150,
+        )
+
+        # Container for type-specific widget (stable container, dynamic content)
+        inner_container = pn.Column(sizing_mode="stretch_width")
+
+        def update_inner_widget(event=None):
+            """Recreate inner widget for selected type."""
+            inner_container.clear()
+            selected_type = type_map.get(type_select.value)
+
+            if selected_type is type(None):
+                self.value = None
+                self._handle_change(None)
+                inner_container.append(pn.pane.Markdown("*Value: None*"))
+                return
+
+            # Create appropriate widget for this type
+            widget = self._create_widget_for_type(selected_type, self.value)
+            inner_container.append(widget)
+
+        type_select.param.watch(update_inner_widget, "value")
+        update_inner_widget()  # Initial render
+
+        # Add description if available
+        items = [pn.Row(type_select, sizing_mode="stretch_width"), inner_container]
+        if self.param_info.description:
+            desc_html = pn.pane.HTML(
+                f"<span style='color: #666; font-size: 0.85em; font-style: italic; margin-left: 2px;'>"
+                f"{self.param_info.description}</span>",
+                sizing_mode="stretch_width",
+            )
+            items.append(desc_html)
+
+        return pn.Column(*items, sizing_mode="stretch_width")
+
+    def _infer_type_name(self, value: Any, type_map: Dict[str, type]) -> str:
+        """Infer type name from current value."""
+        if value is None and "None" in type_map:
+            return "None"
+
+        # Try exact type match
+        for name, t in type_map.items():
+            if t is type(None):
+                continue
+            if type(value) == t:
+                return name
+
+        # Default to first non-None type
+        for name in type_map:
+            if name != "None":
+                return name
+        return list(type_map.keys())[0]
+
+    def _create_widget_for_type(self, type_cls: type, value: Any):
+        """Create input widget for specific type."""
+        import panel as pn
+
+        # Handle Literal types
+        origin = get_origin(type_cls)
+        if origin is Literal:
+            options = list(get_args(type_cls))
+            widget = pn.widgets.Select(
+                name=self.param_info.name,
+                options=options,
+                value=value if value in options else options[0],
+            )
+        elif type_cls is bool:
+            widget = pn.widgets.Checkbox(
+                name=self.param_info.name,
+                value=bool(value) if value is not None else False,
+            )
+        elif type_cls is int:
+            try:
+                int_val = int(value) if value is not None else 0
+            except (ValueError, TypeError):
+                int_val = 0
+            widget = pn.widgets.IntInput(
+                name=self.param_info.name,
+                value=int_val,
+            )
+        elif type_cls is float:
+            try:
+                float_val = float(value) if value is not None else 0.0
+            except (ValueError, TypeError):
+                float_val = 0.0
+            widget = pn.widgets.FloatInput(
+                name=self.param_info.name,
+                value=float_val,
+            )
+        elif type_cls is str:
+            widget = pn.widgets.TextInput(
+                name=self.param_info.name,
+                value=str(value) if value is not None else "",
+            )
+        else:
+            # Fallback: text input
+            type_name = type_cls.__name__ if hasattr(type_cls, "__name__") else "value"
+            widget = pn.widgets.TextInput(
+                name=self.param_info.name,
+                value=str(value) if value is not None else "",
+                placeholder=f"<{type_name}>",
+            )
+
+        # Bind change handler
+        widget.param.watch(lambda e: self._handle_change(e.new), "value")
+        return widget

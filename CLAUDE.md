@@ -11,13 +11,7 @@ All commands should be run from the repository root using `uv`.
 
 ### Testing
 
-```bash
-# Run all tests
-uv run pytest
-
-# Run tests in parallel (faster)
-uv run pytest -n auto
-```
+reference @tests/CLAUDE.md for testing details
 
 ### Linting and Type Checking
 
@@ -25,8 +19,10 @@ uv run pytest -n auto
 # Type checking with mypy
 uv run mypy src/phenotypic
 
-# Format and lint (manual - project doesn't have auto-formatting configured)
-# Follow Google-style docstrings and the rules in .cursor/rules/
+# Format and lint
+uc run ruff check --fix
+
+# Follow Google-style docstrings
 ```
 
 ### Documentation
@@ -44,14 +40,8 @@ uv run sphinx-autobuild source build
 ### Development Setup
 
 ```bash
-# Install with dev dependencies
-uv sync --group dev
-
-# Install with docs dependencies
-uv sync --group docs --group dev
-
-# Install dev + jupyter for prototyping
-uv sync --group dev --extras jupyter
+# Install dev prototying env
+uv sync --group dev --group docs --extras jupyter --extras gui
 
 # Run a Python script from the venv
 uv run python script.py

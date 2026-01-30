@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib.util
 import os
 from typing import Tuple, TYPE_CHECKING
 from pathlib import Path
@@ -7,12 +8,11 @@ from joblib import Parallel, delayed
 
 from ._pipe_grid_search_submitit import PipeGridSearchSubmitit
 
-try:
-    import psutil
+# Check for optional psutil dependency
+HAS_PSUTIL = importlib.util.find_spec("psutil") is not None
 
-    HAS_PSUTIL = True
-except ImportError:
-    HAS_PSUTIL = False
+if HAS_PSUTIL:
+    import psutil
 
 if TYPE_CHECKING:
     from phenotypic import Image

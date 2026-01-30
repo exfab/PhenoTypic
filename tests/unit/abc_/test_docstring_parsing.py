@@ -73,9 +73,9 @@ def image():
 
 def test_google_style_docstring_parsing():
     """Test parsing Google-style docstrings."""
-    try:
-        import ipywidgets
-    except ImportError:
+    import importlib.util
+
+    if importlib.util.find_spec("ipywidgets") is None:
         pytest.skip("ipywidgets not installed")
 
     op = GoogleStyleOp()
@@ -93,9 +93,9 @@ def test_google_style_docstring_parsing():
 
 def test_numpy_style_docstring_parsing():
     """Test parsing NumPy-style docstrings."""
-    try:
-        import ipywidgets
-    except ImportError:
+    import importlib.util
+
+    if importlib.util.find_spec("ipywidgets") is None:
         pytest.skip("ipywidgets not installed")
 
     op = NumPyStyleOp()
@@ -110,9 +110,9 @@ def test_numpy_style_docstring_parsing():
 
 def test_sphinx_style_docstring_parsing():
     """Test parsing Sphinx-style docstrings."""
-    try:
-        import ipywidgets
-    except ImportError:
+    import importlib.util
+
+    if importlib.util.find_spec("ipywidgets") is None:
         pytest.skip("ipywidgets not installed")
 
     op = SphinxStyleOp()
@@ -127,9 +127,9 @@ def test_sphinx_style_docstring_parsing():
 
 def test_no_docstring_graceful_fallback():
     """Test that operations without docstrings work normally."""
-    try:
-        import ipywidgets
-    except ImportError:
+    import importlib.util
+
+    if importlib.util.find_spec("ipywidgets") is None:
         pytest.skip("ipywidgets not installed")
 
     op = NoDocstringOp()
@@ -140,9 +140,9 @@ def test_no_docstring_graceful_fallback():
 
 def test_widget_with_help_text():
     """Test that help text is displayed in widgets."""
-    try:
-        import ipywidgets
-    except ImportError:
+    import importlib.util
+
+    if importlib.util.find_spec("ipywidgets") is None:
         pytest.skip("ipywidgets not installed")
 
     op = GoogleStyleOp()
@@ -156,9 +156,9 @@ def test_widget_with_help_text():
 
 def test_widget_without_docstring():
     """Test that widgets work without docstrings."""
-    try:
-        import ipywidgets
-    except ImportError:
+    import importlib.util
+
+    if importlib.util.find_spec("ipywidgets") is None:
         pytest.skip("ipywidgets not installed")
 
     op = NoDocstringOp()

@@ -33,14 +33,13 @@ def _ensure_panel_initialized() -> None:
         in_jupyter = False
 
     if in_jupyter:
-        try:
+        import importlib.util
+
+        if importlib.util.find_spec("panel") is not None:
             import panel as pn
 
             pn.extension()
             _panel_initialized = True
-        except ImportError:
-            # Panel not installed, will fail later with helpful message
-            pass
 
 
 def get_global_manager(workspace: Optional[Path] = None) -> "InstanceManager":

@@ -40,10 +40,12 @@ def test_missing_dependency(op):
 def test_widget_creation(op):
     """Test that widgets are created correctly based on type hints."""
     # Ensure ipywidgets is available (should be in dev env)
-    try:
-        import ipywidgets
-    except ImportError:
+    import importlib.util
+
+    if importlib.util.find_spec("ipywidgets") is None:
         pytest.skip("ipywidgets not installed")
+
+    import ipywidgets
 
     widget = op.widget(image=None)
 
@@ -67,10 +69,12 @@ def test_widget_creation(op):
 
 def test_param_update(op):
     """Test that updating widget updates the instance attribute."""
-    try:
-        import ipywidgets
-    except ImportError:
+    import importlib.util
+
+    if importlib.util.find_spec("ipywidgets") is None:
         pytest.skip("ipywidgets not installed")
+
+    import ipywidgets
 
     op.widget()
 
@@ -84,10 +88,12 @@ def test_param_update(op):
 
 def test_visualization_setup(op, image):
     """Test that visualization widgets are created when image is provided."""
-    try:
-        import ipywidgets
-    except ImportError:
+    import importlib.util
+
+    if importlib.util.find_spec("ipywidgets") is None:
         pytest.skip("ipywidgets not installed")
+
+    import ipywidgets
 
     op.widget(image=image)
 
@@ -99,10 +105,12 @@ def test_visualization_setup(op, image):
 
 def test_visualization_update(op, image):
     """Test the update view logic."""
-    try:
-        import ipywidgets
-    except ImportError:
+    import importlib.util
+
+    if importlib.util.find_spec("ipywidgets") is None:
         pytest.skip("ipywidgets not installed")
+
+    import ipywidgets
 
     op.widget(image=image)
 
@@ -125,10 +133,12 @@ def test_union_widget_creation():
     """Test that Union types (e.g. int | None) are handled correctly."""
     from typing import Union
 
-    try:
-        import ipywidgets
-    except ImportError:
+    import importlib.util
+
+    if importlib.util.find_spec("ipywidgets") is None:
         pytest.skip("ipywidgets not installed")
+
+    import ipywidgets
 
     # Define a local class using the mixin
     class UnionOp(ImageOperation):
@@ -176,10 +186,12 @@ def test_union_widget_init_with_value():
     """Test initializing UnionWidget where the value matches the first option."""
     from typing import Union
 
-    try:
-        import ipywidgets
-    except ImportError:
+    import importlib.util
+
+    if importlib.util.find_spec("ipywidgets") is None:
         pytest.skip("ipywidgets not installed")
+
+    import ipywidgets
 
     class UnionOp(ImageOperation):
         def __init__(self, param: Union[int, None] = None):
@@ -204,10 +216,12 @@ def test_union_widget_with_generics():
     """Test that Union types containing generics (e.g. List[int]) do not crash."""
     from typing import Union, List
 
-    try:
-        import ipywidgets
-    except ImportError:
+    import importlib.util
+
+    if importlib.util.find_spec("ipywidgets") is None:
         pytest.skip("ipywidgets not installed")
+
+    import ipywidgets
 
     class GenericUnionOp(ImageOperation):
         def __init__(self, param: Union[int, List[int], None] = None):
@@ -231,10 +245,12 @@ def test_union_widget_with_literal():
     """Test that Union types containing Literals (e.g. Union[int, Literal['auto'], None]) do not crash."""
     from typing import Union, Literal
 
-    try:
-        import ipywidgets
-    except ImportError:
+    import importlib.util
+
+    if importlib.util.find_spec("ipywidgets") is None:
         pytest.skip("ipywidgets not installed")
+
+    import ipywidgets
 
     class LiteralUnionOp(ImageOperation):
         def __init__(self, param: Union[int, Literal["auto"], None] = None):
@@ -260,10 +276,12 @@ def test_pipeline_param_introspection_skipped():
     """Test that ImagePipeline does not generate widgets for its constructor parameters."""
     from phenotypic import ImagePipeline
 
-    try:
-        import ipywidgets
-    except ImportError:
+    import importlib.util
+
+    if importlib.util.find_spec("ipywidgets") is None:
         pytest.skip("ipywidgets not installed")
+
+    import ipywidgets
 
     # Instantiate with minimal parameters
     pipeline = ImagePipeline(ops={}, meas={})
