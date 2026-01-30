@@ -121,6 +121,12 @@ class PipelineBuilder:
         self._placeholder_widget: Optional[Any] = None
         self._meas_placeholder_widget: Optional[Any] = None
 
+        # Collapsible section controls (CSS-based hiding, keeps widgets mounted)
+        self._edit_op_toggle: Optional[Any] = None
+        self._edit_op_content: Optional[Any] = None
+        self._meas_toggle: Optional[Any] = None
+        self._meas_content: Optional[Any] = None
+
         # Toast notifications
         from ._toast import ToastNotification
 
@@ -236,25 +242,71 @@ class PipelineBuilder:
             name_input, save_btn, self._load_select_widget, sizing_mode="stretch_width"
         )
 
+        # === Collapsible Sections (CSS-based hiding, keeps widgets mounted) ===
+
+        # Edit Operation toggle and content
+        self._edit_op_content = pn.Column(
+            self._detail_panel,
+            sizing_mode="stretch_width",
+            visible=True,
+        )
+        self._edit_op_toggle = pn.widgets.Button(
+            name="▼ Edit Operation",
+            button_type="light",
+            sizing_mode="stretch_width",
+        )
+
+        def set_edit_op_visible(visible: bool):
+            self._edit_op_content.visible = visible
+            self._edit_op_toggle.name = (
+                "▼ Edit Operation" if visible else "▶ Edit Operation"
+            )
+
+        def toggle_edit_op(_event):
+            set_edit_op_visible(not self._edit_op_content.visible)
+
+        self._edit_op_toggle.on_click(toggle_edit_op)
+
+        # Measurements toggle and content
+        self._meas_content = pn.Column(
+            self._meas_list_widget,
+            meas_controls,
+            pn.layout.Divider(),
+            pn.pane.Markdown("### Edit Measurement"),
+            self._meas_detail_panel,
+            pn.layout.Divider(),
+            add_meas_menu.panel(),
+            sizing_mode="stretch_width",
+            visible=True,
+        )
+        self._meas_toggle = pn.widgets.Button(
+            name="▼ Measurements",
+            button_type="light",
+            sizing_mode="stretch_width",
+        )
+
+        def set_meas_visible(visible: bool):
+            self._meas_content.visible = visible
+            self._meas_toggle.name = (
+                "▼ Measurements" if visible else "▶ Measurements"
+            )
+
+        def toggle_meas(_event):
+            set_meas_visible(not self._meas_content.visible)
+
+        self._meas_toggle.on_click(toggle_meas)
+
         # === Operations Panel Layout ===
         operations_panel = pn.Column(
             "## Pipeline Operations",
             self._ops_list_widget,
             controls,
             pn.layout.Divider(),
-            "### Edit Operation",
-            self._detail_panel,
-            pn.layout.Divider(),
             add_menu.panel(),
-            pn.layout.Divider(),
-            "## Measurements",
-            self._meas_list_widget,
-            meas_controls,
-            pn.layout.Divider(),
-            "### Edit Measurement",
-            self._meas_detail_panel,
-            pn.layout.Divider(),
-            add_meas_menu.panel(),
+            self._edit_op_toggle,
+            self._edit_op_content,
+            self._meas_toggle,
+            self._meas_content,
             sizing_mode="stretch_width",
         )
 

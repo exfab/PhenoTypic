@@ -7,7 +7,6 @@ if TYPE_CHECKING:
 
 import numpy as np
 from findiff import FinDiff
-from scipy.ndimage import gaussian_filter
 from skimage.feature import structure_tensor, structure_tensor_eigenvalues
 
 from ..abc_ import ImageEnhancer
@@ -190,7 +189,7 @@ class CoherenceEnhancingDiffusion(ImageEnhancer):
         for _ in range(self.num_iterations):
             # Compute structure tensor components
             Axx, Axy, Ayy = structure_tensor(img, sigma=self.sigma, order="rc")
-            lambda1, lambda2 = structure_tensor_eigenvalues(Axx, Axy, Ayy)
+            lambda1, lambda2 = structure_tensor_eigenvalues([Axx, Axy, Ayy])
 
             # Coherence measure: how elongated/directional the local structure is
             denom = lambda1 + lambda2 + 1e-10

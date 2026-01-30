@@ -210,6 +210,47 @@ class ParamEditor:
                     value="",
                 )
 
+                def build_op_details(op_instance):
+                    summary = pn.pane.Markdown(
+                        f"*Selected:* `{type(op_instance).__name__}`",
+                        sizing_mode="stretch_width",
+                    )
+                    card_container = pn.Column(
+                        sizing_mode="stretch_width",
+                        visible=False,
+                    )
+                    toggle_btn = pn.widgets.Button(
+                        name="Show parameters",
+                        button_type="primary",
+                        width=160,
+                    )
+
+                    def toggle_details(_):
+                        if not card_container.objects:
+                            from ._operation_card import OperationCard
+
+                            nested = OperationCard(
+                                operation=op_instance,
+                                show_controls=False,
+                                nesting_depth=self._nesting_depth + 1,
+                            )
+                            card_container.append(nested.panel())
+                        card_container.visible = not card_container.visible
+                        toggle_btn.name = (
+                            "Hide parameters"
+                            if card_container.visible
+                            else "Show parameters"
+                        )
+
+                    toggle_btn.on_click(toggle_details)
+
+                    return pn.Column(
+                        summary,
+                        toggle_btn,
+                        card_container,
+                        sizing_mode="stretch_width",
+                    )
+
                 def on_op_select(e):
                     if e.new:
                         registry = get_registry()
@@ -220,15 +261,7 @@ class ParamEditor:
                             # Clear previous operation cards (keep dropdown at index 0)
                             while len(content.objects) > 1:
                                 content.pop(-1)
-                            # Show nested editor with incremented depth
-                            from ._operation_card import OperationCard
-
-                            nested = OperationCard(
-                                operation=op_instance,
-                                show_controls=False,
-                                nesting_depth=self._nesting_depth + 1,
-                            )
-                            content.append(nested.panel())
+                            content.append(build_op_details(op_instance))
                             self._handle_change(self.value)
 
                 op_select.param.watch(on_op_select, "value")
@@ -244,15 +277,7 @@ class ParamEditor:
                         op_name = type(self.value).__name__
                         if op_name in available_ops:
                             op_select.param.update(value=op_name)
-                        # Show nested editor
-                        from ._operation_card import OperationCard
-
-                        nested = OperationCard(
-                            operation=self.value,
-                            show_controls=False,
-                            nesting_depth=self._nesting_depth + 1,
-                        )
-                        content.append(nested.panel())
+                        content.append(build_op_details(self.value))
 
             elif mode == "Create Inline":
                 # Show mini pipeline builder (only if within depth limit)
