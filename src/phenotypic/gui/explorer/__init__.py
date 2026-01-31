@@ -41,11 +41,27 @@ from ._pipeline_graph import PipelineGraph, GraphNode
 from ._sweep_executor import SweepExecutor
 from ._sweep_results import SweepResult, SweepResults
 
+# Lazy imports for GUI components (require Panel)
+def __getattr__(name: str):
+    """Lazy import GUI components to avoid requiring Panel for programmatic API."""
+    if name == "PipelineNodeEditor":
+        from ._node_editor import PipelineNodeEditor
+        return PipelineNodeEditor
+    elif name == "PipelineExplorer":
+        from ._explorer_widget import PipelineExplorer
+        return PipelineExplorer
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
 __all__ = [
+    # Programmatic API (no Panel required)
     "SweepSpec",
     "PipelineGraph",
     "GraphNode",
     "SweepExecutor",
     "SweepResult",
     "SweepResults",
+    # GUI components (require Panel)
+    "PipelineNodeEditor",
+    "PipelineExplorer",
 ]
