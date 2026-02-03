@@ -55,5 +55,3 @@ debug/*.log
 # Development tools
 .ropeproject/
 .git.backup/
-AGENTS.local.md
-CLAUDE.local.md

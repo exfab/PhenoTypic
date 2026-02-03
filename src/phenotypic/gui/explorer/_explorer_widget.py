@@ -291,6 +291,11 @@ if PANEL_AVAILABLE:
                 self._on_node_selected,
                 ["selected_node_id"],
             )
+            # Keep summary in sync with graph changes
+            self._editor.param.watch(
+                self._on_graph_changed,
+                ["nodes", "edges"],
+            )
 
         def _build_operations_accordion(self) -> pn.Accordion:
             """Build the operations sidebar accordion.
@@ -444,19 +449,32 @@ if PANEL_AVAILABLE:
             self._run_button.on_click(self._run_sweep)
 
             # Output checkboxes
+            self._save_overlay_checkbox = pn.widgets.Checkbox(
+                name="Overlay",
+                value=self.save_overlay,
+            )
+            self._save_objmask_checkbox = pn.widgets.Checkbox(
+                name="ObjMask",
+                value=self.save_objmask,
+            )
+            self._save_objmap_checkbox = pn.widgets.Checkbox(
+                name="ObjMap",
+                value=self.save_objmap,
+            )
+            self._save_enh_gray_checkbox = pn.widgets.Checkbox(
+                name="EnhGray",
+                value=self.save_enh_gray,
+            )
+            self._bind_checkbox(self._save_overlay_checkbox, "save_overlay")
+            self._bind_checkbox(self._save_objmask_checkbox, "save_objmask")
+            self._bind_checkbox(self._save_objmap_checkbox, "save_objmap")
+            self._bind_checkbox(self._save_enh_gray_checkbox, "save_enh_gray")
+
             output_checks = pn.Row(
-                pn.widgets.Checkbox(
-                    name="Overlay",
-                    value=self.save_overlay,
-                ),
-                pn.widgets.Checkbox(
-                    name="ObjMask",
-                    value=self.save_objmask,
-                ),
-                pn.widgets.Checkbox(
-                    name="ObjMap",
-                    value=self.save_objmap,
-                ),
+                self._save_overlay_checkbox,
+                self._save_objmask_checkbox,
+                self._save_objmap_checkbox,
+                self._save_enh_gray_checkbox,
             )
 
             return pn.Column(
@@ -548,12 +566,56 @@ if PANEL_AVAILABLE:
                     else:
                         widget = pn.pane.Markdown(f"**{param_name}**: {value}")
 
+                    if hasattr(widget, "param") and "value" in widget.param:
+                        widget.param.watch(
+                            self._make_param_update_callback(
+                                node_id,
+                                param_name,
+                            ),
+                            ["value"],
+                        )
+
                     param_widgets.append(widget)
 
                 # Enable sweep controls
                 self._enable_sweep_controls(param_names)
 
             self._param_panel.objects = param_widgets
+
+        def _make_param_update_callback(
+            self,
+            node_id: str,
+            param_name: str,
+        ):
+            """Create callback for updating node parameters."""
+            def callback(event):
+                self._editor.update_node_params(
+                    node_id,
+                    {param_name: event.new},
+                )
+
+            return callback
+
+        def _bind_checkbox(
+            self,
+            checkbox: pn.widgets.Checkbox,
+            param_name: str,
+        ) -> None:
+            """Bind a checkbox to a Parameterized boolean param."""
+            def _from_widget(event):
+                if getattr(self, param_name) != event.new:
+                    setattr(self, param_name, event.new)
+
+            def _from_param(event):
+                if checkbox.value != event.new:
+                    checkbox.value = event.new
+
+            checkbox.param.watch(_from_widget, ["value"])
+            self.param.watch(_from_param, param_name)
+
+        def _on_graph_changed(self, event) -> None:
+            """Handle graph edits to keep summary in sync."""
+            self._update_summary()
 
         def _enable_sweep_controls(self, param_names: List[str]) -> None:
             """Enable sweep controls for available parameters.
@@ -627,7 +689,7 @@ if PANEL_AVAILABLE:
             )
 
             if sweep:
-                self._editor.update_node_sweep(node_id, sweep)
+                self._editor.update_node_sweep(node_id, sweep, replace=True)
                 self._update_summary()
                 logger.info(f"Applied sweep to {node_id}: {sweep}")
 
@@ -732,7 +794,8 @@ if PANEL_AVAILABLE:
                     f"**Paths:** {path_count} | "
                     f"**Variants:** {format_variant_count(variant_count)}"
                 )
-            except Exception:
+            except Exception as e:
+                logger.debug(f"Failed to compute graph summary: {e}")
                 return "**Paths:** 0 | **Variants:** 0"
 
         # =====================================================================

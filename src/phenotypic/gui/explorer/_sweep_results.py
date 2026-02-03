@@ -187,25 +187,29 @@ class SweepResults:
     def best_by_metric(
         self,
         metric: str,
-        maximize: bool = True,
+        minimize: bool = False,
     ) -> Optional[SweepResult]:
         """Get the result with best metric value.
 
         Args:
             metric: Name of metric to optimize.
-            maximize: If True, find maximum; if False, find minimum.
+            minimize: If True, find minimum; if False (default), find maximum.
 
         Returns:
             SweepResult with best metric value, or None if no results.
+
+        Examples:
+            >>> best = results.best_by_metric('object_count')  # Maximize
+            >>> best = results.best_by_metric('execution_time', minimize=True)
         """
         candidates = [r for r in self.successful if metric in r.metrics]
         if not candidates:
             return None
 
-        if maximize:
-            return max(candidates, key=lambda r: r.metrics[metric])
-        else:
+        if minimize:
             return min(candidates, key=lambda r: r.metrics[metric])
+        else:
+            return max(candidates, key=lambda r: r.metrics[metric])
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for serialization."""

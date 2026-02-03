@@ -219,11 +219,11 @@ class CoherenceEnhancingDiffusion(ImageEnhancer):
             gx = dx(img)
             gy = dy(img)
 
-            # Flux computation
+            # flux computation
             Fx = Dxx * gx + Dxy * gy
             Fy = Dxy * gx + Dyy * gy
 
-            # Divergence of flux
+            # flux divergence
             div = dx(Fx) + dy(Fy)
 
             # Update image with diffusion step

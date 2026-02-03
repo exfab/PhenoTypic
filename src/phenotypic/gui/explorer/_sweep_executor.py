@@ -121,6 +121,13 @@ class SweepExecutor:
             >>> # Multiple specific images
             >>> results = executor.run(images=['./p1.tif', './p2.tif'])
         """
+        # Validate graph has paths to output
+        if self.graph.path_count == 0:
+            raise ValueError(
+                "Graph has no paths to output. Check that nodes are connected "
+                "and at least one path leads to an output node."
+            )
+
         # Resolve image paths
         image_paths = self._resolve_image_paths(images)
         if not image_paths:
@@ -145,6 +152,10 @@ class SweepExecutor:
                 results.append(result)
         else:
             # Parallel execution
+            # Note: Progress callback only fires at start/end for parallel execution.
+            # For per-task progress, use njobs=1.
+            if progress_callback:
+                progress_callback(0, total, f"Running {total} tasks in parallel...")
             results = Parallel(n_jobs=self.njobs)(
                 delayed(self._execute_task)(task)
                 for task in tasks

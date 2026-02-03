@@ -237,6 +237,24 @@ class PipelineGraph:
             del self._sweeps[node_id]
         self._graph.remove_node(node_id)
 
+    def add_node(self, node: GraphNode) -> str:
+        """Add a pre-built GraphNode to the graph.
+
+        This is useful for reconstruction scenarios where the node ID
+        must be preserved (e.g., loading from serialization or syncing
+        with a visual editor).
+
+        Args:
+            node: GraphNode instance to add.
+
+        Returns:
+            The node's ID.
+        """
+        self._graph.add_node(node.id, data=node)
+        if node.is_output:
+            self._output_ids.append(node.id)
+        return node.id
+
     def get_node(self, node_id: str) -> GraphNode:
         """Get node data by ID.
 
@@ -430,13 +448,18 @@ class PipelineGraph:
             ...     print(f"{variant_id}: {len(pipeline.operations)} ops")
         """
         for path_idx, path in enumerate(self.enumerate_paths()):
-            # Get all sweeps for this path
+            # Get all sweeps for this path, using qualified names to avoid
+            # collision when multiple nodes have same parameter names
             path_sweeps = []
-            sweep_node_map = {}  # sweep index -> node_id
+            sweep_info = []  # (node_id, original_param_name) for each sweep
             for node_id in path:
                 for sweep in self.get_sweeps(node_id):
-                    sweep_node_map[len(path_sweeps)] = node_id
-                    path_sweeps.append(sweep)
+                    # Use qualified name: "node_id[:8].param" to avoid collisions
+                    qualified_param = f"{node_id[:8]}.{sweep.param}"
+                    # Create a modified sweep spec with qualified name
+                    qualified_sweep = SweepSpec(qualified_param, sweep.values)
+                    path_sweeps.append(qualified_sweep)
+                    sweep_info.append((node_id, sweep.param))
 
             # Generate sweep combinations
             if path_sweeps:
@@ -449,14 +472,14 @@ class PipelineGraph:
 
                 # Build config dict mapping node_id -> param overrides
                 config = {}
-                for param_name, value in combo.items():
-                    # Find which node this param belongs to
-                    for sweep_idx, sweep in enumerate(path_sweeps):
-                        if sweep.param == param_name:
-                            node_id = sweep_node_map[sweep_idx]
+                for qualified_param, value in combo.items():
+                    # Parse the qualified name back to node_id and param
+                    for sweep_idx, (node_id, original_param) in enumerate(sweep_info):
+                        expected_qualified = f"{node_id[:8]}.{original_param}"
+                        if qualified_param == expected_qualified:
                             if node_id not in config:
                                 config[node_id] = {}
-                            config[node_id][param_name] = value
+                            config[node_id][original_param] = value
                             break
 
                 # Build pipeline

@@ -449,7 +449,7 @@ class ImageAccessorBase(ABC):
             # Calculate figsize to show image at full resolution, but cap at reasonable maximums
             max_display_size = 30.0  # Maximum inches for any dimension
             min_display_size = 6.0  # Minimum inches for any dimension
-            pixels_per_inch = 300.0
+            pixels_per_inch = 30.0
 
             # Calculate required figsize for full resolution
             figsize_width = min(width / pixels_per_inch, max_display_size)

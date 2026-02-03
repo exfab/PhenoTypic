@@ -7,6 +7,7 @@ if TYPE_CHECKING:
 
 from phenotypic._core._image_parts.plot_accessor import (
     AllDataPlotter,
+    DiagnosticsPlotter,
     MorphologyPlotter,
     OverlayPlotter,
     SizeDistributionPlotter,
@@ -15,7 +16,7 @@ from phenotypic._core._image_parts.plot_accessor import (
 )
 
 
-class PlotAccessor(AllDataPlotter, MorphologyPlotter, OverlayPlotter, SizeDistributionPlotter, SpatialPlotter, ThresholdPlotter):
+class PlotAccessor(AllDataPlotter, DiagnosticsPlotter, MorphologyPlotter, OverlayPlotter, SizeDistributionPlotter, SpatialPlotter, ThresholdPlotter):
     """Provides quality-of-life plots for developing image processing pipelines.
 
     This accessor offers sophisticated visualization methods to help understand how
@@ -60,6 +61,7 @@ class PlotAccessor(AllDataPlotter, MorphologyPlotter, OverlayPlotter, SizeDistri
         """
         # Initialize all parent classes
         AllDataPlotter.__init__(self, root_image)
+        DiagnosticsPlotter.__init__(self, root_image)
         MorphologyPlotter.__init__(self, root_image)
         OverlayPlotter.__init__(self, root_image)
         SizeDistributionPlotter.__init__(self, root_image)

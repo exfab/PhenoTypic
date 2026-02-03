@@ -477,24 +477,14 @@ if PANEL_AVAILABLE:
             """
             graph = PipelineGraph()
 
-            # Add nodes
-            node_id_map = {}  # old_id -> new_id (needed if IDs change)
+            # Add nodes using public API
             for rf_node in self.nodes:
-                old_id = rf_node["id"]
                 graph_node = reactflow_node_to_graph_node(rf_node)
-
-                # Add node directly to internal graph
-                graph._graph.add_node(old_id, data=graph_node)
-                if graph_node.is_output:
-                    graph._output_ids.append(old_id)
-
-                node_id_map[old_id] = old_id
+                graph.add_node(graph_node)
 
             # Add edges
             for rf_edge in self.edges:
-                source = node_id_map.get(rf_edge["source"], rf_edge["source"])
-                target = node_id_map.get(rf_edge["target"], rf_edge["target"])
-                graph.connect(source, target)
+                graph.connect(rf_edge["source"], rf_edge["target"])
 
             # Add sweeps
             for node_id, sweeps in self._sweep_data.items():
@@ -646,15 +636,19 @@ if PANEL_AVAILABLE:
             self,
             node_id: str,
             sweep: Optional[SweepSpec],
+            replace: bool = True,
         ) -> None:
             """Update sweep configuration for a node.
 
             Args:
                 node_id: Node to update.
                 sweep: SweepSpec to add, or None to clear sweeps.
+                replace: If True, replace existing sweeps; otherwise append.
             """
             if sweep is None:
                 self._sweep_data[node_id] = []
+            elif replace:
+                self._sweep_data[node_id] = [sweep]
             else:
                 self._sweep_data.setdefault(node_id, []).append(sweep)
 
