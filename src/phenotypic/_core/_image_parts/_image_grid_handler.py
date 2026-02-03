@@ -254,6 +254,9 @@ class ImageGridHandler(Image):
         else:
             subimage = Image(arr=self.gray[key])
 
+        # Propagate detect_mode before setting detect_mat data
+        if self._data.detect_mode != "gray":
+            subimage._data.detect_mode = self._data.detect_mode
         subimage.detect_mat[:] = self.detect_mat[key]
         subimage.objmap[:] = self.objmap[key]
         return subimage
