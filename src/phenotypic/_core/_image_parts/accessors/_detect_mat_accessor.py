@@ -157,7 +157,7 @@ class DetectMatAccessor(SingleChannelAccessor):
         """
         rgb_normed = normalize_rgb_bitdepth(self._root_image._data.rgb)
         channel_map = {"red": 0, "green": 1, "blue": 2}
-        return rgb_normed[:, :, channel_map[mode]].astype(np.float32)
+        return rgb_normed[:, :, channel_map[mode]].astype(np.float32).clip(0, 1)
 
     def reset(self):
         """Reset the detection matrix to a fresh copy of the current mode's source channel.
