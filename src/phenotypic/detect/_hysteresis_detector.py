@@ -144,8 +144,8 @@ class HysteresisDetector(ThresholdDetector):
         instead.
 
         Args:
-            image: The input image object. Must have ``enh_gray`` attribute
-                (enhanced grayscale for processing). Uses ``bit_depth`` to
+            image: The input image object. Must have ``detect_mat`` attribute
+                (detection matrix for processing). Uses ``bit_depth`` to
                 determine nbins for automatic threshold computation.
 
         Returns:
@@ -156,7 +156,7 @@ class HysteresisDetector(ThresholdDetector):
             ValueError: If high < low after computation, or if threshold_spec
                 contains an invalid method name.
         """
-        enh_matrix = image.enh_gray[:]
+        enh_matrix = image.detect_mat[:]
 
         # Prepare data for threshold computation (exclude zeros if requested)
         if self.ignore_zeros:

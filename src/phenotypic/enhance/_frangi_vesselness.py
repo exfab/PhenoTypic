@@ -94,8 +94,8 @@ class FrangiVesselness(ImageEnhancer):
         self.black_ridges = black_ridges
 
     def _operate(self, image: Image) -> Image:
-        image.enh_gray[:] = frangi(
-                image=image.enh_gray[:],
+        image.detect_mat[:] = frangi(
+                image=image.detect_mat[:],
                 sigmas=self.sigmas,
                 alpha=self.alpha,
                 beta=self.beta,

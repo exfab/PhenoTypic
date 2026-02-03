@@ -25,7 +25,7 @@ class VisuShrinkEnhancer(ImageEnhancer):
     - Pre-filter before edge detection (Sobel, Canny) to avoid noise amplification.
 
     Tuning and effects:
-    - sigma: Noise standard deviation in [0, 1] scale (matching enh_gray range).
+    - sigma: Noise standard deviation in [0, 1] scale (matching detect_mat range).
       None (default) auto-estimates via MAD. Typical values: 0.01-0.05 for
       moderate noise (equivalent to σ=2.5-12.75 on 8-bit). Too high causes
       over-smoothing and colony merging.
@@ -61,11 +61,11 @@ class VisuShrinkEnhancer(ImageEnhancer):
         >>> image = Image.imread('agar_plate.jpg')  # doctest: +SKIP
         >>> enhancer = VisuShrinkEnhancer()
         >>> denoised = enhancer.apply(image)  # doctest: +SKIP
-        >>> # Original RGB/gray untouched, enh_gray is denoised
+        >>> # Original RGB/gray untouched, detect_mat is denoised
         >>> assert np.array_equal(image.rgb[:], denoised.rgb[:])  # doctest: +SKIP
         >>> assert np.array_equal(image.gray[:], denoised.gray[:])  # doctest: +SKIP
-        >>> # enh_gray is different
-        >>> assert not np.array_equal(image.enh_gray[:], denoised.enh_gray[:])  # doctest: +SKIP
+        >>> # detect_mat is different
+        >>> assert not np.array_equal(image.detect_mat[:], denoised.detect_mat[:])  # doctest: +SKIP
 
         Custom parameters for heavily noisy images:
 
@@ -133,13 +133,13 @@ class VisuShrinkEnhancer(ImageEnhancer):
         self.clip = clip
 
     def _operate(self, image: Image) -> Image:
-        """Apply VisuShrink wavelet denoising to enhanced grayscale.
+        """Apply VisuShrink wavelet denoising to detection matrix.
 
         Returns:
-            Modified Image with denoised enh_gray
+            Modified Image with denoised detect_mat
         """
         denoised = denoise_wavelet(
-                image=image.enh_gray[:],
+                image=image.detect_mat[:],
                 sigma=self.sigma,
                 wavelet=self.wavelet,
                 mode=self.mode,
@@ -150,5 +150,5 @@ class VisuShrinkEnhancer(ImageEnhancer):
         )
         if self.clip:
             denoised = denoised.clip(0.0, 1.0)
-        image.enh_gray[:] = denoised
+        image.detect_mat[:] = denoised
         return image

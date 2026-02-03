@@ -73,7 +73,7 @@ class UnsharpMask(ImageEnhancer):
         >>> # Apply unsharp masking with moderate settings
         >>> sharpener = UnsharpMask(radius=2.0, amount=1.2)
         >>> sharpened = sharpener.apply(image)  # doctest: +SKIP
-        >>> # Detect colonies in sharpened enhanced grayscale
+        >>> # Detect colonies in sharpened detection matrix
         >>> detector = OtsuDetector()
         >>> detected = detector.apply(sharpened)  # doctest: +SKIP
         >>> # Original image untouched, detection on enhanced data
@@ -93,7 +93,7 @@ class UnsharpMask(ImageEnhancer):
         >>> # Step 2: Enhance edges with small width for dense plates
         >>> # radius=1.0 emphasizes only fine features (individual colonies)
         >>> pipeline.add(UnsharpMask(radius=1.0, amount=1.5))
-        >>> # Step 3: Detect in enhanced grayscale
+        >>> # Step 3: Detect in detection matrix
         >>> pipeline.add(OtsuDetector())
         >>> # Process a batch of images
         >>> images = [Image(f) for f in image_paths]  # doctest: +SKIP
@@ -152,9 +152,9 @@ class UnsharpMask(ImageEnhancer):
         self.preserve_range = bool(preserve_range)
 
     def _operate(self, image: Image) -> Image:
-        """Apply unsharp masking to enhance colony edges in the enhanced grayscale channel."""
-        image.enh_gray[:] = unsharp_mask(
-                image=image.enh_gray[:],
+        """Apply unsharp masking to enhance colony edges in the detection matrix channel."""
+        image.detect_mat[:] = unsharp_mask(
+                image=image.detect_mat[:],
                 radius=self.radius,
                 amount=self.amount,
                 preserve_range=self.preserve_range,

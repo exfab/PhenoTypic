@@ -92,9 +92,9 @@ class NonLocalMeansDenoiser(ImageEnhancer):
         self.sigma = float(sigma)
 
     def _operate(self, image: Image) -> Image:
-        """Apply non-local means denoising to enhanced grayscale."""
+        """Apply non-local means denoising to detection matrix."""
         denoised = denoise_nl_means(
-                image=image.enh_gray[:],
+                image=image.detect_mat[:],
                 patch_size=self.patch_size,
                 patch_distance=self.patch_distance,
                 h=self.h,
@@ -102,5 +102,5 @@ class NonLocalMeansDenoiser(ImageEnhancer):
                 sigma=self.sigma,
                 preserve_range=True,
         )
-        image.enh_gray[:] = denoised
+        image.detect_mat[:] = denoised
         return image

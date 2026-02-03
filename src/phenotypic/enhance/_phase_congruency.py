@@ -85,7 +85,7 @@ class PhaseCongruencyEnhancer(ImageEnhancer):
     - Memory usage: Stores filter responses for all scale-orientation combinations.
       For very large images, reduce n_scale or n_orient.
     - Output range: Phase congruency values are typically in [0, 1] but may exceed
-      1 in high-contrast regions. Values are clipped to [0, 1] for enh_gray.
+      1 in high-contrast regions. Values are clipped to [0, 1] for detect_mat.
     - Not suitable for texture analysis: Designed for edge/line detection, not
       for characterizing surface texture or colony interior patterns.
 
@@ -99,7 +99,7 @@ class PhaseCongruencyEnhancer(ImageEnhancer):
         cutoff: Frequency spread penalty threshold (default 0.5).
         g: Sigmoid sharpness for frequency spread weighting (default 10.0).
         noise_method: Noise estimation method (default -1 for median).
-        output: Which result to store in enh_gray (default "pc_sum").
+        output: Which result to store in detect_mat (default "pc_sum").
 
     Examples:
         Basic phase congruency enhancement:
@@ -109,8 +109,8 @@ class PhaseCongruencyEnhancer(ImageEnhancer):
         >>> image = load_synth_yeast_plate()
         >>> enhancer = PhaseCongruencyEnhancer()
         >>> enhanced = enhancer.apply(image)
-        >>> # Enhanced grayscale now contains phase congruency map
-        >>> enhanced.enh_gray[:].min() >= 0
+        >>> # Detection matrix now contains phase congruency map
+        >>> enhanced.detect_mat[:].min() >= 0
         True
 
         Edge-focused enhancement for segmentation pipeline:
@@ -171,7 +171,7 @@ class PhaseCongruencyEnhancer(ImageEnhancer):
             noise_method: Method for noise statistics estimation. -1 uses median
                 of smallest scale responses (default), -2 uses mode (Rayleigh),
                 values >= 0 are used as fixed noise threshold.
-            output: Which result to store in enh_gray. "pc_sum" for scalar phase
+            output: Which result to store in detect_mat. "pc_sum" for scalar phase
                 congruency (default), "M" for edge strength, "m" for corners.
         """
         super().__init__()
@@ -208,15 +208,15 @@ class PhaseCongruencyEnhancer(ImageEnhancer):
         self.output = output
 
     def _operate(self, image: Image) -> Image:
-        """Apply phase congruency enhancement to the enhanced grayscale channel."""
-        result = self._phasecong3(image.enh_gray[:])
+        """Apply phase congruency enhancement to the detection matrix channel."""
+        result = self._phasecong3(image.detect_mat[:])
 
         # Select output based on configuration
         output_map = {"M": result.M, "m": result.m, "pc_sum": result.pc_sum}
         selected = output_map[self.output]
 
-        # Ensure output is in [0, 1] range for enh_gray compatibility
-        image.enh_gray[:] = np.clip(selected, 0.0, 1.0).astype(np.float64)
+        # Ensure output is in [0, 1] range for detect_mat compatibility
+        image.detect_mat[:] = np.clip(selected, 0.0, 1.0).astype(np.float64)
         return image
 
     def _phasecong3(self, img: np.ndarray) -> _PhaseCong3Result:
@@ -392,7 +392,7 @@ class PhaseCongruencyEnhancer(ImageEnhancer):
 
         # Note: pc_sum normalization by n_orient is a Python-specific addition.
         # Julia's phasecong3 doesn't return pc_sum. Normalizing keeps values
-        # in [0,1] range regardless of n_orient, making it suitable for enh_gray.
+        # in [0,1] range regardless of n_orient, making it suitable for detect_mat.
         return _PhaseCong3Result(
                 M=M,
                 m=m,

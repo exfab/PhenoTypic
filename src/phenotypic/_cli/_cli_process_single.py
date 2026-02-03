@@ -63,8 +63,13 @@ def process_single_image_core(
     image_cls = GridImage if image_type == "GridImage" else Image
     
     # Load image
+    detect_mode = read_kwargs.pop("detect_mode", "gray")
     image = image_cls.imread(image_path, **read_kwargs)
-    
+
+    # Apply detect mode if not default
+    if detect_mode != "gray":
+        image.set_detect_mode(detect_mode)
+
     # Execute pipeline
     measurements = pipeline.apply_and_measure(image, inplace=True)
     
@@ -100,12 +105,14 @@ def process_single_image_core(
               help="Number of grid columns (for GridImage)")
 @click.option("--bit-depth", type=int, default=None,
               help="Bit depth (8 or 16)")
+@click.option("--detect-mode", type=click.Choice(["gray", "red", "green", "blue"]),
+              default="gray", help="Color channel for detection matrix")
 @click.option("--save-rgb", is_flag=True,
               help="Save RGB layer")
 @click.option("--save-gray", is_flag=True,
               help="Save grayscale layer")
 @click.option("--save-enh-gray", is_flag=True,
-              help="Save enhanced grayscale layer")
+              help="Save detection matrix layer")
 @click.option("--save-objmask", is_flag=True,
               help="Save object mask")
 @click.option("--save-objmap", is_flag=True,
@@ -113,7 +120,7 @@ def process_single_image_core(
 @click.option("--save-objmap-overlay", is_flag=True,
               help="Save object map overlay (colorized labels)")
 @click.option("--save-enh-gray-overlay", is_flag=True,
-              help="Save enhanced grayscale overlay")
+              help="Save detection matrix overlay")
 @click.option("--save-objmask-overlay", is_flag=True,
               help="Save object mask overlay")
 @click.option("--rgb-ext", default="tiff",
@@ -121,7 +128,7 @@ def process_single_image_core(
 @click.option("--gray-ext", default="tiff",
               help="File extension for grayscale saves")
 @click.option("--enh-gray-ext", default="tiff",
-              help="File extension for enhanced grayscale saves")
+              help="File extension for detection matrix saves")
 @click.option("--objmask-ext", default="png",
               help="File extension for object mask saves")
 @click.option("--objmap-ext", default="png",
@@ -146,17 +153,18 @@ def main(
     nrows: int,
     ncols: int,
     bit_depth: Optional[int],
+    detect_mode: str,
     save_rgb: bool,
     save_gray: bool,
-    save_enh_gray: bool,
+    save_detect_mat: bool,
     save_objmask: bool,
     save_objmap: bool,
     save_objmap_overlay: bool,
-    save_enh_gray_overlay: bool,
+    save_detect_mat_overlay: bool,
     save_objmask_overlay: bool,
     rgb_ext: str,
     gray_ext: str,
-    enh_gray_ext: str,
+    detect_mat_ext: str,
     objmask_ext: str,
     objmap_ext: str,
     objmap_overlay_ext: str,
@@ -179,16 +187,18 @@ def main(
             read_kwargs["ncols"] = ncols
         if bit_depth is not None:
             read_kwargs["bit_depth"] = bit_depth
-        
+        if detect_mode != "gray":
+            read_kwargs["detect_mode"] = detect_mode
+
         # Prepare save layers
         save_layers = {
             "rgb": save_rgb,
             "gray": save_gray,
-            "enh_gray": save_enh_gray,
+            "detect_mat": save_detect_mat,
             "objmask": save_objmask,
             "objmap": save_objmap,
             "objmap_overlay": save_objmap_overlay,
-            "enh_gray_overlay": save_enh_gray_overlay,
+            "detect_mat_overlay": save_detect_mat_overlay,
             "objmask_overlay": save_objmask_overlay,
         }
 
@@ -197,7 +207,7 @@ def main(
             extensions = {
                 "rgb": normalize_extension(rgb_ext, ".tiff"),
                 "gray": normalize_extension(gray_ext, ".tiff"),
-                "enh_gray": normalize_extension(enh_gray_ext, ".tiff"),
+                "detect_mat": normalize_extension(detect_mat_ext, ".tiff"),
                 "objmask": normalize_extension(objmask_ext, ".png"),
                 "objmap": normalize_extension(objmap_ext, ".png"),
                 "objmap_overlay": normalize_extension(objmap_overlay_ext, ".png"),

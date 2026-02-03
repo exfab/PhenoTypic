@@ -110,7 +110,7 @@ conversion:
 ```python
 image.rgb[:]  # Raw RGB array
 image.gray[:]  # Grayscale (automatic luminance)
-image.enh_gray[:]  # Enhanced grayscale for processing
+image.detect_mat[:]  # Enhanced grayscale for processing
 image.objmask[:]  # Binary mask of detected objects
 image.objmap[:]  # Labeled object map
 image.objects  # ObjectsAccessor (high-level interface)
@@ -382,7 +382,7 @@ WhiteTophatSubtract, etc.), and edge detection (SobelFilter).
 
 **Key Principles:**
 
-- All enhancers operate on `image.enh_gray[:]` (enhanced grayscale)
+- All enhancers operate on `image.detect_mat[:]` (detection matrix)
 - Original RGB and grayscale remain unchanged (immutability)
 - Chain multiple enhancers in `ImagePipeline` for preprocessing
 
@@ -462,7 +462,7 @@ from phenotypic.data import load_synth_yeast_plate
 image = load_synth_yeast_plate()
 image.rgb[:]  # RGB array
 image.gray[:]  # Grayscale
-image.enh_gray[:]  # Enhanced grayscale
+image.detect_mat[:]  # Enhanced grayscale
 image.objmask[:]  # Binary mask
 image.objmap[:]  # Labeled objects
 image.color.Lab[:]  # Color spaces
@@ -540,8 +540,8 @@ documentation**
 1. Inherit from appropriate ABC in `phenotypic.abc_` (e.g., `ImageEnhancer`,
    `ObjectDetector`)
 2. Implement `_operate(self, image: Image) -> Image`
-3. Access data via accessors: `image.rgb[:]`, `image.enh_gray[:]`, `image.objects`, etc.
-4. Never modify `image.rgb` or `image.gray` directly (only enhancers work on `enh_gray`)
+3. Access data via accessors: `image.rgb[:]`, `image.detect_mat[:]`, `image.objects`, etc.
+4. Never modify `image.rgb` or `image.gray` directly (only enhancers work on `detect_mat`)
 5. Return modified `Image` instance (immutability principle)
 6. Add to module `__init__.py` exports
 7. Add tests in `tests/test_*.py`
@@ -574,9 +574,9 @@ class MyEnhancer(ImageEnhancer):
 
     def _operate(self, image: Image) -> Image:
         # Access parameters via self
-        filtered = gaussian_filter(image.enh_gray[:], sigma=self.sigma)
+        filtered = gaussian_filter(image.detect_mat[:], sigma=self.sigma)
         mask = filtered > self.threshold
-        image.enh_gray[:] = filtered
+        image.detect_mat[:] = filtered
         return image
 ```
 

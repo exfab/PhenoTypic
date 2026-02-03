@@ -83,7 +83,7 @@ class ExecutionConfig:
     nrows: int
     ncols: int
     bit_depth: Optional[int]
-    
+
     # Execution mode
     n_jobs: int
     slurm_args: Dict[str, Any]
@@ -93,15 +93,15 @@ class ExecutionConfig:
     # Output options
     save_rgb: bool
     save_gray: bool
-    save_enh_gray: bool
+    save_detect_mat: bool
     save_objmask: bool
     save_objmap: bool
     save_objmap_overlay: bool  # Renamed from save_objmap_rgb
-    save_enh_gray_overlay: bool
+    save_detect_mat_overlay: bool
     save_objmask_overlay: bool
     rgb_ext: str
     gray_ext: str
-    enh_gray_ext: str
+    detect_mat_ext: str
     objmask_ext: str
     objmap_ext: str
     objmap_overlay_ext: str  # Renamed from objmap_rgb_ext
@@ -117,6 +117,9 @@ class ExecutionConfig:
     resume: bool
     retry_failures: bool
     skip_validation: bool
+
+    # Detection mode (default: gray)
+    detect_mode: Literal["gray", "red", "green", "blue"] = "gray"
     
     def is_slurm_mode(self) -> bool:
         """Check if SLURM mode should be used."""

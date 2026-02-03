@@ -40,7 +40,7 @@ class MeasureIntensity(MeasureFeatures):
     - Intensity depends critically on imaging conditions (lighting, exposure, camera gain); standardize
       these settings across plates and experiments for reliable comparisons.
     - Grayscale conversion to luminance (Y channel) may not capture all visual information from colored
-      agar or pigmented colonies; use enhanced grayscale (enh_gray) for better contrast, or measure color
+      agar or pigmented colonies; use detection matrix (detect_mat) for better contrast, or measure color
       separately.
     - Integrated intensity mixes area and brightness; normalize by area or use intensity density (mean)
       for size-independent comparisons.

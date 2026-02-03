@@ -37,7 +37,7 @@ class PanelDescription:
 PANEL_A_HISTOGRAM = PanelDescription(
     label="A",
     title="Intensity Histogram",
-    what_it_shows="Distribution of pixel intensities in enhanced grayscale",
+    what_it_shows="Distribution of pixel intensities in detection matrix",
     how_to_read="X-axis: intensity (0-255), Y-axis: frequency. Blue=data, red=Gaussian fit",
     good_values="Bell-shaped, centered, uses full dynamic range",
     poor_values="Bimodal, clipped at edges, very narrow spread",
@@ -66,8 +66,8 @@ PANEL_C_PSD = PanelDescription(
 
 PANEL_D_ORIGINAL = PanelDescription(
     label="D",
-    title="Enhanced Grayscale",
-    what_it_shows="Current state of enh_gray used for detection",
+    title="Detection Matrix",
+    what_it_shows="Current state of detect_mat used for detection",
     how_to_read="Grayscale rendering of preprocessed image",
     good_values="Clear colony/background separation, uniform background",
     poor_values="Low contrast, uneven illumination, visible noise",

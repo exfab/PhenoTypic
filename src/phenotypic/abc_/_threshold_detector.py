@@ -79,7 +79,7 @@ class ThresholdDetector(ObjectDetector, ABC):
 
     Most ThresholdDetector implementations follow this pipeline:
 
-    1. **Read enhanced grayscale:** ``enh = image.enh_gray[:]`` (preprocessed for
+    1. **Read detection matrix:** ``enh = image.detect_mat[:]`` (preprocessed for
        contrast and noise suppression).
     2. **Compute threshold:** Use chosen strategy (Otsu, Li, Yen, etc.) to find
        optimal threshold value from histogram.
@@ -141,7 +141,7 @@ class ThresholdDetector(ObjectDetector, ABC):
         from scipy import ndimage
         import numpy as np
 
-        enh = image.enh_gray[:]
+        enh = image.detect_mat[:]
         # Compute local threshold for each pixel
         block_size = 31  # Neighborhood size (odd integer)
         threshold_map = filters.threshold_local(enh, block_size=block_size)
@@ -163,7 +163,7 @@ class ThresholdDetector(ObjectDetector, ABC):
         from scipy import ndimage
 
         def _operate(self, image):
-            enh = image.enh_gray[:]
+            enh = image.detect_mat[:]
             # Compute threshold value via automatic method
             threshold = filters.threshold_otsu(enh)  # or threshold_li, threshold_yen, etc.
             # Create binary mask: pixels above threshold
@@ -175,7 +175,7 @@ class ThresholdDetector(ObjectDetector, ABC):
             image.objmap[:] = labeled
             return image
 
-    Key points: Read preprocessed ``enh_gray``, compute single threshold, compare all pixels at
+    Key points: Read preprocessed ``detect_mat``, compute single threshold, compare all pixels at
     once, label result. This is fast and deterministic (same image always produces same result).
 
     **Interface specification**
@@ -186,7 +186,7 @@ class ThresholdDetector(ObjectDetector, ABC):
     2. Implement ``_operate(image: Image) -> Image`` as a static method.
     3. Within ``_operate()``:
 
-       - Read ``image.enh_gray[:]`` (and optionally ``image.rgb[:], image.gray[:]``).
+       - Read ``image.detect_mat[:]`` (and optionally ``image.rgb[:], image.gray[:]``).
        - Compute threshold (automatically or from parameter).
        - Generate binary mask via comparison: ``mask = enh > threshold``.
        - Label connected components: ``labeled, _ = ndimage.label(mask)``.

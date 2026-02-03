@@ -55,11 +55,11 @@ class PipelineGridSearchBase(ABC):
                 - etc.
 
             data2save: Set of image layers to persist to disk after pipeline execution.
-                Valid options: ``{"rgb", "gray", "enh_gray", "objmask", "objmap", "map2rgb"}``.
+                Valid options: ``{"rgb", "gray", "detect_mat", "objmask", "objmap", "map2rgb"}``.
 
                 - ``rgb``: Original color image (if available) as TIFF
                 - ``gray``: Grayscale luminance as TIFF
-                - ``enh_gray``: Enhanced grayscale as TIFF
+                - ``detect_mat``: Detection matrix as TIFF
                 - ``objmask``: Binary detection mask as PNG
                 - ``objmap``: Labeled object map as PNG
                 - ``map2rgb``: Object map rendered as RGB overlay as PNG
@@ -126,7 +126,7 @@ class PipelineGridSearchBase(ABC):
                 gs = PipeGridSearch(
                     pipe_cfgs=pipe_cfgs,
                     output_dir="/data/results",
-                    data2save={"enh_gray", "objmask"}  # Save 2 layers to minimize disk
+                    data2save={"detect_mat", "objmask"}  # Save 2 layers to minimize disk
                 )
 
                 # Then use subclass-specific method
@@ -148,7 +148,7 @@ class PipelineGridSearchBase(ABC):
         """
         self.pipe_cfgs: Dict[str, GridSearchConfig] = pipe_cfgs
 
-        data2save = {"rgb", "gray", "enh_gray", "objmask", "objmap", "map2rgb"} \
+        data2save = {"rgb", "gray", "detect_mat", "objmask", "objmap", "map2rgb"} \
             if data2save is None \
             else set(data2save)
         self._validate_layers(data2save)
@@ -374,7 +374,7 @@ class PipelineGridSearchBase(ABC):
 
                 - ``"rgb"``: Original color image (TIFF)
                 - ``"gray"``: Grayscale luminance (TIFF)
-                - ``"enh_gray"``: Enhanced grayscale for detection (TIFF)
+                - ``"detect_mat"``: Detection matrix for detection (TIFF)
                 - ``"objmask"``: Binary detection mask (PNG)
                 - ``"objmap"``: Labeled object map (PNG)
                 - ``"map2rgb"``: Object map as RGB overlay (PNG)
@@ -395,7 +395,7 @@ class PipelineGridSearchBase(ABC):
                 # ValueError: Invalid DataAccessors: {'depth'}. Must be subset of {...}
         """
         # Validate GridSearchSaveData
-        valid_layers = {"rgb", "gray", "enh_gray", "objmask", "objmap", "map2rgb"}
+        valid_layers = {"rgb", "gray", "detect_mat", "objmask", "objmap", "map2rgb"}
         invalid = set(data2save) - valid_layers
         if invalid:
             raise ValueError(
@@ -541,7 +541,7 @@ class PipelineGridSearchBase(ABC):
             # set the suffix
             if data_name in {"objmap", "objmask", "map2rgb"}:
                 curr_suffix = "png"
-            elif data_name in {"rgb", "gray", "enh_gray"}:
+            elif data_name in {"rgb", "gray", "detect_mat"}:
                 curr_suffix = "tiff"
             else:
                 raise ValueError(f"Unknown data2save value: {data_name}")

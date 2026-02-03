@@ -65,8 +65,8 @@ class GrayOpening(ImageEnhancer, FootprintMixin):
         self.width = width
 
     def _operate(self, image: Image) -> Image:
-        image.enh_gray[:] = morphology.opening(
-                image=image.enh_gray[:],
+        image.detect_mat[:] = morphology.opening(
+                image=image.detect_mat[:],
                 footprint=self._make_footprint(
                         shape=self.shape,
                         width=self.width,

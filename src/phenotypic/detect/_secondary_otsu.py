@@ -109,11 +109,11 @@ class SecondaryOtsuDetector(ThresholdDetector):
         If no object map exists, performs initial Otsu on the full image first,
         then applies per-object Otsu refinement to each detected region.
         """
-        enh_gray = image.enh_gray[:]
+        detect_mat = image.detect_mat[:]
 
         # If there are no objects, perform an initial global Otsu
         if image.num_objects == 0:
-            initial_mask = enh_gray >= threshold_otsu(enh_gray)
+            initial_mask = detect_mat >= threshold_otsu(detect_mat)
         else:
             initial_mask = image.objmask[:]
 
@@ -128,7 +128,7 @@ class SecondaryOtsuDetector(ThresholdDetector):
         # Compute Otsu threshold for each object (vectorized across all objects)
         # Returns array of thresholds indexed by object id (1 to num_objects)
         thresholds = labeled_comprehension(
-            enh_gray, labeled_mask, range(1, num_objects + 1),
+            detect_mat, labeled_mask, range(1, num_objects + 1),
             _safe_otsu, float, -np.inf
         )
 
@@ -140,5 +140,5 @@ class SecondaryOtsuDetector(ThresholdDetector):
         threshold_map = threshold_lookup[labeled_mask]
 
         # Vectorized comparison: pixels above their object's threshold
-        image.objmask = enh_gray >= threshold_map
+        image.objmask = detect_mat >= threshold_map
         return image

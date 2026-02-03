@@ -171,11 +171,11 @@ def create_initial_state(
             "save_layers": {
                 "rgb": config.save_rgb,
                 "gray": config.save_gray,
-                "enh_gray": config.save_enh_gray,
+                "detect_mat": config.save_detect_mat,
                 "objmask": config.save_objmask,
                 "objmap": config.save_objmap,
                 "objmap_overlay": config.save_objmap_overlay,
-                "enh_gray_overlay": config.save_enh_gray_overlay,
+                "detect_mat_overlay": config.save_detect_mat_overlay,
                 "objmask_overlay": config.save_objmask_overlay,
             }
         }

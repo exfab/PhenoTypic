@@ -106,8 +106,8 @@ class MeijeringRidgeFilter(ImageEnhancer):
         self.cval = cval
 
     def _operate(self, image: Image) -> Image:
-        image.enh_gray[:] = meijering(
-                image=image.enh_gray[:],
+        image.detect_mat[:] = meijering(
+                image=image.detect_mat[:],
                 sigmas=self.sigmas,
                 alpha=self.alpha,
                 black_ridges=self.black_ridges,

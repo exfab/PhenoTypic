@@ -59,7 +59,7 @@ class BayesShrinkEnhancer(ImageEnhancer):
         >>> image = Image.imread('agar_plate.jpg')  # doctest: +SKIP
         >>> enhancer = BayesShrinkEnhancer()
         >>> denoised = enhancer.apply(image)  # doctest: +SKIP
-        >>> # Original data preserved, enh_gray denoised
+        >>> # Original data preserved, detect_mat denoised
         >>> assert np.array_equal(image.rgb[:], denoised.rgb[:])  # doctest: +SKIP
         >>> assert np.array_equal(image.gray[:], denoised.gray[:])  # doctest: +SKIP
 
@@ -73,7 +73,7 @@ class BayesShrinkEnhancer(ImageEnhancer):
         >>> # VisuShrink: Universal threshold, more aggressive smoothing
         >>> visu = VisuShrinkEnhancer().apply(image)  # doctest: +SKIP
         >>> # Results are different
-        >>> assert not np.array_equal(bayes.enh_gray[:], visu.enh_gray[:])  # doctest: +SKIP
+        >>> assert not np.array_equal(bayes.detect_mat[:], visu.detect_mat[:])  # doctest: +SKIP
         >>> # BayesShrink typically preserves more fine structure
 
         Fine detail preservation for texture analysis:
@@ -123,13 +123,13 @@ class BayesShrinkEnhancer(ImageEnhancer):
         self.clip = clip
 
     def _operate(self, image: Image) -> Image:
-        """Apply BayesShrink adaptive wavelet denoising to enhanced grayscale.
+        """Apply BayesShrink adaptive wavelet denoising to detection matrix.
 
         Returns:
-            Modified Image with denoised enh_gray
+            Modified Image with denoised detect_mat
         """
         denoised = denoise_wavelet(
-                image=image.enh_gray[:],
+                image=image.detect_mat[:],
                 sigma=self.sigma,
                 wavelet=self.wavelet,
                 mode=self.mode,
@@ -140,5 +140,5 @@ class BayesShrinkEnhancer(ImageEnhancer):
         )
         if self.clip:
             denoised = denoised.clip(0.0, 1.0)
-        image.enh_gray[:] = denoised
+        image.detect_mat[:] = denoised
         return image

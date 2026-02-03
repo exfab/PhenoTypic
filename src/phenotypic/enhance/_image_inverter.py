@@ -12,7 +12,7 @@ from ..abc_ import ImageEnhancer
 
 class ImageInverter(ImageEnhancer):
     """
-    Invert the enhanced grayscale image (negate pixel intensities).
+    Invert the detection matrix image (negate pixel intensities).
 
     Reverses the brightness scale so dark regions become bright and vice versa.
     This can be useful for correcting inverted input images or for exploring
@@ -47,7 +47,7 @@ class ImageInverter(ImageEnhancer):
         pass
 
     def _operate(self, image: Image) -> Image:
-        enh = image.enh_gray[:]
+        enh = image.detect_mat[:]
 
         # Invert based on data type
         if enh.dtype == np.uint8:
@@ -58,5 +58,5 @@ class ImageInverter(ImageEnhancer):
             max_val = enh.max()
             inverted = max_val - enh
 
-        image.enh_gray[:] = inverted
+        image.detect_mat[:] = inverted
         return image

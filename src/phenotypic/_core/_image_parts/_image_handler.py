@@ -16,7 +16,7 @@ from phenotypic._core._image_parts._image_data_manager import ImageDataManager
 from phenotypic._core._image_parts.accessors import (
     ImageRGB,
     Grayscale,
-    EnhancedGrayscale,
+    DetectMatAccessor,
     ObjectMask,
     ObjectMap,
     MetadataAccessor,
@@ -31,7 +31,7 @@ class ImageHandler(ImageDataManager):
 
     This class extends ImageDataManager to provide user-friendly interface for
     image operations through:
-    - Property-based accessors for RGB, grayscale, enhanced grayscale, object masks, and object maps
+    - Property-based accessors for RGB, grayscale, detection matrix, object masks, and object maps
     - Image manipulation operations (slicing, rotation, copying, resetting)
     - Visualization methods (show, show_overlay)
     - Comparison and equality operations
@@ -43,7 +43,7 @@ class ImageHandler(ImageDataManager):
 
     Attributes:
         _accessors (SimpleNamespace): Container for property-based accessors providing
-            read/write access to image components (rgb, gray, enh_gray, objmask, objmap, metadata).
+            read/write access to image components (rgb, gray, detect_mat, objmask, objmap, metadata).
     """
 
     def __init__(
@@ -54,7 +54,7 @@ class ImageHandler(ImageDataManager):
     ):
         """Initialize ImageHandler with accessors and optional image data.
 
-        Initializes all image accessors (rgb, gray, enh_gray, objmask, objmap, metadata)
+        Initializes all image accessors (rgb, gray, detect_mat, objmask, objmap, metadata)
         and optionally loads image data from a NumPy array or another Image instance.
 
         Args:
@@ -73,7 +73,7 @@ class ImageHandler(ImageDataManager):
         self._accessors = SimpleNamespace()
         self._accessors.rgb = ImageRGB(self)
         self._accessors.gray = Grayscale(self)
-        self._accessors.enh_gray = EnhancedGrayscale(self)
+        self._accessors.detect_mat = DetectMatAccessor(self)
         self._accessors.objmask = ObjectMask(self)
         self._accessors.objmap = ObjectMap(self)
         self._accessors.metadata = MetadataAccessor(self)
@@ -104,7 +104,7 @@ class ImageHandler(ImageDataManager):
         else:
             subimage = self.__class__(arr=self.gray[key])
 
-        subimage.enh_gray[:] = self.enh_gray[key].copy()
+        subimage.detect_mat[:] = self.detect_mat[key].copy()
         subimage.objmap[:] = self.objmap[key].copy()
         subimage.metadata[METADATA.IMAGE_TYPE] = IMAGE_TYPES.CROP.value
         subimage.metadata[METADATA.IMAGE_NAME] \
@@ -144,7 +144,7 @@ class ImageHandler(ImageDataManager):
                 )
             else:
                 self._data.gray[key] = other_image._data.gray[:]
-                self._data.enh_gray[key] = other_image._data.enh_gray[:]
+                self._data.detect_mat[key] = other_image._data.detect_mat[:]
                 self.objmask[key] = other_image.objmask[:]
 
     def __eq__(self, other: Image) -> bool:
@@ -153,7 +153,7 @@ class ImageHandler(ImageDataManager):
 
         This method checks if the current object's attributes are equal to another object's
         attributes. Equality is determined by verifying that the numerical arrays
-        (`rgb`, `gray`, `enh_gray`, `objmap`) are element-wise identical.
+        (`rgb`, `gray`, `detect_mat`, `objmap`) are element-wise identical.
 
         Note:
             - Only checks image data, and not any other attributes such as metadata.
@@ -180,7 +180,7 @@ class ImageHandler(ImageDataManager):
                 format_match
                 and rgb_check
                 and np.array_equal(self.gray[:], other.gray[:])
-                and np.array_equal(self.enh_gray[:], other.enh_gray[:])
+                and np.array_equal(self.detect_mat[:], other.detect_mat[:])
                 and np.array_equal(self.objmap[:], other.objmap[:])
         )
 
@@ -322,15 +322,17 @@ class ImageHandler(ImageDataManager):
             raise IllegalAssignmentError("gray")
 
     @property
-    def enh_gray(self) -> EnhancedGrayscale:
-        """Returns the image's enhanced grayscale accessor. Preprocessing steps
+    def detect_mat(self) -> DetectMatAccessor:
+        """Returns the image's detection matrix accessor. Preprocessing steps
         can be applied to this component to improve detection performance.
 
-        The enhanceable gray is a copy of the image's gray form that can be modified and used to improve detection performance.
-        The original gray data should be left intact in order to preserve image information integrity for measurements.'
+        The detection matrix is derived from the image's grayscale (default) or a
+        single RGB channel, controlled by ``detect_mode``. It can be modified and
+        used to improve detection performance while the original gray data is left
+        intact to preserve image information integrity for measurements.
 
         Returns:
-            EnhancedGrayscale: A mutable container that stores a copy of the image's gray form
+            DetectMatAccessor: A mutable container that stores a copy of the source channel.
 
         .. code-block:: python
             from phenotypic import Image
@@ -338,29 +340,64 @@ class ImageHandler(ImageDataManager):
 
             image = Image(load_colony())
 
-            # get the enh_gray data
-            arr = image.enh_gray[:]
+            # get the detect_mat data
+            arr = image.detect_mat[:]
             print(type(arr))
 
-            # set the enh_gray data
-            # the shape of the new enh_gray must be the same shape as the original enh_gray
-            image.enh_gray[:] = arr
+            # set the detect_mat data
+            # the shape must match the original
+            image.detect_mat[:] = arr
 
             # without the bracket indexing the accessor is returned instead
-            print(image.enh_gray[:])
+            print(image.detect_mat[:])
 
         """
-        if self._data.enh_gray is None:
+        if self._data.detect_mat is None:
             raise EmptyImageError
         else:
-            return self._accessors.enh_gray
+            return self._accessors.detect_mat
 
-    @enh_gray.setter
-    def enh_gray(self, value):
+    @detect_mat.setter
+    def detect_mat(self, value):
         if isinstance(value, (np.ndarray, int, float)):
-            self.enh_gray[:] = value
+            self.detect_mat[:] = value
         else:
-            raise IllegalAssignmentError("enh_gray")
+            raise IllegalAssignmentError("detect_mat")
+
+    @property
+    def detect_mode(self) -> str:
+        """Return the current detection mode controlling the detect_mat source channel.
+
+        Returns:
+            str: One of ``'gray'``, ``'red'``, ``'green'``, ``'blue'``.
+        """
+        return self._data.detect_mode
+
+    def set_detect_mode(self, mode: str) -> None:
+        """Switch the source channel for the detection matrix.
+
+        Sets the detection mode and resets ``detect_mat`` to a fresh copy of the
+        new source channel. Enhancers applied before this call are discarded.
+
+        Args:
+            mode: One of ``'gray'``, ``'red'``, ``'green'``, ``'blue'``.
+
+        Raises:
+            ValueError: If *mode* requires RGB data and the image has none, or if
+                *mode* is not a recognised value.
+        """
+        valid_modes = ("gray", "red", "green", "blue")
+        if mode not in valid_modes:
+            raise ValueError(
+                f"detect_mode must be one of {valid_modes}, got {mode!r}"
+            )
+        if mode in ("red", "green", "blue"):
+            if self.rgb.isempty():
+                raise ValueError(
+                    f"Cannot use detect_mode '{mode}': image has no RGB data."
+                )
+        self._data.detect_mode = mode
+        self.detect_mat.reset()
 
     @property
     def objmask(self) -> ObjectMask:
@@ -668,7 +705,7 @@ class ImageHandler(ImageDataManager):
             matrix (np.ndarray): A 2-D array form of an image.
         """
         super()._set_from_matrix(matrix)
-        self._accessors.enh_gray.reset()
+        self._accessors.detect_mat.reset()
         self._accessors.objmap.reset()
 
     def show(
@@ -748,8 +785,8 @@ class ImageHandler(ImageDataManager):
                 preserve_range=preserve_range,
         )
 
-        self._data.enh_gray = skimage_rotate(
-                image=self._data.enh_gray,
+        self._data.detect_mat = skimage_rotate(
+                image=self._data.detect_mat,
                 angle=angle_of_rotation,
                 mode=mode,
                 clip=True,
@@ -773,7 +810,7 @@ class ImageHandler(ImageDataManager):
         """
         Resets the internal state of the object and returns an updated instance.
 
-        This method resets the state of enhanced gray and object map components maintained
+        This method resets the state of detection matrix and object map components maintained
         by the object. It ensures that the object is reset to its original state
         while maintaining its type integrity. Upon execution, the instance of the
         calling object itself is returned.
@@ -782,6 +819,6 @@ class ImageHandler(ImageDataManager):
             Type[Image]: The instance of the object after resetting its internal
             state.
         """
-        self.enh_gray.reset()
+        self.detect_mat.reset()
         self.objmap.reset()
         return self

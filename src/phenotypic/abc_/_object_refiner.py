@@ -46,7 +46,7 @@ class ObjectRefiner(ImageOperation, ABC):
 
     ObjectRefiner operates on the principle of **non-destructive post-processing**: all modifications
     are applied only to `image.objmask` (binary mask) and `image.objmap` (labeled map), while original
-    image components (`image.rgb`, `image.gray`, `image.enh_gray`) remain protected and unchanged.
+    image components (`image.rgb`, `image.gray`, `image.detect_mat`) remain protected and unchanged.
     This allows you to experiment with multiple refinement chains without affecting raw or enhanced
     image data, ensuring reproducibility and enabling comparison of different cleanup strategies.
 
@@ -56,7 +56,7 @@ class ObjectRefiner(ImageOperation, ABC):
 
     - **Read** `image.objmask[:]` (binary mask) and `image.objmap[:]` (labeled map) from prior detection.
     - **Write** only `image.objmask[:]` and `image.objmap[:]` with refined results.
-    - **Protect** `image.rgb`, `image.gray`, and `image.enh_gray` via automatic integrity validation
+    - **Protect** `image.rgb`, `image.gray`, and `image.detect_mat` via automatic integrity validation
       (`@validate_operation_integrity` decorator).
 
     Any attempt to modify protected image components raises `OperationIntegrityError` when
@@ -68,7 +68,7 @@ class ObjectRefiner(ImageOperation, ABC):
 
     .. code-block:: text
 
-        Raw Image (rgb, gray, enh_gray)
+        Raw Image (rgb, gray, detect_mat)
               ↓
         ImageEnhancer(s) → Improve visibility, reduce noise
               ↓
@@ -159,13 +159,13 @@ class ObjectRefiner(ImageOperation, ABC):
 
     .. code-block:: python
 
-        @validate_operation_integrity('image.rgb', 'image.gray', 'image.enh_gray')
+        @validate_operation_integrity('image.rgb', 'image.gray', 'image.detect_mat')
         def apply(self, image: Image, inplace: bool = False) -> Image:
             return super().apply(image=image, inplace=inplace)
 
     This decorator:
 
-    1. Calculates cryptographic signatures of `image.rgb`, `image.gray`, and `image.enh_gray`
+    1. Calculates cryptographic signatures of `image.rgb`, `image.gray`, and `image.detect_mat`
        **before** processing
     2. Calls the parent `apply()` method to execute your `_operate()` implementation
     3. Recalculates signatures **after** operation completes
@@ -368,7 +368,7 @@ class ObjectRefiner(ImageOperation, ABC):
 
     Methods:
         apply(image, inplace=False): Applies the refinement to an image. Returns a modified
-            Image with refined `objmask` and `objmap` but unchanged RGB/gray/enh_gray. Handles
+            Image with refined `objmask` and `objmap` but unchanged RGB/gray/detect_mat. Handles
             copy/inplace logic and validates data integrity.
         _operate(image, **kwargs): Abstract static method implemented by subclasses.
             Performs the actual refinement algorithm. Parameters are automatically matched
@@ -378,7 +378,7 @@ class ObjectRefiner(ImageOperation, ABC):
 
     Notes:
         - **Protected components:** The ``@validate_operation_integrity`` decorator ensures
-          that ``image.rgb``, ``image.gray``, and ``image.enh_gray`` cannot be modified.
+          that ``image.rgb``, ``image.gray``, and ``image.detect_mat`` cannot be modified.
           Only ``image.objmask`` and ``image.objmap`` can be changed.
 
         - **Immutability by default:** ``apply(image)`` returns a modified copy by default.
@@ -626,6 +626,6 @@ class ObjectRefiner(ImageOperation, ABC):
     @overload
     def apply(self, image: GridImage, inplace: bool = False) -> GridImage: ...
 
-    @validate_operation_integrity("image.rgb", "image.gray", "image.enh_gray")
+    @validate_operation_integrity("image.rgb", "image.gray", "image.detect_mat")
     def apply(self, image: Image, inplace: bool = False) -> Image:
         return super().apply(image=image, inplace=inplace)

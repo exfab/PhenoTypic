@@ -12,11 +12,11 @@ from ..abc_ import ImageCorrector
 
 
 class VisuShrinkCorrector(ImageCorrector):
-    """Wavelet denoising with VisuShrink for all image components (RGB, gray, enh_gray).
+    """Wavelet denoising with VisuShrink for all image components (RGB, gray, detect_mat).
 
     Applies VisuShrink wavelet denoising to the entire image, modifying RGB (if present),
-    grayscale, and enhanced grayscale simultaneously. Unlike VisuShrinkEnhancer (which
-    modifies only enh_gray), this corrector updates all image representations, ensuring
+    grayscale, and detection matrix simultaneously. Unlike VisuShrinkEnhancer (which
+    modifies only detect_mat), this corrector updates all image representations, ensuring
     consistency across components.
 
     Use cases (agar plates):
@@ -67,10 +67,10 @@ class VisuShrinkCorrector(ImageCorrector):
         >>> from phenotypic.correction import VisuShrinkCorrector
         >>> # Grayscale image (no RGB)
         >>> image = Image.imread('gray_plate.tif')  # doctest: +SKIP
-        >>> # Works without error, denoises gray and enh_gray
+        >>> # Works without error, denoises gray and detect_mat
         >>> corrector = VisuShrinkCorrector()
         >>> denoised = corrector.apply(image)  # doctest: +SKIP
-        >>> # Only gray and enh_gray modified (no RGB to modify)
+        >>> # Only gray and detect_mat modified (no RGB to modify)
         >>> assert not np.array_equal(denoised.gray[:], image.gray[:])  # doctest: +SKIP
 
         Color-preserving denoising with YCbCr conversion:
@@ -143,9 +143,9 @@ class VisuShrinkCorrector(ImageCorrector):
         )
         image._data.gray = denoised_gray.clip(0.0, 1.0)
 
-        # Always denoise enh_gray
+        # Always denoise detect_mat
         denoised_enh = denoise_wavelet(
-            image=image.enh_gray[:],
+            image=image.detect_mat[:],
             sigma=self.sigma,
             wavelet=self.wavelet,
             mode=self.mode,
@@ -154,6 +154,6 @@ class VisuShrinkCorrector(ImageCorrector):
             channel_axis=None,
             rescale_sigma=True,
         )
-        image._data.enh_gray = denoised_enh.clip(0.0, 1.0)
+        image._data.detect_mat = denoised_enh.clip(0.0, 1.0)
 
         return image

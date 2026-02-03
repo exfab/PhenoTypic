@@ -198,10 +198,10 @@ class TestAnscombeTransformDenoiseIntegration:
         result = enhancer.apply(synthetic_image)
 
         # Output should have same shape
-        assert result.enh_gray[:].shape == synthetic_image.enh_gray[:].shape
+        assert result.detect_mat[:].shape == synthetic_image.detect_mat[:].shape
         # Output should be in [0, 1] range
-        assert result.enh_gray[:].min() >= 0.0
-        assert result.enh_gray[:].max() <= 1.0
+        assert result.detect_mat[:].min() >= 0.0
+        assert result.detect_mat[:].max() <= 1.0
 
     def test_apply_with_image_pipeline(self, synthetic_image):
         """Test apply with ImagePipeline as inner enhancer."""
@@ -218,10 +218,10 @@ class TestAnscombeTransformDenoiseIntegration:
         result = enhancer.apply(synthetic_image)
 
         # Output should have same shape
-        assert result.enh_gray[:].shape == synthetic_image.enh_gray[:].shape
+        assert result.detect_mat[:].shape == synthetic_image.detect_mat[:].shape
         # Output should be in [0, 1] range
-        assert result.enh_gray[:].min() >= 0.0
-        assert result.enh_gray[:].max() <= 1.0
+        assert result.detect_mat[:].min() >= 0.0
+        assert result.detect_mat[:].max() <= 1.0
 
     def test_apply_with_clipping_enhancer(self, synthetic_image):
         """Test that AnscombeTransformDenoise works with clipping enhancers.
@@ -238,10 +238,10 @@ class TestAnscombeTransformDenoiseIntegration:
         result = enhancer.apply(synthetic_image)
 
         # Output should be in [0, 1] range and non-trivial
-        assert result.enh_gray[:].min() >= 0.0
-        assert result.enh_gray[:].max() <= 1.0
+        assert result.detect_mat[:].min() >= 0.0
+        assert result.detect_mat[:].max() <= 1.0
         # Output should not be all zeros (which would happen if clipping broke things)
-        assert result.enh_gray[:].max() > 0.1
+        assert result.detect_mat[:].max() > 0.1
 
     def test_apply_with_pipeline_containing_clipping_enhancers(self, synthetic_image):
         """Test that AnscombeTransformDenoise disables clipping in pipelines."""
@@ -258,7 +258,7 @@ class TestAnscombeTransformDenoiseIntegration:
         result = enhancer.apply(synthetic_image)
 
         # Output should be non-trivial (not all zeros)
-        assert result.enh_gray[:].max() > 0.1
+        assert result.detect_mat[:].max() > 0.1
         # Original pipeline's enhancer should still have clip=True
         # _ops is a Dict[str, ImageOperation], access by operation name
         orig_ops = list(pipeline._ops.values())
@@ -292,7 +292,7 @@ class TestAnscombeTransformDenoiseIntegration:
 
     def test_inplace_modifies_original(self, synthetic_image):
         """Test that inplace=True modifies the original image."""
-        original_enh_gray = synthetic_image.enh_gray[:].copy()
+        original_detect_mat = synthetic_image.detect_mat[:].copy()
 
         enhancer = AnscombeTransformDenoise(
             inner_enhancer=GaussianBlur(sigma=1.0),
@@ -302,8 +302,8 @@ class TestAnscombeTransformDenoiseIntegration:
 
         # Result should be the same object
         assert result is synthetic_image
-        # enh_gray should be modified (not equal to original)
-        assert not np.array_equal(synthetic_image.enh_gray[:], original_enh_gray)
+        # detect_mat should be modified (not equal to original)
+        assert not np.array_equal(synthetic_image.detect_mat[:], original_detect_mat)
 
     def test_nested_in_pipeline(self, synthetic_image):
         """Test AnscombeTransformDenoise nested inside ImagePipeline."""
@@ -319,10 +319,10 @@ class TestAnscombeTransformDenoiseIntegration:
         result = pipeline.apply(synthetic_image)
 
         # Output should have same shape
-        assert result.enh_gray[:].shape == synthetic_image.enh_gray[:].shape
+        assert result.detect_mat[:].shape == synthetic_image.detect_mat[:].shape
         # Output should be in [0, 1] range
-        assert result.enh_gray[:].min() >= 0.0
-        assert result.enh_gray[:].max() <= 1.0
+        assert result.detect_mat[:].min() >= 0.0
+        assert result.detect_mat[:].max() <= 1.0
 
 
 class TestClipParameter:
@@ -339,8 +339,8 @@ class TestClipParameter:
         result = enh.apply(image)
 
         # Output should be clipped to [0, 1]
-        assert result.enh_gray[:].max() <= 1.0
-        assert result.enh_gray[:].min() >= 0.0
+        assert result.detect_mat[:].max() <= 1.0
+        assert result.detect_mat[:].min() >= 0.0
 
     def test_bilateral_denoise_clip_false_preserves_scale(self):
         """Test that BilateralDenoise with clip=False preserves GAT scale."""
@@ -353,7 +353,7 @@ class TestClipParameter:
         result = enh.apply(image)
 
         # Output should preserve GAT scale (max > 1)
-        assert result.enh_gray[:].max() > 1.0
+        assert result.detect_mat[:].max() > 1.0
 
 
 class TestClipControlMixin:

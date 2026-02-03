@@ -63,10 +63,10 @@ class ContrastStretching(ImageEnhancer):
 
     def _operate(self, image: Image) -> Image:
         p_lower, p_upper = np.percentile(
-            image.enh_gray[:], (self.lower_percentile, self.upper_percentile)
+            image.detect_mat[:], (self.lower_percentile, self.upper_percentile)
         )
-        image.enh_gray[:] = rescale_intensity(
-            image=image.enh_gray[:],
+        image.detect_mat[:] = rescale_intensity(
+            image=image.detect_mat[:],
             in_range=(p_lower, p_upper),
             out_range=(0, 1),
         )

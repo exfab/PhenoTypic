@@ -218,7 +218,7 @@ if PANEL_AVAILABLE:
         save_overlay = param.Boolean(default=True, doc="Save overlay images")
         save_objmask = param.Boolean(default=True, doc="Save object masks")
         save_objmap = param.Boolean(default=False, doc="Save labeled object maps")
-        save_enh_gray = param.Boolean(default=False, doc="Save enhanced grayscale")
+        save_detect_mat = param.Boolean(default=False, doc="Save detection matrix")
 
         # === State ===
         is_running = param.Boolean(default=False, doc="Whether sweep is running")
@@ -461,20 +461,20 @@ if PANEL_AVAILABLE:
                 name="ObjMap",
                 value=self.save_objmap,
             )
-            self._save_enh_gray_checkbox = pn.widgets.Checkbox(
+            self._save_detect_mat_checkbox = pn.widgets.Checkbox(
                 name="EnhGray",
-                value=self.save_enh_gray,
+                value=self.save_detect_mat,
             )
             self._bind_checkbox(self._save_overlay_checkbox, "save_overlay")
             self._bind_checkbox(self._save_objmask_checkbox, "save_objmask")
             self._bind_checkbox(self._save_objmap_checkbox, "save_objmap")
-            self._bind_checkbox(self._save_enh_gray_checkbox, "save_enh_gray")
+            self._bind_checkbox(self._save_detect_mat_checkbox, "save_detect_mat")
 
             output_checks = pn.Row(
                 self._save_overlay_checkbox,
                 self._save_objmask_checkbox,
                 self._save_objmap_checkbox,
-                self._save_enh_gray_checkbox,
+                self._save_detect_mat_checkbox,
             )
 
             return pn.Column(
@@ -735,8 +735,8 @@ if PANEL_AVAILABLE:
                 data2save.add("objmask")
             if self.save_objmap:
                 data2save.add("objmap")
-            if self.save_enh_gray:
-                data2save.add("enh_gray")
+            if self.save_detect_mat:
+                data2save.add("detect_mat")
 
             # Run sweep
             self.is_running = True

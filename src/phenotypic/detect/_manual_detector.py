@@ -108,17 +108,17 @@ class ManualDetector(ThresholdDetector):
         self.ignore_borders = ignore_borders
 
     def _operate(self, image: Image) -> Image:
-        """Apply manual binary thresholding to the enhanced grayscale image.
+        """Apply manual binary thresholding to the detection matrix image.
 
         This function modifies the input image by applying a user-specified threshold
-        to its enhanced matrix (``enh_gray``). Pixels with intensity >= threshold
+        to its enhanced matrix (``detect_mat``). Pixels with intensity >= threshold
         become foreground (True in the binary mask), pixels < threshold become
         background (False). The resulting binary mask is stored in the image's
         ``objmask`` attribute.
 
         Args:
-            image: The input image object. Must have an ``enh_gray`` attribute
-                (enhanced grayscale matrix for processing). Optionally uses
+            image: The input image object. Must have an ``detect_mat`` attribute
+                (detection matrix for processing). Optionally uses
                 ``bit_depth`` to validate threshold range.
 
         Returns:
@@ -129,7 +129,7 @@ class ManualDetector(ThresholdDetector):
             ValueError: If threshold is negative or exceeds the image's intensity
                 range (inferred from bit depth if available).
         """
-        enh_matrix = image.enh_gray[:]
+        enh_matrix = image.detect_mat[:]
 
         # Validate threshold range
         if self.threshold < 0:

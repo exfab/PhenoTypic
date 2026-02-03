@@ -59,12 +59,12 @@ class WhiteTophatSubtract(ImageEnhancer):
 
     def _operate(self, image: Image) -> Image:
         white_tophat_results = white_tophat(
-                image.enh_gray[:],
+                image.detect_mat[:],
                 footprint=self._get_footprint(
-                        self._get_footprint_width(detection_matrix=image.enh_gray[:]),
+                        self._get_footprint_width(detection_matrix=image.detect_mat[:]),
                 ),
         )
-        image.enh_gray[:] = image.enh_gray[:] - white_tophat_results
+        image.detect_mat[:] = image.detect_mat[:] - white_tophat_results
 
         return image
 

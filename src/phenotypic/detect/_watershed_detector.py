@@ -139,10 +139,10 @@ class WatershedDetector(ThresholdDetector):
     def _operate(self, image: Image | GridImage) -> Image:
         from phenotypic import Image, GridImage
 
-        enhanced_matrix = image.enh_gray[
+        enhanced_matrix = image.detect_mat[
             :
         ]  # direct access to reduce memory shape, but careful to not delete
-        self._log_memory_usage("getting enhanced gray")
+        self._log_memory_usage("getting detection matrix")
 
         # Determine shape for peak detection
         if self.footprint == "auto":

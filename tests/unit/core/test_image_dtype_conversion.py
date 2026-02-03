@@ -576,8 +576,8 @@ class TestGrayArrayDerivation:
         assert img.gray.shape == (100, 100)
 
     @timeit
-    def test_enh_gray_initialized_equal_to_gray(self, uint8_rgb_array):
+    def test_detect_mat_initialized_equal_to_gray(self, uint8_rgb_array):
         """Test that enhanced grayscale is initially equal to grayscale."""
         img = Image(arr=uint8_rgb_array)
 
-        assert np.array_equal(img.enh_gray[:], img.gray[:])
+        assert np.array_equal(img.detect_mat[:], img.gray[:])

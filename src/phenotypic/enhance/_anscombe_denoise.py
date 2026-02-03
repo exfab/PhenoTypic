@@ -91,7 +91,7 @@ class AnscombeTransformDenoise(ClipControlMixin, ImageEnhancer):
         ...     scale_factor=255.0  # 8-bit image
         ... )
         >>> denoised = denoiser.apply(image)
-        >>> # Original rgb/gray unchanged, enh_gray denoised
+        >>> # Original rgb/gray unchanged, detect_mat denoised
 
         Using with ImagePipeline as inner enhancer:
 
@@ -233,14 +233,14 @@ class AnscombeTransformDenoise(ClipControlMixin, ImageEnhancer):
         # 0. Get scale factor (auto-detect or manual)
         scale_factor = self._get_scale_factor(image)
 
-        # 1. Scale enh_gray to counts domain
-        data = image.enh_gray[:].copy() * scale_factor
+        # 1. Scale detect_mat to counts domain
+        data = image.detect_mat[:].copy() * scale_factor
 
         # 2. Apply forward Generalized Anscombe Transform
         transformed = self._generalized_anscombe(data, self.mu, self.sigma, self.gain)
 
-        # 3. Store GAT-transformed data in enh_gray
-        image.enh_gray[:] = transformed
+        # 3. Store GAT-transformed data in detect_mat
+        image.detect_mat[:] = transformed
 
         # 4. Create clip-disabled copy of inner enhancer
         # This ensures the inner enhancer preserves GAT-scale values (~1-32)
@@ -248,7 +248,7 @@ class AnscombeTransformDenoise(ClipControlMixin, ImageEnhancer):
 
         # 5. Apply clip-disabled inner enhancer
         # Check if the enhancer supports reset parameter (ImagePipeline does)
-        # and pass reset=False to prevent resetting enh_gray to original grayscale
+        # and pass reset=False to prevent resetting detect_mat to original grayscale
         apply_params = {"inplace": True}
         sig = inspect.signature(clip_disabled_enhancer.apply)
         if "reset" in sig.parameters:
@@ -258,11 +258,11 @@ class AnscombeTransformDenoise(ClipControlMixin, ImageEnhancer):
 
         # 6. Apply inverse Generalized Anscombe Transform
         denoised = self._inverse_generalized_anscombe(
-                image.enh_gray[:], self.mu, self.sigma, self.gain
+                image.detect_mat[:], self.mu, self.sigma, self.gain
         )
 
         # 7. Scale back to [0, 1] range and clip
-        image.enh_gray[:] = (denoised / scale_factor).clip(0.0, 1.0)
+        image.detect_mat[:] = (denoised / scale_factor).clip(0.0, 1.0)
 
         return image
 

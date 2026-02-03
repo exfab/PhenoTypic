@@ -85,7 +85,7 @@ class GridObjectDetector(ObjectDetector, GridOperation, ABC):
                 from scipy.ndimage import label
                 from skimage.filters import threshold_local
 
-                enh = image.enh_gray[:]
+                enh = image.detect_mat[:]
                 grid = image.grid  # Access grid structure
 
                 # Apply adaptive threshold per well
@@ -101,7 +101,7 @@ class GridObjectDetector(ObjectDetector, GridOperation, ABC):
     **Critical Implementation Detail**
 
     GridObjectDetector includes input validation (GridImage required) but NO output integrity
-    checks. Like ObjectDetector, it is READ-ONLY for rgb, gray, enh_gray. You may only write
+    checks. Like ObjectDetector, it is READ-ONLY for rgb, gray, detect_mat. You may only write
     to objmask and objmap.
 
     .. code-block:: python
@@ -109,7 +109,7 @@ class GridObjectDetector(ObjectDetector, GridOperation, ABC):
         @staticmethod
         def _operate(image: GridImage, **kwargs) -> GridImage:
             # Read (protected by @validate_operation_integrity):
-            enh = image.enh_gray[:]
+            enh = image.detect_mat[:]
             gray = image.gray[:]
             rgb = image.rgb[:]
 
@@ -132,7 +132,7 @@ class GridObjectDetector(ObjectDetector, GridOperation, ABC):
     **Notes**
 
     - GridObjectDetector enforces GridImage input type at runtime. Passing plain Image raises error.
-    - Input validation uses @validate_operation_integrity('image.rgb', 'image.gray', 'image.enh_gray')
+    - Input validation uses @validate_operation_integrity('image.rgb', 'image.gray', 'image.detect_mat')
       to ensure image color data is not modified.
     - GridImage must have valid grid structure before detection. Typically set by GridFinder
       or manually specified grid before applying GridObjectDetector.
@@ -151,7 +151,7 @@ class GridObjectDetector(ObjectDetector, GridOperation, ABC):
         ...     '''Detect colonies using global Otsu threshold on grid plate.'''
         ...
         ...     def _operate(self, image: GridImage) -> GridImage:
-        ...         enh = image.enh_gray[:]
+        ...         enh = image.detect_mat[:]
         ...         # Apply global Otsu threshold
         ...         threshold = threshold_otsu(enh)
         ...         binary_mask = enh > threshold
@@ -187,7 +187,7 @@ class GridObjectDetector(ObjectDetector, GridOperation, ABC):
         ...         self.neighborhood_size = neighborhood_size
         ...
         ...     def _operate(self, image: GridImage) -> GridImage:
-        ...         enh = image.enh_gray[:]
+        ...         enh = image.detect_mat[:]
         ...         grid = image.grid
         ...         # Apply local adaptive threshold (per-well region)
         ...         binary_mask = threshold_local(
@@ -203,7 +203,7 @@ class GridObjectDetector(ObjectDetector, GridOperation, ABC):
         >>> detected = detector.operate(grid_image)
     """
 
-    @validate_operation_integrity("image.rgb", "image.gray", "image.enh_gray")
+    @validate_operation_integrity("image.rgb", "image.gray", "image.detect_mat")
     def apply(self, image: GridImage, inplace=False) -> GridImage:
         from phenotypic import GridImage
 

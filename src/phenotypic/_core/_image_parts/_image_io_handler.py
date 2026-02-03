@@ -455,7 +455,7 @@ class ImageIOHandler(ImageColorSpace):
         if "_phenotypic_data" in imported_metadata:
             phenotypic_data = imported_metadata.pop("_phenotypic_data")
             # Only restore protected/public metadata if saved from rgb or gray property
-            # (not from color space accessors or enh_gray which are derived views)
+            # (not from color space accessors or detect_mat which are derived views)
             source_property = phenotypic_data.get("phenotypic_image_property", "")
             if source_property in ("Image.rgb", "Image.gray"):
                 if "protected" in phenotypic_data:
@@ -565,12 +565,12 @@ class ImageIOHandler(ImageColorSpace):
                 compression_opts=compression_opts,
         )
 
-        enh_matrix = self.enh_gray[:]
+        detect_matrix = self.detect_mat[:]
         HDF.save_array2hdf5(
                 group=image_group,
-                array=enh_matrix,
-                name="enh_gray",
-                dtype=enh_matrix.dtype,
+                array=detect_matrix,
+                name="detect_mat",
+                dtype=detect_matrix.dtype,
                 compression=compression,
                 compression_opts=compression_opts,
         )
@@ -603,7 +603,7 @@ class ImageIOHandler(ImageColorSpace):
     ):
         """Save the image to an HDF5 file with all data and metadata.
 
-        Stores the complete image data (RGB, gray, enhanced gray, object map) and
+        Stores the complete image data (RGB, gray, detection matrix, object map) and
         metadata (protected and public) to an HDF5 file. Images are organized under
         /phenotypic/images/{image_name}/ structure. If the file does not exist, it
         is created. If it exists, the image is appended or overwritten based on the
@@ -679,9 +679,13 @@ class ImageIOHandler(ImageColorSpace):
         else:
             img = cls(arr=matrix_data, **kwargs)
 
-        # Load enhanced gray and object map with proper dtype casting
-        enh_matrix_data = group["enh_gray"][()]
-        img.enh_gray[:] = enh_matrix_data
+        # Load detection matrix and object map with proper dtype casting
+        # Backward compat: try 'detect_mat' first, fall back to 'enh_gray'
+        if "detect_mat" in group:
+            detect_matrix_data = group["detect_mat"][()]
+        else:
+            detect_matrix_data = group["enh_gray"][()]
+        img.detect_mat[:] = detect_matrix_data
 
         # Object map should preserve its original dtype (usually integer labels)
         img.objmap[:] = group["objmap"][()]
@@ -740,7 +744,8 @@ class ImageIOHandler(ImageColorSpace):
             data2save = {
                 "_data.rgb"         : self._data.rgb,
                 "_data.gray"        : self._data.gray,
-                "_data.enh_gray"    : self._data.enh_gray,
+                "_data.detect_mat"  : self._data.detect_mat,
+                "_data.detect_mode" : self._data.detect_mode,
                 "objmap"            : self.objmap[:],
                 "protected_metadata": self._metadata.protected,
                 "public_metadata"   : self._metadata.public,
@@ -758,7 +763,7 @@ class ImageIOHandler(ImageColorSpace):
         Deserializes image data and metadata that were previously saved with save2pickle().
         Automatically detects if the pickle contains a GridFinder and instantiates the
         appropriate class (GridImage if grid_finder is present, Image otherwise).
-        Restores all image components including RGB, grayscale, enhanced grayscale, object map,
+        Restores all image components including RGB, grayscale, detection matrix, object map,
         metadata, and GridFinder (if present).
 
         Args:
@@ -775,7 +780,7 @@ class ImageIOHandler(ImageColorSpace):
 
         Notes:
             - Pickle files must be created with save2pickle() to ensure compatibility.
-            - Enhanced gray and object map are reset and reconstructed from saved data.
+            - Detection matrix and object map are reset and reconstructed from saved data.
             - Metadata (protected and public) is fully restored.
             - GridFinder is restored if present in the pickle (GridImage only).
             - Backward compatible: Old pickles without grid_finder load as regular Image.
@@ -833,13 +838,21 @@ class ImageIOHandler(ImageColorSpace):
             else:
                 instance = target_class(arr=loaded["_data.gray"], name=None)
 
-        # Restore enhanced gray, object map, and metadata
-        instance.enh_gray.reset()
+        # Restore detection matrix, object map, and metadata
+        instance.detect_mat.reset()
         instance.objmap.reset()
 
-        instance._data.enh_gray = loaded["_data.enh_gray"]
+        # Backward compat: old pickles use '_data.enh_gray', new use '_data.detect_mat'
+        instance._data.detect_mat = loaded.get(
+            "_data.detect_mat", loaded.get("_data.enh_gray")
+        )
+        instance._data.detect_mode = loaded.get("_data.detect_mode", "gray")
         instance.objmap[:] = loaded["objmap"]
         instance._metadata.protected = loaded["protected_metadata"]
         instance._metadata.public = loaded["public_metadata"]
+
+        # If mode is not 'gray', reinitialize to ensure correct source channel
+        if instance._data.detect_mode != "gray":
+            instance.set_detect_mode(instance._data.detect_mode)
 
         return instance

@@ -15,16 +15,16 @@ from phenotypic.tools_.mixin import FootprintMixin
 
 
 class ImageEnhancer(FootprintMixin, ImageOperation, ABC):
-    """Abstract base class for preprocessing operations that improve colony detection through enhanced grayscale.
+    """Abstract base class for preprocessing operations that improve colony detection through detection matrix.
 
     ImageEnhancer is the foundation for all preprocessing algorithms that modify only the enhanced
-    grayscale channel (`image.enh_gray`) to improve colony visibility and detection quality. Unlike
+    grayscale channel (`image.detect_mat`) to improve colony visibility and detection quality. Unlike
     ImageCorrector (which transforms the entire Image), ImageEnhancer leaves the original RGB and
     grayscale data untouched, protecting image integrity while enabling targeted preprocessing.
 
     **Quick Decision Guide: Which Operation Type?**
 
-    - **ImageEnhancer (this class):** Modify only ``image.enh_gray`` for preprocessing.
+    - **ImageEnhancer (this class):** Modify only ``image.detect_mat`` for preprocessing.
       Use for: noise reduction, contrast enhancement, illumination correction.
       Examples: [GaussianBlur](src/phenotypic/enhance/_gaussian_blur.py),
       [CLAHE](src/phenotypic/enhance/_clahe.py),
@@ -39,7 +39,7 @@ class ImageEnhancer(FootprintMixin, ImageOperation, ABC):
     **What is ImageEnhancer?**
 
     ImageEnhancer operates on the principle of **non-destructive preprocessing**: all modifications
-    are applied to `image.enh_gray` (a working copy of grayscale), while original image components
+    are applied to `image.detect_mat` (a working copy of grayscale), while original image components
     (`image.rgb`, `image.gray`, `image.objmask`, `image.objmap`) remain protected and unchanged.
     This allows you to experiment with multiple enhancement chains without affecting raw data or
     detection results.
@@ -58,7 +58,7 @@ class ImageEnhancer(FootprintMixin, ImageOperation, ABC):
               ↓
         ObjectRefiner → Clean up detections (optional)
 
-    When you call `enhancer.apply(image)`, you get back an Image with improved `enh_gray` but
+    When you call `enhancer.apply(image)`, you get back an Image with improved `detect_mat` but
     identical RGB/gray data—ready for detection algorithms to operate on enhanced contrast.
 
     **Why Enhancement Matters for Colony Phenotyping**
@@ -118,34 +118,34 @@ class ImageEnhancer(FootprintMixin, ImageOperation, ABC):
                 self.sigma = sigma  # Instance attribute matched to _operate()
 
             def _operate(self, image: Image) -> Image:
-                # Modify ONLY enh_gray; read, process, write back
-                enh = image.enh_gray[:]
+                # Modify ONLY detect_mat; read, process, write back
+                enh = image.detect_mat[:]
                 filtered = gaussian_filter(enh.astype(float), sigma=self.sigma)
-                image.enh_gray[:] = filtered.astype(enh.dtype)
+                image.detect_mat[:] = filtered.astype(enh.dtype)
                 return image
 
     **Key Rules for Implementation:**
 
     1. ``_operate()`` should be an **instance method** (no ``@staticmethod`` decorator).
     2. Access operation parameters directly via ``self.param_name``.
-    3. **Only modify ``image.enh_gray[:]``**—all other components are protected.
-    4. Always use the accessor pattern: ``image.enh_gray[:] = new_data`` (never direct attribute
-       assignment like ``image._enh_gray = ...``).
+    3. **Only modify ``image.detect_mat[:]``**—all other components are protected.
+    4. Always use the accessor pattern: ``image.detect_mat[:] = new_data`` (never direct attribute
+       assignment like ``image._detect_mat = ...``).
     5. Return the modified Image object.
 
-    **Accessing and Modifying enh_gray**
+    **Accessing and Modifying detect_mat**
 
     Within your `_operate()` method, use the accessor interface:
 
     .. code-block:: python
 
-        # Reading enhanced grayscale data
-        enh_data = image.enh_gray[:]        # Full array
-        region = image.enh_gray[10:50, 20:80]  # Slicing with NumPy syntax
+        # Reading detection matrix data
+        enh_data = image.detect_mat[:]        # Full array
+        region = image.detect_mat[10:50, 20:80]  # Slicing with NumPy syntax
 
-        # Modifying enhanced grayscale
-        image.enh_gray[:] = processed_array  # Full replacement
-        image.enh_gray[10:50, 20:80] = new_region  # Partial update
+        # Modifying detection matrix
+        image.detect_mat[:] = processed_array  # Full replacement
+        image.detect_mat[10:50, 20:80] = new_region  # Partial update
 
     The accessor handles all consistency checks and automatic cache invalidation.
 
@@ -211,7 +211,7 @@ class ImageEnhancer(FootprintMixin, ImageOperation, ABC):
         # Step 3: Smooth remaining noise
         result = GaussianBlur(sigma=2).apply(result)
 
-        # Step 4: Detect colonies in enhanced grayscale
+        # Step 4: Detect colonies in detection matrix
         result = OtsuDetector().apply(result)
 
     **Rationale for chaining:**
@@ -251,7 +251,7 @@ class ImageEnhancer(FootprintMixin, ImageOperation, ABC):
 
     Methods:
         apply(image, inplace=False): Applies the enhancement to an image. Returns a modified
-            Image with enhanced `enh_gray` but unchanged RGB/gray/objects. Handles copy/inplace
+            Image with enhanced `detect_mat` but unchanged RGB/gray/objects. Handles copy/inplace
             logic and validates data integrity.
         _operate(self, image): Abstract instance method implemented by subclasses.
             Performs the actual enhancement algorithm. Access parameters via ``self.param_name``.
@@ -260,7 +260,7 @@ class ImageEnhancer(FootprintMixin, ImageOperation, ABC):
 
     Notes:
         - **Protected components:** The ``@validate_operation_integrity`` decorator ensures
-          that ``image.rgb`` and ``image.gray`` cannot be modified. Only ``image.enh_gray``
+          that ``image.rgb`` and ``image.gray`` cannot be modified. Only ``image.detect_mat``
           can be changed.
 
         - **Immutability by default:** ``apply(image)`` returns a modified copy by default.
@@ -270,10 +270,10 @@ class ImageEnhancer(FootprintMixin, ImageOperation, ABC):
           (no ``@staticmethod`` decorator). Access operation parameters directly via
           ``self.param_name``. This is simpler and more Pythonic.
 
-        - **Accessor pattern:** Always use ``image.enh_gray[:] = new_data`` to modify
-          enhanced grayscale. Never use direct attribute assignment.
+        - **Accessor pattern:** Always use ``image.detect_mat[:] = new_data`` to modify
+          detection matrix. Never use direct attribute assignment.
 
-        - **Automatic cache invalidation:** When you modify ``image.enh_gray[:]``, the
+        - **Automatic cache invalidation:** When you modify ``image.detect_mat[:]``, the
           Image's internal caches (e.g., color space conversions, object maps) are
           automatically invalidated to prevent stale results.
 
@@ -289,9 +289,9 @@ class ImageEnhancer(FootprintMixin, ImageOperation, ABC):
         ...         super().__init__()
         ...         self.sigma = sigma
         ...     def _operate(self, image):
-        ...         enh = image.enh_gray[:]
+        ...         enh = image.detect_mat[:]
         ...         filtered = gaussian_filter(enh.astype(float), sigma=self.sigma)
-        ...         image.enh_gray[:] = filtered.astype(enh.dtype)
+        ...         image.detect_mat[:] = filtered.astype(enh.dtype)
         ...         return image
         >>>
         >>> image = load_synth_yeast_plate()
@@ -312,11 +312,11 @@ class ImageEnhancer(FootprintMixin, ImageOperation, ABC):
         ...         self.operation = operation
         ...         self.width = width
         ...     def _operate(self, image):
-        ...         enh = image.enh_gray[:]
+        ...         enh = image.detect_mat[:]
         ...         footprint = ImageEnhancer._make_footprint('disk', self.width)
         ...         binary = enh > enh.mean()
         ...         refined = closing(binary, footprint=footprint)
-        ...         image.enh_gray[:] = (refined * 255).astype(enh.dtype)
+        ...         image.detect_mat[:] = (refined * 255).astype(enh.dtype)
         ...         return image
         >>>
         >>> image = load_synth_yeast_plate()

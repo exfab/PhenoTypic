@@ -87,23 +87,23 @@ class TriangleDetector(ThresholdDetector):
 
     def _operate(self, image: Image) -> Image:
         """
-        Applies a thresholding operation on the enhanced gray of an image using
+        Applies a thresholding operation on the detection matrix of an image using
         the triangle method.
 
-        Thresholding is performed by comparing each element in the enhanced gray
+        Thresholding is performed by comparing each element in the detection matrix
         to the computed triangular threshold, setting the corresponding other_image in
         the output mask (`omask`) to True if the condition is satisfied.
 
         Args:
-            image (Image): The arr image object containing an enhanced gray
-                (`enh_gray`) which will be processed to generate an output mask.
+            image (Image): The arr image object containing a detection matrix
+                (`detect_mat`) which will be processed to generate an output mask.
 
         Returns:
             Image: The modified image object with an updated output mask (`omask`).
         """
         nbins = 2**image.bit_depth
-        image.objmask[:] = image.enh_gray[:] >= threshold_triangle(
-            image.enh_gray[:], nbins=nbins
+        image.objmask[:] = image.detect_mat[:] >= threshold_triangle(
+            image.detect_mat[:], nbins=nbins
         )
         return image
 

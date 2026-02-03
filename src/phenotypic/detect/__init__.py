@@ -1,6 +1,6 @@
 """Colony/object detectors for agar plate images.
 
-Implements thresholding- and edge-based approaches to turn enhanced grayscale images
+Implements thresholding- and edge-based approaches to turn detection matrix images
 into binary colony masks, with options suited to faint growth, uneven agar, or dense plates.
 Includes global histogram methods (Otsu, Li, Yen, Isodata, Triangle, Mean, Minimum, Manual),
 edge-aware variants (Canny), grid-aware detection (Gitter), and watershed-based

@@ -179,7 +179,7 @@ class TestRoundPeaksDetectorHelperMethods:
         image = phenotypic.GridImage(load_plate_12hr())
         detector = RoundPeaksDetector()
 
-        matrix = image.enh_gray[:]
+        matrix = image.detect_mat[:]
         binary_mask = detector._thresholding(matrix)
 
         assert binary_mask.dtype == bool or binary_mask.dtype == np.bool_

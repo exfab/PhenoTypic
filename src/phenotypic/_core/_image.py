@@ -28,7 +28,7 @@ class Image(ImageIOHandler):
 
     The class automatically manages format conversions and maintains internal consistency
     across multiple data representations. RGB and grayscale forms are kept synchronized,
-    and additional representations (enhanced grayscale, object maps) support analysis workflows.
+    and additional representations (detection matrix, object maps) support analysis workflows.
 
     Notes:
         - 2-D input arrays are treated as grayscale; rgb form remains empty.

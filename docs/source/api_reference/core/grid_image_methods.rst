@@ -152,7 +152,7 @@ All the following are available:
 
 - :attr:`Image.gray` - Grayscale representation
 - :attr:`Image.rgb` - RGB/RGBA image data
-- :attr:`Image.enh_gray` - Enhanceable grayscale copy
+- :attr:`Image.detect_mat` - Enhanceable grayscale copy
 - :attr:`Image.objects` - High-level interface to detected objects
 - :attr:`Image.objmap` - Labeled object map
 - :attr:`Image.objmask` - Binary mask of detected objects

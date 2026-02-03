@@ -721,8 +721,8 @@ class GridAccessor:
         pinned array and identify any column-wise positioning issues or misalignment.
 
         Args:
-            use_enhanced (bool, optional): If True, use the enhanced grayscale version
-                of the parent image (enh_gray) for better contrast and visibility.
+            use_enhanced (bool, optional): If True, use the detection matrix version
+                of the parent image (detect_mat) for better contrast and visibility.
                 If False, use the standard grayscale image (gray). Defaults to False.
             show_gridlines (bool, optional): If True, overlay cyan dashed vertical lines
                 marking the column boundaries and horizontal lines for row boundaries.
@@ -767,7 +767,7 @@ class GridAccessor:
         if use_enhanced:
             func_ax.imshow(
                     label2rgb(label=self.get_col_map(),
-                              image=self._root_image.enh_gray[:])
+                              image=self._root_image.detect_mat[:])
             )
         else:
             func_ax.imshow(
@@ -883,8 +883,8 @@ class GridAccessor:
         array and identify any row-wise positioning issues or misalignment.
 
         Args:
-            use_enhanced (bool, optional): If True, use the enhanced grayscale version
-                of the parent image (enh_gray) for better contrast and visibility.
+            use_enhanced (bool, optional): If True, use the detection matrix version
+                of the parent image (detect_mat) for better contrast and visibility.
                 If False, use the standard grayscale image (gray). Defaults to False.
             show_gridlines (bool, optional): If True, overlay cyan dashed horizontal
                 lines marking the row boundaries and vertical lines for column boundaries.
@@ -930,7 +930,7 @@ class GridAccessor:
         if use_enhanced:
             func_ax.imshow(
                     label2rgb(label=self.get_row_map(),
-                              image=self._root_image.enh_gray[:])
+                              image=self._root_image.detect_mat[:])
             )
         else:
             func_ax.imshow(

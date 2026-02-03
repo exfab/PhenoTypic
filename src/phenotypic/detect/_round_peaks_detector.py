@@ -174,7 +174,7 @@ class RoundPeaksDetector(GridInferenceMixin, ObjectDetector):
         Detect colonies in the image using the gitter algorithm.
 
         This method performs the _core detection workflow:
-        1. Threshold the enhanced grayscale image
+        1. Threshold the detection matrix image
         2. Remove noise if requested
         3. Label connected components
         4. Determine or estimate grid edges
@@ -189,8 +189,8 @@ class RoundPeaksDetector(GridInferenceMixin, ObjectDetector):
         """
         from phenotypic import GridImage
 
-        enh_matrix = image.enh_gray[:]
-        self._log_memory_usage("getting enhanced gray")
+        enh_matrix = image.detect_mat[:]
+        self._log_memory_usage("getting detection matrix")
 
         objmask = self._thresholding(enh_matrix)
         self._log_memory_usage("thresholding")
@@ -299,7 +299,7 @@ class RoundPeaksDetector(GridInferenceMixin, ObjectDetector):
         several thresholding algorithms to separate colonies from background.
 
         Args:
-            matrix: 2D enhanced grayscale array with pixel intensities.
+            matrix: 2D detection matrix array with pixel intensities.
 
         Returns:
             np.ndarray: Binary mask where True/1 indicates colony pixels,

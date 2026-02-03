@@ -43,7 +43,7 @@ class SweepExecutor:
         graph: PipelineGraph defining variants to execute.
         output_dir: Directory to save outputs.
         data2save: Set of output views to save. Options include:
-            'overlay', 'objmask', 'objmap', 'enh_gray', 'rgb', 'gray'.
+            'overlay', 'objmask', 'objmap', 'detect_mat', 'rgb', 'gray'.
         njobs: Number of parallel jobs (-1 for all CPUs).
         ground_truth_dir: Optional directory containing labeled PNG masks
             for computing IoU metrics.
@@ -312,8 +312,8 @@ class SweepExecutor:
                             img_data = objmap.astype(np.uint8)
                     else:
                         continue
-                elif view == "enh_gray":
-                    img_data = result_image.enh_gray[:]
+                elif view == "detect_mat":
+                    img_data = result_image.detect_mat[:]
                     if img_data.max() <= 1.0:
                         img_data = (img_data * 255).astype(np.uint8)
                 elif view == "rgb":

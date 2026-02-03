@@ -91,8 +91,8 @@ class SatoRidgeFilter(ImageEnhancer):
         self.cval = cval
 
     def _operate(self, image: Image) -> Image:
-        image.enh_gray[:] = sato(
-                image=image.enh_gray[:],
+        image.detect_mat[:] = sato(
+                image=image.detect_mat[:],
                 sigmas=self.sigmas,
                 black_ridges=self.black_ridges,
                 mode=self.mode,

@@ -89,7 +89,7 @@ class Grayscale(SingleChannelAccessor):
 
         Allows assignment of new values to grayscale data at specified locations. All values
         must be normalized to the range [0.0, 1.0]. Modifications trigger automatic reset of
-        dependent data structures (enhanced grayscale and object map) to maintain consistency.
+        dependent data structures (detection matrix and object map) to maintain consistency.
 
         Args:
             key: Index or slice specification. Same indexing schemes as __getitem__
@@ -107,7 +107,7 @@ class Grayscale(SingleChannelAccessor):
 
         Notes:
             - All grayscale values must be normalized to [0.0, 1.0].
-            - Modifications automatically reset `enh_gray` and `objmap` to prevent stale data.
+            - Modifications automatically reset `detect_mat` and `objmap` to prevent stale data.
             - For bulk operations, consider using direct array indexing on a copy.
 
         Examples:
@@ -135,7 +135,7 @@ class Grayscale(SingleChannelAccessor):
             )
 
         self._root_image._data.gray[key] = value
-        self._root_image.enh_gray.reset()
+        self._root_image.detect_mat.reset()
         self._root_image.objmap.reset()
 
     def vmax(self) -> float:

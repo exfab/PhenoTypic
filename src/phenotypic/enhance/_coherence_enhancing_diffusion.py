@@ -87,8 +87,8 @@ class CoherenceEnhancingDiffusion(ImageEnhancer):
         >>> # Apply CED with default parameters suitable for typical hyphae
         >>> ced = CoherenceEnhancingDiffusion(num_iter=20, sigma=1.5)
         >>> enhanced = ced.apply(image)
-        >>> # Enhanced grayscale now has smoother hyphae with preserved boundaries
-        >>> assert enhanced.enh_gray.shape == image.enh_gray.shape
+        >>> # Detection matrix now has smoother hyphae with preserved boundaries
+        >>> assert enhanced.detect_mat.shape == image.detect_mat.shape
 
         Pipeline with CED and ridge detection for filamentous structure analysis:
 
@@ -124,7 +124,7 @@ class CoherenceEnhancingDiffusion(ImageEnhancer):
         >>> image = load_synth_yeast_plate()
         >>> enhanced = heavy_ced.apply(image)
         >>> # Heavy smoothing along streak directions, noise suppressed
-        >>> assert enhanced.enh_gray.shape == image.enh_gray.shape
+        >>> assert enhanced.detect_mat.shape == image.detect_mat.shape
     """
 
     def __init__(
@@ -184,7 +184,7 @@ class CoherenceEnhancingDiffusion(ImageEnhancer):
         dy = FinDiff(0, 1.0, 1)  # d/dy (row direction)
 
         # Work with float64 for numerical stability
-        img = image.enh_gray[:].astype(np.float64)
+        img = image.detect_mat[:].astype(np.float64)
 
         for _ in range(self.num_iterations):
             # Compute structure tensor components
@@ -229,6 +229,6 @@ class CoherenceEnhancingDiffusion(ImageEnhancer):
             # Update image with diffusion step
             img = img + self.dt * div
 
-        # Store result back to enhanced grayscale
-        image.enh_gray[:] = img.astype(image.enh_gray.dtype)
+        # Store result back to detection matrix
+        image.detect_mat[:] = img.astype(image.detect_mat.dtype)
         return image

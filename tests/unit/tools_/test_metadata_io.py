@@ -172,19 +172,19 @@ class TestPNGMetadataRoundTrip:
             data = json.loads(phenotypic_json)
             assert data["phenotypic_image_property"] == "Image.gray"
 
-    def test_png_phenotypic_image_property_enh_gray(
+    def test_png_phenotypic_image_property_detect_mat(
             self, sample_gray_image, temp_image_dir
     ):
-        """Test that phenotypic_image_property is correctly set for enh_gray accessor."""
-        filepath = temp_image_dir / "test_property_enh_gray.png"
+        """Test that phenotypic_image_property is correctly set for detect_mat accessor."""
+        filepath = temp_image_dir / "test_property_detect_mat.png"
 
-        sample_gray_image.enh_gray.imsave(filepath)
+        sample_gray_image.detect_mat.imsave(filepath)
 
         with PIL_Image.open(filepath) as img:
             phenotypic_json = img.info.get(IO.PHENOTYPIC_METADATA_KEY)
             assert phenotypic_json is not None
             data = json.loads(phenotypic_json)
-            assert data["phenotypic_image_property"] == "Image.enh_gray"
+            assert data["phenotypic_image_property"] == "Image.detect_mat"
 
     def test_png_phenotypic_image_property_rgb(self, sample_rgb_image, temp_image_dir):
         """Test that phenotypic_image_property is correctly set for rgb accessor."""
@@ -288,14 +288,14 @@ class TestTIFFMetadataRoundTrip:
         """Test that phenotypic_image_property is correctly set in TIFF ImageDescription."""
         filepath = temp_image_dir / "test_property.tif"
 
-        sample_gray_image.enh_gray.imsave(filepath)
+        sample_gray_image.detect_mat.imsave(filepath)
 
         # Read ImageDescription tag directly
         with PIL_Image.open(filepath) as img:
             desc = img.tag_v2.get(270)  # ImageDescription tag
             assert desc is not None
             data = json.loads(desc)
-            assert data["phenotypic_image_property"] == "Image.enh_gray"
+            assert data["phenotypic_image_property"] == "Image.detect_mat"
 
 
 # -----------------------------------------------------------------------------
@@ -326,15 +326,15 @@ class TestProtectedMetadataPreservation:
         # Name should come from filename, not saved metadata
         assert loaded.name == "new_name"
 
-    def test_enh_gray_metadata_not_restored(self, sample_gray_image, temp_image_dir):
-        """Test that metadata is NOT restored when image was saved from enh_gray."""
-        filepath = temp_image_dir / "test_enh_gray.png"
+    def test_detect_mat_metadata_not_restored(self, sample_gray_image, temp_image_dir):
+        """Test that metadata is NOT restored when image was saved from detect_mat."""
+        filepath = temp_image_dir / "test_detect_mat.png"
 
         # Add custom metadata
         sample_gray_image.metadata["should_not_restore"] = "test_value"
 
-        # Save from enh_gray (not rgb or gray)
-        sample_gray_image.enh_gray.imsave(filepath)
+        # Save from detect_mat (not rgb or gray)
+        sample_gray_image.detect_mat.imsave(filepath)
 
         # Load and verify metadata was NOT restored to public
         # (only rgb and gray sources restore metadata on imread)
@@ -391,12 +391,12 @@ class TestAccessorPropertyNames:
         assert Grayscale._accessor_property_name_value() == "gray"
 
     def test_enhanced_grayscale_accessor_property_name(self):
-        """Test EnhancedGrayscale accessor has correct property name."""
-        from phenotypic._core._image_parts.accessors._enh_grayscale_accessor import (
-            EnhancedGrayscale,
+        """Test DetectMatAccessor accessor has correct property name."""
+        from phenotypic._core._image_parts.accessors._detect_mat_accessor import (
+            DetectMatAccessor,
         )
 
-        assert EnhancedGrayscale._accessor_property_name_value() == "enh_gray"
+        assert DetectMatAccessor._accessor_property_name_value() == "detect_mat"
 
     def test_rgb_accessor_property_name(self):
         """Test ImageRGB accessor has correct property name."""

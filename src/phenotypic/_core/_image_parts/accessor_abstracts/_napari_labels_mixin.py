@@ -12,7 +12,7 @@ Napari distinguishes between two primary layer types for 2D data:
 - **Image layers**: For continuous/intensity data (grayscale, RGB, fluorescence)
   - Rendered with smooth intensity gradients
   - Colormap maps intensity values to colors
-  - Best for: grayscale, RGB, enhanced grayscale
+  - Best for: grayscale, RGB, detection matrix
 
 - **Labels layers**: For discrete/categorical data (segmentation masks, object IDs)
   - Each unique label gets a distinct color

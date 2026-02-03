@@ -50,7 +50,7 @@ Graph-based pipeline configuration:
 Batch execution engine:
 - Parallel execution with joblib
 - Image loading from file paths (using `Image.imread()`)
-- Multiple output views: overlay, objmask, objmap, enh_gray, rgb, gray
+- Multiple output views: overlay, objmask, objmap, detect_mat, rgb, gray
 - Overlay generation consistent with CLI (uses `image.rgb.save_overlay()`)
 - Metrics computation: object count, optional ground truth IoU/precision/recall
 - Manifest generation with full configuration

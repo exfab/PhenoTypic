@@ -12,14 +12,14 @@ class ImageCorrector(ImageOperation, ABC):
     """Abstract base class for whole-image transformation operations affecting all components.
 
     ImageCorrector is a specialized subclass of ImageOperation for global image transformations
-    that modify **every image component together** (rgb, gray, enh_gray, objmask, objmap).
-    Unlike ImageEnhancer (modifies only enh_gray) or ObjectDetector/ObjectRefiner (modify only
+    that modify **every image component together** (rgb, gray, detect_mat, objmask, objmap).
+    Unlike ImageEnhancer (modifies only detect_mat) or ObjectDetector/ObjectRefiner (modify only
     detection results), an ImageCorrector transforms the entire image geometry or structure,
     ensuring all components remain synchronized.
 
     **Quick Decision Guide: Which Operation Type?**
 
-    - **ImageEnhancer:** Modify only ``image.enh_gray`` for preprocessing.
+    - **ImageEnhancer:** Modify only ``image.detect_mat`` for preprocessing.
       Use for: noise reduction, contrast enhancement, background subtraction.
     - **ObjectDetector:** Analyze image, produce only ``objmask`` and ``objmap``.
       Use for: colony/object detection and labeling.
@@ -58,7 +58,7 @@ class ImageCorrector(ImageOperation, ABC):
 
     Do NOT use ImageCorrector for operations that affect only specific image aspects:
 
-    - **Don't use for:** Enhancing only ``enh_gray`` (preprocessing). Use ``ImageEnhancer`` instead.
+    - **Don't use for:** Enhancing only ``detect_mat`` (preprocessing). Use ``ImageEnhancer`` instead.
     - **Don't use for:** Detecting colonies or objects. Use ``ObjectDetector`` instead.
     - **Don't use for:** Filtering or editing detection results. Use ``ObjectRefiner`` instead.
     - **Don't use for:** Local edits (e.g., removing a specific region). These typically require custom masking or ``ObjectRefiner``.
@@ -119,7 +119,7 @@ class ImageCorrector(ImageOperation, ABC):
 
     1. ``_operate()`` must be a **@staticmethod** (no instance access, enables serialization).
     2. All parameters (except ``image``) must match instance attributes by name exactly.
-    3. The method must transform **all components equally** (rgb, gray, enh_gray, objmask, objmap).
+    3. The method must transform **all components equally** (rgb, gray, detect_mat, objmask, objmap).
     4. Never modify only one component—this breaks the "whole-image transformation" contract.
     5. Use the Image class's helper methods (``image.rotate()``) whenever possible for consistency.
     6. Always return the modified Image object after transformation.
@@ -166,7 +166,7 @@ class ImageCorrector(ImageOperation, ABC):
             image.rotate(angle_of_rotation=angle, mode='edge')
 
             # The following are automatically handled by image.rotate():
-            # - Rotate enh_gray (enhanced version for detection)
+            # - Rotate detect_mat (enhanced version for detection)
             # - Rotate objmask and objmap (detection results)
             # - Synchronize all caches and metadata
 
@@ -182,7 +182,7 @@ class ImageCorrector(ImageOperation, ABC):
 
     When implementing custom transformations, always use the accessor interface:
 
-    - **Reading:** ``image.rgb[:]``, ``image.gray[:]``, ``image.enh_gray[:]``, ``image.objmask[:]``, ``image.objmap[:]``
+    - **Reading:** ``image.rgb[:]``, ``image.gray[:]``, ``image.detect_mat[:]``, ``image.objmask[:]``, ``image.objmap[:]``
     - **Modifying:** ``image.rgb[:] = new_data``, ``image.objmap[:] = new_map``
 
     The accessor interface ensures that:
@@ -213,7 +213,7 @@ class ImageCorrector(ImageOperation, ABC):
 
     - **Color data (rgb, gray):** Use smooth interpolation (order=1 bilinear or higher) to preserve color gradients and colony boundaries.
     - **Detection data (objmask, objmap):** Use nearest-neighbor interpolation (order=0) to preserve discrete object identities and integer labels.
-    - **Enhanced grayscale (enh_gray):** Use same interpolation as color data for consistency.
+    - **Detection matrix (detect_mat):** Use same interpolation as color data for consistency.
 
     Example with explicit interpolation control:
 
@@ -278,7 +278,7 @@ class ImageCorrector(ImageOperation, ABC):
     >>> image = load_synth_yeast_plate()
     >>> rotator = SimpleRotator(angle=5.0)
     >>> rotated = rotator.apply(image)
-    >>> # All components rotated together: rgb, gray, enh_gray, objmask, objmap
+    >>> # All components rotated together: rgb, gray, detect_mat, objmask, objmap
     >>> rotated.shape == image.shape
     False
 

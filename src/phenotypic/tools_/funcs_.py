@@ -71,7 +71,7 @@ def validate_operation_integrity(*targets: str):
     Decorator to ensure that key NumPy arrays on the 'image' argument
     remain unchanged by an ImageOperation.apply() call.
     If no targets are specified, defaults to checking:
-        image.rgb, image.gray, image.enh_gray, image.objmap
+        image.rgb, image.gray, image.detect_mat, image.objmap
 
     Example Usage:
         @validate_member_integrity('image.rgb', 'image.objmap')
@@ -97,7 +97,7 @@ def validate_operation_integrity(*targets: str):
                         f"{func.__name__}: no 'image' parameter and no targets given",
                 )
             # Default attributes to check on the image object
-            eff_targets = ["image.rgb", "image.gray", "image.enh_gray", "image.objmap"]
+            eff_targets = ["image.rgb", "image.gray", "image.detect_mat", "image.objmap"]
 
         # Helper function to retrieve a NumPy array from an object by attribute path
         def _get_array(bound_args, target: str) -> np.ndarray:
@@ -187,7 +187,7 @@ def validate_measure_integrity(*targets: str):
     If you pass explicit targets, it will honor those—for example:
         @validate_member_integrity('image.rgb')
     Otherwise it defaults to checking:
-        image.rgb, image.gray, image.enh_gray, image.objmap
+        image.rgb, image.gray, image.detect_mat, image.objmap
     """
 
     def decorator(func):
@@ -205,7 +205,7 @@ def validate_measure_integrity(*targets: str):
                 raise OperationIntegrityError(
                         f"{func.__name__}: no 'image' parameter and no targets given",
                 )
-            eff_targets = ["image.rgb", "image.gray", "image.enh_gray", "image.objmap"]
+            eff_targets = ["image.rgb", "image.gray", "image.detect_mat", "image.objmap"]
 
         def _get_array(bound_args, target: str) -> np.ndarray:
             # e.g. target = 'image.rgb'

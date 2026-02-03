@@ -90,7 +90,7 @@ class BilateralDenoise(ImageEnhancer):
         >>> # Apply bilateral denoising with moderate settings
         >>> denoiser = BilateralDenoise(sigma_color=0.1, sigma_spatial=15)
         >>> denoised = denoiser.apply(image)  # doctest: +SKIP
-        >>> # Detect colonies in cleaned enhanced grayscale
+        >>> # Detect colonies in cleaned detection matrix
         >>> detector = OtsuDetector()
         >>> detected = detector.apply(denoised)  # doctest: +SKIP
         >>> colonies = detected.objects  # doctest: +SKIP
@@ -212,10 +212,10 @@ class BilateralDenoise(ImageEnhancer):
         self.clip = clip
 
     def _operate(self, image: Image) -> Image:
-        """Apply bilateral denoising to reduce noise while preserving colony edges in the enhanced grayscale channel."""
+        """Apply bilateral denoising to reduce noise while preserving colony edges in the detection matrix channel."""
         # denoise_bilateral may require a writable array, so create a copy
         result = denoise_bilateral(
-                image=image.enh_gray[:].copy(),
+                image=image.detect_mat[:].copy(),
                 sigma_color=self.sigma_color,
                 sigma_spatial=self.sigma_spatial,
                 win_size=self.win_size,
@@ -225,5 +225,5 @@ class BilateralDenoise(ImageEnhancer):
         )
         if self.clip:
             result = result.clip(0.0, 1.0)
-        image.enh_gray[:] = result
+        image.detect_mat[:] = result
         return image

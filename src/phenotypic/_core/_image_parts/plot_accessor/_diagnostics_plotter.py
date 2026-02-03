@@ -45,7 +45,7 @@ class DiagnosticsPlotter(BasePlotter):
     background characteristics of images. It computes quantitative metrics and provides
     data-driven recommendations for preprocessing operations.
 
-    All metrics are computed from the enhanced grayscale image (enh_gray), which reflects
+    All metrics are computed from the detection matrix (detect_mat), which reflects
     the current state of preprocessing applied to the image.
 
     Examples:
@@ -74,7 +74,7 @@ class DiagnosticsPlotter(BasePlotter):
         return PanelDescription(
             label="A",
             title="Intensity Histogram",
-            what_it_shows="Distribution of pixel intensities in enhanced grayscale",
+            what_it_shows="Distribution of pixel intensities in detection matrix",
             how_to_read=f"X-axis: intensity (0-{self._max_intensity}), Y-axis: frequency. Blue=data, red=Gaussian fit",
             good_values="Bell-shaped, centered, uses full dynamic range",
             poor_values="Bimodal, clipped at edges, very narrow spread",
@@ -85,17 +85,17 @@ class DiagnosticsPlotter(BasePlotter):
     # METRIC COMPUTATION METHODS
     # ============================================================================
 
-    def _compute_noise_metrics(self, enh_gray: np.ndarray) -> dict[str, float]:
-        """Compute noise-related metrics from enhanced grayscale.
+    def _compute_noise_metrics(self, detect_mat: np.ndarray) -> dict[str, float]:
+        """Compute noise-related metrics from detection matrix.
 
         Args:
-            enh_gray: Enhanced grayscale image array.
+            detect_mat: Detection matrix image array.
 
         Returns:
             Dictionary with SNR, sigma_mad, and correlation_length.
         """
         # Convert to float for computation
-        img = enh_gray.astype(np.float64)
+        img = detect_mat.astype(np.float64)
 
         # Estimate noise using high-pass residual (more robust than Laplacian MAD)
         # For synthetic images with large uniform regions, Laplacian MAD can be 0
@@ -137,16 +137,16 @@ class DiagnosticsPlotter(BasePlotter):
             "correlation_length": float(correlation_length),
         }
 
-    def _compute_contrast_metrics(self, enh_gray: np.ndarray) -> dict[str, float]:
-        """Compute contrast-related metrics from enhanced grayscale.
+    def _compute_contrast_metrics(self, detect_mat: np.ndarray) -> dict[str, float]:
+        """Compute contrast-related metrics from detection matrix.
 
         Args:
-            enh_gray: Enhanced grayscale image array.
+            detect_mat: Detection matrix image array.
 
         Returns:
             Dictionary with rms_contrast, michelson, and dynamic_range.
         """
-        img = enh_gray.astype(np.float64)
+        img = detect_mat.astype(np.float64)
 
         # RMS contrast (std / mean) - bit-depth agnostic
         mean_val = np.mean(img)
@@ -173,15 +173,15 @@ class DiagnosticsPlotter(BasePlotter):
 
     def _compute_structure_metrics(
         self,
-        enh_gray: np.ndarray,
+        detect_mat: np.ndarray,
         sigma: float,
         scales: list[float],
         ridge_method: Literal["meijering", "frangi", "hessian"],
     ) -> dict[str, Any]:
-        """Compute structure-related metrics from enhanced grayscale.
+        """Compute structure-related metrics from detection matrix.
 
         Args:
-            enh_gray: Enhanced grayscale image array.
+            detect_mat: Detection matrix image array.
             sigma: Sigma for structure tensor computation.
             scales: List of scales for multiscale ridge detection.
             ridge_method: Method for ridge detection.
@@ -189,7 +189,7 @@ class DiagnosticsPlotter(BasePlotter):
         Returns:
             Dictionary with mean_coherence, optimal_scale, peak_response, and ridge_responses.
         """
-        img = enh_gray.astype(np.float64) / self._max_intensity
+        img = detect_mat.astype(np.float64) / self._max_intensity
 
         # Compute structure tensor and coherence
         A_elems = structure_tensor(img, sigma=sigma)
@@ -231,18 +231,18 @@ class DiagnosticsPlotter(BasePlotter):
         }
 
     def _compute_background_metrics(
-        self, enh_gray: np.ndarray, sigma: float
+        self, detect_mat: np.ndarray, sigma: float
     ) -> dict[str, Any]:
-        """Compute background-related metrics from enhanced grayscale.
+        """Compute background-related metrics from detection matrix.
 
         Args:
-            enh_gray: Enhanced grayscale image array.
+            detect_mat: Detection matrix image array.
             sigma: Sigma for background estimation (Gaussian smoothing).
 
         Returns:
             Dictionary with nonuniformity_ratio, mean_gradient, and background_estimate.
         """
-        img = enh_gray.astype(np.float64)
+        img = detect_mat.astype(np.float64)
 
         # Background estimate via large-sigma Gaussian smoothing
         background = gaussian_filter(img, sigma=sigma)
@@ -373,14 +373,14 @@ class DiagnosticsPlotter(BasePlotter):
     # ============================================================================
 
     def _plot_intensity_histogram(
-        self, ax: plt.Axes, enh_gray: np.ndarray, sigma_mad: float
+        self, ax: plt.Axes, detect_mat: np.ndarray, sigma_mad: float
     ) -> None:
         """Plot intensity histogram with Gaussian fit (Panel A)."""
         # Use 256 bins regardless of bit depth for readability
         bins = 256
         hist_range = (0, self._max_intensity)
 
-        counts, bin_edges = np.histogram(enh_gray.ravel(), bins=bins, range=hist_range)
+        counts, bin_edges = np.histogram(detect_mat.ravel(), bins=bins, range=hist_range)
         bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
 
         # Normalize for density
@@ -391,8 +391,8 @@ class DiagnosticsPlotter(BasePlotter):
         ax.plot(bin_centers, counts_norm, color="navy", linewidth=1)
 
         # Fit and plot Gaussian
-        mean_val = np.mean(enh_gray)
-        std_val = np.std(enh_gray)
+        mean_val = np.mean(detect_mat)
+        std_val = np.std(detect_mat)
         x_fit = np.linspace(0, self._max_intensity, 500)
         gaussian_fit = norm.pdf(x_fit, mean_val, std_val)
         ax.plot(x_fit, gaussian_fit, "r--", linewidth=2, label="Gaussian fit")
@@ -417,10 +417,10 @@ class DiagnosticsPlotter(BasePlotter):
         )
 
     def _plot_noise_autocorrelation(
-        self, ax: plt.Axes, enh_gray: np.ndarray, correlation_length: float
+        self, ax: plt.Axes, detect_mat: np.ndarray, correlation_length: float
     ) -> None:
         """Plot noise autocorrelation (Panel B)."""
-        autocorr = self._compute_autocorrelation(enh_gray.astype(np.float64))
+        autocorr = self._compute_autocorrelation(detect_mat.astype(np.float64))
 
         # Normalize to [0, 1]
         autocorr_norm = autocorr / (autocorr.max() + 1e-10)
@@ -444,9 +444,9 @@ class DiagnosticsPlotter(BasePlotter):
 
         plt.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
 
-    def _plot_power_spectral_density(self, ax: plt.Axes, enh_gray: np.ndarray) -> None:
+    def _plot_power_spectral_density(self, ax: plt.Axes, detect_mat: np.ndarray) -> None:
         """Plot radially-averaged power spectral density (Panel C)."""
-        freqs, psd = self._compute_psd(enh_gray.astype(np.float64))
+        freqs, psd = self._compute_psd(detect_mat.astype(np.float64))
 
         # Filter out zero frequency and very low values
         valid = (freqs > 0.01) & (psd > 0)
@@ -475,15 +475,15 @@ class DiagnosticsPlotter(BasePlotter):
         ax.set_title("C: Power Spectral Density", fontweight="bold")
         ax.grid(True, alpha=0.3, which="both")
 
-    def _plot_original_image(self, ax: plt.Axes, enh_gray: np.ndarray) -> None:
-        """Plot the enhanced grayscale image (Panel D)."""
-        ax.imshow(enh_gray, cmap="gray", vmin=0, vmax=self._max_intensity)
-        ax.set_title("D: Enhanced Grayscale", fontweight="bold")
+    def _plot_original_image(self, ax: plt.Axes, detect_mat: np.ndarray) -> None:
+        """Plot the detection matrix image (Panel D)."""
+        ax.imshow(detect_mat, cmap="gray", vmin=0, vmax=self._max_intensity)
+        ax.set_title("D: Detection Matrix", fontweight="bold")
         ax.axis("off")
 
-    def _plot_local_contrast_map(self, ax: plt.Axes, enh_gray: np.ndarray) -> None:
+    def _plot_local_contrast_map(self, ax: plt.Axes, detect_mat: np.ndarray) -> None:
         """Plot local contrast map (Panel E)."""
-        contrast_map = self._compute_local_contrast(enh_gray)
+        contrast_map = self._compute_local_contrast(detect_mat)
 
         im = ax.imshow(contrast_map, cmap="magma", vmin=0, vmax=np.percentile(contrast_map, 99))
         ax.set_title("E: Local Contrast Map", fontweight="bold")
@@ -542,9 +542,9 @@ class DiagnosticsPlotter(BasePlotter):
             ax.axvline(crit, color="#c0392b", linestyle="--", alpha=0.5, linewidth=1)
             ax.axvline(marg, color="#f39c12", linestyle="--", alpha=0.5, linewidth=1)
 
-    def _plot_gradient_magnitude(self, ax: plt.Axes, enh_gray: np.ndarray) -> None:
+    def _plot_gradient_magnitude(self, ax: plt.Axes, detect_mat: np.ndarray) -> None:
         """Plot Sobel gradient magnitude (Panel G)."""
-        img_norm = enh_gray.astype(np.float64) / self._max_intensity
+        img_norm = detect_mat.astype(np.float64) / self._max_intensity
         gradient = sobel(img_norm)
 
         im = ax.imshow(gradient, cmap="viridis", vmin=0, vmax=np.percentile(gradient, 99))
@@ -625,9 +625,9 @@ class DiagnosticsPlotter(BasePlotter):
             bbox=dict(boxstyle="round", facecolor="white", alpha=0.8),
         )
 
-    def _plot_local_variance_map(self, ax: plt.Axes, enh_gray: np.ndarray) -> None:
+    def _plot_local_variance_map(self, ax: plt.Axes, detect_mat: np.ndarray) -> None:
         """Plot local variance map on log scale (Panel K)."""
-        variance = self._compute_local_variance(enh_gray)
+        variance = self._compute_local_variance(detect_mat)
 
         # Log scale for better visualization
         variance_log = np.log10(variance + 1)
@@ -1025,16 +1025,16 @@ class DiagnosticsPlotter(BasePlotter):
         if ridge_scales is None:
             ridge_scales = [0.5, 1.0, 1.5, 2.0, 3.0, 4.0, 5.0]
 
-        # Get enhanced grayscale
-        enh_gray = self._root_image.enh_gray[:]
+        # Get detection matrix
+        detect_mat = self._root_image.detect_mat[:]
 
         # Compute all metrics
-        noise_metrics = self._compute_noise_metrics(enh_gray)
-        contrast_metrics = self._compute_contrast_metrics(enh_gray)
+        noise_metrics = self._compute_noise_metrics(detect_mat)
+        contrast_metrics = self._compute_contrast_metrics(detect_mat)
         structure_metrics = self._compute_structure_metrics(
-            enh_gray, structure_sigma, ridge_scales, ridge_method
+            detect_mat, structure_sigma, ridge_scales, ridge_method
         )
-        background_metrics = self._compute_background_metrics(enh_gray, background_sigma)
+        background_metrics = self._compute_background_metrics(detect_mat, background_sigma)
 
         # Compute quality scores
         quality_scores = self._compute_quality_scores(
@@ -1119,7 +1119,7 @@ class DiagnosticsPlotter(BasePlotter):
                     background_metrics["background_estimate"],
                     background_metrics["nonuniformity_ratio"],
                 )
-                self._plot_local_variance_map(ax2, enh_gray)
+                self._plot_local_variance_map(ax2, detect_mat)
 
                 axes_list.extend([ax1, ax2])
                 descriptions = [PANEL_J_BACKGROUND, PANEL_K_VARIANCE]
@@ -1132,19 +1132,19 @@ class DiagnosticsPlotter(BasePlotter):
                 if section == "noise":
                     # Use bit-depth aware histogram description
                     hist_desc = self._get_histogram_panel_description()
-                    self._plot_intensity_histogram(ax1, enh_gray, noise_metrics["sigma_mad"])
-                    self._plot_noise_autocorrelation(ax2, enh_gray, noise_metrics["correlation_length"])
-                    self._plot_power_spectral_density(ax3, enh_gray)
+                    self._plot_intensity_histogram(ax1, detect_mat, noise_metrics["sigma_mad"])
+                    self._plot_noise_autocorrelation(ax2, detect_mat, noise_metrics["correlation_length"])
+                    self._plot_power_spectral_density(ax3, detect_mat)
                     descriptions = [hist_desc, PANEL_B_AUTOCORR, PANEL_C_PSD]
 
                 elif section == "contrast":
-                    self._plot_original_image(ax1, enh_gray)
-                    self._plot_local_contrast_map(ax2, enh_gray)
+                    self._plot_original_image(ax1, detect_mat)
+                    self._plot_local_contrast_map(ax2, detect_mat)
                     self._plot_contrast_metrics_bars(ax3, contrast_metrics)
                     descriptions = [PANEL_D_ORIGINAL, PANEL_E_CONTRAST, PANEL_F_BARS]
 
                 elif section == "structure":
-                    self._plot_gradient_magnitude(ax1, enh_gray)
+                    self._plot_gradient_magnitude(ax1, detect_mat)
                     self._plot_orientation_coherence(
                         ax2,
                         structure_metrics["coherence_map"],

@@ -35,7 +35,7 @@ class SeparateObjects(ObjectRefiner):
     Returns:
         Image: Input image with refined objmap where touching colonies are separated
             into distinct regions. objmask is automatically updated. All image data
-            (rgb, gray, enh_gray) remain unchanged.
+            (rgb, gray, detect_mat) remain unchanged.
 
     Raises:
         ValueError: If no peaks detected or image lacks detection results (no objmap).

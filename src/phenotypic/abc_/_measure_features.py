@@ -98,7 +98,7 @@ class MeasureFeatures(BaseOperation, ABC):
     (lazy-evaluated, cached):
 
     - **image.gray[:]** - Grayscale intensity values (weighted luminance)
-    - **image.enh_gray[:]** - Enhanced grayscale (preprocessed for analysis)
+    - **image.detect_mat[:]** - Detection matrix (preprocessed for analysis)
     - **image.objmask[:]** - Binary mask of detected objects (1 = object, 0 = background)
     - **image.objmap[:]** - Labeled integer array (label ID per object, 0 = background)
     - **image.color.Lab[:]** - CIE Lab color space (perceptually uniform)
@@ -147,7 +147,7 @@ class MeasureFeatures(BaseOperation, ABC):
 
     .. code-block:: python
 
-        gray = image.enh_gray[:]
+        gray = image.detect_mat[:]
         objmap = image.objmap[:]
         area = self._calculate_sum(image.objmask[:], objmap)  # Pixel count
         mean_int = self._calculate_mean(gray, objmap)  # Average brightness
@@ -171,7 +171,7 @@ class MeasureFeatures(BaseOperation, ABC):
     ...
     ...     def _operate(self, image):
     ...         '''Extract bright region area and mean intensity.'''
-    ...         gray = image.enh_gray[:]
+    ...         gray = image.detect_mat[:]
     ...         objmap = image.objmap[:]
     ...         # Identify bright pixels within each object
     ...         bright_mask = gray > self.intensity_threshold
@@ -275,7 +275,7 @@ class MeasureFeatures(BaseOperation, ABC):
         ...     def _operate(self, image):
         ...         '''Calculate area, perimeter, and density index.'''
         ...         objmap = image.objmap[:]
-        ...         gray = image.enh_gray[:]
+        ...         gray = image.detect_mat[:]
         ...         # Area and perimeter
         ...         area = self._calculate_sum(image.objmask[:], objmap)
         ...         perimeter = self._funcmap2objects(
@@ -483,7 +483,7 @@ class MeasureFeatures(BaseOperation, ABC):
             Find colony centroid positions:
 
             >>> # Measure intensity-weighted centers for stained colonies
-            >>> gray = image.enh_gray[:]  # Preprocessed intensity
+            >>> gray = image.detect_mat[:]  # Preprocessed intensity
             >>> objmap = image.objmap[:]
             >>> centers = MeasureFeatures._calculate_center_of_mass(
             ...     array=gray,
@@ -499,7 +499,7 @@ class MeasureFeatures(BaseOperation, ABC):
             Single colony mass center (no objmap):
 
             >>> # Find center for isolated colony region
-            >>> colony_region = image.enh_gray[50:150, 50:150]
+            >>> colony_region = image.detect_mat[50:150, 50:150]
             >>> center = MeasureFeatures._calculate_center_of_mass(colony_region)
             # Returns: (42.5, 52.3) - single (row, col) tuple
         """
@@ -540,7 +540,7 @@ class MeasureFeatures(BaseOperation, ABC):
         Examples:
             Find brightest pixels in colonies:
 
-            >>> gray = image.enh_gray[:]
+            >>> gray = image.detect_mat[:]
             >>> objmap = image.objmap[:]
             >>> max_intensity = MeasureFeatures._calculate_maximum(gray, objmap)
             # Returns: [245, 238, 241, ...] brightness per object
@@ -583,7 +583,7 @@ class MeasureFeatures(BaseOperation, ABC):
         Examples:
             Compare colony growth intensity:
 
-            >>> gray = image.enh_gray[:]
+            >>> gray = image.detect_mat[:]
             >>> objmap = image.objmap[:]
             >>> mean_intensities = MeasureFeatures._calculate_mean(gray, objmap)
             # Returns: [128.5, 142.3, 135.8, ...] avg brightness per colony
@@ -626,7 +626,7 @@ class MeasureFeatures(BaseOperation, ABC):
         Examples:
             Robust growth intensity measurement:
 
-            >>> gray = image.enh_gray[:]
+            >>> gray = image.detect_mat[:]
             >>> objmap = image.objmap[:]
             >>> # For colonies with bright debris or speckles
             >>> median_int = MeasureFeatures._calculate_median(gray, objmap)
@@ -669,7 +669,7 @@ class MeasureFeatures(BaseOperation, ABC):
         Examples:
             Detect dark regions in colonies:
 
-            >>> gray = image.enh_gray[:]
+            >>> gray = image.detect_mat[:]
             >>> objmap = image.objmap[:]
             >>> min_int = MeasureFeatures._calculate_minimum(gray, objmap)
             # Identifies colonies with dark cores (aging or death)
@@ -712,7 +712,7 @@ class MeasureFeatures(BaseOperation, ABC):
         Examples:
             Detect rough/textured colonies:
 
-            >>> gray = image.enh_gray[:]
+            >>> gray = image.detect_mat[:]
             >>> objmap = image.objmap[:]
             >>> stddev = MeasureFeatures._calculate_stddev(gray, objmap)
             # High stddev = rough/textured colonies
@@ -805,7 +805,7 @@ class MeasureFeatures(BaseOperation, ABC):
         Examples:
             Analyze colony texture variability:
 
-            >>> gray = image.enh_gray[:]
+            >>> gray = image.detect_mat[:]
             >>> objmap = image.objmap[:]
             >>> variance = MeasureFeatures._calculate_variance(gray, objmap)
             >>> stddev = np.sqrt(variance)  # Convert back to original units
@@ -857,7 +857,7 @@ class MeasureFeatures(BaseOperation, ABC):
         Examples:
             Compare colony growth uniformity:
 
-            >>> gray = image.enh_gray[:]
+            >>> gray = image.detect_mat[:]
             >>> objmap = image.objmap[:]
             >>> cv = MeasureFeatures._calculate_coeff_variation(gray, objmap)
             # Returns: [0.08, 0.15, 0.32, ...] relative variation
@@ -945,7 +945,7 @@ class MeasureFeatures(BaseOperation, ABC):
         Examples:
             Locate dark regions in colonies:
 
-            >>> gray = image.enh_gray[:]
+            >>> gray = image.detect_mat[:]
             >>> objmap = image.objmap[:]
             >>> min_vals, min_pos = MeasureFeatures._calculate_min_extrema(
             ...     gray, objmap
@@ -988,7 +988,7 @@ class MeasureFeatures(BaseOperation, ABC):
         Examples:
             Find brightest spots in colonies:
 
-            >>> gray = image.enh_gray[:]
+            >>> gray = image.detect_mat[:]
             >>> objmap = image.objmap[:]
             >>> max_vals, max_pos = MeasureFeatures._calculate_max_extrema(
             ...     gray, objmap
@@ -1052,7 +1052,7 @@ class MeasureFeatures(BaseOperation, ABC):
             Custom measurement: find 90th percentile intensity:
 
             >>> from functools import partial
-            >>> gray = image.enh_gray[:]
+            >>> gray = image.detect_mat[:]
             >>> objmap = image.objmap[:]
             >>> # Define custom function
             >>> q90 = partial(np.percentile, q=90)
@@ -1216,7 +1216,7 @@ class MeasureFeatures(BaseOperation, ABC):
         Examples:
             Compare colony texture via IQR:
 
-            >>> gray = image.enh_gray[:]
+            >>> gray = image.detect_mat[:]
             >>> objmap = image.objmap[:]
             >>> iqr = MeasureFeatures._calculate_iqr(gray, objmap)
             # IQR < 30: smooth, uniform colonies

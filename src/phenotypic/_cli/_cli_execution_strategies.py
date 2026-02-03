@@ -179,6 +179,8 @@ class LocalParallelStrategy(ExecutionStrategy):
                 read_kwargs["ncols"] = self.config.ncols
             if self.config.bit_depth:
                 read_kwargs["bit_depth"] = self.config.bit_depth
+            if self.config.detect_mode != "gray":
+                read_kwargs["detect_mode"] = self.config.detect_mode
 
             # Process
             success = process_single_image_core(

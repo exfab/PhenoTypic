@@ -33,7 +33,7 @@ creates array copies:
 ```python
 rgb_data = image.rgb[:]  # Creates unnecessary copy!
 gray_data = image.gray[:]  # Creates unnecessary copy!
-enh_gray_data = image.enh_gray[:]  # Creates unnecessary copy!
+detect_mat_data = image.detect_mat[:]  # Creates unnecessary copy!
 ```
 
 **Impact**: This defeats the purpose of memory estimation by potentially triggering

@@ -43,7 +43,7 @@ class MeasureColor(MeasureFeatures):
     - Color measurements are highly sensitive to illumination, camera white balance, and exposure settings;
       normalize and calibrate your imaging setup before comparing colors across plates or experiments.
     - Lab and HSV assume RGB input is correctly gamma-corrected and linearized; use image.gray or
-      image.enh_gray if raw RGB is uncalibrated.
+      image.detect_mat if raw RGB is uncalibrated.
     - High saturation and brightness variance within a colony can indicate shadow regions, uneven
       lighting, or non-uniform mycelial depth; interpret texture variance alongside color variance.
     - Chroma estimates use simplified arithmetic; for critical applications, use reference color charts

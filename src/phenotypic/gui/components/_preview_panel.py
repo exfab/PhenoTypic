@@ -110,7 +110,7 @@ class PreviewPanel:
         # === Preview Section ===
         view_select = pn.widgets.Select(
             name="View",
-            options=["rgb", "gray", "enh_gray", "objmask", "objmap", "overlay"],
+            options=["rgb", "gray", "detect_mat", "objmask", "objmap", "overlay"],
             value=self.selected_view,
         )
 
@@ -244,8 +244,8 @@ class PreviewPanel:
                     ax.imshow(image.rgb[:])
                 elif view == "gray":
                     ax.imshow(image.gray[:], cmap="gray")
-                elif view == "enh_gray":
-                    ax.imshow(image.enh_gray[:], cmap="gray")
+                elif view == "detect_mat":
+                    ax.imshow(image.detect_mat[:], cmap="gray")
                 elif view == "objmask":
                     ax.imshow(image.objmask[:], cmap="gray")
                 elif view == "objmap":

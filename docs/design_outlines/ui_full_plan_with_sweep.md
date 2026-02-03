@@ -153,7 +153,7 @@ class PipelineBuilder(param.Parameterized):
     # Reactive parameters
     operations = param.List(default=[], doc="List of (name, operation) tuples")
     selected_view = param.Selector(
-        objects=['rgb', 'gray', 'enh_gray', 'objmask', 'objmap', 'overlay'],
+        objects=['rgb', 'gray', 'detect_mat', 'objmask', 'objmap', 'overlay'],
         default='overlay'
     )
 
@@ -370,7 +370,7 @@ class ParameterSweep:
         data2save: Image layers to persist to disk. Valid options:
             - "rgb": Original color image (if available)
             - "gray": Grayscale luminance
-            - "enh_gray": Enhanced grayscale for processing
+            - "detect_mat": Enhanced grayscale for processing
             - "objmask": Binary detection mask
             - "objmap": Labeled object map
             - "overlay": Matplotlib overlay figure
@@ -397,7 +397,7 @@ class ParameterSweep:
         >>> sweep = ParameterSweep(
         ...     pipe_cfgs=pipe_cfgs,
         ...     output_dir="./sweep_results",
-        ...     data2save={"enh_gray", "objmask", "overlay"}
+        ...     data2save={"detect_mat", "objmask", "overlay"}
         ... )
         >>>
         >>> # Load image
@@ -413,7 +413,7 @@ class ParameterSweep:
         >>> configurator.servable()  # Or display in Jupyter
     """
 
-    DEFAULT_VIEWS = {'rgb', 'gray', 'enh_gray', 'objmask', 'objmap', 'overlay'}
+    DEFAULT_VIEWS = {'rgb', 'gray', 'detect_mat', 'objmask', 'objmap', 'overlay'}
 
     def __init__(
         self,
@@ -465,7 +465,7 @@ class SweepConfigurator(param.Parameterized):
     # Data to save
     save_rgb = param.Boolean(default=True, doc="Save RGB images")
     save_gray = param.Boolean(default=True, doc="Save grayscale images")
-    save_enh_gray = param.Boolean(default=True, doc="Save enhanced grayscale")
+    save_detect_mat = param.Boolean(default=True, doc="Save detection matrix")
     save_objmask = param.Boolean(default=True, doc="Save object masks")
     save_objmap = param.Boolean(default=True, doc="Save labeled object maps")
     save_overlay = param.Boolean(default=True, doc="Save overlay figures")
@@ -508,7 +508,7 @@ class SweepConfigurator(param.Parameterized):
 │  │ │   - CLAHE:             │ │  │ ### Data to Save           │ │
 │  │ │     clip_limit: [1.5,2]│ │  │ [x] RGB                    │ │
 │  │ │   - OtsuDetector:      │ │  │ [x] Grayscale              │ │
-│  │ │     ignore_zeros: T/F  │ │  │ [x] Enhanced Grayscale     │ │
+│  │ │     ignore_zeros: T/F  │ │  │ [x] Detection Matrix     │ │
 │  │ └────────────────────────┘ │  │ [x] Object Mask            │ │
 │  └────────────────────────────┘  │ [x] Object Map             │ │
 │                                  │ [x] Overlay                │ │

@@ -104,11 +104,11 @@ output_folder/
         layer_descriptions = {
             "rgb": "Original RGB images",
             "gray": "Grayscale images",
-            "enh_gray": "Enhanced grayscale (after preprocessing)",
+            "detect_mat": "Detection matrix (after preprocessing)",
             "objmask": "Binary object masks",
             "objmap": "Labeled object maps (integer labels per object)",
             "objmap_overlay": "Colorized object map overlays",
-            "enh_gray_overlay": "Enhanced grayscale with detection overlay",
+            "detect_mat_overlay": "Detection matrix with detection overlay",
             "objmask_overlay": "Object mask with detection overlay",
         }
 
@@ -117,16 +117,16 @@ output_folder/
             layers.append(("rgb/", layer_descriptions["rgb"]))
         if self.config.save_gray:
             layers.append(("gray/", layer_descriptions["gray"]))
-        if self.config.save_enh_gray:
-            layers.append(("enh_gray/", layer_descriptions["enh_gray"]))
+        if self.config.save_detect_mat:
+            layers.append(("detect_mat/", layer_descriptions["detect_mat"]))
         if self.config.save_objmask:
             layers.append(("objmask/", layer_descriptions["objmask"]))
         if self.config.save_objmap:
             layers.append(("objmap/", layer_descriptions["objmap"]))
         if self.config.save_objmap_overlay:
             layers.append(("objmap_overlay/", layer_descriptions["objmap_overlay"]))
-        if self.config.save_enh_gray_overlay:
-            layers.append(("enh_gray_overlay/", layer_descriptions["enh_gray_overlay"]))
+        if self.config.save_detect_mat_overlay:
+            layers.append(("detect_mat_overlay/", layer_descriptions["detect_mat_overlay"]))
         if self.config.save_objmask_overlay:
             layers.append(("objmask_overlay/", layer_descriptions["objmask_overlay"]))
 

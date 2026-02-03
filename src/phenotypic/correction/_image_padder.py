@@ -186,7 +186,7 @@ class ImagePadder(ImageCorrector):
             )
 
     def _get_pad_width_2d(self) -> Tuple[Tuple[int, int], Tuple[int, int]]:
-        """Calculate pad_width tuple for 2D arrays (gray, enh_gray, objmap).
+        """Calculate pad_width tuple for 2D arrays (gray, detect_mat, objmap).
 
         Converts None → 0 for each parameter and returns the pad_width format
         expected by np.pad for 2D arrays.
@@ -231,7 +231,7 @@ class ImagePadder(ImageCorrector):
     def _operate(self, image: Image) -> Image:
         """Pad the image by adding pixels to edges specified in __init__.
 
-        Pads all image components (rgb, gray, enh_gray, objmask, objmap) together,
+        Pads all image components (rgb, gray, detect_mat, objmask, objmap) together,
         maintaining synchronization. Object map is ALWAYS padded with constant mode
         and value 0 to preserve integer label integrity, regardless of user mode.
 
@@ -301,9 +301,9 @@ class ImagePadder(ImageCorrector):
             **pad_kwargs
         )
 
-        # Pad enh_gray (2D array)
-        image._data.enh_gray = np.pad(  # type: ignore
-            image._data.enh_gray,
+        # Pad detect_mat (2D array)
+        image._data.detect_mat = np.pad(  # type: ignore
+            image._data.detect_mat,
             pad_width=pad_width_2d,
             mode=self.mode,
             **pad_kwargs

@@ -27,7 +27,7 @@ class ObjectDetector(ImageOperation, ABC):
     - **ThresholdDetector:** Your algorithm converts intensity to binary via thresholding?
       Subclass ThresholdDetector for specialized threshold strategies.
     - **ImageEnhancer:** Need to preprocess image data (blur, contrast, denoise) before
-      detection? Use enhancement to prepare enh_gray for better detection.
+      detection? Use enhancement to prepare detect_mat for better detection.
     - **ObjectRefiner:** Need to clean up *existing* masks (size filter, morphology, merge)?
       Refiner operates on objmask/objmap without analyzing image data.
     - **Threshold vs Edge vs Peak:** Threshold works when intensity separates colonies from
@@ -53,10 +53,10 @@ class ObjectDetector(ImageOperation, ABC):
 
     ObjectDetector operations:
 
-    - **Read** ``image.enh_gray[:]`` (enhanced grayscale), ``image.rgb[:]``, and optionally
+    - **Read** ``image.detect_mat[:]`` (detection matrix), ``image.rgb[:]``, and optionally
       other image data to inform detection.
     - **Write** only ``image.objmask[:]`` and ``image.objmap[:]``.
-    - **Protect** ``image.rgb``, ``image.gray``, and ``image.enh_gray`` via automatic integrity
+    - **Protect** ``image.rgb``, ``image.gray``, and ``image.detect_mat`` via automatic integrity
       validation (``@validate_operation_integrity`` decorator).
 
     Any attempt to modify protected image components raises ``OperationIntegrityError`` when
@@ -128,7 +128,7 @@ class ObjectDetector(ImageOperation, ABC):
 
     2. **Within _operate(), read image data carefully:**
 
-       - Access via accessors: ``image.enh_gray[:]``, ``image.gray[:]``, ``image.rgb[:]``
+       - Access via accessors: ``image.detect_mat[:]``, ``image.gray[:]``, ``image.rgb[:]``
        - Never modify these; integrity validation will catch it
        - Consider the data type and range (uint8, uint16, float, etc.)
 
@@ -148,7 +148,7 @@ class ObjectDetector(ImageOperation, ABC):
            import numpy as np
 
            # Example: simple Otsu thresholding
-           enh = image.enh_gray[:]
+           enh = image.detect_mat[:]
            threshold = skimage.filters.threshold_otsu(enh)
            binary_mask = enh > threshold
 
@@ -264,7 +264,7 @@ class ObjectDetector(ImageOperation, ABC):
 
     Notes:
         - **Integrity protection:** The @validate_operation_integrity decorator on apply()
-          ensures image.rgb, image.gray, and image.enh_gray are not modified. Violations
+          ensures image.rgb, image.gray, and image.detect_mat are not modified. Violations
           raise OperationIntegrityError during development (VALIDATE_OPS=True).
 
         - **Binary mask is often intermediate:** Many implementations create objmask first,
@@ -329,6 +329,6 @@ class ObjectDetector(ImageOperation, ABC):
     @overload
     def apply(self, image: GridImage, inplace: bool = False) -> GridImage: ...
 
-    @validate_operation_integrity("image.rgb", "image.gray", "image.enh_gray")
+    @validate_operation_integrity("image.rgb", "image.gray", "image.detect_mat")
     def apply(self, image: Image, inplace=False) -> Image:
         return super().apply(image=image, inplace=inplace)

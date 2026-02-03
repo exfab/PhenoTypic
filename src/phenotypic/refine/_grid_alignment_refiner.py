@@ -41,7 +41,7 @@ class GridAlignmentRefiner(GridInferenceMixin, ObjectRefiner):
     Returns:
         Image: Input image with filtered objmap containing only grid-aligned objects.
             objmask is automatically updated to match refined objmap. All image data
-            (rgb, gray, enh_gray) remain unchanged.
+            (rgb, gray, detect_mat) remain unchanged.
 
     Raises:
         ValueError: If grid inference fails or image lacks detection results (no objmap).
@@ -141,7 +141,7 @@ class GridAlignmentRefiner(GridInferenceMixin, ObjectRefiner):
         self.peak_prominence = peak_prominence
         self.edge_refinement = edge_refinement
 
-    @validate_operation_integrity("image.rgb", "image.gray", "image.enh_gray")
+    @validate_operation_integrity("image.rgb", "image.gray", "image.detect_mat")
     def apply(self, image: Image, inplace: bool = False) -> Image:
         return super().apply(image=image, inplace=inplace)
 

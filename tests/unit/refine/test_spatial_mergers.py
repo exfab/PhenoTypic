@@ -178,7 +178,7 @@ class TestTransitiveDistanceMerger:
             TransitiveDistanceMerger(distance_threshold=-10)
 
     def test_protected_components(self, two_close_objects_image):
-        """RGB, gray, enh_gray should remain unchanged."""
+        """RGB, gray, detect_mat should remain unchanged."""
         # Store original RGB
         original_rgb = two_close_objects_image.rgb[:].copy()
         merger = TransitiveDistanceMerger(distance_threshold=30.0)

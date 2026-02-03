@@ -37,6 +37,7 @@ from ._visushrink_enhancer import VisuShrinkEnhancer
 from ._white_tophat_subtract import WhiteTophatSubtract
 from ._white_tophat_enhance import WhiteTophatEnhance
 from ._gray_opening import GrayOpening
+from ._set_detect_mode import SetDetectMode
 
 __all__ = [
     "AnscombeTransformDenoise",
@@ -65,4 +66,5 @@ __all__ = [
     "VisuShrinkEnhancer",
     "WhiteTophatEnhance",
     "WhiteTophatSubtract",
+    "SetDetectMode",
 ]

@@ -93,8 +93,8 @@ class MedianFilter(ImageEnhancer):
             )
 
     def _operate(self, image: Image) -> Image:
-        image.enh_gray[:] = median(
-                image=image.enh_gray[:],
+        image.detect_mat[:] = median(
+                image=image.detect_mat[:],
                 behavior="ndimage",
                 footprint=(
                     self.shape

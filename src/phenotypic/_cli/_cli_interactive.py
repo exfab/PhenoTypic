@@ -103,16 +103,16 @@ def _display_output_structure(config: ExecutionConfig, datasets: List[Dataset], 
         layers_to_create.append(("rgb", f"(*.{config.rgb_ext})"))
     if config.save_gray:
         layers_to_create.append(("gray", f"(*.{config.gray_ext})"))
-    if config.save_enh_gray:
-        layers_to_create.append(("enh_gray", f"(*.{config.enh_gray_ext})"))
+    if config.save_detect_mat:
+        layers_to_create.append(("detect_mat", f"(*.{config.detect_mat_ext})"))
     if config.save_objmask:
         layers_to_create.append(("objmask", f"(*.{config.objmask_ext})"))
     if config.save_objmap:
         layers_to_create.append(("objmap", f"(*.{config.objmap_ext})"))
     if config.save_objmap_overlay:
         layers_to_create.append(("objmap_overlay", f"(*.{config.objmap_overlay_ext})"))
-    if config.save_enh_gray_overlay:
-        layers_to_create.append(("enh_gray_overlay", "(*.png)"))
+    if config.save_detect_mat_overlay:
+        layers_to_create.append(("detect_mat_overlay", "(*.png)"))
     if config.save_objmask_overlay:
         layers_to_create.append(("objmask_overlay", "(*.png)"))
 
@@ -155,16 +155,16 @@ def _display_save_configuration(config: ExecutionConfig) -> None:
         layers_enabled.append(f"RGB (*.{config.rgb_ext})")
     if config.save_gray:
         layers_enabled.append(f"Grayscale (*.{config.gray_ext})")
-    if config.save_enh_gray:
-        layers_enabled.append(f"Enhanced grayscale (*.{config.enh_gray_ext})")
+    if config.save_detect_mat:
+        layers_enabled.append(f"Detection matrix (*.{config.detect_mat_ext})")
     if config.save_objmask:
         layers_enabled.append(f"Object masks (*.{config.objmask_ext})")
     if config.save_objmap:
         layers_enabled.append(f"Object maps (*.{config.objmap_ext})")
     if config.save_objmap_overlay:
         layers_enabled.append(f"Object map overlay (*.{config.objmap_overlay_ext})")
-    if config.save_enh_gray_overlay:
-        layers_enabled.append("Enhanced grayscale overlay (*.png)")
+    if config.save_detect_mat_overlay:
+        layers_enabled.append("Detection matrix overlay (*.png)")
     if config.save_objmask_overlay:
         layers_enabled.append("Object mask overlay (*.png)")
 
@@ -266,13 +266,13 @@ def execute_dry_run(
     click.echo(f"  - Overlay PNGs: ~{total_images * 0.5:.1f} MB")
 
     # Add estimates for optional layers
-    if config.save_rgb or config.save_gray or config.save_enh_gray:
+    if config.save_rgb or config.save_gray or config.save_detect_mat:
         layer_size_mb = 0
         if config.save_rgb:
             layer_size_mb += total_images * 8  # ~8MB per RGB image
         if config.save_gray:
             layer_size_mb += total_images * 2  # ~2MB per grayscale
-        if config.save_enh_gray:
+        if config.save_detect_mat:
             layer_size_mb += total_images * 2
 
         est_size_mb += layer_size_mb
@@ -286,7 +286,7 @@ def execute_dry_run(
             mask_size_mb += total_images * 0.5
         if config.save_objmap_overlay:
             mask_size_mb += total_images * 2
-        if config.save_enh_gray_overlay:
+        if config.save_detect_mat_overlay:
             mask_size_mb += total_images * 2
         if config.save_objmask_overlay:
             mask_size_mb += total_images * 2

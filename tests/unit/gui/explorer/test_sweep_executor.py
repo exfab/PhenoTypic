@@ -49,7 +49,7 @@ def create_mock_image(
         return_value=np.random.randint(0, 256, (*shape, 3), dtype=np.uint8)
     )
     mock_img.rgb.isempty = MagicMock(return_value=False)
-    mock_img.enh_gray.__getitem__ = MagicMock(
+    mock_img.detect_mat.__getitem__ = MagicMock(
         return_value=np.random.rand(*shape).astype(np.float32)
     )
 
@@ -176,11 +176,11 @@ class TestSweepExecutorInit:
             executor = SweepExecutor(
                 graph=graph,
                 output_dir=tmpdir,
-                data2save={"overlay", "objmap", "enh_gray"},
+                data2save={"overlay", "objmap", "detect_mat"},
                 njobs=4,
             )
 
-            assert executor.data2save == {"overlay", "objmap", "enh_gray"}
+            assert executor.data2save == {"overlay", "objmap", "detect_mat"}
             assert executor.njobs == 4
 
     def test_creates_output_directories(self):

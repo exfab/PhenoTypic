@@ -13,7 +13,7 @@
 {% set class_map = {
     "rgb": "ImageRGB",
     "gray": "Grayscale",
-    "enh_gray": "EnhancedGrayscale",
+    "detect_mat": "DetectMatAccessor",
     "objmap": "ObjectMap",
     "objmask": "ObjectMask",
     "objects": "ObjectsAccessor",

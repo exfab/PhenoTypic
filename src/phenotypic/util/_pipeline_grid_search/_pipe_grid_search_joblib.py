@@ -189,7 +189,7 @@ class PipeGridSearchJoblib(PipeGridSearchSubmitit):
             base_size = image.gray[:].nbytes
 
         # Apply multiplier for pipeline overhead
-        # 5x accounts for: enhanced grayscale, masks, labels, intermediate
+        # 5x accounts for: detection matrix, masks, labels, intermediate
         # arrays during enhancement/detection, measurement data structures
         pipeline_multiplier = 5
         estimated_total = base_size * pipeline_multiplier

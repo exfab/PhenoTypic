@@ -145,9 +145,9 @@ class BayesShrinkCorrector(ImageCorrector):
         )
         image._data.gray = denoised_gray.clip(0.0, 1.0)
 
-        # Always denoise enh_gray
+        # Always denoise detect_mat
         denoised_enh = denoise_wavelet(
-            image=image.enh_gray[:],
+            image=image.detect_mat[:],
             sigma=self.sigma,
             wavelet=self.wavelet,
             mode=self.mode,
@@ -156,6 +156,6 @@ class BayesShrinkCorrector(ImageCorrector):
             channel_axis=None,
             rescale_sigma=True,
         )
-        image._data.enh_gray = denoised_enh.clip(0.0, 1.0)
+        image._data.detect_mat = denoised_enh.clip(0.0, 1.0)
 
         return image

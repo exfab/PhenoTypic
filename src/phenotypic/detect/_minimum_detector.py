@@ -93,21 +93,21 @@ class MinimumDetector(ThresholdDetector):
         """Binarizes the given image matrix using the Minimum threshold method.
 
         This function modifies the arr image by applying a binary mask to
-        its enhanced matrix (`enh_gray`). The binarization threshold is
+        its enhanced matrix (`detect_mat`). The binarization threshold is
         automatically determined using Minimum method. The resulting binary
         mask is stored in the image's `objmask` attribute.
 
         Args:
-            image (Image): The arr image object. It must have an `enh_gray`
+            image (Image): The arr image object. It must have an `detect_mat`
                 attribute, which is used as the basis for creating the binary mask.
 
         Returns:
             Image: The arr image object with its `objmask` attribute updated
                 to the computed binary mask other_image.
         """
-        enh_matrix = image.enh_gray[:]
+        enh_matrix = image.detect_mat[:]
         nbins = 2**image.bit_depth
-        mask = image.enh_gray[:] >= threshold_minimum(
+        mask = image.detect_mat[:] >= threshold_minimum(
             enh_matrix[enh_matrix != 0] if self.ignore_zeros else enh_matrix,
             nbins=nbins,
         )

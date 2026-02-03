@@ -161,7 +161,7 @@ class CannyDetector(ThresholdDetector):
 
     def _operate(self, image: Image | GridImage) -> Image:
 
-        enhanced_matrix = image.enh_gray[:]
+        enhanced_matrix = image.detect_mat[:]
 
         # Apply Canny edge detection
         edges = feature.canny(

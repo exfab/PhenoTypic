@@ -119,7 +119,7 @@ class TestGridAlignmentRefinerBasics:
         assert not np.array_equal(detected2.objmap[:], original_objmap)
 
     def test_protected_image_data(self):
-        """Test that rgb, gray, and enh_gray are protected from modification."""
+        """Test that rgb, gray, and detect_mat are protected from modification."""
         grid_image = load_synth_yeast_plate()
         detector = OtsuDetector()
         detected = detector.apply(grid_image)
@@ -127,7 +127,7 @@ class TestGridAlignmentRefinerBasics:
         # Save original image data
         original_rgb = detected.rgb[:].copy()
         original_gray = detected.gray[:].copy()
-        original_enh_gray = detected.enh_gray[:].copy()
+        original_detect_mat = detected.detect_mat[:].copy()
 
         # Apply refinement
         refiner = GridAlignmentRefiner()
@@ -136,7 +136,7 @@ class TestGridAlignmentRefinerBasics:
         # Check that image data unchanged
         np.testing.assert_array_equal(refined.rgb[:], original_rgb)
         np.testing.assert_array_equal(refined.gray[:], original_gray)
-        np.testing.assert_array_equal(refined.enh_gray[:], original_enh_gray)
+        np.testing.assert_array_equal(refined.detect_mat[:], original_detect_mat)
 
 
 class TestGridAlignmentRefinerGridInference:

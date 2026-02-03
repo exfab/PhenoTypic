@@ -201,7 +201,7 @@ executor = SweepExecutor(
 - `'overlay'` - RGB overlay with colored detection labels
 - `'objmask'` - Binary object mask
 - `'objmap'` - Labeled object map (normalized for visualization)
-- `'enh_gray'` - Enhanced grayscale
+- `'detect_mat'` - Detection matrix
 - `'rgb'` - Original RGB
 - `'gray'` - Grayscale
 

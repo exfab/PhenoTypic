@@ -45,7 +45,7 @@ class CLAHE(ImageEnhancer):
     - Different tiles adjust differently; ensure consistent parameters across a
       batch to avoid biasing downstream measurements.
     - Excessive enhancement may distort intensity-based phenotypes (e.g., pigment
-      quantification). Prefer using it only in the `enh_gray` pipeline channel.
+      quantification). Prefer using it only in the `detect_mat` pipeline channel.
 
     Attributes:
         kernel_size (int | None): Tile size for local equalization. None selects
@@ -73,8 +73,8 @@ class CLAHE(ImageEnhancer):
         self.clip_limit: float = clip_limit
 
     def _operate(self, image: Image) -> Image:
-        image.enh_gray[:] = equalize_adapthist(
-            image=image.enh_gray[:],
+        image.detect_mat[:] = equalize_adapthist(
+            image=image.detect_mat[:],
             kernel_size=self.kernel_size
             if self.kernel_size
             else self._auto_kernel_size(image),

@@ -114,39 +114,39 @@ class TestPhaseCongruencyEnhancerOutputProperties:
         """Test that output has same shape as input."""
         enhancer = PhaseCongruencyEnhancer(n_scale=3, n_orient=4)
         result = enhancer.apply(synthetic_image)
-        assert result.enh_gray[:].shape == synthetic_image.enh_gray[:].shape
+        assert result.detect_mat[:].shape == synthetic_image.detect_mat[:].shape
 
     def test_output_range_clipped_to_unit_interval(self, synthetic_image):
         """Test that output is in [0, 1] range."""
         enhancer = PhaseCongruencyEnhancer()
         result = enhancer.apply(synthetic_image)
-        assert result.enh_gray[:].min() >= 0.0
-        assert result.enh_gray[:].max() <= 1.0
+        assert result.detect_mat[:].min() >= 0.0
+        assert result.detect_mat[:].max() <= 1.0
 
     def test_pc_sum_output_mode(self, synthetic_image):
         """Test pc_sum output mode works."""
         enhancer = PhaseCongruencyEnhancer(output="pc_sum")
         result = enhancer.apply(synthetic_image)
-        assert result.enh_gray[:].shape == synthetic_image.enh_gray[:].shape
+        assert result.detect_mat[:].shape == synthetic_image.detect_mat[:].shape
 
     def test_M_output_mode(self, synthetic_image):
         """Test M (edge strength) output mode works."""
         enhancer = PhaseCongruencyEnhancer(output="M")
         result = enhancer.apply(synthetic_image)
-        assert result.enh_gray[:].shape == synthetic_image.enh_gray[:].shape
+        assert result.detect_mat[:].shape == synthetic_image.detect_mat[:].shape
 
     def test_m_output_mode(self, synthetic_image):
         """Test m (corner strength) output mode works."""
         enhancer = PhaseCongruencyEnhancer(output="m")
         result = enhancer.apply(synthetic_image)
-        assert result.enh_gray[:].shape == synthetic_image.enh_gray[:].shape
+        assert result.detect_mat[:].shape == synthetic_image.detect_mat[:].shape
 
     def test_uniform_image_low_response(self, uniform_image):
         """Test that uniform image produces low phase congruency."""
         enhancer = PhaseCongruencyEnhancer(n_scale=3, n_orient=4)
         result = enhancer.apply(uniform_image)
         # Uniform regions should have low PC values
-        assert result.enh_gray[:].mean() < 0.3
+        assert result.detect_mat[:].mean() < 0.3
 
 
 class TestPhaseCongruencyEnhancerEdgeDetection:
@@ -163,9 +163,9 @@ class TestPhaseCongruencyEnhancerEdgeDetection:
         result = enhancer.apply(image)
 
         # Edge region (columns ~60-68) should have higher values than uniform regions
-        edge_region = result.enh_gray[:, 60:68]
-        left_uniform = result.enh_gray[:, 10:30]
-        right_uniform = result.enh_gray[:, 90:110]
+        edge_region = result.detect_mat[:, 60:68]
+        left_uniform = result.detect_mat[:, 10:30]
+        right_uniform = result.detect_mat[:, 90:110]
 
         assert edge_region.mean() > left_uniform.mean()
         assert edge_region.mean() > right_uniform.mean()
@@ -181,9 +181,9 @@ class TestPhaseCongruencyEnhancerEdgeDetection:
         result = enhancer.apply(image)
 
         # Edge region (rows ~60-68) should have higher values than uniform regions
-        edge_region = result.enh_gray[60:68, :]
-        top_uniform = result.enh_gray[10:30, :]
-        bottom_uniform = result.enh_gray[90:110, :]
+        edge_region = result.detect_mat[60:68, :]
+        top_uniform = result.detect_mat[10:30, :]
+        bottom_uniform = result.detect_mat[90:110, :]
 
         assert edge_region.mean() > top_uniform.mean()
         assert edge_region.mean() > bottom_uniform.mean()
@@ -207,19 +207,19 @@ class TestPhaseCongruencyEnhancerNoiseHandling:
         """Test median noise estimation method (-1)."""
         enhancer = PhaseCongruencyEnhancer(noise_method=-1, n_scale=3, n_orient=4)
         result = enhancer.apply(noisy_image)
-        assert result.enh_gray[:].shape == noisy_image.enh_gray[:].shape
+        assert result.detect_mat[:].shape == noisy_image.detect_mat[:].shape
 
     def test_noise_method_mode(self, noisy_image):
         """Test mode noise estimation method (-2)."""
         enhancer = PhaseCongruencyEnhancer(noise_method=-2, n_scale=3, n_orient=4)
         result = enhancer.apply(noisy_image)
-        assert result.enh_gray[:].shape == noisy_image.enh_gray[:].shape
+        assert result.detect_mat[:].shape == noisy_image.detect_mat[:].shape
 
     def test_noise_method_fixed(self, noisy_image):
         """Test fixed noise threshold (>= 0)."""
         enhancer = PhaseCongruencyEnhancer(noise_method=0.1, n_scale=3, n_orient=4)
         result = enhancer.apply(noisy_image)
-        assert result.enh_gray[:].shape == noisy_image.enh_gray[:].shape
+        assert result.detect_mat[:].shape == noisy_image.detect_mat[:].shape
 
     def test_higher_k_reduces_response(self, noisy_image):
         """Test that higher k (more noise rejection) reduces overall response."""
@@ -230,7 +230,7 @@ class TestPhaseCongruencyEnhancerNoiseHandling:
         result_high_k = enhancer_high_k.apply(noisy_image)
 
         # Higher k should produce lower overall response (more aggressive thresholding)
-        assert result_high_k.enh_gray[:].mean() <= result_low_k.enh_gray[:].mean()
+        assert result_high_k.detect_mat[:].mean() <= result_low_k.detect_mat[:].mean()
 
 
 class TestPhaseCongruencyEnhancerIntegration:
@@ -264,15 +264,15 @@ class TestPhaseCongruencyEnhancerIntegration:
         """Test that inplace=True modifies the original image."""
         arr = np.random.rand(64, 64).astype(np.float64)
         image = Image(arr=arr)
-        original_enh_gray = image.enh_gray[:].copy()
+        original_detect_mat = image.detect_mat[:].copy()
 
         enhancer = PhaseCongruencyEnhancer(n_scale=3, n_orient=4)
         result = enhancer.apply(image, inplace=True)
 
         # Result should be the same object
         assert result is image
-        # enh_gray should be modified (not equal to original)
-        assert not np.array_equal(image.enh_gray[:], original_enh_gray)
+        # detect_mat should be modified (not equal to original)
+        assert not np.array_equal(image.detect_mat[:], original_detect_mat)
 
 
 # Run all tests if this file is executed directly

@@ -41,7 +41,7 @@ class ImageOperation(BaseOperation, LazyWidgetMixin, ABC):
 
         ImageOperation (this class)
         ├── ImageEnhancer
-        │   └── Modifies ONLY image.enh_gray
+        │   └── Modifies ONLY image.detect_mat
         │       ├── GaussianBlur, CLAHE, RankMedianEnhancer, ...
         │       └── Use for: noise reduction, contrast, edge sharpening
         │
@@ -62,7 +62,7 @@ class ImageOperation(BaseOperation, LazyWidgetMixin, ABC):
 
     **When to inherit from each subclass:**
 
-    - **ImageEnhancer:** You only modify ``image.enh_gray`` (enhanced grayscale).
+    - **ImageEnhancer:** You only modify ``image.detect_mat`` (detection matrix).
       Original ``image.rgb`` and ``image.gray`` are protected by integrity checks.
       Typical use: preprocessing before detection.
 
@@ -117,7 +117,7 @@ class ImageOperation(BaseOperation, LazyWidgetMixin, ABC):
 
             def _operate(self, image: Image) -> Image:
                 # Access parameters via self
-                image.enh_gray[:] = gaussian_filter(image.enh_gray[:], sigma=self.sigma)
+                image.detect_mat[:] = gaussian_filter(image.detect_mat[:], sigma=self.sigma)
                 return image
 
     The instance method pattern is simpler and more Pythonic than the old static method approach.
@@ -129,7 +129,7 @@ class ImageOperation(BaseOperation, LazyWidgetMixin, ABC):
 
     Reading data:
 
-    - ``image.enh_gray[:]`` - Enhanced grayscale (for enhancers)
+    - ``image.detect_mat[:]`` - Detection matrix (for enhancers)
     - ``image.rgb[:]`` - Original RGB data
     - ``image.gray[:]`` - Luminance grayscale
     - ``image.objmask[:]`` - Binary object mask
@@ -138,7 +138,7 @@ class ImageOperation(BaseOperation, LazyWidgetMixin, ABC):
 
     Modifying data:
 
-    - ``image.enh_gray[:] = new_array`` - Set enhanced grayscale
+    - ``image.detect_mat[:] = new_array`` - Set detection matrix
     - ``image.objmask[:] = binary_array`` - Set object mask
     - ``image.objmap[:] = labeled_array`` - Set object map
 
@@ -148,15 +148,15 @@ class ImageOperation(BaseOperation, LazyWidgetMixin, ABC):
 
         # ✗ WRONG - direct attribute modification
         image.rgb = new_data
-        image._enh_gray = new_data
-        image.objects_handler.enh_gray = new_data
+        image._detect_mat = new_data
+        image.objects_handler.detect_mat = new_data
 
     **Do this instead:**
 
     .. code-block:: python
 
         # ✓ CORRECT - use accessors
-        image.enh_gray[:] = new_data
+        image.detect_mat[:] = new_data
         image.objmask[:] = new_mask
 
     **Integrity validation with @validate_operation_integrity**
@@ -261,20 +261,20 @@ class ImageOperation(BaseOperation, LazyWidgetMixin, ABC):
         >>> from phenotypic import Image
         >>> from scipy.ndimage import gaussian_filter
         >>> class GaussianEnhancer(ImageEnhancer):
-        ...     '''Custom enhancer applying Gaussian blur to enh_gray.'''
+        ...     '''Custom enhancer applying Gaussian blur to detect_mat.'''
         ...
         ...     def __init__(self, sigma: float = 1.0):
         ...         super().__init__()
         ...         self.sigma = sigma  # Instance attribute
         ...
         ...     def _operate(self, image: Image) -> Image:
-        ...         '''Apply Gaussian blur to enh_gray.'''
-        ...         # Read enhanced grayscale
-        ...         enh = image.enh_gray[:]
+        ...         '''Apply Gaussian blur to detect_mat.'''
+        ...         # Read detection matrix
+        ...         enh = image.detect_mat[:]
         ...         # Apply Gaussian filter (access parameter via self)
         ...         blurred = gaussian_filter(enh.astype(float), sigma=self.sigma)
-        ...         # Modify enh_gray through accessor
-        ...         image.enh_gray[:] = blurred.astype(enh.dtype)
+        ...         # Modify detect_mat through accessor
+        ...         image.detect_mat[:] = blurred.astype(enh.dtype)
         ...         return image
         >>> # Usage
         >>> enhancer = GaussianEnhancer(sigma=2.5)
@@ -297,15 +297,15 @@ class ImageOperation(BaseOperation, LazyWidgetMixin, ABC):
         ...         self.threshold_abs = threshold_abs
         ...
         ...     def _operate(self, image: Image) -> Image:
-        ...         '''Find peaks in enh_gray and create object mask/map.'''
+        ...         '''Find peaks in detect_mat and create object mask/map.'''
         ...         # Find local maxima (colony peaks) - access parameters via self
         ...         coords = peak_local_max(
-        ...             image.enh_gray[:],
+        ...             image.detect_mat[:],
         ...             min_distance=self.min_distance,
         ...             threshold_abs=self.threshold_abs
         ...         )
         ...         # Create binary mask from peaks
-        ...         mask = np.zeros(image.enh_gray.shape, dtype=bool)
+        ...         mask = np.zeros(image.detect_mat.shape, dtype=bool)
         ...         for y, x in coords:
         ...             mask[y, x] = True
         ...         # Create labeled map from mask
@@ -369,7 +369,7 @@ class ImageOperation(BaseOperation, LazyWidgetMixin, ABC):
         ...
         ...     def _operate(self, image: Image) -> Image:
         ...         # Access parameters via self
-        ...         binary = image.enh_gray[:] > self.threshold
+        ...         binary = image.detect_mat[:] > self.threshold
         ...         image.objmask[:] = binary
         ...         return image
         >>> # When apply() is called:

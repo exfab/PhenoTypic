@@ -37,7 +37,7 @@ class BM3DDenoiser(ImageEnhancer):
     - stage_arg: Controls whether to run fast ('hard_thresholding') or complete
       ('all_stages') denoising. 'all_stages' produces cleaner results but is
       slower; 'hard_thresholding' is faster and often sufficient for plates.
-    - Operates on normalized [0,1] float data directly from enh_gray.
+    - Operates on normalized [0,1] float data directly from detect_mat.
 
     Caveats:
     - Computationally expensive, especially on high-resolution images. Consider
@@ -98,12 +98,12 @@ class BM3DDenoiser(ImageEnhancer):
         self.clip = clip
 
     def _operate(self, image: Image) -> Image:
-        # enh_gray is guaranteed to be in [0, 1] range, which BM3D expects
+        # detect_mat is guaranteed to be in [0, 1] range, which BM3D expects
         profile = bm3d.BM3DProfile()
         profile.bs_ht = self.block_size
         profile.bs_wiener = self.block_size
         denoised = bm3d.bm3d(
-                image.enh_gray[:],
+                image.detect_mat[:],
                 profile=profile,
                 sigma_psd=self.sigma_psd,
                 stage_arg=self._convert_stage_arg(self.stage_arg),
@@ -111,7 +111,7 @@ class BM3DDenoiser(ImageEnhancer):
 
         if self.clip:
             denoised = denoised.clip(0.0, 1.0)
-        image.enh_gray[:] = denoised
+        image.detect_mat[:] = denoised
         return image
 
     def _convert_stage_arg(self, stage_arg: Literal["all_stages", "hard_thresholding"]):

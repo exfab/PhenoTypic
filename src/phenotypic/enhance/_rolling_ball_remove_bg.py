@@ -64,8 +64,8 @@ class RollingBallRemoveBG(ImageEnhancer):
         self.nansafe: bool = nansafe
 
     def _operate(self, image: Image):
-        image.enh_gray[:] = image.enh_gray[:] - rolling_ball(
-                image=image.enh_gray[:],
+        image.detect_mat[:] = image.detect_mat[:] - rolling_ball(
+                image=image.detect_mat[:],
                 radius=self.radius,
                 kernel=self.kernel,
                 nansafe=self.nansafe,

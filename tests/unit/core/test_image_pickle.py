@@ -90,8 +90,8 @@ class TestImagePickle:
         img = Image(rgb_array)
 
         # Modify enhanced gray
-        modified_enh = img.enh_gray[:] + 10
-        img.enh_gray[:] = modified_enh
+        modified_enh = img.detect_mat[:] + 10
+        img.detect_mat[:] = modified_enh
 
         with tempfile.TemporaryDirectory() as tmpdir:
             pkl_path = Path(tmpdir) / "test.pkl"
@@ -101,7 +101,7 @@ class TestImagePickle:
             loaded = Image.load_pickle(str(pkl_path))
 
             # Verify enhanced gray is preserved
-            assert np.array_equal(loaded.enh_gray[:], modified_enh)
+            assert np.array_equal(loaded.detect_mat[:], modified_enh)
 
     def test_image_pickle_preserves_objmap(self):
         """Test that object map is preserved during pickle save/load."""
@@ -185,8 +185,8 @@ class TestGridImagePickle:
         grid_img.metadata["experiment_id"] = "plate_001"
 
         # Modify enhanced gray
-        modified_enh = grid_img.enh_gray[:] + 5
-        grid_img.enh_gray[:] = modified_enh
+        modified_enh = grid_img.detect_mat[:] + 5
+        grid_img.detect_mat[:] = modified_enh
 
         # Create object map
         objmap_data = np.zeros((400, 600), dtype=np.uint16)
@@ -209,7 +209,7 @@ class TestGridImagePickle:
 
             # Verify all data components
             assert np.array_equal(loaded.rgb[:], grid_img.rgb[:])
-            assert np.array_equal(loaded.enh_gray[:], modified_enh)
+            assert np.array_equal(loaded.detect_mat[:], modified_enh)
             assert np.array_equal(loaded.objmap[:], objmap_data)
             assert loaded.metadata["experiment_id"] == "plate_001"
 
@@ -249,7 +249,7 @@ class TestPickleBackwardCompatibility:
         old_style_data = {
             "_data.rgb"         : img.rgb[:],
             "_data.gray"        : img.gray[:],
-            "_data.enh_gray"    : img.enh_gray[:],
+            "_data.detect_mat"    : img.detect_mat[:],
             "objmap"            : img.objmap[:],
             "protected_metadata": img._metadata.protected,
             "public_metadata"   : img._metadata.public,

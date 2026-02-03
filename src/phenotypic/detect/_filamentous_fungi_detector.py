@@ -327,7 +327,7 @@ class FilamentousFungiDetector(ObjectDetector):
 
         # Step 6: Create boundary-constrained elevation map
         elevation = self._create_boundary_elevation_map(
-                image.enh_gray.shape, boundaries, self.boundary_cost
+                image.detect_mat.shape, boundaries, self.boundary_cost
         )
 
         self._log_memory_usage(
@@ -508,7 +508,7 @@ class FilamentousFungiDetector(ObjectDetector):
         watershed basins separated by boundary ridges.
 
         Args:
-            shape: Shape of output elevation map (from image.enh_gray.shape)
+            shape: Shape of output elevation map (from image.detect_mat.shape)
             boundaries: Binary mask of boundary pixels (high cost region)
             boundary_cost: Cost value assigned to boundary pixels
 

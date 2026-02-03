@@ -106,18 +106,18 @@ class TestImageMatrixAccessor:
 
 
 class TestEnhancedMatrixAccessor:
-    """Tests for EnhancedGrayscale accessor."""
+    """Tests for DetectMatAccessor accessor."""
 
     def test_numpy_sum(self, sample_rgb_image):
         """Test np.sum on enhanced gray accessor."""
-        result = np.sum(sample_rgb_image.enh_gray)
-        expected = np.sum(sample_rgb_image.enh_gray[:])
+        result = np.sum(sample_rgb_image.detect_mat)
+        expected = np.sum(sample_rgb_image.detect_mat[:])
         assert np.isclose(result, expected)
 
     def test_numpy_mean(self, sample_rgb_image):
         """Test np.mean on enhanced gray accessor."""
-        result = np.mean(sample_rgb_image.enh_gray)
-        expected = np.mean(sample_rgb_image.enh_gray[:])
+        result = np.mean(sample_rgb_image.detect_mat)
+        expected = np.mean(sample_rgb_image.detect_mat[:])
         assert np.isclose(result, expected)
 
 

@@ -22,14 +22,16 @@ class ImageData:
 
     rgb: np.ndarray | None = None
     gray: np.ndarray | None = None
-    enh_gray: np.ndarray | None = None
+    detect_mat: np.ndarray | None = None
     sparse_object_map: csc_matrix = None
+    detect_mode: str = "gray"
 
     def clear(self):
         self.rgb = np.empty((0, 3), dtype=np.uint8)
         self.gray = np.empty((0, 2), dtype=np.float32)
-        self.enh_gray = np.empty((0, 2), dtype=np.float32)
+        self.detect_mat = np.empty((0, 2), dtype=np.float32)
         self.sparse_object_map = csc_matrix((0, 0), dtype=np.uint16)
+        self.detect_mode = "gray"
 
 
 @dataclass
@@ -76,7 +78,7 @@ class ImageDataManager:
     """Manages image data initialization, storage, and format handling.
 
     This class is the foundational layer for image data management, responsible for:
-    - Initializing and managing _core data structures (RGB, grayscale, enhanced grayscale, object maps)
+    - Initializing and managing _core data structures (RGB, grayscale, detection matrix, object maps)
     - Detecting and converting between different image formats (grayscale, RGB, RGBA)
     - Handling metadata storage with private, protected, public, and imported categories
     - Setting images from various input types (NumPy arrays, Image class instances)
@@ -87,7 +89,7 @@ class ImageDataManager:
 
     Attributes:
         _data (ImageData): Container for image arrays in different representations
-            (rgb, gray, enh_gray, and sparse object map).
+            (rgb, gray, detect_mat, and sparse object map).
         _metadata (ImageMetadata): Container for categorized metadata (private, protected,
             public, and imported).
     """
@@ -154,8 +156,8 @@ class ImageDataManager:
         """
         Allocates and initializes the required data structures for storing image
         and analysis-related data. This function dynamically allocates memory
-        for the RGB data, grayscale images, enhanced grayscale images, and
-        sparse object maps, which are key for processing and analyzing 
+        for the RGB data, grayscale images, detection matrix, and
+        sparse object maps, which are key for processing and analyzing
         microbe colony images on agar plates.
 
         The allocation and data quality directly affect downstream image 
@@ -189,8 +191,8 @@ class ImageDataManager:
                   placeholder empty array of RGB data.
                 - `gray`: A 2D array representing the grayscale version of the image,
                   useful for colony detection without color distractions.
-                - `enh_gray`: Enhanced grayscale data for improved visibility of 
-                  microbial colonies. Enhancement methods may influence colony 
+                - `detect_mat`: Detection matrix for improved visibility of
+                  microbial colonies. Enhancement methods may influence colony
                   identification results.
                 - `sparse_object_map`: A sparse matrix used for representing and 
                   analyzing segmented objects (e.g., separate colonies) in the image.
@@ -208,8 +210,9 @@ class ImageDataManager:
         self._data = ImageData(
                 rgb=rgb,
                 gray=np.empty(shape=shape[:2], dtype=np.float32),
-                enh_gray=np.empty(shape=shape[:2], dtype=np.float32),
-                sparse_object_map=csc_matrix(shape[:2], dtype=self._OBJMAP_DTYPE)
+                detect_mat=np.empty(shape=shape[:2], dtype=np.float32),
+                sparse_object_map=csc_matrix(shape[:2], dtype=self._OBJMAP_DTYPE),
+                detect_mode=getattr(self._data, 'detect_mode', 'gray'),
         )
 
     def set_image(self, im: Image | np.ndarray) -> None:
@@ -297,7 +300,12 @@ class ImageDataManager:
 
         # Deep copy all data attributes
         for key, value in input_cls._data.__dict__.items():
-            self._data.__dict__[key] = value.copy() if value is not None else None
+            if value is None:
+                self._data.__dict__[key] = None
+            elif hasattr(value, 'copy'):
+                self._data.__dict__[key] = value.copy()
+            else:
+                self._data.__dict__[key] = value
 
         self._metadata.protected = deepcopy(input_cls._metadata.protected)
         self._metadata.public = deepcopy(input_cls._metadata.public)
@@ -348,7 +356,7 @@ class ImageDataManager:
             matrix (np.ndarray): A 2-D array form of an image.
         """
         self._data.gray = matrix
-        self._data.enh_gray = self._data.gray
+        self._data.detect_mat = self._data.gray
         self._data.sparse_object_map = csc_matrix(
                 np.zeros(matrix.shape, dtype=self._OBJMAP_DTYPE)
         )

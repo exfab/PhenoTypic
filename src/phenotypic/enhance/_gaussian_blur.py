@@ -73,8 +73,8 @@ class GaussianBlur(ImageEnhancer):
         self.truncate = truncate
 
     def _operate(self, image: Image) -> Image:
-        image.enh_gray[:] = gaussian(
-                image=image.enh_gray[:],
+        image.detect_mat[:] = gaussian(
+                image=image.detect_mat[:],
                 sigma=self.sigma,
                 mode=self.mode,
                 truncate=self.truncate,

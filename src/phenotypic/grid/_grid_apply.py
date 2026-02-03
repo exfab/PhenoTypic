@@ -12,7 +12,7 @@ class GridApply:
 
     Parameters:
         image_op (ImageOperation): A PhenoTypic operation to be applied to each grid section.
-        reset_enh_matrix (bool): Whether to reset the enh_gray attribute of the image before applying the operation.
+        reset_enh_matrix (bool): Whether to reset the detect_mat attribute of the image before applying the operation.
     """
 
     def __init__(

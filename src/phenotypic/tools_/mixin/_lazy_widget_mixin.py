@@ -593,7 +593,7 @@ class LazyWidgetMixin:
         import ipywidgets as widgets
 
         self._view_dropdown = widgets.Dropdown(
-                options=["overlay", "rgb", "gray", "enh_gray", "objmap", "objmask"],
+                options=["overlay", "rgb", "gray", "detect_mat", "objmap", "objmask"],
                 value="overlay",
                 description="View:",
         )
@@ -670,8 +670,8 @@ class LazyWidgetMixin:
                             print("No RGB data available.")
                     elif view == "gray":
                         img_copy.gray.show()
-                    elif view == "enh_gray":
-                        img_copy.enh_gray.show()
+                    elif view == "detect_mat":
+                        img_copy.detect_mat.show()
                     elif view == "objmap":
                         img_copy.objmap.show()
                     elif view == "objmask":

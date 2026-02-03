@@ -156,7 +156,7 @@ class BaseOperation(ABC):
         ...     @staticmethod
         ...     def _operate(image: Image, threshold_value: int = 128) -> Image:
         ...         # Apply threshold algorithm
-        ...         image.enh_gray[:] = image.enh_gray[:] > threshold_value
+        ...         image.detect_mat[:] = image.detect_mat[:] > threshold_value
         ...         return image
         >>> # When operation is applied via pipeline:
         >>> operation = CustomThreshold(threshold_value=100)

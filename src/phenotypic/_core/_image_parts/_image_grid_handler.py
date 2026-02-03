@@ -254,7 +254,7 @@ class ImageGridHandler(Image):
         else:
             subimage = Image(arr=self.gray[key])
 
-        subimage.enh_gray[:] = self.enh_gray[key]
+        subimage.detect_mat[:] = self.detect_mat[key]
         subimage.objmap[:] = self.objmap[key]
         return subimage
 

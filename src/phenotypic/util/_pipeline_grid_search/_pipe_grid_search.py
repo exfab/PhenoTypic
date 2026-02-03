@@ -33,7 +33,7 @@ class PipeGridSearch(PipeGridSearchJoblib):
       Jupyter notebooks vs terminal execution.
 
     * **Selective Output:** Choose which image layers to persist (RGB, grayscale,
-      enhanced grayscale, object masks, labeled maps) to control disk usage.
+      detection matrix, object masks, labeled maps) to control disk usage.
 
     Args:
         pipe_cfgs (Dict[str, List[Tuple[ImageOperation, Dict[str, List[Any]]]]]):
@@ -68,7 +68,7 @@ class PipeGridSearch(PipeGridSearchJoblib):
 
             - ``"rgb"``: Original color image (TIFF, if available)
             - ``"gray"``: Grayscale luminance (TIFF)
-            - ``"enh_gray"``: Enhanced grayscale for processing (TIFF)
+            - ``"detect_mat"``: Detection matrix for processing (TIFF)
             - ``"objmask"``: Binary detection mask (PNG)
             - ``"objmap"``: Labeled object map (PNG)
             - ``"map2rgb"``: Object map rendered as RGB overlay (PNG)
@@ -126,7 +126,7 @@ class PipeGridSearch(PipeGridSearchJoblib):
         gs = PipeGridSearch(
             pipe_cfgs=pipe_cfgs,
             output_dir="/path/to/results",
-            data2save={"enh_gray", "objmask"}
+            data2save={"detect_mat", "objmask"}
         )
 
         # Load 96-well plate image
@@ -170,7 +170,7 @@ class PipeGridSearch(PipeGridSearchJoblib):
     **Memory Estimation:**
 
     Local processing estimates per-pipeline memory as ``base_image_size × 5``, accounting for:
-    enhanced grayscale, detection masks, intermediate processing arrays, and measurement data.
+    detection matrix, detection masks, intermediate processing arrays, and measurement data.
 
     **Use Cases:**
 

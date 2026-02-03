@@ -469,7 +469,7 @@ class PipelineExplorer(param.Parameterized):
     # Data to save
     save_overlay = param.Boolean(default=True)
     save_objmask = param.Boolean(default=True)
-    save_enh_gray = param.Boolean(default=False)
+    save_detect_mat = param.Boolean(default=False)
     save_rgb = param.Boolean(default=False)
 
     def __init__(self, image: Image = None, manager: InstanceManager = None, **params): ...
@@ -497,7 +497,7 @@ class SweepComparisonWidget(param.Parameterized):
     variant_a = param.Selector(doc="First variant to compare")
     variant_b = param.Selector(doc="Second variant to compare")
     view = param.Selector(
-        objects=['overlay', 'objmask', 'enh_gray', 'rgb'],
+        objects=['overlay', 'objmask', 'detect_mat', 'rgb'],
         default='overlay',
     )
 

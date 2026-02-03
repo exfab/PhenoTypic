@@ -181,7 +181,7 @@ if PANEL_AVAILABLE:
 
         view_type = param.Selector(
             default="overlay",
-            objects=["overlay", "objmask", "objmap", "enh_gray", "rgb", "gray"],
+            objects=["overlay", "objmask", "objmap", "detect_mat", "rgb", "gray"],
             doc="Output view to display",
         )
 

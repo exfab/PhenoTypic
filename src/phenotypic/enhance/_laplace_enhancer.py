@@ -59,8 +59,8 @@ class LaplaceEnhancer(ImageEnhancer):
         self.mask: Optional[np.ndarray] = mask
 
     def _operate(self, image: Image) -> Image:
-        image.enh_gray[:] = laplace(
-            image=image.enh_gray[:],
+        image.detect_mat[:] = laplace(
+            image=image.detect_mat[:],
             ksize=self.kernel_size,
             mask=self.mask,
         )

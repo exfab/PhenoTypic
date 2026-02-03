@@ -18,7 +18,7 @@ class ThresholdPlotter(BasePlotter):
     def try_thresh(self, figsize: Tuple[int, int] = (10, 8)) -> Tuple[plt.Figure, plt.Axes]:
         """Visualize and compare various thresholding techniques for colony segmentation.
 
-        Applies multiple thresholding algorithms to the enhanced grayscale image and displays
+        Applies multiple thresholding algorithms to the detection matrix image and displays
         the results in a grid, enabling rapid evaluation of which method works best for
         segmenting colonies on agar plates. This is particularly useful during pipeline
         development when tuning detection parameters.
@@ -44,12 +44,12 @@ class ThresholdPlotter(BasePlotter):
             For more sophisticated detection, use ObjectDetector classes directly.
 
         Raises:
-            ValueError: If enhanced grayscale image is unavailable.
+            ValueError: If detection matrix image is unavailable.
         """
         # Validate parameters
         self._validate_figsize(figsize)
 
-        return try_all_threshold(image=self._root_image.enh_gray[:], figsize=figsize)
+        return try_all_threshold(image=self._root_image.detect_mat[:], figsize=figsize)
 
 
 

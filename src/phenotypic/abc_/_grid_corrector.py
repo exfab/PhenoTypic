@@ -38,7 +38,7 @@ class GridCorrector(ImageCorrector, GridOperation, ABC):
 
     Use GridCorrector when implementing transformations that modify entire GridImage objects
     while respecting their grid structure. Like ImageCorrector, it updates all image components
-    (rgb, gray, enh_gray, objmask, objmap) together to maintain synchronization. The difference
+    (rgb, gray, detect_mat, objmask, objmap) together to maintain synchronization. The difference
     is that it requires GridImage input and output, making explicit that your transformation
     works in the context of grid-structured plate images.
 
@@ -47,7 +47,7 @@ class GridCorrector(ImageCorrector, GridOperation, ABC):
     GridCorrector operations modify ALL image components simultaneously:
 
     - **Color data:** rgb, gray (pixel coordinates change due to rotation/perspective)
-    - **Preprocessed data:** enh_gray (enhanced grayscale also rotates/transforms)
+    - **Preprocessed data:** detect_mat (detection matrix also rotates/transforms)
     - **Detection results:** objmask, objmap (colony masks and labels transform identically)
     - **Grid structure:** Grid rotation angle and alignment state (optional, depends on operation)
 
@@ -108,7 +108,7 @@ class GridCorrector(ImageCorrector, GridOperation, ABC):
 
     Ensure ALL image components are transformed identically:
 
-    - **Transformation synchronization:** When you rotate/warp rgb, also rotate gray, enh_gray, objmask, objmap.
+    - **Transformation synchronization:** When you rotate/warp rgb, also rotate gray, detect_mat, objmask, objmap.
       Use image.rotate() or similar methods that handle this automatically. Failure to synchronize causes
       misalignment between visual and label data.
     - **Coordinate system consistency:** Grid coordinates (well centers, row/column positions) must match
@@ -131,7 +131,7 @@ class GridCorrector(ImageCorrector, GridOperation, ABC):
     - **Color data (rgb, gray):** Use smooth interpolation (order=1+) to preserve colony edges
     - **Detection data (objmask, objmap):** Use nearest-neighbor interpolation (order=0) to
       preserve discrete object labels (must remain integers)
-    - **Enhanced grayscale:** Use same interpolation as color data for consistency
+    - **Detection matrix:** Use same interpolation as color data for consistency
 
     **Common Transformations**
 
@@ -176,7 +176,7 @@ class GridCorrector(ImageCorrector, GridOperation, ABC):
     When implementing ``_operate()``, ensure these components stay in sync:
 
     - **rgb & gray:** Always rotate together. Gray is derived from rgb, so maintain pixel correspondence.
-    - **enh_gray:** Enhanced grayscale processed from gray. Must rotate with same angle/transformation.
+    - **detect_mat:** Detection matrix processed from gray. Must rotate with same angle/transformation.
     - **objmask & objmap:** Detection results. Must use SAME interpolation as rgb to maintain object alignment.
     - **Grid metadata:** Update grid.rotation_angle if rotation applied. Keep grid.rows/cols unchanged unless
       grid structure itself changes.
@@ -206,7 +206,7 @@ class GridCorrector(ImageCorrector, GridOperation, ABC):
     Best practices for testing new GridCorrector subclasses:
 
     - Use ``load_synth_yeast_plate()`` from phenotypic.data (creates GridImage with synthetic colonies).
-    - Verify all components (rgb, gray, enh_gray, objmask, objmap) rotate identically by computing pixel
+    - Verify all components (rgb, gray, detect_mat, objmask, objmap) rotate identically by computing pixel
       differences before/after transformation.
     - Check that grid.rotation_angle is updated correctly and accumulated rotations are tracked.
     - Validate on multiple plate formats (96-well, 384-well) to ensure well positions are handled correctly.

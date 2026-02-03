@@ -35,7 +35,7 @@ class SobelFilter(ImageEnhancer):
     """
 
     def _operate(self, image: Image) -> Image:
-        image.enh_gray[:] = skimage.filters.sobel(
-                image=image.enh_gray[:]
+        image.detect_mat[:] = skimage.filters.sobel(
+                image=image.detect_mat[:]
         )
         return image

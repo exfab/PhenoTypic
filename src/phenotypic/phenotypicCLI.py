@@ -420,6 +420,8 @@ def _display_execution_config(
         table.add_row("Grid Dimensions", f"{config.nrows} × {config.ncols}")
     if config.bit_depth:
         table.add_row("Bit Depth", str(config.bit_depth))
+    if config.detect_mode != "gray":
+        table.add_row("Detect Mode", config.detect_mode)
     table.add_row("", "")  # Spacer
 
     # Execution settings
@@ -448,16 +450,16 @@ def _display_execution_config(
         layers.append("RGB")
     if config.save_gray:
         layers.append("Gray")
-    if config.save_enh_gray:
-        layers.append("Enhanced Gray")
+    if config.save_detect_mat:
+        layers.append("Detection Matrix")
     if config.save_objmask:
         layers.append("Object Mask")
     if config.save_objmap:
         layers.append("Object Map")
     if config.save_objmap_overlay:
         layers.append("Object Map Overlay")
-    if config.save_enh_gray_overlay:
-        layers.append("Enhanced Gray Overlay")
+    if config.save_detect_mat_overlay:
+        layers.append("Detection Matrix Overlay")
     if config.save_objmask_overlay:
         layers.append("Object Mask Overlay")
 
@@ -526,6 +528,13 @@ def _display_execution_config(
         help="Bit depth of input images (8 or 16)",
 )
 @click.option(
+        "--detect-mode",
+        type=click.Choice(["gray", "red", "green", "blue"]),
+        default="gray",
+        show_default=True,
+        help="Color channel for detection matrix (gray, red, green, or blue)",
+)
+@click.option(
         "--n-jobs",
         type=int,
         default=-1,
@@ -563,7 +572,7 @@ def _display_execution_config(
 @click.option(
         "--save-enh-gray",
         is_flag=True,
-        help="Save enhanced grayscale to OUTPUT_DIR/enh_gray/",
+        help="Save detection matrix to OUTPUT_DIR/detect_mat/",
 )
 @click.option(
         "--save-objmask",
@@ -583,7 +592,7 @@ def _display_execution_config(
 @click.option(
         "--save-enh-gray-overlay",
         is_flag=True,
-        help="Save enhanced grayscale overlay to OUTPUT_DIR/enh_gray_overlay/",
+        help="Save detection matrix overlay to OUTPUT_DIR/detect_mat_overlay/",
 )
 @click.option(
         "--save-objmask-overlay",
@@ -606,7 +615,7 @@ def _display_execution_config(
         "--enh-gray-ext",
         default="tiff",
         show_default=True,
-        help="File extension for enhanced grayscale saves",
+        help="File extension for detection matrix saves",
 )
 @click.option(
         "--objmask-ext",
@@ -693,21 +702,22 @@ def main(
         nrows: int,
         ncols: int,
         bit_depth: Optional[int],
+        detect_mode: str,
         n_jobs: int,
         slurm_args: Sequence[str],
         force_local: bool,
         wait: bool,
         save_rgb: bool,
         save_gray: bool,
-        save_enh_gray: bool,
+        save_detect_mat: bool,
         save_objmask: bool,
         save_objmap: bool,
         save_objmap_overlay: bool,
-        save_enh_gray_overlay: bool,
+        save_detect_mat_overlay: bool,
         save_objmask_overlay: bool,
         rgb_ext: str,
         gray_ext: str,
-        enh_gray_ext: str,
+        detect_mat_ext: str,
         objmask_ext: str,
         objmap_ext: str,
         objmap_overlay_ext: str,
@@ -736,7 +746,7 @@ def main(
         try:
             rgb_ext = normalize_extension(rgb_ext, ".tiff")
             gray_ext = normalize_extension(gray_ext, ".tiff")
-            enh_gray_ext = normalize_extension(enh_gray_ext, ".tiff")
+            detect_mat_ext = normalize_extension(detect_mat_ext, ".tiff")
             objmask_ext = normalize_extension(objmask_ext, ".png")
             objmap_ext = normalize_extension(objmap_ext, ".png")
             objmap_overlay_ext = normalize_extension(objmap_overlay_ext, ".png")
@@ -835,21 +845,22 @@ def main(
                 nrows=nrows,
                 ncols=ncols,
                 bit_depth=bit_depth,
+                detect_mode=detect_mode,
                 n_jobs=n_jobs,
                 slurm_args=slurm_args_dict,
                 force_local=force_local,
                 wait=wait,
                 save_rgb=save_rgb,
                 save_gray=save_gray,
-                save_enh_gray=save_enh_gray,
+                save_detect_mat=save_detect_mat,
                 save_objmask=save_objmask,
                 save_objmap=save_objmap,
                 save_objmap_overlay=save_objmap_overlay,
-                save_enh_gray_overlay=save_enh_gray_overlay,
+                save_detect_mat_overlay=save_detect_mat_overlay,
                 save_objmask_overlay=save_objmask_overlay,
                 rgb_ext=rgb_ext,
                 gray_ext=gray_ext,
-                enh_gray_ext=enh_gray_ext,
+                detect_mat_ext=detect_mat_ext,
                 objmask_ext=objmask_ext,
                 objmap_ext=objmap_ext,
                 objmap_overlay_ext=objmap_overlay_ext,
@@ -1129,16 +1140,17 @@ def main(
                 "nrows": config.nrows,
                 "ncols": config.ncols,
                 "bit_depth": config.bit_depth,
+                "detect_mode": config.detect_mode,
                 "n_jobs": config.n_jobs,
                 "slurm_args": config.slurm_args,
                 "save_layers": {
                     "rgb": config.save_rgb,
                     "gray": config.save_gray,
-                    "enh_gray": config.save_enh_gray,
+                    "detect_mat": config.save_detect_mat,
                     "objmask": config.save_objmask,
                     "objmap": config.save_objmap,
                     "objmap_overlay": config.save_objmap_overlay,
-                    "enh_gray_overlay": config.save_enh_gray_overlay,
+                    "detect_mat_overlay": config.save_detect_mat_overlay,
                     "objmask_overlay": config.save_objmask_overlay,
                 },
             }
@@ -1152,17 +1164,17 @@ def main(
                 save_layers={
                     "rgb"              : config.save_rgb,
                     "gray"             : config.save_gray,
-                    "enh_gray"         : config.save_enh_gray,
+                    "detect_mat"         : config.save_detect_mat,
                     "objmask"          : config.save_objmask,
                     "objmap"           : config.save_objmap,
                     "objmap_overlay"   : config.save_objmap_overlay,
-                    "enh_gray_overlay" : config.save_enh_gray_overlay,
+                    "detect_mat_overlay" : config.save_detect_mat_overlay,
                     "objmask_overlay"  : config.save_objmask_overlay,
                 },
                 extensions={
                     "rgb"            : config.rgb_ext,
                     "gray"           : config.gray_ext,
-                    "enh_gray"       : config.enh_gray_ext,
+                    "detect_mat"       : config.detect_mat_ext,
                     "objmask"        : config.objmask_ext,
                     "objmap"         : config.objmap_ext,
                     "objmap_overlay" : config.objmap_overlay_ext,

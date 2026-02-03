@@ -76,14 +76,14 @@ class GaussianSubtract(ImageEnhancer):
 
     def _operate(self, image: Image):
         background = gaussian(
-                image=image.enh_gray[:],
+                image=image.detect_mat[:],
                 sigma=self.sigma,
                 mode=self.mode,
                 cval=self.cval,
                 truncate=self.truncate,
                 preserve_range=self.preserve_range,
         )
-        image.enh_gray[:] = np.clip((image.enh_gray[:].copy() - background),
+        image.detect_mat[:] = np.clip((image.detect_mat[:].copy() - background),
                                     a_min=0.0,
                                     a_max=1.0)
 

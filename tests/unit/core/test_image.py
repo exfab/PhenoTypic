@@ -63,7 +63,7 @@ def test_set_image_from_image(sample_image_array_with_imformat):
     if not phenotypic_image.rgb.isempty():
         assert np.array_equal(phenotypic_image_2.rgb[:], phenotypic_image.rgb[:])
     assert np.array_equal(phenotypic_image_2.gray[:], phenotypic_image.gray[:])
-    assert np.array_equal(phenotypic_image_2.enh_gray[:], phenotypic_image.enh_gray[:])
+    assert np.array_equal(phenotypic_image_2.detect_mat[:], phenotypic_image.detect_mat[:])
     assert np.array_equal(phenotypic_image_2.objmask[:], phenotypic_image.objmask[:])
     assert np.array_equal(phenotypic_image_2.objmap[:], phenotypic_image.objmap[:])
 
@@ -132,11 +132,11 @@ def test_image_matrix_change(sample_image_array_with_imformat):
 def test_image_det_matrix_access(sample_image_array_with_imformat):
     input_image, input_imformat, true_imformat = sample_image_array_with_imformat
     ps_image = phenotypic.Image(arr=input_image)
-    assert np.array_equal(ps_image.enh_gray[:], ps_image.gray[:])
+    assert np.array_equal(ps_image.detect_mat[:], ps_image.gray[:])
 
-    ps_image.enh_gray[:10, :10] = 0
-    ps_image.enh_gray[-10:, -10:] = 1
-    assert not np.array_equal(ps_image.enh_gray[:], ps_image.gray[:])
+    ps_image.detect_mat[:10, :10] = 0
+    ps_image.detect_mat[-10:, -10:] = 1
+    assert not np.array_equal(ps_image.detect_mat[:], ps_image.gray[:])
 
 
 @timeit
@@ -195,7 +195,7 @@ def test_image_copy(sample_image_array_with_imformat):
     if not ps_image.rgb.isempty():
         assert np.array_equal(ps_image.rgb[:], ps_image.rgb[:])
     assert np.array_equal(ps_image.gray[:], ps_image_copy.gray[:])
-    assert np.array_equal(ps_image.enh_gray[:], ps_image_copy.enh_gray[:])
+    assert np.array_equal(ps_image.detect_mat[:], ps_image_copy.detect_mat[:])
     assert np.array_equal(ps_image.objmask[:], ps_image_copy.objmask[:])
     assert np.array_equal(ps_image.objmap[:], ps_image_copy.objmap[:])
 
@@ -214,7 +214,7 @@ def test_slicing(sample_image_array_with_imformat):
         sliced_ps_image.gray[:], ps_image.gray[:row_slice, :col_slice]
     )
     assert np.array_equal(
-        sliced_ps_image.enh_gray[:], ps_image.enh_gray[:row_slice, :col_slice]
+        sliced_ps_image.detect_mat[:], ps_image.detect_mat[:row_slice, :col_slice]
     )
     assert np.array_equal(
         sliced_ps_image.objmask[:], ps_image.objmask[:row_slice, :col_slice]
@@ -305,24 +305,24 @@ def test_gray_imsave_tiff(tmp_path):
 
 
 @timeit
-def test_enh_gray_imsave_jpg(tmp_path):
-    out = tmp_path / "out_enh_gray.jpg"
+def test_detect_mat_imsave_jpg(tmp_path):
+    out = tmp_path / "out_detect_mat.jpg"
     image = phenotypic.data.load_colony(mode="Image")
-    image.enh_gray.imsave(out)
+    image.detect_mat.imsave(out)
     assert out.exists(), f"Enhanced Gray JPEG file was not created at {out}"
 
 
 @timeit
-def test_enh_gray_imsave_png(tmp_path):
-    out = tmp_path / "out_enh_gray.png"
+def test_detect_mat_imsave_png(tmp_path):
+    out = tmp_path / "out_detect_mat.png"
     image = phenotypic.data.load_colony(mode="Image")
-    image.enh_gray.imsave(out)
+    image.detect_mat.imsave(out)
     assert out.exists(), f"Enhanced Gray PNG file was not created at {out}"
 
 
 @timeit
-def test_enh_gray_imsave_tiff(tmp_path):
-    out = tmp_path / "out_enh_gray.tiff"
+def test_detect_mat_imsave_tiff(tmp_path):
+    out = tmp_path / "out_detect_mat.tiff"
     image = phenotypic.data.load_colony(mode="Image")
-    image.enh_gray.imsave(out)
+    image.detect_mat.imsave(out)
     assert out.exists(), f"Enhanced Gray TIFF file was not created at {out}"

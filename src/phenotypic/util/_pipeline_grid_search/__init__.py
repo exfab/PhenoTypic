@@ -37,7 +37,7 @@ computing (via submitit/SLURM) and local parallel processing (via joblib).
     gs = PipeGridSearch(
         pipe_cfgs=pipe_cfgs,
         output_dir="/path/to/results",
-        data2save={"enh_gray", "objmask"}
+        data2save={"detect_mat", "objmask"}
     )
 
     # Run with auto memory-aware job scaling

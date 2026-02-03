@@ -4,7 +4,7 @@ Offers operations that realign grids or correct field-of-view drift so detected 
 stay anchored to their intended wells or pins. The grid aligner adjusts spacing and
 offsets using reference points or heuristics suited to arrayed plate layouts. Also includes
 wavelet denoising correctors for full-image noise removal across all components (RGB, gray,
-enh_gray).
+detect_mat).
 """
 
 from ._bayesshrink_corrector import BayesShrinkCorrector

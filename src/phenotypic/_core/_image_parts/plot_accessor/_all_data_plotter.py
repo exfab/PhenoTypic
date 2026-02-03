@@ -45,7 +45,7 @@ class AllDataPlotter(BasePlotter):
         """Display all data representations in a single figure.
 
         Creates a multi-panel figure showing RGB (if available), grayscale,
-        enhanced grayscale, and either object map or overlay visualization.
+        detection matrix, and either object map or overlay visualization.
         This helps analyze microbe colonies cultured on solid media agar by
         visualizing various properties such as grayscale images, processed
         (enhanced) images, object maps, or overlays.
@@ -84,7 +84,7 @@ class AllDataPlotter(BasePlotter):
             self._root_image.rgb.show(ax=ax[0], **kwargs)
 
         self._root_image.gray.show(ax=ax[1 - idxer_helper], **kwargs)
-        self._root_image.enh_gray.show(ax=ax[2 - idxer_helper], **kwargs)
+        self._root_image.detect_mat.show(ax=ax[2 - idxer_helper], **kwargs)
 
         match mode:
             case "overlay":

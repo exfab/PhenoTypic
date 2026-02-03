@@ -71,19 +71,19 @@ class RankMedianEnhancer(ImageEnhancer):
         self.shift_y = shift_y
 
     def _operate(self, image: Image) -> Image:
-        image.enh_gray[:] = img_as_float(
+        image.detect_mat[:] = img_as_float(
                 median(
-                        image=img_as_ubyte(image.enh_gray[:]),
+                        image=img_as_ubyte(image.detect_mat[:]),
                         footprint=self._get_footprint(
-                                self._get_footprint_width(image.enh_gray[:])
+                                self._get_footprint_width(image.detect_mat[:])
                         ),
                 )
         )
         return image
 
-    def _get_footprint_width(self, enh_gray: np.ndarray) -> int:
+    def _get_footprint_width(self, detect_mat: np.ndarray) -> int:
         if self.width is None:
-            return int(np.min(enh_gray.shape) * 0.002)
+            return int(np.min(detect_mat.shape) * 0.002)
         else:
             return self.width
 

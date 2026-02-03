@@ -110,18 +110,18 @@ class RankOtsuDetector(ObjectDetector, FootprintMixin):
         self.ignore_zeros = ignore_zeros
 
     def _operate(self, image: Image) -> Image:
-        enh_gray = img_as_ubyte(image.enh_gray[:])
+        detect_mat = img_as_ubyte(image.detect_mat[:])
         if self.ignore_zeros:
             mask = np.zeros(image.shape[:2], dtype=np.uint8)
-            mask[enh_gray.nonzero()] = 1
+            mask[detect_mat.nonzero()] = 1
             mask = mask > 0
         else:
             mask = None
 
         width = min(image.shape[:2]) // 8 if self.width is None else self.width
 
-        image.objmask[:] = enh_gray >= rank.otsu(
-                image=enh_gray,
+        image.objmask[:] = detect_mat >= rank.otsu(
+                image=detect_mat,
                 footprint=self._make_footprint(
                         shape=self.shape,
                         width=width,

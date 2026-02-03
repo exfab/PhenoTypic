@@ -71,16 +71,16 @@ numpy-like indexing and slicing operations.
 Data Access - Enhanced
 ----------------------
 
-.. autoproperty:: Image.enh_gray
+.. autoproperty:: Image.detect_mat
 
-The ``enh_gray`` property provides access to an enhanceable copy of the grayscale image.
+The ``detect_mat`` property provides access to an enhanceable copy of the grayscale image.
 This is designed for processing pipelines where enhancement operations should be applied
-without modifying the original grayscale data. Changes to enhanced grayscale are tracked
+without modifying the original grayscale data. Changes to detection matrix are tracked
 separately from the base image.
 
-**EnhancedGrayscale API:**
+**DetectMatAccessor API:**
 
-.. autoclass:: phenotypic._core._image_parts.accessors._enh_grayscale_accessor.EnhancedGrayscale
+.. autoclass:: phenotypic._core._image_parts.accessors._detect_mat_accessor.DetectMatAccessor
    :members:
    :undoc-members:
    :show-inheritance:

@@ -48,7 +48,7 @@ Downloadable Notebooks
     .. grid-item-card:: Prerequisites
         :shadow: md
 
-        **Before starting this tutorial**, please complete the {doc} `Image` to understand the core `Image` class features (rgb, gray, enh_gray, objmap, objects, etc.).
+        **Before starting this tutorial**, please complete the {doc} `Image` to understand the core `Image` class features (rgb, gray, detect_mat, objmap, objects, etc.).
 
         +++
         :download:`Download notebook <user_guide/tutorial/notebooks/GridImages.ipynb>`

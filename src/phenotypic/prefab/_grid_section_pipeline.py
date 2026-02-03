@@ -103,7 +103,7 @@ class GridSectionPipeline(PrefabPipeline):
             section_contrast_upper_percentile (int): Upper percentile for contrast stretching in sections.
             section_otsu_ignore_zeros (bool): Whether to ignore zeros in section-level Otsu detection.
             section_otsu_ignore_borders (bool): Whether to ignore borders in section-level Otsu detection.
-            grid_apply_reset_enh_matrix (bool): Whether to reset enh_gray before applying section-level pipeline.
+            grid_apply_reset_enh_matrix (bool): Whether to reset detect_mat before applying section-level pipeline.
             small_object_min_size_2 (int): Minimum size of objects to retain in second removal step.
             color_white_chroma_max (float): Maximum white chroma value for color measurement.
             color_chroma_min (float): Minimum chroma value for color measurement.

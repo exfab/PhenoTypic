@@ -263,14 +263,14 @@ class OutputManager:
             if path:
                 saved_paths["gray"] = path
 
-        # Save enhanced grayscale if requested
-        if self.save_layers.get("enh_gray") and not image.enh_gray.isempty():
+        # Save detection matrix if requested
+        if self.save_layers.get("detect_mat") and not image.detect_mat.isempty():
             path = self._save_layer_safely(
-                "enh_gray", image, dataset_name, image_stem,
-                lambda p: image.enh_gray.imsave(filepath=p)
+                "detect_mat", image, dataset_name, image_stem,
+                lambda p: image.detect_mat.imsave(filepath=p)
             )
             if path:
-                saved_paths["enh_gray"] = path
+                saved_paths["detect_mat"] = path
 
         # Save object mask if requested
         if self.save_layers.get("objmask") and not image.objmask.isempty():
@@ -301,14 +301,14 @@ class OutputManager:
             if path:
                 saved_paths[layer_name] = path
 
-        # Save enhanced grayscale overlay if requested
-        if self.save_layers.get("enh_gray_overlay") and not image.enh_gray.isempty():
+        # Save detection matrix overlay if requested
+        if self.save_layers.get("detect_mat_overlay") and not image.detect_mat.isempty():
             path = self._save_layer_safely(
-                "enh_gray_overlay", image, dataset_name, image_stem,
-                lambda p: image.enh_gray.save_overlay(filepath=p, overlay_alpha=self.overlay_alpha)
+                "detect_mat_overlay", image, dataset_name, image_stem,
+                lambda p: image.detect_mat.save_overlay(filepath=p, overlay_alpha=self.overlay_alpha)
             )
             if path:
-                saved_paths["enh_gray_overlay"] = path
+                saved_paths["detect_mat_overlay"] = path
 
         # Save object mask overlay if requested
         if self.save_layers.get("objmask_overlay") and not image.objmask.isempty():

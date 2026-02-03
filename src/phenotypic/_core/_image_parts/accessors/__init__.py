@@ -17,8 +17,8 @@ Image Data Containers
 2. :class:`Grayscale`
     Provides structured access to the image in its gray form, offering methods suited for mathematical or analytical operations on image data. Automatically converted from RGB using weighted luminance conversion.
 
-3. :class:`EnhancedGrayscale`
-    An enhanceable copy of the image gray to improve detection while maintaining the original image data integrity.
+3. :class:`DetectMatAccessor`
+    A configurable detection matrix derived from the image gray (or a color channel) to improve detection while maintaining the original image data integrity.
 
 Objects and Object Mapping
 ==========================
@@ -112,7 +112,7 @@ The ``accessors`` submodule is designed for developers and researchers working o
 
 from ._rgb_accessor import ImageRGB
 from ._grayscale_accessor import Grayscale
-from ._enh_grayscale_accessor import EnhancedGrayscale
+from ._detect_mat_accessor import DetectMatAccessor
 from ._objmap_accessor import ObjectMap
 from ._objmask_accessor import ObjectMask
 
@@ -136,7 +136,7 @@ from ..color_space_accessors._chromaticity_xy_accessor import xyChromaticityAcce
 __all__ = [
     "ImageRGB",
     "Grayscale",
-    "EnhancedGrayscale",
+    "DetectMatAccessor",
     "ObjectMap",
     "ObjectMask",
     "ObjectsAccessor",

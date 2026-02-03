@@ -123,7 +123,7 @@ class SmallToLargeMerger(ObjectRefiner):
             image: Image object with populated objmap from prior detection.
 
         Returns:
-            Image object with merged objmap and unchanged RGB/gray/enh_gray.
+            Image object with merged objmap and unchanged RGB/gray/detect_mat.
         """
         objmap = image.objmap[:]
 

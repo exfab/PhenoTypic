@@ -18,7 +18,7 @@ class GridObjectRefiner(ObjectRefiner, GridOperation, ABC):
     GridObjectRefiner is the grid-aware variant of ObjectRefiner, combining object mask refinement
     with grid structure awareness. It refines detected objects (colony masks and labeled maps) while
     respecting well boundaries and grid-aligned regions in arrayed plate images (96-well, 384-well,
-    etc.). Like ObjectRefiner, it protects original image data (RGB, grayscale, enhanced grayscale)
+    etc.). Like ObjectRefiner, it protects original image data (RGB, grayscale, detection matrix)
     and modifies only detection results.
 
     **Quick Decision Guide: GridObjectRefiner vs ObjectRefiner**
@@ -61,7 +61,7 @@ class GridObjectRefiner(ObjectRefiner, GridOperation, ABC):
       position-aware refinement decisions.
 
     - **Detection-only modification:** Like ObjectRefiner, modifies only ``image.objmask[:]`` and
-      ``image.objmap[:]``. Original image components (RGB, grayscale, enhanced grayscale) are protected
+      ``image.objmap[:]``. Original image components (RGB, grayscale, detection matrix) are protected
       via ``@validate_operation_integrity`` decorator.
 
     - **Array phenotyping:** Well-suited for high-throughput plate analysis where grid structure matters
@@ -180,7 +180,7 @@ class GridObjectRefiner(ObjectRefiner, GridOperation, ABC):
           Passing a plain Image raises ``GridImageInputError``.
 
         - **Protected components:** The ``@validate_operation_integrity`` decorator ensures
-          ``image.rgb``, ``image.gray``, ``image.enh_gray`` cannot be modified.
+          ``image.rgb``, ``image.gray``, ``image.detect_mat`` cannot be modified.
           Only ``image.objmask`` and ``image.objmap`` can be refined.
 
         - **Immutability by default:** ``apply(image)`` returns a modified copy. Set
@@ -296,7 +296,7 @@ class GridObjectRefiner(ObjectRefiner, GridOperation, ABC):
         >>> print(f"Refined: {refined_image.objmap[:].max()} colonies")
     """
 
-    @validate_operation_integrity("image.rgb", "image.gray", "image.enh_gray")
+    @validate_operation_integrity("image.rgb", "image.gray", "image.detect_mat")
     def apply(self, image: GridImage, inplace: bool = False) -> GridImage:
         from phenotypic import GridImage
 

@@ -29,7 +29,7 @@ class ImageCropper(ImageCorrector):
     - **Standardize image size:** For batch processing of plates with slightly different
       captured boundaries, cropping to consistent margins ensures uniform image dimensions.
 
-    **Important caveat:** The cropping is applied to the entire image (rgb, gray, enh_gray,
+    **Important caveat:** The cropping is applied to the entire image (rgb, gray, detect_mat,
     objmask, objmap) together, making this an ImageCorrector. If detection has already been
     performed, the detection results (objmask, objmap) are cropped along with the image
     data. Re-detection after cropping may be necessary if the crop affects detection quality.
@@ -167,7 +167,7 @@ class ImageCropper(ImageCorrector):
         """Crop the image by removing pixels from edges specified in __init__.
 
         Extracts the crop indices for each edge and returns a new Image with the cropped
-        region. The entire image structure (rgb, gray, enh_gray, objmask, objmap) is
+        region. The entire image structure (rgb, gray, detect_mat, objmask, objmap) is
         cropped identically, ensuring all components remain synchronized.
 
         For GridImage instances, preserves the grid structure (grid_finder, nrows, ncols)
@@ -180,7 +180,7 @@ class ImageCropper(ImageCorrector):
         Returns:
             Image: A new Image instance (or GridImage if input was GridImage) containing
                 only the central cropped region, with all image components (rgb, gray,
-                enh_gray, objmask, objmap) reduced to the same rectangular region.
+                detect_mat, objmask, objmap) reduced to the same rectangular region.
 
         Raises:
             ValueError: If the crop parameters would result in an invalid slice (e.g.,

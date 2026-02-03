@@ -28,7 +28,7 @@ class WhiteTophatEnhance(ImageEnhancer):
             None picks a small default based on image dimensions.
 
     Returns:
-        Image: Modified image with `enh_gray` containing only the extracted
+        Image: Modified image with `detect_mat` containing only the extracted
         small bright structures.
 
     Raises:
@@ -60,8 +60,8 @@ class WhiteTophatEnhance(ImageEnhancer):
         >>> image = load_synth_yeast_plate()
         >>> enhancer = WhiteTophatEnhance(shape='disk', width=15)
         >>> enhanced = enhancer.apply(image)
-        >>> # enh_gray now contains only small bright structures
-        >>> enhanced.enh_gray[:].max() <= image.enh_gray[:].max()
+        >>> # detect_mat now contains only small bright structures
+        >>> enhanced.detect_mat[:].max() <= image.detect_mat[:].max()
         True
 
         Using in a pipeline to detect small colonies:
@@ -85,12 +85,12 @@ class WhiteTophatEnhance(ImageEnhancer):
 
     def _operate(self, image: Image) -> Image:
         white_tophat_results = white_tophat(
-            image.enh_gray[:],
+            image.detect_mat[:],
             footprint=self._get_footprint(
-                self._get_footprint_width(detection_matrix=image.enh_gray[:]),
+                self._get_footprint_width(detection_matrix=image.detect_mat[:]),
             ),
         )
-        image.enh_gray[:] = white_tophat_results
+        image.detect_mat[:] = white_tophat_results
 
         return image
 

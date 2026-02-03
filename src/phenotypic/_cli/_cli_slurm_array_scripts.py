@@ -143,12 +143,16 @@ def generate_array_job_script(
     if config.bit_depth is not None:
         cmd_parts.extend(["--bit-depth", str(config.bit_depth)])
 
+    # Add detect mode if not default
+    if config.detect_mode != "gray":
+        cmd_parts.extend(["--detect-mode", config.detect_mode])
+
     # Add save layer flags
     if config.save_rgb:
         cmd_parts.append("--save-rgb")
     if config.save_gray:
         cmd_parts.append("--save-gray")
-    if config.save_enh_gray:
+    if config.save_detect_mat:
         cmd_parts.append("--save-enh-gray")
     if config.save_objmask:
         cmd_parts.append("--save-objmask")
@@ -156,7 +160,7 @@ def generate_array_job_script(
         cmd_parts.append("--save-objmap")
     if config.save_objmap_overlay:
         cmd_parts.append("--save-objmap-overlay")
-    if config.save_enh_gray_overlay:
+    if config.save_detect_mat_overlay:
         cmd_parts.append("--save-enh-gray-overlay")
     if config.save_objmask_overlay:
         cmd_parts.append("--save-objmask-overlay")
@@ -164,7 +168,7 @@ def generate_array_job_script(
     # Add extensions
     cmd_parts.extend(["--rgb-ext", config.rgb_ext])
     cmd_parts.extend(["--gray-ext", config.gray_ext])
-    cmd_parts.extend(["--enh-gray-ext", config.enh_gray_ext])
+    cmd_parts.extend(["--enh-gray-ext", config.detect_mat_ext])
     cmd_parts.extend(["--objmask-ext", config.objmask_ext])
     cmd_parts.extend(["--objmap-ext", config.objmap_ext])
     cmd_parts.extend(["--objmap-overlay-ext", config.objmap_overlay_ext])

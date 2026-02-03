@@ -45,7 +45,7 @@ classDiagram
         +- show_overlay(object_label, figsize, title, annotate, annotation_params, ax, overlay_params, imshow_params)
     }
 
-    class EnhancedGrayscale {
+    class DetectMatAccessor {
         note "An enhanced gray accessor for images"
         +- __getitem__(key)
         +- __setitem__(key, value)
@@ -187,6 +187,6 @@ classDiagram
     ImageAccessorBase <|-- ObjectsAccessor
     MultiChannelAccessor <|-- ImageRGB
     MultiChannelAccessor <|-- Grayscale
-    MultiChannelAccessor <|-- EnhancedGrayscale
+    MultiChannelAccessor <|-- DetectMatAccessor
     MultiChannelAccessor <|-- ObjectMap
     MultiChannelAccessor <|-- ObjectMask

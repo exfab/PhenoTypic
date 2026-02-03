@@ -111,8 +111,8 @@ class HessianFilter(ImageEnhancer):
         self.cval = cval
 
     def _operate(self, image: Image) -> Image:
-        image.enh_gray[:] = hessian(
-                image=image.enh_gray[:],
+        image.detect_mat[:] = hessian(
+                image=image.detect_mat[:],
                 sigmas=self.sigmas,
                 alpha=self.alpha,
                 beta=self.beta,
