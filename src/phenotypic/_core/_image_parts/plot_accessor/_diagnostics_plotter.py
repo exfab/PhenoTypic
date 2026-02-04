@@ -14,6 +14,7 @@ from skimage.feature import structure_tensor, structure_tensor_eigenvalues
 from skimage.filters import frangi, hessian, meijering, sobel
 
 from ._base_plotter import BasePlotter
+from ._diagnostics_dashboard import PANEL_AVAILABLE
 from ._diagnostics_types import (
     PANEL_B_AUTOCORR,
     PANEL_C_PSD,
@@ -949,20 +950,23 @@ class DiagnosticsPlotter(BasePlotter):
         structure_sigma: float = 1.5,
         ridge_scales: list[float] | None = None,
         ridge_method: Literal["meijering", "frangi", "hessian"] = "meijering",
-    ) -> tuple[plt.Figure, np.ndarray, dict[str, Any]]:
-        """Generate comprehensive image quality diagnostics figure.
+    ) -> tuple[Any, dict[str, Any]]:
+        """Generate comprehensive image quality diagnostics.
 
-        Creates a multi-panel figure analyzing noise, contrast, structure, and background
-        characteristics of the image. Returns quantitative metrics and data-driven
-        recommendations for preprocessing operations.
+        When Panel is installed, returns an interactive dashboard with live-updating
+        plots and section toggles. When Panel is not available, falls back to a
+        static matplotlib figure.
 
         Args:
             sections: Which sections to include. "all" for complete diagnostics, or a
                 list of section names: ["noise", "contrast", "structure", "background"].
             figsize: Figure size as (width, height) in inches. If None, computed
-                automatically based on number of sections.
-            include_descriptions: If True, include panel description text below each section.
+                automatically based on number of sections. Only used for matplotlib
+                fallback.
+            include_descriptions: If True, include panel description text below each
+                section. Only used for matplotlib fallback.
             include_recommendations: If True, include recommendations summary panel.
+                Only used for matplotlib fallback.
             background_sigma: Sigma for background estimation Gaussian smoothing.
             structure_sigma: Sigma for structure tensor computation.
             ridge_scales: Scales for multiscale ridge detection. Defaults to
@@ -971,9 +975,9 @@ class DiagnosticsPlotter(BasePlotter):
                 neurite-like structures), "frangi" (vesselness), or "hessian" (raw eigenvalues).
 
         Returns:
-            Tuple of (fig, axes, metrics_dict) where:
-                - fig: matplotlib Figure object
-                - axes: numpy array of Axes objects
+            Tuple of (dashboard_or_fig, metrics_dict) where:
+                - dashboard_or_fig: A DiagnosticsDashboard (if Panel installed) with a
+                  ``.panel()`` method, or a matplotlib Figure (fallback).
                 - metrics_dict: Dictionary containing:
                     - "bit_depth": Image bit depth (8 or 16)
                     - "noise": Noise metrics (snr, sigma_mad, correlation_length)
@@ -985,27 +989,71 @@ class DiagnosticsPlotter(BasePlotter):
                     - "recommendations": List of actionable recommendations
 
         Examples:
-            Full diagnostics:
+            Interactive dashboard (requires Panel):
 
             >>> from phenotypic.data import load_synth_yeast_plate
             >>> image = load_synth_yeast_plate()
-            >>> fig, axes, metrics = image.plot.diagnostics()
+            >>> dashboard, metrics = image.plot.diagnostics()
             >>> print(f"SNR: {metrics['noise']['snr']:.2f}")
+            >>> dashboard.panel()  # Display interactive dashboard
+
+            Matplotlib fallback (no Panel):
+
+            >>> fig, metrics = image.plot.diagnostics()
             >>> plt.savefig("diagnostics.png", dpi=150, bbox_inches="tight")
             >>> plt.close(fig)
+        """
+        # Default ridge scales
+        if ridge_scales is None:
+            ridge_scales = [0.5, 1.0, 1.5, 2.0, 3.0, 4.0, 5.0]
 
-            Specific sections:
+        # Get detection matrix
+        detect_mat = self._root_image.detect_mat[:]
 
-            >>> fig, axes, metrics = image.plot.diagnostics(sections=["noise", "contrast"])
-            >>> plt.close(fig)
+        # --- Interactive Panel dashboard path ---
+        if PANEL_AVAILABLE:
+            from ._diagnostics_dashboard import DiagnosticsDashboard
 
-            Custom ridge detection:
+            dashboard = DiagnosticsDashboard(
+                self,
+                detect_mat,
+                structure_sigma=structure_sigma,
+                ridge_method=ridge_method,
+                ridge_scales=ridge_scales,
+                background_sigma=background_sigma,
+            )
+            return dashboard, dashboard.metrics
 
-            >>> fig, axes, metrics = image.plot.diagnostics(
-            ...     ridge_scales=[1, 2, 3, 4, 5],
-            ...     ridge_method="frangi"
-            ... )
-            >>> plt.close(fig)
+        # --- Matplotlib fallback path ---
+        return self._diagnostics_matplotlib(
+            sections=sections,
+            figsize=figsize,
+            include_descriptions=include_descriptions,
+            include_recommendations=include_recommendations,
+            background_sigma=background_sigma,
+            structure_sigma=structure_sigma,
+            ridge_scales=ridge_scales,
+            ridge_method=ridge_method,
+            detect_mat=detect_mat,
+        )
+
+    def _diagnostics_matplotlib(
+        self,
+        *,
+        sections: Literal["all", "noise", "contrast", "structure", "background"]
+        | list[str],
+        figsize: tuple[float, float] | None,
+        include_descriptions: bool,
+        include_recommendations: bool,
+        background_sigma: float,
+        structure_sigma: float,
+        ridge_scales: list[float],
+        ridge_method: Literal["meijering", "frangi", "hessian"],
+        detect_mat: np.ndarray,
+    ) -> tuple[plt.Figure, dict[str, Any]]:
+        """Static matplotlib fallback for diagnostics().
+
+        Produces the original multi-panel figure when Panel is not installed.
         """
         # Parse sections
         if sections == "all":
@@ -1020,13 +1068,6 @@ class DiagnosticsPlotter(BasePlotter):
         for s in section_list:
             if s not in valid_sections:
                 raise ValueError(f"Invalid section: {s}. Valid: {valid_sections}")
-
-        # Default ridge scales
-        if ridge_scales is None:
-            ridge_scales = [0.5, 1.0, 1.5, 2.0, 3.0, 4.0, 5.0]
-
-        # Get detection matrix
-        detect_mat = self._root_image.detect_mat[:]
 
         # Compute all metrics
         noise_metrics = self._compute_noise_metrics(detect_mat)
@@ -1091,7 +1132,6 @@ class DiagnosticsPlotter(BasePlotter):
         fig = plt.figure(figsize=figsize, constrained_layout=False)
         gs = GridSpec(n_rows, 3, figure=fig, height_ratios=height_ratios, hspace=0.4, wspace=0.3)
 
-        axes_list = []
         row_idx = 0
 
         # ========================================================================
@@ -1099,7 +1139,6 @@ class DiagnosticsPlotter(BasePlotter):
         # ========================================================================
         ax_spider = fig.add_subplot(gs[row_idx, :], projection="polar")
         self._plot_spider_chart(ax_spider, quality_scores)
-        axes_list.append(ax_spider)
         row_idx += 1
 
         # ========================================================================
@@ -1121,7 +1160,6 @@ class DiagnosticsPlotter(BasePlotter):
                 )
                 self._plot_local_variance_map(ax2, detect_mat)
 
-                axes_list.extend([ax1, ax2])
                 descriptions = [PANEL_J_BACKGROUND, PANEL_K_VARIANCE]
             else:
                 # Three-column layout
@@ -1159,15 +1197,12 @@ class DiagnosticsPlotter(BasePlotter):
                     )
                     descriptions = [PANEL_G_GRADIENT, PANEL_H_COHERENCE, PANEL_I_RIDGE]
 
-                axes_list.extend([ax1, ax2, ax3])
-
             row_idx += 1
 
             # Description row
             if include_descriptions and descriptions:
                 ax_desc = fig.add_subplot(gs[row_idx, :])
                 self._render_panel_descriptions(ax_desc, descriptions)
-                axes_list.append(ax_desc)
                 row_idx += 1
 
         # ========================================================================
@@ -1234,8 +1269,6 @@ class DiagnosticsPlotter(BasePlotter):
                 )
                 y_pos -= 0.10
 
-            axes_list.append(ax_rec)
-
         # Use subplots_adjust instead of tight_layout to avoid polar axis warnings
         fig.subplots_adjust(left=0.05, right=0.95, top=0.95, bottom=0.05)
 
@@ -1266,7 +1299,7 @@ class DiagnosticsPlotter(BasePlotter):
             "recommendations": recommendations,
         }
 
-        return fig, np.array(axes_list, dtype=object), metrics_dict
+        return fig, metrics_dict
 
 
 __all__ = ["DiagnosticsPlotter"]
