@@ -380,22 +380,20 @@ class ImageHandler(ImageDataManager):
         new source channel. Enhancers applied before this call are discarded.
 
         Args:
-            mode: One of ``'gray'``, ``'red'``, ``'green'``, ``'blue'``.
+            mode: A registered detection mode name (e.g. ``'gray'``,
+                ``'red'``, ``'green'``, ``'blue'``, ``'min_rgb'``).
 
         Raises:
             ValueError: If *mode* requires RGB data and the image has none, or if
                 *mode* is not a recognised value.
         """
-        valid_modes = ("gray", "red", "green", "blue")
-        if mode not in valid_modes:
+        from phenotypic._core._image_parts.detection_modes import get_detection_mode
+
+        mode_obj = get_detection_mode(mode)  # raises ValueError if unknown
+        if mode_obj.requires_rgb and self.rgb.isempty():
             raise ValueError(
-                f"detect_mode must be one of {valid_modes}, got {mode!r}"
-            )
-        if mode in ("red", "green", "blue"):
-            if self.rgb.isempty():
-                raise ValueError(
                     f"Cannot use detect_mode '{mode}': image has no RGB data."
-                )
+            )
         self._data.detect_mode = mode
         self.detect_mat.reset()
 
@@ -493,7 +491,7 @@ class ImageHandler(ImageDataManager):
             list[skimage.measure._regionprops.RegionProperties]: A list of properties for the entire provided image.
 
 
-        .. admonition:: Propertyetails
+        .. admonition:: Property details
             :class: dropdown
 
             (Excerpt from skimage.measure.regionprops documentation on available properties.):

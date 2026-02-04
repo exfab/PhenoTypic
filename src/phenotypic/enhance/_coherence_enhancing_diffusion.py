@@ -229,6 +229,6 @@ class CoherenceEnhancingDiffusion(ImageEnhancer):
             # Update image with diffusion step
             img = img + self.dt * div
 
-        # Store result back to detection matrix
-        image.detect_mat[:] = img.astype(image.detect_mat.dtype)
+        # Store result back to detection matrix, clipping to valid range
+        image.detect_mat[:] = np.clip(img, 0.0, 1.0).astype(image.detect_mat.dtype)
         return image

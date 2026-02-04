@@ -124,6 +124,7 @@ import click
 logger = logging.getLogger(__name__)
 
 from phenotypic import Image, GridImage, ImagePipeline
+from phenotypic._core._image_parts.detection_modes import available_modes
 from phenotypic._cli._cli_directory_scanner import (
     generate_timestamped_output_dir,
     organize_by_dataset,
@@ -529,10 +530,10 @@ def _display_execution_config(
 )
 @click.option(
         "--detect-mode",
-        type=click.Choice(["gray", "red", "green", "blue"]),
+        type=click.Choice(list(available_modes())),
         default="gray",
         show_default=True,
-        help="Color channel for detection matrix (gray, red, green, or blue)",
+        help="Source channel for the detection matrix",
 )
 @click.option(
         "--n-jobs",

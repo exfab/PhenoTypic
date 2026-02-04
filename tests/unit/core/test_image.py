@@ -1,4 +1,5 @@
 import pandas as pd
+import pytest
 
 import numpy as np
 import skimage
@@ -326,3 +327,54 @@ def test_detect_mat_imsave_tiff(tmp_path):
     image = phenotypic.data.load_colony(mode="Image")
     image.detect_mat.imsave(out)
     assert out.exists(), f"Enhanced Gray TIFF file was not created at {out}"
+
+
+# ── detect_mode switching ──────────────────────────────────────────────
+
+
+class TestDetectMode:
+    """Verify that switching detect_mode actually changes detect_mat."""
+
+    @pytest.fixture()
+    def rgb_image(self):
+        return phenotypic.data.load_synth_yeast_plate()
+
+    def test_default_mode_is_gray(self, rgb_image):
+        assert rgb_image.detect_mode == "gray"
+
+    def test_switch_to_red_changes_detect_mat(self, rgb_image):
+        gray_mat = rgb_image.detect_mat[:].copy()
+        rgb_image.set_detect_mode("red")
+        assert rgb_image.detect_mode == "red"
+        assert not np.array_equal(gray_mat, rgb_image.detect_mat[:])
+
+    def test_switch_back_to_gray_restores(self, rgb_image):
+        original = rgb_image.detect_mat[:].copy()
+        rgb_image.set_detect_mode("red")
+        rgb_image.set_detect_mode("gray")
+        np.testing.assert_array_equal(original, rgb_image.detect_mat[:])
+
+    @pytest.mark.parametrize("mode", ["red", "green", "blue", "MinRGB"])
+    def test_rgb_modes_produce_float32(self, rgb_image, mode):
+        rgb_image.set_detect_mode(mode)
+        assert rgb_image.detect_mat.dtype == np.float32
+
+    def test_invalid_mode_raises(self, rgb_image):
+        with pytest.raises(ValueError, match="Unknown detect_mode"):
+            rgb_image.set_detect_mode("invalid")
+
+    def test_construction_from_instance_respects_detect_mode(self):
+        """Guard against the silent-fallback-to-gray bug.
+
+        When an Image is constructed from another Image that has a non-gray
+        detect_mode, the new image's detect_mat must match — not silently
+        revert to gray.
+        """
+        src = phenotypic.data.load_synth_yeast_plate()
+        src.set_detect_mode("red")
+        red_mat = src.detect_mat[:].copy()
+
+        dst = phenotypic.Image()
+        dst.set_image(src)
+        assert dst.detect_mode == "red"
+        np.testing.assert_array_equal(red_mat, dst.detect_mat[:])

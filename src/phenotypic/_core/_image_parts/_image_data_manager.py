@@ -356,10 +356,19 @@ class ImageDataManager:
             matrix (np.ndarray): A 2-D array form of an image.
         """
         self._data.gray = matrix
-        self._data.detect_mat = self._data.gray
         self._data.sparse_object_map = csc_matrix(
                 np.zeros(matrix.shape, dtype=self._OBJMAP_DTYPE)
         )
+
+        # Respect current detect_mode (e.g. "red") instead of always using gray.
+        from phenotypic._core._image_parts.detection_modes import get_detection_mode
+
+        mode = get_detection_mode(self._data.detect_mode)
+        has_rgb = self._data.rgb is not None and self._data.rgb.shape[0] > 0
+        if mode.requires_rgb and not has_rgb:
+            self._data.detect_mat = self._data.gray.copy()
+        else:
+            self._data.detect_mat = mode.compute(self._data)
 
     @staticmethod
     def _guess_image_format(img: np.ndarray) -> IMAGE_MODE:

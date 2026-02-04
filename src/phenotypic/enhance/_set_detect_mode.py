@@ -1,11 +1,12 @@
 from __future__ import annotations
 
-from typing import Literal, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from phenotypic import Image
 
 from phenotypic.abc_ import ImageOperation
+from phenotypic.tools_.typing_ import DetectMode
 
 
 class SetDetectMode(ImageOperation):
@@ -16,7 +17,8 @@ class SetDetectMode(ImageOperation):
 
     Args:
         mode: Channel to use for the detection matrix.
-            ``'gray'`` (default), ``'red'``, ``'green'``, or ``'blue'``.
+            ``'gray'`` (default), ``'red'``, ``'green'``, ``'blue'``,
+            or ``'min_rgb'``.
 
     Returns:
         Image: The image with ``detect_mode`` and ``detect_mat`` updated.
@@ -34,7 +36,7 @@ class SetDetectMode(ImageOperation):
         'red'
     """
 
-    def __init__(self, mode: Literal["gray", "red", "green", "blue"] = "gray"):
+    def __init__(self, mode: DetectMode = "gray"):
         super().__init__()
         self.mode = mode
 

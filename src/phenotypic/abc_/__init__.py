@@ -23,6 +23,10 @@ from ._grid_finder import GridFinder
 from ._base_operation import BaseOperation
 from ._grid_object_detector import GridObjectDetector
 from ._prefab_pipeline import PrefabPipeline
+from phenotypic._core._image_parts.detection_modes import (
+    DetectionMode,
+    register_detection_mode,
+)
 
 __all__ = [
     "MeasureFeatures",
@@ -42,4 +46,6 @@ __all__ = [
     "GridObjectDetector",
     "PrefabPipeline",
     "FootprintMixin",
+    "DetectionMode",
+    "register_detection_mode",
 ]

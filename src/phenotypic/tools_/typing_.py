@@ -7,6 +7,8 @@ if TYPE_CHECKING:
 
 FootprintShape = Literal["disk", "square", "diamond"]
 
+DetectMode = Literal["gray", "red", "green", "blue", "MinRGB"]
+
 GridSearchSaveData = List[
     Literal["rgb", "gray", "detect_mat", "objmap", "objmask", "map2rgb"]
 ]

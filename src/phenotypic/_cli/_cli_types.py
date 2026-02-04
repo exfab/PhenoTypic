@@ -119,7 +119,7 @@ class ExecutionConfig:
     skip_validation: bool
 
     # Detection mode (default: gray)
-    detect_mode: Literal["gray", "red", "green", "blue"] = "gray"
+    detect_mode: str = "gray"
     
     def is_slurm_mode(self) -> bool:
         """Check if SLURM mode should be used."""

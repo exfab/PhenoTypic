@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import traceback
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -55,9 +56,9 @@ class CLAHE(ImageEnhancer):
     """
 
     def __init__(
-        self,
-        kernel_size: int | None = None,
-        clip_limit: float = 0.01,
+            self,
+            kernel_size: int | None = None,
+            clip_limit: float = 0.01,
     ):
         """
         Parameters:
@@ -73,15 +74,18 @@ class CLAHE(ImageEnhancer):
         self.clip_limit: float = clip_limit
 
     def _operate(self, image: Image) -> Image:
-        image.detect_mat[:] = equalize_adapthist(
-            image=image.detect_mat[:],
-            kernel_size=self.kernel_size
-            if self.kernel_size
-            else self._auto_kernel_size(image),
-            clip_limit=self.clip_limit,
-            nbins=2 ** int(image.bit_depth),
-        )
-        return image
+        try:
+            image.detect_mat[:] = equalize_adapthist(
+                    image=image.detect_mat[:],
+                    kernel_size=self.kernel_size
+                    if self.kernel_size
+                    else self._auto_kernel_size(image),
+                    clip_limit=self.clip_limit,
+                    nbins=2 ** int(image.bit_depth),
+            )
+            return image
+        except RuntimeError as e:
+            raise ValueError(f"Value Range: {image.detect_mat.val_range()}") from e
 
     @staticmethod
     def _auto_kernel_size(image: Image) -> int:

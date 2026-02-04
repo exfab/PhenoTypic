@@ -11,7 +11,6 @@ from phenotypic.tools_.exceptions_ import (
     ArrayKeyValueShapeMismatchError,
     EmptyImageError
 )
-from phenotypic.tools_.funcs_ import normalize_rgb_bitdepth
 
 
 class DetectMatAccessor(SingleChannelAccessor):
@@ -146,35 +145,18 @@ class DetectMatAccessor(SingleChannelAccessor):
         """
         return self._root_image._data.detect_mat
 
-    def _get_color_channel(self, mode: str) -> np.ndarray:
-        """Extract a single color channel from the RGB data as float32.
-
-        Args:
-            mode: One of ``'red'``, ``'green'``, ``'blue'``.
-
-        Returns:
-            np.ndarray: The extracted channel as a float32 array in [0, 1].
-        """
-        rgb_normed = normalize_rgb_bitdepth(self._root_image._data.rgb)
-        channel_map = {"red": 0, "green": 1, "blue": 2}
-        return rgb_normed[:, :, channel_map[mode]].astype(np.float32)
-
     def reset(self):
         """Reset the detection matrix to a fresh copy of the current mode's source channel.
 
-        Discards all modifications made to the detection matrix and restores it from
-        the source determined by the image's ``detect_mode`` setting:
-
-        - ``'gray'``: copies from ``image.gray``
-        - ``'red'`` / ``'green'`` / ``'blue'``: extracts the corresponding RGB channel
+        Discards all modifications made to the detection matrix and restores it
+        from the source determined by the image's ``detect_mode`` setting.
 
         Examples:
             Reset after applying unsuccessful enhancement:
 
             >>> detect_mat.reset()  # Revert to source channel
         """
-        mode = self._root_image._data.detect_mode
-        if mode == "gray":
-            self._root_image._data.detect_mat = self._root_image._data.gray.copy()
-        else:
-            self._root_image._data.detect_mat = self._get_color_channel(mode)
+        from phenotypic._core._image_parts.detection_modes import get_detection_mode
+
+        mode = get_detection_mode(self._root_image._data.detect_mode)
+        self._root_image._data.detect_mat = mode.compute(self._root_image._data)

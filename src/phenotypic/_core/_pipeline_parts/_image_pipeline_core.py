@@ -310,6 +310,8 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
                         False  # Prevents intermediate pipelines from resetting progress
                     )
 
+                # Apply actual operation
+                # -----------------
                 operation.apply(img, **apply_params)
 
                 # Store execution time if benchmarking is enabled

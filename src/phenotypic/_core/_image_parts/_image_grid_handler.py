@@ -360,16 +360,13 @@ class ImageGridHandler(Image):
             ]
 
         # Get section map and measure bounds per section
-        try:
-            img_copy = self.copy()
-            img_copy.objmap = self.grid.get_section_map()
+        img_copy = self.copy()
+        img_copy.objmap = self.grid.get_section_map()
 
-            if img_copy.num_objects == 0:
-                return arr
+        if img_copy.num_objects == 0:
+            return arr
 
-            gs_table = MeasureBounds().measure(img_copy)
-        except Exception:
-            return arr  # Return unchanged if measurement fails
+        gs_table = MeasureBounds().measure(img_copy)
 
         # Draw bounding box for each section
         color_idx = 0
