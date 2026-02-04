@@ -8,6 +8,7 @@ segmentation for clustered colonies.
 """
 
 from ._canny_detector import CannyDetector
+from ._chan_vese_detector import ChanVeseDetector
 from ._hysteresis_detector import HysteresisDetector
 from ._round_peaks_detector import RoundPeaksDetector
 from ._isodata_detector import IsodataDetector
@@ -26,6 +27,7 @@ from ._filamentous_fungi_detector import FilamentousFungiDetector
 
 __all__ = [
     "CannyDetector",
+    "ChanVeseDetector",
     "CompositeDetector",
     "FilamentousFungiDetector",
     "HysteresisDetector",

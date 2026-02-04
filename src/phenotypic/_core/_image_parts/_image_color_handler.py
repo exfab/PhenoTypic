@@ -8,10 +8,10 @@ if TYPE_CHECKING:
 import numpy as np
 
 from .accessors._color_accessor import ColorAccessor
-from ._image_plot_handler import ImagePlotHandler
+from ._image_panel_handler import ImagePanelHandler
 
 
-class ImageColorSpace(ImagePlotHandler):
+class ImageColorSpace(ImagePanelHandler):
     """Manages color space representation and transformations for image data.
 
     This class extends ImageObjectsHandler to add comprehensive color space management,
