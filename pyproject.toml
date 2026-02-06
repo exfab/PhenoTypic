@@ -44,7 +44,7 @@ dependencies = [
     "mmh3",
     "psutil>=7.0.0",
     "colour-science>=0.4.6",
-    "rawpy;sys_platform!='win32'",
+    "rawpy-demosaic",
     "threadpoolctl>=3.6.0",
     "pympler>=1.0.1",
     "exifread>=3.5.1",

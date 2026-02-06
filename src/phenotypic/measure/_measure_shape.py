@@ -9,7 +9,7 @@ if TYPE_CHECKING:
 
 import warnings
 import pandas as pd
-from scipy.spatial import ConvexHull, qhull
+from scipy.spatial import ConvexHull, QhullError
 from scipy.ndimage import distance_transform_edt
 import numpy as np
 
@@ -215,7 +215,7 @@ class MeasureShape(MeasureFeatures):
                     warnings.filterwarnings("ignore", message="Qhull")
                     convex_hull = ConvexHull(current_props.coords)
 
-            except qhull.QhullError:
+            except QhullError:
                 convex_hull = None
 
             measurements[str(SHAPE.CONVEX_AREA)][idx] = (

@@ -30,7 +30,7 @@ class NonLocalMeansDenoiser(ImageEnhancer):
     - patch_size: Larger patches (e.g., 7-15) capture more structure and are slower;
       smaller patches (5-7) are faster but may miss textures. For colonies, 7 is typically
       a good balance.
-    - patch_distance: Larger search width (e.g., 11-21) considers more similar patches
+    - search_distance: Larger search width (e.g., 11-21) considers more similar patches
       at higher computational cost; smaller values (5-7) run faster but may miss good
       matches far from the pixel. Default of 11 usually works well.
     - h: Controls the decay in patch weights. Larger h allows more smoothing between
@@ -45,7 +45,7 @@ class NonLocalMeansDenoiser(ImageEnhancer):
 
     Caveats:
     - Non-local means is slower than Gaussian blur, especially with fast_mode=False.
-    - Computational complexity grows with patch_distance and patch_size.
+    - Computational complexity grows with search_distance and patch_size.
     - For very large search radii or patch sizes, memory usage can become significant.
     - Excessive smoothing (large h) can merge adjacent colonies just like Gaussian blur.
     - Not suitable for images with strong structural artifacts (e.g., dust particles larger
@@ -62,10 +62,10 @@ class NonLocalMeansDenoiser(ImageEnhancer):
     def __init__(
             self,
             patch_size: int = 5,
-            patch_distance: int = 11,
+            search_distance: int = 11,
             h: float = 0.5,
             *,
-            fast_mode: bool = True,
+            fast_mode: bool = False,
             sigma: float = 0.0,
     ):
         """
@@ -73,20 +73,20 @@ class NonLocalMeansDenoiser(ImageEnhancer):
             patch_size (int): Size of patches used for comparison. Larger patches capture
                 more structure but are slower. Start with 5-7 for agar plates; increase to 11-15
                 for heavily noisy images. Default: 7.
-            patch_distance (int): Maximal distance in pixels to search for similar patches.
+            search_distance (int): Maximal distance in pixels to search for similar patches.
                 Larger values find more candidates at higher cost. Default: 11.
             h (float): Cut-off distance controlling smoothness. Typical rule of thumb:
                 h ≈ sigma (noise level). Increase to ~1.5*sigma for more smoothing.
                 Default: 0.1.
-            fast_mode (bool): If True (default), use faster variant with uniform spatial weighting.
+            fast_mode (bool): If True, use faster variant with uniform spatial weighting.
                 If False, use original algorithm with Gaussian spatial weighting (slower but
-                potentially better quality). Default: True.
+                potentially better quality). Default: False.
             sigma (float): Noise standard deviation. If provided (> 0), improves patch weighting
                 by accounting for expected noise variance. Start with estimate_sigma() output.
                 Default: 0.0 (disabled).
         """
         self.patch_size = int(patch_size)
-        self.patch_distance = int(patch_distance)
+        self.patch_distance = int(search_distance)
         self.h = float(h)
         self.fast_mode = bool(fast_mode)
         self.sigma = float(sigma)

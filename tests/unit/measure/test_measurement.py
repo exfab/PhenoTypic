@@ -9,6 +9,7 @@ from ..test_fixtures import _image_measurements
 from ..resources.TestHelper import timeit
 
 
+@pytest.mark.smoke
 @pytest.mark.parametrize("qualname,obj", _image_measurements)
 @timeit
 def test_measurement(qualname, obj):

@@ -14,6 +14,7 @@ image_ops = [(qualname, obj) for qualname, obj in ops
              if ("Grid" not in qualname) or ("phenotypic.abc_" not in qualname)]
 
 
+@pytest.mark.smoke
 @pytest.mark.parametrize("qualname,obj", image_ops)
 @timeit
 def test_operation(qualname, obj):

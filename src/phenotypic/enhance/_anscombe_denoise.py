@@ -173,7 +173,7 @@ class AnscombeTransformDenoise(ClipControlMixin, ImageEnhancer):
 
             inner_enhancer = NonLocalMeansDenoiser(
                     patch_size=3,
-                    patch_distance=5
+                    search_distance=5
             )
 
         if not hasattr(inner_enhancer, "apply") or not callable(inner_enhancer.apply):
