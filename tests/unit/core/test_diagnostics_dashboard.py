@@ -4,9 +4,8 @@ import matplotlib
 matplotlib.use("Agg")
 
 import pytest
-import matplotlib.pyplot as plt
 
-from phenotypic._core._image_parts.plot_accessor._diagnostics_dashboard import (
+from phenotypic._core._image_parts.panel_accessor._diagnostics_dashboard import (
     PANEL_AVAILABLE,
 )
 
@@ -16,7 +15,7 @@ pytestmark = pytest.mark.skipif(
 
 if PANEL_AVAILABLE:
     import panel as pn
-    from phenotypic._core._image_parts.plot_accessor._diagnostics_dashboard import (
+    from phenotypic._core._image_parts.panel_accessor._diagnostics_dashboard import (
         DiagnosticsDashboard,
     )
 
@@ -31,9 +30,8 @@ def sample_image():
 
 @pytest.fixture
 def dashboard(sample_image):
-    """Create a DiagnosticsDashboard from the sample image."""
-    result, _metrics = sample_image.plot.diagnostics()
-    return result
+    """Create a DiagnosticsDashboard from the sample image via panel accessor."""
+    return sample_image.panel.diagnostics()
 
 
 class TestCreateDashboard:
@@ -42,18 +40,14 @@ class TestCreateDashboard:
     def test_create_dashboard(self, dashboard):
         assert isinstance(dashboard, DiagnosticsDashboard)
 
-    def test_diagnostics_returns_two_tuple(self, sample_image):
-        result = sample_image.plot.diagnostics()
-        assert isinstance(result, tuple)
-        assert len(result) == 2
-
-    def test_diagnostics_first_element_is_dashboard(self, sample_image):
-        dashboard, _ = sample_image.plot.diagnostics()
-        assert isinstance(dashboard, DiagnosticsDashboard)
-        assert hasattr(dashboard, "panel")
+    def test_panel_diagnostics_returns_dashboard(self, sample_image):
+        result = sample_image.panel.diagnostics()
+        assert isinstance(result, DiagnosticsDashboard)
+        assert hasattr(result, "panel")
+        assert hasattr(result, "metrics")
 
     def test_dashboard_with_custom_params(self, sample_image):
-        dashboard, _ = sample_image.plot.diagnostics(
+        dashboard = sample_image.panel.diagnostics(
             structure_sigma=3.0,
             ridge_method="frangi",
             ridge_scales=[1, 2, 3],
@@ -142,21 +136,29 @@ class TestMetricsDictStructure:
 
 
 class TestMetricsMatchOriginal:
-    """Verify noise/contrast metrics match between dashboard and direct computation."""
+    """Verify noise/contrast metrics match between dashboard and direct ImageMetricsCalculator."""
 
     def test_noise_metrics_match(self, sample_image):
-        dashboard, metrics = sample_image.plot.diagnostics()
-        # Compute directly via plotter for comparison
+        from phenotypic.util.image_metrics import ImageMetricsCalculator
+
+        dashboard = sample_image.panel.diagnostics()
+        metrics = dashboard.metrics
+        # Compute directly via calculator for comparison
         detect_mat = sample_image.detect_mat[:]
-        direct_noise = sample_image.plot._compute_noise_metrics(detect_mat)
+        calculator = ImageMetricsCalculator(detect_mat)
+        direct_noise = calculator.compute_noise_metrics()
 
         assert metrics["noise"]["snr"] == pytest.approx(direct_noise["snr"])
         assert metrics["noise"]["sigma_mad"] == pytest.approx(direct_noise["sigma_mad"])
 
     def test_contrast_metrics_match(self, sample_image):
-        dashboard, metrics = sample_image.plot.diagnostics()
+        from phenotypic.util.image_metrics import ImageMetricsCalculator
+
+        dashboard = sample_image.panel.diagnostics()
+        metrics = dashboard.metrics
         detect_mat = sample_image.detect_mat[:]
-        direct_contrast = sample_image.plot._compute_contrast_metrics(detect_mat)
+        calculator = ImageMetricsCalculator(detect_mat)
+        direct_contrast = calculator.compute_contrast_metrics()
 
         assert metrics["contrast"]["rms_contrast"] == pytest.approx(
             direct_contrast["rms_contrast"]
@@ -256,3 +258,39 @@ class TestSectionToggles:
         section = dashboard._background_section()
         assert isinstance(section, pn.Column)
         assert len(section) == 0
+
+
+class TestPlotVsPanelSeparation:
+    """Test that plot.diagnostics and panel.diagnostics are properly separated."""
+
+    def test_plot_diagnostics_returns_figure(self, sample_image):
+        """plot.diagnostics() should always return a matplotlib Figure."""
+        import matplotlib.pyplot as plt
+
+        fig, metrics = sample_image.plot.diagnostics()
+        assert isinstance(fig, plt.Figure)
+        assert isinstance(metrics, dict)
+        plt.close(fig)
+
+    def test_panel_diagnostics_returns_dashboard(self, sample_image):
+        """panel.diagnostics() should return a DiagnosticsDashboard."""
+        dashboard = sample_image.panel.diagnostics()
+        assert isinstance(dashboard, DiagnosticsDashboard)
+
+    def test_metrics_consistent_between_plot_and_panel(self, sample_image):
+        """Metrics from plot and panel should be consistent."""
+        import matplotlib.pyplot as plt
+
+        fig, plot_metrics = sample_image.plot.diagnostics()
+        dashboard = sample_image.panel.diagnostics()
+        panel_metrics = dashboard.metrics
+
+        # Noise and contrast should match exactly (parameter-free)
+        assert plot_metrics["noise"]["snr"] == pytest.approx(
+            panel_metrics["noise"]["snr"]
+        )
+        assert plot_metrics["contrast"]["rms_contrast"] == pytest.approx(
+            panel_metrics["contrast"]["rms_contrast"]
+        )
+
+        plt.close(fig)

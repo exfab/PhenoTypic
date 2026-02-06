@@ -8,13 +8,13 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.gridspec import GridSpec
 from scipy import fft as scipy_fft
-from scipy.ndimage import gaussian_filter, uniform_filter
 from scipy.stats import norm
-from skimage.feature import structure_tensor, structure_tensor_eigenvalues
-from skimage.filters import frangi, hessian, meijering, sobel
+from skimage.filters import sobel
+
+from phenotypic.tools_.register import register_plotter
+from phenotypic.util.image_metrics import ImageMetricsCalculator, THRESHOLDS
 
 from ._base_plotter import BasePlotter
-from ._diagnostics_dashboard import PANEL_AVAILABLE
 from ._diagnostics_types import (
     PANEL_B_AUTOCORR,
     PANEL_C_PSD,
@@ -30,15 +30,7 @@ from ._diagnostics_types import (
 )
 
 
-# Quality thresholds for interpretation
-_THRESHOLDS = {
-    "snr": {"critical": 3.0, "marginal": 7.0},
-    "rms_contrast": {"critical": 0.02, "marginal": 0.05},
-    "coherence": {"critical": 0.15, "marginal": 0.30},
-    "nonuniformity": {"critical": 0.50, "marginal": 0.20},
-}
-
-
+@register_plotter
 class DiagnosticsPlotter(BasePlotter):
     """Generates comprehensive image quality diagnostics for preprocessing pipeline development.
 
@@ -49,26 +41,36 @@ class DiagnosticsPlotter(BasePlotter):
     All metrics are computed from the detection matrix (detect_mat), which reflects
     the current state of preprocessing applied to the image.
 
+    The metrics computation is delegated to :class:`ImageMetricsCalculator` from
+    ``phenotypic.util.image_metrics``, which is shared with the Panel-based
+    :class:`DiagnosticsDashboard`.
+
     Examples:
         Generate full diagnostics report:
 
         >>> from phenotypic.data import load_synth_yeast_plate
         >>> image = load_synth_yeast_plate()
-        >>> fig, axes, metrics = image.plot.diagnostics()
+        >>> fig, metrics = image.plot.diagnostics()
         >>> print(f"SNR: {metrics['noise']['snr']:.2f}")
         >>> plt.savefig("diagnostics.png", dpi=150, bbox_inches="tight")
         >>> plt.close(fig)
 
         Analyze specific sections:
 
-        >>> fig, axes, metrics = image.plot.diagnostics(sections=["noise", "contrast"])
+        >>> fig, metrics = image.plot.diagnostics(sections=["noise", "contrast"])
         >>> plt.close(fig)
     """
+
+    call_name = "diagnostics"
 
     @property
     def _max_intensity(self) -> int:
         """Maximum intensity value based on image bit depth."""
         return 255 if self._root_image.bit_depth == 8 else 65535
+
+    def _get_calculator(self) -> ImageMetricsCalculator:
+        """Get or create an ImageMetricsCalculator for the current image."""
+        return ImageMetricsCalculator(self._root_image.detect_mat[:])
 
     def _get_histogram_panel_description(self) -> PanelDescription:
         """Generate histogram panel description with bit-depth-aware intensity range."""
@@ -83,187 +85,8 @@ class DiagnosticsPlotter(BasePlotter):
         )
 
     # ============================================================================
-    # METRIC COMPUTATION METHODS
+    # HELPER METHODS FOR PLOTTING
     # ============================================================================
-
-    def _compute_noise_metrics(self, detect_mat: np.ndarray) -> dict[str, float]:
-        """Compute noise-related metrics from detection matrix.
-
-        Args:
-            detect_mat: Detection matrix image array.
-
-        Returns:
-            Dictionary with SNR, sigma_mad, and correlation_length.
-        """
-        # Convert to float for computation
-        img = detect_mat.astype(np.float64)
-
-        # Estimate noise using high-pass residual (more robust than Laplacian MAD)
-        # For synthetic images with large uniform regions, Laplacian MAD can be 0
-        smoothed = gaussian_filter(img, sigma=2.0)
-        residual = img - smoothed
-
-        # Use robust MAD estimator, falling back to std if MAD is too small
-        mad_val = np.median(np.abs(residual - np.median(residual)))
-        sigma_mad = mad_val / 0.6745 if mad_val > 1e-10 else np.std(residual)
-
-        # Ensure minimum noise estimate (prevents division by near-zero)
-        sigma_mad = max(sigma_mad, 1e-6)
-
-        # Signal estimation (mean of image)
-        signal_mean = np.mean(img)
-
-        # SNR calculation
-        snr = signal_mean / sigma_mad
-
-        # Correlation length from autocorrelation (computed in _plot_noise_autocorrelation)
-        # Here we compute a quick estimate using the half-width at half-maximum
-        autocorr = self._compute_autocorrelation(img)
-        center_h = autocorr.shape[0] // 2
-
-        # Extract horizontal profile through center
-        profile = autocorr[center_h, :]
-        profile_norm = profile / (profile.max() + 1e-10)
-
-        # Find half-width at half-maximum
-        half_max_indices = np.where(profile_norm >= 0.5)[0]
-        if len(half_max_indices) > 1:
-            correlation_length = (half_max_indices[-1] - half_max_indices[0]) / 2.0
-        else:
-            correlation_length = 1.0
-
-        return {
-            "snr": float(snr),
-            "sigma_mad": float(sigma_mad),
-            "correlation_length": float(correlation_length),
-        }
-
-    def _compute_contrast_metrics(self, detect_mat: np.ndarray) -> dict[str, float]:
-        """Compute contrast-related metrics from detection matrix.
-
-        Args:
-            detect_mat: Detection matrix image array.
-
-        Returns:
-            Dictionary with rms_contrast, michelson, and dynamic_range.
-        """
-        img = detect_mat.astype(np.float64)
-
-        # RMS contrast (std / mean) - bit-depth agnostic
-        mean_val = np.mean(img)
-        std_val = np.std(img)
-        rms_contrast = std_val / (mean_val + 1e-10)
-
-        # Michelson contrast using percentiles (more robust than min/max)
-        p1 = np.percentile(img, 1)
-        p99 = np.percentile(img, 99)
-        michelson = (p99 - p1) / (p99 + p1 + 1e-10)
-
-        # Dynamic range (normalized by max possible intensity)
-        min_val = img.min()
-        max_val = img.max()
-        dynamic_range = (max_val - min_val) / self._max_intensity
-
-        return {
-            "rms_contrast": float(rms_contrast),
-            "michelson": float(michelson),
-            "dynamic_range": float(dynamic_range),
-            "p1": float(p1),
-            "p99": float(p99),
-        }
-
-    def _compute_structure_metrics(
-        self,
-        detect_mat: np.ndarray,
-        sigma: float,
-        scales: list[float],
-        ridge_method: Literal["meijering", "frangi", "hessian"],
-    ) -> dict[str, Any]:
-        """Compute structure-related metrics from detection matrix.
-
-        Args:
-            detect_mat: Detection matrix image array.
-            sigma: Sigma for structure tensor computation.
-            scales: List of scales for multiscale ridge detection.
-            ridge_method: Method for ridge detection.
-
-        Returns:
-            Dictionary with mean_coherence, optimal_scale, peak_response, and ridge_responses.
-        """
-        img = detect_mat.astype(np.float64) / self._max_intensity
-
-        # Compute structure tensor and coherence
-        A_elems = structure_tensor(img, sigma=sigma)
-        l1, l2 = structure_tensor_eigenvalues(A_elems)
-
-        # Coherence: (l1 - l2) / (l1 + l2 + eps)
-        coherence = (l1 - l2) / (l1 + l2 + 1e-10)
-        mean_coherence = float(np.mean(coherence))
-
-        # Multiscale ridge detection
-        ridge_responses = []
-        for scale in scales:
-            if ridge_method == "meijering":
-                response = meijering(img, sigmas=[scale], black_ridges=False)
-            elif ridge_method == "frangi":
-                response = frangi(img, sigmas=[scale], black_ridges=False)
-            else:  # hessian
-                response = hessian(img, sigmas=[scale], black_ridges=False)
-
-            ridge_responses.append(float(np.mean(response)))
-
-        # Find optimal scale
-        if ridge_responses:
-            optimal_idx = np.argmax(ridge_responses)
-            optimal_scale = scales[optimal_idx]
-            peak_response = ridge_responses[optimal_idx]
-        else:
-            optimal_scale = scales[0] if scales else 1.0
-            peak_response = 0.0
-
-        return {
-            "mean_coherence": mean_coherence,
-            "optimal_scale": float(optimal_scale),
-            "peak_response": float(peak_response),
-            "ridge_responses": ridge_responses,
-            "scales": scales,
-            "ridge_method": ridge_method,
-            "coherence_map": coherence,
-        }
-
-    def _compute_background_metrics(
-        self, detect_mat: np.ndarray, sigma: float
-    ) -> dict[str, Any]:
-        """Compute background-related metrics from detection matrix.
-
-        Args:
-            detect_mat: Detection matrix image array.
-            sigma: Sigma for background estimation (Gaussian smoothing).
-
-        Returns:
-            Dictionary with nonuniformity_ratio, mean_gradient, and background_estimate.
-        """
-        img = detect_mat.astype(np.float64)
-
-        # Background estimate via large-sigma Gaussian smoothing
-        background = gaussian_filter(img, sigma=sigma)
-
-        # Nonuniformity ratio (std / mean of background)
-        bg_mean = np.mean(background)
-        bg_std = np.std(background)
-        nonuniformity_ratio = bg_std / (bg_mean + 1e-10)
-
-        # Mean gradient magnitude of background
-        grad_x = np.gradient(background, axis=1)
-        grad_y = np.gradient(background, axis=0)
-        grad_mag = np.sqrt(grad_x**2 + grad_y**2)
-        mean_gradient = float(np.mean(grad_mag))
-
-        return {
-            "nonuniformity_ratio": float(nonuniformity_ratio),
-            "mean_gradient": mean_gradient,
-            "background_estimate": background,
-        }
 
     def _compute_autocorrelation(self, img: np.ndarray) -> np.ndarray:
         """Compute 2D autocorrelation using FFT.
@@ -323,51 +146,6 @@ class DiagnosticsPlotter(BasePlotter):
         freqs = np.arange(len(radial_psd)) / len(radial_psd)
 
         return freqs, radial_psd
-
-    def _compute_local_contrast(
-        self, img: np.ndarray, window_size: int = 15
-    ) -> np.ndarray:
-        """Compute local Weber contrast map.
-
-        Args:
-            img: Input image array.
-            window_size: Size of local window.
-
-        Returns:
-            Local contrast map.
-        """
-        img_float = img.astype(np.float64)
-
-        # Local mean
-        local_mean = uniform_filter(img_float, size=window_size)
-
-        # Local contrast (Weber-like)
-        contrast = np.abs(img_float - local_mean) / (local_mean + 1e-10)
-
-        return contrast
-
-    def _compute_local_variance(
-        self, img: np.ndarray, window_size: int = 15
-    ) -> np.ndarray:
-        """Compute local variance map.
-
-        Args:
-            img: Input image array.
-            window_size: Size of local window.
-
-        Returns:
-            Local variance map.
-        """
-        img_float = img.astype(np.float64)
-
-        # Local mean and mean of squares
-        local_mean = uniform_filter(img_float, size=window_size)
-        local_mean_sq = uniform_filter(img_float**2, size=window_size)
-
-        # Variance = E[X^2] - E[X]^2
-        variance = np.maximum(local_mean_sq - local_mean**2, 0)
-
-        return variance
 
     # ============================================================================
     # PLOTTING METHODS (one per panel)
@@ -482,9 +260,11 @@ class DiagnosticsPlotter(BasePlotter):
         ax.set_title("D: Detection Matrix", fontweight="bold")
         ax.axis("off")
 
-    def _plot_local_contrast_map(self, ax: plt.Axes, detect_mat: np.ndarray) -> None:
+    def _plot_local_contrast_map(
+        self, ax: plt.Axes, detect_mat: np.ndarray, calculator: ImageMetricsCalculator
+    ) -> None:
         """Plot local contrast map (Panel E)."""
-        contrast_map = self._compute_local_contrast(detect_mat)
+        contrast_map = calculator.compute_local_contrast(detect_mat)
 
         im = ax.imshow(contrast_map, cmap="magma", vmin=0, vmax=np.percentile(contrast_map, 99))
         ax.set_title("E: Local Contrast Map", fontweight="bold")
@@ -606,9 +386,9 @@ class DiagnosticsPlotter(BasePlotter):
         plt.colorbar(im, ax=ax, fraction=0.046, pad=0.04, label="Intensity")
 
         # Determine quality color
-        if nonuniformity > _THRESHOLDS["nonuniformity"]["critical"]:
+        if nonuniformity > THRESHOLDS["nonuniformity"]["critical"]:
             color = "#c0392b"
-        elif nonuniformity > _THRESHOLDS["nonuniformity"]["marginal"]:
+        elif nonuniformity > THRESHOLDS["nonuniformity"]["marginal"]:
             color = "#f39c12"
         else:
             color = "#27ae60"
@@ -626,9 +406,11 @@ class DiagnosticsPlotter(BasePlotter):
             bbox=dict(boxstyle="round", facecolor="white", alpha=0.8),
         )
 
-    def _plot_local_variance_map(self, ax: plt.Axes, detect_mat: np.ndarray) -> None:
+    def _plot_local_variance_map(
+        self, ax: plt.Axes, detect_mat: np.ndarray, calculator: ImageMetricsCalculator
+    ) -> None:
         """Plot local variance map on log scale (Panel K)."""
-        variance = self._compute_local_variance(detect_mat)
+        variance = calculator.compute_local_variance(detect_mat)
 
         # Log scale for better visualization
         variance_log = np.log10(variance + 1)
@@ -769,172 +551,6 @@ class DiagnosticsPlotter(BasePlotter):
                 wrap=True,
             )
 
-    def _generate_interpretation(
-        self, section: str, metrics: dict[str, Any]
-    ) -> str:
-        """Generate data-driven interpretation text for a section.
-
-        Args:
-            section: Section name ("noise", "contrast", "structure", "background").
-            metrics: Computed metrics for the section.
-
-        Returns:
-            Interpretation text string.
-        """
-        if section == "noise":
-            snr = metrics["snr"]
-            if snr < _THRESHOLDS["snr"]["critical"]:
-                quality = "critically low"
-                action = "Strong denoising required (BilateralDenoise, MedianFilter)."
-            elif snr < _THRESHOLDS["snr"]["marginal"]:
-                quality = "marginal"
-                action = "Light denoising recommended (GaussianBlur σ=0.5-1.0)."
-            else:
-                quality = "adequate"
-                action = "No denoising needed."
-            return f"SNR ({snr:.1f}) is {quality} for reliable detection. {action}"
-
-        elif section == "contrast":
-            rms = metrics["rms_contrast"]
-            if rms < _THRESHOLDS["rms_contrast"]["critical"]:
-                quality = "critically low"
-                action = "Strong contrast enhancement required (CLAHE, HistogramEqualization)."
-            elif rms < _THRESHOLDS["rms_contrast"]["marginal"]:
-                quality = "marginal"
-                action = "Contrast enhancement recommended (CLAHE clip_limit=2.0)."
-            else:
-                quality = "adequate"
-                action = "Contrast is sufficient for detection."
-            return f"RMS contrast ({rms:.3f}) is {quality}. {action}"
-
-        elif section == "structure":
-            coherence = metrics["mean_coherence"]
-            if coherence < _THRESHOLDS["coherence"]["critical"]:
-                quality = "low"
-                desc = "weak directional structure"
-            elif coherence < _THRESHOLDS["coherence"]["marginal"]:
-                quality = "moderate"
-                desc = "some linear features present"
-            else:
-                quality = "high"
-                desc = "strong linear/edge structure"
-            opt_scale = metrics["optimal_scale"]
-            return f"Mean coherence ({coherence:.3f}) indicates {desc}. Optimal ridge scale: σ={opt_scale:.1f} px."
-
-        elif section == "background":
-            nonunif = metrics["nonuniformity_ratio"]
-            if nonunif > _THRESHOLDS["nonuniformity"]["critical"]:
-                quality = "severe"
-                action = "Background correction critical (RollingBallRemoveBG, FlatFieldCorrection)."
-            elif nonunif > _THRESHOLDS["nonuniformity"]["marginal"]:
-                quality = "moderate"
-                action = "Background correction recommended."
-            else:
-                quality = "acceptably low"
-                action = "Background is sufficiently uniform."
-            return f"Background non-uniformity ({nonunif:.1%}) is {quality}. {action}"
-
-        return ""
-
-    def _generate_recommendations(
-        self,
-        noise_metrics: dict[str, Any],
-        contrast_metrics: dict[str, Any],
-        structure_metrics: dict[str, Any],
-        background_metrics: dict[str, Any],
-    ) -> list[str]:
-        """Generate actionable recommendations based on all metrics.
-
-        Returns:
-            List of recommendation strings.
-        """
-        recommendations = []
-
-        # Noise recommendations
-        snr = noise_metrics["snr"]
-        corr_len = noise_metrics["correlation_length"]
-        if snr < _THRESHOLDS["snr"]["critical"]:
-            recommendations.append(
-                "Apply strong denoising: BilateralDenoise(sigma_spatial=3, sigma_intensity=0.1)"
-            )
-        elif snr < _THRESHOLDS["snr"]["marginal"]:
-            recommendations.append("Apply light denoising: GaussianBlur(sigma=0.5-1.0)")
-
-        if corr_len > 5:
-            recommendations.append(
-                f"Structured noise detected (ξ={corr_len:.1f}px). Consider MedianFilter or morphological opening."
-            )
-
-        # Contrast recommendations
-        rms = contrast_metrics["rms_contrast"]
-        dynamic = contrast_metrics["dynamic_range"]
-        if rms < _THRESHOLDS["rms_contrast"]["critical"]:
-            recommendations.append(
-                "Apply contrast enhancement: CLAHE(clip_limit=3.0) or HistogramEqualization"
-            )
-        elif rms < _THRESHOLDS["rms_contrast"]["marginal"]:
-            recommendations.append("Consider CLAHE(clip_limit=2.0) for improved contrast")
-
-        if dynamic < 0.3:
-            recommendations.append(
-                "Low dynamic range detected. Consider ContrastStretching or exposure adjustment."
-            )
-
-        # Structure recommendations
-        opt_scale = structure_metrics["optimal_scale"]
-        recommendations.append(
-            f"Use σ_range=[{opt_scale*0.7:.1f}, {opt_scale*1.5:.1f}] for multiscale structure detection"
-        )
-
-        # Background recommendations
-        nonunif = background_metrics["nonuniformity_ratio"]
-        if nonunif > _THRESHOLDS["nonuniformity"]["critical"]:
-            recommendations.append(
-                "Apply background correction: RollingBallRemoveBG(radius=50) or FlatFieldCorrection"
-            )
-        elif nonunif > _THRESHOLDS["nonuniformity"]["marginal"]:
-            recommendations.append(
-                "Consider GaussianSubtract(sigma=50) for background uniformity"
-            )
-
-        return recommendations
-
-    def _compute_quality_scores(
-        self,
-        noise_metrics: dict[str, Any],
-        contrast_metrics: dict[str, Any],
-        structure_metrics: dict[str, Any],
-        background_metrics: dict[str, Any],
-    ) -> dict[str, float]:
-        """Compute normalized 0-1 quality scores for spider chart.
-
-        Returns:
-            Dictionary of quality scores.
-        """
-        # SNR score (saturates at 15)
-        snr_score = min(noise_metrics["snr"] / 15.0, 1.0)
-
-        # Contrast score (RMS contrast, saturates at 0.15)
-        contrast_score = min(contrast_metrics["rms_contrast"] / 0.15, 1.0)
-
-        # Coherence score (already 0-1)
-        coherence_score = min(structure_metrics["mean_coherence"], 1.0)
-
-        # Uniformity score (inverse of nonuniformity)
-        uniformity_score = max(1.0 - background_metrics["nonuniformity_ratio"] * 2, 0.0)
-
-        # Sharpness score (based on gradient magnitude, computed from coherence/structure)
-        # Using peak ridge response as proxy
-        sharpness_score = min(structure_metrics["peak_response"] * 5, 1.0)
-
-        return {
-            "SNR": snr_score,
-            "Contrast": contrast_score,
-            "Coherence": coherence_score,
-            "Uniformity": uniformity_score,
-            "Sharpness": sharpness_score,
-        }
-
     # ============================================================================
     # MAIN PUBLIC METHOD
     # ============================================================================
@@ -950,23 +566,19 @@ class DiagnosticsPlotter(BasePlotter):
         structure_sigma: float = 1.5,
         ridge_scales: list[float] | None = None,
         ridge_method: Literal["meijering", "frangi", "hessian"] = "meijering",
-    ) -> tuple[Any, dict[str, Any]]:
-        """Generate comprehensive image quality diagnostics.
+    ) -> tuple[plt.Figure, dict[str, Any]]:
+        """Generate comprehensive image quality diagnostics as a static matplotlib figure.
 
-        When Panel is installed, returns an interactive dashboard with live-updating
-        plots and section toggles. When Panel is not available, falls back to a
-        static matplotlib figure.
+        For an interactive Panel dashboard, use ``image.panel.diagnostics()`` instead.
 
         Args:
             sections: Which sections to include. "all" for complete diagnostics, or a
                 list of section names: ["noise", "contrast", "structure", "background"].
             figsize: Figure size as (width, height) in inches. If None, computed
-                automatically based on number of sections. Only used for matplotlib
-                fallback.
+                automatically based on number of sections.
             include_descriptions: If True, include panel description text below each
-                section. Only used for matplotlib fallback.
+                section.
             include_recommendations: If True, include recommendations summary panel.
-                Only used for matplotlib fallback.
             background_sigma: Sigma for background estimation Gaussian smoothing.
             structure_sigma: Sigma for structure tensor computation.
             ridge_scales: Scales for multiscale ridge detection. Defaults to
@@ -975,9 +587,8 @@ class DiagnosticsPlotter(BasePlotter):
                 neurite-like structures), "frangi" (vesselness), or "hessian" (raw eigenvalues).
 
         Returns:
-            Tuple of (dashboard_or_fig, metrics_dict) where:
-                - dashboard_or_fig: A DiagnosticsDashboard (if Panel installed) with a
-                  ``.panel()`` method, or a matplotlib Figure (fallback).
+            Tuple of (fig, metrics_dict) where:
+                - fig: A matplotlib Figure with the diagnostics visualization.
                 - metrics_dict: Dictionary containing:
                     - "bit_depth": Image bit depth (8 or 16)
                     - "noise": Noise metrics (snr, sigma_mad, correlation_length)
@@ -989,19 +600,19 @@ class DiagnosticsPlotter(BasePlotter):
                     - "recommendations": List of actionable recommendations
 
         Examples:
-            Interactive dashboard (requires Panel):
+            Static matplotlib figure:
 
             >>> from phenotypic.data import load_synth_yeast_plate
             >>> image = load_synth_yeast_plate()
-            >>> dashboard, metrics = image.plot.diagnostics()
-            >>> print(f"SNR: {metrics['noise']['snr']:.2f}")
-            >>> dashboard.panel()  # Display interactive dashboard
-
-            Matplotlib fallback (no Panel):
-
             >>> fig, metrics = image.plot.diagnostics()
+            >>> print(f"SNR: {metrics['noise']['snr']:.2f}")
             >>> plt.savefig("diagnostics.png", dpi=150, bbox_inches="tight")
             >>> plt.close(fig)
+
+            For interactive Panel dashboard:
+
+            >>> dashboard = image.panel.diagnostics()
+            >>> dashboard.panel()  # Display interactive dashboard
         """
         # Default ridge scales
         if ridge_scales is None:
@@ -1010,21 +621,9 @@ class DiagnosticsPlotter(BasePlotter):
         # Get detection matrix
         detect_mat = self._root_image.detect_mat[:]
 
-        # --- Interactive Panel dashboard path ---
-        if PANEL_AVAILABLE:
-            from ._diagnostics_dashboard import DiagnosticsDashboard
+        # Create metrics calculator
+        calculator = ImageMetricsCalculator(detect_mat)
 
-            dashboard = DiagnosticsDashboard(
-                self,
-                detect_mat,
-                structure_sigma=structure_sigma,
-                ridge_method=ridge_method,
-                ridge_scales=ridge_scales,
-                background_sigma=background_sigma,
-            )
-            return dashboard, dashboard.metrics
-
-        # --- Matplotlib fallback path ---
         return self._diagnostics_matplotlib(
             sections=sections,
             figsize=figsize,
@@ -1035,6 +634,7 @@ class DiagnosticsPlotter(BasePlotter):
             ridge_scales=ridge_scales,
             ridge_method=ridge_method,
             detect_mat=detect_mat,
+            calculator=calculator,
         )
 
     def _diagnostics_matplotlib(
@@ -1050,6 +650,7 @@ class DiagnosticsPlotter(BasePlotter):
         ridge_scales: list[float],
         ridge_method: Literal["meijering", "frangi", "hessian"],
         detect_mat: np.ndarray,
+        calculator: ImageMetricsCalculator,
     ) -> tuple[plt.Figure, dict[str, Any]]:
         """Static matplotlib fallback for diagnostics().
 
@@ -1069,29 +670,29 @@ class DiagnosticsPlotter(BasePlotter):
             if s not in valid_sections:
                 raise ValueError(f"Invalid section: {s}. Valid: {valid_sections}")
 
-        # Compute all metrics
-        noise_metrics = self._compute_noise_metrics(detect_mat)
-        contrast_metrics = self._compute_contrast_metrics(detect_mat)
-        structure_metrics = self._compute_structure_metrics(
-            detect_mat, structure_sigma, ridge_scales, ridge_method
+        # Compute all metrics using ImageMetricsCalculator
+        noise_metrics = calculator.compute_noise_metrics()
+        contrast_metrics = calculator.compute_contrast_metrics()
+        structure_metrics = calculator.compute_structure_metrics(
+            sigma=structure_sigma, scales=ridge_scales, ridge_method=ridge_method
         )
-        background_metrics = self._compute_background_metrics(detect_mat, background_sigma)
+        background_metrics = calculator.compute_background_metrics(sigma=background_sigma)
 
         # Compute quality scores
-        quality_scores = self._compute_quality_scores(
+        quality_scores = calculator.compute_quality_scores(
             noise_metrics, contrast_metrics, structure_metrics, background_metrics
         )
 
         # Generate interpretations
         interpretations = {
-            "noise": self._generate_interpretation("noise", noise_metrics),
-            "contrast": self._generate_interpretation("contrast", contrast_metrics),
-            "structure": self._generate_interpretation("structure", structure_metrics),
-            "background": self._generate_interpretation("background", background_metrics),
+            "noise": calculator.generate_interpretation("noise", noise_metrics),
+            "contrast": calculator.generate_interpretation("contrast", contrast_metrics),
+            "structure": calculator.generate_interpretation("structure", structure_metrics),
+            "background": calculator.generate_interpretation("background", background_metrics),
         }
 
         # Generate recommendations
-        recommendations = self._generate_recommendations(
+        recommendations = calculator.generate_recommendations(
             noise_metrics, contrast_metrics, structure_metrics, background_metrics
         )
 
@@ -1158,7 +759,7 @@ class DiagnosticsPlotter(BasePlotter):
                     background_metrics["background_estimate"],
                     background_metrics["nonuniformity_ratio"],
                 )
-                self._plot_local_variance_map(ax2, detect_mat)
+                self._plot_local_variance_map(ax2, detect_mat, calculator)
 
                 descriptions = [PANEL_J_BACKGROUND, PANEL_K_VARIANCE]
             else:
@@ -1177,7 +778,7 @@ class DiagnosticsPlotter(BasePlotter):
 
                 elif section == "contrast":
                     self._plot_original_image(ax1, detect_mat)
-                    self._plot_local_contrast_map(ax2, detect_mat)
+                    self._plot_local_contrast_map(ax2, detect_mat, calculator)
                     self._plot_contrast_metrics_bars(ax3, contrast_metrics)
                     descriptions = [PANEL_D_ORIGINAL, PANEL_E_CONTRAST, PANEL_F_BARS]
 
@@ -1290,11 +891,11 @@ class DiagnosticsPlotter(BasePlotter):
 
         metrics_dict = {
             "bit_depth": self._root_image.bit_depth,
-            "noise": noise_metrics,
-            "contrast": contrast_metrics,
+            "noise": dict(noise_metrics),
+            "contrast": dict(contrast_metrics),
             "structure": structure_metrics_clean,
             "background": background_metrics_clean,
-            "quality_scores": quality_scores,
+            "quality_scores": dict(quality_scores),
             "interpretations": interpretations,
             "recommendations": recommendations,
         }
