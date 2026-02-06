@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import json
+import warnings
 from typing import Any, Dict, List, Tuple, TYPE_CHECKING, Iterator
 from itertools import product
 from pathlib import Path
 
-from abc import ABC, abstractmethod
+from abc import ABC
 from phenotypic.abc_ import ImageOperation
 from phenotypic import ImagePipeline
 
@@ -135,6 +136,14 @@ class PipelineGridSearchBase(ABC):
                 # OR
                 # gs.submitit(image, slurm_config={...})  # For PipeGridSearchSubmitit
         """
+        warnings.warn(
+            "PipelineGridSearchBase is deprecated. Use phenotypic.sweep instead:\n"
+            "  from phenotypic.sweep import Sweep, generate_sweep_manifest\n"
+            "See phenotypic.sweep documentation for the new API.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+
         for cfg in pipe_cfgs.values():
             self._validate_pipe_cfgs(cfg)
 

@@ -3,7 +3,6 @@ from __future__ import annotations
 import importlib.util
 import os
 from typing import Tuple, TYPE_CHECKING
-from pathlib import Path
 from joblib import Parallel, delayed
 
 from ._pipe_grid_search_submitit import PipeGridSearchSubmitit
@@ -16,7 +15,6 @@ if HAS_PSUTIL:
 
 if TYPE_CHECKING:
     from phenotypic import Image
-    from phenotypic.tools_.typing_ import GridSearchSaveData
 
 
 class PipeGridSearchJoblib(PipeGridSearchSubmitit):

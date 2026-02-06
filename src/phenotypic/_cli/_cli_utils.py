@@ -75,6 +75,49 @@ def normalize_extension(ext: str, default: str = ".tiff") -> str:
     return ext
 
 
+def parse_slurm_args(slurm_args: "Sequence[str]") -> dict:
+    """Parse space-separated KEY=VALUE pairs into dictionary.
+
+    Args:
+        slurm_args: Sequence of "KEY=VALUE" strings.
+
+    Returns:
+        Dictionary of parsed parameters.
+
+    Raises:
+        click.BadParameter: If parsing fails.
+    """
+    import ast
+    from typing import Sequence  # noqa: F811
+
+    parsed = {}
+    for param in slurm_args:
+        if "=" not in param:
+            raise click.BadParameter(
+                "--slurm-args must be KEY=VALUE pairs",
+                param_hint="--slurm-args",
+            )
+
+        key, value = param.split("=", 1)
+        key = key.strip()
+        value = value.strip()
+
+        if not key:
+            raise click.BadParameter(
+                "SLURM parameter keys cannot be empty",
+                param_hint="--slurm-args",
+            )
+
+        try:
+            parsed_value = ast.literal_eval(value)
+        except (ValueError, SyntaxError):
+            parsed_value = value
+
+        parsed[key] = parsed_value
+
+    return parsed
+
+
 def get_python_command() -> Tuple[List[str], str]:
     """
     Detect available Python runner command for SLURM scripts.

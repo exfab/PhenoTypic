@@ -1,12 +1,10 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List, Tuple, TYPE_CHECKING, Iterator
-from pathlib import Path
+from typing import Dict, TYPE_CHECKING
 
 from ._pipe_grid_search_base import PipelineGridSearchBase
 
 if TYPE_CHECKING:
-    from phenotypic.tools_.typing_ import GridSearchSaveData, GridSearchConfig
     from phenotypic import Image
 
 

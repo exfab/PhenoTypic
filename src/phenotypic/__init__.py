@@ -35,9 +35,10 @@ from . import (
     grid,
     measure,
     refine,
+    settings_,
+    sweep,
     tools_,
     prefab,
-    settings_
 )
 
 __all__ = [
@@ -57,4 +58,5 @@ __all__ = [
     "enhance",
     "tools",
     "settings_",
+    "sweep",
 ]

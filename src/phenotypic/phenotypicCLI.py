@@ -114,7 +114,6 @@ Migration Notes (v1.x → v2.0):
 
 import sys
 import logging
-from datetime import datetime
 from pathlib import Path
 from typing import Optional, Sequence
 
@@ -123,7 +122,7 @@ import click
 # Set up logger
 logger = logging.getLogger(__name__)
 
-from phenotypic import Image, GridImage, ImagePipeline
+from phenotypic import ImagePipeline
 from phenotypic._core._image_parts.detection_modes import available_modes
 from phenotypic._cli._cli_directory_scanner import (
     generate_timestamped_output_dir,
@@ -146,9 +145,8 @@ from phenotypic._cli._cli_state_management import (
     validate_resume_compatibility,
 )
 from phenotypic._cli._cli_types import ExecutionConfig
-from phenotypic._cli._cli_utils import normalize_extension
+from phenotypic._cli._cli_utils import normalize_extension, parse_slurm_args
 from phenotypic._cli._cli_validation import (
-    full_validation,
     validate_execution_config,
     validate_pipeline,
     validate_pipeline_on_test_image,
@@ -186,48 +184,12 @@ def error_exit(message: str, details: Optional[str] = None, code: int = 1) -> No
 
 
 def _parse_slurm_args(slurm_args: Sequence[str]) -> dict:
+    """Parse space-separated KEY=VALUE pairs into dictionary.
+
+    Thin wrapper around :func:`phenotypic._cli._cli_utils.parse_slurm_args`
+    kept for backward compatibility within this module.
     """
-    Parse space-separated KEY=VALUE pairs into dictionary.
-
-    Args:
-        slurm_args: Sequence of "KEY=VALUE" strings
-
-    Returns:
-        Dictionary of parsed parameters
-
-    Raises:
-        click.BadParameter: If parsing fails
-    """
-    import ast
-
-    parsed = {}
-    for param in slurm_args:
-        if "=" not in param:
-            raise click.BadParameter(
-                    "--slurm-args must be KEY=VALUE pairs",
-                    param_hint="--slurm-args",
-            )
-
-        key, value = param.split("=", 1)
-        key = key.strip()
-        value = value.strip()
-
-        if not key:
-            raise click.BadParameter(
-                    "SLURM parameter keys cannot be empty",
-                    param_hint="--slurm-args",
-            )
-
-        # Try to parse value as Python literal
-        try:
-            parsed_value = ast.literal_eval(value)
-        except (ValueError, SyntaxError):
-            # Keep as string if not a valid literal
-            parsed_value = value
-
-        parsed[key] = parsed_value
-
-    return parsed
+    return parse_slurm_args(slurm_args)
 
 
 def _validate_resume_input_images(
