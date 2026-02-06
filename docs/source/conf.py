@@ -86,6 +86,7 @@ extensions = [
     "sphinx_design",
     "class_members",
     "sphinx_togglebutton",
+    "myst_parser",
 ]
 
 autosummary_generate = True

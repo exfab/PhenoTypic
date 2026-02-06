@@ -1,7 +1,7 @@
-phenotypic.tools.constants\_
+phenotypic.tools_.constants\_
 ============================
 
-.. automodule:: phenotypic.tools.constants_
+.. automodule:: phenotypic.tools_.constants_
    :members:
    :undoc-members:
    :show-inheritance:

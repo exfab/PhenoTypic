@@ -16,7 +16,7 @@ Subpackages
 
    phenotypic.abc_
    phenotypic.analysis
-   phenotypic.core
+   phenotypic._core
    phenotypic.correction
    phenotypic.data
    phenotypic.detect
@@ -25,5 +25,5 @@ Subpackages
    phenotypic.measure
    phenotypic.prefab
    phenotypic.refine
-   phenotypic.tools
+   phenotypic.tools_
    phenotypic.util

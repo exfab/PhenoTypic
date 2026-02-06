@@ -52,5 +52,5 @@ Modules
    phenotypic.measure
    phenotypic.prefab
    phenotypic.refine
-   phenotypic.tools
+   phenotypic.tools_
    phenotypic.util

@@ -1,7 +1,7 @@
-phenotypic.core
+phenotypic._core
 ===============
 
-.. automodule:: phenotypic.core
+.. automodule:: phenotypic._core
    :members:
    :undoc-members:
    :show-inheritance:

@@ -40,15 +40,15 @@ Downloadable Notebooks
     .. grid-item-card:: 1. Getting Started
         :shadow: md
 
-        Get started with image processing in PhenoTypic.
+        Get started with image processing in PhenoTypic. --- Getting started with image processing is straightforward. There's three classes of operations in `phenotypic`: `ImageOperation`, `MeasureFeature`, and `ImagePipeline`. - `ImageOperation`(s): processes that operate on the data of an image in preparation for feature extraction with `MeasureFeature`. - `MeasureFeature`(s) extract measurements from the objects within the image based on the pixel values. - `ImagePipeline`(s) are a collection of operations and measurements compiled into a single class for convenience. ## Understanding the Accessor Pattern PhenoTypic uses an **accessor pattern** to provide clean, consistent access to image data without exposing raw attributes: - `image.rgb[:]` - RGB color array - `image.gray[:]` - Grayscale representation (automatic luminance conversion) - `image.detect_mat[:]` - Enhanced grayscale for processing (used by detection operations) - `image.objects` - High-level interface for detected objects and their properties This design ensures lazy evaluation, caching, and transparent format conversion. ## Using Pre-built Pipelines To get started with `phenotypic`, it's fastest to start by using one of the pipelines in `phenotypic.prefab`. Below we use `phenotypic.prefab.HeavyRoundPeaksPipeline`, which is optimized for images of *Saccharomyces cerevisiae* and similar microorganisms. To load in an image you'll use `phenotypic.GridImage.imread()`. This method is also available for regular images, `phenotypic.Image.imread()`.
 
         +++
         :download:`Download notebook <user_guide/tutorial/notebooks/GettingStarted.ipynb>`
 
-    .. grid-item-card:: Prerequisites
+    .. grid-item-card:: 4. Working with GridImage: Grid-Specific Features
         :shadow: md
 
-        **Before starting this tutorial**, please complete the {doc} `Image` to understand the core `Image` class features (rgb, gray, detect_mat, objmap, objects, etc.).
+        This tutorial focuses on `GridImage` - a specialized class for analyzing arrayed microbe colonies on agar plates. GridImage extends the `Image` class with grid tracking and position-aware analysis.
 
         +++
         :download:`Download notebook <user_guide/tutorial/notebooks/GridImages.ipynb>`

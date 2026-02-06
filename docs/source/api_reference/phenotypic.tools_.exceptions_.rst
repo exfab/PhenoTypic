@@ -1,7 +1,7 @@
-phenotypic.tools.exceptions\_
+phenotypic.tools_.exceptions\_
 =============================
 
-.. automodule:: phenotypic.tools.exceptions_
+.. automodule:: phenotypic.tools_.exceptions_
    :members:
    :undoc-members:
    :show-inheritance:

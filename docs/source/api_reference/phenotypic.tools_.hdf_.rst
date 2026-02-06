@@ -1,7 +1,7 @@
-phenotypic.tools.hdf\_
+phenotypic.tools_.hdf\_
 ======================
 
-.. automodule:: phenotypic.tools.hdf_
+.. automodule:: phenotypic.tools_.hdf_
    :members:
    :undoc-members:
    :show-inheritance:

@@ -1,11 +1,18 @@
 Examples
 ========
 
-This section provides practical examples and tutorials for Phenotypic.
+This section provides practical examples and tutorials for PhenoTypic.
 
 .. toctree::
    :maxdepth: 2
-   :caption: Example Categories
+   :caption: GUI Tutorials
+
+   pipeline_builder
+   pipeline_explorer
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Interactive Examples
 
    ../interactive_measurement
 
