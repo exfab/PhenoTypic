@@ -2,7 +2,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    pass
+    import napari
 
 import numpy as np
 
@@ -11,6 +11,9 @@ from phenotypic.tools_.exceptions_ import (
     ArrayKeyValueShapeMismatchError,
     EmptyImageError
 )
+
+# Separate napari viewer for detection mode previews
+_detect_modes_viewer: napari.Viewer | None = None
 
 
 class DetectMatAccessor(SingleChannelAccessor):
@@ -159,4 +162,107 @@ class DetectMatAccessor(SingleChannelAccessor):
         from phenotypic._core._image_parts.detection_modes import get_detection_mode
 
         mode = get_detection_mode(self._root_image._data.detect_mode)
-        self._root_image._data.detect_mat = mode.compute(self._root_image._data)
+        self._root_image._data.detect_mat = mode.compute(self._root_image)
+
+    def preview_modes(self, reset: bool = False) -> napari.Viewer:
+        """Open a napari viewer with all registered detection mode matrices.
+
+        Computes every registered detection mode and adds each as a separate
+        image layer in a dedicated napari viewer. The current (possibly
+        enhanced) detection matrix is also included. Toggle layer visibility
+        in napari's layer list to compare modes.
+
+        This viewer is independent of the main ``image.gray.napari()`` viewer.
+
+        Args:
+            reset: If True, closes the existing preview viewer and creates
+                a fresh one. Defaults to False.
+
+        Returns:
+            napari.Viewer: A viewer with one layer per detection mode plus
+                the current detection matrix.
+
+        Examples:
+            Compare all detection modes interactively:
+
+            >>> from phenotypic.data import load_synth_yeast_plate
+            >>> image = load_synth_yeast_plate()
+            >>> viewer = image.detect_mat.preview_modes()
+
+            Reset and re-preview after applying enhancers:
+
+            >>> viewer = image.detect_mat.preview_modes(reset=True)
+        """
+        import napari as _napari
+
+        from phenotypic._core._image_parts.accessor_abstracts._image_accessor_base import (
+            _viewer_is_alive,
+        )
+        from phenotypic._core._image_parts.detection_modes import (
+            available_modes,
+            get_detection_mode,
+        )
+
+        global _detect_modes_viewer
+
+        # Reset viewer if requested
+        if reset and _viewer_is_alive(_detect_modes_viewer):
+            _detect_modes_viewer.close()
+            _detect_modes_viewer = None
+
+        # Create new viewer if needed
+        if not _viewer_is_alive(_detect_modes_viewer):
+            _detect_modes_viewer = _napari.Viewer(
+                title="Detection Mode Preview",
+            )
+
+        viewer = _detect_modes_viewer
+        has_rgb = not self._root_image.rgb.isempty()
+
+        # Add RGB and grayscale reference layers (hidden).
+        # Names use "[ref]" prefix to avoid collision with mode names
+        # (e.g. the "gray" detection mode vs. the grayscale reference).
+        if has_rgb:
+            rgb_data = self._root_image.rgb[:]
+            try:
+                viewer.layers["rgb"].data = rgb_data
+            except KeyError:
+                viewer.add_image(
+                    rgb_data, name="rgb", visible=False, rgb=True,
+                )
+
+        gray_data = self._root_image.gray[:]
+        try:
+            viewer.layers["[ref] gray"].data = gray_data
+        except KeyError:
+            viewer.add_image(
+                gray_data, name="[ref] gray", visible=False,
+            )
+
+        # Add each registered mode as a layer
+        for mode_name in available_modes():
+            mode = get_detection_mode(mode_name)
+            if mode.requires_rgb and not has_rgb:
+                continue
+            matrix = mode.compute(self._root_image)
+
+            try:
+                viewer.layers[mode_name].data = matrix
+            except KeyError:
+                viewer.add_image(
+                    matrix, name=mode_name, visible=False,
+                )
+
+        # Add the current (possibly enhanced) detect_mat
+        current_mode = self._root_image._data.detect_mode
+        current_label = f"current ({current_mode})"
+        current_mat = self._root_image._data.detect_mat
+
+        try:
+            viewer.layers[current_label].data = current_mat
+        except KeyError:
+            viewer.add_image(
+                current_mat, name=current_label, visible=True,
+            )
+
+        return viewer

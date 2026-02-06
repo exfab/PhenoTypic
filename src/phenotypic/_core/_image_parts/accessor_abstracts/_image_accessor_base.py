@@ -14,10 +14,8 @@ import pandas as pd
 import skimage as ski
 from PIL import Image as PIL_Image
 import napari
-import imageio.v3 as iio
 
 import phenotypic
-from phenotypic.settings_ import MPL
 from phenotypic.tools_.constants_ import IO, METADATA
 from phenotypic.tools_.funcs_ import normalize_rgb_bitdepth
 
@@ -26,6 +24,24 @@ if TYPE_CHECKING:
 
 # Global napari viewer instance for persistent Jupyter notebook workflows
 _global_napari_viewer: napari.Viewer | None = None
+
+
+def _viewer_is_alive(viewer: napari.Viewer | None) -> bool:
+    """Return True if *viewer* is open and its Qt window still exists."""
+    if viewer is None:
+        return False
+    try:
+        window = getattr(viewer, "window", None)
+        if window is None:
+            return False
+        # Access the underlying Qt widget to verify it hasn't been deleted.
+        # After viewer.close(), the Qt C++ object may be garbage-collected,
+        # causing RuntimeError or AttributeError on attribute access.
+        qt_window = window._qt_window
+        return qt_window is not None and qt_window.isVisible()
+    except (RuntimeError, AttributeError):
+        # Qt C++ object has been deleted (user closed window)
+        return False
 
 
 class ImageAccessorBase(ABC):
@@ -1158,18 +1174,12 @@ class ImageAccessorBase(ABC):
         global _global_napari_viewer
 
         # Reset viewer if requested
-        if reset and _global_napari_viewer is not None:
-            if hasattr(_global_napari_viewer,
-                       "window") and _global_napari_viewer.window is not None:
-                _global_napari_viewer.close()
+        if reset and _viewer_is_alive(_global_napari_viewer):
+            _global_napari_viewer.close()
             _global_napari_viewer = None
 
-        # Check if viewer exists and is still valid (window open)
-        if (
-                _global_napari_viewer is None
-                or not hasattr(_global_napari_viewer, "window")
-                or _global_napari_viewer.window is None
-        ):
+        # Create new viewer if needed
+        if not _viewer_is_alive(_global_napari_viewer):
             _global_napari_viewer = napari.Viewer()
 
         # Generate descriptive layer name

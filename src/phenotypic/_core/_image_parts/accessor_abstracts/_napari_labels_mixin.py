@@ -230,21 +230,20 @@ class NapariLabelsMixin:
 
         # Access the global viewer through module reference
         # This ensures we share the same viewer instance across all accessors
+        from phenotypic._core._image_parts.accessor_abstracts._image_accessor_base import (
+            _viewer_is_alive,
+        )
+
         viewer = _image_accessor_base._global_napari_viewer
 
         # Reset viewer if requested
-        if reset and viewer is not None:
-            if hasattr(viewer, "window") and viewer.window is not None:
-                viewer.close()
+        if reset and _viewer_is_alive(viewer):
+            viewer.close()
             _image_accessor_base._global_napari_viewer = None
             viewer = None
 
-        # Check if viewer exists and is still valid (window open)
-        if (
-            viewer is None
-            or not hasattr(viewer, "window")
-            or viewer.window is None
-        ):
+        # Create new viewer if needed
+        if not _viewer_is_alive(viewer):
             viewer = napari.Viewer()
             _image_accessor_base._global_napari_viewer = viewer
 
