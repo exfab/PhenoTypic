@@ -180,6 +180,17 @@ def __getattr__(name: str):
 
             return SweepComparisonWidget
 
+    # Napari sweep viewer (requires napari, no Panel needed)
+    if name in ("NapariSweepViewer", "launch_sweep_viewer"):
+        if name == "NapariSweepViewer":
+            from .sweep import NapariSweepViewer
+
+            return NapariSweepViewer
+        elif name == "launch_sweep_viewer":
+            from .sweep import launch_sweep_viewer
+
+            return launch_sweep_viewer
+
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
@@ -204,4 +215,7 @@ __all__ = [
     # Viewer components
     "SweepComparisonWidget",
     "SweepHTMLExporter",
+    # Napari sweep viewer
+    "NapariSweepViewer",
+    "launch_sweep_viewer",
 ]
