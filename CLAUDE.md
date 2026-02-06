@@ -71,97 +71,45 @@ documentation** including all flags, output structure, and SLURM cluster executi
 ### Project Purpose
 
 PhenoTypic is a modular image processing framework for **arrayed colony phenotyping on
-solid media** (agar plates). The
-framework provides:
+solid media** (agar plates). The framework provides:
 
-- High-level `Image` and `GridImage` classes for easy access to image data and
-  operations
-- Extensible operation classes for custom detectors, enhancers, measurers, and
-  correctors
+- High-level `Image` and `GridImage` classes for easy access to image data and operations
+- Extensible operation classes for custom detectors, enhancers, measurers, and correctors
 - Pre-built pipelines (`ImagePipeline`) for sequential processing and batch operations
 - Grid-aware analysis for plate-based experiments (96-well, 384-well, etc.)
 
-### Core Architecture: Layers and Components
+### Core Architecture
 
-#### 1. **Image Data Layer** (src/phenotypic/core/_image_parts/)
+The framework has four layers:
 
-The `Image` class is the central data structure. It uses composition with handler
-classes:
+1. **Image Data Layer** — `Image` class uses composition with handler classes and exposes
+   data through an **accessor pattern** with lazy evaluation and caching (e.g.,
+   `image.rgb[:]`, `image.detect_mat[:]`, `image.color.Lab[:]`). See
+   [src/phenotypic/_core/CLAUDE.md](src/phenotypic/_core/CLAUDE.md) for details.
 
-```
-Image (main class)
-├── ImageIOHandler (file I/O, metadata, color spaces)
-│   ├── ImageDataManager (raw image arrays)
-│   └── ImageColorHandler (RGB, grayscale, color spaces: XYZ, Lab, HSV)
-├── ImageObjectsHandler (detection results: masks, labels)
-└── ImageGridHandler (grid information)
-```
-
-The Image class does **not expose raw attributes**. Instead, it uses an **Accessor
-Pattern** for data access (see
-section 3 below).
-
-#### 2. **Accessor Pattern** (src/phenotypic/core/_image_parts/accessors/)
-
-Accessors provide a unified interface to image components with lazy evaluation, caching,
-and transparent format
-conversion:
-
-```python
-image.rgb[:]  # Raw RGB array
-image.gray[:]  # Grayscale (automatic luminance)
-image.detect_mat[:]  # Enhanced grayscale for processing
-image.objmask[:]  # Binary mask of detected objects
-image.objmap[:]  # Labeled object map
-image.objects  # ObjectsAccessor (high-level interface)
-image.color  # ColorAccessor (XYZ, Lab, HSV, xy chromaticity)
-image.grid  # GridAccessor (grid layout and alignment)
-image.metadata  # MetadataAccessor (EXIF, file info)
-```
-
-**Key principle:** Data is accessed through accessors, not direct attributes. This
-ensures consistency and enables lazy
-evaluation.
-
-#### 3. **Operation Classes (ABC System)** (src/phenotypic/abc_/)
-
-All algorithms inherit from abstract base classes (ABCs) that provide a consistent
-interface:
+2. **Operation Classes (ABC System)** — All algorithms inherit from ABCs that provide a
+   consistent `_operate(image) -> image` interface:
 
 ```
-BaseOperation (root class)
-├── Automatic memory/performance tracking
-├── Logging integration
-│
-├── ImageOperation (single-image operations)
+BaseOperation (root)
+├── ImageOperation
 │   ├── ImageEnhancer (preprocessing: blur, contrast, etc.)
 │   ├── ImageCorrector (quality improvements: rotation, etc.)
 │   └── ObjectDetector (colony detection algorithms)
-│
-├── GridOperation (grid-aware operations)
-│   ├── GridFinder (automatic grid detection)
-│   ├── GridCorrector (grid alignment)
-│   └── GridObjectRefiner (mask refinement)
-│
-├── MeasureFeatures (feature extraction)
-│   └── GridMeasureFeatures (per-well measurements)
-│
+├── GridOperation (grid-aware: GridFinder, GridCorrector, GridObjectRefiner)
+├── MeasureFeatures / GridMeasureFeatures (feature extraction)
 └── PrefabPipeline (pre-built pipeline templates)
 ```
 
-**Standard interface:** All operations implement `_operate(image) -> image` to enable
-chainable processing.
+   See [src/phenotypic/abc_/CLAUDE.md](src/phenotypic/abc_/CLAUDE.md) for the full
+   hierarchy, decision matrix, and implementation guide.
 
-#### 4. **Pipeline Layer** (src/phenotypic/core/_image_pipeline.py)
+3. **Pipeline Layer** — `ImagePipeline` chains operations with sequential processing,
+   batch execution via worker pools, YAML/JSON serialization, and automatic benchmarking.
 
-The `ImagePipeline` class chains operations together:
-
-- **Sequential processing:** Operations execute in order, each passes result to next
-- **Lazy execution:** Operations don't execute until needed (results accessed)
-- **Batch processing:** Process multiple images with worker pools
-- **Serialization:** Save/load pipelines as YAML/JSON for reproducibility
-- **Benchmarking:** Automatic timing of each operation
-- **Memory profiling:** Track memory usage per operation
+4. **Enhancement Layer** — 19+ preprocessing operations (denoising, background
+   correction, contrast enhancement, morphological operations). All enhancers operate on
+   `image.detect_mat[:]`; original RGB and grayscale remain unchanged.
 
 ### Module Organization
 
@@ -174,78 +122,41 @@ phenotypic/module_name/
 └── _another_impl.py      # All implementation files are private
 ```
 
-**Philosophy:**
-
-- **Public API:** Only classes exported in `__init__.py` are considered stable
-- **Private Implementation:** Files starting with `_` are internal details
-- **Single Responsibility:** Each class does one thing well
-- **Standardized Interfaces:** All implementations inherit from appropriate ABC
+Only classes exported in `__init__.py` are public API. All implementation files are
+private (leading `_`).
 
 #### Key Modules
 
-| Module                     | Purpose                             | Key Classes                                                                                                             |
-|----------------------------|-------------------------------------|-------------------------------------------------------------------------------------------------------------------------|
-| `phenotypic.detect`        | Object detection (11+ detectors)    | `ObjectDetector` (ABC), `OtsuDetector`, `CannyDetector`, etc.                                                           |
-| `phenotypic.enhance`       | Image preprocessing (19+ enhancers) | `ImageEnhancer` (ABC), `GaussianBlur`, `CLAHE`, `GrayOpening`, `BilateralDenoise`, `UnsharpMask`, `WhiteTophatSubtract` |
-| `phenotypic.refine`        | Post-detection refinement           | `GridObjectRefiner`, morphology operations, mask editing                                                                |
-| `phenotypic.measure`       | Feature extraction                  | `MeasureFeatures` (ABC), color composition, morphology, etc.                                                            |
-| `phenotypic.grid`          | Grid detection and alignment        | `GridFinder`, `GridCorrector`                                                                                           |
-| `phenotypic.correction`    | Image quality improvements          | `ImageCorrector` (ABC), rotation, edge correction, etc.                                                                 |
-| `phenotypic.analysis`      | Downstream statistical analysis     | Growth curves, clustering, outlier detection                                                                            |
-| `phenotypic.prefab`        | Pre-built pipelines                 | Complete workflows at ExFAB                                                                                             |
-| `phenotypic.tools_`        | Utility mixins and helpers          | `FootprintMixin` for morphological structuring elements                                                                 |
-| `phenotypic.settings_`     | Global configuration                | `VALIDATE_OPS`, `MPL` (matplotlib defaults)                                                                             |
-| `phenotypic.phenotypicCLI` | Command-line batch processing       | `main()`, `process_single_image()` for parallel pipeline execution                                                      |
+| Module                  | Purpose                          |
+|-------------------------|----------------------------------|
+| `phenotypic.detect`     | Object detection (11+ detectors) |
+| `phenotypic.enhance`    | Image preprocessing (19+ ops)    |
+| `phenotypic.refine`     | Post-detection refinement        |
+| `phenotypic.measure`    | Feature extraction               |
+| `phenotypic.grid`       | Grid detection and alignment     |
+| `phenotypic.correction` | Image quality improvements       |
+| `phenotypic.analysis`   | Downstream statistical analysis  |
+| `phenotypic.prefab`     | Pre-built pipelines              |
+| `phenotypic.tools_`     | Utility mixins and helpers       |
+| `phenotypic.settings_`  | Global configuration             |
 
-### Design Patterns
+### Design Decisions
 
-1. **Strategy Pattern:** ABC classes allow swappable algorithms (e.g., different
-   detectors)
-2. **Chain of Responsibility:** `ImagePipeline` chains operations
-3. **Lazy Evaluation:** Accessors compute data on-demand with caching
-4. **Composite Pattern:** `Image` composes multiple handler components
-5. **Decorator Pattern:** `ImagePipeline` wraps operations with benchmarking/logging
-
-### Important Design Decisions
-
-1. **Immutability Philosophy:** Operations return modified copies (except direct
-   attribute assignment)
-    - `enhanced = detector.operate(image)` creates a new Image with detection results
-    - Original `image` is unchanged
-
-2. **Explicit Over Implicit:** Pipeline operations are explicit and traceable
-    - Use `ImagePipeline` to define multi-step workflows
-    - Avoid hidden state or implicit operations
-
-3. **Domain-Specific:** The framework is purpose-built for microbe phenotyping on agar
-   plates
-    - Examples should use microbiology context (colony growth, well plates)
-    - Code should be intuitive to entry-level data scientists
-
-4. **Cross-Platform Support:** Code must work on macOS, Windows, and Linux
-    - Watch for platform-specific optional dependencies in pyproject.toml
-    - Test code paths on multiple platforms
-
-5. **Reproducibility:** Pipelines can be serialized and re-executed
-    - Use `pipeline.to_json()` / `pipeline.from_json()` for reproducible workflows
-    - Fixed random seeds for stochastic operations
+1. **Immutability:** Operations return modified copies; originals unchanged. Never modify
+   `image.rgb` or `image.gray` directly.
+2. **Explicit over implicit:** Use `ImagePipeline` for multi-step workflows. No hidden
+   state.
+3. **Domain-specific:** Purpose-built for microbe phenotyping on agar plates. Examples
+   use microbiology context. Code should be intuitive for entry-level data scientists.
+4. **Cross-platform:** macOS, Windows, Linux. Watch for platform-specific optional deps.
+5. **Reproducibility:** Serialize pipelines via `to_json()` / `from_json()`. Fixed
+   random seeds for stochastic operations.
+6. **Duck typing:** Follow duck typing principles when reasonable.
+7. **Explicit matplotlib:** Never use implicit pyplot.
 
 ---
 
-## Documentation and Code Standards
-
-This section consolidates all code style, design, and documentation rules for the
-project.
-
-### Design Principles
-
-- Package features should be **intuitive for entry-level data scientists**
-- Framework is **extendable** and **standalone** (no external extensions required)
-- Examples should have **microbiology context** (arrayed microbe growth, agar plates)
-- Follow **duck typing** principles when reasonable
-- **Cross-platform support:** macOS, Windows, and Linux (watch for platform-specific
-  optional dependencies in pyproject.toml)
-- Use **explicit matplotlib interface** (never use implicit pyplot)
+## Code Style and Documentation Standards
 
 ### Code Style Rules
 
@@ -253,25 +164,20 @@ project.
 - Use `uv run` to execute Python code or Python-dependent functions
 - Activate venv with: `source .venv/bin/activate`
 - Follow **duck typing** for type checks
-- **Never create separate example files/notebooks** - put all examples in docstrings
+- **Never create separate example files/notebooks** — put all examples in docstrings
 - Don't create summary documents unless explicitly asked
 - For batch processing, use the CLI: `uv run python -m phenotypic` rather than custom
   scripts
 - When modifying settings, import `phenotypic.settings_` before other modules
+- Break large functions into smaller helper functions that are independently unit-testable
+  and easier to maintain. Within classes, use private helper methods (e.g.,
+  `_compute_threshold`) to keep public methods focused and readable.
 
-### Docstring Format (All Classes)
+### Docstring Format
 
-Use **Google-style docstrings** with this exact order:
-
-1. **One-line summary** - What does it do?
-2. **Args** - Parameters and their effects
-3. **Returns** - What is returned
-4. **Raises** - Exceptions that can occur
-5. **Longer description** - Include intuition, use cases, limitations (especially for
-   ImageOperation subclasses)
-6. **Examples** - Doctest-formatted, copy-pasteable code with microbiology context
-
-**Quick template:**
+Use **Google-style docstrings** with this order: (1) one-line summary, (2) Args, (3)
+Returns, (4) Raises, (5) longer description with intuition/use cases/limitations, (6)
+Examples in doctest format.
 
 ```python
 def function_name(param):
@@ -286,8 +192,7 @@ def function_name(param):
     Raises:
         ValueError: When and why.
 
-    Longer explanation. For operations: why is this useful for colony analysis?
-    Include limitations and how parameters affect results.
+    Longer explanation with use cases and limitations.
 
     Examples:
         >>> from phenotypic.data import load_synth_yeast_plate
@@ -296,238 +201,41 @@ def function_name(param):
     """
 ```
 
-### Doctest Format Requirements
+All examples must be **fully runnable** doctest format. Use `load_synth_yeast_plate()`
+from `phenotypic.data` for image examples. Use real microbiology context — document
+parameter effects on colony visibility, edge sharpness, or mask quality.
 
-- Use **doctest format** for all code examples (lines starting with `>>>` are code)
-- Output from code should appear on the next line(s) without prefix
-- All examples must be **fully runnable** and **copy-pasteable**
-- Use `load_synth_yeast_plate()` from `phenotypic.data` for image examples (returns a
-  GridImage with detected colonies)
-- Use real microbiology context (colony detection, plate images) - not
-  synthetic/abstract examples
-- Document parameter effects on colony visibility, edge sharpness, background
-  suppression, or mask quality
-
-### ImageOperation Subclasses (Special Rules)
-
-For `ObjectDetector`, `ImageEnhancer`, `ImageCorrector`, and related operation classes,
-use this specific order:
-
-1. **One-line summary** at the top (what does it do?)
-2. **Args/Attributes section** - Concise parameter descriptions (1-2 sentences per
-   param) with effects on image processing
-3. **Returns section** - What the operation returns
-4. **Raises section** - Exceptions that can be raised
-5. **Detailed explanation** - Comes AFTER exceptions. Include:
-    - **Use cases** (3-5 bullet points): Key scenarios when to use this operation
-    - **Limitations** (3-5 bullet points): Critical limitations, failure modes, when NOT
-      to use
-    - **Parameter effects** (1-2 sentences per parameter): How tuning impacts results
-6. **Examples section** - 2 practical doctest code examples:
-    - Basic usage
-    - Pipeline/advanced usage
-
-**Documentation format:** Moderate conciseness (100-150 lines total per class)
-
-- Clear and informative without excessive verbosity
-- Concise parameter descriptions (1-2 sentences per param)
-- Use cases and limitations as bullet-point lists
-- Examples use doctest format and are fully runnable
-- Use `load_synth_yeast_plate()` from `phenotypic.data` when an image is needed
-- Reference: [HysteresisDetector](src/phenotypic/detect/_hysteresis_detector.py) in
-  `phenotypic.detect` module as an example
+For **ImageOperation subclasses** (detectors, enhancers, correctors), see
+[src/phenotypic/abc_/CLAUDE.md](src/phenotypic/abc_/CLAUDE.md) for the specialized
+docstring ordering rules and formatting guidelines.
 
 ---
 
-## Testing Strategy
+## Detailed Module Guides
 
-Test files in `tests/` mirror the module structure under `src/phenotypic/`.
-
-**See [tests/CLAUDE.md](tests/CLAUDE.md) for complete testing documentation** including
-test organization, configuration, and how to write new tests
-
----
-
-## Global Settings and Configuration
-
-Configure settings **before** importing other PhenoTypic modules:
-
-```python
-import phenotypic.settings_ as settings
-settings.VALIDATE_OPS = False  # Disable for batch performance
-```
-
-**See [src/phenotypic/settings_/CLAUDE.md](src/phenotypic/settings_/CLAUDE.md) for
-complete settings documentation**
+| Guide | Covers |
+|-------|--------|
+| [tests/CLAUDE.md](tests/CLAUDE.md) | Test organization, configuration, writing new tests |
+| [src/phenotypic/_core/CLAUDE.md](src/phenotypic/_core/CLAUDE.md) | Image class, accessor pattern, color spaces |
+| [src/phenotypic/abc_/CLAUDE.md](src/phenotypic/abc_/CLAUDE.md) | ABC hierarchy, which ABC to subclass, implementation patterns |
+| [src/phenotypic/_cli/CLAUDE.md](src/phenotypic/_cli/CLAUDE.md) | CLI flags, output structure, SLURM execution |
+| [src/phenotypic/tools_/CLAUDE.md](src/phenotypic/tools_/CLAUDE.md) | FootprintMixin, GridInferenceMixin, other utilities |
+| [src/phenotypic/settings_/CLAUDE.md](src/phenotypic/settings_/CLAUDE.md) | VALIDATE_OPS, MPL defaults, configuration pattern |
 
 ---
 
-## Color Space and Image Data Handling
+## Key Files
 
-Access color spaces via `image.color`: Lab, HSV, XYZ, XYZ_D65, xy chromaticity.
-All conversions are lazy-evaluated and cached.
+- `src/phenotypic/_core/_image.py` — Main `Image` class, user entry point
+- `src/phenotypic/_core/_image_pipeline.py` — Pipeline implementation
+- `src/phenotypic/abc_/` — All operation interface definitions
+- `src/phenotypic/__main__.py` — CLI entry point (`python -m phenotypic`)
 
-**See [src/phenotypic/_core/CLAUDE.md](src/phenotypic/_core/CLAUDE.md) for complete
-Image class and color space documentation**
+**Reference implementations for new operations:**
 
----
-
-## Image Enhancement Operations
-
-The `phenotypic.enhance` module provides 19+ preprocessing operations: denoising
-(GaussianBlur, MedianFilter, BilateralDenoise), background correction (
-RollingBallRemoveBG),
-contrast enhancement (CLAHE, UnsharpMask), morphological operations (GrayOpening,
-WhiteTophatSubtract, etc.), and edge detection (SobelFilter).
-
-**Key Principles:**
-
-- All enhancers operate on `image.detect_mat[:]` (detection matrix)
-- Original RGB and grayscale remain unchanged (immutability)
-- Chain multiple enhancers in `ImagePipeline` for preprocessing
-
-**Example:**
-
-```python
-from phenotypic import ImagePipeline
-from phenotypic.enhance import GaussianBlur, CLAHE, GrayOpening
-from phenotypic.data import load_synth_yeast_plate
-
-image = load_synth_yeast_plate()
-pipeline = ImagePipeline([
-    GaussianBlur(sigma=1.5),
-    CLAHE(clip_limit=2.0),
-    GrayOpening(shape='disk', radius=2)
-])
-result = pipeline.apply(image)
-```
-
-See `phenotypic.enhance` module docstrings for parameter tuning guidance and use cases.
-
-
-### Documentation Pipeline (documentation.yml)
-
-- **Triggers:** Release published, manual dispatch
-- **Builds:** Sphinx documentation with Pandoc for notebook conversion
-- **Deploys to:** GitHub Pages (gh-pages branch)
-
----
-
-## Key Files to Know
-
-### Core Image Class
-
-- `src/phenotypic/core/_image.py` - Main `Image` class, entry point for users
-- `src/phenotypic/core/_image_parts/` - Handler classes and accessors
-- `src/phenotypic/core/_image_pipeline.py` - Pipeline implementation
-
-### Abstract Base Classes
-
-- `src/phenotypic/abc_/` - All operation interface definitions
-- Study these to understand how to extend the framework
-
-### Example Implementations
-
-- `src/phenotypic/detect/_otsu_detector.py` - Simple detector example
-- `src/phenotypic/enhance/_gaussian_blur.py` - Simple enhancer example
-- `src/phenotypic/enhance/_gray_opening.py` - Morphological operation example
-- Study these to understand the pattern for new operations
-
-### Utility Classes and Mixins
-
-- `src/phenotypic/tools_/_footprint_mixin.py` - FootprintMixin for morphological
-  structuring elements
-- Use this mixin for any operation requiring custom footprints (dilation, erosion,
-  opening, closing)
-
-### Command-Line Interface and Configuration
-
-- `src/phenotypic/phenotypicCLI.py` - CLI for batch processing pipelines
-- `src/phenotypic/__main__.py` - Module entry point (`python -m phenotypic`)
-- `src/phenotypic/settings_.py` - Global configuration (validation, matplotlib defaults)
-
-### Documentation
-
-- `docs/source/` - Sphinx configuration and custom templates
-- `docs/source/examples/` - Example notebooks and scripts
-- Auto-generated from docstrings via Sphinx Gallery
-
----
-
-## Working with the `Image` Class
-
-```python
-from phenotypic.data import load_synth_yeast_plate
-
-image = load_synth_yeast_plate()
-image.rgb[:]  # RGB array
-image.gray[:]  # Grayscale
-image.detect_mat[:]  # Enhanced grayscale
-image.objmask[:]  # Binary mask
-image.objmap[:]  # Labeled objects
-image.color.Lab[:]  # Color spaces
-```
-
-**Important:** Never modify `image.rgb` or `image.gray` directly. Use operations that
-return new Image instances.
-
-**See [src/phenotypic/_core/CLAUDE.md](src/phenotypic/_core/CLAUDE.md) for complete
-Image class documentation** including accessor pattern and color spaces
-
----
-
-## Platform-Specific Considerations
-
-### Optional Dependencies
-
-Some packages are excluded on Windows:
-
-```python
-rawpy  # Raw image support (not Windows)
-pympler  # Memory profiling (not Windows)
-jupyter, ipykernel  # Development (not Windows)
-```
-
-When writing code:
-
-- Don't assume `rawpy` and `pympler` is available on Windows
-- Use try/except for platform-specific imports if needed
-- Test cross-platform code paths
-
-### External Tools
-
-- **ExifTool:** Required for extracting metadata from raw images. Install
-  from: https://exiftool.org/install.html
-- **Pandoc:** Required for documentation builds. Automatically installed in CI, install
-  locally if building docs.
-
----
-
-## Batch Processing with the CLI
-
-**1. Design and test pipeline interactively:**
-
-```python
-from phenotypic import ImagePipeline
-from phenotypic.enhance import GaussianBlur, CLAHE
-from phenotypic.detect import OtsuDetector
-from phenotypic.data import load_synth_yeast_plate
-
-image = load_synth_yeast_plate()
-pipeline = ImagePipeline(
-        [GaussianBlur(sigma=1.5), CLAHE(clip_limit=2.0), OtsuDetector()])
-pipeline.to_json("my_pipeline.json")  # Save for batch processing
-```
-
-**2. Run batch processing:**
-
-```bash
-uv run python -m phenotypic my_pipeline.json ./raw_plates -o ./results \
-    --image-type GridImage --nrows 8 --ncols 12 --n-jobs -1
-```
-
-**See [src/phenotypic/_cli/CLAUDE.md](src/phenotypic/_cli/CLAUDE.md) for complete CLI
-documentation**
+- `src/phenotypic/detect/_otsu_detector.py` — Simple detector
+- `src/phenotypic/enhance/_gaussian_blur.py` — Simple enhancer
+- `src/phenotypic/enhance/_gray_opening.py` — Morphological pattern with FootprintMixin
 
 ---
 
@@ -535,72 +243,39 @@ documentation**
 
 ### Creating New Operations
 
-**Pattern for any operation (detector, enhancer, measurer):**
-
 1. Inherit from appropriate ABC in `phenotypic.abc_` (e.g., `ImageEnhancer`,
    `ObjectDetector`)
-2. Implement `_operate(self, image: Image) -> Image`
-3. Access data via accessors: `image.rgb[:]`, `image.detect_mat[:]`, `image.objects`, etc.
-4. Never modify `image.rgb` or `image.gray` directly (only enhancers work on `detect_mat`)
+2. Implement `_operate(self, image: Image) -> Image` as an instance method
+3. Access data via accessors: `image.rgb[:]`, `image.detect_mat[:]`, `image.objects`
+4. Never modify `image.rgb` or `image.gray` directly (only enhancers modify `detect_mat`)
 5. Return modified `Image` instance (immutability principle)
 6. Add to module `__init__.py` exports
 7. Add tests in `tests/test_*.py`
 8. Document with Google-style docstrings including microbiology context
 
-**Reference implementations:**
+See [src/phenotypic/abc_/CLAUDE.md](src/phenotypic/abc_/CLAUDE.md) for the full
+implementation pattern with code examples, the instance method requirement, and
+FootprintMixin usage for morphological operations.
 
-- `src/phenotypic/detect/_otsu_detector.py` - Simple detector
-- `src/phenotypic/enhance/_gaussian_blur.py` - Simple enhancer
-- `src/phenotypic/enhance/_gray_opening.py` - Morphological pattern with FootprintMixin
-- `src/phenotypic/tools_/_footprint_mixin.py` - Utility mixin for structuring elements
+---
 
-### Operation Implementation Pattern: Instance Methods
+## Platform-Specific Considerations
 
-**Standard Pattern (Recommended):**
+Some packages are excluded on Windows: `rawpy`, `pympler`, `jupyter`/`ipykernel`. Use
+try/except for platform-specific imports if needed.
 
-All operation subclasses should implement `_operate()` as an instance method:
+**External tools:** ExifTool (raw image metadata, https://exiftool.org/install.html),
+Pandoc (documentation builds).
 
-```python
-from phenotypic.abc_ import ImageEnhancer
-from phenotypic import Image
-from scipy.ndimage import gaussian_filter
+---
 
+## CI/CD
 
-class MyEnhancer(ImageEnhancer):
-    def __init__(self, sigma: float = 1.0, threshold: int = 50):
-        super().__init__()
-        self.sigma = sigma
-        self.threshold = threshold
+### Documentation Pipeline (documentation.yml)
 
-    def _operate(self, image: Image) -> Image:
-        # Access parameters via self
-        filtered = gaussian_filter(image.detect_mat[:], sigma=self.sigma)
-        mask = filtered > self.threshold
-        image.detect_mat[:] = filtered
-        return image
-```
-
-**Key Points:**
-
-- Use `def _operate(self, image)` (instance method, not `@staticmethod`)
-- Access operation parameters directly via `self.param_name`
-
-### Using FootprintMixin for Morphological Operations
-
-Use `FootprintMixin` when creating operations requiring morphological structuring
-elements (dilation, erosion, opening, closing).
-
-**See [src/phenotypic/tools_/CLAUDE.md](src/phenotypic/tools_/CLAUDE.md) for complete
-FootprintMixin documentation** including shapes, resolution scaling, and examples
-
-### Key Principles
-
-- Leverage automatic memory/performance tracking from `BaseOperation`
-- Use duck typing for type checks
-- Follow the accessor pattern for consistent data access
-- Use `FootprintMixin` for any operation requiring morphological structuring elements
-- Document parameter effects on colony visibility, edge sharpness, and mask quality (for
-  operations)
+- **Triggers:** Release published, manual dispatch
+- **Builds:** Sphinx documentation with Pandoc for notebook conversion
+- **Deploys to:** GitHub Pages (gh-pages branch)
 
 ---
 
