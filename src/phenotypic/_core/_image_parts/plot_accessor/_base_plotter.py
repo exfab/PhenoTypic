@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Tuple
+from typing import TYPE_CHECKING
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -8,7 +8,7 @@ import numpy as np
 from phenotypic._core._image_parts.accessor_abstracts._image_accessor_base import ImageAccessorBase
 
 if TYPE_CHECKING:
-    from phenotypic import Image
+    pass
 
 
 class BasePlotter(ImageAccessorBase):

@@ -7,24 +7,28 @@ for persisting plate datasets and measurements.
 
 Advanced users can access GridInferenceMixin and FootprintMixin for creating custom
 grid-based operations and morphological footprints.
+
+The ``register`` submodule provides registry utilities for extensible components
+like plotters and dashboards.
 """
 
+from . import constants_, exceptions_, colourspace, slurm_
 from .funcs_ import timed_execution, is_binary_mask
-from . import constants_, exceptions_, colourspace
 from .hdf_ import HDF
-from . import slurm_
 from .mixin import GridInferenceMixin, LazyWidgetMixin, FootprintMixin, ClipControlMixin
+from . import register
 
 __all__ = [
-    "timed_execution",
-    "is_binary_mask",
+    "ClipControlMixin",
+    "FootprintMixin",
+    "GridInferenceMixin",
+    "HDF",
+    "LazyWidgetMixin",
+    "colourspace",
     "constants_",
     "exceptions_",
-    "colourspace.py",
-    "HDF",
+    "is_binary_mask",
+    "register",
     "slurm_",
-    "GridInferenceMixin",
-    "LazyWidgetMixin",
-    "FootprintMixin",
-    "ClipControlMixin",
+    "timed_execution",
 ]

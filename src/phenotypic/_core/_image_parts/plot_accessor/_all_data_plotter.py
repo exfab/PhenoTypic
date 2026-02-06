@@ -7,12 +7,15 @@ from typing import TYPE_CHECKING, Literal, Tuple
 import matplotlib.pyplot as plt
 import numpy as np
 
+from phenotypic.tools_.register import register_plotter
+
 from ._base_plotter import BasePlotter
 
 if TYPE_CHECKING:
-    from phenotypic import Image
+    pass
 
 
+@register_plotter
 class AllDataPlotter(BasePlotter):
     """Provides comprehensive multi-panel visualization of all image data layers.
 
@@ -35,6 +38,8 @@ class AllDataPlotter(BasePlotter):
         >>> fig, axes = image.plot.all(mode="overlay")
         >>> plt.close(fig)
     """
+
+    call_name = "all"
 
     def all(
             self,
@@ -88,7 +93,8 @@ class AllDataPlotter(BasePlotter):
 
         match mode:
             case "overlay":
-                self.overlay(ax=ax[3 - idxer_helper], **kwargs)
+                # Use the root image's plot accessor to call overlay
+                self._root_image.plot.overlay(ax=ax[3 - idxer_helper], **kwargs)
             case "objmap":
                 self._root_image.objmap.show(ax=ax[3 - idxer_helper], **kwargs)
 

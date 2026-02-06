@@ -6,19 +6,12 @@ spatial mapping, and thresholding visualization.
 """
 
 import pytest
-import numpy as np
 import matplotlib.pyplot as plt
-from unittest.mock import Mock, patch
 
-from phenotypic import Image, GridImage
+from phenotypic import GridImage
 from phenotypic.detect import OtsuDetector
 from phenotypic.data import load_plate_12hr
-from phenotypic._core._image_parts.plot_accessor import (
-    MorphologyPlotter,
-    SizeDistributionPlotter,
-    SpatialPlotter,
-    ThresholdPlotter,
-)
+from phenotypic._core._image_parts.plot_accessor import BasePlotter
 
 
 @pytest.fixture
@@ -45,69 +38,73 @@ def sample_image_no_objects():
 
 
 class TestBasePlotter:
-    """Tests for BasePlotter validation methods."""
+    """Tests for BasePlotter validation methods.
+
+    These tests instantiate BasePlotter directly to test its internal
+    validation methods, which are used by all plotter subclasses.
+    """
 
     def test_validate_figsize_valid(self, sample_image_with_objects):
         """Test figsize validation with valid input."""
-        plot = sample_image_with_objects.plot
+        plotter = BasePlotter(sample_image_with_objects)
         # Should not raise
-        plot._validate_figsize((10, 8))
-        plot._validate_figsize((12.5, 9.5))
+        plotter._validate_figsize((10, 8))
+        plotter._validate_figsize((12.5, 9.5))
 
     def test_validate_figsize_none(self, sample_image_with_objects):
         """Test figsize validation with None."""
-        plot = sample_image_with_objects.plot
+        plotter = BasePlotter(sample_image_with_objects)
         # None is valid
-        plot._validate_figsize(None)
+        plotter._validate_figsize(None)
 
     def test_validate_figsize_invalid_tuple(self, sample_image_with_objects):
         """Test figsize validation with invalid tuple structure."""
-        plot = sample_image_with_objects.plot
+        plotter = BasePlotter(sample_image_with_objects)
         with pytest.raises(ValueError, match="figsize must be a tuple"):
-            plot._validate_figsize("invalid")
+            plotter._validate_figsize("invalid")
         with pytest.raises(ValueError, match="figsize must be"):
-            plot._validate_figsize((10,))
+            plotter._validate_figsize((10,))
         with pytest.raises(ValueError, match="figsize must be"):
-            plot._validate_figsize((10, 8, 6))
+            plotter._validate_figsize((10, 8, 6))
 
     def test_validate_figsize_negative(self, sample_image_with_objects):
         """Test figsize validation with negative dimensions."""
-        plot = sample_image_with_objects.plot
+        plotter = BasePlotter(sample_image_with_objects)
         with pytest.raises(ValueError, match="positive"):
-            plot._validate_figsize((-10, 8))
+            plotter._validate_figsize((-10, 8))
         with pytest.raises(ValueError, match="positive"):
-            plot._validate_figsize((10, -8))
+            plotter._validate_figsize((10, -8))
 
     def test_validate_cmap_valid(self, sample_image_with_objects):
         """Test colormap validation with valid name."""
-        plot = sample_image_with_objects.plot
+        plotter = BasePlotter(sample_image_with_objects)
         # Should not raise for standard colormaps
-        plot._validate_cmap("viridis")
-        plot._validate_cmap("plasma")
+        plotter._validate_cmap("viridis")
+        plotter._validate_cmap("plasma")
 
     def test_validate_cmap_invalid(self, sample_image_with_objects):
         """Test colormap validation with invalid name."""
-        plot = sample_image_with_objects.plot
+        plotter = BasePlotter(sample_image_with_objects)
         with pytest.raises(ValueError, match="Unknown colormap"):
-            plot._validate_cmap("nonexistent_colormap_xyz")
+            plotter._validate_cmap("nonexistent_colormap_xyz")
 
     def test_validate_alpha_valid(self, sample_image_with_objects):
         """Test alpha validation with valid values."""
-        plot = sample_image_with_objects.plot
-        plot._validate_alpha(0.0)
-        plot._validate_alpha(0.5)
-        plot._validate_alpha(1.0)
-        plot._validate_alpha(None)
+        plotter = BasePlotter(sample_image_with_objects)
+        plotter._validate_alpha(0.0)
+        plotter._validate_alpha(0.5)
+        plotter._validate_alpha(1.0)
+        plotter._validate_alpha(None)
 
     def test_validate_alpha_invalid(self, sample_image_with_objects):
         """Test alpha validation with invalid values."""
-        plot = sample_image_with_objects.plot
+        plotter = BasePlotter(sample_image_with_objects)
         with pytest.raises(ValueError, match="between 0 and 1"):
-            plot._validate_alpha(-0.1)
+            plotter._validate_alpha(-0.1)
         with pytest.raises(ValueError, match="between 0 and 1"):
-            plot._validate_alpha(1.1)
+            plotter._validate_alpha(1.1)
         with pytest.raises(ValueError, match="numeric"):
-            plot._validate_alpha("invalid")
+            plotter._validate_alpha("invalid")
 
 
 class TestMorphologyPlotter:
@@ -393,6 +390,114 @@ class TestKDEScalingFix:
         # Verify figure was created with histogram
         assert len(fig.axes) >= 1
 
+        plt.close(fig)
+
+
+class TestDiagnosticsMatplotlib:
+    """Tests for DiagnosticsPlotter (always matplotlib).
+
+    plot.diagnostics() always returns a matplotlib Figure.
+    For Panel dashboard, use image.panel.diagnostics() instead.
+    """
+
+    def test_diagnostics_returns_tuple(self, sample_image_with_objects):
+        """Test that diagnostics returns a tuple of (figure, metrics)."""
+        result = sample_image_with_objects.plot.diagnostics()
+        assert isinstance(result, tuple)
+        assert len(result) == 2
+
+    def test_diagnostics_returns_figure(self, sample_image_with_objects):
+        """Test that diagnostics returns a matplotlib Figure."""
+        fig, metrics = sample_image_with_objects.plot.diagnostics()
+        assert isinstance(fig, plt.Figure)
+        assert isinstance(metrics, dict)
+        plt.close(fig)
+
+    def test_diagnostics_metrics_structure(self, sample_image_with_objects):
+        """Test that diagnostics returns proper metrics structure."""
+        fig, metrics = sample_image_with_objects.plot.diagnostics()
+
+        expected_keys = {
+            "bit_depth",
+            "noise",
+            "contrast",
+            "structure",
+            "background",
+            "quality_scores",
+            "interpretations",
+            "recommendations",
+        }
+        assert expected_keys == set(metrics.keys())
+        plt.close(fig)
+
+    def test_diagnostics_noise_metrics(self, sample_image_with_objects):
+        """Test noise metrics are computed."""
+        fig, metrics = sample_image_with_objects.plot.diagnostics()
+
+        assert "snr" in metrics["noise"]
+        assert "sigma_mad" in metrics["noise"]
+        assert "correlation_length" in metrics["noise"]
+        assert metrics["noise"]["snr"] > 0
+        plt.close(fig)
+
+    def test_diagnostics_contrast_metrics(self, sample_image_with_objects):
+        """Test contrast metrics are computed."""
+        fig, metrics = sample_image_with_objects.plot.diagnostics()
+
+        assert "rms_contrast" in metrics["contrast"]
+        assert "michelson" in metrics["contrast"]
+        assert "dynamic_range" in metrics["contrast"]
+        assert 0 <= metrics["contrast"]["michelson"] <= 1
+        plt.close(fig)
+
+    def test_diagnostics_structure_metrics(self, sample_image_with_objects):
+        """Test structure metrics are computed."""
+        fig, metrics = sample_image_with_objects.plot.diagnostics()
+
+        assert "mean_coherence" in metrics["structure"]
+        assert "optimal_scale" in metrics["structure"]
+        assert "ridge_method" in metrics["structure"]
+        plt.close(fig)
+
+    def test_diagnostics_background_metrics(self, sample_image_with_objects):
+        """Test background metrics are computed."""
+        fig, metrics = sample_image_with_objects.plot.diagnostics()
+
+        assert "nonuniformity_ratio" in metrics["background"]
+        assert "mean_gradient" in metrics["background"]
+        plt.close(fig)
+
+    def test_diagnostics_quality_scores(self, sample_image_with_objects):
+        """Test quality scores are in [0,1] range."""
+        fig, metrics = sample_image_with_objects.plot.diagnostics()
+
+        for key, score in metrics["quality_scores"].items():
+            assert 0 <= score <= 1, f"{key} score {score} not in [0,1]"
+        plt.close(fig)
+
+    def test_diagnostics_custom_sections(self, sample_image_with_objects):
+        """Test diagnostics with custom sections."""
+        fig, _ = sample_image_with_objects.plot.diagnostics(
+            sections=["noise", "contrast"]
+        )
+        assert isinstance(fig, plt.Figure)
+        plt.close(fig)
+
+    def test_diagnostics_custom_parameters(self, sample_image_with_objects):
+        """Test diagnostics with custom parameters."""
+        fig, metrics = sample_image_with_objects.plot.diagnostics(
+            structure_sigma=3.0,
+            ridge_method="frangi",
+            ridge_scales=[1.0, 2.0, 3.0],
+            background_sigma=100.0,
+        )
+        assert metrics["structure"]["ridge_method"] == "frangi"
+        plt.close(fig)
+
+    def test_diagnostics_cleanup(self, sample_image_with_objects):
+        """Test that figure can be properly closed."""
+        fig, _ = sample_image_with_objects.plot.diagnostics()
+        assert isinstance(fig, plt.Figure)
         plt.close(fig)
 
 

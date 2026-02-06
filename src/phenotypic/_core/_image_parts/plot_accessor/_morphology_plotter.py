@@ -4,8 +4,6 @@ from typing import Literal, Optional, Tuple
 
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib.colors import TwoSlopeNorm
-from matplotlib.gridspec import GridSpec
 from scipy.ndimage import distance_transform_edt, label as ndi_label
 
 from skimage.morphology import (
@@ -18,9 +16,12 @@ from skimage.morphology import (
     closing,
 )
 
+from phenotypic.tools_.register import register_plotter
+
 from ._base_plotter import BasePlotter
 
 
+@register_plotter
 class MorphologyPlotter(BasePlotter):
     """Provides morphological operation visualization methods for image processing pipelines.
 
@@ -29,6 +30,8 @@ class MorphologyPlotter(BasePlotter):
     on solid agar media. These plots are designed for pipeline development and
     parameter tuning rather than publication.
     """
+
+    call_name = "morph_progression"
 
     def morph_progression(
             self,

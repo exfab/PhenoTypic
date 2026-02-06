@@ -7,12 +7,15 @@ from typing import TYPE_CHECKING
 import matplotlib.pyplot as plt
 import numpy as np
 
+from phenotypic.tools_.register import register_dashboard
+
 from ._base_dashboard import BaseDashboard
 
 if TYPE_CHECKING:
     from phenotypic import Image
 
 
+@register_dashboard
 class DetectModeDashboard(BaseDashboard):
     """Dashboard for comparing detection mode matrices side-by-side.
 
@@ -21,6 +24,8 @@ class DetectModeDashboard(BaseDashboard):
     preview, making it easy to choose the best source channel for colony
     detection on a given plate image.
     """
+
+    call_name = "detect_modes"
 
     def __init__(self, root_image: Image) -> None:
         super().__init__(root_image)
@@ -53,8 +58,6 @@ class DetectModeDashboard(BaseDashboard):
             >>> # dashboard.show()  # opens in browser
         """
         import panel as pn
-
-        pn.extension()
 
         # ---- Gather data ------------------------------------------------
         mode_matrices = self._compute_all_mode_matrices()

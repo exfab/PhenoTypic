@@ -5,15 +5,20 @@ from typing import Tuple
 import matplotlib.pyplot as plt
 from skimage.filters import try_all_threshold
 
+from phenotypic.tools_.register import register_plotter
+
 from ._base_plotter import BasePlotter
 
 
+@register_plotter
 class ThresholdPlotter(BasePlotter):
     """Provides thresholding visualization methods for image processing pipelines.
 
     This class offers methods to visualize and compare different thresholding
     techniques for segmenting colonies on agar plates.
     """
+
+    call_name = "try_thresh"
 
     def try_thresh(self, figsize: Tuple[int, int] = (10, 8)) -> Tuple[plt.Figure, plt.Axes]:
         """Visualize and compare various thresholding techniques for colony segmentation.

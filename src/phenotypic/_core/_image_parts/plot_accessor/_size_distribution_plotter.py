@@ -9,6 +9,8 @@ from matplotlib.gridspec import GridSpec
 from scipy.stats import gaussian_kde
 from skimage.measure import regionprops_table
 
+from phenotypic.tools_.register import register_plotter
+
 # Check for optional interactive widgets
 HAS_WIDGETS = all(
     importlib.util.find_spec(pkg) is not None
@@ -22,6 +24,7 @@ if HAS_WIDGETS:
 from ._base_plotter import BasePlotter
 
 
+@register_plotter
 class SizeDistributionPlotter(BasePlotter):
     """Provides size distribution visualization methods for colony analysis.
 
@@ -29,6 +32,8 @@ class SizeDistributionPlotter(BasePlotter):
     of detected colonies, including static and interactive plotting with
     size filtering previews.
     """
+
+    call_name = "size_distribution"
 
     def size_distribution(
             self,

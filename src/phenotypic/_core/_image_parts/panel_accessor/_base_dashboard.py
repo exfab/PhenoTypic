@@ -90,6 +90,6 @@ class BaseDashboard(ImageAccessorBase):
             mode = get_detection_mode(name)
             if mode.requires_rgb and not has_rgb:
                 continue
-            result[name] = mode.compute(self._root_image._data)
+            result[name] = mode.compute(self._root_image)
 
         return result

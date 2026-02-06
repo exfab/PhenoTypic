@@ -6,12 +6,14 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.colors import TwoSlopeNorm
 from matplotlib.gridspec import GridSpec
-from scipy.stats import gaussian_kde
 from skimage.measure import regionprops_table
+
+from phenotypic.tools_.register import register_plotter
 
 from ._base_plotter import BasePlotter
 
 
+@register_plotter
 class SpatialPlotter(BasePlotter):
     """Provides spatial analysis visualization methods for colony phenotyping.
 
@@ -19,6 +21,8 @@ class SpatialPlotter(BasePlotter):
     and size distributions, helping identify systematic biases, gradients, or
     artifacts in arrayed microbial cultures.
     """
+
+    call_name = "spatial_size_map"
 
     def spatial_size_map(
             self,

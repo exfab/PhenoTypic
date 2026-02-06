@@ -9,12 +9,15 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.patches import Rectangle
 
+from phenotypic.tools_.register import register_plotter
+
 from ._base_plotter import BasePlotter
 
 if TYPE_CHECKING:
-    from phenotypic import Image
+    pass
 
 
+@register_plotter
 class OverlayPlotter(BasePlotter):
     """Provides overlay visualization methods for colony detection results.
 
@@ -46,6 +49,8 @@ class OverlayPlotter(BasePlotter):
         ... )
         >>> plt.close(fig)
     """
+
+    call_name = "overlay"
 
     def overlay(
             self,
@@ -217,7 +222,7 @@ class OverlayPlotter(BasePlotter):
             ax: Matplotlib axes to draw section boxes on.
         """
         from phenotypic.measure import MeasureBounds
-        from phenotypic.tools_.constants_ import BBOX
+        from phenotypic.tools_.measurement_info_ import BBOX
 
         cmap = plt.get_cmap("tab20")
         cmap_cycle = cycle(cmap(i) for i in range(cmap.N))
