@@ -10,7 +10,7 @@ import pandas as pd
 import numpy as np
 
 from phenotypic.abc_ import GridMeasureFeatures
-from phenotypic.tools_.constants_ import BBOX, GRID
+from phenotypic.tools_.measurement_info_ import BBOX, GRID
 from abc import ABC
 
 

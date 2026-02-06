@@ -9,11 +9,12 @@ Note: Class names are defined in ALL_CAPS to avoid namespace conflicts with actu
         from PhenoTypic.tools_.constants import IMAGE_MODE, OBJECT
 """
 
-from .measurement_info_ import BBOX, PIPE_STATUS, GRID, METADATA
 import phenotypic
 from enum import Enum
 from packaging.version import Version
 from pathlib import Path
+
+from phenotypic._shared_modules._measurement_info import MeasurementInfo
 
 
 # Image format constants
@@ -109,3 +110,43 @@ class IMAGE_TYPES(Enum):
 
     def __str__(self):
         return self.value
+
+
+class PIPE_STATUS(MeasurementInfo):
+    """Constants for image set status."""
+
+    @classmethod
+    def category(cls) -> str:
+        return "Status"
+
+    PROCESSED = "Processed", "Whether the image has been processed successfully."
+    MEASURED = "Measured", "Whether the image has been measured successfully."
+
+
+class METADATA(MeasurementInfo):
+    @classmethod
+    def category(cls) -> str:
+        return "Metadata"
+
+    # Metadata values are not prepended with the category
+    def __new__(cls, label: str, desc: str | None = None):
+        full = f"{label}"
+        obj = str.__new__(cls, full)
+        obj._value_ = label
+        obj.label = label
+        obj.desc = desc or label
+        obj.pair = (label, obj.desc)
+        return obj
+
+    """Constants for metadata labels."""
+    UUID = "UUID", "The unique identifier of the image."
+    IMAGE_NAME = "ImageName", "The name of the image."
+    PARENT_IMAGE_NAME = "ParentImageName", "The name of the parent image."
+    PARENT_UUID = "ParentUUID", "The UUID of the parent image."
+    IMFORMAT = "ImageFormat", "The format of the image."
+    IMAGE_TYPE = "ImageType", "The type of the image."
+    BIT_DEPTH = "BitDepth", "The bit depth of the image."
+    SUFFIX = (
+        "FileSuffix",
+        "The file suffix of the original file the image was imported from",
+    )

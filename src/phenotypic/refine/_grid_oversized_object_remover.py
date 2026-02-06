@@ -8,7 +8,8 @@ if TYPE_CHECKING:
 import numpy as np
 
 from phenotypic.abc_ import GridObjectRefiner
-from phenotypic.tools_.constants_ import BBOX, OBJECT
+from phenotypic.tools_.constants_ import OBJECT
+from phenotypic.tools_.measurement_info_ import BBOX
 
 
 class GridOversizedObjectRemover(GridObjectRefiner):

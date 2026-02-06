@@ -9,8 +9,7 @@ from typing import Optional
 
 from phenotypic.abc_ import GridObjectRefiner
 from phenotypic.measure import MeasureGridLinRegStats
-from phenotypic.tools_.measurement_info_ import GRID_LINREG_STATS
-from phenotypic.tools_.constants_ import GRID
+from phenotypic.tools_.measurement_info_ import GRID_LINREG_STATS, GRID
 
 
 class ResidualOutlierRemover(GridObjectRefiner):

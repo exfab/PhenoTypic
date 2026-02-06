@@ -750,17 +750,6 @@ class BBOX(MeasurementInfo):
                                               "column coordinate of the bounding box.")
 
 
-class PIPE_STATUS(MeasurementInfo):
-    """Constants for image set status."""
-
-    @classmethod
-    def category(cls) -> str:
-        return "Status"
-
-    PROCESSED = "Processed", "Whether the image has been processed successfully."
-    MEASURED = "Measured", "Whether the image has been measured successfully."
-
-
 class GRID(MeasurementInfo):
     """Constants for grid structure in the PhenoTypic module."""
 
@@ -785,35 +774,6 @@ class GRID(MeasurementInfo):
     SECTION_NUM = (
         "SectionNum",
         "The section number of the object. Ordered left to right, top to bottom",
-    )
-
-
-class METADATA(MeasurementInfo):
-    @classmethod
-    def category(cls) -> str:
-        return "Metadata"
-
-    # Metadata values are not prepended with the category
-    def __new__(cls, label: str, desc: str | None = None):
-        full = f"{label}"
-        obj = str.__new__(cls, full)
-        obj._value_ = label
-        obj.label = label
-        obj.desc = desc or label
-        obj.pair = (label, obj.desc)
-        return obj
-
-    """Constants for metadata labels."""
-    UUID = "UUID", "The unique identifier of the image."
-    IMAGE_NAME = "ImageName", "The name of the image."
-    PARENT_IMAGE_NAME = "ParentImageName", "The name of the parent image."
-    PARENT_UUID = "ParentUUID", "The UUID of the parent image."
-    IMFORMAT = "ImageFormat", "The format of the image."
-    IMAGE_TYPE = "ImageType", "The type of the image."
-    BIT_DEPTH = "BitDepth", "The bit depth of the image."
-    SUFFIX = (
-        "FileSuffix",
-        "The file suffix of the original file the image was imported from",
     )
 
 
@@ -860,3 +820,38 @@ class EDGE_CORRECTION(MeasurementInfo):
 
     CORRECTED_CAP = "Cap", "The carrying capacity for the target measurement"
     NEW_VAL = "NewVal", "The new value of the target measurement"
+
+
+class GRID_SPATIAL(MeasurementInfo):
+    """Measurement info for spatial information for grid pinned colonies"""
+
+    @classmethod
+    def category(cls) -> str:
+        return "GridSpatial"
+
+    LEFT_NEIGHBOR_OBJ_LABEL = "LeftNeighborObjLabel", ("The object label of the left"
+                                                       " neighbor colony")
+    LEFT_DISTANCE = "LeftDistance", ("The distance of the left neighbor colony"
+                                     " calculated using euclidean distance between"
+                                     " bounding boxes")
+
+    RIGHT_NEIGHBOR_OBJ_LABEL = "RightNeighborObjLabel", ("The object label of"
+                                                         " the right neighbor colony")
+    RIGHT_DISTANCE = (
+        "RightDistance",
+        "The distance of the right neighbor colony calculated"
+        " using euclidean distance between bounding boxes"
+    )
+    ABOVE_NEIGHBOR_OBJ_LABEL = "AboveNeighborObjLabel", ("The object label of"
+                                                         " the above neighbor colony")
+    ABOVE_DISTANCE = (
+        "AboveDistance",
+        "The distance of the above neighbor colony calculated using euclidean"
+        " distance between bounding boxes"
+    )
+    UNDER_NEIGHBOR_OBJ_LABEL = ("UnderNeighborObjLabel",
+                                "The object label of the under neighbor colony")
+    UNDER_DISTANCE = (
+        "UnderDistance",
+        "The distance of the under neighbor colony calculated using euclidean distance between bounding boxes"
+    )

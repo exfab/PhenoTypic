@@ -11,7 +11,7 @@ from scipy.optimize import minimize_scalar
 from functools import partial
 
 from phenotypic.abc_ import GridFinder
-from phenotypic.tools_.constants_ import BBOX, GRID
+from phenotypic.tools_.measurement_info_ import BBOX, GRID
 
 
 class AutoGridFinder(GridFinder):
