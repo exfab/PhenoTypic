@@ -23,6 +23,15 @@ from phenotypic._core._image_parts.detection_modes._color_channel_modes import (
 from phenotypic._core._image_parts.detection_modes._min_rgb_mode import (
     MinRGBDetectionMode,
 )
+from phenotypic._core._image_parts.detection_modes._lab_channel_modes import (
+    LabLightnessMode,
+    LabAMode,
+    LabBMode,
+)
+from phenotypic._core._image_parts.detection_modes._hsv_channel_modes import (
+    HsvSaturationMode,
+    HsvValueMode,
+)
 
 __all__ = [
     "DetectionMode",
@@ -34,4 +43,9 @@ __all__ = [
     "GreenChannelMode",
     "BlueChannelMode",
     "MinRGBDetectionMode",
+    "LabLightnessMode",
+    "LabAMode",
+    "LabBMode",
+    "HsvSaturationMode",
+    "HsvValueMode",
 ]

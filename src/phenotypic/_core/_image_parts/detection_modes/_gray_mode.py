@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 if TYPE_CHECKING:
-    from phenotypic._core._image_parts._image_data_manager import ImageData
+    from phenotypic import Image
 
 from phenotypic._core._image_parts.detection_modes._detection_mode import (
     DetectionMode,
@@ -27,6 +27,6 @@ class GrayDetectionMode(DetectionMode):
     def requires_rgb(self) -> bool:
         return False
 
-    def compute(self, data: ImageData) -> np.ndarray:
-        assert data.gray is not None
-        return data.gray.copy()
+    def compute(self, image: Image) -> np.ndarray:
+        assert image._data.gray is not None
+        return image._data.gray.copy()

@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 if TYPE_CHECKING:
-    from phenotypic._core._image_parts._image_data_manager import ImageData
+    from phenotypic import Image
 
 _DETECTION_MODE_REGISTRY: dict[str, DetectionMode] = {}
 
@@ -31,11 +31,11 @@ class DetectionMode(ABC):
         """Whether this mode needs RGB data to compute."""
 
     @abstractmethod
-    def compute(self, data: ImageData) -> np.ndarray:
-        """Return a fresh detection matrix from *data*.
+    def compute(self, image: Image) -> np.ndarray:
+        """Return a fresh detection matrix from *image*.
 
         Args:
-            data: The ``ImageData`` container holding raw arrays.
+            image: The ``Image`` instance to compute from.
 
         Returns:
             A 2-D float32 array normalised to [0, 1].

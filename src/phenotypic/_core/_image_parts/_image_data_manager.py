@@ -368,7 +368,7 @@ class ImageDataManager:
         if mode.requires_rgb and not has_rgb:
             self._data.detect_mat = self._data.gray.copy()
         else:
-            self._data.detect_mat = mode.compute(self._data)
+            self._data.detect_mat = mode.compute(self)
 
     @staticmethod
     def _guess_image_format(img: np.ndarray) -> IMAGE_MODE:

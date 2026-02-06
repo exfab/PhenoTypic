@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 if TYPE_CHECKING:
-    from phenotypic._core._image_parts._image_data_manager import ImageData
+    from phenotypic import Image
 
 from phenotypic._core._image_parts.detection_modes._detection_mode import (
     DetectionMode,
@@ -28,6 +28,6 @@ class MinRGBDetectionMode(DetectionMode):
     def requires_rgb(self) -> bool:
         return True
 
-    def compute(self, data: ImageData) -> np.ndarray:
-        assert data.rgb is not None
-        return np.min(normalize_rgb_bitdepth(data.rgb), axis=2).astype(np.float32)
+    def compute(self, image: Image) -> np.ndarray:
+        assert image._data.rgb is not None
+        return np.min(normalize_rgb_bitdepth(image._data.rgb), axis=2).astype(np.float32)
