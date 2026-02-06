@@ -1,6 +1,5 @@
 """Unit tests for InstanceManager."""
 
-import tempfile
 from pathlib import Path
 
 import pytest

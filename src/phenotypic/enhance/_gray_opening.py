@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import Literal, TYPE_CHECKING
 
-from PIL import ImageEnhance
 from skimage import morphology
 
 if TYPE_CHECKING:

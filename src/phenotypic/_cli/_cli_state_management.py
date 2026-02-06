@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Dict, Optional, List
+from typing import Optional, List
 from datetime import datetime
 
 from ._cli_types import ProcessingState, DatasetState, Dataset, ExecutionConfig

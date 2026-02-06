@@ -74,7 +74,6 @@ def test_param_update(op):
     if importlib.util.find_spec("ipywidgets") is None:
         pytest.skip("ipywidgets not installed")
 
-    import ipywidgets
 
     op.widget()
 
@@ -93,7 +92,6 @@ def test_visualization_setup(op, image):
     if importlib.util.find_spec("ipywidgets") is None:
         pytest.skip("ipywidgets not installed")
 
-    import ipywidgets
 
     op.widget(image=image)
 
@@ -110,7 +108,6 @@ def test_visualization_update(op, image):
     if importlib.util.find_spec("ipywidgets") is None:
         pytest.skip("ipywidgets not installed")
 
-    import ipywidgets
 
     op.widget(image=image)
 
@@ -221,7 +218,6 @@ def test_union_widget_with_generics():
     if importlib.util.find_spec("ipywidgets") is None:
         pytest.skip("ipywidgets not installed")
 
-    import ipywidgets
 
     class GenericUnionOp(ImageOperation):
         def __init__(self, param: Union[int, List[int], None] = None):
@@ -250,7 +246,6 @@ def test_union_widget_with_literal():
     if importlib.util.find_spec("ipywidgets") is None:
         pytest.skip("ipywidgets not installed")
 
-    import ipywidgets
 
     class LiteralUnionOp(ImageOperation):
         def __init__(self, param: Union[int, Literal["auto"], None] = None):
@@ -281,7 +276,6 @@ def test_pipeline_param_introspection_skipped():
     if importlib.util.find_spec("ipywidgets") is None:
         pytest.skip("ipywidgets not installed")
 
-    import ipywidgets
 
     # Instantiate with minimal parameters
     pipeline = ImagePipeline(ops={}, meas={})

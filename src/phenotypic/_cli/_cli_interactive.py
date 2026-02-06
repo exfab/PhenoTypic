@@ -87,7 +87,7 @@ def _display_local_config(config: ExecutionConfig) -> None:
     """Display local parallel execution configuration."""
     click.echo("\n  Local Parallel Configuration:")
     if config.n_jobs == -1:
-        click.echo(f"    n_jobs:.............. -1 (use all available CPU cores)")
+        click.echo("    n_jobs:.............. -1 (use all available CPU cores)")
     else:
         click.echo(f"    n_jobs:.............. {config.n_jobs}")
 

@@ -6,7 +6,6 @@ if TYPE_CHECKING:
     from phenotypic import Image
 import numpy as np
 from skimage.filters.rank import median
-from skimage.morphology import cube, ball
 from skimage.util import img_as_ubyte, img_as_float
 
 from phenotypic.abc_ import ImageEnhancer

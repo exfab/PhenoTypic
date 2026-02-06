@@ -86,8 +86,8 @@ def append_completion_event(
             f"Failed to record: {dataset}/{image} -> {status}"
         )
         raise RuntimeError(
-            f"Event log lock timeout after 60s. Cannot safely record processing status. "
-            f"Check filesystem performance or reduce parallel job count."
+            "Event log lock timeout after 60s. Cannot safely record processing status. "
+            "Check filesystem performance or reduce parallel job count."
         ) from e
 
 
@@ -205,8 +205,8 @@ def aggregate_state_from_events(event_log: Path) -> Dict[str, DatasetState]:
     except FileLockTimeout as e:
         logger.error(f"Failed to acquire event log lock for reading after 60s: {e}")
         raise RuntimeError(
-            f"Cannot read event log - file lock timeout after 60s. "
-            f"Check filesystem performance."
+            "Cannot read event log - file lock timeout after 60s. "
+            "Check filesystem performance."
         ) from e
 
 

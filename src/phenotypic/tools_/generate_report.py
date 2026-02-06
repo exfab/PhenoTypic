@@ -142,7 +142,7 @@ def generate_cli_report(output_dir: Path):
     report_path = output_dir / "processing_report.html"
     generator.generate_report(results, report_path)
 
-    click.echo(f"\n✓ Report generated successfully!")
+    click.echo("\n✓ Report generated successfully!")
     click.echo(f"  Location: {report_path}")
     click.echo(f"  Total images: {total_images}")
     click.echo(f"  Completed: {total_completed}")

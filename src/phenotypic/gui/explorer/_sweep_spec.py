@@ -8,8 +8,8 @@ Supports multiple sweep types:
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Any, Dict, List, Union
+from dataclasses import dataclass
+from typing import Any, Dict, List
 import itertools
 import json
 

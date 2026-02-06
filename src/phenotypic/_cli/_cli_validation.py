@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Tuple, Optional, Dict, Any, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from phenotypic import Image
+    pass
 
 from phenotypic import ImagePipeline
 from ._cli_types import ExecutionConfig

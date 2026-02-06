@@ -110,7 +110,7 @@ def main(output_dir: Path, refresh_interval: int, no_clear: bool):
 
             # Display header
             timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
-            click.echo(f"=== SLURM Processing Progress ===")
+            click.echo("=== SLURM Processing Progress ===")
             click.echo(f"Last updated: {timestamp}\n")
 
             # Overall progress
@@ -171,13 +171,13 @@ def main(output_dir: Path, refresh_interval: int, no_clear: bool):
             if remaining == 0 and expected_total > 0:
                 click.echo("\n✓ All jobs complete!")
                 click.echo(
-                        f"\nFinal Results:"
+                        "\nFinal Results:"
                 )
                 click.echo(
                         f"  Success rate: "
                         f"{(total_completed / expected_total) * 100:.1f}%"
                 )
-                click.echo(f"\nGenerate report with:")
+                click.echo("\nGenerate report with:")
                 click.echo(
                         f"  python -m phenotypic.tools_.generate_report "
                         f"{output_dir}"
@@ -202,7 +202,7 @@ def main(output_dir: Path, refresh_interval: int, no_clear: bool):
                 "\n\nMonitoring stopped. Jobs continue running on SLURM."
         )
         click.echo(
-                f"\nResume monitoring with:"
+                "\nResume monitoring with:"
         )
         click.echo(
                 f"  python -m phenotypic.tools_.monitor_slurm_jobs {output_dir}"

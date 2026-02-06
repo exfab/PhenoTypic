@@ -309,12 +309,12 @@ class TestNapariLabelsMultipleAccessors:
 
         # Add object map
         viewer = img.objmap.napari(name="map")
-        map_layer_name = f"objmap_map"
+        map_layer_name = "objmap_map"
         assert map_layer_name in viewer.layers
 
         # Add object mask
         viewer = img.objmask.napari(name="mask")
-        mask_layer_name = f"objmask_mask"
+        mask_layer_name = "objmask_mask"
         assert mask_layer_name in viewer.layers
 
         # Both should be labels layers

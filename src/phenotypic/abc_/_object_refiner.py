@@ -1,15 +1,13 @@
 from __future__ import annotations
-from typing import Literal, TYPE_CHECKING, overload
+from typing import TYPE_CHECKING, overload
 
 if TYPE_CHECKING:
     from phenotypic import Image, GridImage
 
-import numpy as np
 
 from ._image_operation import ImageOperation
 from phenotypic.tools_.funcs_ import validate_operation_integrity
 from abc import ABC
-from skimage.morphology import disk, square, diamond
 
 
 # <<Interface>>

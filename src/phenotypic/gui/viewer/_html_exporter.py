@@ -7,7 +7,6 @@ without requiring Python or Panel.
 from __future__ import annotations
 
 from base64 import b64encode
-from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, TYPE_CHECKING
 import json

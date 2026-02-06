@@ -13,7 +13,6 @@ import traceback
 from joblib import Parallel, delayed
 import numpy as np
 from skimage import io as skio
-from skimage.color import label2rgb
 
 from phenotypic import Image, ImagePipeline
 

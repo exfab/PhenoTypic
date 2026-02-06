@@ -2,10 +2,7 @@
 
 import pytest
 
-from phenotypic import ImagePipeline
-from phenotypic.abc_ import ImageEnhancer, ObjectDetector
-from phenotypic.enhance import GaussianBlur, CLAHE
-from phenotypic.detect import OtsuDetector
+from phenotypic.enhance import GaussianBlur
 from phenotypic.gui._operation_registry import (
     OperationRegistry,
     ParamInfo,

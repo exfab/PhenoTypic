@@ -2,9 +2,7 @@ import pytest
 
 import pandas as pd
 
-import phenotypic
 from phenotypic.data import load_synth_yeast_plate
-from phenotypic.detect import OtsuDetector
 from phenotypic.refine import MaskOpener
 
 from ..test_fixtures import _image_measurements

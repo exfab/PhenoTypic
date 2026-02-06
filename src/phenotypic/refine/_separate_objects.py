@@ -15,7 +15,6 @@ import gc
 import numpy as np
 
 from phenotypic.abc_ import ObjectRefiner
-from phenotypic.tools_.funcs_ import validate_operation_integrity
 
 
 class SeparateObjects(ObjectRefiner):

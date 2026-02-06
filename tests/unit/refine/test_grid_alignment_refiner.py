@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
 import numpy as np
 from phenotypic import Image, GridImage
 from phenotypic.detect import OtsuDetector, RoundPeaksDetector
@@ -276,7 +275,7 @@ class TestGridAlignmentRefinerPipeline:
 
     def test_multiple_refiners_chained(self):
         """Test chaining multiple refinement operations."""
-        from phenotypic.refine import SmallObjectRemover, MaskFill
+        from phenotypic.refine import SmallObjectRemover
 
         grid_image = load_synth_yeast_plate()
         detector = OtsuDetector()

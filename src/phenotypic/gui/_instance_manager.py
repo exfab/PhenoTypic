@@ -6,7 +6,6 @@ No Panel/GUI dependencies - uses only stdlib and existing phenotypic dependencie
 
 from __future__ import annotations
 
-import json
 import shutil
 from pathlib import Path
 from typing import Optional

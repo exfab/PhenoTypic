@@ -8,7 +8,6 @@ with collapsible tracebacks and dataset summaries.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Dict
 
 from ._cli_types import DatasetResults, ExecutionResults
 

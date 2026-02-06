@@ -1,10 +1,8 @@
 """Tests for PipelineGraph class."""
 
-import json
 import tempfile
 from pathlib import Path
 
-import pytest
 
 from phenotypic.gui.explorer import PipelineGraph, SweepSpec, GraphNode
 from phenotypic.enhance import GaussianBlur, CLAHE

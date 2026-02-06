@@ -16,7 +16,6 @@ from typing import Optional, Literal, Dict, Any
 
 import matplotlib
 matplotlib.use('Agg')  # Non-interactive backend
-import matplotlib.pyplot as plt
 
 from phenotypic import Image, GridImage, ImagePipeline
 from ._cli_output_manager import OutputManager

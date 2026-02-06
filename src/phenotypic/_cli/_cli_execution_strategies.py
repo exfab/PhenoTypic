@@ -20,7 +20,7 @@ import click
 from joblib import Parallel, delayed
 
 if TYPE_CHECKING:
-    from phenotypic import Image, GridImage
+    pass
 
 from ._cli_types import (
     Dataset,
@@ -34,7 +34,7 @@ from ._cli_process_single import process_single_image_core
 from ._cli_slurm_config import get_slurm_array_limit
 from ._cli_slurm_array_scripts import generate_all_array_job_scripts
 from ._cli_update_state import append_completion_event, aggregate_state_from_events
-from ._cli_constants import MAX_TRACEBACK_LINES, SLURM_PROGRESS_POLL_INTERVAL
+from ._cli_constants import MAX_TRACEBACK_LINES
 
 
 def _truncate_error_message(error_msg: str, max_lines: int = MAX_TRACEBACK_LINES) -> str:
@@ -388,7 +388,7 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
             final_results = self._monitor_progress(output_dir, datasets)
         else:
             click.echo("\nJobs submitted. Monitor progress with:")
-            click.echo(f"  squeue -u $USER --array")
+            click.echo("  squeue -u $USER --array")
             click.echo(f"  tail -f {output_dir}/processing_events.log")
             final_results = None
 
@@ -549,7 +549,7 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
                     console.print(f" → [green]Job {job_id}[/green]")
 
                 except RuntimeError as e:
-                    console.print(f" → [red]Failed[/red]")
+                    console.print(" → [red]Failed[/red]")
                     failed_submissions.append((dataset.name, i, str(e)))
                     # Continue to next submission instead of failing immediately
 

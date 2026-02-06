@@ -17,7 +17,6 @@ from pathlib import Path
 import pytest
 from click.testing import CliRunner
 
-from phenotypic import Image, GridImage
 from phenotypic._cli._cli_directory_scanner import (
     generate_timestamped_output_dir,
     organize_by_dataset,
@@ -29,17 +28,14 @@ from phenotypic._cli._cli_execution_strategies import (
     create_execution_strategy,
 )
 from phenotypic._cli._cli_interactive import (
-    execute_dry_run,
     get_sample_datasets,
 )
 from phenotypic._cli._cli_output_manager import OutputManager
 from phenotypic._cli._cli_report_generator import HTMLReportGenerator
 from phenotypic._cli._cli_state_management import (
     create_initial_state,
-    get_remaining_images_for_datasets,
     load_processing_state,
     save_processing_state,
-    validate_resume_compatibility,
 )
 from phenotypic._cli._cli_types import (
     Dataset,
@@ -849,9 +845,7 @@ class TestResumeMode:
 
     def test_resume_with_changed_input_images(self, runner, tmp_path):
         """Test that resume fails when input images change (missing images)."""
-        import json
         from datetime import datetime
-        from phenotypic._cli._cli_types import ProcessingState, DatasetState
 
         # Create initial state
         temp_input_dir = tmp_path / "images"
@@ -915,7 +909,6 @@ class TestResumeMode:
 
     def test_resume_with_no_state_file(self, runner, tmp_path):
         """Test that resume fails gracefully when state file doesn't exist."""
-        import json
 
         temp_input_dir = tmp_path / "images"
         temp_input_dir.mkdir()
@@ -944,7 +937,6 @@ class TestResumeMode:
 
     def test_resume_without_output_dir_specified(self, runner, tmp_path):
         """Test that resume requires --output-dir."""
-        import json
 
         temp_input_dir = tmp_path / "images"
         temp_input_dir.mkdir()
@@ -972,8 +964,6 @@ class TestDryRunMode:
 
     def test_dry_run_creates_no_output(self, runner, tmp_path):
         """Test that dry-run doesn't actually process images."""
-        import json
-        from pathlib import Path
 
         temp_input_dir = tmp_path / "images"
         temp_input_dir.mkdir()
@@ -1007,7 +997,6 @@ class TestDryRunMode:
 
     def test_dry_run_shows_processing_plan(self, runner, tmp_path):
         """Test that dry-run displays what would be processed."""
-        import json
 
         temp_input_dir = tmp_path / "images"
         temp_input_dir.mkdir()

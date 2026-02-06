@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Tuple
 
 if TYPE_CHECKING:
-    from phenotypic import GridImage, Image
+    from phenotypic import Image
 
 import numpy as np
 from scipy.sparse import csr_matrix

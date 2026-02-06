@@ -3,7 +3,7 @@ import logging
 from phenotypic import GridImage, ImagePipeline
 from phenotypic.correction import GridAligner
 from phenotypic.data import load_plate_12hr
-from phenotypic.detect import OtsuDetector, WatershedDetector
+from phenotypic.detect import OtsuDetector
 from phenotypic.enhance import CLAHE, ContrastStretching, GaussianBlur, MedianFilter
 from phenotypic.measure import (
     MeasureColor,

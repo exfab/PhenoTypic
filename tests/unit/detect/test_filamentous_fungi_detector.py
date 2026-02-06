@@ -1,9 +1,8 @@
 import pytest
 import numpy as np
-from phenotypic import Image, ImagePipeline
+from phenotypic import ImagePipeline
 from phenotypic.detect import (
     OtsuDetector,
-    CannyDetector,
     TriangleDetector,
     FilamentousFungiDetector,
 )

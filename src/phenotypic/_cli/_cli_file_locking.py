@@ -30,7 +30,7 @@ from __future__ import annotations
 import sys
 import time
 from pathlib import Path
-from typing import Callable, TypeVar, Optional
+from typing import Callable, TypeVar
 from contextlib import contextmanager
 
 # Platform-specific imports

@@ -334,7 +334,6 @@ def load_synthetic_colony(
 
 def load_synth_yeast_plate():
     """Returns a phenotypic.GridImage of a synthetic plate with the colonies detected"""
-    import phenotypic
     from skimage.io import imread
 
     dirpath = __current_file_dir / "synthetic_test_plate"
@@ -348,7 +347,6 @@ def load_synth_yeast_plate():
 
 
 def load_synth_filamentous_plate():
-    import phenotypic
     from skimage.io import imread
 
     dirpath = __current_file_dir / "synthetic_test_plate"

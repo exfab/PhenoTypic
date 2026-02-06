@@ -10,7 +10,7 @@ import pytest
 import numpy as np
 import phenotypic
 from phenotypic.detect import RoundPeaksDetector
-from phenotypic.data import load_plate_12hr, load_plate_72hr
+from phenotypic.data import load_plate_12hr
 
 from ..resources.TestHelper import timeit
 

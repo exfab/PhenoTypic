@@ -7,10 +7,10 @@ if TYPE_CHECKING:
 
 import numpy as np
 import pandas as pd
-from skimage.measure import regionprops_table, regionprops
+from skimage.measure import regionprops
 from typing import List
 
-from phenotypic.tools_.constants_ import OBJECT, METADATA, IMAGE_TYPES, BBOX
+from phenotypic.tools_.constants_ import OBJECT, METADATA, IMAGE_TYPES
 
 
 class ObjectsAccessor:

@@ -42,7 +42,6 @@ class ParamEditor:
             on_change: Callback when value changes
             nesting_depth: Current nesting level (for depth limiting)
         """
-        import param
 
         self.param_info = param_info
         self._manager = manager

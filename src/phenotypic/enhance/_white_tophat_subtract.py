@@ -6,7 +6,7 @@ if TYPE_CHECKING:
     from phenotypic import Image
 
 import numpy as np
-from skimage.morphology import white_tophat, cube, ball
+from skimage.morphology import white_tophat
 
 from phenotypic.abc_ import ImageEnhancer
 

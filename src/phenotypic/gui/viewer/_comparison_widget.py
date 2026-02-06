@@ -6,7 +6,7 @@ Provides side-by-side comparison of different pipeline variant outputs.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, TYPE_CHECKING
+from typing import Any, Dict, List, Optional, TYPE_CHECKING
 import logging
 
 try:

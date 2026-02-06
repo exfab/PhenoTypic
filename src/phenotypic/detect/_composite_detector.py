@@ -1,7 +1,6 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, Any, List, Literal, Union
+from typing import TYPE_CHECKING, List, Literal, Union
 import numpy as np
-from scipy import ndimage
 from scipy.ndimage import label
 
 if TYPE_CHECKING:

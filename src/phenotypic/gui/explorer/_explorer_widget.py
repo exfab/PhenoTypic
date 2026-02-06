@@ -6,8 +6,7 @@ through visual graph editing and parameter sweeps.
 
 from __future__ import annotations
 
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Tuple, TYPE_CHECKING
+from typing import Dict, List, Optional, TYPE_CHECKING
 import logging
 
 try:
@@ -27,7 +26,6 @@ from ._sweep_results import SweepResults
 
 if TYPE_CHECKING:
     from phenotypic import Image
-    from phenotypic.abc_ import ImageOperation
 
 logger = logging.getLogger(__name__)
 

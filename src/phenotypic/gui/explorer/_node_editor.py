@@ -25,7 +25,7 @@ from ._pipeline_graph import PipelineGraph, GraphNode
 from ._sweep_spec import SweepSpec
 
 if TYPE_CHECKING:
-    from phenotypic.abc_ import ImageOperation
+    pass
 
 
 # =============================================================================

@@ -1,6 +1,6 @@
 import pytest
 import numpy as np
-from phenotypic import Image, ImagePipeline
+from phenotypic import ImagePipeline
 from phenotypic.detect import (
     OtsuDetector,
     CannyDetector,
@@ -366,7 +366,6 @@ class TestCompositeDetector:
     def test_pipeline_serialization_roundtrip(self):
         """Test that CompositeDetector with pipelines serializes correctly."""
         from phenotypic.enhance import GaussianBlur
-        import json
 
         composite = CompositeDetector(
                 detectors=[

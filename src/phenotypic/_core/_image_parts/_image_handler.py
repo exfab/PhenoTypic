@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Literal, TYPE_CHECKING, Optional, Tuple, Type
+from typing import Literal, TYPE_CHECKING, Tuple, Type
 
 if TYPE_CHECKING:
     from phenotypic import Image
