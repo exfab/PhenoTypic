@@ -78,6 +78,10 @@ gui = [
     "networkx>=3.0",
 ]
 
+lens = [
+    "lensfunpy>=2.0.0",
+]
+
 [project.scripts]
 phenotypic = "phenotypic.phenotypicCLI:main"
 

@@ -14,6 +14,7 @@ from enum import Enum
 from packaging.version import Version
 from pathlib import Path
 
+from phenotypic._shared_modules._constant_labels import ConstantLabels
 from phenotypic._shared_modules._measurement_info import MeasurementInfo
 
 
@@ -56,6 +57,17 @@ class IMAGE_MODE(Enum):
 
     CHANNELS_DEFAULT = 3
     DEFAULT_SCHEMA = RGB
+
+
+class GAMMA_ENCODINGS(ConstantLabels):
+    """Constants for gamma encoding profiles used in color space conversions."""
+
+    @classmethod
+    def category(cls) -> str:
+        return "GammaEncoding"
+
+    SRGB = "sRGB", "Standard sRGB gamma correction for display"
+    LINEAR = "Linear", "Linear RGB with no gamma correction"
 
 
 # Object information constants

@@ -7,6 +7,7 @@ import numpy as np
 if TYPE_CHECKING:
     from phenotypic import Image
 
+from phenotypic.tools_.constants_ import GAMMA_ENCODINGS
 from ._image_parts._image_io_handler import ImageIOHandler
 
 
@@ -58,7 +59,7 @@ class Image(ImageIOHandler):
             arr: np.ndarray | Image | None = None,
             name: str | None = None,
             bit_depth: Literal[8, 16] | None = None,
-            gamma: str | None = "sRGB",
+            gamma: GAMMA_ENCODINGS = GAMMA_ENCODINGS.SRGB,
             illuminant: str | None = "D65",
     ):
         """Initialize an Image instance with optional image data and color properties.
@@ -79,17 +80,17 @@ class Image(ImageIOHandler):
             bit_depth (Literal[8, 16] | None): The bit depth of the image data (8 or 16 bits).
                 If not specified and arr is provided, bit depth is automatically inferred
                 from the array dtype. Defaults to None.
-            gamma (str | None): The gamma encoding used for color correction.
-                'sRGB': applies sRGB gamma correction (standard display gamma)
-                None: assumes linear RGB data
-                Only 'sRGB' and None are supported. Defaults to 'sRGB'.
+            gamma (GAMMA_ENCODINGS): The gamma encoding used for color correction.
+                GAMMA_ENCODINGS.SRGB: applies sRGB gamma correction (standard display gamma)
+                GAMMA_ENCODINGS.LINEAR: assumes linear RGB data
+                Defaults to GAMMA_ENCODINGS.SRGB.
             illuminant (str | None): The reference illuminant for color calculations.
                 'D65': standard daylight illuminant (recommended)
                 'D50': standard illumination for imaging
                 Defaults to 'D65'.
 
         Raises:
-            ValueError: If gamma is not 'sRGB' or None.
+            ValueError: If gamma is not a GAMMA_ENCODINGS member.
             ValueError: If illuminant is not 'D65' or 'D50'.
             TypeError: If arr is provided but is not a NumPy array or Image instance.
 
@@ -106,7 +107,8 @@ class Image(ImageIOHandler):
             Create from RGB array:
 
             >>> rgb_arr = np.random.randint(0, 256, (480, 640, 3), dtype=np.uint8)
-            >>> img = Image(rgb_arr, name='color_photo', gamma='sRGB')
+            >>> from phenotypic.tools_.constants_ import GAMMA_ENCODINGS
+            >>> img = Image(rgb_arr, name='color_photo', gamma=GAMMA_ENCODINGS.SRGB)
 
             Copy another image:
 

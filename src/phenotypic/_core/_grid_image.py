@@ -5,6 +5,7 @@ from typing import Literal, Optional
 import numpy as np
 
 from phenotypic.abc_ import GridFinder
+from phenotypic.tools_.constants_ import GAMMA_ENCODINGS
 from ._image import Image
 from ._image_parts._image_grid_handler import ImageGridHandler
 
@@ -39,7 +40,7 @@ class GridImage(ImageGridHandler):
             ncols: int = 12,
             bit_depth: Literal[8, 16] | None = None,
             illuminant: str | None = "D65",
-            gamma: Literal["sRGB"] | None = "sRGB",
+            gamma: GAMMA_ENCODINGS = GAMMA_ENCODINGS.SRGB,
     ):
         """Initialize a GridImage with grid-based processing capabilities.
 
@@ -67,13 +68,14 @@ class GridImage(ImageGridHandler):
             illuminant (str | None): Reference illuminant for color calculations.
                 'D65' (standard daylight) or 'D50' (imaging illuminant).
                 Defaults to 'D65'.
-            gamma (Literal["sRGB"] | None): Gamma encoding for color correction.
-                'sRGB' for gamma-corrected images, None for linear RGB.
-                Defaults to 'sRGB'.
+            gamma (GAMMA_ENCODINGS): Gamma encoding for color correction.
+                GAMMA_ENCODINGS.SRGB for gamma-corrected images,
+                GAMMA_ENCODINGS.LINEAR for linear RGB.
+                Defaults to GAMMA_ENCODINGS.SRGB.
 
         Raises:
             ValueError: If illuminant is not 'D65' or 'D50'.
-            ValueError: If gamma is not 'sRGB' or None.
+            ValueError: If gamma is not a GAMMA_ENCODINGS member.
             TypeError: If arr is provided but is not a valid image type.
 
         Examples:

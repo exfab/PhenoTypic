@@ -7,6 +7,7 @@ if TYPE_CHECKING:
 
 import numpy as np
 
+from phenotypic.tools_.constants_ import GAMMA_ENCODINGS
 from .accessors._color_accessor import ColorAccessor
 from ._image_panel_handler import ImagePanelHandler
 
@@ -27,8 +28,9 @@ class ImageColorSpace(ImagePanelHandler):
     computed on-demand through the color accessor to minimize memory overhead.
 
     Attributes:
-        gamma (str | None): The gamma encoding applied to the image
-            ('sRGB' for gamma-corrected, None for linear RGB). Defaults to 'sRGB'.
+        gamma (GAMMA_ENCODINGS): The gamma encoding applied to the image
+            (GAMMA_ENCODINGS.SRGB for gamma-corrected, GAMMA_ENCODINGS.LINEAR for linear
+            RGB). Defaults to GAMMA_ENCODINGS.SRGB.
         _observer (str): The CIE standard observer model for color calculations
             (default: 'CIE 1931 2 Degree Standard Observer').
         illuminant (Literal["D65", "D50"]): The reference illuminant defining viewing
@@ -47,7 +49,7 @@ class ImageColorSpace(ImagePanelHandler):
             name: str | None = None,
             bit_depth: Literal[8, 16] | None = 8,
             *,
-            gamma: Literal["sRGB"] | None = "sRGB",
+            gamma: GAMMA_ENCODINGS = GAMMA_ENCODINGS.SRGB,
             illuminant: Literal["D65", "D50"] = "D65",
     ):
         """Initialize ImageColorSpace with color properties and representations.
@@ -62,20 +64,21 @@ class ImageColorSpace(ImagePanelHandler):
             name (str | None): Optional name for the image. Defaults to None.
             bit_depth (Literal[8, 16] | None): The bit depth of the image (8 or 16 bits).
                 Defaults to 8.
-            gamma (Literal["sRGB"] | None): The gamma encoding applied to the image.
-                'sRGB' applies gamma correction for display, None assumes linear RGB.
-                Only 'sRGB' and None are supported. Defaults to 'sRGB'.
+            gamma (GAMMA_ENCODINGS): The gamma encoding applied to the image.
+                GAMMA_ENCODINGS.SRGB applies gamma correction for display,
+                GAMMA_ENCODINGS.LINEAR assumes linear RGB.
+                Defaults to GAMMA_ENCODINGS.SRGB.
             illuminant (Literal["D65", "D50"]): The reference illuminant for color calculations.
                 'D65' represents standard daylight, 'D50' represents standard illumination
                 for imaging. Defaults to 'D65'.
 
         Raises:
-            ValueError: If gamma is not 'sRGB' or None.
+            ValueError: If gamma is not a GAMMA_ENCODINGS member.
             ValueError: If illuminant is not 'D65' or 'D50'.
         """
-        if (gamma != "sRGB") and (gamma is not None):
+        if not isinstance(gamma, GAMMA_ENCODINGS):
             raise ValueError(
-                    f"only sRGB or None for linear is supported for gamma encoding: got {gamma}"
+                    f"gamma must be a GAMMA_ENCODINGS member: got {gamma}"
             )
         if illuminant not in ["D65", "D50"]:
             raise ValueError('illuminant must be "D65" or "D50"')

@@ -4,6 +4,7 @@ import colour
 import numpy as np
 
 from phenotypic.tools_.colourspace import sRGB_D50
+from phenotypic.tools_.constants_ import GAMMA_ENCODINGS
 from phenotypic.tools_.exceptions_ import IllegalAssignmentError
 from ..accessor_abstracts._color_space_accessor import ColorSpaceAccessor
 
@@ -16,7 +17,7 @@ class XyzAccessor(ColorSpaceAccessor):
     color space used as a reference standard in color science for precise color
     representation and transformation between different color spaces.
 
-    The class supports multiple gamma encoding profiles (sRGB or linear/None) and
+    The class supports multiple gamma encoding profiles (SRGB or LINEAR) and
     illuminants (D50 or D65) with automatic observer-dependent whitepoint selection.
     Conversions are performed on-the-fly via the `colour.RGB_to_XYZ` function from
     the colour-science library, and direct modifications to the data are prevented
@@ -40,9 +41,9 @@ class XyzAccessor(ColorSpaceAccessor):
     Notes:
         XYZ values are computed using the colour-science library's RGB_to_XYZ
         function with the following behavior:
-        - For sRGB gamma-encoded images: CCTF (color component transfer function)
-          decoding is applied.
-        - For linear RGB (gamma=None): No CCTF decoding is applied.
+        - For sRGB gamma-encoded images (GAMMA_ENCODINGS.SRGB): CCTF (color component
+          transfer function) decoding is applied.
+        - For linear RGB (GAMMA_ENCODINGS.LINEAR): No CCTF decoding is applied.
         - The appropriate standard RGB colorspace and whitepoint are selected based
           on the image's illuminant and observer settings.
     """
@@ -77,14 +78,15 @@ class XyzAccessor(ColorSpaceAccessor):
         Raises:
             AttributeError: If the parent image is grayscale (RGB data is empty).
             ValueError: If gamma or illuminant combination is not one of:
-                ('sRGB', 'D50'), ('sRGB', 'D65'), (None, 'D50'), (None, 'D65').
+                (GAMMA_ENCODINGS.SRGB, 'D50'), (GAMMA_ENCODINGS.SRGB, 'D65'),
+                (GAMMA_ENCODINGS.LINEAR, 'D50'), (GAMMA_ENCODINGS.LINEAR, 'D65').
 
         Notes:
             - RGB normalization ensures input values are in [0, 1] range expected
               by colour.RGB_to_XYZ.
             - For sRGB images: cctf_decoding=True applies inverse OECF to convert
               from sRGB's perceptually-encoded values to linear RGB.
-            - For linear RGB (gamma=None): cctf_decoding=False treats
+            - For linear RGB (GAMMA_ENCODINGS.LINEAR): cctf_decoding=False treats
               RGB values as already linear.
             - D50 whitepoint is dynamically set based on self._root_image.observer
               to ensure chromatic adaptation consistency.
@@ -106,7 +108,7 @@ class XyzAccessor(ColorSpaceAccessor):
         if self._root_image.rgb.isempty():
             raise AttributeError("XYZ conversion is not available for grayscale images")
         match (self._root_image.gamma, self._root_image.illuminant):
-            case ("sRGB", "D50"):
+            case (GAMMA_ENCODINGS.SRGB, "D50"):
                 sRGB_D50.whitepoint = colour.CCS_ILLUMINANTS[
                     self._root_image._observer
                 ]["D50"]
@@ -116,7 +118,7 @@ class XyzAccessor(ColorSpaceAccessor):
                         illuminant=sRGB_D50.whitepoint,
                         cctf_decoding=True,
                 )
-            case ("sRGB", "D65"):
+            case (GAMMA_ENCODINGS.SRGB, "D65"):
                 return colour.RGB_to_XYZ(
                         RGB=self._root_image.rgb.normed(),
                         colourspace=colour.RGB_COLOURSPACES["sRGB"],
@@ -125,7 +127,7 @@ class XyzAccessor(ColorSpaceAccessor):
                         ],
                         cctf_decoding=True,
                 )
-            case (None, "D50"):
+            case (GAMMA_ENCODINGS.LINEAR, "D50"):
                 sRGB_D50.whitepoint = colour.CCS_ILLUMINANTS[
                     self._root_image._observer
                 ]["D50"]
@@ -135,7 +137,7 @@ class XyzAccessor(ColorSpaceAccessor):
                         illuminant=sRGB_D50.whitepoint,
                         cctf_decoding=False,
                 )
-            case (None, "D65"):
+            case (GAMMA_ENCODINGS.LINEAR, "D65"):
                 return colour.RGB_to_XYZ(
                         rgb=self._root_image.rgb.normed(),
                         colourspace=colour.RGB_COLOURSPACES["sRGB"],
