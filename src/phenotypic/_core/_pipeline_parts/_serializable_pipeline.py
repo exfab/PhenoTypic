@@ -106,7 +106,7 @@ class SerializablePipeline(ImagePipelineCore):
     @classmethod
     def from_json(
             cls,
-            json_data: Union[str, Path],
+            json_data: Union[str, Path, dict],
             benchmark: bool = False,
             verbose: bool = False,
     ) -> ImagePipeline:
@@ -118,7 +118,7 @@ class SerializablePipeline(ImagePipelineCore):
         namespace and instantiated with their saved parameters.
 
         Args:
-            json_data: Either a JSON string or a path to a JSON file.
+            json_data: A JSON string, path to a JSON file, or a pre-parsed dict.
             benchmark: Whether to enable benchmarking for the pipeline. Defaults to False.
             verbose: Whether to enable verbose output. Defaults to False.
 
@@ -142,23 +142,27 @@ class SerializablePipeline(ImagePipelineCore):
             >>> # Load with benchmarking enabled
             >>> pipe = ImagePipeline.from_json('pipeline.json', benchmark=True)
         """
-        # Check if json_data is a file path
-        if isinstance(json_data, (str, Path)):
-            try:
-                path = Path(json_data)
-                # Only try to read as file if it looks like a path and exists
-                # This prevents trying to stat very long JSON strings
-                if len(str(json_data)) < 256 and path.exists() and path.is_file():
-                    json_data = path.read_text()
-            except (OSError, ValueError):
-                # If Path operations fail, treat as JSON string
-                pass
+        # If already a parsed dict, use directly
+        if isinstance(json_data, dict):
+            config = json_data
+        else:
+            # Check if json_data is a file path
+            if isinstance(json_data, (str, Path)):
+                try:
+                    path = Path(json_data)
+                    # Only try to read as file if it looks like a path and exists
+                    # This prevents trying to stat very long JSON strings
+                    if len(str(json_data)) < 256 and path.exists() and path.is_file():
+                        json_data = path.read_text()
+                except (OSError, ValueError):
+                    # If Path operations fail, treat as JSON string
+                    pass
 
-        # Parse JSON
-        try:
-            config = json.loads(json_data)
-        except json.JSONDecodeError as e:
-            raise ValueError(f"Invalid JSON data: {e}")
+            # Parse JSON
+            try:
+                config = json.loads(json_data)
+            except json.JSONDecodeError as e:
+                raise ValueError(f"Invalid JSON data: {e}")
 
         # Deserialize operations and measurements
         ops = cls._deserialize_operations(config.get("pipe_cfgs", {}))

@@ -6,7 +6,6 @@ single image, and a standalone Click sub-CLI for SLURM workers.
 
 from __future__ import annotations
 
-import json
 import logging
 import sys
 import traceback
@@ -53,7 +52,7 @@ def _run_single_pipeline(
 
     try:
         # Deserialize pipeline
-        pipeline = ImagePipeline.from_json(json.loads(pipeline_json_str))
+        pipeline = ImagePipeline.from_json(pipeline_json_str)
 
         # Load image from disk
         image_cls = GridImage if image_type == "GridImage" else Image
@@ -77,6 +76,15 @@ def _run_single_pipeline(
 
     except Exception as e:
         tb = traceback.format_exc()
+        try:
+            output_manager.write_failure_log(
+                image_path=image_path,
+                pipeline_name=pipeline_name,
+                traceback_str=tb,
+                pipeline_json_str=pipeline_json_str,
+            )
+        except Exception:
+            pass  # never mask the original pipeline error
         return (pipeline_name, False, tb)
 
 
@@ -301,6 +309,10 @@ def main(
         click.echo(
             f"Finished {image.name}: {succeeded} succeeded, {failed} failed"
         )
+        if failed > 0:
+            click.echo(
+                f"Detailed failure logs: {output_manager.failures_dir}"
+            )
         sys.exit(0 if failed == 0 else 1)
 
     except Exception as e:

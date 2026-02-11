@@ -9,7 +9,6 @@ distributed across SLURM array tasks.
 
 from __future__ import annotations
 
-import json
 import logging
 import shutil
 import sys
@@ -135,11 +134,9 @@ def _validate_sweep(
     )
 
     try:
-        import json as _json
-
         from phenotypic import Image, GridImage, ImagePipeline
 
-        pipeline = ImagePipeline.from_json(_json.loads(first_pipe_json))
+        pipeline = ImagePipeline.from_json(first_pipe_json)
         image_cls = GridImage if image_type == "GridImage" else Image
         rk = dict(read_kwargs)
         detect_mode = rk.pop("detect_mode", "gray")
@@ -550,6 +547,9 @@ def sweep_cli(
                 click.echo(f"  - {f['image']} / {f['pipeline']}")
             if len(failures) > 5:
                 click.echo(f"  ... and {len(failures) - 5} more")
+            click.echo(
+                f"Detailed failure logs: {output_manager.failures_dir}"
+            )
 
         click.echo(f"\nResults saved to: {output_dir}")
         sys.exit(0 if not failures else 1)

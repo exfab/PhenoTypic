@@ -7,6 +7,7 @@ and aggregation of measurements across pipelines.
 from __future__ import annotations
 
 import logging
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable, Dict, List, Optional, TYPE_CHECKING
 
@@ -50,6 +51,7 @@ class SweepOutputManager:
 
         self.results_dir = self.base_dir / "results"
         self.logs_dir = self.base_dir / "logs"
+        self.failures_dir = self.logs_dir / "failures"
 
     def create_structure(self, pipeline_names: List[str]) -> None:
         """Create complete output directory structure.
@@ -60,6 +62,7 @@ class SweepOutputManager:
         self.base_dir.mkdir(parents=True, exist_ok=True)
         self.results_dir.mkdir(exist_ok=True)
         self.logs_dir.mkdir(exist_ok=True)
+        self.failures_dir.mkdir(exist_ok=True)
         (self.logs_dir / "slurm").mkdir(exist_ok=True)
 
         for pipe_name in pipeline_names:
@@ -70,6 +73,56 @@ class SweepOutputManager:
             for layer_name, enabled in self.save_layers.items():
                 if enabled:
                     (pipe_dir / layer_name).mkdir(exist_ok=True)
+
+    def write_failure_log(
+        self,
+        image_path: Path,
+        pipeline_name: str,
+        traceback_str: str,
+        pipeline_json_str: str,
+    ) -> Optional[Path]:
+        """Write a detailed failure log for a single pipeline run.
+
+        Args:
+            image_path: Path to the input image that failed.
+            pipeline_name: Name of the pipeline that failed.
+            traceback_str: Full traceback string from the exception.
+            pipeline_json_str: Pipeline JSON config for reproducibility.
+
+        Returns:
+            Path to the written log file, or ``None`` if writing failed.
+        """
+        try:
+            # Ensure directory exists (SLURM workers skip create_structure)
+            self.failures_dir.mkdir(parents=True, exist_ok=True)
+
+            safe_name = pipeline_name.replace("/", "_").replace("\\", "_")
+            filename = f"{image_path.stem}__{safe_name}.log"
+            log_path = self.failures_dir / filename
+
+            timestamp = datetime.now(tz=timezone.utc).isoformat()
+            content = (
+                f"Timestamp: {timestamp}\n"
+                f"Image:     {image_path}\n"
+                f"Pipeline:  {pipeline_name}\n"
+                f"\n{'=' * 60}\n"
+                f"TRACEBACK\n"
+                f"{'=' * 60}\n"
+                f"{traceback_str}\n"
+                f"{'=' * 60}\n"
+                f"PIPELINE CONFIG (JSON)\n"
+                f"{'=' * 60}\n"
+                f"{pipeline_json_str}\n"
+            )
+            log_path.write_text(content)
+            return log_path
+
+        except Exception as exc:
+            logger.warning(
+                f"Could not write failure log for "
+                f"{pipeline_name}/{image_path.stem}: {exc}"
+            )
+            return None
 
     def get_output_path(
         self,

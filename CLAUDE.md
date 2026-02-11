@@ -172,6 +172,10 @@ private (leading `_`).
 - Break large functions into smaller helper functions that are independently unit-testable
   and easier to maintain. Within classes, use private helper methods (e.g.,
   `_compute_threshold`) to keep public methods focused and readable.
+- **Explicit naming:** Always use descriptive, explicit names for functions, methods, and
+  classes. Avoid generic names like `main()`, `run()`, `process()`, or `handle()`. Name
+  things after what they actually do (e.g., `sweep_worker_cli()` instead of `main()`,
+  `process_plate_image()` instead of `process()`).
 
 ### Docstring Format
 
