@@ -873,7 +873,7 @@ class TestResumeMode:
 
         # Try to resume - should fail because input changed
         result = runner.invoke(
-            main,
+            phenotypic_cli,
             [
                 str(temp_pipeline),
                 str(temp_input_dir),
@@ -902,7 +902,7 @@ class TestResumeMode:
         output_dir.mkdir()  # Create directory but NO state file
 
         result = runner.invoke(
-            main,
+            phenotypic_cli,
             [
                 str(temp_pipeline),
                 str(temp_input_dir),
@@ -927,7 +927,7 @@ class TestResumeMode:
         temp_pipeline.write_text(json.dumps({"operations": []}))
 
         result = runner.invoke(
-            main,
+            phenotypic_cli,
             [
                 str(temp_pipeline),
                 str(temp_input_dir),
@@ -960,7 +960,7 @@ class TestDryRunMode:
         output_dir = tmp_path / "output"
 
         result = runner.invoke(
-            main,
+            phenotypic_cli,
             [
                 str(temp_pipeline),
                 str(temp_input_dir),
@@ -993,7 +993,7 @@ class TestDryRunMode:
         output_dir = tmp_path / "output"
 
         result = runner.invoke(
-            main,
+            phenotypic_cli,
             [
                 str(temp_pipeline),
                 str(temp_input_dir),
@@ -1023,7 +1023,7 @@ class TestEdgeCases:
         (input_dir / "test.jpg").write_text("dummy")
 
         result = runner.invoke(
-            main,
+            phenotypic_cli,
             [
                 str(temp_pipeline),
                 str(input_dir),
@@ -1053,7 +1053,7 @@ class TestEdgeCases:
         (input_dir / "test.jpg").write_text("dummy")
 
         result = runner.invoke(
-            main,
+            phenotypic_cli,
             [
                 str(temp_pipeline),
                 str(input_dir),
@@ -1087,7 +1087,7 @@ class TestEdgeCases:
         pil_img.save(input_dir / "single.jpg")
 
         result = runner.invoke(
-            main,
+            phenotypic_cli,
             [
                 str(temp_pipeline),
                 str(input_dir),
@@ -1124,7 +1124,7 @@ class TestEdgeCases:
         input_dir.mkdir()
 
         result = runner.invoke(
-            main,
+            phenotypic_cli,
             [
                 str(temp_pipeline),
                 str(input_dir),
@@ -1160,7 +1160,7 @@ class TestEdgeCases:
 
         # Initial processing
         result = runner.invoke(
-            main,
+            phenotypic_cli,
             [
                 str(temp_pipeline),
                 str(input_dir),
@@ -1180,7 +1180,7 @@ class TestEdgeCases:
 
         # Resume should fail with clear error about image set mismatch
         result = runner.invoke(
-            main,
+            phenotypic_cli,
             [
                 str(temp_pipeline),
                 str(input_dir),
@@ -1558,7 +1558,7 @@ class TestNewCoverageGaps:
         pil_img.save(input_dir / "test.jpg")
 
         result = runner.invoke(
-            main,
+            phenotypic_cli,
             [
                 str(temp_pipeline),
                 str(input_dir),

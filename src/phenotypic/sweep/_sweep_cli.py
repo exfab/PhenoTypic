@@ -18,7 +18,8 @@ from typing import Any, Dict, List, Literal, Optional, Sequence
 
 import click
 
-from phenotypic._cli._cli_constants import MIN_SLURM_TIME_MINUTES, MAX_SLURM_TIME_MINUTES
+from phenotypic._cli._cli_constants import MIN_SLURM_TIME_MINUTES, \
+    MAX_SLURM_TIME_MINUTES
 from phenotypic._cli._cli_directory_scanner import generate_timestamped_output_dir
 from phenotypic._cli._cli_utils import normalize_extension, parse_slurm_args
 from phenotypic._core._image_parts.detection_modes import available_modes
@@ -62,13 +63,14 @@ def _scan_flat_image_dir(input_dir: Path) -> List[Path]:
             ]
             if sub_images:
                 raise ValueError(
-                    f"Sweep CLI requires a flat image directory (no subdirectories). "
-                    f"Found images in subdirectory '{subdir.name}'. "
-                    f"Move all images into a single flat directory."
+                        f"Sweep CLI requires a flat image directory (no subdirectories). "
+                        f"Found images in subdirectory '{subdir.name}'. "
+                        f"Move all images into a single flat directory."
                 )
 
     images = sorted(
-        p for p in input_dir.iterdir() if p.is_file() and p.suffix.lower() in valid_exts
+            p for p in input_dir.iterdir() if
+            p.is_file() and p.suffix.lower() in valid_exts
     )
 
     if not images:
@@ -102,11 +104,11 @@ def _flatten_pipelines(manifest_path: Path) -> Dict[str, str]:
 
 
 def _validate_sweep(
-    manifest_path: Path,
-    pipeline_json_strs: Dict[str, str],
-    image_paths: List[Path],
-    image_type: str,
-    read_kwargs: Dict[str, Any],
+        manifest_path: Path,
+        pipeline_json_strs: Dict[str, str],
+        image_paths: List[Path],
+        image_type: str,
+        read_kwargs: Dict[str, Any],
 ) -> None:
     """Validate the first pipeline on the first image.
 
@@ -129,7 +131,7 @@ def _validate_sweep(
     first_image = image_paths[0]
 
     console.print(
-        f"[cyan]Validating pipeline '{first_pipe_name}' on {first_image.name}..."
+            f"[cyan]Validating pipeline '{first_pipe_name}' on {first_image.name}..."
     )
 
     try:
@@ -148,7 +150,8 @@ def _validate_sweep(
         measurements = pipeline.apply_and_measure(image, inplace=True)
 
         if measurements is None or len(measurements) == 0:
-            raise click.ClickException("Pipeline produced no measurements on test image")
+            raise click.ClickException(
+                "Pipeline produced no measurements on test image")
 
         console.print("[green]Validation passed")
 
@@ -159,17 +162,17 @@ def _validate_sweep(
 
 
 def _display_sweep_config(
-    manifest_path: Path,
-    input_dir: Path,
-    output_dir: Path,
-    num_images: int,
-    num_pipelines: int,
-    image_type: str,
-    nrows: int,
-    ncols: int,
-    n_jobs: int,
-    slurm_args: Dict[str, Any],
-    is_slurm: bool,
+        manifest_path: Path,
+        input_dir: Path,
+        output_dir: Path,
+        num_images: int,
+        num_pipelines: int,
+        image_type: str,
+        nrows: int,
+        ncols: int,
+        n_jobs: int,
+        slurm_args: Dict[str, Any],
+        is_slurm: bool,
 ) -> None:
     """Display sweep configuration in a rich table."""
     from rich.console import Console
@@ -179,10 +182,10 @@ def _display_sweep_config(
     console = Console()
 
     table = Table(
-        title="Sweep Configuration",
-        show_header=False,
-        box=None,
-        padding=(0, 2),
+            title="Sweep Configuration",
+            show_header=False,
+            box=None,
+            padding=(0, 2),
     )
     table.add_column("Setting", style="cyan", no_wrap=True)
     table.add_column("Value", style="white")
@@ -222,66 +225,66 @@ def _format_duration(seconds: float) -> str:
 
 @click.command()
 @click.argument(
-    "manifest_json",
-    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+        "manifest_json",
+        type=click.Path(exists=True, dir_okay=False, path_type=Path),
 )
 @click.argument(
-    "input_dir",
-    type=click.Path(exists=True, file_okay=False, path_type=Path),
+        "input_dir",
+        type=click.Path(exists=True, file_okay=False, path_type=Path),
 )
 @click.option(
-    "-o",
-    "--output-dir",
-    type=click.Path(path_type=Path),
-    default=None,
-    help="Output directory (auto-timestamped if omitted).",
+        "-o",
+        "--output-dir",
+        type=click.Path(path_type=Path),
+        default=None,
+        help="Output directory (auto-timestamped if omitted).",
 )
 @click.option(
-    "--image-type",
-    type=click.Choice(["Image", "GridImage"], case_sensitive=False),
-    default="GridImage",
-    show_default=True,
-    help="Image class to instantiate.",
+        "--image-type",
+        type=click.Choice(["Image", "GridImage"], case_sensitive=False),
+        default="GridImage",
+        show_default=True,
+        help="Image class to instantiate.",
 )
 @click.option(
-    "--nrows",
-    type=click.IntRange(min=1),
-    default=8,
-    show_default=True,
-    help="Grid rows (for GridImage).",
+        "--nrows",
+        type=click.IntRange(min=1),
+        default=8,
+        show_default=True,
+        help="Grid rows (for GridImage).",
 )
 @click.option(
-    "--ncols",
-    type=click.IntRange(min=1),
-    default=12,
-    show_default=True,
-    help="Grid columns (for GridImage).",
+        "--ncols",
+        type=click.IntRange(min=1),
+        default=12,
+        show_default=True,
+        help="Grid columns (for GridImage).",
 )
 @click.option(
-    "--bit-depth",
-    type=int,
-    default=None,
-    help="Bit depth (8 or 16).",
+        "--bit-depth",
+        type=int,
+        default=None,
+        help="Bit depth (8 or 16).",
 )
 @click.option(
-    "--detect-mode",
-    type=click.Choice(list(available_modes())),
-    default="gray",
-    show_default=True,
-    help="Detection channel.",
+        "--detect-mode",
+        type=click.Choice(list(available_modes())),
+        default="gray",
+        show_default=True,
+        help="Detection channel.",
 )
 @click.option(
-    "--n-jobs",
-    type=int,
-    default=-1,
-    show_default=True,
-    help="Parallel pipeline jobs per image (-1 = all cores).",
+        "--n-jobs",
+        type=int,
+        default=-1,
+        show_default=True,
+        help="Parallel pipeline jobs per image (-1 = all cores).",
 )
 @click.option(
-    "--slurm",
-    "slurm_args",
-    multiple=True,
-    help="SLURM parameters as KEY=VALUE pairs.",
+        "--slurm",
+        "slurm_args",
+        multiple=True,
+        help="SLURM parameters as KEY=VALUE pairs.",
 )
 @click.option("--force-local", is_flag=True, help="Force local execution.")
 @click.option("--wait", is_flag=True, help="Monitor SLURM jobs.")
@@ -292,50 +295,50 @@ def _format_duration(seconds: float) -> str:
 @click.option("--save-objmap", is_flag=True, help="Save object map.")
 @click.option("--save-objmap-overlay", is_flag=True, help="Save object map overlay.")
 @click.option(
-    "--save-detect-mat-overlay", is_flag=True, help="Save detection matrix overlay."
+        "--save-detect-mat-overlay", is_flag=True, help="Save detection matrix overlay."
 )
 @click.option("--save-objmask-overlay", is_flag=True, help="Save object mask overlay.")
 @click.option(
-    "--overlay-mode",
-    type=click.Choice(["image", "figure"]),
-    default="image",
-    show_default=True,
-    help="Overlay saving mode.",
+        "--overlay-mode",
+        type=click.Choice(["image", "figure"]),
+        default="image",
+        show_default=True,
+        help="Overlay saving mode.",
 )
 @click.option(
-    "--overlay-alpha",
-    type=float,
-    default=0.3,
-    show_default=True,
-    help="Alpha transparency (0.0-1.0).",
+        "--overlay-alpha",
+        type=float,
+        default=0.3,
+        show_default=True,
+        help="Alpha transparency (0.0-1.0).",
 )
 @click.option("--dry-run", is_flag=True, help="Preview without executing.")
 @click.option("--skip-validation", is_flag=True, help="Skip pipeline validation.")
 def sweep_cli(
-    manifest_json: Path,
-    input_dir: Path,
-    output_dir: Optional[Path],
-    image_type: str,
-    nrows: int,
-    ncols: int,
-    bit_depth: Optional[int],
-    detect_mode: str,
-    n_jobs: int,
-    slurm_args: Sequence[str],
-    force_local: bool,
-    wait: bool,
-    save_rgb: bool,
-    save_gray: bool,
-    save_detect_mat: bool,
-    save_objmask: bool,
-    save_objmap: bool,
-    save_objmap_overlay: bool,
-    save_detect_mat_overlay: bool,
-    save_objmask_overlay: bool,
-    overlay_mode: str,
-    overlay_alpha: float,
-    dry_run: bool,
-    skip_validation: bool,
+        manifest_json: Path,
+        input_dir: Path,
+        output_dir: Optional[Path],
+        image_type: str,
+        nrows: int,
+        ncols: int,
+        bit_depth: Optional[int],
+        detect_mode: str,
+        n_jobs: int,
+        slurm_args: Sequence[str],
+        force_local: bool,
+        wait: bool,
+        save_rgb: bool,
+        save_gray: bool,
+        save_detect_mat: bool,
+        save_objmask: bool,
+        save_objmap: bool,
+        save_objmap_overlay: bool,
+        save_detect_mat_overlay: bool,
+        save_objmask_overlay: bool,
+        overlay_mode: str,
+        overlay_alpha: float,
+        dry_run: bool,
+        skip_validation: bool,
 ):
     """Execute a parameter sweep on a flat image directory.
 
@@ -359,14 +362,14 @@ def sweep_cli(
                 time_val = slurm_args_dict[time_key]
                 if not isinstance(time_val, int):
                     click.echo(
-                        f"Error: '{time_key}' must be integer minutes",
-                        err=True,
+                            f"Error: '{time_key}' must be integer minutes",
+                            err=True,
                     )
                     sys.exit(1)
                 if time_val < MIN_SLURM_TIME_MINUTES:
                     click.echo(
-                        f"Error: '{time_key}' must be >= {MIN_SLURM_TIME_MINUTES}",
-                        err=True,
+                            f"Error: '{time_key}' must be >= {MIN_SLURM_TIME_MINUTES}",
+                            err=True,
                     )
                     sys.exit(1)
 
@@ -406,11 +409,11 @@ def sweep_cli(
         # Validation
         if not skip_validation:
             _validate_sweep(
-                manifest_json,
-                pipeline_json_strs,
-                image_paths,
-                image_type,
-                read_kwargs,
+                    manifest_json,
+                    pipeline_json_strs,
+                    image_paths,
+                    image_type,
+                    read_kwargs,
             )
 
         # Generate output directory
@@ -420,26 +423,27 @@ def sweep_cli(
 
         # Display config
         _display_sweep_config(
-            manifest_path=manifest_json,
-            input_dir=input_dir,
-            output_dir=output_dir,
-            num_images=len(image_paths),
-            num_pipelines=len(pipeline_names),
-            image_type=image_type,
-            nrows=nrows,
-            ncols=ncols,
-            n_jobs=n_jobs,
-            slurm_args=slurm_args_dict,
-            is_slurm=is_slurm,
+                manifest_path=manifest_json,
+                input_dir=input_dir,
+                output_dir=output_dir,
+                num_images=len(image_paths),
+                num_pipelines=len(pipeline_names),
+                image_type=image_type,
+                nrows=nrows,
+                ncols=ncols,
+                n_jobs=n_jobs,
+                slurm_args=slurm_args_dict,
+                is_slurm=is_slurm,
         )
 
         # Dry run
         if dry_run:
             click.echo("Dry-run mode: no processing will be performed.")
             click.echo(
-                f"\nWould process {len(image_paths)} images x {len(pipeline_names)} pipelines"
+                    f"\nWould process {len(image_paths)} images x {len(pipeline_names)} pipelines"
             )
-            click.echo(f"= {len(image_paths) * len(pipeline_names)} total pipeline runs")
+            click.echo(
+                f"= {len(image_paths) * len(pipeline_names)} total pipeline runs")
             click.echo(f"\nPipeline names:")
             for name in pipeline_names:
                 click.echo(f"  - {name}")
@@ -447,22 +451,22 @@ def sweep_cli(
 
         # Build save layers config
         save_layers = {
-            "rgb": save_rgb,
-            "gray": save_gray,
-            "detect_mat": save_detect_mat,
-            "objmask": save_objmask,
-            "objmap": save_objmap,
-            "objmap_overlay": save_objmap_overlay,
+            "rgb"               : save_rgb,
+            "gray"              : save_gray,
+            "detect_mat"        : save_detect_mat,
+            "objmask"           : save_objmask,
+            "objmap"            : save_objmap,
+            "objmap_overlay"    : save_objmap_overlay,
             "detect_mat_overlay": save_detect_mat_overlay,
-            "objmask_overlay": save_objmask_overlay,
+            "objmask_overlay"   : save_objmask_overlay,
         }
 
         extensions = {
-            "rgb": ".tiff",
-            "gray": ".tiff",
-            "detect_mat": ".tiff",
-            "objmask": ".png",
-            "objmap": ".png",
+            "rgb"           : ".tiff",
+            "gray"          : ".tiff",
+            "detect_mat"    : ".tiff",
+            "objmask"       : ".png",
+            "objmap"        : ".png",
             "objmap_overlay": ".png",
         }
 
@@ -470,11 +474,11 @@ def sweep_cli(
         from ._sweep_output import SweepOutputManager
 
         output_manager = SweepOutputManager(
-            base_dir=output_dir,
-            save_layers=save_layers,
-            extensions=extensions,
-            overlay_mode=overlay_mode,
-            overlay_alpha=overlay_alpha,
+                base_dir=output_dir,
+                save_layers=save_layers,
+                extensions=extensions,
+                overlay_mode=overlay_mode,
+                overlay_alpha=overlay_alpha,
         )
         output_manager.create_structure(pipeline_names)
 
@@ -491,27 +495,28 @@ def sweep_cli(
         )
 
         strategy: SweepExecutionStrategy
-        image_type_lit: Literal["Image", "GridImage"] = image_type  # type: ignore[assignment]
+        image_type_lit: Literal[
+            "Image", "GridImage"] = image_type  # type: ignore[assignment]
         if is_slurm:
             strategy = SLURMSweepStrategy(
-                pipeline_json_strs=pipeline_json_strs,
-                image_type=image_type_lit,
-                read_kwargs=read_kwargs,
-                output_manager=output_manager,
-                manifest_path=manifest_json,
-                slurm_args=slurm_args_dict,
-                wait=wait,
-                save_layers=save_layers,
-                overlay_mode=overlay_mode,
-                overlay_alpha=overlay_alpha,
+                    pipeline_json_strs=pipeline_json_strs,
+                    image_type=image_type_lit,
+                    read_kwargs=read_kwargs,
+                    output_manager=output_manager,
+                    manifest_path=manifest_json,
+                    slurm_args=slurm_args_dict,
+                    wait=wait,
+                    save_layers=save_layers,
+                    overlay_mode=overlay_mode,
+                    overlay_alpha=overlay_alpha,
             )
         else:
             strategy = LocalSweepStrategy(
-                pipeline_json_strs=pipeline_json_strs,
-                image_type=image_type_lit,
-                read_kwargs=read_kwargs,
-                output_manager=output_manager,
-                n_jobs=n_jobs,
+                    pipeline_json_strs=pipeline_json_strs,
+                    image_type=image_type_lit,
+                    read_kwargs=read_kwargs,
+                    output_manager=output_manager,
+                    n_jobs=n_jobs,
             )
 
         results = strategy.execute(image_paths, output_dir)
@@ -524,8 +529,8 @@ def sweep_cli(
                 click.echo(f"Master measurements: {master_path}")
             else:
                 click.echo(
-                    "Warning: Could not aggregate master CSV",
-                    err=True,
+                        "Warning: Could not aggregate master CSV",
+                        err=True,
                 )
 
         # Summary
@@ -563,4 +568,4 @@ def sweep_cli(
 
 
 if __name__ == "__main__":
-    main()
+    sweep_cli()
