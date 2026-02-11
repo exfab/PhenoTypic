@@ -161,7 +161,7 @@ def setup_logging(debug: bool = False):
     """Configure logging for CLI."""
     level = logging.DEBUG if debug else logging.INFO
     handler = logging.StreamHandler()
-    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
     handler.setFormatter(formatter)
 
     root_logger = logging.getLogger()
@@ -192,10 +192,7 @@ def _parse_slurm_args(slurm_args: Sequence[str]) -> dict:
     return parse_slurm_args(slurm_args)
 
 
-def _validate_resume_input_images(
-    state,
-    current_datasets
-) -> tuple[bool, Optional[str]]:
+def _validate_resume_input_images(state, current_datasets) -> tuple[bool, Optional[str]]:
     """
     Validate that input image set matches between resume runs.
 
@@ -217,7 +214,10 @@ def _validate_resume_input_images(
     # Check all previous datasets still exist
     for ds_name in state.datasets.keys():
         if ds_name not in current_datasets_map:
-            return False, f"Dataset '{ds_name}' from previous run not found in input directory"
+            return (
+                False,
+                f"Dataset '{ds_name}' from previous run not found in input directory",
+            )
 
     # For each dataset, compare actual image names
     for ds_name, ds_state in state.datasets.items():
@@ -240,9 +240,13 @@ def _validate_resume_input_images(
 
             error_parts = [f"Image set mismatch in dataset '{ds_name}':"]
             if missing:
-                error_parts.append(f"  - Missing {len(missing)} images (e.g., {list(missing)[:3]})")
+                error_parts.append(
+                    f"  - Missing {len(missing)} images (e.g., {list(missing)[:3]})"
+                )
             if added:
-                error_parts.append(f"  - Added {len(added)} new images (e.g., {list(added)[:3]})")
+                error_parts.append(
+                    f"  - Added {len(added)} new images (e.g., {list(added)[:3]})"
+                )
 
             return False, "\n".join(error_parts)
 
@@ -341,10 +345,7 @@ def _format_slurm_value(key: str, value) -> str:
     return str(value)
 
 
-def _display_execution_config(
-    config: ExecutionConfig,
-    datasets: list
-) -> None:
+def _display_execution_config(config: ExecutionConfig, datasets: list) -> None:
     """Display execution configuration in structured rich Table format.
 
     Args:
@@ -362,10 +363,7 @@ def _display_execution_config(
 
     # Create table
     table = Table(
-        title="Execution Configuration",
-        show_header=False,
-        box=None,
-        padding=(0, 2)
+        title="Execution Configuration", show_header=False, box=None, padding=(0, 2)
     )
     table.add_column("Setting", style="cyan", no_wrap=True)
     table.add_column("Value", style="white")
@@ -449,251 +447,251 @@ def _display_execution_config(
 
 @click.command()
 @click.argument(
-        "pipeline_json",
-        type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    "pipeline_json",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
 )
 @click.argument(
-        "input_path",
-        type=click.Path(exists=True, dir_okay=True, file_okay=True, path_type=Path),
+    "input_path",
+    type=click.Path(exists=True, dir_okay=True, file_okay=True, path_type=Path),
 )
 @click.option(
-        "-o",
-        "--output-dir",
-        type=click.Path(path_type=Path),
-        default=None,
-        help="Output directory (auto-generated if not specified)",
+    "-o",
+    "--output-dir",
+    type=click.Path(path_type=Path),
+    default=None,
+    help="Output directory (auto-generated if not specified)",
 )
 @click.option(
-        "--image-type",
-        type=click.Choice(["Image", "GridImage"], case_sensitive=False),
-        default="GridImage",
-        show_default=True,
-        help="Type of image object to instantiate",
+    "--image-type",
+    type=click.Choice(["Image", "GridImage"], case_sensitive=False),
+    default="GridImage",
+    show_default=True,
+    help="Type of image object to instantiate",
 )
 @click.option(
-        "--nrows",
-        type=click.IntRange(min=1),
-        default=8,
-        show_default=True,
-        help="Number of rows for GridImage (must be positive)",
+    "--nrows",
+    type=click.IntRange(min=1),
+    default=8,
+    show_default=True,
+    help="Number of rows for GridImage (must be positive)",
 )
 @click.option(
-        "--ncols",
-        type=click.IntRange(min=1),
-        default=12,
-        show_default=True,
-        help="Number of columns for GridImage (must be positive)",
+    "--ncols",
+    type=click.IntRange(min=1),
+    default=12,
+    show_default=True,
+    help="Number of columns for GridImage (must be positive)",
 )
 @click.option(
-        "--bit-depth",
-        type=int,
-        default=None,
-        help="Bit depth of input images (8 or 16)",
+    "--bit-depth",
+    type=int,
+    default=None,
+    help="Bit depth of input images (8 or 16)",
 )
 @click.option(
-        "--detect-mode",
-        type=click.Choice(list(available_modes())),
-        default="gray",
-        show_default=True,
-        help="Source channel for the detection matrix",
+    "--detect-mode",
+    type=click.Choice(list(available_modes())),
+    default="gray",
+    show_default=True,
+    help="Source channel for the detection matrix",
 )
 @click.option(
-        "--n-jobs",
-        type=int,
-        default=-1,
-        show_default=True,
-        help="Number of parallel jobs for local execution (-1 = all cores)",
+    "--n-jobs",
+    type=int,
+    default=-1,
+    show_default=True,
+    help="Number of parallel jobs for local execution (-1 = all cores)",
 )
 @click.option(
-        "--slurm-args",
-        multiple=True,
-        help="SLURM parameters as KEY=VALUE pairs. Pass multiple parameters with "
-             "repeated --slurm-args flags (e.g., --slurm-args slurm_partition=compute "
-             "--slurm-args mem_gb=16 --slurm-args time=60). Use slurm_ prefix for "
-             "standard SBATCH directives, or use convenience params like mem_gb and time.",
+    "--slurm-args",
+    multiple=True,
+    help="SLURM parameters as KEY=VALUE pairs. Pass multiple parameters with "
+    "repeated --slurm-args flags (e.g., --slurm-args slurm_partition=compute "
+    "--slurm-args mem_gb=16 --slurm-args time=60). Use slurm_ prefix for "
+    "standard SBATCH directives, or use convenience params like mem_gb and time.",
 )
 @click.option(
-        "--force-local",
-        is_flag=True,
-        help="Force local execution even if SLURM available",
+    "--force-local",
+    is_flag=True,
+    help="Force local execution even if SLURM available",
 )
 @click.option(
-        "--wait",
-        is_flag=True,
-        help="Wait and monitor SLURM jobs (default: return immediately)",
+    "--wait",
+    is_flag=True,
+    help="Wait and monitor SLURM jobs (default: return immediately)",
 )
 @click.option(
-        "--save-rgb",
-        is_flag=True,
-        help="Save RGB images to OUTPUT_DIR/rgb/",
+    "--save-rgb",
+    is_flag=True,
+    help="Save RGB images to OUTPUT_DIR/rgb/",
 )
 @click.option(
-        "--save-gray",
-        is_flag=True,
-        help="Save grayscale images to OUTPUT_DIR/gray/",
+    "--save-gray",
+    is_flag=True,
+    help="Save grayscale images to OUTPUT_DIR/gray/",
 )
 @click.option(
-        "--save-enh-gray",
-        is_flag=True,
-        help="Save detection matrix to OUTPUT_DIR/detect_mat/",
+    "--save-enh-gray",
+    is_flag=True,
+    help="Save detection matrix to OUTPUT_DIR/detect_mat/",
 )
 @click.option(
-        "--save-objmask",
-        is_flag=True,
-        help="Save object masks to OUTPUT_DIR/objmask/",
+    "--save-objmask",
+    is_flag=True,
+    help="Save object masks to OUTPUT_DIR/objmask/",
 )
 @click.option(
-        "--save-objmap",
-        is_flag=True,
-        help="Save object maps to OUTPUT_DIR/objmap/",
+    "--save-objmap",
+    is_flag=True,
+    help="Save object maps to OUTPUT_DIR/objmap/",
 )
 @click.option(
-        "--save-objmap-overlay",
-        is_flag=True,
-        help="Save object map overlay (colorized labels) to OUTPUT_DIR/objmap_overlay/",
+    "--save-objmap-overlay",
+    is_flag=True,
+    help="Save object map overlay (colorized labels) to OUTPUT_DIR/objmap_overlay/",
 )
 @click.option(
-        "--save-enh-gray-overlay",
-        is_flag=True,
-        help="Save detection matrix overlay to OUTPUT_DIR/detect_mat_overlay/",
+    "--save-enh-gray-overlay",
+    is_flag=True,
+    help="Save detection matrix overlay to OUTPUT_DIR/detect_mat_overlay/",
 )
 @click.option(
-        "--save-objmask-overlay",
-        is_flag=True,
-        help="Save object mask overlay to OUTPUT_DIR/objmask_overlay/",
+    "--save-objmask-overlay",
+    is_flag=True,
+    help="Save object mask overlay to OUTPUT_DIR/objmask_overlay/",
 )
 @click.option(
-        "--rgb-ext",
-        default="tiff",
-        show_default=True,
-        help="File extension for RGB saves",
+    "--rgb-ext",
+    default="tiff",
+    show_default=True,
+    help="File extension for RGB saves",
 )
 @click.option(
-        "--gray-ext",
-        default="tiff",
-        show_default=True,
-        help="File extension for grayscale saves",
+    "--gray-ext",
+    default="tiff",
+    show_default=True,
+    help="File extension for grayscale saves",
 )
 @click.option(
-        "--enh-gray-ext",
-        default="tiff",
-        show_default=True,
-        help="File extension for detection matrix saves",
+    "--enh-gray-ext",
+    default="tiff",
+    show_default=True,
+    help="File extension for detection matrix saves",
 )
 @click.option(
-        "--objmask-ext",
-        default="png",
-        show_default=True,
-        help="File extension for object mask saves",
+    "--objmask-ext",
+    default="png",
+    show_default=True,
+    help="File extension for object mask saves",
 )
 @click.option(
-        "--objmap-ext",
-        default="png",
-        show_default=True,
-        help="File extension for object map saves",
+    "--objmap-ext",
+    default="png",
+    show_default=True,
+    help="File extension for object map saves",
 )
 @click.option(
-        "--objmap-overlay-ext",
-        default="png",
-        show_default=True,
-        help="File extension for object map overlay saves",
+    "--objmap-overlay-ext",
+    default="png",
+    show_default=True,
+    help="File extension for object map overlay saves",
 )
 @click.option(
-        "--overlay-mode",
-        type=click.Choice(["image", "figure"]),
-        default="image",
-        show_default=True,
-        help="Overlay saving mode: 'image' for full-resolution, 'figure' for matplotlib",
+    "--overlay-mode",
+    type=click.Choice(["image", "figure"]),
+    default="image",
+    show_default=True,
+    help="Overlay saving mode: 'image' for full-resolution, 'figure' for matplotlib",
 )
 @click.option(
-        "--overlay-alpha",
-        type=float,
-        default=0.3,
-        show_default=True,
-        help="Alpha transparency for label overlay (0.0-1.0)",
+    "--overlay-alpha",
+    type=float,
+    default=0.3,
+    show_default=True,
+    help="Alpha transparency for label overlay (0.0-1.0)",
 )
 @click.option(
-        "--no-dataset-column",
-        "include_dataset_column",
-        is_flag=True,
-        flag_value=False,
-        default=True,
-        help="Exclude 'Metadata_Dataset' column from master_measurements.csv (included by default)",
+    "--no-dataset-column",
+    "include_dataset_column",
+    is_flag=True,
+    flag_value=False,
+    default=True,
+    help="Exclude 'Metadata_Dataset' column from master_measurements.csv (included by default)",
 )
 @click.option(
-        "--dry-run",
-        is_flag=True,
-        help="Preview processing plan without executing",
+    "--dry-run",
+    is_flag=True,
+    help="Preview processing plan without executing",
 )
 @click.option(
-        "--sample",
-        type=int,
-        default=None,
-        help="Process N random images per dataset for testing",
+    "--sample",
+    type=int,
+    default=None,
+    help="Process N random images per dataset for testing",
 )
 @click.option(
-        "--random-seed",
-        type=int,
-        default=None,
-        help="Random seed for --sample reproducibility",
+    "--random-seed",
+    type=int,
+    default=None,
+    help="Random seed for --sample reproducibility",
 )
 @click.option(
-        "--resume",
-        is_flag=True,
-        help="Resume interrupted processing from checkpoint",
+    "--resume",
+    is_flag=True,
+    help="Resume interrupted processing from checkpoint",
 )
 @click.option(
-        "--retry-failures",
-        is_flag=True,
-        help="Include failed images when resuming (requires --resume)",
+    "--retry-failures",
+    is_flag=True,
+    help="Include failed images when resuming (requires --resume)",
 )
 @click.option(
-        "--restart",
-        is_flag=True,
-        help="Restart processing from beginning, clearing previous state (requires --output-dir)",
+    "--restart",
+    is_flag=True,
+    help="Restart processing from beginning, clearing previous state (requires --output-dir)",
 )
 @click.option(
-        "--skip-validation",
-        is_flag=True,
-        help="Skip pipeline validation (for advanced users)",
+    "--skip-validation",
+    is_flag=True,
+    help="Skip pipeline validation (for advanced users)",
 )
-def main(
-        pipeline_json: Path,
-        input_path: Path,
-        output_dir: Optional[Path],
-        image_type: str,
-        nrows: int,
-        ncols: int,
-        bit_depth: Optional[int],
-        detect_mode: str,
-        n_jobs: int,
-        slurm_args: Sequence[str],
-        force_local: bool,
-        wait: bool,
-        save_rgb: bool,
-        save_gray: bool,
-        save_detect_mat: bool,
-        save_objmask: bool,
-        save_objmap: bool,
-        save_objmap_overlay: bool,
-        save_detect_mat_overlay: bool,
-        save_objmask_overlay: bool,
-        rgb_ext: str,
-        gray_ext: str,
-        detect_mat_ext: str,
-        objmask_ext: str,
-        objmap_ext: str,
-        objmap_overlay_ext: str,
-        overlay_mode: str,
-        overlay_alpha: float,
-        include_dataset_column: bool,
-        dry_run: bool,
-        sample: Optional[int],
-        random_seed: Optional[int],
-        resume: bool,
-        retry_failures: bool,
-        restart: bool,
-        skip_validation: bool,
+def phenotypic_cli(
+    pipeline_json: Path,
+    input_path: Path,
+    output_dir: Optional[Path],
+    image_type: str,
+    nrows: int,
+    ncols: int,
+    bit_depth: Optional[int],
+    detect_mode: str,
+    n_jobs: int,
+    slurm_args: Sequence[str],
+    force_local: bool,
+    wait: bool,
+    save_rgb: bool,
+    save_gray: bool,
+    save_detect_mat: bool,
+    save_objmask: bool,
+    save_objmap: bool,
+    save_objmap_overlay: bool,
+    save_detect_mat_overlay: bool,
+    save_objmask_overlay: bool,
+    rgb_ext: str,
+    gray_ext: str,
+    detect_mat_ext: str,
+    objmask_ext: str,
+    objmap_ext: str,
+    objmap_overlay_ext: str,
+    overlay_mode: str,
+    overlay_alpha: float,
+    include_dataset_column: bool,
+    dry_run: bool,
+    sample: Optional[int],
+    random_seed: Optional[int],
+    resume: bool,
+    retry_failures: bool,
+    restart: bool,
+    skip_validation: bool,
 ):
     """
     Execute a PhenoTypic pipeline on images.
@@ -731,8 +729,7 @@ def main(
             # Check for deprecated parameters
             if "time_min" in slurm_args_dict:
                 click.echo(
-                        "Warning: 'time_min' is deprecated. Use 'time' instead.",
-                        err=True
+                    "Warning: 'time_min' is deprecated. Use 'time' instead.", err=True
                 )
                 # Auto-migrate
                 if "time" not in slurm_args_dict:
@@ -746,95 +743,91 @@ def main(
                     time_val = slurm_args_dict[time_key]
                     if not isinstance(time_val, int):
                         click.echo(
-                                f"Error: '{time_key}' must be an integer (minutes), "
-                                f"got {type(time_val).__name__}",
-                                err=True
+                            f"Error: '{time_key}' must be an integer (minutes), "
+                            f"got {type(time_val).__name__}",
+                            err=True,
                         )
                         sys.exit(1)
 
                     # Validate reasonable time range
                     if time_val < MIN_SLURM_TIME_MINUTES:
                         click.echo(
-                                f"Error: '{time_key}' must be >= {MIN_SLURM_TIME_MINUTES} minute, got {time_val}",
-                                err=True
+                            f"Error: '{time_key}' must be >= {MIN_SLURM_TIME_MINUTES} minute, got {time_val}",
+                            err=True,
                         )
                         sys.exit(1)
                     elif time_val > MAX_SLURM_TIME_MINUTES:
                         days = MAX_SLURM_TIME_MINUTES / 1440
                         click.echo(
-                                f"Warning: '{time_key}' is {time_val} minutes "
-                                f"({time_val / 60:.1f} hours). This exceeds typical cluster limits "
-                                f"({MAX_SLURM_TIME_MINUTES} min / {days:.1f} days).",
-                                err=True
+                            f"Warning: '{time_key}' is {time_val} minutes "
+                            f"({time_val / 60:.1f} hours). This exceeds typical cluster limits "
+                            f"({MAX_SLURM_TIME_MINUTES} min / {days:.1f} days).",
+                            err=True,
                         )
 
         # Validate flags
         if retry_failures and not resume:
-            click.echo(
-                    "Error: --retry-failures requires --resume", err=True
-            )
+            click.echo("Error: --retry-failures requires --resume", err=True)
             sys.exit(1)
 
         if restart and resume:
-            click.echo(
-                    "Error: --restart and --resume are mutually exclusive", err=True
-            )
+            click.echo("Error: --restart and --resume are mutually exclusive", err=True)
             sys.exit(1)
 
         if restart and output_dir is None:
             click.echo(
-                    "Error: --restart requires --output-dir to be specified", err=True
+                "Error: --restart requires --output-dir to be specified", err=True
             )
             click.echo(
-                    "\nRestart mode clears previous processing state and starts fresh. "
-                    "You must specify the output directory to restart.",
-                    err=True
+                "\nRestart mode clears previous processing state and starts fresh. "
+                "You must specify the output directory to restart.",
+                err=True,
             )
             click.echo(
-                    "\nExample:\n"
-                    "  python -m phenotypic pipeline.json ./images \\\n"
-                    "    --output-dir ./results_2024-01-12_10-30-45 \\\n"
-                    "    --restart",
-                    err=True
+                "\nExample:\n"
+                "  python -m phenotypic pipeline.json ./images \\\n"
+                "    --output-dir ./results_2024-01-12_10-30-45 \\\n"
+                "    --restart",
+                err=True,
             )
             sys.exit(1)
 
         # Create ExecutionConfig
         config = ExecutionConfig(
-                pipeline_json=pipeline_json,
-                input_path=input_path,
-                output_dir=output_dir,
-                image_type=image_type,
-                nrows=nrows,
-                ncols=ncols,
-                bit_depth=bit_depth,
-                detect_mode=detect_mode,
-                n_jobs=n_jobs,
-                slurm_args=slurm_args_dict,
-                force_local=force_local,
-                wait=wait,
-                save_rgb=save_rgb,
-                save_gray=save_gray,
-                save_detect_mat=save_detect_mat,
-                save_objmask=save_objmask,
-                save_objmap=save_objmap,
-                save_objmap_overlay=save_objmap_overlay,
-                save_detect_mat_overlay=save_detect_mat_overlay,
-                save_objmask_overlay=save_objmask_overlay,
-                rgb_ext=rgb_ext,
-                gray_ext=gray_ext,
-                detect_mat_ext=detect_mat_ext,
-                objmask_ext=objmask_ext,
-                objmap_ext=objmap_ext,
-                objmap_overlay_ext=objmap_overlay_ext,
-                overlay_mode=overlay_mode,
-                overlay_alpha=overlay_alpha,
-                include_dataset_column=include_dataset_column,
-                dry_run=dry_run,
-                sample=sample,
-                resume=resume,
-                retry_failures=retry_failures,
-                skip_validation=skip_validation,
+            pipeline_json=pipeline_json,
+            input_path=input_path,
+            output_dir=output_dir,
+            image_type=image_type,
+            nrows=nrows,
+            ncols=ncols,
+            bit_depth=bit_depth,
+            detect_mode=detect_mode,
+            n_jobs=n_jobs,
+            slurm_args=slurm_args_dict,
+            force_local=force_local,
+            wait=wait,
+            save_rgb=save_rgb,
+            save_gray=save_gray,
+            save_detect_mat=save_detect_mat,
+            save_objmask=save_objmask,
+            save_objmap=save_objmap,
+            save_objmap_overlay=save_objmap_overlay,
+            save_detect_mat_overlay=save_detect_mat_overlay,
+            save_objmask_overlay=save_objmask_overlay,
+            rgb_ext=rgb_ext,
+            gray_ext=gray_ext,
+            detect_mat_ext=detect_mat_ext,
+            objmask_ext=objmask_ext,
+            objmap_ext=objmap_ext,
+            objmap_overlay_ext=objmap_overlay_ext,
+            overlay_mode=overlay_mode,
+            overlay_alpha=overlay_alpha,
+            include_dataset_column=include_dataset_column,
+            dry_run=dry_run,
+            sample=sample,
+            resume=resume,
+            retry_failures=retry_failures,
+            skip_validation=skip_validation,
         )
 
         # Handle resume mode BEFORE creating output directory
@@ -842,51 +835,43 @@ def main(
             # For resume, output_dir must be specified
             if output_dir is None:
                 click.echo(
-                        "Error: --resume requires --output-dir to be specified",
-                        err=True
+                    "Error: --resume requires --output-dir to be specified", err=True
                 )
                 click.echo(
-                        "\nResume mode continues processing from a previous run. "
-                        "You must specify the same output directory that was used before.",
-                        err=True
+                    "\nResume mode continues processing from a previous run. "
+                    "You must specify the same output directory that was used before.",
+                    err=True,
                 )
                 click.echo(
-                        "\nExample:\n"
-                        "  python -m phenotypic pipeline.json ./images \\\n"
-                        "    --output-dir ./results_2024-01-12_10-30-45 \\\n"
-                        "    --resume",
-                        err=True
+                    "\nExample:\n"
+                    "  python -m phenotypic pipeline.json ./images \\\n"
+                    "    --output-dir ./results_2024-01-12_10-30-45 \\\n"
+                    "    --resume",
+                    err=True,
                 )
                 sys.exit(1)
 
             # Check if output directory exists
             if not output_dir.exists():
                 click.echo(
-                        f"Error: Output directory does not exist: {output_dir}",
-                        err=True
+                    f"Error: Output directory does not exist: {output_dir}", err=True
                 )
                 click.echo(
-                        "\nCannot resume from a directory that doesn't exist. "
-                        "Check the path and try again.",
-                        err=True
+                    "\nCannot resume from a directory that doesn't exist. "
+                    "Check the path and try again.",
+                    err=True,
                 )
                 sys.exit(1)
 
             # Check for processing state file
             state_file = output_dir / "processing_state.json"
             if not state_file.exists():
+                click.echo(f"Error: No processing state found in {output_dir}", err=True)
+                click.echo(f"\nLooking for: {state_file}", err=True)
                 click.echo(
-                        f"Error: No processing state found in {output_dir}",
-                        err=True
-                )
-                click.echo(
-                        f"\nLooking for: {state_file}",
-                        err=True
-                )
-                click.echo(
-                        "\nThis directory may not contain PhenoTypic processing results, "
-                        "or it was created with an older version that doesn't support resume.",
-                        err=True
+                    "\nThis directory may not contain PhenoTypic processing results, "
+                    "or it was created with an older version that doesn't support resume.",
+                    err=True,
                 )
                 # List what's actually in the directory
                 if output_dir.is_dir():
@@ -909,9 +894,13 @@ def main(
                     state_file.unlink()
                     click.echo(f"✓ Cleared previous processing state from {output_dir}")
                 else:
-                    click.echo(f"Note: No previous state found in {output_dir} (starting fresh)")
+                    click.echo(
+                        f"Note: No previous state found in {output_dir} (starting fresh)"
+                    )
             else:
-                click.echo(f"Note: Output directory {output_dir} does not exist yet (starting fresh)")
+                click.echo(
+                    f"Note: Output directory {output_dir} does not exist yet (starting fresh)"
+                )
 
         # Generate or validate output directory
         if output_dir is None:
@@ -924,9 +913,7 @@ def main(
         click.echo(f"Scanning {input_path}...")
         try:
             image_paths_by_dataset = scan_directory_structure(input_path)
-            datasets = organize_by_dataset(
-                    image_paths_by_dataset, output_dir
-            )
+            datasets = organize_by_dataset(image_paths_by_dataset, output_dir)
         except (FileNotFoundError, ValueError) as e:
             click.echo(f"Error: {e}", err=True)
             sys.exit(1)
@@ -942,11 +929,15 @@ def main(
             console.print()  # Add blank line before validation
 
             # Step 1: Validate execution config
-            with console.status("[bold cyan]Validating execution configuration...", spinner="dots"):
+            with console.status(
+                "[bold cyan]Validating execution configuration...", spinner="dots"
+            ):
                 config_valid, config_error = validate_execution_config(config)
 
             if not config_valid:
-                console.print("[bold red]✗ Execution config validation failed:", style="bold red")
+                console.print(
+                    "[bold red]✗ Execution config validation failed:", style="bold red"
+                )
                 console.print(f"  - {config_error}", style="red")
                 sys.exit(1)
             console.print("[green]✓ Execution configuration validated")
@@ -954,8 +945,7 @@ def main(
             # Step 2: Validate pipeline loading
             with console.status("[bold cyan]Loading pipeline JSON...", spinner="dots"):
                 pipeline_valid, pipeline_error = validate_pipeline(
-                    config.pipeline_json,
-                    config.skip_validation
+                    config.pipeline_json, config.skip_validation
                 )
 
             if not pipeline_valid:
@@ -975,6 +965,7 @@ def main(
             if test_image_path:
                 # Determine image class
                 from phenotypic import Image, GridImage
+
                 image_cls = GridImage if config.image_type == "GridImage" else Image
 
                 # Prepare read kwargs
@@ -987,26 +978,33 @@ def main(
 
                 console.print(f"[cyan]Testing pipeline on: {test_image_path.name}")
 
-                with console.status("[bold cyan]Processing test image...", spinner="dots"):
+                with console.status(
+                    "[bold cyan]Processing test image...", spinner="dots"
+                ):
                     test_valid, test_error = validate_pipeline_on_test_image(
                         config.pipeline_json,
                         test_image_path,
                         image_cls,
                         read_kwargs,
-                        config.skip_validation
+                        config.skip_validation,
                     )
 
                 if not test_valid:
-                    console.print("[bold red]✗ Test image processing failed:", style="bold red")
+                    console.print(
+                        "[bold red]✗ Test image processing failed:", style="bold red"
+                    )
                     console.print(f"  - {test_error}", style="red")
                     sys.exit(1)
                 console.print("[green]✓ Test image processed successfully")
             else:
-                console.print("[yellow]⚠ No test image available - skipping pipeline test")
+                console.print(
+                    "[yellow]⚠ No test image available - skipping pipeline test"
+                )
 
             console.print()  # Add blank line after validation
         else:
             from rich.console import Console
+
             console = Console()
 
         # Display execution configuration
@@ -1015,6 +1013,7 @@ def main(
         except Exception as e:
             click.echo(f"Error displaying configuration: {e}", err=True)
             import traceback
+
             traceback.print_exc()
             sys.exit(1)
 
@@ -1025,12 +1024,9 @@ def main(
 
         # Handle sample mode
         if config.sample is not None:
-            click.echo(
-                    f"\nSample mode: processing {config.sample} "
-                    f"images per dataset"
-            )
+            click.echo(f"\nSample mode: processing {config.sample} images per dataset")
             datasets = get_sample_datasets(
-                    datasets, config.sample, output_dir, random_seed
+                datasets, config.sample, output_dir, random_seed
             )
             total_images = sum(len(d.images) for d in datasets)
             click.echo(f"Processing {total_images} sample images\n")
@@ -1040,10 +1036,7 @@ def main(
             # State was already validated earlier, just load it
             resume_state = load_processing_state(output_dir)
             if resume_state is None:
-                click.echo(
-                        f"Error: No processing state found in {output_dir}",
-                        err=True
-                )
+                click.echo(f"Error: No processing state found in {output_dir}", err=True)
                 sys.exit(1)
 
             # Validate compatibility
@@ -1051,29 +1044,29 @@ def main(
             if not is_compatible:
                 click.echo(f"Error: Cannot resume - {error}", err=True)
                 click.echo(
-                        "\nThe pipeline or configuration has changed since the "
-                        "previous run. Resume is only possible with the same "
-                        "pipeline and compatible settings.",
-                        err=True
+                    "\nThe pipeline or configuration has changed since the "
+                    "previous run. Resume is only possible with the same "
+                    "pipeline and compatible settings.",
+                    err=True,
                 )
                 sys.exit(1)
 
             # Validate input image set hasn't changed
             images_valid, image_error = _validate_resume_input_images(
-                    resume_state, datasets
+                resume_state, datasets
             )
             if not images_valid:
                 click.echo(f"Error: Cannot resume - {image_error}", err=True)
                 click.echo(
-                        "\nThe input image set has changed since the previous run. "
-                        "Resume is only possible with the same input images.",
-                        err=True
+                    "\nThe input image set has changed since the previous run. "
+                    "Resume is only possible with the same input images.",
+                    err=True,
                 )
                 sys.exit(1)
 
             # Get remaining images
             datasets = get_remaining_images_for_datasets(
-                    resume_state, datasets, config.retry_failures
+                resume_state, datasets, config.retry_failures
             )
             remaining_images = sum(len(d.images) for d in datasets)
 
@@ -1081,10 +1074,7 @@ def main(
                 click.echo("✓ All images already processed!")
                 sys.exit(0)
 
-            click.echo(
-                    f"Resuming processing ({remaining_images} "
-                    f"images remaining)"
-            )
+            click.echo(f"Resuming processing ({remaining_images} images remaining)")
             if config.retry_failures:
                 click.echo("  - Including previously failed images")
 
@@ -1123,28 +1113,28 @@ def main(
 
         # Create output manager
         output_manager = OutputManager(
-                base_dir=output_dir,
-                save_layers={
-                    "rgb"              : config.save_rgb,
-                    "gray"             : config.save_gray,
-                    "detect_mat"         : config.save_detect_mat,
-                    "objmask"          : config.save_objmask,
-                    "objmap"           : config.save_objmap,
-                    "objmap_overlay"   : config.save_objmap_overlay,
-                    "detect_mat_overlay" : config.save_detect_mat_overlay,
-                    "objmask_overlay"  : config.save_objmask_overlay,
-                },
-                extensions={
-                    "rgb"            : config.rgb_ext,
-                    "gray"           : config.gray_ext,
-                    "detect_mat"       : config.detect_mat_ext,
-                    "objmask"        : config.objmask_ext,
-                    "objmap"         : config.objmap_ext,
-                    "objmap_overlay" : config.objmap_overlay_ext,
-                },
-                include_dataset_column=config.include_dataset_column,
-                overlay_mode=config.overlay_mode,
-                overlay_alpha=config.overlay_alpha,
+            base_dir=output_dir,
+            save_layers={
+                "rgb": config.save_rgb,
+                "gray": config.save_gray,
+                "detect_mat": config.save_detect_mat,
+                "objmask": config.save_objmask,
+                "objmap": config.save_objmap,
+                "objmap_overlay": config.save_objmap_overlay,
+                "detect_mat_overlay": config.save_detect_mat_overlay,
+                "objmask_overlay": config.save_objmask_overlay,
+            },
+            extensions={
+                "rgb": config.rgb_ext,
+                "gray": config.gray_ext,
+                "detect_mat": config.detect_mat_ext,
+                "objmask": config.objmask_ext,
+                "objmap": config.objmap_ext,
+                "objmap_overlay": config.objmap_overlay_ext,
+            },
+            include_dataset_column=config.include_dataset_column,
+            overlay_mode=config.overlay_mode,
+            overlay_alpha=config.overlay_alpha,
         )
         output_manager.create_structure(datasets)
 
@@ -1165,8 +1155,8 @@ def main(
                 click.echo(f"✓ Master measurements: {master_path}")
             else:
                 click.echo(
-                        "⚠ Warning: Could not aggregate master CSV (check logs for details)",
-                        err=True
+                    "⚠ Warning: Could not aggregate master CSV (check logs for details)",
+                    err=True,
                 )
 
         # Generate HTML report
@@ -1195,9 +1185,7 @@ def main(
         click.echo("=" * 60)
         click.echo(f"Completed: {results.total_completed}/{results.total_images}")
         click.echo(f"Failed:    {results.total_failed}")
-        click.echo(
-                f"Success rate: {results.success_rate * 100:.1f}%"
-        )
+        click.echo(f"Success rate: {results.success_rate * 100:.1f}%")
         click.echo(f"Duration: {_format_duration(results.duration)}")
         click.echo(f"\nResults saved to: {output_dir}")
 

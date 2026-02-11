@@ -76,12 +76,11 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import numpy as np
-import napari
 
 from phenotypic._core._image_parts.accessor_abstracts import _image_accessor_base
 
 if TYPE_CHECKING:
-    pass
+    import napari
 
 
 class NapariLabelsMixin:
@@ -231,8 +230,16 @@ class NapariLabelsMixin:
         # Access the global viewer through module reference
         # This ensures we share the same viewer instance across all accessors
         from phenotypic._core._image_parts.accessor_abstracts._image_accessor_base import (
+            _HAS_NAPARI,
             _viewer_is_alive,
         )
+
+        if not _HAS_NAPARI:
+            raise ImportError(
+                "napari is required for interactive visualization. "
+                "Install with: pip install phenotypic[gui]"
+            )
+        import napari as _napari
 
         viewer = _image_accessor_base._global_napari_viewer
 
@@ -244,7 +251,7 @@ class NapariLabelsMixin:
 
         # Create new viewer if needed
         if not _viewer_is_alive(viewer):
-            viewer = napari.Viewer()
+            viewer = _napari.Viewer()
             _image_accessor_base._global_napari_viewer = viewer
 
         # Generate descriptive layer name (same pattern as base class)

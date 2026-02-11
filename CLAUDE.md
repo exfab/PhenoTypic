@@ -41,7 +41,7 @@ uv run sphinx-autobuild source build
 
 ```bash
 # Install dev prototying env
-uv sync --group dev --group docs --extras jupyter --extras gui
+uv sync --group dev --group docs --extras gui
 
 # Run a Python script from the venv
 uv run python script.py

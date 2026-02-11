@@ -45,6 +45,12 @@ development locally)
 uv add "phenotypic[jupyter]"
 ```
 
+**Interactive / GUI Install** (napari viewer, Panel dashboards, Jupyter)
+
+```bash
+uv add "phenotypic[gui]"
+```
+
 ## Pip
 
 **Regular Install**
@@ -57,6 +63,12 @@ pip install phenotypic
 
 ```bash
 pip install phenotypic[jupyter]
+```
+
+**Interactive / GUI Install**
+
+```bash
+pip install "phenotypic[gui]"
 ```
 
 Note: may not always be the latest version. Install from repo when latest update is

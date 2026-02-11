@@ -16,12 +16,12 @@ This wrapper will be removed in a future release.
 import warnings
 
 warnings.warn(
-        "phenotypic-cli.py is deprecated. Please use 'python -m phenotypic' instead.",
-        DeprecationWarning,
-        stacklevel=2,
+    "phenotypic-cli.py is deprecated. Please use 'python -m phenotypic' instead.",
+    DeprecationWarning,
+    stacklevel=2,
 )
 
-from phenotypic.phenotypicCLI import main
+from phenotypic.phenotypicCLI import phenotypic_cli
 
 if __name__ == "__main__":
-    main()
+    phenotypic_cli()

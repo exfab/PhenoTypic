@@ -13,14 +13,18 @@ import numpy as np
 import pandas as pd
 import skimage as ski
 from PIL import Image as PIL_Image
-import napari
 
 import phenotypic
 from phenotypic.tools_.constants_ import IO, METADATA
 from phenotypic.tools_.funcs_ import normalize_rgb_bitdepth
 
 if TYPE_CHECKING:
+    import napari
     from phenotypic import Image
+
+import importlib.util
+
+_HAS_NAPARI = importlib.util.find_spec("napari") is not None
 
 # Global napari viewer instance for persistent Jupyter notebook workflows
 _global_napari_viewer: napari.Viewer | None = None
@@ -76,8 +80,7 @@ class ImageAccessorBase(ABC):
     @classmethod
     def _accessor_property_name_value(cls) -> str:
         """Retrieve accessor property name from the subclass' property without instantiation."""
-        return cls._accessor_property_name.fget(
-                object.__new__(cls))  # type: ignore[attr-defined]
+        return cls._accessor_property_name.fget(object.__new__(cls))  # type: ignore[attr-defined]
 
     @property
     @abstractmethod
@@ -124,19 +127,19 @@ class ImageAccessorBase(ABC):
 
         if phenotypic_data is None:
             warnings.warn(
-                    f"No PhenoTypic metadata found in '{filepath.name}'. "
-                    f"Cannot verify this image was saved from {expected_property}. "
-                    "Loading anyway, but this may lead to undefined behavior.",
-                    UserWarning,
+                f"No PhenoTypic metadata found in '{filepath.name}'. "
+                f"Cannot verify this image was saved from {expected_property}. "
+                "Loading anyway, but this may lead to undefined behavior.",
+                UserWarning,
             )
         else:
             saved_property = phenotypic_data.get("phenotypic_image_property", "unknown")
             if saved_property != expected_property:
                 warnings.warn(
-                        f"Metadata mismatch: Image was saved from '{saved_property}' "
-                        f"but being loaded as '{expected_property}'. "
-                        "This may lead to undefined behavior.",
-                        UserWarning,
+                    f"Metadata mismatch: Image was saved from '{saved_property}' "
+                    f"but being loaded as '{expected_property}'. "
+                    "This may lead to undefined behavior.",
+                    UserWarning,
                 )
 
         return arr
@@ -164,10 +167,10 @@ class ImageAccessorBase(ABC):
                 # Try exiftool for JPEG UserComment
                 if shutil.which("exiftool"):
                     result = subprocess.run(
-                            ["exiftool", "-json", "-UserComment", str(filepath)],
-                            capture_output=True,
-                            text=True,
-                            timeout=30,
+                        ["exiftool", "-json", "-UserComment", str(filepath)],
+                        capture_output=True,
+                        text=True,
+                        timeout=30,
                     )
                     if result.returncode == 0:
                         exif_data = json.loads(result.stdout)
@@ -211,7 +214,7 @@ class ImageAccessorBase(ABC):
             np.ndarray: A NumPy ndarray object with shape (r, c, ...).
         """
         raise NotImplementedError(
-                "This property is abc_ and must be implemented in a derived class."
+            "This property is abc_ and must be implemented in a derived class."
         )
 
     def __array__(self, dtype=None, copy=None):
@@ -328,12 +331,12 @@ class ImageAccessorBase(ABC):
         return foreground
 
     def histogram(
-            self,
-            figsize: Tuple[int, int] = (10, 5),
-            *,
-            cmap="gray",
-            linewidth=1,
-            channel_names: list | None = None,
+        self,
+        figsize: Tuple[int, int] = (10, 5),
+        *,
+        cmap="gray",
+        linewidth=1,
+        channel_names: list | None = None,
     ) -> Tuple[plt.Figure, plt.Axes]:
         """
         Plots the histogram(s) of an image along with the image itself. The behavior depends on
@@ -369,7 +372,7 @@ class ImageAccessorBase(ABC):
             arr_max = arr.max()
             if arr_min < 0.0 or arr_max > 1.0:
                 raise ValueError(
-                        f"Float image arrays must be within [0.0, 1.0]. Found range [{arr_min}, {arr_max}]."
+                    f"Float image arrays must be within [0.0, 1.0]. Found range [{arr_min}, {arr_max}]."
                 )
             x_limits = (0.0, 1.0)
         elif np.issubdtype(dtype, np.bool_):
@@ -385,15 +388,15 @@ class ImageAccessorBase(ABC):
                 fig, axes = plt.subplots(nrows=1, ncols=2, figsize=figsize)
                 axes = axes.ravel()
                 axes[0] = self._plot(
-                        arr=self._subject_arr,
-                        figsize=figsize,
-                        title=self._root_image.name,
-                        cmap=cmap,
-                        ax=axes[0],
+                    arr=self._subject_arr,
+                    figsize=figsize,
+                    title=self._root_image.name,
+                    cmap=cmap,
+                    ax=axes[0],
                 )
                 hist, histc = ski.exposure.histogram(
-                        image=self._subject_arr[:],
-                        nbins=2 ** self._root_image.metadata[METADATA.BIT_DEPTH],
+                    image=self._subject_arr[:],
+                    nbins=2 ** self._root_image.metadata[METADATA.BIT_DEPTH],
                 )
                 axes[1].plot(histc, hist, lw=linewidth)
                 axes[1].set_xlim(x_limits)
@@ -404,37 +407,36 @@ class ImageAccessorBase(ABC):
                 for idx, ax in enumerate(axes.flat):
                     if idx == 0:
                         self._plot(
-                                arr=self._subject_arr[:],
-                                figsize=figsize,
-                                title=self._root_image.name,
-                                ax=ax,
+                            arr=self._subject_arr[:],
+                            figsize=figsize,
+                            title=self._root_image.name,
+                            ax=ax,
                         )
                     else:
                         hist, histc = ski.exposure.histogram(
-                                image=self._subject_arr[:, :, idx - 1],
-                                nbins=2 ** self._root_image.metadata[
-                                    METADATA.BIT_DEPTH],
+                            image=self._subject_arr[:, :, idx - 1],
+                            nbins=2 ** self._root_image.metadata[METADATA.BIT_DEPTH],
                         )
                         ax.plot(histc, hist, lw=linewidth)
                         ax.set_title(
-                                f"Channel-{channel_names[idx - 1] if channel_names else idx}"
+                            f"Channel-{channel_names[idx - 1] if channel_names else idx}"
                         )
                         ax.set_xlim(x_limits)
 
             case _:
                 raise ValueError(
-                        f"Unsupported array dimension: {self._subject_arr.ndim}"
+                    f"Unsupported array dimension: {self._subject_arr.ndim}"
                 )
         return fig, axes
 
     def _plot(
-            self,
-            arr: np.ndarray,
-            figsize: Tuple[int, int] | None = None,
-            title: str | bool | None = None,
-            cmap: str = "gray",
-            ax: plt.Axes | None = None,
-            mpl_settings: dict | None = None,
+        self,
+        arr: np.ndarray,
+        figsize: Tuple[int, int] | None = None,
+        title: str | bool | None = None,
+        cmap: str = "gray",
+        ax: plt.Axes | None = None,
+        mpl_settings: dict | None = None,
     ) -> tuple[plt.Figure, plt.Axes]:
         """
         Plots an image array using Matplotlib.
@@ -503,10 +505,8 @@ class ImageAccessorBase(ABC):
         vmax = mpl_settings.pop("vmax", vmax)
 
         ax.imshow(
-                plot_arr, cmap=cmap, **mpl_settings
-        ) if plot_arr.ndim == 2 else ax.imshow(plot_arr,
-                                               vmax=vmax,
-                                               **mpl_settings)
+            plot_arr, cmap=cmap, **mpl_settings
+        ) if plot_arr.ndim == 2 else ax.imshow(plot_arr, vmax=vmax, **mpl_settings)
 
         ax.grid(False)
 
@@ -525,13 +525,13 @@ class ImageAccessorBase(ABC):
         return fig, ax
 
     def _plot_obj_labels(
-            self,
-            ax: plt.Axes,
-            color: str,
-            size: int,
-            facecolor: str,
-            object_label: None | int,
-            **kwargs,
+        self,
+        ax: plt.Axes,
+        color: str,
+        size: int,
+        facecolor: str,
+        object_label: None | int,
+        **kwargs,
     ):
         """
         Adds labels to objects in an image plot. This method overlays numerical labels onto
@@ -570,48 +570,48 @@ class ImageAccessorBase(ABC):
             if object_label is None:
                 text_rr, text_cc = props[i].centroid
                 ax.text(
-                        x=text_cc,
-                        y=text_rr,
-                        s=f"{label}",
-                        color=color,
-                        fontsize=size,
-                        bbox=dict(
-                                facecolor=facecolor,
-                                edgecolor="none",
-                                alpha=0.6,
-                                boxstyle="round",
-                        ),
-                        **kwargs,
+                    x=text_cc,
+                    y=text_rr,
+                    s=f"{label}",
+                    color=color,
+                    fontsize=size,
+                    bbox=dict(
+                        facecolor=facecolor,
+                        edgecolor="none",
+                        alpha=0.6,
+                        boxstyle="round",
+                    ),
+                    **kwargs,
                 )
             elif object_label == label:
                 text_rr, text_cc = props[i].centroid
                 ax.text(
-                        x=text_cc,
-                        y=text_rr,
-                        s=f"{label}",
-                        color=color,
-                        fontsize=size,
-                        bbox=dict(
-                                facecolor=facecolor,
-                                edgecolor="none",
-                                alpha=0.6,
-                                boxstyle="round",
-                        ),
-                        **kwargs,
+                    x=text_cc,
+                    y=text_rr,
+                    s=f"{label}",
+                    color=color,
+                    fontsize=size,
+                    bbox=dict(
+                        facecolor=facecolor,
+                        edgecolor="none",
+                        alpha=0.6,
+                        boxstyle="round",
+                    ),
+                    **kwargs,
                 )
         return ax
 
     def _plot_overlay(
-            self,
-            arr: np.ndarray,
-            objmap: np.ndarray,
-            figsize: (int, int) = (8, 6),
-            title: str | bool | None = None,
-            cmap: str = "gray",
-            ax: plt.Axes = None,
-            *,
-            overlay_settings: dict | None = None,
-            mpl_settings: dict | None = None,
+        self,
+        arr: np.ndarray,
+        objmap: np.ndarray,
+        figsize: (int, int) = (8, 6),
+        title: str | bool | None = None,
+        cmap: str = "gray",
+        ax: plt.Axes = None,
+        *,
+        overlay_settings: dict | None = None,
+        mpl_settings: dict | None = None,
     ) -> (plt.Figure, plt.Axes):
         """
         Plots an array with optional object map overlay and customization options.
@@ -644,32 +644,31 @@ class ImageAccessorBase(ABC):
         overlay_settings = overlay_settings if overlay_settings else {}
         overlay_alpha = overlay_settings.get("alpha", 0.15)
         overlay_arr = ski.color.label2rgb(
-                label=objmap, image=arr, bg_label=0, alpha=overlay_alpha,
-                **overlay_settings
+            label=objmap, image=arr, bg_label=0, alpha=overlay_alpha, **overlay_settings
         )
 
         fig, ax = self._plot(
-                arr=overlay_arr,
-                figsize=figsize,
-                title=title,
-                cmap=cmap,
-                ax=ax,
-                mpl_settings=mpl_settings,
+            arr=overlay_arr,
+            figsize=figsize,
+            title=title,
+            cmap=cmap,
+            ax=ax,
+            mpl_settings=mpl_settings,
         )
 
         return fig, ax
 
     def show_overlay(
-            self,
-            object_label: None | int = None,
-            figsize: tuple[int, int] | None = None,
-            title: str | None = None,
-            show_labels: bool = False,
-            ax: plt.Axes = None,
-            *,
-            label_settings: None | dict = None,
-            overlay_settings: None | dict = None,
-            imshow_settings: None | dict = None,
+        self,
+        object_label: None | int = None,
+        figsize: tuple[int, int] | None = None,
+        title: str | None = None,
+        show_labels: bool = False,
+        ax: plt.Axes = None,
+        *,
+        label_settings: None | dict = None,
+        overlay_settings: None | dict = None,
+        imshow_settings: None | dict = None,
     ) -> tuple[plt.Figure, plt.Axes]:
         """
         Displays an overlay of the object map on the parent image with optional annotations.
@@ -708,31 +707,31 @@ class ImageAccessorBase(ABC):
             label_settings = {}
 
         fig, ax = self._plot_overlay(
-                arr=self._subject_arr,
-                objmap=objmap,
-                ax=ax,
-                figsize=figsize,
-                title=title,
-                mpl_settings=imshow_settings,
-                overlay_settings=overlay_settings,
+            arr=self._subject_arr,
+            objmap=objmap,
+            ax=ax,
+            figsize=figsize,
+            title=title,
+            mpl_settings=imshow_settings,
+            overlay_settings=overlay_settings,
         )
 
         if show_labels:
             ax = self._plot_obj_labels(
-                    ax=ax,
-                    color=label_settings.get("color", "white"),
-                    size=label_settings.get("size", 12),
-                    facecolor=label_settings.get("facecolor", "red"),
-                    object_label=object_label,
+                ax=ax,
+                color=label_settings.get("color", "white"),
+                size=label_settings.get("size", 12),
+                facecolor=label_settings.get("facecolor", "red"),
+                object_label=object_label,
             )
         return fig, ax
 
     def _generate_overlay_array(
-            self,
-            overlay_alpha: float = 0.3,
-            bg_label: int = 0,
-            colors: list | None = None,
-            **label2rgb_kwargs,
+        self,
+        overlay_alpha: float = 0.3,
+        bg_label: int = 0,
+        colors: list | None = None,
+        **label2rgb_kwargs,
     ) -> np.ndarray:
         """Generate a full-resolution overlay array blending objmap with the subject image.
 
@@ -776,13 +775,13 @@ class ImageAccessorBase(ABC):
 
         # Build label2rgb kwargs
         kwargs = {
-            'label'   : objmap,
-            'image'   : arr_rgb,
-            'bg_label': bg_label,
-            'alpha'   : overlay_alpha,
+            "label": objmap,
+            "image": arr_rgb,
+            "bg_label": bg_label,
+            "alpha": overlay_alpha,
         }
         if colors is not None:
-            kwargs['colors'] = colors
+            kwargs["colors"] = colors
         kwargs.update(label2rgb_kwargs)
 
         # Generate overlay using label2rgb
@@ -811,10 +810,10 @@ class ImageAccessorBase(ABC):
                 public[str(key)] = value
 
         return {
-            "phenotypic_version"       : phenotypic.__version__,
+            "phenotypic_version": phenotypic.__version__,
             "phenotypic_image_property": f"Image.{self._accessor_property_name}",
-            "protected"                : protected,
-            "public"                   : public,
+            "protected": protected,
+            "public": public,
         }
 
     @staticmethod
@@ -833,23 +832,23 @@ class ImageAccessorBase(ABC):
         if shutil.which("exiftool"):
             try:
                 subprocess.run(
-                        [
-                            "exiftool",
-                            "-overwrite_original",
-                            f"-UserComment={metadata_json}",
-                            str(filepath),
-                        ],
-                        capture_output=True,
-                        text=True,
-                        timeout=30,
-                        check=True,
+                    [
+                        "exiftool",
+                        "-overwrite_original",
+                        f"-UserComment={metadata_json}",
+                        str(filepath),
+                    ],
+                    capture_output=True,
+                    text=True,
+                    timeout=30,
+                    check=True,
                 )
             except (subprocess.TimeoutExpired, subprocess.CalledProcessError) as e:
                 warnings.warn(f"Failed to write EXIF metadata to JPEG: {e}")
         else:
             warnings.warn(
-                    "exiftool not found. JPEG metadata will not be saved. "
-                    "Install exiftool for full metadata support."
+                "exiftool not found. JPEG metadata will not be saved. "
+                "Install exiftool for full metadata support."
             )
 
     @staticmethod
@@ -880,11 +879,11 @@ class ImageAccessorBase(ABC):
         pil_image.save(filepath, tiffinfo={270: metadata_json})
 
     def _save_image(
-            self,
-            filepath: Path,
-            arr: np.ndarray,
-            bit_depth: Literal[8, 16],
-            metadata_json: str | None,
+        self,
+        filepath: Path,
+        arr: np.ndarray,
+        bit_depth: Literal[8, 16],
+        metadata_json: str | None,
     ) -> None:
         """Save an image array to disk with embedded PhenoTypic metadata.
 
@@ -912,14 +911,14 @@ class ImageAccessorBase(ABC):
                         pass
                     case np.uint16:
                         warnings.warn(
-                                "Saving a 16 bit array as a jpeg will potentially "
-                                "result in information loss during conversion"
+                            "Saving a 16 bit array as a jpeg will potentially "
+                            "result in information loss during conversion"
                         )
                         arr2save = ski.util.img_as_ubyte(arr2save)
                     case dt if np.issubdtype(dt, np.floating):
                         warnings.warn(
-                                "Saving a float array as a jpeg will potentially"
-                                "result in information loss during conversion"
+                            "Saving a float array as a jpeg will potentially"
+                            "result in information loss during conversion"
                         )
                         arr2save = ski.util.img_as_ubyte(arr2save)
                 pil_img = PIL_Image.fromarray(arr2save)
@@ -934,15 +933,15 @@ class ImageAccessorBase(ABC):
                         pass
                     case np.uint16:
                         warnings.warn(
-                                "Saving a 16 bit array as a jpeg will potentially "
-                                "result in information loss during conversion"
+                            "Saving a 16 bit array as a jpeg will potentially "
+                            "result in information loss during conversion"
                         )
                         arr2save = ski.util.img_as_ubyte(arr2save)
                     case dt if np.issubdtype(dt, np.floating):
                         warnings.warn(
-                                ".png images only accept 8 bit and 16 bit "
-                                "integer arrays. Converting this array may cause "
-                                "information loss"
+                            ".png images only accept 8 bit and 16 bit "
+                            "integer arrays. Converting this array may cause "
+                            "information loss"
                         )
                         arr2save = (
                             ski.util.img_as_ubyte(arr2save)
@@ -966,9 +965,9 @@ class ImageAccessorBase(ABC):
             case _:
                 raise ValueError(f"unknown file extension for saving:{filepath.suffix}")
 
-    def imsave(self,
-               filepath: str | Path | None = None,
-               bit_depth: Literal[8, 16] | None = None) -> None:
+    def imsave(
+        self, filepath: str | Path | None = None, bit_depth: Literal[8, 16] | None = None
+    ) -> None:
         """
         Saves an array representing a microbe colony image to a specified file format while preserving or adjusting
         metadata and pixel depth as needed. Supports JPEG, PNG, and TIFF formats.
@@ -1018,10 +1017,10 @@ class ImageAccessorBase(ABC):
         metadata_json = json.dumps(phenotypic_metadata, ensure_ascii=False)
 
         self._save_image(
-                filepath=filepath,
-                arr=arr2save,
-                bit_depth=bit_depth,
-                metadata_json=metadata_json,
+            filepath=filepath,
+            arr=arr2save,
+            bit_depth=bit_depth,
+            metadata_json=metadata_json,
         )
 
     def _check_bit_depth(self, bit_depth: int | None) -> Literal[8, 16]:
@@ -1033,16 +1032,16 @@ class ImageAccessorBase(ABC):
         return bit_depth
 
     def save_overlay(
-            self,
-            filepath: str | Path,
-            overlay_alpha: float = 0.3,
-            bg_label: int = 0,
-            colors: list | None = None,
-            show_gridlines: bool = True,
-            gridline_color: tuple[int, int, int] = (0, 255, 255),
-            show_section_boxes: bool = True,
-            section_box_colors: list[tuple[int, int, int]] | None = None,
-            **label2rgb_kwargs,
+        self,
+        filepath: str | Path,
+        overlay_alpha: float = 0.3,
+        bg_label: int = 0,
+        colors: list | None = None,
+        show_gridlines: bool = True,
+        gridline_color: tuple[int, int, int] = (0, 255, 255),
+        show_section_boxes: bool = True,
+        section_box_colors: list[tuple[int, int, int]] | None = None,
+        **label2rgb_kwargs,
     ) -> None:
         """Save a full-resolution overlay image blending objmap with the subject array.
 
@@ -1087,31 +1086,32 @@ class ImageAccessorBase(ABC):
 
         # Generate full-resolution overlay array
         overlay_arr = self._generate_overlay_array(
-                overlay_alpha=overlay_alpha,
-                bg_label=bg_label,
-                colors=colors,
-                **label2rgb_kwargs,
+            overlay_alpha=overlay_alpha,
+            bg_label=bg_label,
+            colors=colors,
+            **label2rgb_kwargs,
         )
 
         # For GridImage, draw gridlines if requested (duck typing check)
-        if show_gridlines and hasattr(self._root_image, '_draw_gridlines_on_overlay'):
+        if show_gridlines and hasattr(self._root_image, "_draw_gridlines_on_overlay"):
             overlay_arr = self._root_image._draw_gridlines_on_overlay(
-                    overlay_arr, gridline_color
+                overlay_arr, gridline_color
             )
 
         # For GridImage, draw section boxes if requested (duck typing check)
-        if show_section_boxes and hasattr(self._root_image,
-                                          '_draw_section_boxes_on_overlay'):
+        if show_section_boxes and hasattr(
+            self._root_image, "_draw_section_boxes_on_overlay"
+        ):
             overlay_arr = self._root_image._draw_section_boxes_on_overlay(
-                    overlay_arr, section_box_colors
+                overlay_arr, section_box_colors
             )
 
         # Save using existing _save_image infrastructure (no metadata for overlays)
         self._save_image(
-                filepath=filepath,
-                arr=overlay_arr,
-                bit_depth=8,  # Overlays are always 8-bit
-                metadata_json=None,  # No phenotypic metadata for overlay images
+            filepath=filepath,
+            arr=overlay_arr,
+            bit_depth=8,  # Overlays are always 8-bit
+            metadata_json=None,  # No phenotypic metadata for overlay images
         )
 
     @property
@@ -1142,6 +1142,10 @@ class ImageAccessorBase(ABC):
             napari.Viewer: The global napari viewer instance with the current
                 image added as a new layer.
 
+        Raises:
+            ImportError: If napari is not installed. Install with
+                ``pip install phenotypic[gui]``.
+
         Examples:
             View multiple image transformations in one viewer:
 
@@ -1171,6 +1175,13 @@ class ImageAccessorBase(ABC):
             already exists, it is replaced with the new image data. This allows
             for easy updates and comparison of different processing stages.
         """
+        if not _HAS_NAPARI:
+            raise ImportError(
+                "napari is required for interactive visualization. "
+                "Install with: pip install phenotypic[gui]"
+            )
+        import napari as _napari
+
         global _global_napari_viewer
 
         # Reset viewer if requested
@@ -1180,7 +1191,7 @@ class ImageAccessorBase(ABC):
 
         # Create new viewer if needed
         if not _viewer_is_alive(_global_napari_viewer):
-            _global_napari_viewer = napari.Viewer()
+            _global_napari_viewer = _napari.Viewer()
 
         # Generate descriptive layer name
         if name is not None:

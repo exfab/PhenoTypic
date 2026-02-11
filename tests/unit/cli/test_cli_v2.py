@@ -49,7 +49,7 @@ from phenotypic._cli._cli_update_state import (
     append_completion_event,
 )
 from phenotypic.data import load_synth_yeast_plate
-from phenotypic.phenotypicCLI import main
+from phenotypic.phenotypicCLI import phenotypic_cli
 from phenotypic.prefab import RoundPeaksPipeline
 
 
@@ -104,9 +104,7 @@ def temp_recursive_input_dir():
 
                 from PIL import Image as PILImage
 
-                pil_img = PILImage.fromarray(
-                        grid_image.rgb[:].astype("uint8")
-                )
+                pil_img = PILImage.fromarray(grid_image.rgb[:].astype("uint8"))
                 pil_img.save(img_path)
 
         yield tmpdir
@@ -145,14 +143,12 @@ def temp_mixed_input_dir():
 @pytest.fixture
 def temp_pipeline():
     """Create a temporary pipeline JSON file."""
-    with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".json", delete=False
-    ) as f:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
         pipeline = RoundPeaksPipeline(
-                blur_sigma=3,
-                detector_thresh_method="otsu",
-                detector_subtract_background=True,
-                detector_remove_noise=True,
+            blur_sigma=3,
+            detector_thresh_method="otsu",
+            detector_subtract_background=True,
+            detector_remove_noise=True,
         )
         f.write(pipeline.to_json())
         pipeline_path = Path(f.name)
@@ -200,9 +196,7 @@ class TestDirectoryScanning:
         with pytest.raises(ValueError, match="Mixed input structure not allowed"):
             scan_directory_structure(temp_mixed_input_dir)
 
-    def test_organize_by_dataset(
-            self, temp_recursive_input_dir, temp_output_dir
-    ):
+    def test_organize_by_dataset(self, temp_recursive_input_dir, temp_output_dir):
         """Test organizing scanned images into Dataset objects."""
         image_paths = scan_directory_structure(temp_recursive_input_dir)
         datasets = organize_by_dataset(image_paths, temp_output_dir)
@@ -227,47 +221,47 @@ class TestStateManagement:
         """Test creating initial processing state."""
         datasets = [
             Dataset(
-                    name="test",
-                    images=[Path("img1.png"), Path("img2.png")],
-                    input_dir=Path("."),
-                    output_dir=temp_output_dir,
+                name="test",
+                images=[Path("img1.png"), Path("img2.png")],
+                input_dir=Path("."),
+                output_dir=temp_output_dir,
             )
         ]
 
         config = ExecutionConfig(
-                pipeline_json=Path("pipeline.json"),
-                input_path=Path("."),
-                output_dir=temp_output_dir,
-                image_type="GridImage",
-                nrows=8,
-                ncols=12,
-                bit_depth=None,
-                n_jobs=1,
-                slurm_args={},
-                force_local=False,
-                wait=False,
-                save_rgb=False,
-                save_gray=False,
-                save_detect_mat=False,
-                save_objmask=False,
-                save_objmap=False,
-                save_objmap_overlay=False,
-                save_detect_mat_overlay=False,
-                save_objmask_overlay=False,
-                rgb_ext=".tiff",
-                gray_ext=".tiff",
-                detect_mat_ext=".tiff",
-                objmask_ext=".png",
-                objmap_ext=".png",
-                objmap_overlay_ext=".png",
-                overlay_mode="image",
-                overlay_alpha=0.3,
-                include_dataset_column=False,
-                dry_run=False,
-                sample=None,
-                resume=False,
-                retry_failures=False,
-                skip_validation=False,
+            pipeline_json=Path("pipeline.json"),
+            input_path=Path("."),
+            output_dir=temp_output_dir,
+            image_type="GridImage",
+            nrows=8,
+            ncols=12,
+            bit_depth=None,
+            n_jobs=1,
+            slurm_args={},
+            force_local=False,
+            wait=False,
+            save_rgb=False,
+            save_gray=False,
+            save_detect_mat=False,
+            save_objmask=False,
+            save_objmap=False,
+            save_objmap_overlay=False,
+            save_detect_mat_overlay=False,
+            save_objmask_overlay=False,
+            rgb_ext=".tiff",
+            gray_ext=".tiff",
+            detect_mat_ext=".tiff",
+            objmask_ext=".png",
+            objmap_ext=".png",
+            objmap_overlay_ext=".png",
+            overlay_mode="image",
+            overlay_alpha=0.3,
+            include_dataset_column=False,
+            dry_run=False,
+            sample=None,
+            resume=False,
+            retry_failures=False,
+            skip_validation=False,
         )
 
         state = create_initial_state(config, datasets, temp_output_dir)
@@ -280,47 +274,47 @@ class TestStateManagement:
         """Test saving and loading processing state."""
         datasets = [
             Dataset(
-                    name="test",
-                    images=[Path("img1.png")],
-                    input_dir=Path("."),
-                    output_dir=temp_output_dir,
+                name="test",
+                images=[Path("img1.png")],
+                input_dir=Path("."),
+                output_dir=temp_output_dir,
             )
         ]
 
         config = ExecutionConfig(
-                pipeline_json=Path("pipeline.json"),
-                input_path=Path("."),
-                output_dir=temp_output_dir,
-                image_type="GridImage",
-                nrows=8,
-                ncols=12,
-                bit_depth=None,
-                n_jobs=1,
-                slurm_args={},
-                force_local=False,
-                wait=False,
-                save_rgb=False,
-                save_gray=False,
-                save_detect_mat=False,
-                save_objmask=False,
-                save_objmap=False,
-                save_objmap_overlay=False,
-                save_detect_mat_overlay=False,
-                save_objmask_overlay=False,
-                rgb_ext=".tiff",
-                gray_ext=".tiff",
-                detect_mat_ext=".tiff",
-                objmask_ext=".png",
-                objmap_ext=".png",
-                objmap_overlay_ext=".png",
-                overlay_mode="image",
-                overlay_alpha=0.3,
-                include_dataset_column=False,
-                dry_run=False,
-                sample=None,
-                resume=False,
-                retry_failures=False,
-                skip_validation=False,
+            pipeline_json=Path("pipeline.json"),
+            input_path=Path("."),
+            output_dir=temp_output_dir,
+            image_type="GridImage",
+            nrows=8,
+            ncols=12,
+            bit_depth=None,
+            n_jobs=1,
+            slurm_args={},
+            force_local=False,
+            wait=False,
+            save_rgb=False,
+            save_gray=False,
+            save_detect_mat=False,
+            save_objmask=False,
+            save_objmap=False,
+            save_objmap_overlay=False,
+            save_detect_mat_overlay=False,
+            save_objmask_overlay=False,
+            rgb_ext=".tiff",
+            gray_ext=".tiff",
+            detect_mat_ext=".tiff",
+            objmask_ext=".png",
+            objmap_ext=".png",
+            objmap_overlay_ext=".png",
+            overlay_mode="image",
+            overlay_alpha=0.3,
+            include_dataset_column=False,
+            dry_run=False,
+            sample=None,
+            resume=False,
+            retry_failures=False,
+            skip_validation=False,
         )
 
         # Create and save state
@@ -341,7 +335,7 @@ class TestStateManagement:
         # Append some events
         append_completion_event(event_log, "dataset1", "img1.png", "completed")
         append_completion_event(
-                event_log, "dataset1", "img2.png", "failed", "Test error"
+            event_log, "dataset1", "img2.png", "failed", "Test error"
         )
         append_completion_event(event_log, "dataset2", "img3.png", "completed")
 
@@ -358,7 +352,7 @@ class TestStateManagement:
         append_completion_event(event_log, "dataset1", "img1.png", "completed")
         append_completion_event(event_log, "dataset1", "img2.png", "completed")
         append_completion_event(
-                event_log, "dataset1", "img3.png", "failed", "Test error"
+            event_log, "dataset1", "img3.png", "failed", "Test error"
         )
         append_completion_event(event_log, "dataset2", "img4.png", "completed")
 
@@ -383,32 +377,32 @@ class TestOutputManager:
         """Test creating output directory structure."""
         datasets = [
             Dataset(
-                    name="dataset1",
-                    images=[Path("img1.png")],
-                    input_dir=Path("."),
-                    output_dir=temp_output_dir,
+                name="dataset1",
+                images=[Path("img1.png")],
+                input_dir=Path("."),
+                output_dir=temp_output_dir,
             )
         ]
 
         manager = OutputManager(
-                base_dir=temp_output_dir,
-                save_layers={
-                    "rgb"       : True,
-                    "gray"      : False,
-                    "detect_mat"  : False,
-                    "objmask"   : True,
-                    "objmap"    : False,
-                    "objmap_rgb": False,
-                },
-                extensions={
-                    "rgb"       : ".tiff",
-                    "gray"      : ".tiff",
-                    "detect_mat"  : ".tiff",
-                    "objmask"   : ".png",
-                    "objmap"    : ".png",
-                    "objmap_rgb": ".png",
-                },
-                include_dataset_column=False,
+            base_dir=temp_output_dir,
+            save_layers={
+                "rgb": True,
+                "gray": False,
+                "detect_mat": False,
+                "objmask": True,
+                "objmap": False,
+                "objmap_rgb": False,
+            },
+            extensions={
+                "rgb": ".tiff",
+                "gray": ".tiff",
+                "detect_mat": ".tiff",
+                "objmask": ".png",
+                "objmap": ".png",
+                "objmap_rgb": ".png",
+            },
+            include_dataset_column=False,
         )
 
         manager.create_structure(datasets)
@@ -427,7 +421,8 @@ class TestOutputManager:
         assert (temp_output_dir / "results" / "dataset1" / "rgb").exists()
         assert (temp_output_dir / "results" / "dataset1" / "objmask").exists()
         assert not (
-                    temp_output_dir / "results" / "dataset1" / "gray").exists()  # Not requested
+            temp_output_dir / "results" / "dataset1" / "gray"
+        ).exists()  # Not requested
 
         # Old structure should NOT exist (datasets at root level)
         assert not (temp_output_dir / "dataset1").exists()
@@ -441,30 +436,30 @@ class TestHTMLReportGenerator:
     def test_generate_basic_report(self, temp_output_dir):
         """Test generating a basic HTML report."""
         results = ExecutionResults(
-                datasets={
-                    "dataset1": DatasetResults(
-                            name="dataset1",
-                            total=5,
-                            completed=4,
-                            failed=1,
-                            failures=[
-                                ImageFailure(
-                                        dataset="dataset1",
-                                        image_filename="img3.png",
-                                        error_type="ValueError",
-                                        error_message="Test error",
-                                        traceback="Full traceback here",
-                                        timestamp=datetime.now(),
-                                )
-                            ],
-                    )
-                },
-                total_images=5,
-                total_completed=4,
-                total_failed=1,
-                execution_mode="local",
-                start_time=datetime.now(),
-                end_time=datetime.now(),
+            datasets={
+                "dataset1": DatasetResults(
+                    name="dataset1",
+                    total=5,
+                    completed=4,
+                    failed=1,
+                    failures=[
+                        ImageFailure(
+                            dataset="dataset1",
+                            image_filename="img3.png",
+                            error_type="ValueError",
+                            error_message="Test error",
+                            traceback="Full traceback here",
+                            timestamp=datetime.now(),
+                        )
+                    ],
+                )
+            },
+            total_images=5,
+            total_completed=4,
+            total_failed=1,
+            execution_mode="local",
+            start_time=datetime.now(),
+            end_time=datetime.now(),
         )
 
         generator = HTMLReportGenerator()
@@ -488,12 +483,10 @@ class TestInteractiveFeatures:
         """Test creating sample datasets."""
         datasets = [
             Dataset(
-                    name="test",
-                    images=[
-                        Path(f"img{i}.png") for i in range(10)
-                    ],  # 10 images
-                    input_dir=Path("."),
-                    output_dir=temp_output_dir,
+                name="test",
+                images=[Path(f"img{i}.png") for i in range(10)],  # 10 images
+                input_dir=Path("."),
+                output_dir=temp_output_dir,
             )
         ]
 
@@ -506,10 +499,10 @@ class TestInteractiveFeatures:
         """Test sampling when dataset is smaller than sample size."""
         datasets = [
             Dataset(
-                    name="test",
-                    images=[Path("img1.png"), Path("img2.png")],  # 2 images
-                    input_dir=Path("."),
-                    output_dir=temp_output_dir,
+                name="test",
+                images=[Path("img1.png"), Path("img2.png")],  # 2 images
+                input_dir=Path("."),
+                output_dir=temp_output_dir,
             )
         ]
 
@@ -525,46 +518,46 @@ class TestExecutionStrategies:
     def test_strategy_factory_local(self, temp_output_dir):
         """Test creating local execution strategy."""
         config = ExecutionConfig(
-                pipeline_json=Path("pipeline.json"),
-                input_path=Path("."),
-                output_dir=temp_output_dir,
-                image_type="GridImage",
-                nrows=8,
-                ncols=12,
-                bit_depth=None,
-                n_jobs=1,
-                slurm_args={},  # Empty = local
-                force_local=False,
-                wait=False,
-                save_rgb=False,
-                save_gray=False,
-                save_detect_mat=False,
-                save_objmask=False,
-                save_objmap=False,
-                save_objmap_overlay=False,
-                save_detect_mat_overlay=False,
-                save_objmask_overlay=False,
-                rgb_ext=".tiff",
-                gray_ext=".tiff",
-                detect_mat_ext=".tiff",
-                objmask_ext=".png",
-                objmap_ext=".png",
-                objmap_overlay_ext=".png",
-                overlay_mode="image",
-                overlay_alpha=0.3,
-                include_dataset_column=False,
-                dry_run=False,
-                sample=None,
-                resume=False,
-                retry_failures=False,
-                skip_validation=False,
+            pipeline_json=Path("pipeline.json"),
+            input_path=Path("."),
+            output_dir=temp_output_dir,
+            image_type="GridImage",
+            nrows=8,
+            ncols=12,
+            bit_depth=None,
+            n_jobs=1,
+            slurm_args={},  # Empty = local
+            force_local=False,
+            wait=False,
+            save_rgb=False,
+            save_gray=False,
+            save_detect_mat=False,
+            save_objmask=False,
+            save_objmap=False,
+            save_objmap_overlay=False,
+            save_detect_mat_overlay=False,
+            save_objmask_overlay=False,
+            rgb_ext=".tiff",
+            gray_ext=".tiff",
+            detect_mat_ext=".tiff",
+            objmask_ext=".png",
+            objmap_ext=".png",
+            objmap_overlay_ext=".png",
+            overlay_mode="image",
+            overlay_alpha=0.3,
+            include_dataset_column=False,
+            dry_run=False,
+            sample=None,
+            resume=False,
+            retry_failures=False,
+            skip_validation=False,
         )
 
         manager = OutputManager(
-                base_dir=temp_output_dir,
-                save_layers={},
-                extensions={},
-                include_dataset_column=False,
+            base_dir=temp_output_dir,
+            save_layers={},
+            extensions={},
+            include_dataset_column=False,
         )
 
         strategy = create_execution_strategy(config, manager)
@@ -574,97 +567,95 @@ class TestExecutionStrategies:
     def test_strategy_factory_slurm(self, temp_output_dir):
         """Test creating SLURM execution strategy."""
         config = ExecutionConfig(
-                pipeline_json=Path("pipeline.json"),
-                input_path=Path("."),
-                output_dir=temp_output_dir,
-                image_type="GridImage",
-                nrows=8,
-                ncols=12,
-                bit_depth=None,
-                n_jobs=1,
-                slurm_args={"slurm_partition": "compute"},  # Non-empty = SLURM
-                force_local=False,
-                wait=False,
-                save_rgb=False,
-                save_gray=False,
-                save_detect_mat=False,
-                save_objmask=False,
-                save_objmap=False,
-                save_objmap_overlay=False,
-                save_detect_mat_overlay=False,
-                save_objmask_overlay=False,
-                rgb_ext=".tiff",
-                gray_ext=".tiff",
-                detect_mat_ext=".tiff",
-                objmask_ext=".png",
-                objmap_ext=".png",
-                objmap_overlay_ext=".png",
-                overlay_mode="image",
-                overlay_alpha=0.3,
-                include_dataset_column=False,
-                dry_run=False,
-                sample=None,
-                resume=False,
-                retry_failures=False,
-                skip_validation=False,
+            pipeline_json=Path("pipeline.json"),
+            input_path=Path("."),
+            output_dir=temp_output_dir,
+            image_type="GridImage",
+            nrows=8,
+            ncols=12,
+            bit_depth=None,
+            n_jobs=1,
+            slurm_args={"slurm_partition": "compute"},  # Non-empty = SLURM
+            force_local=False,
+            wait=False,
+            save_rgb=False,
+            save_gray=False,
+            save_detect_mat=False,
+            save_objmask=False,
+            save_objmap=False,
+            save_objmap_overlay=False,
+            save_detect_mat_overlay=False,
+            save_objmask_overlay=False,
+            rgb_ext=".tiff",
+            gray_ext=".tiff",
+            detect_mat_ext=".tiff",
+            objmask_ext=".png",
+            objmap_ext=".png",
+            objmap_overlay_ext=".png",
+            overlay_mode="image",
+            overlay_alpha=0.3,
+            include_dataset_column=False,
+            dry_run=False,
+            sample=None,
+            resume=False,
+            retry_failures=False,
+            skip_validation=False,
         )
 
         manager = OutputManager(
-                base_dir=temp_output_dir,
-                save_layers={},
-                extensions={},
-                include_dataset_column=False,
+            base_dir=temp_output_dir,
+            save_layers={},
+            extensions={},
+            include_dataset_column=False,
         )
 
         strategy = create_execution_strategy(config, manager)
 
         assert isinstance(strategy, AutonomousSLURMStrategy)
 
-    def test_strategy_factory_force_local_overrides_slurm(
-            self, temp_output_dir
-    ):
+    def test_strategy_factory_force_local_overrides_slurm(self, temp_output_dir):
         """Test that --force-local overrides SLURM args."""
         config = ExecutionConfig(
-                pipeline_json=Path("pipeline.json"),
-                input_path=Path("."),
-                output_dir=temp_output_dir,
-                image_type="GridImage",
-                nrows=8,
-                ncols=12,
-                bit_depth=None,
-                n_jobs=1,
-                slurm_args={"slurm_partition": "compute"},  # Has SLURM args
-                force_local=True,  # But force_local is True
-                wait=False,
-                save_rgb=False,
-                save_gray=False,
-                save_detect_mat=False,
-                save_objmask=False,
-                save_objmap=False,
-                save_objmap_overlay=False,
-                save_detect_mat_overlay=False,
-                save_objmask_overlay=False,
-                rgb_ext=".tiff",
-                gray_ext=".tiff",
-                detect_mat_ext=".tiff",
-                objmask_ext=".png",
-                objmap_ext=".png",
-                objmap_overlay_ext=".png",
-                overlay_mode="image",
-                overlay_alpha=0.3,
-                include_dataset_column=False,
-                dry_run=False,
-                sample=None,
-                resume=False,
-                retry_failures=False,
-                skip_validation=False,
+            pipeline_json=Path("pipeline.json"),
+            input_path=Path("."),
+            output_dir=temp_output_dir,
+            image_type="GridImage",
+            nrows=8,
+            ncols=12,
+            bit_depth=None,
+            n_jobs=1,
+            slurm_args={"slurm_partition": "compute"},  # Has SLURM args
+            force_local=True,  # But force_local is True
+            wait=False,
+            save_rgb=False,
+            save_gray=False,
+            save_detect_mat=False,
+            save_objmask=False,
+            save_objmap=False,
+            save_objmap_overlay=False,
+            save_detect_mat_overlay=False,
+            save_objmask_overlay=False,
+            rgb_ext=".tiff",
+            gray_ext=".tiff",
+            detect_mat_ext=".tiff",
+            objmask_ext=".png",
+            objmap_ext=".png",
+            objmap_overlay_ext=".png",
+            overlay_mode="image",
+            overlay_alpha=0.3,
+            include_dataset_column=False,
+            dry_run=False,
+            sample=None,
+            resume=False,
+            retry_failures=False,
+            skip_validation=False,
         )
 
         manager = OutputManager(
-                base_dir=temp_output_dir,
-                save_layers={},
-                extensions={},
-                include_dataset_column=False,
+            base_dir=temp_output_dir,
+            save_layers={},
+            extensions={},
+            include_dataset_column=False,
         )
 
         strategy = create_execution_strategy(config, manager)
@@ -676,39 +667,39 @@ class TestExecutionStrategies:
         """Test is_slurm_mode() method logic."""
         # Case 1: No SLURM args, no force_local -> local mode
         config = ExecutionConfig(
-                pipeline_json=Path("pipeline.json"),
-                input_path=Path("."),
-                output_dir=temp_output_dir,
-                image_type="GridImage",
-                nrows=8,
-                ncols=12,
-                bit_depth=None,
-                n_jobs=1,
-                slurm_args={},
-                force_local=False,
-                wait=False,
-                save_rgb=False,
-                save_gray=False,
-                save_detect_mat=False,
-                save_objmask=False,
-                save_objmap=False,
-                save_objmap_overlay=False,
-                save_detect_mat_overlay=False,
-                save_objmask_overlay=False,
-                rgb_ext=".tiff",
-                gray_ext=".tiff",
-                detect_mat_ext=".tiff",
-                objmask_ext=".png",
-                objmap_ext=".png",
-                objmap_overlay_ext=".png",
-                overlay_mode="image",
-                overlay_alpha=0.3,
-                include_dataset_column=False,
-                dry_run=False,
-                sample=None,
-                resume=False,
-                retry_failures=False,
-                skip_validation=False,
+            pipeline_json=Path("pipeline.json"),
+            input_path=Path("."),
+            output_dir=temp_output_dir,
+            image_type="GridImage",
+            nrows=8,
+            ncols=12,
+            bit_depth=None,
+            n_jobs=1,
+            slurm_args={},
+            force_local=False,
+            wait=False,
+            save_rgb=False,
+            save_gray=False,
+            save_detect_mat=False,
+            save_objmask=False,
+            save_objmap=False,
+            save_objmap_overlay=False,
+            save_detect_mat_overlay=False,
+            save_objmask_overlay=False,
+            rgb_ext=".tiff",
+            gray_ext=".tiff",
+            detect_mat_ext=".tiff",
+            objmask_ext=".png",
+            objmap_ext=".png",
+            objmap_overlay_ext=".png",
+            overlay_mode="image",
+            overlay_alpha=0.3,
+            include_dataset_column=False,
+            dry_run=False,
+            sample=None,
+            resume=False,
+            retry_failures=False,
+            skip_validation=False,
         )
         assert not config.is_slurm_mode()
 
@@ -724,28 +715,24 @@ class TestExecutionStrategies:
 class TestCLIv2Integration:
     """Integration tests for the new CLI."""
 
-    def test_cli_dry_run(
-            self, runner, temp_pipeline, temp_input_dir
-    ):
+    def test_cli_dry_run(self, runner, temp_pipeline, temp_input_dir):
         """Test --dry-run flag."""
         # Use isolated filesystem to avoid creating files in repo
         with runner.isolated_filesystem():
             result = runner.invoke(
-                    main,
-                    [
-                        str(temp_pipeline),
-                        str(temp_input_dir),
-                        "--dry-run",
-                    ],
+                phenotypic_cli,
+                [
+                    str(temp_pipeline),
+                    str(temp_input_dir),
+                    "--dry-run",
+                ],
             )
 
             assert result.exit_code == 0
             assert "DRY-RUN MODE" in result.output
             assert "To proceed with execution" in result.output
 
-    def test_cli_auto_output_dir(
-            self, runner, temp_pipeline, temp_input_dir
-    ):
+    def test_cli_auto_output_dir(self, runner, temp_pipeline, temp_input_dir):
         """Test CLI with specified output directory in tmp location."""
         # Use isolated filesystem to avoid creating files in repo
         with runner.isolated_filesystem():
@@ -753,62 +740,60 @@ class TestCLIv2Integration:
             temp_output_dir = Path("./tmp_output")
 
             result = runner.invoke(
-                    main,
-                    [
-                        str(temp_pipeline),
-                        str(temp_input_dir),
-                        "-o",
-                        str(temp_output_dir),
-                        "--skip-validation",  # Skip for speed
-                    ],
+                phenotypic_cli,
+                [
+                    str(temp_pipeline),
+                    str(temp_input_dir),
+                    "-o",
+                    str(temp_output_dir),
+                    "--skip-validation",  # Skip for speed
+                ],
             )
 
             # Check that the specified output directory was used (not auto-generated)
             assert "Auto-generated output directory" not in result.output
             assert temp_output_dir.exists()
 
-    def test_cli_sample_mode(
-            self, runner, temp_pipeline, temp_input_dir
-    ):
+    def test_cli_sample_mode(self, runner, temp_pipeline, temp_input_dir):
         """Test --sample flag."""
         with runner.isolated_filesystem():
             output_dir = Path("./test_output")
             result = runner.invoke(
-                    main,
-                    [
-                        str(temp_pipeline),
-                        str(temp_input_dir),
-                        "-o",
-                        str(output_dir),
-                        "--sample",
-                        "2",
-                        "--skip-validation",
-                    ],
+                phenotypic_cli,
+                [
+                    str(temp_pipeline),
+                    str(temp_input_dir),
+                    "-o",
+                    str(output_dir),
+                    "--sample",
+                    "2",
+                    "--skip-validation",
+                ],
             )
 
             # Should process limited number of images
             assert "Sample mode" in result.output or "sample" in result.output.lower()
 
     def test_cli_slurm_args_backend_selection(
-            self, runner, temp_pipeline, temp_input_dir
+        self, runner, temp_pipeline, temp_input_dir
     ):
         """Test that --slurm-args causes CLI to use SLURM backend."""
         with runner.isolated_filesystem():
             output_dir = Path("./test_output")
             result = runner.invoke(
-                    main,
-                    [
-                        str(temp_pipeline),
-                        str(temp_input_dir),
-                        "-o",
-                        str(output_dir),
-                        "--slurm-args",
-                        "slurm_partition=compute",
-                        "--slurm-args",
-                        "mem_gb=16",
-                        "--dry-run",  # Use dry-run to avoid actual SLURM submission
-                        "--skip-validation",
-                    ],
+                phenotypic_cli,
+                [
+                    str(temp_pipeline),
+                    str(temp_input_dir),
+                    "-o",
+                    str(output_dir),
+                    "--slurm-args",
+                    "slurm_partition=compute",
+                    "--slurm-args",
+                    "mem_gb=16",
+                    "--dry-run",  # Use dry-run to avoid actual SLURM submission
+                    "--skip-validation",
+                ],
             )
 
             # Check that SLURM backend is displayed
@@ -817,8 +802,8 @@ class TestCLIv2Integration:
 
 
 @pytest.mark.skipif(
-        not pytest.importorskip("submitit"),
-        reason="submitit not installed",
+    not pytest.importorskip("submitit"),
+    reason="submitit not installed",
 )
 class TestSLURMFeatures:
     """Test SLURM-specific features (requires submitit)."""
@@ -867,21 +852,21 @@ class TestResumeMode:
         # Create state file with original images
         # Use the directory name ("images") as dataset name per new convention
         state_dict = {
-            "version"       : "2.0.0",
-            "pipeline_path" : str(temp_pipeline),
-            "input_path"    : str(temp_input_dir),
-            "output_dir"    : str(output_dir),
-            "timestamp"     : datetime.now().isoformat(),
+            "version": "2.0.0",
+            "pipeline_path": str(temp_pipeline),
+            "input_path": str(temp_input_dir),
+            "output_dir": str(output_dir),
+            "timestamp": datetime.now().isoformat(),
             "execution_mode": "local",
-            "last_updated"  : datetime.now().isoformat(),
-            "datasets"      : {
+            "last_updated": datetime.now().isoformat(),
+            "datasets": {
                 "images": {
                     "completed": ["image1.jpg", "image2.jpg"],
-                    "failed"   : [],
-                    "errors"   : {}
+                    "failed": [],
+                    "errors": {},
                 }
             },
-            "config"        : {}
+            "config": {},
         }
 
         state_file = output_dir / "processing_state.json"
@@ -892,15 +877,15 @@ class TestResumeMode:
 
         # Try to resume - should fail because input changed
         result = runner.invoke(
-                main,
-                [
-                    str(temp_pipeline),
-                    str(temp_input_dir),
-                    "-o",
-                    str(output_dir),
-                    "--resume",
-                    "--skip-validation",
-                ],
+            main,
+            [
+                str(temp_pipeline),
+                str(temp_input_dir),
+                "-o",
+                str(output_dir),
+                "--resume",
+                "--skip-validation",
+            ],
         )
 
         # Should fail with input validation error
@@ -921,15 +906,15 @@ class TestResumeMode:
         output_dir.mkdir()  # Create directory but NO state file
 
         result = runner.invoke(
-                main,
-                [
-                    str(temp_pipeline),
-                    str(temp_input_dir),
-                    "-o",
-                    str(output_dir),
-                    "--resume",
-                    "--skip-validation",
-                ],
+            main,
+            [
+                str(temp_pipeline),
+                str(temp_input_dir),
+                "-o",
+                str(output_dir),
+                "--resume",
+                "--skip-validation",
+            ],
         )
 
         assert result.exit_code != 0
@@ -946,17 +931,20 @@ class TestResumeMode:
         temp_pipeline.write_text(json.dumps({"operations": []}))
 
         result = runner.invoke(
-                main,
-                [
-                    str(temp_pipeline),
-                    str(temp_input_dir),
-                    "--resume",
-                    "--skip-validation",
-                ],
+            main,
+            [
+                str(temp_pipeline),
+                str(temp_input_dir),
+                "--resume",
+                "--skip-validation",
+            ],
         )
 
         assert result.exit_code != 0
-        assert "resume requires" in result.output.lower() or "output-dir" in result.output.lower()
+        assert (
+            "resume requires" in result.output.lower()
+            or "output-dir" in result.output.lower()
+        )
 
 
 class TestDryRunMode:
@@ -976,15 +964,15 @@ class TestDryRunMode:
         output_dir = tmp_path / "output"
 
         result = runner.invoke(
-                main,
-                [
-                    str(temp_pipeline),
-                    str(temp_input_dir),
-                    "-o",
-                    str(output_dir),
-                    "--dry-run",
-                    "--skip-validation",
-                ],
+            main,
+            [
+                str(temp_pipeline),
+                str(temp_input_dir),
+                "-o",
+                str(output_dir),
+                "--dry-run",
+                "--skip-validation",
+            ],
         )
 
         assert result.exit_code == 0
@@ -1009,15 +997,15 @@ class TestDryRunMode:
         output_dir = tmp_path / "output"
 
         result = runner.invoke(
-                main,
-                [
-                    str(temp_pipeline),
-                    str(temp_input_dir),
-                    "-o",
-                    str(output_dir),
-                    "--dry-run",
-                    "--skip-validation",
-                ],
+            main,
+            [
+                str(temp_pipeline),
+                str(temp_input_dir),
+                "-o",
+                str(output_dir),
+                "--dry-run",
+                "--skip-validation",
+            ],
         )
 
         assert result.exit_code == 0
@@ -1039,23 +1027,25 @@ class TestEdgeCases:
         (input_dir / "test.jpg").write_text("dummy")
 
         result = runner.invoke(
-                main,
-                [
-                    str(temp_pipeline),
-                    str(input_dir),
-                    "-o",
-                    str(output_dir),
-                    "--image-type",
-                    "GridImage",
-                    "--nrows",
-                    "0",  # Invalid
-                    "--ncols",
-                    "12",
-                ],
+            main,
+            [
+                str(temp_pipeline),
+                str(input_dir),
+                "-o",
+                str(output_dir),
+                "--image-type",
+                "GridImage",
+                "--nrows",
+                "0",  # Invalid
+                "--ncols",
+                "12",
+            ],
         )
 
         assert result.exit_code != 0
-        assert "Invalid value" in result.output or "out of range" in result.output.lower()
+        assert (
+            "Invalid value" in result.output or "out of range" in result.output.lower()
+        )
 
     def test_invalid_ncols_negative_rejected(self, runner, tmp_path, temp_pipeline):
         """Test that negative ncols is rejected by Click IntRange validation."""
@@ -1067,23 +1057,25 @@ class TestEdgeCases:
         (input_dir / "test.jpg").write_text("dummy")
 
         result = runner.invoke(
-                main,
-                [
-                    str(temp_pipeline),
-                    str(input_dir),
-                    "-o",
-                    str(output_dir),
-                    "--image-type",
-                    "GridImage",
-                    "--nrows",
-                    "8",
-                    "--ncols",
-                    "-5",  # Invalid
-                ],
+            main,
+            [
+                str(temp_pipeline),
+                str(input_dir),
+                "-o",
+                str(output_dir),
+                "--image-type",
+                "GridImage",
+                "--nrows",
+                "8",
+                "--ncols",
+                "-5",  # Invalid
+            ],
         )
 
         assert result.exit_code != 0
-        assert "Invalid value" in result.output or "out of range" in result.output.lower()
+        assert (
+            "Invalid value" in result.output or "out of range" in result.output.lower()
+        )
 
     def test_single_image_processing(self, runner, tmp_path, temp_pipeline):
         """Test processing with exactly 1 image (boundary case)."""
@@ -1099,23 +1091,25 @@ class TestEdgeCases:
         pil_img.save(input_dir / "single.jpg")
 
         result = runner.invoke(
-                main,
-                [
-                    str(temp_pipeline),
-                    str(input_dir),
-                    "-o",
-                    str(output_dir),
-                    "--n-jobs",
-                    "1",
-                    "--skip-validation",
-                ],
+            main,
+            [
+                str(temp_pipeline),
+                str(input_dir),
+                "-o",
+                str(output_dir),
+                "--n-jobs",
+                "1",
+                "--skip-validation",
+            ],
         )
 
         assert result.exit_code == 0
 
         # Verify output files created for the single image
         # Output should be in results/dataset folder named after input directory ("input")
-        measurements_file = output_dir / "results" / "input" / "measurements" / "single.csv"
+        measurements_file = (
+            output_dir / "results" / "input" / "measurements" / "single.csv"
+        )
         overlay_file = output_dir / "results" / "input" / "overlays" / "single.png"
 
         assert measurements_file.exists(), f"Expected {measurements_file} to exist"
@@ -1123,8 +1117,9 @@ class TestEdgeCases:
 
         # Verify results and dataset folder is created
         assert (output_dir / "results").exists(), "Results folder should be created"
-        assert (
-                    output_dir / "results" / "input").exists(), "Dataset folder should be created under results/"
+        assert (output_dir / "results" / "input").exists(), (
+            "Dataset folder should be created under results/"
+        )
 
     def test_empty_input_directory(self, runner, tmp_path, temp_pipeline):
         """Test graceful handling of empty input directory."""
@@ -1133,24 +1128,24 @@ class TestEdgeCases:
         input_dir.mkdir()
 
         result = runner.invoke(
-                main,
-                [
-                    str(temp_pipeline),
-                    str(input_dir),
-                    "-o",
-                    str(output_dir),
-                    "--skip-validation",
-                ],
+            main,
+            [
+                str(temp_pipeline),
+                str(input_dir),
+                "-o",
+                str(output_dir),
+                "--skip-validation",
+            ],
         )
 
         # Should fail gracefully with clear message
         assert result.exit_code != 0
         error_msg = result.output.lower()
         assert (
-                "no valid images" in error_msg
-                or "empty" in error_msg
-                or "no images" in error_msg
-                or "not found" in error_msg
+            "no valid images" in error_msg
+            or "empty" in error_msg
+            or "no images" in error_msg
+            or "not found" in error_msg
         )
 
     def test_resume_with_changed_images(self, runner, tmp_path, temp_pipeline):
@@ -1169,16 +1164,16 @@ class TestEdgeCases:
 
         # Initial processing
         result = runner.invoke(
-                main,
-                [
-                    str(temp_pipeline),
-                    str(input_dir),
-                    "-o",
-                    str(output_dir),
-                    "--n-jobs",
-                    "1",
-                    "--skip-validation",
-                ],
+            main,
+            [
+                str(temp_pipeline),
+                str(input_dir),
+                "-o",
+                str(output_dir),
+                "--n-jobs",
+                "1",
+                "--skip-validation",
+            ],
         )
         assert result.exit_code == 0
 
@@ -1189,24 +1184,24 @@ class TestEdgeCases:
 
         # Resume should fail with clear error about image set mismatch
         result = runner.invoke(
-                main,
-                [
-                    str(temp_pipeline),
-                    str(input_dir),
-                    "-o",
-                    str(output_dir),
-                    "--resume",
-                    "--skip-validation",
-                ],
+            main,
+            [
+                str(temp_pipeline),
+                str(input_dir),
+                "-o",
+                str(output_dir),
+                "--resume",
+                "--skip-validation",
+            ],
         )
 
         assert result.exit_code != 0
         error_msg = result.output.lower()
         assert (
-                "image set mismatch" in error_msg
-                or "missing" in error_msg
-                or "added" in error_msg
-                or "mismatch" in error_msg
+            "image set mismatch" in error_msg
+            or "missing" in error_msg
+            or "added" in error_msg
+            or "mismatch" in error_msg
         )
 
 
@@ -1217,10 +1212,10 @@ class TestNewCoverageGaps:
         """Test that sample mode with same seed produces same images."""
         datasets = [
             Dataset(
-                    name="test",
-                    images=[Path(f"img{i}.png") for i in range(20)],
-                    input_dir=Path("."),
-                    output_dir=temp_output_dir,
+                name="test",
+                images=[Path(f"img{i}.png") for i in range(20)],
+                input_dir=Path("."),
+                output_dir=temp_output_dir,
             )
         ]
 
@@ -1245,66 +1240,90 @@ class TestNewCoverageGaps:
         extensions = {"rgb": ".tiff", "gray": ".tiff"}
 
         manager = OutputManager(
-                base_dir=temp_output_dir / "output",
-                save_layers=save_layers,
-                extensions=extensions,
+            base_dir=temp_output_dir / "output",
+            save_layers=save_layers,
+            extensions=extensions,
         )
 
         # All paths should include results/ and dataset subdirectory
         path = manager.get_output_path("single_image", "measurements", "image1")
-        assert path == temp_output_dir / "output" / "results" / "single_image" / "measurements" / "image1.csv"
+        assert (
+            path
+            == temp_output_dir
+            / "output"
+            / "results"
+            / "single_image"
+            / "measurements"
+            / "image1.csv"
+        )
 
         path = manager.get_output_path("plate1", "measurements", "image1")
-        assert path == temp_output_dir / "output" / "results" / "plate1" / "measurements" / "image1.csv"
+        assert (
+            path
+            == temp_output_dir
+            / "output"
+            / "results"
+            / "plate1"
+            / "measurements"
+            / "image1.csv"
+        )
 
         path = manager.get_output_path("my_dataset", "overlays", "image2")
-        assert path == temp_output_dir / "output" / "results" / "my_dataset" / "overlays" / "image2.png"
+        assert (
+            path
+            == temp_output_dir
+            / "output"
+            / "results"
+            / "my_dataset"
+            / "overlays"
+            / "image2.png"
+        )
 
     def test_initial_images_stored_in_state(self, temp_output_dir):
         """Test that initial_images is stored when creating state."""
         datasets = [
             Dataset(
-                    name="test",
-                    images=[Path(f"img{i}.png") for i in range(5)],
-                    input_dir=Path("."),
-                    output_dir=temp_output_dir,
+                name="test",
+                images=[Path(f"img{i}.png") for i in range(5)],
+                input_dir=Path("."),
+                output_dir=temp_output_dir,
             )
         ]
 
         config = ExecutionConfig(
-                pipeline_json=Path("pipeline.json"),
-                input_path=Path("."),
-                output_dir=temp_output_dir,
-                image_type="GridImage",
-                nrows=8,
-                ncols=12,
-                bit_depth=None,
-                n_jobs=1,
-                slurm_args={},
-                force_local=True,
-                wait=False,
-                save_rgb=False,
-                save_gray=False,
-                save_detect_mat=False,
-                save_objmask=False,
-                save_objmap=False,
-                save_objmap_overlay=False,
-                save_detect_mat_overlay=False,
-                save_objmask_overlay=False,
-                rgb_ext=".tiff",
-                gray_ext=".tiff",
-                detect_mat_ext=".tiff",
-                objmask_ext=".png",
-                objmap_ext=".png",
-                objmap_overlay_ext=".png",
-                overlay_mode="image",
-                overlay_alpha=0.3,
-                include_dataset_column=True,
-                dry_run=False,
-                sample=None,
-                resume=False,
-                retry_failures=False,
-                skip_validation=False,
+            pipeline_json=Path("pipeline.json"),
+            input_path=Path("."),
+            output_dir=temp_output_dir,
+            image_type="GridImage",
+            nrows=8,
+            ncols=12,
+            bit_depth=None,
+            n_jobs=1,
+            slurm_args={},
+            force_local=True,
+            wait=False,
+            save_rgb=False,
+            save_gray=False,
+            save_detect_mat=False,
+            save_objmask=False,
+            save_objmap=False,
+            save_objmap_overlay=False,
+            save_detect_mat_overlay=False,
+            save_objmask_overlay=False,
+            rgb_ext=".tiff",
+            gray_ext=".tiff",
+            detect_mat_ext=".tiff",
+            objmask_ext=".png",
+            objmap_ext=".png",
+            objmap_overlay_ext=".png",
+            overlay_mode="image",
+            overlay_alpha=0.3,
+            include_dataset_column=True,
+            dry_run=False,
+            sample=None,
+            resume=False,
+            retry_failures=False,
+            skip_validation=False,
         )
 
         state = create_initial_state(config, datasets, temp_output_dir)
@@ -1318,47 +1337,47 @@ class TestNewCoverageGaps:
         """Test resume validation when no images were processed."""
         datasets = [
             Dataset(
-                    name="test",
-                    images=[Path(f"img{i}.png") for i in range(5)],
-                    input_dir=Path("."),
-                    output_dir=temp_output_dir,
+                name="test",
+                images=[Path(f"img{i}.png") for i in range(5)],
+                input_dir=Path("."),
+                output_dir=temp_output_dir,
             )
         ]
 
         config = ExecutionConfig(
-                pipeline_json=Path("pipeline.json"),
-                input_path=Path("."),
-                output_dir=temp_output_dir,
-                image_type="GridImage",
-                nrows=8,
-                ncols=12,
-                bit_depth=None,
-                n_jobs=1,
-                slurm_args={},
-                force_local=True,
-                wait=False,
-                save_rgb=False,
-                save_gray=False,
-                save_detect_mat=False,
-                save_objmask=False,
-                save_objmap=False,
-                save_objmap_overlay=False,
-                save_detect_mat_overlay=False,
-                save_objmask_overlay=False,
-                rgb_ext=".tiff",
-                gray_ext=".tiff",
-                detect_mat_ext=".tiff",
-                objmask_ext=".png",
-                objmap_ext=".png",
-                objmap_overlay_ext=".png",
-                overlay_mode="image",
-                overlay_alpha=0.3,
-                include_dataset_column=True,
-                dry_run=False,
-                sample=None,
-                resume=False,
-                retry_failures=False,
-                skip_validation=False,
+            pipeline_json=Path("pipeline.json"),
+            input_path=Path("."),
+            output_dir=temp_output_dir,
+            image_type="GridImage",
+            nrows=8,
+            ncols=12,
+            bit_depth=None,
+            n_jobs=1,
+            slurm_args={},
+            force_local=True,
+            wait=False,
+            save_rgb=False,
+            save_gray=False,
+            save_detect_mat=False,
+            save_objmask=False,
+            save_objmap=False,
+            save_objmap_overlay=False,
+            save_detect_mat_overlay=False,
+            save_objmask_overlay=False,
+            rgb_ext=".tiff",
+            gray_ext=".tiff",
+            detect_mat_ext=".tiff",
+            objmask_ext=".png",
+            objmap_ext=".png",
+            objmap_overlay_ext=".png",
+            overlay_mode="image",
+            overlay_alpha=0.3,
+            include_dataset_column=True,
+            dry_run=False,
+            sample=None,
+            resume=False,
+            retry_failures=False,
+            skip_validation=False,
         )
 
         # Create and save initial state (no processing done)
@@ -1369,10 +1388,10 @@ class TestNewCoverageGaps:
         # Try to resume with different images
         different_datasets = [
             Dataset(
-                    name="test",
-                    images=[Path(f"different{i}.png") for i in range(5)],
-                    input_dir=Path("."),
-                    output_dir=temp_output_dir,
+                name="test",
+                images=[Path(f"different{i}.png") for i in range(5)],
+                input_dir=Path("."),
+                output_dir=temp_output_dir,
             )
         ]
 
@@ -1409,53 +1428,53 @@ class TestNewCoverageGaps:
         from phenotypic._cli._cli_slurm_array_scripts import generate_array_job_script
 
         dataset = Dataset(
-                name="plate1",
-                images=[Path(f"img{i}.png") for i in range(10)],
-                input_dir=Path("."),
-                output_dir=temp_output_dir,
+            name="plate1",
+            images=[Path(f"img{i}.png") for i in range(10)],
+            input_dir=Path("."),
+            output_dir=temp_output_dir,
         )
 
         config = ExecutionConfig(
-                pipeline_json=Path("pipeline.json"),
-                input_path=Path("."),
-                output_dir=temp_output_dir,
-                image_type="GridImage",
-                nrows=8,
-                ncols=12,
-                bit_depth=None,
-                n_jobs=1,
-                slurm_args={"partition": "test"},
-                force_local=False,
-                wait=False,
-                save_rgb=False,
-                save_gray=False,
-                save_detect_mat=False,
-                save_objmask=False,
-                save_objmap=False,
-                save_objmap_overlay=False,
-                save_detect_mat_overlay=False,
-                save_objmask_overlay=False,
-                rgb_ext="tiff",
-                gray_ext="tiff",
-                detect_mat_ext="tiff",
-                objmask_ext="png",
-                objmap_ext="png",
-                objmap_overlay_ext="png",
-                overlay_mode="image",
-                overlay_alpha=0.3,
-                include_dataset_column=True,
-                dry_run=False,
-                sample=None,
-                resume=False,
-                retry_failures=False,
-                skip_validation=False,
+            pipeline_json=Path("pipeline.json"),
+            input_path=Path("."),
+            output_dir=temp_output_dir,
+            image_type="GridImage",
+            nrows=8,
+            ncols=12,
+            bit_depth=None,
+            n_jobs=1,
+            slurm_args={"partition": "test"},
+            force_local=False,
+            wait=False,
+            save_rgb=False,
+            save_gray=False,
+            save_detect_mat=False,
+            save_objmask=False,
+            save_objmap=False,
+            save_objmap_overlay=False,
+            save_detect_mat_overlay=False,
+            save_objmask_overlay=False,
+            rgb_ext="tiff",
+            gray_ext="tiff",
+            detect_mat_ext="tiff",
+            objmask_ext="png",
+            objmap_ext="png",
+            objmap_overlay_ext="png",
+            overlay_mode="image",
+            overlay_alpha=0.3,
+            include_dataset_column=True,
+            dry_run=False,
+            sample=None,
+            resume=False,
+            retry_failures=False,
+            skip_validation=False,
         )
 
         script_path = generate_array_job_script(
-                dataset=dataset,
-                array_indices=(0, 10),
-                config=config,
-                output_dir=temp_output_dir,
+            dataset=dataset,
+            array_indices=(0, 10),
+            config=config,
+            output_dir=temp_output_dir,
         )
 
         script_content = script_path.read_text()
@@ -1471,60 +1490,60 @@ class TestNewCoverageGaps:
         from phenotypic._cli._cli_slurm_array_scripts import generate_array_job_script
 
         dataset = Dataset(
-                name="test",
-                images=[Path(f"img{i}.png") for i in range(5)],
-                input_dir=Path("."),
-                output_dir=temp_output_dir,
+            name="test",
+            images=[Path(f"img{i}.png") for i in range(5)],
+            input_dir=Path("."),
+            output_dir=temp_output_dir,
         )
 
         config = ExecutionConfig(
-                pipeline_json=Path("pipeline.json"),
-                input_path=Path("."),
-                output_dir=temp_output_dir,
-                image_type="GridImage",
-                nrows=8,
-                ncols=12,
-                bit_depth=None,
-                n_jobs=1,
-                slurm_args={"partition": "test"},
-                force_local=False,
-                wait=False,
-                save_rgb=False,
-                save_gray=False,
-                save_detect_mat=False,
-                save_objmask=False,
-                save_objmap=False,
-                save_objmap_overlay=False,
-                save_detect_mat_overlay=False,
-                save_objmask_overlay=False,
-                rgb_ext="tiff",
-                gray_ext="tiff",
-                detect_mat_ext="tiff",
-                objmask_ext="png",
-                objmap_ext="png",
-                objmap_overlay_ext="png",
-                overlay_mode="image",
-                overlay_alpha=0.3,
-                include_dataset_column=True,
-                dry_run=False,
-                sample=None,
-                resume=False,
-                retry_failures=False,
-                skip_validation=False,
+            pipeline_json=Path("pipeline.json"),
+            input_path=Path("."),
+            output_dir=temp_output_dir,
+            image_type="GridImage",
+            nrows=8,
+            ncols=12,
+            bit_depth=None,
+            n_jobs=1,
+            slurm_args={"partition": "test"},
+            force_local=False,
+            wait=False,
+            save_rgb=False,
+            save_gray=False,
+            save_detect_mat=False,
+            save_objmask=False,
+            save_objmap=False,
+            save_objmap_overlay=False,
+            save_detect_mat_overlay=False,
+            save_objmask_overlay=False,
+            rgb_ext="tiff",
+            gray_ext="tiff",
+            detect_mat_ext="tiff",
+            objmask_ext="png",
+            objmap_ext="png",
+            objmap_overlay_ext="png",
+            overlay_mode="image",
+            overlay_alpha=0.3,
+            include_dataset_column=True,
+            dry_run=False,
+            sample=None,
+            resume=False,
+            retry_failures=False,
+            skip_validation=False,
         )
 
         script_path = generate_array_job_script(
-                dataset=dataset,
-                array_indices=(0, 5),
-                config=config,
-                output_dir=temp_output_dir,
+            dataset=dataset,
+            array_indices=(0, 5),
+            config=config,
+            output_dir=temp_output_dir,
         )
 
         # Run bash syntax check
         result = subprocess.run(
-                ["bash", "-n", str(script_path)],
-                capture_output=True,
-                text=True,
+            ["bash", "-n", str(script_path)],
+            capture_output=True,
+            text=True,
         )
 
         assert result.returncode == 0, f"Bash syntax error: {result.stderr}"
@@ -1543,15 +1562,15 @@ class TestNewCoverageGaps:
         pil_img.save(input_dir / "test.jpg")
 
         result = runner.invoke(
-                main,
-                [
-                    str(temp_pipeline),
-                    str(input_dir),
-                    "-o",
-                    str(output_dir),
-                    "--dry-run",
-                    "--skip-validation",
-                ],
+            main,
+            [
+                str(temp_pipeline),
+                str(input_dir),
+                "-o",
+                str(output_dir),
+                "--dry-run",
+                "--skip-validation",
+            ],
         )
 
         assert result.exit_code == 0

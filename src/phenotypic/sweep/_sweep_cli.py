@@ -48,13 +48,16 @@ def _scan_flat_image_dir(input_dir: Path) -> List[Path]:
     if not input_dir.is_dir():
         raise ValueError(f"Input path is not a directory: {input_dir}")
 
-    valid_exts = {ext.lower() for ext in IO.ACCEPTED_FILE_EXTENSIONS + IO.RAW_FILE_EXTENSIONS}
+    valid_exts = {
+        ext.lower() for ext in IO.ACCEPTED_FILE_EXTENSIONS + IO.RAW_FILE_EXTENSIONS
+    }
 
     # Check for subdirectories with images
     for subdir in input_dir.iterdir():
         if subdir.is_dir():
             sub_images = [
-                p for p in subdir.iterdir()
+                p
+                for p in subdir.iterdir()
                 if p.is_file() and p.suffix.lower() in valid_exts
             ]
             if sub_images:
@@ -65,8 +68,7 @@ def _scan_flat_image_dir(input_dir: Path) -> List[Path]:
                 )
 
     images = sorted(
-        p for p in input_dir.iterdir()
-        if p.is_file() and p.suffix.lower() in valid_exts
+        p for p in input_dir.iterdir() if p.is_file() and p.suffix.lower() in valid_exts
     )
 
     if not images:
@@ -228,7 +230,8 @@ def _format_duration(seconds: float) -> str:
     type=click.Path(exists=True, file_okay=False, path_type=Path),
 )
 @click.option(
-    "-o", "--output-dir",
+    "-o",
+    "--output-dir",
     type=click.Path(path_type=Path),
     default=None,
     help="Output directory (auto-timestamped if omitted).",
@@ -287,7 +290,9 @@ def _format_duration(seconds: float) -> str:
 @click.option("--save-objmask", is_flag=True, help="Save object mask.")
 @click.option("--save-objmap", is_flag=True, help="Save object map.")
 @click.option("--save-objmap-overlay", is_flag=True, help="Save object map overlay.")
-@click.option("--save-enh-gray-overlay", is_flag=True, help="Save detection matrix overlay.")
+@click.option(
+    "--save-enh-gray-overlay", is_flag=True, help="Save detection matrix overlay."
+)
 @click.option("--save-objmask-overlay", is_flag=True, help="Save object mask overlay.")
 @click.option(
     "--overlay-mode",
@@ -305,7 +310,7 @@ def _format_duration(seconds: float) -> str:
 )
 @click.option("--dry-run", is_flag=True, help="Preview without executing.")
 @click.option("--skip-validation", is_flag=True, help="Skip pipeline validation.")
-def main(
+def sweep_cli(
     manifest_json: Path,
     input_dir: Path,
     output_dir: Optional[Path],
@@ -430,7 +435,9 @@ def main(
         # Dry run
         if dry_run:
             click.echo("Dry-run mode: no processing will be performed.")
-            click.echo(f"\nWould process {len(image_paths)} images x {len(pipeline_names)} pipelines")
+            click.echo(
+                f"\nWould process {len(image_paths)} images x {len(pipeline_names)} pipelines"
+            )
             click.echo(f"= {len(image_paths) * len(pipeline_names)} total pipeline runs")
             click.echo(f"\nPipeline names:")
             for name in pipeline_names:
@@ -476,7 +483,11 @@ def main(
         click.echo(f"Manifest copied to {dest_manifest}")
 
         # Create execution strategy and run
-        from ._sweep_execution import LocalSweepStrategy, SLURMSweepStrategy, SweepExecutionStrategy
+        from ._sweep_execution import (
+            LocalSweepStrategy,
+            SLURMSweepStrategy,
+            SweepExecutionStrategy,
+        )
 
         strategy: SweepExecutionStrategy
         image_type_lit: Literal["Image", "GridImage"] = image_type  # type: ignore[assignment]
