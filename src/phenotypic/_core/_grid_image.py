@@ -40,7 +40,7 @@ class GridImage(ImageGridHandler):
             ncols: int = 12,
             bit_depth: Literal[8, 16] | None = None,
             illuminant: str | None = "D65",
-            gamma: GAMMA_ENCODINGS = GAMMA_ENCODINGS.SRGB,
+            gamma: GAMMA_ENCODINGS | str | None = GAMMA_ENCODINGS.SRGB,
     ):
         """Initialize a GridImage with grid-based processing capabilities.
 

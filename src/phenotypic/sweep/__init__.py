@@ -1,8 +1,7 @@
 """Parameter sweep manifest generation for pipeline configurations.
 
 This module provides a clean API for generating cartesian-product parameter
-sweeps from :class:`~phenotypic.ImagePipeline` operations.  It replaces the
-lower-level ``phenotypic.util._pipeline_grid_search`` workflow with a simpler
+sweeps from :class:`~phenotypic.ImagePipeline` operations using a
 ``Sweep`` + ``generate_sweep_manifest`` interface.
 
 **Public API:**

@@ -49,7 +49,7 @@ class ImageColorSpace(ImagePanelHandler):
             name: str | None = None,
             bit_depth: Literal[8, 16] | None = 8,
             *,
-            gamma: GAMMA_ENCODINGS = GAMMA_ENCODINGS.SRGB,
+            gamma: GAMMA_ENCODINGS | str | None = GAMMA_ENCODINGS.SRGB,
             illuminant: Literal["D65", "D50"] = "D65",
     ):
         """Initialize ImageColorSpace with color properties and representations.
@@ -73,13 +73,17 @@ class ImageColorSpace(ImagePanelHandler):
                 for imaging. Defaults to 'D65'.
 
         Raises:
-            ValueError: If gamma is not a GAMMA_ENCODINGS member.
+            ValueError: If gamma is not a GAMMA_ENCODINGS member or a recognized
+                string ('sRGB') / None.
             ValueError: If illuminant is not 'D65' or 'D50'.
         """
         if not isinstance(gamma, GAMMA_ENCODINGS):
-            raise ValueError(
-                    f"gamma must be a GAMMA_ENCODINGS member: got {gamma}"
-            )
+            _GAMMA_COERCE = {"sRGB": GAMMA_ENCODINGS.SRGB, None: GAMMA_ENCODINGS.LINEAR}
+            if gamma not in _GAMMA_COERCE:
+                raise ValueError(
+                        f"gamma must be a GAMMA_ENCODINGS member, 'sRGB', or None: got {gamma}"
+                )
+            gamma = _GAMMA_COERCE[gamma]
         if illuminant not in ["D65", "D50"]:
             raise ValueError('illuminant must be "D65" or "D50"')
 

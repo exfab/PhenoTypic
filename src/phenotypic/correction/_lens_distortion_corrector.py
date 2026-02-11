@@ -117,20 +117,20 @@ class LensDistortionCorrector(_LensfunCorrectorBase):
         if not image.rgb.isempty():
             image._data.rgb = cv2.remap(
                 image._data.rgb, map_x, map_y, cv2.INTER_LINEAR,
-                borderMode=cv2.BORDER_CONSTANT, borderValue=0,
+                borderMode=cv2.BORDER_CONSTANT, borderValue=(0.0,),
             )
 
         # Remap gray
         image._data.gray = cv2.remap(
             image._data.gray.astype(np.float32), map_x, map_y, cv2.INTER_LINEAR,
-            borderMode=cv2.BORDER_CONSTANT, borderValue=0,
+            borderMode=cv2.BORDER_CONSTANT, borderValue=(0.0,),
         ).astype(image._data.gray.dtype)
 
         # Remap detect_mat
         image._data.detect_mat = cv2.remap(
             image._data.detect_mat.astype(np.float32), map_x, map_y,
             cv2.INTER_LINEAR,
-            borderMode=cv2.BORDER_CONSTANT, borderValue=0,
+            borderMode=cv2.BORDER_CONSTANT, borderValue=(0.0,),
         ).astype(image._data.detect_mat.dtype)
 
         # Remap objmap: sparse → dense → remap (nearest) → sparse
@@ -139,7 +139,7 @@ class LensDistortionCorrector(_LensfunCorrectorBase):
             remapped_objmap = cv2.remap(
                 dense_objmap.astype(np.float32), map_x, map_y,
                 cv2.INTER_NEAREST,
-                borderMode=cv2.BORDER_CONSTANT, borderValue=0,
+                borderMode=cv2.BORDER_CONSTANT, borderValue=(0.0,),
             ).astype(dense_objmap.dtype)
             image._data.sparse_object_map = csc_matrix(remapped_objmap)
 

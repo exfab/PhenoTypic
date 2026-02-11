@@ -8,7 +8,6 @@ This section provides practical examples and tutorials for PhenoTypic.
    :caption: GUI Tutorials
 
    pipeline_builder
-   pipeline_explorer
 
 .. toctree::
    :maxdepth: 2

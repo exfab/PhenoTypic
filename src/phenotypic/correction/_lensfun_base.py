@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import importlib.util
-import warnings
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -153,6 +152,10 @@ class _LensfunCorrectorBase(ImageCorrector):
                 f"Cannot resolve lens parameters: {', '.join(missing)}. "
                 "Provide them explicitly or use an image with EXIF metadata."
             )
+
+        # After the missing check, focal_length and aperture are guaranteed non-None
+        assert focal_length is not None
+        assert aperture is not None
 
         return {
             "cam_maker": str(cam_maker),

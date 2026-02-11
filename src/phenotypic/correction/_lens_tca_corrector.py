@@ -117,13 +117,13 @@ class LensTCACorrector(_LensfunCorrectorBase):
             )
             return image
 
-        # coords shape: (h, w, 2, 3) — (x, y) maps for each of 3 channels
+        # coords shape: (h, w, 3, 2) — 3 channels, each with (x, y) maps
         rgb = image._data.rgb.copy()
         corrected = np.empty_like(rgb)
 
         for ch in range(3):
-            map_x = coords[:, :, 0, ch].astype(np.float32)
-            map_y = coords[:, :, 1, ch].astype(np.float32)
+            map_x = coords[:, :, ch, 0].astype(np.float32)
+            map_y = coords[:, :, ch, 1].astype(np.float32)
             corrected[:, :, ch] = cv2.remap(
                 rgb[:, :, ch], map_x, map_y, cv2.INTER_LINEAR,
                 borderMode=cv2.BORDER_REPLICATE,

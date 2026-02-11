@@ -59,7 +59,7 @@ class Image(ImageIOHandler):
             arr: np.ndarray | Image | None = None,
             name: str | None = None,
             bit_depth: Literal[8, 16] | None = None,
-            gamma: GAMMA_ENCODINGS = GAMMA_ENCODINGS.SRGB,
+            gamma: GAMMA_ENCODINGS | str | None = GAMMA_ENCODINGS.SRGB,
             illuminant: str | None = "D65",
     ):
         """Initialize an Image instance with optional image data and color properties.

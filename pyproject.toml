@@ -44,7 +44,7 @@ dependencies = [
     "mmh3",
     "psutil>=7.0.0",
     "colour-science>=0.4.6",
-    "rawpy",
+    "rawpy;sys_platform!='win32'",
     "threadpoolctl>=3.6.0",
     "pympler>=1.0.1",
     "exifread>=3.5.1",
@@ -56,7 +56,8 @@ dependencies = [
     "rich>=14.2.0",
     "imagecodecs>=2025.3.30",
     "findiff>=0.12.2",
-    "pyqt5>=5.15.2"
+    "pyqt5>=5.15.2",
+    "lensfunpy>=1.6.1",
 ]
 
 [project.urls]
@@ -75,11 +76,10 @@ gui = [
     "bokeh>=3.3",
     "jinja2>=3.1",
     "jupyter-bokeh>=4.0.5",
-    "networkx>=3.0",
 ]
 
 lens = [
-    "lensfunpy>=2.0.0",
+    "lensfunpy>=1.0.0",
 ]
 
 [project.scripts]
