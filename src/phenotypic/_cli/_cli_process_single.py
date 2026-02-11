@@ -15,7 +15,8 @@ from pathlib import Path
 from typing import Optional, Literal, Dict, Any
 
 import matplotlib
-matplotlib.use('Agg')  # Non-interactive backend
+
+matplotlib.use("Agg")  # Non-interactive backend
 
 from phenotypic import Image, GridImage, ImagePipeline
 from ._cli_output_manager import OutputManager
@@ -32,7 +33,7 @@ def process_single_image_core(
     dataset_name: str,
     image_type: Literal["Image", "GridImage"],
     read_kwargs: Dict[str, Any],
-    output_manager: OutputManager
+    output_manager: OutputManager,
 ) -> bool:
     """
     Core processing logic for a single image.
@@ -57,10 +58,10 @@ def process_single_image_core(
     """
     # Load pipeline
     pipeline = ImagePipeline.from_json(pipeline_path)
-    
+
     # Determine image class
     image_cls = GridImage if image_type == "GridImage" else Image
-    
+
     # Load image
     detect_mode = read_kwargs.pop("detect_mode", "gray")
     image = image_cls.imread(image_path, **read_kwargs)
@@ -71,78 +72,115 @@ def process_single_image_core(
 
     # Execute pipeline
     measurements = pipeline.apply_and_measure(image, inplace=True)
-    
+
     # Get image stem for output filenames
     image_stem = image_path.stem
-    
+
     # Save measurements
     output_manager.save_measurements(measurements, dataset_name, image_stem)
-    
+
     # Save overlay
     output_manager.save_overlay(image, dataset_name, image_stem)
-    
+
     # Save optional image layers
     output_manager.save_image_layers(image, dataset_name, image_stem)
-    
+
     return True
 
 
 @click.command()
-@click.option("--pipeline", type=click.Path(exists=True, path_type=Path), required=True,
-              help="Path to pipeline JSON file")
-@click.option("--image", type=click.Path(exists=True, path_type=Path), required=True,
-              help="Path to input image")
-@click.option("--output-dir", type=click.Path(path_type=Path), required=True,
-              help="Base output directory")
-@click.option("--dataset-name", required=True,
-              help="Dataset name (subdirectory name or '_root')")
-@click.option("--image-type", type=click.Choice(["Image", "GridImage"]), default="GridImage",
-              help="Image class to use")
-@click.option("--nrows", type=int, default=8,
-              help="Number of grid rows (for GridImage)")
-@click.option("--ncols", type=int, default=12,
-              help="Number of grid columns (for GridImage)")
-@click.option("--bit-depth", type=int, default=None,
-              help="Bit depth (8 or 16)")
-@click.option("--detect-mode", type=click.Choice(["gray", "red", "green", "blue"]),
-              default="gray", help="Color channel for detection matrix")
-@click.option("--save-rgb", is_flag=True,
-              help="Save RGB layer")
-@click.option("--save-gray", is_flag=True,
-              help="Save grayscale layer")
-@click.option("--save-enh-gray", is_flag=True,
-              help="Save detection matrix layer")
-@click.option("--save-objmask", is_flag=True,
-              help="Save object mask")
-@click.option("--save-objmap", is_flag=True,
-              help="Save object map")
-@click.option("--save-objmap-overlay", is_flag=True,
-              help="Save object map overlay (colorized labels)")
-@click.option("--save-enh-gray-overlay", is_flag=True,
-              help="Save detection matrix overlay")
-@click.option("--save-objmask-overlay", is_flag=True,
-              help="Save object mask overlay")
-@click.option("--rgb-ext", default="tiff",
-              help="File extension for RGB saves")
-@click.option("--gray-ext", default="tiff",
-              help="File extension for grayscale saves")
-@click.option("--enh-gray-ext", default="tiff",
-              help="File extension for detection matrix saves")
-@click.option("--objmask-ext", default="png",
-              help="File extension for object mask saves")
-@click.option("--objmap-ext", default="png",
-              help="File extension for object map saves")
-@click.option("--objmap-overlay-ext", default="png",
-              help="File extension for object map overlay saves")
-@click.option("--overlay-mode", type=click.Choice(["image", "figure"]), default="image",
-              help="Overlay saving mode: 'image' for full-resolution, 'figure' for matplotlib")
-@click.option("--overlay-alpha", type=float, default=0.3,
-              help="Alpha transparency for label overlay (0.0-1.0)")
-@click.option("--no-dataset-column", "include_dataset_column",
-              is_flag=True, flag_value=False, default=True,
-              help="Exclude Metadata_Dataset column from measurements CSV (included by default)")
-@click.option("--event-log", type=click.Path(path_type=Path), default=None,
-              help="Path to event log file (for status updates)")
+@click.option(
+    "--pipeline",
+    type=click.Path(exists=True, path_type=Path),
+    required=True,
+    help="Path to pipeline JSON file",
+)
+@click.option(
+    "--image",
+    type=click.Path(exists=True, path_type=Path),
+    required=True,
+    help="Path to input image",
+)
+@click.option(
+    "--output-dir",
+    type=click.Path(path_type=Path),
+    required=True,
+    help="Base output directory",
+)
+@click.option(
+    "--dataset-name", required=True, help="Dataset name (subdirectory name or '_root')"
+)
+@click.option(
+    "--image-type",
+    type=click.Choice(["Image", "GridImage"]),
+    default="GridImage",
+    help="Image class to use",
+)
+@click.option("--nrows", type=int, default=8, help="Number of grid rows (for GridImage)")
+@click.option(
+    "--ncols", type=int, default=12, help="Number of grid columns (for GridImage)"
+)
+@click.option("--bit-depth", type=int, default=None, help="Bit depth (8 or 16)")
+@click.option(
+    "--detect-mode",
+    type=click.Choice(["gray", "red", "green", "blue"]),
+    default="gray",
+    help="Color channel for detection matrix",
+)
+@click.option("--save-rgb", is_flag=True, help="Save RGB layer")
+@click.option("--save-gray", is_flag=True, help="Save grayscale layer")
+@click.option("--save-detect-mat", is_flag=True, help="Save detection matrix layer")
+@click.option("--save-objmask", is_flag=True, help="Save object mask")
+@click.option("--save-objmap", is_flag=True, help="Save object map")
+@click.option(
+    "--save-objmap-overlay",
+    is_flag=True,
+    help="Save object map overlay (colorized labels)",
+)
+@click.option(
+    "--save-detect-mat-overlay", is_flag=True, help="Save detection matrix overlay"
+)
+@click.option("--save-objmask-overlay", is_flag=True, help="Save object mask overlay")
+@click.option("--rgb-ext", default="tiff", help="File extension for RGB saves")
+@click.option("--gray-ext", default="tiff", help="File extension for grayscale saves")
+@click.option(
+    "--detect-mat-ext", default="tiff", help="File extension for detection matrix saves"
+)
+@click.option(
+    "--objmask-ext", default="png", help="File extension for object mask saves"
+)
+@click.option("--objmap-ext", default="png", help="File extension for object map saves")
+@click.option(
+    "--objmap-overlay-ext",
+    default="png",
+    help="File extension for object map overlay saves",
+)
+@click.option(
+    "--overlay-mode",
+    type=click.Choice(["image", "figure"]),
+    default="image",
+    help="Overlay saving mode: 'image' for full-resolution, 'figure' for matplotlib",
+)
+@click.option(
+    "--overlay-alpha",
+    type=float,
+    default=0.3,
+    help="Alpha transparency for label overlay (0.0-1.0)",
+)
+@click.option(
+    "--no-dataset-column",
+    "include_dataset_column",
+    is_flag=True,
+    flag_value=False,
+    default=True,
+    help="Exclude Metadata_Dataset column from measurements CSV (included by default)",
+)
+@click.option(
+    "--event-log",
+    type=click.Path(path_type=Path),
+    default=None,
+    help="Path to event log file (for status updates)",
+)
 def main(
     pipeline: Path,
     image: Path,
@@ -170,11 +208,11 @@ def main(
     overlay_mode: str,
     overlay_alpha: float,
     include_dataset_column: bool,
-    event_log: Optional[Path]
+    event_log: Optional[Path],
 ):
     """
     Process a single image with PhenoTypic pipeline.
-    
+
     This is designed to be called by SLURM batch scripts for autonomous
     execution. It processes one image and logs completion to event log.
     """
@@ -225,7 +263,7 @@ def main(
             overlay_mode=overlay_mode,
             overlay_alpha=overlay_alpha,
         )
-        
+
         # Process image
         click.echo(f"Processing {image.name}...")
         success = process_single_image_core(
@@ -235,9 +273,9 @@ def main(
             dataset_name=dataset_name,
             image_type=image_type,
             read_kwargs=read_kwargs,
-            output_manager=output_manager
+            output_manager=output_manager,
         )
-        
+
         # Log completion if event log provided
         if event_log is not None:
             append_completion_event(
@@ -245,19 +283,19 @@ def main(
                 dataset=dataset_name,
                 image=image.name,
                 status="completed",
-                error_msg=""
+                error_msg="",
             )
-        
+
         click.echo(f"✓ Successfully processed {image.name}")
         sys.exit(0)
-        
+
     except Exception as e:
         error_msg = f"{type(e).__name__}: {str(e)}"
         tb = traceback.format_exc()
-        
+
         click.echo(f"✗ Failed to process {image.name}: {error_msg}", err=True)
         click.echo(f"Traceback:\n{tb}", err=True)
-        
+
         # Log failure if event log provided
         if event_log is not None:
             try:
@@ -266,11 +304,11 @@ def main(
                     dataset=dataset_name,
                     image=image.name,
                     status="failed",
-                    error_msg=error_msg
+                    error_msg=error_msg,
                 )
             except Exception:
                 pass  # Don't fail if logging fails
-        
+
         sys.exit(1)
 
 

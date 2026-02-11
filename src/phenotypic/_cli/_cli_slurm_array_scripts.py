@@ -153,7 +153,7 @@ def generate_array_job_script(
     if config.save_gray:
         cmd_parts.append("--save-gray")
     if config.save_detect_mat:
-        cmd_parts.append("--save-enh-gray")
+        cmd_parts.append("--save-detect-mat")
     if config.save_objmask:
         cmd_parts.append("--save-objmask")
     if config.save_objmap:
@@ -161,14 +161,14 @@ def generate_array_job_script(
     if config.save_objmap_overlay:
         cmd_parts.append("--save-objmap-overlay")
     if config.save_detect_mat_overlay:
-        cmd_parts.append("--save-enh-gray-overlay")
+        cmd_parts.append("--save-detect-mat-overlay")
     if config.save_objmask_overlay:
         cmd_parts.append("--save-objmask-overlay")
 
     # Add extensions
     cmd_parts.extend(["--rgb-ext", config.rgb_ext])
     cmd_parts.extend(["--gray-ext", config.gray_ext])
-    cmd_parts.extend(["--enh-gray-ext", config.detect_mat_ext])
+    cmd_parts.extend(["--detect-mat-ext", config.detect_mat_ext])
     cmd_parts.extend(["--objmask-ext", config.objmask_ext])
     cmd_parts.extend(["--objmap-ext", config.objmap_ext])
     cmd_parts.extend(["--objmap-overlay-ext", config.objmap_overlay_ext])

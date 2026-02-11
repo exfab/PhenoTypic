@@ -278,7 +278,8 @@ def _format_duration(seconds: float) -> str:
     help="Parallel pipeline jobs per image (-1 = all cores).",
 )
 @click.option(
-    "--slurm-args",
+    "--slurm",
+    "slurm_args",
     multiple=True,
     help="SLURM parameters as KEY=VALUE pairs.",
 )
@@ -286,12 +287,12 @@ def _format_duration(seconds: float) -> str:
 @click.option("--wait", is_flag=True, help="Monitor SLURM jobs.")
 @click.option("--save-rgb", is_flag=True, help="Save RGB layer.")
 @click.option("--save-gray", is_flag=True, help="Save grayscale layer.")
-@click.option("--save-enh-gray", is_flag=True, help="Save detection matrix.")
+@click.option("--save-detect-mat", is_flag=True, help="Save detection matrix.")
 @click.option("--save-objmask", is_flag=True, help="Save object mask.")
 @click.option("--save-objmap", is_flag=True, help="Save object map.")
 @click.option("--save-objmap-overlay", is_flag=True, help="Save object map overlay.")
 @click.option(
-    "--save-enh-gray-overlay", is_flag=True, help="Save detection matrix overlay."
+    "--save-detect-mat-overlay", is_flag=True, help="Save detection matrix overlay."
 )
 @click.option("--save-objmask-overlay", is_flag=True, help="Save object mask overlay.")
 @click.option(

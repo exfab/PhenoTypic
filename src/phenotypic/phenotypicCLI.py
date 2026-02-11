@@ -41,14 +41,14 @@ Examples:
 
     # SLURM execution (autonomous)
     uv run python -m phenotypic pipeline.json ./images \
-        --slurm-args slurm_partition=compute \
-        --slurm-args slurm_account=proj \
-        --slurm-args mem_gb=16
+        --slurm slurm_partition=compute \
+        --slurm slurm_account=proj \
+        --slurm mem_gb=16
 
     # SLURM with progress monitoring
     uv run python -m phenotypic pipeline.json ./images \
-        --slurm-args slurm_partition=compute \
-        --slurm-args slurm_account=proj \
+        --slurm slurm_partition=compute \
+        --slurm slurm_account=proj \
         --wait
 
     # Save intermediate layers
@@ -60,7 +60,7 @@ Examples:
         --image-type GridImage --nrows 16 --ncols 24
 
 SLURM Execution (Autonomous HPC Cluster Processing):
-    Use --slurm-args to submit jobs to an HPC cluster via SLURM. The CLI will:
+    Use --slurm to submit jobs to an HPC cluster via SLURM. The CLI will:
     1. Generate SBATCH scripts for each dataset
     2. Create array jobs for parallel image processing
     3. Automatically handle dependencies and chunking
@@ -90,26 +90,19 @@ SLURM Execution (Autonomous HPC Cluster Processing):
 
     Example: Submit with account, partition, memory, and time limits
         uv run python -m phenotypic pipeline.json ./images \\
-            --slurm-args slurm_partition=compute \\
-            --slurm-args slurm_account=lab_proj \\
-            --slurm-args mem_gb=32 \\
-            --slurm-args time=120 \\
-            --slurm-args slurm_mail_type=END \\
-            --slurm-args slurm_mail_user=user@university.edu \\
+            --slurm slurm_partition=compute \\
+            --slurm slurm_account=lab_proj \\
+            --slurm mem_gb=32 \\
+            --slurm time=120 \\
+            --slurm slurm_mail_type=END \\
+            --slurm slurm_mail_user=user@university.edu \\
             --wait
 
     Example: Dry-run to preview SLURM submission plan
         uv run python -m phenotypic pipeline.json ./images \\
-            --slurm-args slurm_partition=compute \\
-            --slurm-args slurm_account=lab_proj \\
+            --slurm slurm_partition=compute \\
+            --slurm slurm_account=lab_proj \\
             --dry-run
-
-Migration Notes (v1.x → v2.0):
-    - OUTPUT_DIR is now optional (generates timestamped dir if not provided)
-    - Use -o/--output-dir instead of positional OUTPUT_DIR argument
-    - --slurm-params KEY=VALUE replaced with --slurm-args KEY=VALUE
-    - --slurm-kwds renamed to --slurm-args (breaking change in v2.0)
-    - Recursive directory processing now preserves subdirectory hierarchy
 """
 
 import sys
@@ -503,11 +496,12 @@ def _display_execution_config(config: ExecutionConfig, datasets: list) -> None:
     help="Number of parallel jobs for local execution (-1 = all cores)",
 )
 @click.option(
-    "--slurm-args",
+    "--slurm",
+    "slurm_args",
     multiple=True,
     help="SLURM parameters as KEY=VALUE pairs. Pass multiple parameters with "
-    "repeated --slurm-args flags (e.g., --slurm-args slurm_partition=compute "
-    "--slurm-args mem_gb=16 --slurm-args time=60). Use slurm_ prefix for "
+    "repeated --slurm flags (e.g., --slurm slurm_partition=compute "
+    "--slurm mem_gb=16 --slurm time=60). Use slurm_ prefix for "
     "standard SBATCH directives, or use convenience params like mem_gb and time.",
 )
 @click.option(
@@ -531,7 +525,7 @@ def _display_execution_config(config: ExecutionConfig, datasets: list) -> None:
     help="Save grayscale images to OUTPUT_DIR/gray/",
 )
 @click.option(
-    "--save-enh-gray",
+    "--save-detect-mat",
     is_flag=True,
     help="Save detection matrix to OUTPUT_DIR/detect_mat/",
 )
@@ -551,7 +545,7 @@ def _display_execution_config(config: ExecutionConfig, datasets: list) -> None:
     help="Save object map overlay (colorized labels) to OUTPUT_DIR/objmap_overlay/",
 )
 @click.option(
-    "--save-enh-gray-overlay",
+    "--save-detect-mat-overlay",
     is_flag=True,
     help="Save detection matrix overlay to OUTPUT_DIR/detect_mat_overlay/",
 )
@@ -573,7 +567,7 @@ def _display_execution_config(config: ExecutionConfig, datasets: list) -> None:
     help="File extension for grayscale saves",
 )
 @click.option(
-    "--enh-gray-ext",
+    "--detect-mat-ext",
     default="tiff",
     show_default=True,
     help="File extension for detection matrix saves",

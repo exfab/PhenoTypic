@@ -94,8 +94,8 @@ def parse_slurm_args(slurm_args: "Sequence[str]") -> dict:
     for param in slurm_args:
         if "=" not in param:
             raise click.BadParameter(
-                "--slurm-args must be KEY=VALUE pairs",
-                param_hint="--slurm-args",
+                "--slurm must be KEY=VALUE pairs",
+                param_hint="--slurm",
             )
 
         key, value = param.split("=", 1)
@@ -105,7 +105,7 @@ def parse_slurm_args(slurm_args: "Sequence[str]") -> dict:
         if not key:
             raise click.BadParameter(
                 "SLURM parameter keys cannot be empty",
-                param_hint="--slurm-args",
+                param_hint="--slurm",
             )
 
         try:

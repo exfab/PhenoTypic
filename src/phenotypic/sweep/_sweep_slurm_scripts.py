@@ -112,7 +112,7 @@ def generate_sweep_array_script(
     if save_layers.get("gray"):
         cmd_parts.append("--save-gray")
     if save_layers.get("detect_mat"):
-        cmd_parts.append("--save-enh-gray")
+        cmd_parts.append("--save-detect-mat")
     if save_layers.get("objmask"):
         cmd_parts.append("--save-objmask")
     if save_layers.get("objmap"):
@@ -120,7 +120,7 @@ def generate_sweep_array_script(
     if save_layers.get("objmap_overlay"):
         cmd_parts.append("--save-objmap-overlay")
     if save_layers.get("detect_mat_overlay"):
-        cmd_parts.append("--save-enh-gray-overlay")
+        cmd_parts.append("--save-detect-mat-overlay")
     if save_layers.get("objmask_overlay"):
         cmd_parts.append("--save-objmask-overlay")
 

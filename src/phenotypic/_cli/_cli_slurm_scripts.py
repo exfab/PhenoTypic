@@ -15,19 +15,16 @@ from ._cli_utils import get_python_command
 
 
 def generate_slurm_directives(
-        job_name: str,
-        slurm_args: Dict[str, Any],
-        output_log: Path,
-        error_log: Path
+    job_name: str, slurm_args: Dict[str, Any], output_log: Path, error_log: Path
 ) -> str:
     """
     Generate SBATCH directive lines for SLURM script.
 
-    Converts submitit-style parameters to SBATCH directives with proper formatting.
+    Converts CLI SLURM parameters to SBATCH directives with proper formatting.
 
     Args:
         job_name: Job name
-        slurm_args: SLURM parameters dict (submitit format)
+        slurm_args: SLURM parameters dict
         output_log: Path for stdout log
         error_log: Path for stderr log
 
@@ -47,13 +44,13 @@ def generate_slurm_directives(
 
     # Add user-provided SLURM parameters
     for key, value in slurm_args.items():
-        # Convert submitit-style keys to SBATCH directive names
+        # Convert CLI-style keys to SBATCH directive names
         directive_name = key.replace("slurm_", "").replace("_", "-")
 
         # Handle special cases
         if key in ("time", "slurm_time"):
             # Convert integer minutes to HH:MM:SS format for SBATCH
-            # (submitit expects integer minutes, SBATCH needs HH:MM:SS)
+            # (CLI passes integer minutes, SBATCH needs HH:MM:SS)
             if isinstance(value, int):
                 hours = value // 60
                 minutes = value % 60
@@ -78,16 +75,16 @@ def generate_slurm_directives(
 
 
 def generate_image_processing_script(
-        image_path: Path,
-        dataset: Dataset,
-        config: ExecutionConfig,
-        output_dir: Path,
-        event_log: Path,
-        script_dir: Path
+    image_path: Path,
+    dataset: Dataset,
+    config: ExecutionConfig,
+    output_dir: Path,
+    event_log: Path,
+    script_dir: Path,
 ) -> Path:
     """
     Generate standalone bash script for processing a single image.
-    
+
     Args:
         image_path: Path to image file
         dataset: Dataset containing this image
@@ -95,7 +92,7 @@ def generate_image_processing_script(
         output_dir: Base output directory
         event_log: Path to event log file
         script_dir: Directory to save script in
-        
+
     Returns:
         Path to generated script file
     """
@@ -114,10 +111,10 @@ def generate_image_processing_script(
 
     # Generate SBATCH directives
     directives = generate_slurm_directives(
-            job_name=job_name,
-            slurm_args=config.slurm_args,
-            output_log=output_log,
-            error_log=error_log
+        job_name=job_name,
+        slurm_args=config.slurm_args,
+        output_log=output_log,
+        error_log=error_log,
     )
 
     # Get Python command (uses uv run python if available)
@@ -125,12 +122,19 @@ def generate_image_processing_script(
 
     # Build command arguments
     cmd_parts = [
-        *python_cmd, "-m", "phenotypic._cli._cli_process_single",
-        "--pipeline", shlex.quote(str(config.pipeline_json.absolute())),
-        "--image", shlex.quote(str(image_path.absolute())),
-        "--output-dir", shlex.quote(str(output_dir.absolute())),
-        "--dataset-name", shlex.quote(dataset.name),
-        "--image-type", config.image_type,
+        *python_cmd,
+        "-m",
+        "phenotypic._cli._cli_process_single",
+        "--pipeline",
+        shlex.quote(str(config.pipeline_json.absolute())),
+        "--image",
+        shlex.quote(str(image_path.absolute())),
+        "--output-dir",
+        shlex.quote(str(output_dir.absolute())),
+        "--dataset-name",
+        shlex.quote(dataset.name),
+        "--image-type",
+        config.image_type,
     ]
 
     # Add grid parameters if GridImage
@@ -148,7 +152,7 @@ def generate_image_processing_script(
     if config.save_gray:
         cmd_parts.append("--save-gray")
     if config.save_detect_mat:
-        cmd_parts.append("--save-enh-gray")
+        cmd_parts.append("--save-detect-mat")
     if config.save_objmask:
         cmd_parts.append("--save-objmask")
     if config.save_objmap:
@@ -156,14 +160,14 @@ def generate_image_processing_script(
     if config.save_objmap_overlay:
         cmd_parts.append("--save-objmap-overlay")
     if config.save_detect_mat_overlay:
-        cmd_parts.append("--save-enh-gray-overlay")
+        cmd_parts.append("--save-detect-mat-overlay")
     if config.save_objmask_overlay:
         cmd_parts.append("--save-objmask-overlay")
 
     # Add extensions
     cmd_parts.extend(["--rgb-ext", config.rgb_ext])
     cmd_parts.extend(["--gray-ext", config.gray_ext])
-    cmd_parts.extend(["--enh-gray-ext", config.detect_mat_ext])
+    cmd_parts.extend(["--detect-mat-ext", config.detect_mat_ext])
     cmd_parts.extend(["--objmask-ext", config.objmask_ext])
     cmd_parts.extend(["--objmap-ext", config.objmap_ext])
     cmd_parts.extend(["--objmap-overlay-ext", config.objmap_overlay_ext])
@@ -214,18 +218,16 @@ exit 0
 
 
 def generate_all_image_scripts(
-        datasets: List[Dataset],
-        config: ExecutionConfig,
-        output_dir: Path
+    datasets: List[Dataset], config: ExecutionConfig, output_dir: Path
 ) -> Dict[str, List[Path]]:
     """
     Generate bash scripts for all images across all datasets.
-    
+
     Args:
         datasets: List of datasets to process
         config: Execution configuration
         output_dir: Base output directory
-        
+
     Returns:
         Dictionary mapping dataset names to lists of script paths
     """
@@ -239,12 +241,12 @@ def generate_all_image_scripts(
 
         for image_path in dataset.images:
             script_path = generate_image_processing_script(
-                    image_path=image_path,
-                    dataset=dataset,
-                    config=config,
-                    output_dir=output_dir,
-                    event_log=event_log,
-                    script_dir=script_dir / dataset.name
+                image_path=image_path,
+                dataset=dataset,
+                config=config,
+                output_dir=output_dir,
+                event_log=event_log,
+                script_dir=script_dir / dataset.name,
             )
             dataset_scripts.append(script_path)
 

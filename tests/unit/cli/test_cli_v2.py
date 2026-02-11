@@ -774,10 +774,10 @@ class TestCLIv2Integration:
             # Should process limited number of images
             assert "Sample mode" in result.output or "sample" in result.output.lower()
 
-    def test_cli_slurm_args_backend_selection(
+    def test_cli_slurm_backend_selection(
         self, runner, temp_pipeline, temp_input_dir
     ):
-        """Test that --slurm-args causes CLI to use SLURM backend."""
+        """Test that --slurm causes CLI to use SLURM backend."""
         with runner.isolated_filesystem():
             output_dir = Path("./test_output")
             result = runner.invoke(
@@ -787,9 +787,9 @@ class TestCLIv2Integration:
                     str(temp_input_dir),
                     "-o",
                     str(output_dir),
-                    "--slurm-args",
+                    "--slurm",
                     "slurm_partition=compute",
-                    "--slurm-args",
+                    "--slurm",
                     "mem_gb=16",
                     "--dry-run",  # Use dry-run to avoid actual SLURM submission
                     "--skip-validation",
@@ -801,12 +801,8 @@ class TestCLIv2Integration:
             assert "SLURM Cluster" in result.output or result.exit_code == 0
 
 
-@pytest.mark.skipif(
-    not pytest.importorskip("submitit"),
-    reason="submitit not installed",
-)
 class TestSLURMFeatures:
-    """Test SLURM-specific features (requires submitit)."""
+    """Test SLURM-specific features."""
 
     def test_slurm_args_parsing(self):
         """Test SLURM args parsing."""

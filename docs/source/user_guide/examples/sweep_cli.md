@@ -188,11 +188,11 @@ Enable additional output layers with flags:
 python -m phenotypic.sweep sweep.json ./images/ \
     --save-rgb \
     --save-gray \
-    --save-enh-gray \
+    --save-detect-mat \
     --save-objmask \
     --save-objmap \
     --save-objmap-overlay \
-    --save-enh-gray-overlay \
+    --save-detect-mat-overlay \
     --save-objmask-overlay \
     --overlay-mode image \
     --overlay-alpha 0.3
@@ -269,20 +269,20 @@ tasks. Each array task processes one image through all pipelines sequentially.
 ```bash
 # Submit as SLURM array job
 python -m phenotypic.sweep sweep.json ./images/ -o ./results/ \
-    --slurm-args time=60 \
-    --slurm-args mem=16G \
-    --slurm-args partition=batch \
-    --slurm-args cpus-per-task=4
+    --slurm time=60 \
+    --slurm mem=16G \
+    --slurm partition=batch \
+    --slurm cpus-per-task=4
 
 # Submit and monitor progress
 python -m phenotypic.sweep sweep.json ./images/ -o ./results/ \
-    --slurm-args time=60 \
-    --slurm-args mem=16G \
+    --slurm time=60 \
+    --slurm mem=16G \
     --wait
 
 # Force local execution even with SLURM args defined
 python -m phenotypic.sweep sweep.json ./images/ -o ./results/ \
-    --slurm-args time=60 \
+    --slurm time=60 \
     --force-local
 ```
 
