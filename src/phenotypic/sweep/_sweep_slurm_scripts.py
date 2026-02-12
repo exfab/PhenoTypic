@@ -138,7 +138,6 @@ def generate_sweep_array_script(
 # Manifest: {manifest_path}
 # Images: {num_tasks}
 
-set -e
 set -u
 
 echo "======================================"

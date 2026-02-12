@@ -76,6 +76,13 @@ def _run_single_pipeline(
 
     except Exception as e:
         tb = traceback.format_exc()
+        # Always print to stderr so SLURM logs capture the error
+        print(
+            f"[PIPELINE FAIL] {pipeline_name} on {image_path.name}: "
+            f"{type(e).__name__}: {e}",
+            file=sys.stderr,
+            flush=True,
+        )
         try:
             output_manager.write_failure_log(
                 image_path=image_path,
@@ -83,8 +90,13 @@ def _run_single_pipeline(
                 traceback_str=tb,
                 pipeline_json_str=pipeline_json_str,
             )
-        except Exception:
-            pass  # never mask the original pipeline error
+        except Exception as log_exc:
+            print(
+                f"[WARN] Could not write failure log for {pipeline_name}: "
+                f"{type(log_exc).__name__}: {log_exc}",
+                file=sys.stderr,
+                flush=True,
+            )
         return (pipeline_name, False, tb)
 
 
@@ -310,6 +322,15 @@ def main(
             f"Finished {image.name}: {succeeded} succeeded, {failed} failed"
         )
         if failed > 0:
+            # Print first failure traceback to SLURM log for diagnostics
+            failure_results = [(n, tb) for n, ok, tb in results if not ok]
+            n_show = min(3, len(failure_results))
+            click.echo(
+                f"\n--- First {n_show} of {len(failure_results)} failure tracebacks ---",
+                err=True,
+            )
+            for pipe_name, tb in failure_results[:n_show]:
+                click.echo(f"\n[{pipe_name}]\n{tb}", err=True)
             click.echo(
                 f"Detailed failure logs: {output_manager.failures_dir}"
             )
