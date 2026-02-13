@@ -119,9 +119,11 @@ docs = [
     "myst-parser>=4.0.1",
 ]
 
+
 [tool.pytest.ini_options]
-testpaths = ["tests/unit"]
+testpaths = ["tests/unit", "tests/smoke"]
 addopts = "--verbose --capture=no"
+markers = ["smoke: basic operation test"]
 # IMPORTANT: Do NOT combine --testmon and -n auto (SQLite concurrency issues)
 # CI Strategy: PR checks use --testmon (sequential, selective)
 #              Manual runs use -n auto (parallel, comprehensive)

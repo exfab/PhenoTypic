@@ -5,8 +5,8 @@ import pandas as pd
 from phenotypic.data import load_synth_yeast_plate
 from phenotypic.refine import MaskOpener
 
-from ..test_fixtures import _image_measurements
-from ..resources.TestHelper import timeit
+from unit.test_fixtures import _image_measurements
+from unit.resources.TestHelper import timeit
 
 
 @pytest.mark.smoke
