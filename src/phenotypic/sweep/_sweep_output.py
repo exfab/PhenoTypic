@@ -7,6 +7,7 @@ and aggregation of measurements across pipelines.
 from __future__ import annotations
 
 import logging
+import shutil
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable, Dict, List, Optional, TYPE_CHECKING
@@ -18,6 +19,38 @@ if TYPE_CHECKING:
     from phenotypic import Image
 
 logger = logging.getLogger(__name__)
+
+
+def archive_previous_run(output_dir: Path) -> Optional[Path]:
+    """Move existing sweep results into ``prev_sweeps/<timestamp>/``.
+
+    Detects a previous run by checking if ``output_dir/results`` exists
+    and is non-empty. If so, moves all contents of ``output_dir``
+    (except ``prev_sweeps/`` itself) into ``prev_sweeps/YYYYMMDD_HHMMSS/``.
+
+    Args:
+        output_dir: Base sweep output directory.
+
+    Returns:
+        Path to the archive directory if archiving occurred, else ``None``.
+    """
+    output_dir = Path(output_dir)
+    results_dir = output_dir / "results"
+
+    if not results_dir.is_dir() or not any(results_dir.iterdir()):
+        return None
+
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    archive_dir = output_dir / "prev_sweeps" / timestamp
+    archive_dir.mkdir(parents=True, exist_ok=True)
+
+    for item in output_dir.iterdir():
+        if item.name == "prev_sweeps":
+            continue
+        shutil.move(str(item), str(archive_dir / item.name))
+
+    logger.info(f"Archived previous sweep results to {archive_dir}")
+    return archive_dir
 
 
 class SweepOutputManager:
@@ -156,7 +189,7 @@ class SweepOutputManager:
         measurements: pd.DataFrame,
         pipeline_name: str,
         image_stem: str,
-    ) -> Path:
+    ) -> Optional[Path]:
         """Save measurements CSV for a single image under a pipeline.
 
         Args:
@@ -165,23 +198,35 @@ class SweepOutputManager:
             image_stem: Image filename without extension.
 
         Returns:
-            Path where measurements were saved.
+            Path where measurements were saved, or ``None`` if saving failed.
         """
-        if "Metadata_Pipeline" not in measurements.columns:
-            measurements = measurements.copy()
-            measurements.insert(0, "Metadata_Pipeline", pipeline_name)
+        try:
+            if "Metadata_Pipeline" not in measurements.columns:
+                measurements = measurements.copy()
+                measurements.insert(0, "Metadata_Pipeline", pipeline_name)
 
-        output_path = self.get_output_path(pipeline_name, "measurements", image_stem)
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        measurements.to_csv(output_path, index=False)
-        return output_path
+            output_path = self.get_output_path(
+                pipeline_name, "measurements", image_stem
+            )
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            measurements.to_csv(output_path, index=False)
+            logger.info(
+                f"Saved measurements for {pipeline_name}/{image_stem}"
+            )
+            return output_path
+        except Exception as e:
+            logger.warning(
+                f"Failed to save measurements for "
+                f"{pipeline_name}/{image_stem}: {type(e).__name__}: {e}"
+            )
+            return None
 
     def save_overlay(
         self,
         image: "Image",
         pipeline_name: str,
         image_stem: str,
-    ) -> Path:
+    ) -> Optional[Path]:
         """Save overlay visualization for a single image.
 
         Args:
@@ -190,28 +235,40 @@ class SweepOutputManager:
             image_stem: Image filename without extension.
 
         Returns:
-            Path where overlay was saved.
+            Path where overlay was saved, or ``None`` if saving failed.
         """
-        output_path = self.get_output_path(pipeline_name, "overlays", image_stem)
-        output_path.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            output_path = self.get_output_path(
+                pipeline_name, "overlays", image_stem
+            )
+            output_path.parent.mkdir(parents=True, exist_ok=True)
 
-        if self.overlay_mode == "figure":
-            fig, ax = image.plot.overlay()
-            fig.savefig(output_path, bbox_inches="tight", dpi=150)
-            plt.close(fig)
-        else:
-            if not image.rgb.isempty():
-                image.rgb.save_overlay(
-                    filepath=output_path,
-                    overlay_alpha=self.overlay_alpha,
-                )
+            if self.overlay_mode == "figure":
+                fig, ax = image.plot.overlay()
+                fig.savefig(output_path, bbox_inches="tight", dpi=150)
+                plt.close(fig)
             else:
-                image.gray.save_overlay(
-                    filepath=output_path,
-                    overlay_alpha=self.overlay_alpha,
-                )
+                if not image.rgb.isempty():
+                    image.rgb.save_overlay(
+                        filepath=output_path,
+                        overlay_alpha=self.overlay_alpha,
+                    )
+                else:
+                    image.gray.save_overlay(
+                        filepath=output_path,
+                        overlay_alpha=self.overlay_alpha,
+                    )
 
-        return output_path
+            logger.info(
+                f"Saved overlay for {pipeline_name}/{image_stem}"
+            )
+            return output_path
+        except Exception as e:
+            logger.warning(
+                f"Failed to save overlay for "
+                f"{pipeline_name}/{image_stem}: {type(e).__name__}: {e}"
+            )
+            return None
 
     def _save_layer_safely(
         self,
@@ -226,10 +283,14 @@ class SweepOutputManager:
             path = self.get_output_path(pipeline_name, layer_name, image_stem)
             path.parent.mkdir(parents=True, exist_ok=True)
             save_func(path)
+            logger.info(
+                f"Saved {layer_name} for {pipeline_name}/{image_stem}"
+            )
             return path
         except Exception as e:
             logger.warning(
-                f"Failed to save {layer_name} for {pipeline_name}/{image_stem}: "
+                f"Failed to save {layer_name} for "
+                f"{pipeline_name}/{image_stem}: "
                 f"{type(e).__name__}: {e}"
             )
             return None
@@ -255,7 +316,7 @@ class SweepOutputManager:
         if self.save_layers.get("rgb") and not image.rgb.isempty():
             path = self._save_layer_safely(
                 "rgb", image, pipeline_name, image_stem,
-                lambda p: image.rgb.imsave(filepath=p),
+                lambda p: image.rgb.imsave(p),
             )
             if path:
                 saved_paths["rgb"] = path

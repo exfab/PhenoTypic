@@ -12,7 +12,7 @@ from phenotypic.enhance import GaussianBlur
 from phenotypic.detect import OtsuDetector
 from phenotypic.measure import MeasureShape
 
-from phenotypic.sweep._sweep_output import SweepOutputManager
+from phenotypic.sweep._sweep_output import SweepOutputManager, archive_previous_run
 from phenotypic.sweep._sweep_cli import _scan_flat_image_dir, _flatten_pipelines
 
 
@@ -255,3 +255,102 @@ class TestFlattenPipelines:
     def test_nonexistent_manifest_raises(self, tmp_path):
         with pytest.raises(FileNotFoundError):
             _flatten_pipelines(tmp_path / "no.json")
+
+
+# ---------------------------------------------------------------------------
+# Archive previous run tests
+# ---------------------------------------------------------------------------
+
+
+class TestArchivePreviousRun:
+
+    def test_archive_moves_results_to_prev_sweeps(self, tmp_path):
+        """Previous results/, logs/, and manifest are moved into a timestamped archive."""
+        out = tmp_path / "output"
+        results = out / "results" / "Pipeline_0" / "measurements"
+        results.mkdir(parents=True)
+        (results / "img1.csv").write_text("a,b\n1,2")
+        (out / "logs").mkdir()
+        (out / "sweep_manifest.json").write_text("{}")
+
+        archive = archive_previous_run(out)
+
+        assert archive is not None
+        assert archive.parent.name == "prev_sweeps"
+        # Timestamp dir name is YYYYMMDD_HHMMSS
+        assert len(archive.name) == 15
+        # Original items moved into archive
+        assert (archive / "results" / "Pipeline_0" / "measurements" / "img1.csv").exists()
+        assert (archive / "logs").exists()
+        assert (archive / "sweep_manifest.json").exists()
+        # Original locations are gone
+        assert not (out / "results").exists()
+        assert not (out / "logs").exists()
+
+    def test_archive_noop_when_no_results(self, tmp_path):
+        """Empty output dir (no results/) returns None."""
+        out = tmp_path / "output"
+        out.mkdir()
+
+        assert archive_previous_run(out) is None
+
+    def test_archive_noop_when_results_empty(self, tmp_path):
+        """Empty results/ directory returns None."""
+        out = tmp_path / "output"
+        (out / "results").mkdir(parents=True)
+
+        assert archive_previous_run(out) is None
+
+    def test_archive_noop_when_dir_missing(self, tmp_path):
+        """Nonexistent output dir returns None."""
+        assert archive_previous_run(tmp_path / "nonexistent") is None
+
+    def test_archive_preserves_prev_sweeps_dir(self, tmp_path):
+        """The prev_sweeps/ directory itself is not moved into the archive."""
+        out = tmp_path / "output"
+        (out / "results" / "P0").mkdir(parents=True)
+        (out / "results" / "P0" / "data.csv").write_text("x")
+        # Pre-existing prev_sweeps from an earlier archive
+        (out / "prev_sweeps" / "20250101_000000").mkdir(parents=True)
+
+        archive = archive_previous_run(out)
+
+        assert archive is not None
+        # prev_sweeps still at top level, not nested
+        assert (out / "prev_sweeps").is_dir()
+        assert not (archive / "prev_sweeps").exists()
+        # Old archive still present
+        assert (out / "prev_sweeps" / "20250101_000000").is_dir()
+
+    def test_multiple_archives_coexist(self, tmp_path):
+        """Two successive archives get different timestamps."""
+        from datetime import datetime
+        from unittest.mock import patch
+
+        out = tmp_path / "output"
+
+        # First run with a fixed timestamp
+        (out / "results" / "P0").mkdir(parents=True)
+        (out / "results" / "P0" / "a.csv").write_text("1")
+        with patch(
+            "phenotypic.sweep._sweep_output.datetime"
+        ) as mock_dt:
+            mock_dt.now.return_value = datetime(2025, 1, 1, 0, 0, 0)
+            first = archive_previous_run(out)
+
+        # Second run with a different timestamp
+        (out / "results" / "P1").mkdir(parents=True)
+        (out / "results" / "P1" / "b.csv").write_text("2")
+        with patch(
+            "phenotypic.sweep._sweep_output.datetime"
+        ) as mock_dt:
+            mock_dt.now.return_value = datetime(2025, 1, 1, 0, 0, 1)
+            second = archive_previous_run(out)
+
+        assert first is not None
+        assert second is not None
+        assert first != second
+        assert first.exists()
+        assert second.exists()
+        # Both live under prev_sweeps/
+        assert len(list((out / "prev_sweeps").iterdir())) == 2

@@ -249,7 +249,7 @@ class OutputManager:
         if self.save_layers.get("rgb") and not image.rgb.isempty():
             path = self._save_layer_safely(
                 "rgb", image, dataset_name, image_stem,
-                lambda p: image.rgb.imsave(filepath=p)
+                lambda p: image.rgb.imsave(p)
             )
             if path:
                 saved_paths["rgb"] = path
