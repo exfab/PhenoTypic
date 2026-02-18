@@ -325,6 +325,7 @@ def sweep_worker_cli(
 
         if event_log is not None:
             from phenotypic._cli._cli_update_state import append_completion_event
+            from ._sweep_progress_dashboard import maybe_regenerate_dashboard
 
             # Use composite ID for per-pipeline SLURM tasks
             event_image_id = (
@@ -349,6 +350,8 @@ def sweep_worker_cli(
                     status="failed",
                     error_msg=error_msg,
                 )
+
+            maybe_regenerate_dashboard(output_dir, event_log)
 
         click.echo(
             f"Finished {image.name}: {succeeded} succeeded, {failed} failed"
@@ -375,6 +378,9 @@ def sweep_worker_cli(
         if event_log is not None:
             try:
                 from phenotypic._cli._cli_update_state import append_completion_event
+                from ._sweep_progress_dashboard import (
+                    maybe_regenerate_dashboard,
+                )
 
                 event_image_id = (
                     f"{image.name}::{pipeline_name}"
@@ -388,6 +394,7 @@ def sweep_worker_cli(
                     status="failed",
                     error_msg=str(e),
                 )
+                maybe_regenerate_dashboard(output_dir, event_log)
             except Exception:
                 pass
 

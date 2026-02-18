@@ -69,9 +69,11 @@ class LocalSweepStrategy(SweepExecutionStrategy):
         read_kwargs: Dict[str, Any],
         output_manager: SweepOutputManager,
         n_jobs: int = -1,
+        event_log: Optional[Path] = None,
     ):
         super().__init__(pipeline_json_strs, image_type, read_kwargs, output_manager)
         self.n_jobs = n_jobs
+        self.event_log = event_log
 
     def execute(
         self,
@@ -127,6 +129,28 @@ class LocalSweepStrategy(SweepExecutionStrategy):
                             "pipeline": pipe_name,
                             "traceback": tb,
                         })
+
+            # Log per-pipeline events and update dashboard
+            if self.event_log is not None:
+                from phenotypic._cli._cli_update_state import (
+                    append_completion_event,
+                )
+                from ._sweep_progress_dashboard import (
+                    maybe_regenerate_dashboard,
+                )
+
+                for pipe_name, ok, tb in results:
+                    event_id = f"{image_path.name}::{pipe_name}"
+                    status = "completed" if ok else "failed"
+                    error_msg = "" if ok else tb[:200]
+                    append_completion_event(
+                        event_log=self.event_log,
+                        dataset="sweep",
+                        image=event_id,
+                        status=status,
+                        error_msg=error_msg,
+                    )
+                maybe_regenerate_dashboard(output_dir, self.event_log)
 
         console.rule(style="cyan")
         end_time = datetime.now()
@@ -267,6 +291,11 @@ class SLURMSweepStrategy(SweepExecutionStrategy):
     def _monitor(self, output_dir: Path, total_tasks: int) -> None:
         """Monitor progress via event log."""
         from phenotypic._cli._cli_update_state import aggregate_state_from_events
+        from ._sweep_progress_dashboard import (
+            generate_sweep_progress_dashboard,
+            load_sweep_progress_metadata,
+            maybe_regenerate_dashboard,
+        )
 
         event_log = output_dir / "processing_events.log"
         last_count = 0
@@ -285,8 +314,27 @@ class SLURMSweepStrategy(SweepExecutionStrategy):
                         )
                         last_count = total_done
 
+                    # Regenerate dashboard on each poll
+                    maybe_regenerate_dashboard(output_dir, event_log)
+
                     if total_done >= total_tasks:
                         click.echo("All tasks processed!")
+                        # Final dashboard with auto-refresh disabled
+                        meta = load_sweep_progress_metadata(output_dir)
+                        if meta is not None:
+                            from datetime import datetime as dt
+
+                            generate_sweep_progress_dashboard(
+                                event_log=event_log,
+                                output_path=(
+                                    output_dir / "sweep_progress.html"
+                                ),
+                                total_tasks=total_tasks,
+                                start_time=dt.fromisoformat(
+                                    meta["start_time"]
+                                ),
+                                is_complete=True,
+                            )
                         break
 
                 time.sleep(10)

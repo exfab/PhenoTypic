@@ -377,19 +377,10 @@ class ObjectMask(NapariLabelsMixin, SingleChannelAccessor):
         methods (e.g., `show()`, `histogram()`) for visualization and analysis.
 
         Returns:
-            np.ndarray: Dense binary array with ``uint16`` dtype, same shape as the
-                parent image. Using ``uint16`` ensures that, when possible, the
-                mask is saved as a 16-bit image (e.g. PNG/TIFF) while JPEG output
-                is still handled as 8-bit by the shared ``imsave`` logic.
+            np.ndarray: Dense binary array with ``uint8`` dtype, same shape as
+                the parent image. Values are 0 (background) and 1 (foreground).
         """
-        # NOTE:
-        # ``ImageAccessorBase.imsave`` preserves ``uint16`` arrays for formats
-        # that support 16-bit data (e.g. PNG/TIFF) and only downcasts to
-        # ``uint8`` for JPEGs (with a warning). By exposing the object mask as a
-        # ``uint16`` array here, objmask images will be written as 16-bit where
-        # possible, and automatically converted to 8-bit for JPEGs. This matches
-        # the behaviour of ``ObjectMap`` whose backend is already ``uint16``.
-        return (self._backend.toarray() > 0).astype(np.bool_)
+        return (self._backend.toarray() > 0).astype(np.uint8)
 
     def __and__(self, other) -> np.ndarray:
         """Perform element-wise bitwise AND with the object mask.
@@ -435,7 +426,8 @@ class ObjectMask(NapariLabelsMixin, SingleChannelAccessor):
             other_arr = np.asarray(other)
             if other_arr.shape != self.shape:
                 raise ValueError(
-                        f"Shape mismatch: mask shape {self.shape} != operand shape {other_arr.shape}"
+                        f"Shape mismatch: "
+                        f"mask shape {self.shape} != operand shape {other_arr.shape}"
                 )
             other_mask = other_arr > 0
         else:

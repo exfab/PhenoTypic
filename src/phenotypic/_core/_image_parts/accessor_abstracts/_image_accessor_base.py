@@ -852,6 +852,73 @@ class ImageAccessorBase(ABC):
             )
 
     @staticmethod
+    def _inject_png_text_chunk(
+        filepath: Path, key: str, value: str
+    ) -> None:
+        """Inject a tEXt metadata chunk into an existing PNG file.
+
+        Inserts the chunk immediately after IHDR without re-encoding
+        pixel data.
+
+        Args:
+            filepath: Path to the PNG file.
+            key: Metadata key (latin-1 encodable, max 79 chars).
+            value: Metadata value (latin-1 encodable).
+        """
+        import struct
+        import zlib
+
+        with open(filepath, "rb") as f:
+            data = f.read()
+
+        # PNG: 8-byte signature + IHDR chunk
+        # (4 len + 4 type + 13 data + 4 CRC = 25 bytes)
+        ihdr_end = 33
+
+        chunk_data = (
+            key.encode("latin-1") + b"\x00" + value.encode("latin-1")
+        )
+        chunk_type = b"tEXt"
+        chunk = (
+            struct.pack(">I", len(chunk_data))
+            + chunk_type
+            + chunk_data
+            + struct.pack(
+                ">I", zlib.crc32(chunk_type + chunk_data) & 0xFFFFFFFF
+            )
+        )
+
+        with open(filepath, "wb") as f:
+            f.write(data[:ihdr_end] + chunk + data[ihdr_end:])
+
+    @staticmethod
+    def _write_png_cv2(
+        filepath: Path,
+        arr: np.ndarray,
+        metadata_json: str | None,
+    ) -> None:
+        """Save a uint16 array as a 16-bit PNG using OpenCV.
+
+        Args:
+            filepath: Destination path.
+            arr: uint16 array (2-D grayscale or 3-D RGB).
+            metadata_json: Optional JSON metadata to embed as a
+                tEXt chunk.
+        """
+        import cv2
+
+        # cv2 expects BGR for colour images
+        if arr.ndim == 3 and arr.shape[2] >= 3:
+            arr = arr[:, :, ::-1]
+
+        cv2.imwrite(str(filepath), arr)
+
+        if metadata_json:
+            ImageAccessorBase._inject_png_text_chunk(
+                filepath, IO.PHENOTYPIC_METADATA_KEY, metadata_json
+            )
+
+    @staticmethod
     def _write_png_metadata(filepath: Path, pil_image, metadata_json: str) -> None:
         """Write metadata to PNG file using tEXt chunk.
 
@@ -932,11 +999,7 @@ class ImageAccessorBase(ABC):
                     case np.uint8:
                         pass
                     case np.uint16:
-                        warnings.warn(
-                            "Saving a 16 bit array as a jpeg will potentially "
-                            "result in information loss during conversion"
-                        )
-                        arr2save = ski.util.img_as_ubyte(arr2save)
+                        pass  # preserve uint16 for 16-bit PNG
                     case dt if np.issubdtype(dt, np.floating):
                         warnings.warn(
                             ".png images only accept 8 bit and 16 bit "
@@ -948,12 +1011,17 @@ class ImageAccessorBase(ABC):
                             if bit_depth == 8
                             else ski.util.img_as_uint(arr2save)
                         )
-                pil_img = PIL_Image.fromarray(arr2save)
 
-                if metadata_json:
-                    self._write_png_metadata(filepath, pil_img, metadata_json)
+                if arr2save.dtype == np.uint16:
+                    self._write_png_cv2(filepath, arr2save, metadata_json)
                 else:
-                    pil_img.save(filepath)
+                    pil_img = PIL_Image.fromarray(arr2save)
+                    if metadata_json:
+                        self._write_png_metadata(
+                            filepath, pil_img, metadata_json
+                        )
+                    else:
+                        pil_img.save(filepath)
 
             case x if x in IO.TIFF_EXTENSIONS:
                 pil_img = PIL_Image.fromarray(arr2save)

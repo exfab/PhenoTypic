@@ -491,6 +491,34 @@ def sweep_cli(
         shutil.copy2(manifest_json, dest_manifest)
         click.echo(f"Manifest copied to {dest_manifest}")
 
+        # Write dashboard metadata and initial empty dashboard
+        from datetime import datetime as dt
+
+        from ._sweep_progress_dashboard import (
+            generate_sweep_progress_dashboard,
+            write_sweep_progress_metadata,
+        )
+
+        sweep_start_time = dt.now()
+        total_tasks = len(image_paths) * len(pipeline_names)
+        event_log = output_dir / "processing_events.log"
+        dashboard_path = output_dir / "sweep_progress.html"
+
+        write_sweep_progress_metadata(
+            output_dir=output_dir,
+            total_tasks=total_tasks,
+            num_images=len(image_paths),
+            num_pipelines=len(pipeline_names),
+            start_time=sweep_start_time,
+        )
+        generate_sweep_progress_dashboard(
+            event_log=event_log,
+            output_path=dashboard_path,
+            total_tasks=total_tasks,
+            start_time=sweep_start_time,
+        )
+        click.echo(f"Progress dashboard: {dashboard_path}")
+
         # Create execution strategy and run
         from ._sweep_execution import (
             LocalSweepStrategy,
@@ -521,9 +549,19 @@ def sweep_cli(
                     read_kwargs=read_kwargs,
                     output_manager=output_manager,
                     n_jobs=n_jobs,
+                    event_log=event_log,
             )
 
         results = strategy.execute(image_paths, output_dir)
+
+        # Generate final dashboard with auto-refresh disabled
+        generate_sweep_progress_dashboard(
+            event_log=event_log,
+            output_path=dashboard_path,
+            total_tasks=total_tasks,
+            start_time=sweep_start_time,
+            is_complete=True,
+        )
 
         # Aggregate master CSV
         if results.get("completed", 0) > 0:
@@ -559,6 +597,7 @@ def sweep_cli(
             )
 
         click.echo(f"\nResults saved to: {output_dir}")
+        click.echo(f"Progress dashboard: {dashboard_path}")
         sys.exit(0 if not failures else 1)
 
     except KeyboardInterrupt:

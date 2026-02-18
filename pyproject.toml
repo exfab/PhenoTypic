@@ -121,7 +121,7 @@ docs = [
 
 
 [tool.pytest.ini_options]
-testpaths = ["tests/unit", "tests/smoke"]
+testpaths = ["tests/unit", "tests/smoke", "tests/integration"]
 addopts = "--verbose --capture=no"
 markers = ["smoke: basic operation test"]
 # IMPORTANT: Do NOT combine --testmon and -n auto (SQLite concurrency issues)
