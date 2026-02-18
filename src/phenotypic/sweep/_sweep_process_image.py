@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import logging
 import sys
+import time
 import traceback
 from pathlib import Path
 from typing import Any, Dict, List, Literal, Optional, TYPE_CHECKING, Tuple
@@ -164,7 +165,10 @@ def process_image_all_pipelines_sequential(
         List of ``(pipeline_name, success, error_message)`` tuples.
     """
     results = []
-    for pipe_name, json_str in pipeline_json_strs.items():
+    total = len(pipeline_json_strs)
+    for idx, (pipe_name, json_str) in enumerate(pipeline_json_strs.items(), 1):
+        click.echo(f"[{idx}/{total}] {pipe_name}... ", nl=False)
+        t0 = time.monotonic()
         result = _run_single_pipeline(
             pipeline_json_str=json_str,
             pipeline_name=pipe_name,
@@ -173,6 +177,9 @@ def process_image_all_pipelines_sequential(
             read_kwargs=read_kwargs,
             output_manager=output_manager,
         )
+        elapsed = time.monotonic() - t0
+        status = "OK" if result[1] else "FAILED"
+        click.echo(f"{status} ({elapsed:.1f}s)")
         results.append(result)
     return results
 
@@ -217,7 +224,11 @@ def process_image_all_pipelines_sequential(
     "--event-log", type=click.Path(path_type=Path), default=None,
     help="Path to event log file.",
 )
-def main(
+@click.option(
+    "--pipeline-name", type=str, default=None,
+    help="Run only this pipeline (for per-pipeline SLURM tasks).",
+)
+def sweep_worker_cli(
     manifest: Path,
     image: Path,
     output_dir: Path,
@@ -237,6 +248,7 @@ def main(
     overlay_mode: str,
     overlay_alpha: float,
     event_log: Optional[Path],
+    pipeline_name: Optional[str],
 ):
     """Process a single image through all sweep pipelines (SLURM worker)."""
     import matplotlib
@@ -262,6 +274,17 @@ def main(
         for _cfg_name, pipes in configs.items():
             for pipe_name, pipe in pipes.items():
                 pipeline_json_strs[pipe_name] = pipe.to_json_str()
+
+        # Filter to single pipeline if specified (per-pipeline SLURM tasks)
+        if pipeline_name is not None:
+            if pipeline_name not in pipeline_json_strs:
+                click.echo(
+                    f"ERROR: Pipeline '{pipeline_name}' not found in manifest. "
+                    f"Available: {list(pipeline_json_strs.keys())}",
+                    err=True,
+                )
+                sys.exit(1)
+            pipeline_json_strs = {pipeline_name: pipeline_json_strs[pipeline_name]}
 
         # Create output manager
         save_layers = {
@@ -300,12 +323,18 @@ def main(
         if event_log is not None:
             from phenotypic._cli._cli_update_state import append_completion_event
 
+            # Use composite ID for per-pipeline SLURM tasks
+            event_image_id = (
+                f"{image.name}::{pipeline_name}"
+                if pipeline_name is not None
+                else image.name
+            )
             error_msg = "" if failed == 0 else f"{failed}/{len(results)} pipelines failed"
             if failed == 0:
                 append_completion_event(
                     event_log=event_log,
                     dataset="sweep",
-                    image=image.name,
+                    image=event_image_id,
                     status="completed",
                     error_msg=error_msg,
                 )
@@ -313,7 +342,7 @@ def main(
                 append_completion_event(
                     event_log=event_log,
                     dataset="sweep",
-                    image=image.name,
+                    image=event_image_id,
                     status="failed",
                     error_msg=error_msg,
                 )
@@ -344,10 +373,15 @@ def main(
             try:
                 from phenotypic._cli._cli_update_state import append_completion_event
 
+                event_image_id = (
+                    f"{image.name}::{pipeline_name}"
+                    if pipeline_name is not None
+                    else image.name
+                )
                 append_completion_event(
                     event_log=event_log,
                     dataset="sweep",
-                    image=image.name,
+                    image=event_image_id,
                     status="failed",
                     error_msg=str(e),
                 )
@@ -358,4 +392,4 @@ def main(
 
 
 if __name__ == "__main__":
-    main()
+    sweep_worker_cli()

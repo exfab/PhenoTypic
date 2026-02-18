@@ -142,7 +142,7 @@ class LocalSweepStrategy(SweepExecutionStrategy):
 
 
 class SLURMSweepStrategy(SweepExecutionStrategy):
-    """SLURM execution: array job with one task per image."""
+    """SLURM execution: array job with one task per (image, pipeline) pair."""
 
     def __init__(
         self,
@@ -184,30 +184,46 @@ class SLURMSweepStrategy(SweepExecutionStrategy):
             f"  Total pipeline runs: {total_images * len(self.pipeline_json_strs)}"
         )
 
-        # Generate and submit array job script
-        from ._sweep_slurm_scripts import generate_sweep_array_script
+        # Generate chunked array job scripts (respects MaxArraySize)
+        from phenotypic._cli._cli_slurm_config import get_slurm_array_limit
+        from ._sweep_slurm_scripts import generate_sweep_array_scripts_chunked
 
-        script_path = generate_sweep_array_script(
+        num_pipelines = len(self.pipeline_json_strs)
+        total_tasks = total_images * num_pipelines
+        array_limit = get_slurm_array_limit()
+        pipeline_names = list(self.pipeline_json_strs.keys())
+
+        console.print(
+            f"  SLURM array limit: {array_limit}\n"
+            f"  Array scripts needed: "
+            f"{(total_tasks + array_limit - 1) // array_limit}"
+        )
+
+        script_paths = generate_sweep_array_scripts_chunked(
             image_paths=image_paths,
+            pipeline_names=pipeline_names,
             manifest_path=self.manifest_path,
             output_dir=output_dir,
             image_type=self.image_type,
             read_kwargs=self.read_kwargs,
             slurm_args=self.slurm_args,
+            array_limit=array_limit,
             save_layers=self.save_layers,
             overlay_mode=self.overlay_mode,
             overlay_alpha=self.overlay_alpha,
         )
 
-        console.print(f"\n  Script: {script_path}")
-
-        # Submit
-        job_id = self._submit(script_path)
-        console.print(f"  [green]Submitted job {job_id}[/green]")
+        # Submit all chunk scripts independently
+        job_ids: List[str] = []
+        for script_path in script_paths:
+            console.print(f"\n  Script: {script_path}")
+            job_id = self._submit(script_path)
+            job_ids.append(job_id)
+            console.print(f"  [green]Submitted job {job_id}[/green]")
 
         if self.wait:
             console.print("\nMonitoring progress (Ctrl+C to detach)...")
-            self._monitor(output_dir, total_images)
+            self._monitor(output_dir, total_tasks)
         else:
             console.print("\nJobs submitted. Monitor with:")
             console.print(f"  squeue -u $USER --array")
@@ -221,7 +237,7 @@ class SLURMSweepStrategy(SweepExecutionStrategy):
             "failures": [],
             "start_time": start_time,
             "end_time": end_time,
-            "job_ids": [job_id],
+            "job_ids": job_ids,
         }
 
     def _submit(self, script_path: Path) -> str:
@@ -248,7 +264,7 @@ class SLURMSweepStrategy(SweepExecutionStrategy):
             )
         return match.group(1)
 
-    def _monitor(self, output_dir: Path, total_images: int) -> None:
+    def _monitor(self, output_dir: Path, total_tasks: int) -> None:
         """Monitor progress via event log."""
         from phenotypic._cli._cli_update_state import aggregate_state_from_events
 
@@ -265,12 +281,12 @@ class SLURMSweepStrategy(SweepExecutionStrategy):
                     )
                     if total_done != last_count:
                         click.echo(
-                            f"Progress: {total_done}/{total_images} images processed"
+                            f"Progress: {total_done}/{total_tasks} tasks processed"
                         )
                         last_count = total_done
 
-                    if total_done >= total_images:
-                        click.echo("All images processed!")
+                    if total_done >= total_tasks:
+                        click.echo("All tasks processed!")
                         break
 
                 time.sleep(10)

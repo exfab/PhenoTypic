@@ -172,6 +172,7 @@ class SweepOutputManager:
             measurements.insert(0, "Metadata_Pipeline", pipeline_name)
 
         output_path = self.get_output_path(pipeline_name, "measurements", image_stem)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
         measurements.to_csv(output_path, index=False)
         return output_path
 
@@ -192,6 +193,7 @@ class SweepOutputManager:
             Path where overlay was saved.
         """
         output_path = self.get_output_path(pipeline_name, "overlays", image_stem)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
 
         if self.overlay_mode == "figure":
             fig, ax = image.plot.overlay()
@@ -222,6 +224,7 @@ class SweepOutputManager:
         """Safely save an image layer with error logging."""
         try:
             path = self.get_output_path(pipeline_name, layer_name, image_stem)
+            path.parent.mkdir(parents=True, exist_ok=True)
             save_func(path)
             return path
         except Exception as e:
