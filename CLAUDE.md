@@ -52,13 +52,22 @@ source .venv/bin/activate
 
 ### Command-Line Interface (CLI)
 
-```bash
-# Basic usage (auto-generates timestamped output directory)
-uv run python -m phenotypic pipeline.json ./images
+Two CLIs serve different workflows:
 
-# With output directory and grid options
+- **`python -m phenotypic`** — Run a single pipeline on images or directories. Supports
+  local parallel processing (joblib), SLURM cluster submission, resume/restart, and
+  multi-layer output (RGB, detection matrices, object masks, overlays, CSV).
+- **`python -m phenotypic.sweep`** — Run parameter sweeps: execute multiple pipeline
+  configurations against every image in a flat directory. For hyperparameter exploration
+  and algorithm comparison. Outputs one subdirectory per pipeline with aggregated CSV.
+
+```bash
+# Single pipeline on a directory of images
 uv run python -m phenotypic pipeline.json ./images -o ./results \
     --image-type GridImage --nrows 8 --ncols 12 --n-jobs -1
+
+# Parameter sweep across pipeline variants
+uv run python -m phenotypic.sweep manifest.json ./images -o ./sweep_results
 ```
 
 **See [src/phenotypic/_cli/CLAUDE.md](src/phenotypic/_cli/CLAUDE.md) for complete CLI
@@ -127,18 +136,16 @@ private (leading `_`).
 
 #### Key Modules
 
-| Module                  | Purpose                          |
-|-------------------------|----------------------------------|
-| `phenotypic.detect`     | Object detection (11+ detectors) |
-| `phenotypic.enhance`    | Image preprocessing (19+ ops)    |
-| `phenotypic.refine`     | Post-detection refinement        |
-| `phenotypic.measure`    | Feature extraction               |
-| `phenotypic.grid`       | Grid detection and alignment     |
-| `phenotypic.correction` | Image quality improvements       |
-| `phenotypic.analysis`   | Downstream statistical analysis  |
-| `phenotypic.prefab`     | Pre-built pipelines              |
-| `phenotypic.tools_`     | Utility mixins and helpers       |
-| `phenotypic.settings_`  | Global configuration             |
+- `phenotypic.detect` — Object detection (11+ detectors)
+- `phenotypic.enhance` — Image preprocessing (19+ ops)
+- `phenotypic.refine` — Post-detection refinement
+- `phenotypic.measure` — Feature extraction
+- `phenotypic.grid` — Grid detection and alignment
+- `phenotypic.correction` — Image quality improvements
+- `phenotypic.analysis` — Downstream statistical analysis
+- `phenotypic.prefab` — Pre-built pipelines
+- `phenotypic.tools_` — Utility mixins and helpers
+- `phenotypic.settings_` — Global configuration
 
 ### Design Decisions
 
@@ -217,14 +224,12 @@ docstring ordering rules and formatting guidelines.
 
 ## Detailed Module Guides
 
-| Guide | Covers |
-|-------|--------|
-| [tests/CLAUDE.md](tests/CLAUDE.md) | Test organization, configuration, writing new tests |
-| [src/phenotypic/_core/CLAUDE.md](src/phenotypic/_core/CLAUDE.md) | Image class, accessor pattern, color spaces |
-| [src/phenotypic/abc_/CLAUDE.md](src/phenotypic/abc_/CLAUDE.md) | ABC hierarchy, which ABC to subclass, implementation patterns |
-| [src/phenotypic/_cli/CLAUDE.md](src/phenotypic/_cli/CLAUDE.md) | CLI flags, output structure, SLURM execution |
-| [src/phenotypic/tools_/CLAUDE.md](src/phenotypic/tools_/CLAUDE.md) | FootprintMixin, GridInferenceMixin, other utilities |
-| [src/phenotypic/settings_/CLAUDE.md](src/phenotypic/settings_/CLAUDE.md) | VALIDATE_OPS, MPL defaults, configuration pattern |
+- [tests/CLAUDE.md](tests/CLAUDE.md) — Test organization, configuration, writing new tests
+- [src/phenotypic/_core/CLAUDE.md](src/phenotypic/_core/CLAUDE.md) — Image class, accessor pattern, color spaces
+- [src/phenotypic/abc_/CLAUDE.md](src/phenotypic/abc_/CLAUDE.md) — ABC hierarchy, which ABC to subclass, implementation patterns
+- [src/phenotypic/_cli/CLAUDE.md](src/phenotypic/_cli/CLAUDE.md) — CLI flags, output structure, SLURM execution
+- [src/phenotypic/tools_/CLAUDE.md](src/phenotypic/tools_/CLAUDE.md) — FootprintMixin, GridInferenceMixin, other utilities
+- [src/phenotypic/settings_/CLAUDE.md](src/phenotypic/settings_/CLAUDE.md) — VALIDATE_OPS, MPL defaults, configuration pattern
 
 ---
 
