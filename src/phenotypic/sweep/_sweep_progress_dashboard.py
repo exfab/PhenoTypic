@@ -193,7 +193,6 @@ def _read_event_state(
     """
     from phenotypic._cli._cli_update_state import (
         aggregate_state_from_events,
-        parse_event_line,
     )
 
     completed = 0

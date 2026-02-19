@@ -561,7 +561,7 @@ class ObjectMask(NapariLabelsMixin, SingleChannelAccessor):
             >>> blurred = GaussianBlur(sigma=2.0).operate(image)
             >>> combined = image.gray[:] * image.objmask[:] + blurred.gray[:] * ~image.objmask
         """
-        self_mask = self._backend.toarray() > 0
+        self_mask: np.ndarray = self._backend.toarray() > 0
         result = ~self_mask
         return result.astype(int)
 

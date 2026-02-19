@@ -101,6 +101,7 @@ dev = [
     "ruff>=0.14.7",
     "scipy-stubs>=1.15.3.0",
     "pytest-testmon>=2.2.0",
+    "pytest-qt>=4.5.0",
 ]
 docs = [
     "sphinx",

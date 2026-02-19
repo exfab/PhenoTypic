@@ -8,7 +8,6 @@ import time
 from datetime import datetime, timedelta
 from pathlib import Path
 
-import pytest
 
 from phenotypic.sweep._sweep_progress_dashboard import (
     _DASHBOARD_FILENAME,

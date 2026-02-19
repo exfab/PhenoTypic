@@ -1,8 +1,4 @@
-"""Tests for the napari sweep viewer data model and utilities.
-
-All tests in this module run without a display server or Qt—only the data
-model and remote-display helpers are exercised.
-"""
+"""Tests for the napari sweep viewer data model, utilities, and widgets."""
 
 from __future__ import annotations
 
@@ -254,3 +250,433 @@ class TestMeasurementsCSV:
         assert list(df.columns) == ["col_area", "col_roundness"]
         assert len(df) == 2
         assert df["col_area"].iloc[0] == 100
+
+
+# ---------------------------------------------------------------------------
+# Label component detection tests
+# ---------------------------------------------------------------------------
+
+
+class TestLabelComponentDetection:
+    """Tests for _LABEL_COMPONENTS and _is_label_component."""
+
+    @pytest.mark.parametrize("comp", ["objmap", "objmask"])
+    def test_label_components(self, comp: str):
+        from phenotypic.gui.sweep._napari_sweep_viewer import (
+            NapariSweepViewer,
+        )
+
+        assert NapariSweepViewer._is_label_component(comp)
+
+    @pytest.mark.parametrize("comp", ["rgb", "overlays", "detect_mat"])
+    def test_non_label_components(self, comp: str):
+        from phenotypic.gui.sweep._napari_sweep_viewer import (
+            NapariSweepViewer,
+        )
+
+        assert not NapariSweepViewer._is_label_component(comp)
+
+
+# ---------------------------------------------------------------------------
+# Stem data lookup tests
+# ---------------------------------------------------------------------------
+
+
+class TestStemDataLookups:
+    """Tests for stem-level data lookups used by the tree widget."""
+
+    def test_pipeline_first_stem_lookup(self, mock_sweep_dir: Path):
+        from phenotypic.gui.sweep import SweepOutputScanner
+
+        data = SweepOutputScanner.scan(mock_sweep_dir)
+
+        stem_comps = data.by_pipeline["Pipeline_0"]["plate_001"]
+        assert sorted(stem_comps.keys()) == [
+            "objmask", "overlays", "rgb",
+        ]
+        for comp, sf in stem_comps.items():
+            assert sf.pipeline_name == "Pipeline_0"
+            assert sf.image_stem == "plate_001"
+            assert sf.component == comp
+
+    def test_image_first_stem_lookup(self, mock_sweep_dir: Path):
+        from phenotypic.gui.sweep import SweepOutputScanner
+
+        data = SweepOutputScanner.scan(mock_sweep_dir)
+
+        comps = data.by_image["plate_001"]
+        assert sorted(comps.keys()) == ["objmask", "overlays", "rgb"]
+
+        # First pipeline alphabetically is deterministic
+        for comp_name, pipes in comps.items():
+            first_pipe = sorted(pipes.keys())[0]
+            assert first_pipe == "Pipeline_0"
+            sf = pipes[first_pipe]
+            assert sf.image_stem == "plate_001"
+            assert sf.component == comp_name
+
+
+# ---------------------------------------------------------------------------
+# File tree widget tests (require Qt via pytest-qt)
+# ---------------------------------------------------------------------------
+
+pytest_qt = pytest.importorskip("pytestqt")
+
+
+@pytest.fixture()
+def sweep_data(mock_sweep_dir: Path):
+    """Return a scanned SweepOutputData from the mock directory."""
+    from phenotypic.gui.sweep import SweepOutputScanner
+
+    return SweepOutputScanner.scan(mock_sweep_dir)
+
+
+@pytest.fixture()
+def tree_widget(qtbot, sweep_data):
+    """Create a SweepFileTreeWidget and register it with qtbot."""
+    from phenotypic.gui.sweep._file_tree_widget import (
+        SweepFileTreeWidget,
+    )
+
+    widget = SweepFileTreeWidget(sweep_data)
+    qtbot.addWidget(widget)
+    return widget
+
+
+class TestFileTreeStructure:
+    """Verify that the tree has exactly two levels in each mode."""
+
+    def test_pipeline_first_two_levels(self, tree_widget):
+        """Pipeline-first: top=pipelines, children=image stems."""
+        tree = tree_widget._tree
+        assert tree.topLevelItemCount() == 2  # Pipeline_0, Pipeline_1
+
+        for i in range(tree.topLevelItemCount()):
+            pipe_item = tree.topLevelItem(i)
+            # Each pipeline has 2 image stems
+            assert pipe_item.childCount() == 2
+            for j in range(pipe_item.childCount()):
+                leaf = pipe_item.child(j)
+                # Leaves have no children (flat)
+                assert leaf.childCount() == 0
+
+    def test_image_first_two_levels(self, tree_widget):
+        """Image-first: top=image stems, children=pipelines."""
+        tree_widget._mode_combo.setCurrentIndex(
+            tree_widget._IMAGE_FIRST,
+        )
+
+        tree = tree_widget._tree
+        assert tree.topLevelItemCount() == 2  # plate_001, plate_002
+
+        for i in range(tree.topLevelItemCount()):
+            stem_item = tree.topLevelItem(i)
+            # Each stem has 2 pipelines
+            assert stem_item.childCount() == 2
+            for j in range(stem_item.childCount()):
+                leaf = stem_item.child(j)
+                assert leaf.childCount() == 0
+
+    def test_mode_switch_rebuilds_tree(self, tree_widget):
+        """Switching modes rebuilds the tree with different top-level items."""
+        tree = tree_widget._tree
+
+        # Pipeline-first: top items are pipeline names
+        top_names_pf = [
+            tree.topLevelItem(i).text(0)
+            for i in range(tree.topLevelItemCount())
+        ]
+        assert top_names_pf == ["Pipeline_0", "Pipeline_1"]
+
+        # Switch to image-first
+        tree_widget._mode_combo.setCurrentIndex(
+            tree_widget._IMAGE_FIRST,
+        )
+        top_names_if = [
+            tree.topLevelItem(i).text(0)
+            for i in range(tree.topLevelItemCount())
+        ]
+        assert top_names_if == ["plate_001", "plate_002"]
+
+
+class TestFileTreeSignals:
+    """Verify signal emission from click routing."""
+
+    def test_pipeline_node_emits_pipeline_selected(
+        self, qtbot, tree_widget,
+    ):
+        """Clicking a top-level pipeline node emits pipeline_selected."""
+        tree = tree_widget._tree
+        pipe_item = tree.topLevelItem(0)  # Pipeline_0
+
+        with qtbot.waitSignal(
+            tree_widget.pipeline_selected, timeout=1000,
+        ) as blocker:
+            tree_widget._on_item_clicked(pipe_item, 0)
+
+        assert blocker.args == ["Pipeline_0"]
+
+    def test_leaf_emits_stem_selected_pipeline_first(
+        self, qtbot, tree_widget,
+    ):
+        """Clicking a leaf in pipeline-first emits stem_selected."""
+        tree = tree_widget._tree
+        pipe_item = tree.topLevelItem(0)  # Pipeline_0
+        leaf = pipe_item.child(0)  # plate_001
+
+        with qtbot.waitSignal(
+            tree_widget.stem_selected, timeout=1000,
+        ) as blocker:
+            tree_widget._on_item_clicked(leaf, 0)
+
+        entries = blocker.args[0]
+        assert len(entries) == 3  # objmask, overlays, rgb
+        assert all(e["pipeline"] == "Pipeline_0" for e in entries)
+        assert all(e["image_stem"] == "plate_001" for e in entries)
+        components = {e["component"] for e in entries}
+        assert components == {"objmask", "overlays", "rgb"}
+
+    def test_leaf_emits_stem_selected_image_first(
+        self, qtbot, tree_widget,
+    ):
+        """Clicking a leaf in image-first emits stem_selected."""
+        tree_widget._mode_combo.setCurrentIndex(
+            tree_widget._IMAGE_FIRST,
+        )
+        tree = tree_widget._tree
+        stem_item = tree.topLevelItem(0)  # plate_001
+        leaf = stem_item.child(0)  # Pipeline_0
+
+        with qtbot.waitSignal(
+            tree_widget.stem_selected, timeout=1000,
+        ) as blocker:
+            tree_widget._on_item_clicked(leaf, 0)
+
+        entries = blocker.args[0]
+        assert len(entries) == 3
+        assert all(e["pipeline"] == "Pipeline_0" for e in entries)
+        assert all(e["image_stem"] == "plate_001" for e in entries)
+
+    def test_image_node_emits_stem_selected(
+        self, qtbot, tree_widget,
+    ):
+        """Clicking a top-level image node emits stem_selected."""
+        tree_widget._mode_combo.setCurrentIndex(
+            tree_widget._IMAGE_FIRST,
+        )
+        tree = tree_widget._tree
+        stem_item = tree.topLevelItem(0)  # plate_001
+
+        with qtbot.waitSignal(
+            tree_widget.stem_selected, timeout=1000,
+        ) as blocker:
+            tree_widget._on_item_clicked(stem_item, 0)
+
+        entries = blocker.args[0]
+        assert len(entries) == 3
+        # Auto-selects best pipeline (Pipeline_0, alphabetical tiebreak)
+        assert all(e["pipeline"] == "Pipeline_0" for e in entries)
+        assert all(e["image_stem"] == "plate_001" for e in entries)
+
+
+class TestFileTreeCompareMode:
+    """Verify compare-mode signal routing."""
+
+    def test_compare_leaf_emits_stem_compare_requested(
+        self, qtbot, tree_widget,
+    ):
+        """With compare checked, leaf click emits stem_compare_requested."""
+        tree_widget._compare_cb.setChecked(True)
+
+        tree = tree_widget._tree
+        pipe_item = tree.topLevelItem(0)  # Pipeline_0
+        leaf = pipe_item.child(0)  # plate_001
+
+        with qtbot.waitSignal(
+            tree_widget.stem_compare_requested, timeout=1000,
+        ) as blocker:
+            tree_widget._on_item_clicked(leaf, 0)
+
+        entries = blocker.args[0]
+        assert len(entries) == 3
+        assert all(e["pipeline"] == "Pipeline_0" for e in entries)
+        assert all(e["image_stem"] == "plate_001" for e in entries)
+
+    def test_compare_leaf_does_not_emit_stem_selected(
+        self, qtbot, tree_widget,
+    ):
+        """With compare checked, leaf click does NOT emit stem_selected."""
+        tree_widget._compare_cb.setChecked(True)
+
+        tree = tree_widget._tree
+        pipe_item = tree.topLevelItem(0)
+        leaf = pipe_item.child(0)
+
+        with qtbot.assertNotEmitted(tree_widget.stem_selected):
+            tree_widget._on_item_clicked(leaf, 0)
+
+    def test_compare_image_node_still_emits_stem_selected(
+        self, qtbot, tree_widget,
+    ):
+        """Top-level image node always emits stem_selected, even in
+        compare mode (no specific pipeline chosen).
+        """
+        tree_widget._mode_combo.setCurrentIndex(
+            tree_widget._IMAGE_FIRST,
+        )
+        tree_widget._compare_cb.setChecked(True)
+
+        tree = tree_widget._tree
+        stem_item = tree.topLevelItem(0)  # plate_001
+
+        with qtbot.waitSignal(
+            tree_widget.stem_selected, timeout=1000,
+        ):
+            tree_widget._on_item_clicked(stem_item, 0)
+
+    def test_compare_unchecked_leaf_emits_stem_selected(
+        self, qtbot, tree_widget,
+    ):
+        """With compare unchecked, leaf emits stem_selected (not compare)."""
+        tree_widget._compare_cb.setChecked(False)
+
+        tree = tree_widget._tree
+        pipe_item = tree.topLevelItem(0)
+        leaf = pipe_item.child(0)
+
+        with qtbot.waitSignal(
+            tree_widget.stem_selected, timeout=1000,
+        ):
+            tree_widget._on_item_clicked(leaf, 0)
+
+        with qtbot.assertNotEmitted(
+            tree_widget.stem_compare_requested,
+        ):
+            tree_widget._on_item_clicked(leaf, 0)
+
+
+class TestFileTreeEntryPayloads:
+    """Verify that emitted entries contain valid paths and all keys."""
+
+    def test_entries_have_required_keys(
+        self, qtbot, tree_widget,
+    ):
+        """Every entry dict has path, pipeline, component, image_stem."""
+        tree = tree_widget._tree
+        leaf = tree.topLevelItem(0).child(0)
+
+        with qtbot.waitSignal(
+            tree_widget.stem_selected, timeout=1000,
+        ) as blocker:
+            tree_widget._on_item_clicked(leaf, 0)
+
+        required = {"path", "pipeline", "component", "image_stem"}
+        for entry in blocker.args[0]:
+            assert required <= set(entry.keys())
+
+    def test_entries_paths_are_absolute(
+        self, qtbot, tree_widget,
+    ):
+        """All emitted paths are absolute path strings."""
+        tree = tree_widget._tree
+        leaf = tree.topLevelItem(0).child(0)
+
+        with qtbot.waitSignal(
+            tree_widget.stem_selected, timeout=1000,
+        ) as blocker:
+            tree_widget._on_item_clicked(leaf, 0)
+
+        for entry in blocker.args[0]:
+            assert Path(entry["path"]).is_absolute()
+
+
+class TestSignalChainViaItemClicked:
+    """Tests that use itemClicked.emit() to verify the full Qt signal chain.
+
+    Previous tests call ``_on_item_clicked()`` directly, which bypasses
+    the ``itemClicked`` signal connection.  These tests verify that the
+    signal wiring in ``__init__`` actually connects to the slot.
+    """
+
+    def test_leaf_click_signal_emits_stem_selected(
+        self, qtbot, tree_widget,
+    ):
+        """itemClicked signal on a leaf fires stem_selected."""
+        tree = tree_widget._tree
+        leaf = tree.topLevelItem(0).child(0)
+
+        with qtbot.waitSignal(
+            tree_widget.stem_selected, timeout=1000,
+        ) as blocker:
+            tree.itemClicked.emit(leaf, 0)
+
+        entries = blocker.args[0]
+        assert len(entries) == 3
+        assert all(e["pipeline"] == "Pipeline_0" for e in entries)
+
+    def test_pipeline_click_signal_emits_pipeline_selected(
+        self, qtbot, tree_widget,
+    ):
+        """itemClicked signal on a pipeline node fires pipeline_selected."""
+        tree = tree_widget._tree
+        pipe_item = tree.topLevelItem(0)
+
+        with qtbot.waitSignal(
+            tree_widget.pipeline_selected, timeout=1000,
+        ) as blocker:
+            tree.itemClicked.emit(pipe_item, 0)
+
+        assert blocker.args == ["Pipeline_0"]
+
+    def test_image_first_leaf_signal_emits_stem_selected(
+        self, qtbot, tree_widget,
+    ):
+        """itemClicked signal on an image-first leaf fires stem_selected."""
+        tree_widget._mode_combo.setCurrentIndex(
+            tree_widget._IMAGE_FIRST,
+        )
+        tree = tree_widget._tree
+        leaf = tree.topLevelItem(0).child(0)
+
+        with qtbot.waitSignal(
+            tree_widget.stem_selected, timeout=1000,
+        ) as blocker:
+            tree.itemClicked.emit(leaf, 0)
+
+        entries = blocker.args[0]
+        assert len(entries) == 3
+        assert all(e["image_stem"] == "plate_001" for e in entries)
+
+    def test_compare_leaf_signal_emits_compare_requested(
+        self, qtbot, tree_widget,
+    ):
+        """itemClicked signal with compare mode fires stem_compare_requested."""
+        tree_widget._compare_cb.setChecked(True)
+        tree = tree_widget._tree
+        leaf = tree.topLevelItem(0).child(0)
+
+        with qtbot.waitSignal(
+            tree_widget.stem_compare_requested, timeout=1000,
+        ) as blocker:
+            tree.itemClicked.emit(leaf, 0)
+
+        entries = blocker.args[0]
+        assert len(entries) == 3
+        assert all(e["pipeline"] == "Pipeline_0" for e in entries)
+
+    def test_signal_chain_with_mock_receiver(
+        self, qtbot, tree_widget,
+    ):
+        """Full chain: itemClicked → stem_selected → receiver callback."""
+        received = []
+        tree_widget.stem_selected.connect(
+            lambda entries: received.extend(entries),
+        )
+
+        tree = tree_widget._tree
+        leaf = tree.topLevelItem(0).child(0)
+        tree.itemClicked.emit(leaf, 0)
+
+        assert len(received) == 3
+        components = {e["component"] for e in received}
+        assert components == {"objmask", "overlays", "rgb"}

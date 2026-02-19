@@ -5,12 +5,7 @@ import pytest
 
 from phenotypic.data import load_synth_yeast_plate
 from phenotypic.util.image_metrics import (
-    BackgroundMetrics,
-    ContrastMetrics,
     ImageMetricsCalculator,
-    NoiseMetrics,
-    QualityScores,
-    StructureMetrics,
     THRESHOLDS,
 )
 

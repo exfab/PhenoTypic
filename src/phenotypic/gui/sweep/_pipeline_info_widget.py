@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Dict, Optional
 
 from qtpy.QtWidgets import QVBoxLayout, QWidget, QLabel, QTextBrowser
 
 from ._sweep_data_model import PipelineConfig
+
+logger = logging.getLogger(__name__)
 
 
 class PipelineInfoWidget(QWidget):
@@ -44,10 +47,17 @@ class PipelineInfoWidget(QWidget):
         """
         config = self._configs.get(pipeline_name)
         if config is None:
+            logger.warning(
+                "No config found for pipeline %r",
+                pipeline_name,
+            )
             self._browser.setHtml(
                 f"<i>No config found for '{pipeline_name}'</i>"
             )
             return
+        logger.debug(
+            "Displaying config for pipeline %r", pipeline_name,
+        )
         self._header.setText(f"Pipeline: {pipeline_name}")
         self._browser.setHtml(self._format_config(config))
 

@@ -2,13 +2,28 @@
 
 from __future__ import annotations
 
-import sys
+import sys as _sys
 from pathlib import Path
 
 
-def main() -> None:
+def launch_napari_sweep_viewer() -> None:
     """Launch the napari sweep results viewer."""
-    sweep_dir = Path(sys.argv[1]) if len(sys.argv) > 1 else Path.cwd()
+    import logging
+
+    sweep_logger = logging.getLogger("phenotypic.gui.sweep")
+    sweep_logger.setLevel(logging.DEBUG)
+    if not sweep_logger.handlers:
+        handler = logging.StreamHandler(_sys.stderr)
+        handler.setLevel(logging.DEBUG)
+        handler.setFormatter(
+            logging.Formatter("%(name)s %(levelname)s: %(message)s")
+        )
+        sweep_logger.addHandler(handler)
+
+    sweep_dir = (
+        Path(_sys.argv[1]) if len(_sys.argv) > 1 else Path.cwd()
+    )
+    sweep_logger.info("Sweep viewer starting — root: %s", sweep_dir)
 
     # Remote display setup BEFORE any Qt/napari imports
     from ._remote_display import (
@@ -28,4 +43,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    launch_napari_sweep_viewer()

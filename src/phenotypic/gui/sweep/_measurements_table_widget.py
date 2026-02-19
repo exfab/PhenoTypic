@@ -71,8 +71,12 @@ class MeasurementsTableWidget(QWidget):
             / "measurements"
             / f"{image_stem}.csv"
         )
+        logger.debug("Looking for measurements CSV: %s", csv_path)
 
         if not csv_path.exists():
+            logger.debug(
+                "Measurements CSV not found: %s", csv_path,
+            )
             self._show_placeholder()
             return
 
@@ -86,6 +90,10 @@ class MeasurementsTableWidget(QWidget):
             return
 
         self._populate_table(df)
+        logger.debug(
+            "Loaded measurements: %d rows, %d columns",
+            len(df), len(df.columns),
+        )
 
     def clear(self) -> None:
         """Reset to empty state."""

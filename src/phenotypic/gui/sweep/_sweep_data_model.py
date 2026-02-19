@@ -102,6 +102,9 @@ class SweepOutputScanner:
         if results_dir.is_dir():
             image_files = SweepOutputScanner._scan_results(results_dir)
         else:
+            logger.warning(
+                "Results directory not found: %s", results_dir,
+            )
             image_files = []
 
         # Derive sorted unique lists
@@ -121,6 +124,13 @@ class SweepOutputScanner:
             by_image.setdefault(f.image_stem, {}).setdefault(
                 f.component, {},
             )[f.pipeline_name] = f
+
+        logger.debug(
+            "Scan complete: %d files, %d pipelines, %d stems, "
+            "%d components",
+            len(image_files), len(pipeline_names),
+            len(image_stems), len(components),
+        )
 
         return SweepOutputData(
             root_dir=sweep_dir,
@@ -213,6 +223,10 @@ class SweepOutputScanner:
                     raw_json=pipe_dict,
                 )
 
+        logger.debug(
+            "Parsed %d pipeline configs from manifest",
+            len(configs),
+        )
         return manifest_raw, configs
 
     @staticmethod
@@ -233,6 +247,8 @@ class SweepOutputScanner:
             if not pipeline_dir.is_dir():
                 continue
             pipeline_name = pipeline_dir.name
+            pipe_file_count = 0
+            pipe_comp_count = 0
 
             for component_dir in sorted(pipeline_dir.iterdir()):
                 if not component_dir.is_dir():
@@ -241,6 +257,7 @@ class SweepOutputScanner:
                 if component == "measurements":
                     continue  # CSV data, not images
 
+                comp_file_count = 0
                 for img_path in sorted(component_dir.iterdir()):
                     if (
                         img_path.is_file()
@@ -254,5 +271,17 @@ class SweepOutputScanner:
                                 pipeline_name=pipeline_name,
                             )
                         )
+                        comp_file_count += 1
+
+                if comp_file_count:
+                    pipe_comp_count += 1
+                    pipe_file_count += comp_file_count
+
+            logger.debug(
+                "Scanned pipeline %r: %d files across"
+                " %d components",
+                pipeline_name, pipe_file_count,
+                pipe_comp_count,
+            )
 
         return files

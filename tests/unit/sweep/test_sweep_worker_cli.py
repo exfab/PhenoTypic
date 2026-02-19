@@ -1,6 +1,5 @@
 """Tests for the sweep worker CLI (--pipeline-name filtering)."""
 
-from pathlib import Path
 from unittest.mock import patch
 
 import pytest

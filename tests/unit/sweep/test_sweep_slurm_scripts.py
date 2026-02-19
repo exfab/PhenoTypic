@@ -1,6 +1,5 @@
 """Tests for sweep SLURM array job script generation and 2D indexing."""
 
-from pathlib import Path
 
 import pytest
 

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Optional
 
 from qtpy.QtCore import Qt, Signal
@@ -17,24 +18,30 @@ from qtpy.QtWidgets import (
 
 from ._sweep_data_model import SweepOutputData
 
+logger = logging.getLogger(__name__)
+
 
 class SweepFileTreeWidget(QWidget):
     """Tree browser for sweep output with Pipeline-first / Image-first modes.
 
     Signals:
-        image_selected: Emitted with the absolute file path string on leaf click.
-        pipeline_selected: Emitted with the pipeline name on pipeline node click.
-        compare_requested: Emitted with a list of ``(pipeline_name, file_path)``
-            tuples when compare mode is active and a leaf is clicked.
+        pipeline_selected: Emitted with the pipeline name on pipeline
+            node click.
+        stem_selected: Emitted with a list of dicts (each with ``path``,
+            ``pipeline``, ``component``, ``image_stem``) when a leaf is
+            clicked (replaces previous layers).
+        stem_compare_requested: Emitted with the same payload as
+            ``stem_selected`` when compare mode is active (accumulates
+            layers without clearing).
 
     Args:
         data: Indexed sweep output data.
         parent: Optional parent widget.
     """
 
-    image_selected = Signal(str)
     pipeline_selected = Signal(str)
-    compare_requested = Signal(list)
+    stem_selected = Signal(list)
+    stem_compare_requested = Signal(list)
 
     _PIPELINE_FIRST = 0
     _IMAGE_FIRST = 1
@@ -85,7 +92,7 @@ class SweepFileTreeWidget(QWidget):
             self._build_image_first()
 
     def _build_pipeline_first(self) -> None:
-        """Pipeline -> Image -> Component."""
+        """Pipeline -> Image (leaf loads all components)."""
         for pipe_name in self._data.pipeline_names:
             pipe_item = QTreeWidgetItem([pipe_name])
             pipe_item.setData(0, Qt.UserRole, {"pipeline": pipe_name})
@@ -93,56 +100,43 @@ class SweepFileTreeWidget(QWidget):
 
             stems = self._data.by_pipeline.get(pipe_name, {})
             for stem in sorted(stems):
-                stem_item = QTreeWidgetItem([stem])
-                stem_item.setData(
-                    0, Qt.UserRole, {"pipeline": pipe_name, "image_stem": stem}
+                leaf = QTreeWidgetItem([stem])
+                leaf.setData(
+                    0,
+                    Qt.UserRole,
+                    {"pipeline": pipe_name, "image_stem": stem},
                 )
-                pipe_item.addChild(stem_item)
-
-                for comp in sorted(stems[stem]):
-                    sf = stems[stem][comp]
-                    leaf = QTreeWidgetItem([comp])
-                    leaf.setData(
-                        0,
-                        Qt.UserRole,
-                        {
-                            "path": str(sf.path),
-                            "pipeline": pipe_name,
-                            "component": comp,
-                            "image_stem": stem,
-                        },
-                    )
-                    stem_item.addChild(leaf)
+                pipe_item.addChild(leaf)
+        logger.debug(
+            "Built pipeline-first tree: %d pipelines",
+            self._tree.topLevelItemCount(),
+        )
 
     def _build_image_first(self) -> None:
-        """Image -> Component -> Pipeline."""
+        """Image -> Pipeline (leaf loads all components)."""
         for stem in self._data.image_stems:
             stem_item = QTreeWidgetItem([stem])
             stem_item.setData(0, Qt.UserRole, {"image_stem": stem})
             self._tree.addTopLevelItem(stem_item)
 
+            # Collect pipelines that have this stem
+            pipes: set[str] = set()
             comps = self._data.by_image.get(stem, {})
-            for comp in sorted(comps):
-                comp_item = QTreeWidgetItem([comp])
-                comp_item.setData(
-                    0, Qt.UserRole, {"image_stem": stem, "component": comp}
-                )
-                stem_item.addChild(comp_item)
+            for comp_pipes in comps.values():
+                pipes.update(comp_pipes)
 
-                for pipe_name in sorted(comps[comp]):
-                    sf = comps[comp][pipe_name]
-                    leaf = QTreeWidgetItem([pipe_name])
-                    leaf.setData(
-                        0,
-                        Qt.UserRole,
-                        {
-                            "path": str(sf.path),
-                            "pipeline": pipe_name,
-                            "component": comp,
-                            "image_stem": stem,
-                        },
-                    )
-                    comp_item.addChild(leaf)
+            for pipe_name in sorted(pipes):
+                leaf = QTreeWidgetItem([pipe_name])
+                leaf.setData(
+                    0,
+                    Qt.UserRole,
+                    {"pipeline": pipe_name, "image_stem": stem},
+                )
+                stem_item.addChild(leaf)
+        logger.debug(
+            "Built image-first tree: %d images",
+            self._tree.topLevelItemCount(),
+        )
 
     # ------------------------------------------------------------------
     # Slots
@@ -153,33 +147,136 @@ class SweepFileTreeWidget(QWidget):
 
     def _on_item_clicked(self, item: QTreeWidgetItem, _column: int) -> None:
         info = item.data(0, Qt.UserRole)
+        logger.debug("Item clicked: %r", info)
         if info is None:
             return
 
-        # Leaf node (has "path")
-        if "path" in info:
-            if self._compare_cb.isChecked():
-                self._emit_compare(info)
-            else:
-                self.image_selected.emit(info["path"])
-                self.pipeline_selected.emit(info["pipeline"])
-            return
-
-        # Pipeline-level node
+        # Top-level pipeline node (pipeline-first mode)
         if "pipeline" in info and "image_stem" not in info:
             self.pipeline_selected.emit(info["pipeline"])
-
-    def _emit_compare(self, info: dict) -> None:
-        """Collect the same image_stem + component from ALL pipelines."""
-        stem = info.get("image_stem")
-        comp = info.get("component")
-        if not stem or not comp:
             return
 
-        pipes = self._data.by_image.get(stem, {}).get(comp, {})
-        result = [
-            (pipe_name, str(sf.path))
-            for pipe_name, sf in sorted(pipes.items())
+        # Top-level image node (image-first mode) — always replaces,
+        # even in compare mode, because no specific pipeline was chosen.
+        if "image_stem" in info and "pipeline" not in info:
+            self._emit_stem_image_first(info["image_stem"])
+            return
+
+        # Leaf node (has both pipeline and image_stem)
+        if "pipeline" in info and "image_stem" in info:
+            if self._compare_cb.isChecked():
+                self._emit_stem_compare(
+                    info["pipeline"], info["image_stem"],
+                )
+            else:
+                self._emit_stem_pipeline_first(
+                    info["pipeline"], info["image_stem"],
+                )
+
+    def _emit_stem_pipeline_first(
+        self, pipeline: str, stem: str,
+    ) -> None:
+        """Emit all components for *stem* within *pipeline*."""
+        comps = self._data.by_pipeline.get(pipeline, {}).get(stem, {})
+        entries = [
+            {
+                "path": str(sf.path),
+                "pipeline": pipeline,
+                "component": comp,
+                "image_stem": stem,
+            }
+            for comp, sf in sorted(comps.items())
         ]
-        if result:
-            self.compare_requested.emit(result)
+        if not entries:
+            logger.warning(
+                "No entries found for %s/%s", pipeline, stem,
+            )
+            return
+        logger.debug(
+            "_emit_stem_pipeline_first: %d entries for %s/%s",
+            len(entries), pipeline, stem,
+        )
+        self.stem_selected.emit(entries)
+        self.pipeline_selected.emit(pipeline)
+
+    def _emit_stem_image_first(self, stem: str) -> None:
+        """Emit all components for *stem* from one pipeline.
+
+        Selects the alphabetically-first pipeline that has the most
+        components for this stem, so layers are never mixed across
+        pipelines.
+        """
+        comps = self._data.by_image.get(stem, {})
+        if not comps:
+            logger.warning("No components found for stem %r", stem)
+            return
+
+        # Count components per pipeline for this stem
+        pipe_counts: dict[str, int] = {}
+        for comp_pipes in comps.values():
+            for pname in comp_pipes:
+                pipe_counts[pname] = pipe_counts.get(pname, 0) + 1
+
+        # Pick pipeline with most components (alphabetical tiebreak)
+        best_pipe = max(
+            sorted(pipe_counts), key=lambda p: pipe_counts[p],
+        )
+
+        entries = []
+        for comp in sorted(comps):
+            pipes = comps[comp]
+            if best_pipe not in pipes:
+                continue
+            sf = pipes[best_pipe]
+            entries.append(
+                {
+                    "path": str(sf.path),
+                    "pipeline": best_pipe,
+                    "component": comp,
+                    "image_stem": stem,
+                }
+            )
+        if not entries:
+            logger.warning(
+                "No entries found for stem %r (pipe=%s)",
+                stem, best_pipe,
+            )
+            return
+        logger.debug(
+            "_emit_stem_image_first: %d entries for %s (pipe=%s)",
+            len(entries), stem, best_pipe,
+        )
+        self.stem_selected.emit(entries)
+        self.pipeline_selected.emit(best_pipe)
+
+    def _emit_stem_compare(
+        self, pipeline: str, stem: str,
+    ) -> None:
+        """Emit all components for *stem* within *pipeline* for accumulation.
+
+        Same payload as :meth:`_emit_stem_pipeline_first` but routed
+        through ``stem_compare_requested`` so the viewer adds layers
+        without clearing previous ones.
+        """
+        comps = self._data.by_pipeline.get(pipeline, {}).get(stem, {})
+        entries = [
+            {
+                "path": str(sf.path),
+                "pipeline": pipeline,
+                "component": comp,
+                "image_stem": stem,
+            }
+            for comp, sf in sorted(comps.items())
+        ]
+        if not entries:
+            logger.warning(
+                "No entries found for compare %s/%s",
+                pipeline, stem,
+            )
+            return
+        logger.debug(
+            "_emit_stem_compare: %d entries for %s/%s",
+            len(entries), pipeline, stem,
+        )
+        self.stem_compare_requested.emit(entries)
+        self.pipeline_selected.emit(pipeline)

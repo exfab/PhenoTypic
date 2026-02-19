@@ -7,7 +7,7 @@ from itertools import product
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
-from ._sweep import Fixed, Sweep
+from ._sweep import Sweep
 
 
 def generate_sweep_manifest(

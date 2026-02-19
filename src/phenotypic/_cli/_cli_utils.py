@@ -88,7 +88,6 @@ def parse_slurm_args(slurm_args: "Sequence[str]") -> dict:
         click.BadParameter: If parsing fails.
     """
     import ast
-    from typing import Sequence  # noqa: F811
 
     parsed = {}
     for param in slurm_args:

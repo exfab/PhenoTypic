@@ -13,14 +13,13 @@ import logging
 from abc import ABC, abstractmethod
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Literal, Optional, Tuple
+from typing import Any, Dict, List, Literal, Optional
 
 import click
 
 from ._sweep_output import SweepOutputManager
 from ._sweep_process_image import (
     process_image_all_pipelines,
-    process_image_all_pipelines_sequential,
 )
 
 logger = logging.getLogger(__name__)
@@ -250,7 +249,7 @@ class SLURMSweepStrategy(SweepExecutionStrategy):
             self._monitor(output_dir, total_tasks)
         else:
             console.print("\nJobs submitted. Monitor with:")
-            console.print(f"  squeue -u $USER --array")
+            console.print("  squeue -u $USER --array")
             console.print(f"  tail -f {output_dir / 'processing_events.log'}")
 
         end_time = datetime.now()

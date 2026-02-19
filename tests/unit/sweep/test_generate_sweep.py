@@ -1,11 +1,10 @@
 """Tests for phenotypic.sweep manifest generation and loading."""
 
 import json
-from pathlib import Path
 
 import pytest
 
-from phenotypic.sweep import Fixed, Sweep, generate_sweep_manifest, load_sweep_manifest
+from phenotypic.sweep import Sweep, generate_sweep_manifest, load_sweep_manifest
 from phenotypic import ImagePipeline
 from phenotypic.enhance import GaussianBlur
 from phenotypic.detect import OtsuDetector

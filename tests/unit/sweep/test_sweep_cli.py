@@ -1,7 +1,6 @@
 """Tests for the sweep CLI: output manager, flat-dir scanning, config validation."""
 
 import json
-from pathlib import Path
 from unittest.mock import patch
 
 import pandas as pd
@@ -325,7 +324,6 @@ class TestArchivePreviousRun:
     def test_multiple_archives_coexist(self, tmp_path):
         """Two successive archives get different timestamps."""
         from datetime import datetime
-        from unittest.mock import patch
 
         out = tmp_path / "output"
 

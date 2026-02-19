@@ -17,10 +17,9 @@ from typing import Any, Dict, List, Literal, Optional, Sequence
 
 import click
 
-from phenotypic._cli._cli_constants import MIN_SLURM_TIME_MINUTES, \
-    MAX_SLURM_TIME_MINUTES
+from phenotypic._cli._cli_constants import MIN_SLURM_TIME_MINUTES
 from phenotypic._cli._cli_directory_scanner import generate_timestamped_output_dir
-from phenotypic._cli._cli_utils import normalize_extension, parse_slurm_args
+from phenotypic._cli._cli_utils import parse_slurm_args
 from phenotypic._core._image_parts.detection_modes import available_modes
 from phenotypic.tools_.constants_ import IO
 
@@ -448,7 +447,7 @@ def sweep_cli(
             )
             click.echo(
                 f"= {len(image_paths) * len(pipeline_names)} total pipeline runs")
-            click.echo(f"\nPipeline names:")
+            click.echo("\nPipeline names:")
             for name in pipeline_names:
                 click.echo(f"  - {name}")
             sys.exit(0)
