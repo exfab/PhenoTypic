@@ -9,6 +9,7 @@ from typing import List, Optional
 import numpy as np
 from skimage import io as skio
 
+from ._grouped_layer_widget import _component_sort_key
 from ._sweep_data_model import SweepOutputData, SweepOutputScanner
 
 logger = logging.getLogger(__name__)
@@ -74,7 +75,7 @@ class NapariSweepViewer:
             self._on_stem_compare,
         )
 
-        self._hide_native_layer_list()
+        self._tabify_native_layer_docks()
 
         return self._viewer
 
@@ -91,6 +92,10 @@ class NapariSweepViewer:
         """
         logger.debug("_on_stem_selected: %d entries", len(entries))
         self._clear_current_layers()
+
+        entries = sorted(
+            entries, key=lambda e: _component_sort_key(e["component"]),
+        )
 
         loaded = 0
         loaded_entries: list[dict] = []
@@ -135,6 +140,11 @@ class NapariSweepViewer:
                 ``component``, and ``image_stem`` keys.
         """
         logger.debug("_on_stem_compare: %d entries", len(entries))
+
+        entries = sorted(
+            entries, key=lambda e: _component_sort_key(e["component"]),
+        )
+
         loaded = 0
         loaded_entries: list[dict] = []
         for entry in entries:
@@ -203,23 +213,21 @@ class NapariSweepViewer:
         if hasattr(self, "_layer_tree"):
             self._layer_tree.clear()
 
-    def _hide_native_layer_list(self) -> None:
-        """Best-effort hide of napari's built-in layer list dock."""
+    def _tabify_native_layer_docks(self) -> None:
+        """Tab napari's native layer-list and layer-controls docks."""
         try:
-            from qtpy.QtWidgets import QDockWidget
+            qt_window = self._viewer.window._qt_window
+            layer_list = self._viewer.window._qt_viewer.dockLayerList
+            layer_controls = (
+                self._viewer.window._qt_viewer.dockLayerControls
+            )
 
-            main_win = self._viewer.window._qt_window
-            for dock in main_win.findChildren(QDockWidget):
-                title = dock.windowTitle().lower()
-                if "layer" in title and "group" not in title:
-                    dock.setVisible(False)
-                    logger.debug(
-                        "Hid native dock: %r", dock.windowTitle(),
-                    )
-                    break
+            qt_window.tabifyDockWidget(layer_list, layer_controls)
+            layer_list.show()
+            layer_list.raise_()
         except Exception as exc:
             logger.debug(
-                "Could not hide native layer list: %s", exc,
+                "Could not tabify native layer docks: %s", exc,
             )
 
     @staticmethod

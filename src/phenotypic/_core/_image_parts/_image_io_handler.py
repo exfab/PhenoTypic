@@ -574,6 +574,9 @@ class ImageIOHandler(ImageColorSpace):
                 compression=compression,
                 compression_opts=compression_opts,
         )
+        image_group["detect_mat"].attrs["detect_mode"] = (
+            self._data.detect_mode
+        )
 
         objmap = self.objmap[:]
         HDF.save_array2hdf5(
@@ -682,10 +685,16 @@ class ImageIOHandler(ImageColorSpace):
         # Load detection matrix and object map with proper dtype casting
         # Backward compat: try 'detect_mat' first, fall back to 'enh_gray'
         if "detect_mat" in group:
-            detect_matrix_data = group["detect_mat"][()]
+            detect_mat_ds = group["detect_mat"]
+            detect_matrix_data = detect_mat_ds[()]
+            detect_mode = detect_mat_ds.attrs.get(
+                "detect_mode", "gray"
+            )
         else:
             detect_matrix_data = group["enh_gray"][()]
+            detect_mode = "gray"
         img.detect_mat[:] = detect_matrix_data
+        img._data.detect_mode = detect_mode
 
         # Object map should preserve its original dtype (usually integer labels)
         img.objmap[:] = group["objmap"][()]
