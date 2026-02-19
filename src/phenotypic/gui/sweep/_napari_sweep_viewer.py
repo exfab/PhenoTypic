@@ -48,13 +48,13 @@ class NapariSweepViewer:
         # Lazy-import widgets (they need qtpy which is available once napari
         # has been imported).
         from ._file_tree_widget import SweepFileTreeWidget
-        from ._measurements_table_widget import MeasurementsTableWidget
+        from ._grouped_layer_widget import GroupedLayerWidget
         from ._pipeline_info_widget import PipelineInfoWidget
 
         # Build widgets
         self._tree = SweepFileTreeWidget(self._data)
         self._info = PipelineInfoWidget(self._data.pipeline_configs)
-        self._meas = MeasurementsTableWidget(self._data)
+        self._layer_tree = GroupedLayerWidget(self._viewer)
 
         # Dock them
         self._viewer.window.add_dock_widget(
@@ -64,7 +64,7 @@ class NapariSweepViewer:
             self._info, name="Pipeline Info", area="right",
         )
         self._viewer.window.add_dock_widget(
-            self._meas, name="Measurements", area="bottom",
+            self._layer_tree, name="Layers", area="left",
         )
 
         # Wire signals
@@ -73,6 +73,8 @@ class NapariSweepViewer:
         self._tree.stem_compare_requested.connect(
             self._on_stem_compare,
         )
+
+        self._hide_native_layer_list()
 
         return self._viewer
 
@@ -91,6 +93,7 @@ class NapariSweepViewer:
         self._clear_current_layers()
 
         loaded = 0
+        loaded_entries: list[dict] = []
         for entry in entries:
             arr = self._load_image_array(entry["path"])
             if arr is None:
@@ -98,6 +101,7 @@ class NapariSweepViewer:
             name = self._make_layer_name(entry["path"])
             self._add_layer(arr, name, entry["component"])
             self._current_layer_names.append(name)
+            loaded_entries.append(entry)
             loaded += 1
 
         failed = len(entries) - loaded
@@ -113,13 +117,11 @@ class NapariSweepViewer:
 
         self._viewer.grid.enabled = False
 
-        # Update info + measurements only if layers were loaded
+        # Update info panel only if layers were loaded
         if self._current_layer_names and entries:
             self._info.set_pipeline(entries[0]["pipeline"])
-            self._meas.set_selection(
-                entries[0]["pipeline"],
-                entries[0]["image_stem"],
-            )
+
+        self._layer_tree.set_layers(loaded_entries)
 
     def _on_stem_compare(self, entries: List[dict]) -> None:
         """Accumulate layers for compare mode (no clearing).
@@ -134,6 +136,7 @@ class NapariSweepViewer:
         """
         logger.debug("_on_stem_compare: %d entries", len(entries))
         loaded = 0
+        loaded_entries: list[dict] = []
         for entry in entries:
             arr = self._load_image_array(entry["path"])
             if arr is None:
@@ -141,6 +144,7 @@ class NapariSweepViewer:
             name = self._make_layer_name(entry["path"])
             self._add_layer(arr, name, entry["component"])
             self._current_layer_names.append(name)
+            loaded_entries.append(entry)
             loaded += 1
 
         failed = len(entries) - loaded
@@ -160,11 +164,7 @@ class NapariSweepViewer:
             self._viewer.grid.enabled = True
             self._viewer.grid.shape = (-1, loaded)
 
-        if entries:
-            self._meas.set_selection(
-                entries[0]["pipeline"],
-                entries[0]["image_stem"],
-            )
+        self._layer_tree.add_layers(loaded_entries)
 
     # ------------------------------------------------------------------
     # Helpers
@@ -200,6 +200,27 @@ class NapariSweepViewer:
             if name in self._viewer.layers:
                 self._viewer.layers.remove(name)
         self._current_layer_names = []
+        if hasattr(self, "_layer_tree"):
+            self._layer_tree.clear()
+
+    def _hide_native_layer_list(self) -> None:
+        """Best-effort hide of napari's built-in layer list dock."""
+        try:
+            from qtpy.QtWidgets import QDockWidget
+
+            main_win = self._viewer.window._qt_window
+            for dock in main_win.findChildren(QDockWidget):
+                title = dock.windowTitle().lower()
+                if "layer" in title and "group" not in title:
+                    dock.setVisible(False)
+                    logger.debug(
+                        "Hid native dock: %r", dock.windowTitle(),
+                    )
+                    break
+        except Exception as exc:
+            logger.debug(
+                "Could not hide native layer list: %s", exc,
+            )
 
     @staticmethod
     def _load_image_array(file_path: str) -> Optional[np.ndarray]:

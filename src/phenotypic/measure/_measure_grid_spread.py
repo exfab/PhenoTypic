@@ -84,12 +84,13 @@ class MeasureGridSpread(GridMeasureFeatures):
 
     def _operate(self, image: GridImage) -> pd.DataFrame:
         gs_table = image.grid.info()
-        gs_counts = pd.DataFrame(gs_table.loc[:, str(GRID.SECTION_NUM)].value_counts())
+        gs_counts = pd.DataFrame(
+            gs_table.loc[:, str(GRID.ROW_MAJOR_IDX)].value_counts())
 
         obj_spread = []
         for gs_bindex in gs_counts.index:
             curr_gs_subtable = gs_table.loc[
-                gs_table.loc[:, str(GRID.SECTION_NUM)] == gs_bindex, :
+                gs_table.loc[:, str(GRID.ROW_MAJOR_IDX)] == gs_bindex, :
             ]
 
             x_vector = curr_gs_subtable.loc[:, str(BBOX.CENTER_CC)]

@@ -23,7 +23,7 @@ class MergeGridObj(GridObjectRefiner):
         new_objmap = image.objmap[:].copy()
 
         grid_info: pd.DataFrame = image.grid.info()
-        for i, gs in enumerate(grid_info[GRID.SECTION_NUM].unique()):
-            subtable = grid_info.loc[grid_info.loc[:, GRID.SECTION_NUM] == gs, :]
+        for i, gs in enumerate(grid_info[GRID.ROW_MAJOR_IDX].unique()):
+            subtable = grid_info.loc[grid_info.loc[:, GRID.ROW_MAJOR_IDX] == gs, :]
 
             new_objmap[np.isin(objmap, subtable.loc[:, OBJECT.LABEL])] = i + 1

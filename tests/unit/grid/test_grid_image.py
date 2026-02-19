@@ -414,3 +414,55 @@ class TestGridAccessorSlicing:
 
         with pytest.raises(TypeError):
             _ = grid_image.grid["invalid"]
+
+
+# ============================================================================================
+# Test COL_MAJOR_IDX in GridFinder
+# ============================================================================================
+
+
+class TestColMajorIdx:
+    """Tests for column-major index calculation in grid info."""
+
+    @timeit
+    def test_col_major_idx_column_exists(
+        self, plate_grid_images_with_detection
+    ):
+        """COL_MAJOR_IDX column should be present in grid info."""
+        grid_image = plate_grid_images_with_detection
+        info = grid_image.grid.info
+        assert "ColMajorIdx" in info.columns
+
+    @timeit
+    def test_col_major_idx_ordering(
+        self, plate_grid_images_with_detection
+    ):
+        """COL_MAJOR_IDX should follow col * nrows + row ordering."""
+        grid_image = plate_grid_images_with_detection
+        info = grid_image.grid.info
+        nrows = grid_image.nrows
+
+        valid = info.dropna(
+            subset=["RowNum", "ColNum", "ColMajorIdx"]
+        )
+        if valid.empty:
+            pytest.skip("No valid grid assignments")
+
+        row_nums = valid["RowNum"].astype(int).values
+        col_nums = valid["ColNum"].astype(int).values
+        expected = col_nums * nrows + row_nums
+
+        actual = valid["ColMajorIdx"].astype(int).values
+        np.testing.assert_array_equal(actual, expected)
+
+    @timeit
+    def test_col_major_idx_nan_matches_row_major(
+        self, plate_grid_images_with_detection
+    ):
+        """NaN positions in COL_MAJOR_IDX should match ROW_MAJOR_IDX."""
+        grid_image = plate_grid_images_with_detection
+        info = grid_image.grid.info
+
+        row_major_na = info["RowMajorIdx"].isna()
+        col_major_na = info["ColMajorIdx"].isna()
+        assert row_major_na.equals(col_major_na)

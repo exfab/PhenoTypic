@@ -330,7 +330,7 @@ class GridAccessor:
             obj_max_cc = np.full(section_count, np.nan)
         else:
             bounds = (
-                grid_info.groupby(str(GRID.SECTION_NUM), observed=False)
+                grid_info.groupby(str(GRID.ROW_MAJOR_IDX), observed=False)
                 .agg(
                         min_rr=(str(BBOX.MIN_RR), "min"),
                         max_rr=(str(BBOX.MAX_RR), "max"),
@@ -339,8 +339,9 @@ class GridAccessor:
                 )
             )
             bounds = bounds.reset_index()
-            bounds[str(GRID.SECTION_NUM)] = bounds[str(GRID.SECTION_NUM)].astype(int)
-            bounds = bounds.set_index(str(GRID.SECTION_NUM)).reindex(
+            bounds[str(GRID.ROW_MAJOR_IDX)] = bounds[str(GRID.ROW_MAJOR_IDX)].astype(
+                int)
+            bounds = bounds.set_index(str(GRID.ROW_MAJOR_IDX)).reindex(
                     range(section_count)
             )
             obj_min_rr = bounds["min_rr"].to_numpy()
@@ -393,7 +394,7 @@ class GridAccessor:
             grid_info = self.info()
 
         labels = grid_info.loc[
-            grid_info.loc[:, str(GRID.SECTION_NUM)].isin(section_indices),
+            grid_info.loc[:, str(GRID.ROW_MAJOR_IDX)].isin(section_indices),
             OBJECT.LABEL,
         ]
         if labels.empty:
@@ -996,8 +997,9 @@ class GridAccessor:
         grid_info = self.info()
 
         section_map = self._root_image.objmap[:]
-        for n, bidx in enumerate(np.sort(grid_info.loc[:, GRID.SECTION_NUM].unique())):
-            subtable = grid_info.loc[grid_info.loc[:, GRID.SECTION_NUM] == bidx, :]
+        for n, bidx in enumerate(
+                np.sort(grid_info.loc[:, GRID.ROW_MAJOR_IDX].unique())):
+            subtable = grid_info.loc[grid_info.loc[:, GRID.ROW_MAJOR_IDX] == bidx, :]
             section_map[
                 np.isin(
                         element=self._root_image.objmap[:],
@@ -1026,7 +1028,7 @@ class GridAccessor:
                 - Index: Grid section number (0 to nrows*ncols-1), unsorted sections
                   (those with no colonies) are not included
                 - Values: Count of colonies in that section
-                - Index name: GRID.SECTION_NUM constant
+                - Index name: GRID.ROW_MAJOR_IDX constant
 
         Examples:
             Count and analyze colonies per grid section:
@@ -1053,7 +1055,7 @@ class GridAccessor:
         """
         return (
             self.info()
-            .loc[:, GRID.SECTION_NUM]
+            .loc[:, GRID.ROW_MAJOR_IDX]
             .value_counts()
             .sort_values(ascending=ascending)
         )
@@ -1109,7 +1111,7 @@ class GridAccessor:
         if isinstance(section_number, int):  # Access by section number
             grid_info = self.info()
             return grid_info.loc[
-                grid_info.loc[:, str(GRID.SECTION_NUM)] == section_number, :
+                grid_info.loc[:, str(GRID.ROW_MAJOR_IDX)] == section_number, :
             ]
         elif (
                 isinstance(section_number, tuple) and len(section_number) == 2
@@ -1180,7 +1182,8 @@ class GridAccessor:
 
         if grid_info is None:
             grid_info = self.info()
-        section_info = grid_info.loc[grid_info.loc[:, str(GRID.SECTION_NUM)] == idx, :]
+        section_info = grid_info.loc[
+            grid_info.loc[:, str(GRID.ROW_MAJOR_IDX)] == idx, :]
 
         obj_min_cc = section_info.loc[:, str(BBOX.MIN_CC)].min()
         min_cc = min(grid_min_cc, obj_min_cc)
@@ -1224,5 +1227,6 @@ class GridAccessor:
         """
         if grid_info is None:
             grid_info = self.info()
-        section_info = grid_info.loc[grid_info.loc[:, str(GRID.SECTION_NUM)] == idx, :]
+        section_info = grid_info.loc[
+            grid_info.loc[:, str(GRID.ROW_MAJOR_IDX)] == idx, :]
         return section_info[OBJECT.LABEL].to_list()

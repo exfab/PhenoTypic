@@ -109,7 +109,7 @@ class GridFinder(GridMeasureFeatures, ABC):
 
     - **_get_grid_info(image, row_edges, col_edges) -> pd.DataFrame:** Assembles
       complete grid information from pre-computed edge coordinates. Calls internal
-      methods to populate ROW_NUM, COL_NUM, and SECTION_NUM columns. Use this after
+      methods to populate ROW_NUM, COL_NUM, and ROW_MAJOR_IDX columns. Use this after
       computing edges in your _operate() implementation.
     - **_add_row_number_info():** Assigns row indices using pd.cut() with object
       centroids and row edges.
@@ -127,13 +127,13 @@ class GridFinder(GridMeasureFeatures, ABC):
 
     - **ROW_NUM:** Grid row index (0 to nrows-1), representing vertical well position
     - **COL_NUM:** Grid column index (0 to ncols-1), representing horizontal well position
-    - **SECTION_NUM:** Well identifier (0 to nrows*ncols-1), ordered left-to-right,
+    - **ROW_MAJOR_IDX:** Well identifier (0 to nrows*ncols-1), ordered left-to-right,
       top-to-bottom for convenient database mapping
     - **Additional columns:** Object metadata (centroid, bounding box, morphology) from
       image.objects.info()
 
     Objects that fall outside all grid cells (due to edge clipping or misalignment)
-    have NaN values in ROW_NUM, COL_NUM, and SECTION_NUM columns.
+    have NaN values in ROW_NUM, COL_NUM, and ROW_MAJOR_IDX columns.
 
     **Concrete Implementations**
 
@@ -197,7 +197,7 @@ class GridFinder(GridMeasureFeatures, ABC):
         >>> grid_df = grid_finder.measure(image_with_objects)
         >>> # Access well assignments
         >>> print(f"Found {len(grid_df)} colonies assigned to grid")
-        >>> print(grid_df[['ROW_NUM', 'COL_NUM', 'SECTION_NUM']].head())
+        >>> print(grid_df[['ROW_NUM', 'COL_NUM', 'ROW_MAJOR_IDX']].head())
 
         Create a ManualGridFinder for a 96-well plate with known geometry:
 
@@ -221,11 +221,11 @@ class GridFinder(GridMeasureFeatures, ABC):
         >>> grid_finder = ManualGridFinder(row_edges=row_edges, col_edges=col_edges)
         >>> grid_df = grid_finder.measure(image_with_objects)
         >>> # Result includes grid assignments plus object metadata
-        >>> print(grid_df[['ROW_NUM', 'COL_NUM', 'SECTION_NUM']].head())
+        >>> print(grid_df[['ROW_NUM', 'COL_NUM', 'ROW_MAJOR_IDX']].head())
 
-        Understanding SECTION_NUM for well mapping:
+        Understanding ROW_MAJOR_IDX for well mapping:
 
-        SECTION_NUM provides a single integer ID for each well, useful for organizing
+        ROW_MAJOR_IDX provides a single integer ID for each well, useful for organizing
         results and correlating with sample metadata:
 
         >>> from phenotypic.grid import AutoGridFinder
@@ -238,13 +238,13 @@ class GridFinder(GridMeasureFeatures, ABC):
         >>> grid_finder = AutoGridFinder(nrows=8, ncols=12)
         >>> grid_df = grid_finder.measure(image_with_objects)
         >>> # Example: 8x12 grid (96-well plate)
-        >>> # SECTION_NUM runs 0-95, numbered left-to-right, top-to-bottom
+        >>> # ROW_MAJOR_IDX runs 0-95, numbered left-to-right, top-to-bottom
         >>> # Section 0 = Row 0, Col 0 (top-left, A1)
         >>> # Section 11 = Row 0, Col 11 (top-right, A12)
         >>> # Section 12 = Row 1, Col 0 (second row left, B1)
         >>> # Section 95 = Row 7, Col 11 (bottom-right, H12)
         >>> # Filter colonies in a specific well
-        >>> section_5_objects = grid_df[grid_df['SECTION_NUM'] == 5]
+        >>> section_5_objects = grid_df[grid_df['ROW_MAJOR_IDX'] == 5]
         >>> # Map section numbers back to well coordinates
         >>> well_row = 5 // 12  # Row index
         >>> well_col = 5 % 12   # Column index
@@ -350,8 +350,25 @@ class GridFinder(GridMeasureFeatures, ABC):
         # Create a new column with proper dtype handling
         section_series = pd.Series(section_nums, index=table.index)
         # Convert to nullable integer type first to handle NaN, then to categorical
-        table[str(GRID.SECTION_NUM)] = (
+        table[str(GRID.ROW_MAJOR_IDX)] = (
             section_series.astype("Int64").astype(np.uint16).astype("category")
+        )
+
+        # Column-major index (col * nrows + row)
+        col_major_map = np.reshape(
+            np.arange(self.nrows * self.ncols),
+            (self.nrows, self.ncols),
+            order="F",
+        )
+        col_major_nums = np.full(len(table), np.nan)
+        if valid_mask.any():
+            col_major_nums[valid_mask] = col_major_map[
+                row_nums[valid_mask].astype(int),
+                col_nums[valid_mask].astype(int),
+            ]
+        col_major_series = pd.Series(col_major_nums, index=table.index)
+        table[str(GRID.COL_MAJOR_IDX)] = (
+            col_major_series.astype("Int64").astype(np.uint16).astype("category")
         )
         return table
 
@@ -371,7 +388,7 @@ class GridFinder(GridMeasureFeatures, ABC):
             col_edges (np.ndarray): Array of column edge coordinates (length = ncols + 1).
 
         Returns:
-            pd.DataFrame: Complete grid information table with ROW_NUM, COL_NUM, and SECTION_NUM columns.
+            pd.DataFrame: Complete grid information table with ROW_NUM, COL_NUM, ROW_MAJOR_IDX, and COL_MAJOR_IDX columns.
         """
         info_table = image.objects.info(include_metadata=False)
 

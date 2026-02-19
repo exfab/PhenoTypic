@@ -26,7 +26,7 @@ class GridSectionLargest(ObjectRefiner):
     def _operate(self, image: GridImage) -> GridImage:
         size_table = MeasureSize().measure(image, include_meta=True)
         max_idx = size_table.groupby(
-                by=GRID.SECTION_NUM,
+                by=GRID.ROW_MAJOR_IDX,
                 observed=True
         )[SIZE.AREA].idxmax()
         max_size_labels = size_table.loc[max_idx, OBJECT.LABEL].to_numpy()

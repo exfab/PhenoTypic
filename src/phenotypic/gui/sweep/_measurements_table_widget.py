@@ -1,4 +1,10 @@
-"""Docked table widget showing measurement CSV data for the selected image."""
+"""Docked table widget showing measurement CSV data for the selected image.
+
+Not currently used by the sweep viewer — loading and displaying
+measurement CSVs on every stem selection introduced noticeable GUI
+latency.  Kept here so it can be re-enabled once the performance issue
+is resolved.
+"""
 
 from __future__ import annotations
 

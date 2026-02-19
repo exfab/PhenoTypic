@@ -376,7 +376,7 @@ class EdgeCorrector(SetAnalyzer):
             >>> np.random.seed(42)
             >>> data = pd.DataFrame({
             ...     'ImageName': ['img1'] * 96,
-            ...     GRID.SECTION_NUM: range(96),
+            ...     GRID.ROW_MAJOR_IDX: range(96),
             ...     'Metadata_Time': [1] * 96,
             ...     'Shape_Area': np.random.uniform(100, 500, 96)
             ... })
@@ -402,7 +402,7 @@ class EdgeCorrector(SetAnalyzer):
             >>> data = pd.DataFrame({
             ...     'Plate': ['P1']*96 + ['P2']*96,
             ...     'Condition': ['WT']*48 + ['KO']*48 + ['WT']*48 + ['KO']*48,
-            ...     GRID.SECTION_NUM: list(range(96))*2,
+            ...     GRID.ROW_MAJOR_IDX: list(range(96))*2,
             ...     'Metadata_Time': [1]*192,
             ...     'Area': np.random.uniform(100, 500, 192)
             ... })  # doctest: +SKIP
@@ -425,7 +425,7 @@ class EdgeCorrector(SetAnalyzer):
         self._original_data = data
 
         # Check required columns
-        section_col = str(GRID.SECTION_NUM)
+        section_col = str(GRID.ROW_MAJOR_IDX)
         required_cols = set(self.groupby + [section_col, self.on])
         missing_cols = required_cols - set(data.columns)
 
@@ -945,7 +945,7 @@ class EdgeCorrector(SetAnalyzer):
 
         Args:
             group (pd.DataFrame): Subset of data for a single group (e.g., single plate).
-                Must contain GRID.SECTION_NUM, self.on, and self.time_label columns.
+                Must contain GRID.ROW_MAJOR_IDX, self.on, and self.time_label columns.
 
         Returns:
             dict | None: Dictionary with keys:
@@ -971,7 +971,7 @@ class EdgeCorrector(SetAnalyzer):
         tmax = group[self.time_label].max()
         last_time_group = group[group[self.time_label] == tmax].copy()
 
-        present_sections = last_time_group[GRID.SECTION_NUM].dropna().unique()
+        present_sections = last_time_group[GRID.ROW_MAJOR_IDX].dropna().unique()
         if len(present_sections) == 0:
             return None
 
@@ -998,8 +998,8 @@ class EdgeCorrector(SetAnalyzer):
                 "edge_mask"      : pd.Series(True, index=last_time_group.index),
             }
 
-        surrounded_mask = last_time_group[GRID.SECTION_NUM].isin(surrounded_idx_set)
-        edge_mask = ~surrounded_mask & last_time_group[GRID.SECTION_NUM].isin(
+        surrounded_mask = last_time_group[GRID.ROW_MAJOR_IDX].isin(surrounded_idx_set)
+        edge_mask = ~surrounded_mask & last_time_group[GRID.ROW_MAJOR_IDX].isin(
                 present_sections
         )
 
@@ -1094,7 +1094,7 @@ class EdgeCorrector(SetAnalyzer):
 
         Args:
             group (pd.DataFrame): Measurement data for a single group. Must contain:
-                - GRID.SECTION_NUM: Flattened well indices (row*ncols + col)
+                - GRID.ROW_MAJOR_IDX: Flattened well indices (row*ncols + col)
                 - on: Measurement column to correct
                 - time_label: Time point column (optional)
             on (str): Name of measurement column to analyze. Used as basis for new
@@ -1145,7 +1145,7 @@ class EdgeCorrector(SetAnalyzer):
         """
         from phenotypic.tools_.measurement_info_ import GRID
 
-        section_col = GRID.SECTION_NUM
+        section_col = GRID.ROW_MAJOR_IDX
 
         # Set base case
         group.loc[:, f"{EDGE_CORRECTION.NEW_VAL}-{on}"] = group.loc[:, on]
@@ -1204,12 +1204,12 @@ class EdgeCorrector(SetAnalyzer):
             return group
 
         last_inner_values: pd.Series = last_time_group.loc[
-            last_time_group.loc[:, GRID.SECTION_NUM].isin(surrounded_idx), on
+            last_time_group.loc[:, GRID.ROW_MAJOR_IDX].isin(surrounded_idx), on
         ]
 
         if pvalue != 0:
             last_edge_values: pd.Series = last_time_group.loc[
-                last_time_group.loc[:, GRID.SECTION_NUM].isin(edge_idx), on
+                last_time_group.loc[:, GRID.ROW_MAJOR_IDX].isin(edge_idx), on
             ]
 
             # If difference is not statistically significant, don't apply correction

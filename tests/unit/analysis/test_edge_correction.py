@@ -162,9 +162,9 @@ class TestThresholdCalculation:
         np.random.seed(42)
         data = pd.DataFrame(
                 {
-                    "ImageName"          : ["img1"] * 96,
-                    str(GRID.SECTION_NUM): range(96),
-                    "Area"               : np.random.uniform(100, 500, 96),
+                    "ImageName"            : ["img1"] * 96,
+                    str(GRID.ROW_MAJOR_IDX): range(96),
+                    "Area"                 : np.random.uniform(100, 500, 96),
                 }
         )
 
@@ -196,9 +196,9 @@ class TestThresholdCalculation:
         """Test behavior when fewer than top_n values are available."""
         data = pd.DataFrame(
                 {
-                    "ImageName"          : ["img1"] * 5,
-                    str(GRID.SECTION_NUM): range(5),
-                    "Area"               : [100, 200, 300, 400, 500],
+                    "ImageName"            : ["img1"] * 5,
+                    str(GRID.ROW_MAJOR_IDX): range(5),
+                    "Area"                 : [100, 200, 300, 400, 500],
                 }
         )
 
@@ -230,19 +230,19 @@ class TestValueCapping:
 
         data = pd.DataFrame(
                 {
-                    "ImageName"          : ["img1"] * n_sections,
-                    str(GRID.SECTION_NUM): range(n_sections),
-                    "Area"               : np.random.uniform(100, 300, n_sections),
+                    "ImageName"            : ["img1"] * n_sections,
+                    str(GRID.ROW_MAJOR_IDX): range(n_sections),
+                    "Area"                 : np.random.uniform(100, 300, n_sections),
                 }
         )
 
         # Set some edge values very high (higher than interior values)
         edge_sections = [0, 1, 2, 3, 4, 5]  # Top row
-        data.loc[data[str(GRID.SECTION_NUM)].isin(edge_sections), "Area"] = 1000
+        data.loc[data[str(GRID.ROW_MAJOR_IDX)].isin(edge_sections), "Area"] = 1000
 
         # Ensure interior values are in normal range for top_n calculation
         interior_sections = [7, 8, 9, 10, 13, 14, 15, 16]
-        data.loc[data[str(GRID.SECTION_NUM)].isin(interior_sections), "Area"] = (
+        data.loc[data[str(GRID.ROW_MAJOR_IDX)].isin(interior_sections), "Area"] = (
             np.random.uniform(250, 350, len(interior_sections))
         )
 
@@ -261,7 +261,7 @@ class TestValueCapping:
 
         # All values should be capped at or below the threshold
         # The threshold is calculated from top 8 interior values
-        edge_mask = corrected[str(GRID.SECTION_NUM)].isin(edge_sections)
+        edge_mask = corrected[str(GRID.ROW_MAJOR_IDX)].isin(edge_sections)
         # Edge sections that were 1000 should now be capped
         assert (corrected.loc[
                     edge_mask, f"{EDGE_CORRECTION.NEW_VAL}-Area"] < 1000).all()
@@ -272,9 +272,9 @@ class TestValueCapping:
 
         data = pd.DataFrame(
                 {
-                    "ImageName"          : ["img1"] * 96,
-                    str(GRID.SECTION_NUM): range(96),
-                    "Area"               : np.random.uniform(100, 200, 96),
+                    "ImageName"            : ["img1"] * 96,
+                    str(GRID.ROW_MAJOR_IDX): range(96),
+                    "Area"                 : np.random.uniform(100, 200, 96),
                 }
         )
 
@@ -319,9 +319,9 @@ class TestValueCapping:
         nrows, ncols = 5, 5
         data = pd.DataFrame(
                 {
-                    "ImageName"          : ["img1"] * 25,
-                    str(GRID.SECTION_NUM): range(25),
-                    "Area"               : np.random.uniform(100, 500, 25),
+                    "ImageName"            : ["img1"] * 25,
+                    str(GRID.ROW_MAJOR_IDX): range(25),
+                    "Area"                 : np.random.uniform(100, 500, 25),
                 }
         )
 
@@ -350,17 +350,17 @@ class TestGroupbyBehavior:
         # Create data for two images
         img1_data = pd.DataFrame(
                 {
-                    "ImageName"          : ["img1"] * 96,
-                    str(GRID.SECTION_NUM): range(96),
-                    "Area"               : np.random.uniform(100, 300, 96),
+                    "ImageName"            : ["img1"] * 96,
+                    str(GRID.ROW_MAJOR_IDX): range(96),
+                    "Area"                 : np.random.uniform(100, 300, 96),
                 }
         )
 
         img2_data = pd.DataFrame(
                 {
-                    "ImageName"          : ["img2"] * 96,
-                    str(GRID.SECTION_NUM): range(96),
-                    "Area"               : np.random.uniform(200, 500, 96),
+                    "ImageName"            : ["img2"] * 96,
+                    str(GRID.ROW_MAJOR_IDX): range(96),
+                    "Area"                 : np.random.uniform(200, 500, 96),
                 }
         )
 
@@ -389,9 +389,9 @@ class TestGroupbyBehavior:
 
         data = pd.DataFrame(
                 {
-                    "ImageName"          : ["img1"] * 48 + ["img2"] * 48,
-                    str(GRID.SECTION_NUM): list(range(48)) * 2,
-                    "Area"               : np.random.uniform(100, 500, 96),
+                    "ImageName"            : ["img1"] * 48 + ["img2"] * 48,
+                    str(GRID.ROW_MAJOR_IDX): list(range(48)) * 2,
+                    "Area"                 : np.random.uniform(100, 500, 96),
                 }
         )
 
@@ -407,8 +407,8 @@ class TestGroupbyBehavior:
         np.random.seed(42)
 
         data = pd.DataFrame(
-                {str(GRID.SECTION_NUM): range(96),
-                 "Area"               : np.random.uniform(100, 500, 96)}
+                {str(GRID.ROW_MAJOR_IDX): range(96),
+                 "Area"                 : np.random.uniform(100, 500, 96)}
         )
 
         corrector = EdgeCorrector(
@@ -432,9 +432,9 @@ class TestAnalyzeMethod:
 
         data = pd.DataFrame(
                 {
-                    "ImageName"          : ["img1"] * 96,
-                    str(GRID.SECTION_NUM): range(96),
-                    "Area"               : np.random.uniform(100, 500, 96),
+                    "ImageName"            : ["img1"] * 96,
+                    str(GRID.ROW_MAJOR_IDX): range(96),
+                    "Area"                 : np.random.uniform(100, 500, 96),
                 }
         )
 
@@ -459,7 +459,7 @@ class TestAnalyzeMethod:
                 {
                     "ImageName": ["img1"] * 10,
                     "Area"     : np.random.uniform(100, 500, 10),
-                    # Missing GRID.SECTION_NUM
+                    # Missing GRID.ROW_MAJOR_IDX
                 }
         )
 
@@ -491,9 +491,9 @@ class TestResultsMethod:
 
         data = pd.DataFrame(
                 {
-                    "ImageName"          : ["img1"] * 96,
-                    str(GRID.SECTION_NUM): range(96),
-                    "Area"               : np.random.uniform(100, 500, 96),
+                    "ImageName"            : ["img1"] * 96,
+                    str(GRID.ROW_MAJOR_IDX): range(96),
+                    "Area"                 : np.random.uniform(100, 500, 96),
                 }
         )
 
@@ -537,9 +537,9 @@ class TestShowMethod:
 
         data = pd.DataFrame(
                 {
-                    "ImageName"          : ["img1"] * 96,
-                    str(GRID.SECTION_NUM): range(96),
-                    "Area"               : np.random.uniform(100, 500, 96),
+                    "ImageName"            : ["img1"] * 96,
+                    str(GRID.ROW_MAJOR_IDX): range(96),
+                    "Area"                 : np.random.uniform(100, 500, 96),
                 }
         )
 
@@ -573,11 +573,11 @@ class TestIntegration:
 
         data = pd.DataFrame(
                 {
-                    "ImageName"          : ["plate1"] * n_sections,
-                    str(GRID.SECTION_NUM): range(n_sections),
-                    str(GRID.ROW_NUM)    : [i // ncols for i in range(n_sections)],
-                    str(GRID.COL_NUM)    : [i % ncols for i in range(n_sections)],
-                    "Area"               : np.random.normal(200, 30, n_sections),
+                    "ImageName"            : ["plate1"] * n_sections,
+                    str(GRID.ROW_MAJOR_IDX): range(n_sections),
+                    str(GRID.ROW_NUM)      : [i // ncols for i in range(n_sections)],
+                    str(GRID.COL_NUM)      : [i % ncols for i in range(n_sections)],
+                    "Area"                 : np.random.normal(200, 30, n_sections),
                 }
         )
 
@@ -622,9 +622,9 @@ class TestIntegration:
 
         data = pd.DataFrame(
                 {
-                    "ImageName"          : ["img1"] * 50,
-                    str(GRID.SECTION_NUM): sections,
-                    "Area"               : np.random.uniform(100, 500, 50),
+                    "ImageName"            : ["img1"] * 50,
+                    str(GRID.ROW_MAJOR_IDX): sections,
+                    "Area"                 : np.random.uniform(100, 500, 50),
                 }
         )
 
@@ -642,11 +642,11 @@ class TestIntegration:
 
         data = pd.DataFrame(
                 {
-                    "ImageName"          : ["img1"] * 96,
-                    str(GRID.SECTION_NUM): range(96),
-                    "Area"               : np.random.uniform(100, 500, 96),
-                    "MeanRadius"         : np.random.uniform(5, 15, 96),
-                    "Perimeter"          : np.random.uniform(20, 60, 96),
+                    "ImageName"            : ["img1"] * 96,
+                    str(GRID.ROW_MAJOR_IDX): range(96),
+                    "Area"                 : np.random.uniform(100, 500, 96),
+                    "MeanRadius"           : np.random.uniform(5, 15, 96),
+                    "Perimeter"            : np.random.uniform(20, 60, 96),
                 }
         )
 

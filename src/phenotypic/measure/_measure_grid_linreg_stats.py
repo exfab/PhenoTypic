@@ -95,7 +95,7 @@ class MeasureGridLinRegStats(GridMeasureFeatures):
         else:
             grid_info = image.grid.info().reset_index(drop=False)
             section_info = grid_info.loc[
-                grid_info.loc[:, str(GRID.SECTION_NUM)] == self.section_num, :
+                grid_info.loc[:, str(GRID.ROW_MAJOR_IDX)] == self.section_num, :
             ]
 
         # Get the current row-wise linreg info
@@ -168,4 +168,4 @@ class MeasureGridLinRegStats(GridMeasureFeatures):
 
 
 MeasureGridLinRegStats.__doc__ = GRID_LINREG_STATS.append_rst_to_doc(
-    MeasureGridLinRegStats)
+        MeasureGridLinRegStats)
