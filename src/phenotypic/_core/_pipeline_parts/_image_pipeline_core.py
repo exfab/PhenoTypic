@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import logging
 import traceback
 import uuid
 from typing import TYPE_CHECKING, Union, Optional
@@ -20,6 +21,8 @@ import sys
 
 from phenotypic.abc_ import MeasureFeatures, BaseOperation, ImageOperation
 from phenotypic.tools_.mixin import LazyWidgetMixin
+
+logger = logging.getLogger("ImagePipeline")
 
 
 class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
@@ -287,6 +290,7 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
             has_tqdm = False
 
         for i, (key, operation) in enumerate(self._ops.items()):
+            logger.debug("Applying operation [%d/%d]: %s", i + 1, len(self._ops), key)
             try:
                 # Update progress bar description with current operation
                 if self._benchmark and self._verbose:
@@ -411,6 +415,7 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
 
         # perform measurements
         for i, (key, measurement) in enumerate(self._meas.items()):
+            logger.debug("Running measurement [%d/%d]: %s", i + 1, len(self._meas), key)
             try:
                 # Update progress bar description with current measurement
                 if self._benchmark and self._verbose:

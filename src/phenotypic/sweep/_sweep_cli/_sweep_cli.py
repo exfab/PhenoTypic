@@ -298,6 +298,7 @@ def _format_duration(seconds: float) -> str:
 @click.option("--wait", is_flag=True, help="Monitor SLURM jobs.")
 @click.option("--dry-run", is_flag=True, help="Preview without executing.")
 @click.option("--skip-validation", is_flag=True, help="Skip pipeline validation.")
+@click.option("-v", "--verbose", is_flag=True, help="Log per-operation pipeline steps to stderr.")
 def sweep_cli(
         manifest_json: Path,
         input_dir: Path,
@@ -313,6 +314,7 @@ def sweep_cli(
         wait: bool,
         dry_run: bool,
         skip_validation: bool,
+        verbose: bool,
 ):
     """Execute a parameter sweep on a flat image directory.
 
@@ -321,6 +323,11 @@ def sweep_cli(
     INPUT_DIR: Flat directory of images (no subdirectories with images).
     """
     try:
+        # Configure per-operation pipeline logging
+        if verbose:
+            from ._sweep_process_image import _configure_pipeline_debug_logging
+            _configure_pipeline_debug_logging()
+
         # Parse SLURM args
         slurm_args_dict: Dict[str, Any] = {}
         if slurm_args:
@@ -488,6 +495,7 @@ def sweep_cli(
                     manifest_path=manifest_json,
                     slurm_args=slurm_args_dict,
                     wait=wait,
+                    verbose=verbose,
             )
         else:
             strategy = LocalSweepStrategy(

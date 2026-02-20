@@ -21,6 +21,15 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+def _configure_pipeline_debug_logging() -> None:
+    """Enable DEBUG logging for the ImagePipeline logger on stderr."""
+    pipeline_logger = logging.getLogger("ImagePipeline")
+    pipeline_logger.setLevel(logging.DEBUG)
+    handler = logging.StreamHandler()  # stderr by default
+    handler.setFormatter(logging.Formatter("%(asctime)s [%(name)s] %(message)s"))
+    pipeline_logger.addHandler(handler)
+
+
 def _run_single_pipeline(
     pipeline_json_str: str,
     pipeline_name: str,
@@ -225,6 +234,10 @@ def process_image_all_pipelines_sequential(
     "--pipeline-name", type=str, default=None,
     help="Run only this pipeline (for per-pipeline SLURM tasks).",
 )
+@click.option(
+    "-v", "--verbose/--no-verbose", default=True,
+    help="Log per-operation pipeline steps to stderr (on by default).",
+)
 def sweep_worker_cli(
     manifest: Path,
     image: Path,
@@ -236,8 +249,12 @@ def sweep_worker_cli(
     detect_mode: str,
     event_log: Optional[Path],
     pipeline_name: Optional[str],
+    verbose: bool,
 ):
     """Process a single image through all sweep pipelines (SLURM worker)."""
+    if verbose:
+        _configure_pipeline_debug_logging()
+
     import matplotlib
     matplotlib.use("Agg")
 

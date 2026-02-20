@@ -20,6 +20,7 @@ def _build_worker_command(
     output_dir: Path,
     image_type: str,
     read_kwargs: Dict[str, Any],
+    verbose: bool = False,
 ) -> str:
     """Build the worker CLI command string (without image/pipeline args).
 
@@ -28,6 +29,8 @@ def _build_worker_command(
         output_dir: Base output directory.
         image_type: ``"Image"`` or ``"GridImage"``.
         read_kwargs: Image read kwargs (nrows, ncols, etc.).
+        verbose: When True, append ``--verbose`` to enable per-operation
+            debug logging in the worker process.
 
     Returns:
         Command string with ``${CURRENT_IMAGE}`` and ``${CURRENT_PIPELINE}``
@@ -68,6 +71,9 @@ def _build_worker_command(
     cmd_parts.extend(["--event-log", shlex.quote(str(event_log.absolute()))])
     cmd_parts.extend(["--pipeline-name", '"${CURRENT_PIPELINE}"'])
 
+    if verbose:
+        cmd_parts.append("--verbose")
+
     return " \\\n    ".join(cmd_parts)
 
 
@@ -82,6 +88,7 @@ def generate_sweep_array_script(
     global_offset: int = 0,
     num_local_tasks: Optional[int] = None,
     script_name: str = "sweep_array_job.sh",
+    verbose: bool = False,
 ) -> Path:
     """Generate a SLURM array job script for sweep processing.
 
@@ -99,6 +106,7 @@ def generate_sweep_array_script(
         global_offset: Offset for 2D indexing (used by chunked scripts).
         num_local_tasks: Number of tasks in this chunk (defaults to total).
         script_name: Filename for the generated script.
+        verbose: When True, pass ``--verbose`` to the worker CLI.
 
     Returns:
         Path to the generated script.
@@ -151,6 +159,7 @@ def generate_sweep_array_script(
         output_dir=output_dir,
         image_type=image_type,
         read_kwargs=read_kwargs,
+        verbose=verbose,
     )
 
     # Offset section (only included for chunked scripts)
@@ -246,6 +255,7 @@ def generate_sweep_array_scripts_chunked(
     read_kwargs: Dict[str, Any],
     slurm_args: Dict[str, Any],
     array_limit: int,
+    verbose: bool = False,
 ) -> List[Path]:
     """Generate chunked SLURM array scripts for large sweeps.
 
@@ -262,6 +272,7 @@ def generate_sweep_array_scripts_chunked(
         read_kwargs: Image read kwargs (nrows, ncols, etc.).
         slurm_args: SLURM parameters dict.
         array_limit: Maximum SLURM array size (from ``get_slurm_array_limit``).
+        verbose: When True, pass ``--verbose`` to the worker CLI.
 
     Returns:
         List of paths to generated scripts (one per chunk).
@@ -283,6 +294,7 @@ def generate_sweep_array_scripts_chunked(
             global_offset=0,
             num_local_tasks=end - start,
             script_name="sweep_array_job.sh",
+            verbose=verbose,
         )
         return [path]
 
@@ -301,6 +313,7 @@ def generate_sweep_array_scripts_chunked(
             global_offset=start,
             num_local_tasks=end - start,
             script_name=script_name,
+            verbose=verbose,
         )
         script_paths.append(path)
 
