@@ -7,6 +7,7 @@ sweeps from :class:`~phenotypic.ImagePipeline` operations using a
 **Public API:**
 
 - :class:`Sweep` — declare an operation and its swept/fixed parameters.
+- :class:`Presence` — like ``Sweep``, but also tests omitting the operation.
 - :class:`Fixed` — explicitly mark a value as fixed (escape hatch for tuples).
 - :func:`generate_sweep_manifest` — build manifest of all pipeline combinations.
 - :func:`load_sweep_manifest` — reload pipelines from a saved manifest JSON.
@@ -24,11 +25,12 @@ Example:
     4
 """
 
-from ._sweep import Fixed, Sweep
+from ._sweep_types import Fixed, Presence, Sweep
 from ._generate_sweep import generate_sweep_manifest, load_sweep_manifest
 
 __all__ = [
     "Fixed",
+    "Presence",
     "Sweep",
     "generate_sweep_manifest",
     "load_sweep_manifest",

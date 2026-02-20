@@ -27,9 +27,9 @@ class SweepFileTreeWidget(QWidget):
     Signals:
         pipeline_selected: Emitted with the pipeline name on pipeline
             node click.
-        stem_selected: Emitted with a list of dicts (each with ``path``,
-            ``pipeline``, ``component``, ``image_stem``) when a leaf is
-            clicked (replaces previous layers).
+        stem_selected: Emitted with a list of dicts (each with ``h5_path``,
+            ``pipeline``, ``image_stem``) when a leaf is clicked (replaces
+            previous layers).
         stem_compare_requested: Emitted with the same payload as
             ``stem_selected`` when compare mode is active (accumulates
             layers without clearing).
@@ -60,8 +60,12 @@ class SweepFileTreeWidget(QWidget):
         # Controls row
         controls = QHBoxLayout()
         self._mode_combo = QComboBox()
-        self._mode_combo.addItems(["Pipeline first", "Image first"])
-        self._mode_combo.currentIndexChanged.connect(self._on_mode_changed)
+        self._mode_combo.addItems(
+            ["Pipeline first", "Image first"],
+        )
+        self._mode_combo.currentIndexChanged.connect(
+            self._on_mode_changed,
+        )
         controls.addWidget(self._mode_combo)
 
         self._compare_cb = QCheckBox("Compare")
@@ -95,7 +99,9 @@ class SweepFileTreeWidget(QWidget):
         """Pipeline -> Image (leaf loads all components)."""
         for pipe_name in self._data.pipeline_names:
             pipe_item = QTreeWidgetItem([pipe_name])
-            pipe_item.setData(0, Qt.UserRole, {"pipeline": pipe_name})
+            pipe_item.setData(
+                0, Qt.UserRole, {"pipeline": pipe_name},
+            )
             self._tree.addTopLevelItem(pipe_item)
 
             stems = self._data.by_pipeline.get(pipe_name, {})
@@ -104,7 +110,10 @@ class SweepFileTreeWidget(QWidget):
                 leaf.setData(
                     0,
                     Qt.UserRole,
-                    {"pipeline": pipe_name, "image_stem": stem},
+                    {
+                        "pipeline": pipe_name,
+                        "image_stem": stem,
+                    },
                 )
                 pipe_item.addChild(leaf)
         logger.debug(
@@ -116,21 +125,21 @@ class SweepFileTreeWidget(QWidget):
         """Image -> Pipeline (leaf loads all components)."""
         for stem in self._data.image_stems:
             stem_item = QTreeWidgetItem([stem])
-            stem_item.setData(0, Qt.UserRole, {"image_stem": stem})
+            stem_item.setData(
+                0, Qt.UserRole, {"image_stem": stem},
+            )
             self._tree.addTopLevelItem(stem_item)
 
-            # Collect pipelines that have this stem
-            pipes: set[str] = set()
-            comps = self._data.by_image.get(stem, {})
-            for comp_pipes in comps.values():
-                pipes.update(comp_pipes)
-
+            pipes = self._data.by_image.get(stem, {})
             for pipe_name in sorted(pipes):
                 leaf = QTreeWidgetItem([pipe_name])
                 leaf.setData(
                     0,
                     Qt.UserRole,
-                    {"pipeline": pipe_name, "image_stem": stem},
+                    {
+                        "pipeline": pipe_name,
+                        "image_stem": stem,
+                    },
                 )
                 stem_item.addChild(leaf)
         logger.debug(
@@ -145,7 +154,9 @@ class SweepFileTreeWidget(QWidget):
     def _on_mode_changed(self, _index: int) -> None:
         self._build_tree()
 
-    def _on_item_clicked(self, item: QTreeWidgetItem, _column: int) -> None:
+    def _on_item_clicked(
+        self, item: QTreeWidgetItem, _column: int,
+    ) -> None:
         info = item.data(0, Qt.UserRole)
         logger.debug("Item clicked: %r", info)
         if info is None:
@@ -176,75 +187,53 @@ class SweepFileTreeWidget(QWidget):
     def _emit_stem_pipeline_first(
         self, pipeline: str, stem: str,
     ) -> None:
-        """Emit all components for *stem* within *pipeline*."""
-        comps = self._data.by_pipeline.get(pipeline, {}).get(stem, {})
-        entries = [
-            {
-                "path": str(sf.path),
-                "pipeline": pipeline,
-                "component": comp,
-                "image_stem": stem,
-            }
-            for comp, sf in sorted(comps.items())
-        ]
-        if not entries:
+        """Emit HDF5 entry for *stem* within *pipeline*."""
+        sf = self._data.by_pipeline.get(
+            pipeline, {},
+        ).get(stem)
+        if sf is None:
             logger.warning(
-                "No entries found for %s/%s", pipeline, stem,
+                "No HDF5 found for %s/%s", pipeline, stem,
             )
             return
+        entries = [
+            {
+                "h5_path": str(sf.path),
+                "pipeline": pipeline,
+                "image_stem": stem,
+            }
+        ]
         logger.debug(
-            "_emit_stem_pipeline_first: %d entries for %s/%s",
-            len(entries), pipeline, stem,
+            "_emit_stem_pipeline_first: %s/%s",
+            pipeline, stem,
         )
         self.stem_selected.emit(entries)
         self.pipeline_selected.emit(pipeline)
 
     def _emit_stem_image_first(self, stem: str) -> None:
-        """Emit all components for *stem* from one pipeline.
+        """Emit HDF5 entry for *stem* from one pipeline.
 
-        Selects the alphabetically-first pipeline that has the most
-        components for this stem, so layers are never mixed across
-        pipelines.
+        Selects the alphabetically-first pipeline.
         """
-        comps = self._data.by_image.get(stem, {})
-        if not comps:
-            logger.warning("No components found for stem %r", stem)
-            return
-
-        # Count components per pipeline for this stem
-        pipe_counts: dict[str, int] = {}
-        for comp_pipes in comps.values():
-            for pname in comp_pipes:
-                pipe_counts[pname] = pipe_counts.get(pname, 0) + 1
-
-        # Pick pipeline with most components (alphabetical tiebreak)
-        best_pipe = max(
-            sorted(pipe_counts), key=lambda p: pipe_counts[p],
-        )
-
-        entries = []
-        for comp in sorted(comps):
-            pipes = comps[comp]
-            if best_pipe not in pipes:
-                continue
-            sf = pipes[best_pipe]
-            entries.append(
-                {
-                    "path": str(sf.path),
-                    "pipeline": best_pipe,
-                    "component": comp,
-                    "image_stem": stem,
-                }
-            )
-        if not entries:
+        pipes = self._data.by_image.get(stem, {})
+        if not pipes:
             logger.warning(
-                "No entries found for stem %r (pipe=%s)",
-                stem, best_pipe,
+                "No pipelines found for stem %r", stem,
             )
             return
+
+        best_pipe = sorted(pipes.keys())[0]
+        sf = pipes[best_pipe]
+        entries = [
+            {
+                "h5_path": str(sf.path),
+                "pipeline": best_pipe,
+                "image_stem": stem,
+            }
+        ]
         logger.debug(
-            "_emit_stem_image_first: %d entries for %s (pipe=%s)",
-            len(entries), stem, best_pipe,
+            "_emit_stem_image_first: %s (pipe=%s)",
+            stem, best_pipe,
         )
         self.stem_selected.emit(entries)
         self.pipeline_selected.emit(best_pipe)
@@ -252,31 +241,25 @@ class SweepFileTreeWidget(QWidget):
     def _emit_stem_compare(
         self, pipeline: str, stem: str,
     ) -> None:
-        """Emit all components for *stem* within *pipeline* for accumulation.
-
-        Same payload as :meth:`_emit_stem_pipeline_first` but routed
-        through ``stem_compare_requested`` so the viewer adds layers
-        without clearing previous ones.
-        """
-        comps = self._data.by_pipeline.get(pipeline, {}).get(stem, {})
-        entries = [
-            {
-                "path": str(sf.path),
-                "pipeline": pipeline,
-                "component": comp,
-                "image_stem": stem,
-            }
-            for comp, sf in sorted(comps.items())
-        ]
-        if not entries:
+        """Emit HDF5 entry for *stem* within *pipeline* for accumulation."""
+        sf = self._data.by_pipeline.get(
+            pipeline, {},
+        ).get(stem)
+        if sf is None:
             logger.warning(
-                "No entries found for compare %s/%s",
+                "No HDF5 found for compare %s/%s",
                 pipeline, stem,
             )
             return
+        entries = [
+            {
+                "h5_path": str(sf.path),
+                "pipeline": pipeline,
+                "image_stem": stem,
+            }
+        ]
         logger.debug(
-            "_emit_stem_compare: %d entries for %s/%s",
-            len(entries), pipeline, stem,
+            "_emit_stem_compare: %s/%s", pipeline, stem,
         )
         self.stem_compare_requested.emit(entries)
         self.pipeline_selected.emit(pipeline)

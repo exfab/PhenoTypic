@@ -4,7 +4,6 @@ import importlib.util
 import json
 import shutil
 import subprocess
-import warnings
 from datetime import datetime
 from fractions import Fraction
 from typing import TYPE_CHECKING
@@ -60,7 +59,7 @@ class ImageIOHandler(ImageColorSpace):
 
         >>> img = ImageIOHandler.imread('photo.jpg')
         >>> img.save2hdf5('output.h5')
-        >>> loaded = ImageIOHandler.load_hdf5('output.h5', 'photo')
+        >>> loaded = ImageIOHandler.load_hdf5('output.h5')
     """
 
     def __init__(
@@ -535,19 +534,12 @@ class ImageIOHandler(ImageColorSpace):
             grp,
             compression="gzip",
             compression_opts=4,
-            overwrite=False,
     ):
-        """Saves the image as a new group into the input hdf5 group."""
-        if overwrite and self.name in grp:
-            del grp[self.name]
-
-        # create the group container for the images information
-        image_group = self._get_hdf5_group(grp, self.name)
-
+        """Save image datasets and metadata into the given HDF5 group."""
         if not self.rgb.isempty():
             array = self.rgb[:]
             HDF.save_array2hdf5(
-                    group=image_group,
+                    group=grp,
                     array=array,
                     name="rgb",
                     dtype=array.dtype,
@@ -557,7 +549,7 @@ class ImageIOHandler(ImageColorSpace):
 
         matrix = self.gray[:]
         HDF.save_array2hdf5(
-                group=image_group,
+                group=grp,
                 array=matrix,
                 name="gray",
                 dtype=matrix.dtype,
@@ -567,20 +559,20 @@ class ImageIOHandler(ImageColorSpace):
 
         detect_matrix = self.detect_mat[:]
         HDF.save_array2hdf5(
-                group=image_group,
+                group=grp,
                 array=detect_matrix,
                 name="detect_mat",
                 dtype=detect_matrix.dtype,
                 compression=compression,
                 compression_opts=compression_opts,
         )
-        image_group["detect_mat"].attrs["detect_mode"] = (
+        grp["detect_mat"].attrs["detect_mode"] = (
             self._data.detect_mode
         )
 
         objmap = self.objmap[:]
         HDF.save_array2hdf5(
-                group=image_group,
+                group=grp,
                 array=objmap,
                 name="objmap",
                 dtype=objmap.dtype,
@@ -588,54 +580,38 @@ class ImageIOHandler(ImageColorSpace):
                 compression_opts=compression_opts,
         )
 
-        # 3) Store version info
-        image_group.attrs["version"] = phenotypic.__version__
+        # Store version info
+        grp.attrs["version"] = phenotypic.__version__
 
-        # 4) Store protected metadata in its own subgroup
-        prot = image_group.require_group("protected_metadata")
+        # Store protected metadata in its own subgroup
+        prot = grp.require_group("protected_metadata")
         for key, val in self._metadata.protected.items():
             prot.attrs.modify(key, str(val))
 
-        # 5) Store public metadata in its own subgroup
-        pub = image_group.require_group("public_metadata")
+        # Store public metadata in its own subgroup
+        pub = grp.require_group("public_metadata")
         for key, val in self._metadata.public.items():
             pub.attrs.modify(key, str(val))
 
     def save2hdf5(
-            self, filename, compression="gzip", compression_opts=4, overwrite=False
+            self, filename, compression="gzip", compression_opts=4,
     ):
         """Save the image to an HDF5 file with all data and metadata.
 
-        Stores the complete image data (RGB, gray, detection matrix, object map) and
-        metadata (protected and public) to an HDF5 file. Images are organized under
-        /phenotypic/images/{image_name}/ structure. If the file does not exist, it
-        is created. If it exists, the image is appended or overwritten based on the
-        overwrite flag.
+        Stores the complete image data (RGB, gray, detection matrix,
+        object map) and metadata (protected and public) directly at
+        the HDF5 file's root group. The file is always overwritten
+        if it already exists.
 
         Args:
-            filename (str | PathLike): Path to the HDF5 file (.h5 extension recommended).
-                Will be created if it doesn't exist.
-            compression (str, optional): Compression filter to apply to datasets.
-                Options: 'gzip' (recommended), 'szip', or None for no compression.
+            filename: Path to the HDF5 file (.h5 extension
+                recommended). Created or overwritten on each call.
+            compression: Compression filter to apply to datasets.
+                Options: 'gzip' (recommended), 'szip', or None.
                 Defaults to 'gzip'.
-            compression_opts (int, optional): Compression level for 'gzip' (1-9, where
-                1=fastest, 9=best compression). For 'szip' and None, this parameter is
-                ignored. Defaults to 4 (balanced compression/speed).
-            overwrite (bool, optional): If True, overwrites existing image with the same
-                name in the file. If False, raises an error if image already exists.
-                Defaults to False.
-
-        Raises:
-            UserWarning: If the PhenoTypic version in the file does not match the
-                current package version, indicating potential compatibility issues.
-            ValueError: If file is in SWMR (single-write multiple-read) mode and a
-                new group needs to be created (cannot create in SWMR mode).
-
-        Notes:
-            - Large image arrays are stored as chunked datasets for memory efficiency.
-            - Protected and public metadata are stored in separate HDF5 groups.
-            - Version information is recorded to track HDF5 file compatibility.
-            - All numeric data types are preserved when storing.
+            compression_opts: Compression level for 'gzip' (1-9,
+                where 1=fastest, 9=best). Ignored for 'szip' and
+                None. Defaults to 4 (balanced).
 
         Examples:
             Save to HDF5:
@@ -644,27 +620,11 @@ class ImageIOHandler(ImageColorSpace):
             >>> img.save2hdf5('output.h5')
             >>> img.save2hdf5('output.h5', compression='szip')
         """
-        with h5py.File(filename, mode="a") as filehandler:
-            # 1) Create image group if it doesnt already exist & sets grp obj
-            parent_grp = self._get_hdf5_group(
-                    filehandler, IO.SINGLE_IMAGE_HDF5_PARENT_GROUP
-            )
-            if "version" in parent_grp.attrs:
-                if parent_grp.attrs["version"] != phenotypic.__version__:
-                    raise warnings.warn(
-                            f"Version mismatch: {parent_grp.attrs['version']} != {phenotypic.__version__}"
-                    )
-            else:
-                parent_grp.attrs["version"] = phenotypic.__version__
-
-            grp = self._get_hdf5_group(filehandler, IO.SINGLE_IMAGE_HDF5_PARENT_GROUP)
-
-            # 2) Save large arrays as datasets with chunking & compression
+        with h5py.File(filename, mode="w") as filehandler:
             self._save_image2hdfgroup(
-                    grp=grp,
+                    grp=filehandler,
                     compression=compression,
                     compression_opts=compression_opts,
-                    overwrite=overwrite,
             )
 
     @classmethod
@@ -688,7 +648,7 @@ class ImageIOHandler(ImageColorSpace):
             detect_mat_ds = group["detect_mat"]
             detect_matrix_data = detect_mat_ds[()]
             detect_mode = detect_mat_ds.attrs.get(
-                "detect_mode", "gray"
+                    "detect_mode", "gray"
             )
         else:
             detect_matrix_data = group["enh_gray"][()]
@@ -714,13 +674,17 @@ class ImageIOHandler(ImageColorSpace):
         return img
 
     @classmethod
-    def load_hdf5(cls, filename, image_name) -> Image:
-        """
-        Load an ImageHandler instance from an HDF5 file at the default hdf5 location
+    def load_hdf5(cls, filename) -> Image:
+        """Load an image from an HDF5 file saved with ``save2hdf5``.
+
+        Args:
+            filename: Path to the HDF5 file to load.
+
+        Returns:
+            Reconstructed image with all data and metadata.
         """
         with h5py.File(filename, "r") as filehandler:
-            grp = filehandler[str(IO.SINGLE_IMAGE_HDF5_PARENT_GROUP / image_name)]
-            img = cls._load_from_hdf5_group(grp)
+            img = cls._load_from_hdf5_group(filehandler)
 
         return img
 
@@ -853,7 +817,7 @@ class ImageIOHandler(ImageColorSpace):
 
         # Backward compat: old pickles use '_data.enh_gray', new use '_data.detect_mat'
         instance._data.detect_mat = loaded.get(
-            "_data.detect_mat", loaded.get("_data.enh_gray")
+                "_data.detect_mat", loaded.get("_data.enh_gray")
         )
         instance._data.detect_mode = loaded.get("_data.detect_mode", "gray")
         instance.objmap[:] = loaded["objmap"]

@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 
-from phenotypic.sweep._sweep_progress_dashboard import (
+from phenotypic.sweep._sweep_cli._sweep_progress_dashboard import (
     _DASHBOARD_FILENAME,
     _META_FILENAME,
     _RATE_LIMIT_SECONDS,

@@ -11,8 +11,8 @@ from phenotypic.enhance import GaussianBlur
 from phenotypic.detect import OtsuDetector
 from phenotypic.measure import MeasureShape
 
-from phenotypic.sweep._sweep_output import SweepOutputManager, archive_previous_run
-from phenotypic.sweep._sweep_cli import _scan_flat_image_dir, _flatten_pipelines
+from phenotypic.sweep._sweep_cli._sweep_output import SweepOutputManager, archive_previous_run
+from phenotypic.sweep._sweep_cli._sweep_cli import _scan_flat_image_dir, _flatten_pipelines
 
 
 # ---------------------------------------------------------------------------
@@ -39,17 +39,10 @@ def pipeline_names():
 
 
 @pytest.fixture
-def output_manager(tmp_path, pipeline_names):
+def output_manager(tmp_path):
     """SweepOutputManager with default settings."""
-    mgr = SweepOutputManager(
-        base_dir=tmp_path / "output",
-        save_layers={"rgb": False, "gray": False, "detect_mat": False,
-                     "objmask": False, "objmap": False, "objmap_overlay": False,
-                     "detect_mat_overlay": False, "objmask_overlay": False},
-        extensions={"rgb": ".tiff", "gray": ".tiff", "detect_mat": ".tiff",
-                    "objmask": ".png", "objmap": ".png", "objmap_overlay": ".png"},
-    )
-    mgr.create_structure(pipeline_names)
+    mgr = SweepOutputManager(base_dir=tmp_path / "output")
+    mgr.create_structure()
     return mgr
 
 
@@ -70,50 +63,30 @@ def flat_image_dir(tmp_path):
 
 class TestSweepOutputManager:
 
-    def test_create_structure_creates_directories(self, output_manager, pipeline_names):
-        """Verify that output structure has results/<pipeline>/measurements/ and overlays/."""
-        for name in pipeline_names:
-            pipe_dir = output_manager.results_dir / name
-            assert pipe_dir.is_dir()
-            assert (pipe_dir / "measurements").is_dir()
-            assert (pipe_dir / "overlays").is_dir()
-
-    def test_create_structure_creates_logs_dir(self, output_manager):
+    def test_create_structure_creates_base_directories(self, output_manager):
+        """Verify that output structure has results/, logs/, and logs/slurm/."""
+        assert output_manager.results_dir.is_dir()
         assert output_manager.logs_dir.is_dir()
         assert (output_manager.logs_dir / "slurm").is_dir()
+        assert output_manager.failures_dir.is_dir()
 
-    def test_create_structure_with_layers(self, tmp_path):
-        """Verify optional layer directories are created when enabled."""
-        mgr = SweepOutputManager(
-            base_dir=tmp_path / "out",
-            save_layers={"rgb": True, "gray": False, "objmask": True,
-                         "detect_mat": False, "objmap": False,
-                         "objmap_overlay": False, "detect_mat_overlay": False,
-                         "objmask_overlay": False},
-            extensions={},
+    def test_save_measurements_creates_image_first_path(self, output_manager):
+        """Measurements saved at results/<image_stem>/<pipeline>/<stem>.csv."""
+        df = pd.DataFrame({"Area": [100, 200], "Perimeter": [40, 60]})
+        path = output_manager.save_measurements(df, "Pipeline_0", "plate_1")
+
+        assert path is not None
+        assert path.exists()
+        expected = (
+            output_manager.results_dir
+            / "plate_1" / "Pipeline_0" / "plate_1.csv"
         )
-        mgr.create_structure(["P_0"])
-        assert (mgr.results_dir / "P_0" / "rgb").is_dir()
-        assert (mgr.results_dir / "P_0" / "objmask").is_dir()
-        assert not (mgr.results_dir / "P_0" / "gray").exists()
-
-    def test_get_output_path_measurements(self, output_manager):
-        path = output_manager.get_output_path("Pipeline_0", "measurements", "img1")
-        assert path == output_manager.results_dir / "Pipeline_0" / "measurements" / "img1.csv"
-
-    def test_get_output_path_overlays(self, output_manager):
-        path = output_manager.get_output_path("Pipeline_0", "overlays", "img1")
-        assert path == output_manager.results_dir / "Pipeline_0" / "overlays" / "img1.png"
-
-    def test_get_output_path_disabled_layer_raises(self, output_manager):
-        with pytest.raises(ValueError, match="not enabled"):
-            output_manager.get_output_path("Pipeline_0", "rgb", "img1")
+        assert path == expected
 
     def test_save_measurements_adds_pipeline_column(self, output_manager):
         df = pd.DataFrame({"Area": [100, 200], "Perimeter": [40, 60]})
         path = output_manager.save_measurements(df, "Pipeline_0", "plate_1")
 
-        assert path.exists()
         loaded = pd.read_csv(path)
         assert "Metadata_Pipeline" in loaded.columns
         assert (loaded["Metadata_Pipeline"] == "Pipeline_0").all()
@@ -129,46 +102,29 @@ class TestSweepOutputManager:
         assert loaded.columns.tolist().count("Metadata_Pipeline") == 1
         assert (loaded["Metadata_Pipeline"] == "P_custom").all()
 
-    def test_aggregate_pipeline_csv(self, output_manager):
-        """Per-pipeline CSV aggregation combines all image CSVs."""
-        # Write two per-image CSVs
-        for stem in ["img1", "img2"]:
-            df = pd.DataFrame({
-                "Metadata_Pipeline": ["Pipeline_0"],
-                "Area": [100 if stem == "img1" else 200],
-            })
-            output_manager.save_measurements(df, "Pipeline_0", stem)
+    def test_save_image_hdf5_creates_image_first_path(self, output_manager):
+        """HDF5 saved at results/<image_stem>/<pipeline>/<stem>.h5."""
+        from unittest.mock import MagicMock
 
-        agg_path = output_manager.aggregate_pipeline_csv("Pipeline_0")
-        assert agg_path is not None
-        assert agg_path.exists()
+        mock_image = MagicMock()
+        path = output_manager.save_image_hdf5(mock_image, "Pipeline_0", "plate_1")
 
-        combined = pd.read_csv(agg_path)
-        assert len(combined) == 2
-        assert (combined["Metadata_Pipeline"] == "Pipeline_0").all()
+        assert path is not None
+        expected = (
+            output_manager.results_dir
+            / "plate_1" / "Pipeline_0" / "plate_1.h5"
+        )
+        assert path == expected
+        mock_image.save2hdf5.assert_called_once_with(expected)
 
-    def test_aggregate_pipeline_csv_empty_returns_none(self, output_manager):
-        assert output_manager.aggregate_pipeline_csv("Pipeline_0") is None
+    def test_save_image_hdf5_returns_none_on_error(self, output_manager):
+        """If save2hdf5 raises, returns None without propagating."""
+        from unittest.mock import MagicMock
 
-    def test_aggregate_master_csv(self, output_manager, pipeline_names):
-        """Master CSV combines across all pipelines."""
-        for pipe_name in pipeline_names:
-            df = pd.DataFrame({
-                "Area": [100],
-            })
-            output_manager.save_measurements(df, pipe_name, "img1")
-
-        master = output_manager.aggregate_master_csv(pipeline_names)
-        assert master is not None
-        assert master.exists()
-
-        master_df = pd.read_csv(master)
-        assert len(master_df) == 2  # one row per pipeline
-        assert "Metadata_Pipeline" in master_df.columns
-        assert set(master_df["Metadata_Pipeline"]) == set(pipeline_names)
-
-    def test_aggregate_master_csv_no_data_returns_none(self, output_manager, pipeline_names):
-        assert output_manager.aggregate_master_csv(pipeline_names) is None
+        mock_image = MagicMock()
+        mock_image.save2hdf5.side_effect = OSError("disk full")
+        path = output_manager.save_image_hdf5(mock_image, "Pipeline_0", "plate_1")
+        assert path is None
 
 
 # ---------------------------------------------------------------------------
@@ -331,7 +287,7 @@ class TestArchivePreviousRun:
         (out / "results" / "P0").mkdir(parents=True)
         (out / "results" / "P0" / "a.csv").write_text("1")
         with patch(
-            "phenotypic.sweep._sweep_output.datetime"
+            "phenotypic.sweep._sweep_cli._sweep_output.datetime"
         ) as mock_dt:
             mock_dt.now.return_value = datetime(2025, 1, 1, 0, 0, 0)
             first = archive_previous_run(out)
@@ -340,7 +296,7 @@ class TestArchivePreviousRun:
         (out / "results" / "P1").mkdir(parents=True)
         (out / "results" / "P1" / "b.csv").write_text("2")
         with patch(
-            "phenotypic.sweep._sweep_output.datetime"
+            "phenotypic.sweep._sweep_cli._sweep_output.datetime"
         ) as mock_dt:
             mock_dt.now.return_value = datetime(2025, 1, 1, 0, 0, 1)
             second = archive_previous_run(out)

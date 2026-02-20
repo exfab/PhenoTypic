@@ -1,9 +1,11 @@
-"""Sweep and Fixed classes for parameter sweep specification."""
+"""Sweep, Presence, and Fixed classes for parameter sweep specification."""
 
 from __future__ import annotations
 
 import inspect
 from typing import Any, Dict
+
+_ABSENT = object()  # Sentinel: operation is omitted from the pipeline
 
 
 class Fixed:
@@ -131,3 +133,73 @@ class Sweep:
         for k, v in self.fixed_params.items():
             parts.append(f"{k}={v!r}")
         return f"Sweep({', '.join(parts)})"
+
+
+class Presence(Sweep):
+    """Sweep that also tests the *absence* of the operation.
+
+    Behaves identically to ``Sweep`` but adds one extra combination
+    where the operation is omitted entirely from the pipeline.
+
+    Can be constructed in two ways:
+
+    1. Same signature as ``Sweep`` — class + keyword params.
+    2. Wrapping an existing ``Sweep`` instance (no extra params
+       allowed).
+
+    Args:
+        operation_class_or_sweep: The operation **class** (not an
+            instance), or an existing ``Sweep`` instance to wrap.
+        **params: Same semantics as ``Sweep``. Must be empty when
+            wrapping a ``Sweep`` instance.
+
+    Raises:
+        TypeError: If extra ``**params`` are passed when wrapping
+            a ``Sweep`` instance.
+
+    Examples:
+        >>> from phenotypic.sweep import Sweep, Presence
+        >>> from phenotypic.sweep import generate_sweep_manifest
+        >>> from phenotypic.enhance import GaussianBlur
+        >>> from phenotypic.detect import OtsuDetector
+        >>> config = [
+        ...     Presence(GaussianBlur, sigma=(1.0, 2.0)),
+        ...     Sweep(OtsuDetector),
+        ... ]
+        >>> manifest = generate_sweep_manifest(config)
+        >>> manifest['total_pipelines']
+        3
+        >>> # Wrapping an existing Sweep:
+        >>> config2 = [
+        ...     Presence(Sweep(GaussianBlur, sigma=(1.0, 2.0))),
+        ...     Sweep(OtsuDetector),
+        ... ]
+        >>> manifest2 = generate_sweep_manifest(config2)
+        >>> manifest2['total_pipelines']
+        3
+    """
+
+    def __init__(
+        self, operation_class_or_sweep: type | Sweep, **params: Any
+    ) -> None:
+        if isinstance(operation_class_or_sweep, Sweep):
+            if params:
+                raise TypeError(
+                    "Cannot pass **params when wrapping a Sweep "
+                    "instance. Put parameters on the inner Sweep "
+                    "instead."
+                )
+            inner = operation_class_or_sweep
+            self.operation_class = inner.operation_class
+            self.sweep_params = dict(inner.sweep_params)
+            self.fixed_params = dict(inner.fixed_params)
+        else:
+            super().__init__(operation_class_or_sweep, **params)
+
+    def __repr__(self) -> str:
+        parts = [self.operation_class.__name__]
+        for k, v in self.sweep_params.items():
+            parts.append(f"{k}={tuple(v)!r}")
+        for k, v in self.fixed_params.items():
+            parts.append(f"{k}={v!r}")
+        return f"Presence({', '.join(parts)})"

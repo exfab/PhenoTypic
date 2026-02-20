@@ -15,17 +15,7 @@ from qtpy.QtWidgets import (
 
 logger = logging.getLogger(__name__)
 
-_COMPONENT_ORDER = (
-    "rgb",
-    "gray",
-    "detect_mat",
-    "detect_mat_overlay",
-    "objmask",
-    "objmask_overlay",
-    "objmap",
-    "objmap_overlay",
-    "overlays",
-)
+_COMPONENT_ORDER = ("rgb", "gray", "detect_mat", "objmap")
 
 
 def _component_sort_key(component: str) -> tuple[int, str]:

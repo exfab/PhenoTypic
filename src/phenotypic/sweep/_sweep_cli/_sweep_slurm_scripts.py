@@ -20,9 +20,6 @@ def _build_worker_command(
     output_dir: Path,
     image_type: str,
     read_kwargs: Dict[str, Any],
-    save_layers: Dict[str, bool],
-    overlay_mode: str,
-    overlay_alpha: float,
 ) -> str:
     """Build the worker CLI command string (without image/pipeline args).
 
@@ -31,9 +28,6 @@ def _build_worker_command(
         output_dir: Base output directory.
         image_type: ``"Image"`` or ``"GridImage"``.
         read_kwargs: Image read kwargs (nrows, ncols, etc.).
-        save_layers: Which layers to save.
-        overlay_mode: Overlay saving mode.
-        overlay_alpha: Overlay transparency.
 
     Returns:
         Command string with ``${CURRENT_IMAGE}`` and ``${CURRENT_PIPELINE}``
@@ -45,7 +39,7 @@ def _build_worker_command(
     cmd_parts = [
         *python_cmd,
         "-m",
-        "phenotypic.sweep._sweep_process_image",
+        "phenotypic.sweep._sweep_cli._sweep_process_image",
         "--manifest",
         shlex.quote(str(manifest_path.absolute())),
         "--image",
@@ -71,26 +65,6 @@ def _build_worker_command(
     if detect_mode != "gray":
         cmd_parts.extend(["--detect-mode", detect_mode])
 
-    # Save layer flags
-    if save_layers.get("rgb"):
-        cmd_parts.append("--save-rgb")
-    if save_layers.get("gray"):
-        cmd_parts.append("--save-gray")
-    if save_layers.get("detect_mat"):
-        cmd_parts.append("--save-detect-mat")
-    if save_layers.get("objmask"):
-        cmd_parts.append("--save-objmask")
-    if save_layers.get("objmap"):
-        cmd_parts.append("--save-objmap")
-    if save_layers.get("objmap_overlay"):
-        cmd_parts.append("--save-objmap-overlay")
-    if save_layers.get("detect_mat_overlay"):
-        cmd_parts.append("--save-detect-mat-overlay")
-    if save_layers.get("objmask_overlay"):
-        cmd_parts.append("--save-objmask-overlay")
-
-    cmd_parts.extend(["--overlay-mode", overlay_mode])
-    cmd_parts.extend(["--overlay-alpha", str(overlay_alpha)])
     cmd_parts.extend(["--event-log", shlex.quote(str(event_log.absolute()))])
     cmd_parts.extend(["--pipeline-name", '"${CURRENT_PIPELINE}"'])
 
@@ -105,9 +79,6 @@ def generate_sweep_array_script(
     image_type: str,
     read_kwargs: Dict[str, Any],
     slurm_args: Dict[str, Any],
-    save_layers: Optional[Dict[str, bool]] = None,
-    overlay_mode: str = "image",
-    overlay_alpha: float = 0.3,
     global_offset: int = 0,
     num_local_tasks: Optional[int] = None,
     script_name: str = "sweep_array_job.sh",
@@ -125,9 +96,6 @@ def generate_sweep_array_script(
         image_type: ``"Image"`` or ``"GridImage"``.
         read_kwargs: Image read kwargs (nrows, ncols, etc.).
         slurm_args: SLURM parameters dict.
-        save_layers: Which layers to save.
-        overlay_mode: Overlay saving mode.
-        overlay_alpha: Overlay transparency.
         global_offset: Offset for 2D indexing (used by chunked scripts).
         num_local_tasks: Number of tasks in this chunk (defaults to total).
         script_name: Filename for the generated script.
@@ -135,8 +103,6 @@ def generate_sweep_array_script(
     Returns:
         Path to the generated script.
     """
-    save_layers = save_layers or {}
-
     if not image_paths or not pipeline_names:
         raise ValueError(
             "Cannot generate SLURM script with empty image_paths or pipeline_names"
@@ -185,9 +151,6 @@ def generate_sweep_array_script(
         output_dir=output_dir,
         image_type=image_type,
         read_kwargs=read_kwargs,
-        save_layers=save_layers,
-        overlay_mode=overlay_mode,
-        overlay_alpha=overlay_alpha,
     )
 
     # Offset section (only included for chunked scripts)
@@ -283,9 +246,6 @@ def generate_sweep_array_scripts_chunked(
     read_kwargs: Dict[str, Any],
     slurm_args: Dict[str, Any],
     array_limit: int,
-    save_layers: Optional[Dict[str, bool]] = None,
-    overlay_mode: str = "image",
-    overlay_alpha: float = 0.3,
 ) -> List[Path]:
     """Generate chunked SLURM array scripts for large sweeps.
 
@@ -302,9 +262,6 @@ def generate_sweep_array_scripts_chunked(
         read_kwargs: Image read kwargs (nrows, ncols, etc.).
         slurm_args: SLURM parameters dict.
         array_limit: Maximum SLURM array size (from ``get_slurm_array_limit``).
-        save_layers: Which layers to save.
-        overlay_mode: Overlay saving mode.
-        overlay_alpha: Overlay transparency.
 
     Returns:
         List of paths to generated scripts (one per chunk).
@@ -323,9 +280,6 @@ def generate_sweep_array_scripts_chunked(
             image_type=image_type,
             read_kwargs=read_kwargs,
             slurm_args=slurm_args,
-            save_layers=save_layers,
-            overlay_mode=overlay_mode,
-            overlay_alpha=overlay_alpha,
             global_offset=0,
             num_local_tasks=end - start,
             script_name="sweep_array_job.sh",
@@ -344,9 +298,6 @@ def generate_sweep_array_scripts_chunked(
             image_type=image_type,
             read_kwargs=read_kwargs,
             slurm_args=slurm_args,
-            save_layers=save_layers,
-            overlay_mode=overlay_mode,
-            overlay_alpha=overlay_alpha,
             global_offset=start,
             num_local_tasks=end - start,
             script_name=script_name,

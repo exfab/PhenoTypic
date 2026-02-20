@@ -176,17 +176,11 @@ class SLURMSweepStrategy(SweepExecutionStrategy):
         manifest_path: Path,
         slurm_args: Dict[str, Any],
         wait: bool = False,
-        save_layers: Optional[Dict[str, bool]] = None,
-        overlay_mode: str = "image",
-        overlay_alpha: float = 0.3,
     ):
         super().__init__(pipeline_json_strs, image_type, read_kwargs, output_manager)
         self.manifest_path = manifest_path
         self.slurm_args = slurm_args
         self.wait = wait
-        self.save_layers = save_layers or {}
-        self.overlay_mode = overlay_mode
-        self.overlay_alpha = overlay_alpha
 
     def execute(
         self,
@@ -231,9 +225,6 @@ class SLURMSweepStrategy(SweepExecutionStrategy):
             read_kwargs=self.read_kwargs,
             slurm_args=self.slurm_args,
             array_limit=array_limit,
-            save_layers=self.save_layers,
-            overlay_mode=self.overlay_mode,
-            overlay_alpha=self.overlay_alpha,
         )
 
         # Submit all chunk scripts independently

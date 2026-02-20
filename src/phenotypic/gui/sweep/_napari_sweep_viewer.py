@@ -2,20 +2,18 @@
 
 from __future__ import annotations
 
+import gc
 import logging
 from pathlib import Path
 from typing import List, Optional
 
 import numpy as np
-from skimage import io as skio
 
-from ._grouped_layer_widget import _component_sort_key
 from ._sweep_data_model import SweepOutputData, SweepOutputScanner
 
 logger = logging.getLogger(__name__)
 
-# Components whose pixel values are integer object IDs (render as Labels).
-_LABEL_COMPONENTS = frozenset({"objmap", "objmask"})
+_LAYER_ORDER = ("rgb", "gray", "detect_mat", "objmap")
 
 
 class NapariSweepViewer:
@@ -84,95 +82,92 @@ class NapariSweepViewer:
     # ------------------------------------------------------------------
 
     def _on_stem_selected(self, entries: List[dict]) -> None:
-        """Load all component layers for an image stem as a stack.
+        """Load HDF5 layers for a single image stem.
 
         Args:
-            entries: List of dicts with ``path``, ``pipeline``,
-                ``component``, and ``image_stem`` keys.
+            entries: List of dicts with ``h5_path``, ``pipeline``,
+                and ``image_stem`` keys.
         """
-        logger.debug("_on_stem_selected: %d entries", len(entries))
-        self._clear_current_layers()
-
-        entries = sorted(
-            entries, key=lambda e: _component_sort_key(e["component"]),
+        logger.debug(
+            "_on_stem_selected: %d entries", len(entries),
         )
-
-        loaded = 0
+        self._clear_current_layers()
         loaded_entries: list[dict] = []
-        for entry in entries:
-            arr = self._load_image_array(entry["path"])
-            if arr is None:
-                continue
-            name = self._make_layer_name(entry["path"])
-            self._add_layer(arr, name, entry["component"])
-            self._current_layer_names.append(name)
-            loaded_entries.append(entry)
-            loaded += 1
 
-        failed = len(entries) - loaded
-        if failed:
-            logger.warning(
-                "_on_stem_selected: %d/%d layers failed to load",
-                failed, len(entries),
+        for entry in entries:
+            layers = self._load_hdf5_layers(
+                entry["h5_path"],
+                entry["pipeline"],
+                entry["image_stem"],
             )
-        else:
-            logger.debug(
-                "_on_stem_selected: loaded %d layers", loaded,
-            )
+            for layer in layers:
+                if layer["is_labels"]:
+                    self._viewer.add_labels(
+                        layer["data"].astype(np.intp),
+                        name=layer["name"],
+                    )
+                else:
+                    self._viewer.add_image(
+                        layer["data"], name=layer["name"],
+                    )
+                self._current_layer_names.append(layer["name"])
+                loaded_entries.append(
+                    {
+                        "pipeline": layer["pipeline"],
+                        "component": layer["component"],
+                        "image_stem": layer["image_stem"],
+                    }
+                )
 
         self._viewer.grid.enabled = False
 
-        # Update info panel only if layers were loaded
-        if self._current_layer_names and entries:
+        if loaded_entries and entries:
             self._info.set_pipeline(entries[0]["pipeline"])
 
         self._layer_tree.set_layers(loaded_entries)
 
     def _on_stem_compare(self, entries: List[dict]) -> None:
-        """Accumulate layers for compare mode (no clearing).
-
-        Adds all component layers for the given pipeline+stem on top
-        of existing layers, then enables grid mode so each pipeline
-        group occupies its own column.
+        """Accumulate HDF5 layers for compare mode (no clearing).
 
         Args:
-            entries: List of dicts with ``path``, ``pipeline``,
-                ``component``, and ``image_stem`` keys.
+            entries: List of dicts with ``h5_path``, ``pipeline``,
+                and ``image_stem`` keys.
         """
-        logger.debug("_on_stem_compare: %d entries", len(entries))
-
-        entries = sorted(
-            entries, key=lambda e: _component_sort_key(e["component"]),
+        logger.debug(
+            "_on_stem_compare: %d entries", len(entries),
         )
-
-        loaded = 0
         loaded_entries: list[dict] = []
+
         for entry in entries:
-            arr = self._load_image_array(entry["path"])
-            if arr is None:
-                continue
-            name = self._make_layer_name(entry["path"])
-            self._add_layer(arr, name, entry["component"])
-            self._current_layer_names.append(name)
-            loaded_entries.append(entry)
-            loaded += 1
-
-        failed = len(entries) - loaded
-        if failed:
-            logger.warning(
-                "_on_stem_compare: %d/%d layers failed to load",
-                failed, len(entries),
+            layers = self._load_hdf5_layers(
+                entry["h5_path"],
+                entry["pipeline"],
+                entry["image_stem"],
             )
-        else:
-            logger.debug(
-                "_on_stem_compare: loaded %d layers", loaded,
-            )
+            for layer in layers:
+                if layer["is_labels"]:
+                    self._viewer.add_labels(
+                        layer["data"].astype(np.intp),
+                        name=layer["name"],
+                    )
+                else:
+                    self._viewer.add_image(
+                        layer["data"], name=layer["name"],
+                    )
+                self._current_layer_names.append(layer["name"])
+                loaded_entries.append(
+                    {
+                        "pipeline": layer["pipeline"],
+                        "component": layer["component"],
+                        "image_stem": layer["image_stem"],
+                    }
+                )
 
-        # Enable grid: one column per component in this group
         n = len(self._viewer.layers)
-        if n > 1 and loaded > 0:
+        if n > 1:
             self._viewer.grid.enabled = True
-            self._viewer.grid.shape = (-1, loaded)
+            self._viewer.grid.stride = 4
+            self._viewer.grid.shape = (-1, -1)
 
         self._layer_tree.add_layers(loaded_entries)
 
@@ -180,29 +175,93 @@ class NapariSweepViewer:
     # Helpers
     # ------------------------------------------------------------------
 
-    @staticmethod
-    def _is_label_component(component: str) -> bool:
-        """Return ``True`` if *component* should render as a Labels layer."""
-        return component in _LABEL_COMPONENTS
-
-    def _add_layer(
+    def _load_hdf5_layers(
         self,
-        arr: np.ndarray,
-        name: str,
-        component: str,
-    ) -> None:
-        """Add *arr* to the viewer as a Labels or Image layer.
+        h5_path: str,
+        pipeline: str,
+        image_stem: str,
+    ) -> list[dict]:
+        """Load HDF5 via Image.load_hdf5(), extract layers, free Image.
 
-        Labels layers require 2-D integer arrays.  If the component is
-        nominally a label type but the array is not 2-D (e.g. an RGB
-        overlay), it falls back to an Image layer.
+        Args:
+            h5_path: Absolute path to the ``.h5`` file.
+            pipeline: Pipeline name for layer naming.
+            image_stem: Image stem for layer naming.
+
+        Returns:
+            List of dicts with keys: ``name``, ``data``, ``component``,
+            ``pipeline``, ``image_stem``, ``is_labels``.
         """
-        if self._is_label_component(component) and arr.ndim == 2:
-            self._viewer.add_labels(
-                arr.astype(np.intp), name=name,
+        from phenotypic import Image
+
+        p = Path(h5_path)
+        if not p.exists():
+            logger.warning("HDF5 file not found: %s", h5_path)
+            return []
+
+        try:
+            image = Image.load_hdf5(h5_path)
+        except Exception as exc:
+            logger.warning(
+                "Failed to load HDF5 %s: %s", h5_path, exc,
             )
-        else:
-            self._viewer.add_image(arr, name=name)
+            return []
+
+        layers: list[dict] = []
+
+        # RGB (check availability)
+        if not image.rgb.isempty():
+            layers.append(
+                {
+                    "name": f"{pipeline}/rgb/{image_stem}",
+                    "data": image.rgb[:].copy(),
+                    "component": "rgb",
+                    "pipeline": pipeline,
+                    "image_stem": image_stem,
+                    "is_labels": False,
+                }
+            )
+
+        # Gray (always available)
+        layers.append(
+            {
+                "name": f"{pipeline}/gray/{image_stem}",
+                "data": image.gray[:].copy(),
+                "component": "gray",
+                "pipeline": pipeline,
+                "image_stem": image_stem,
+                "is_labels": False,
+            }
+        )
+
+        # Detection matrix
+        layers.append(
+            {
+                "name": f"{pipeline}/detect_mat/{image_stem}",
+                "data": image.detect_mat[:].copy(),
+                "component": "detect_mat",
+                "pipeline": pipeline,
+                "image_stem": image_stem,
+                "is_labels": False,
+            }
+        )
+
+        # Object map (labels layer)
+        layers.append(
+            {
+                "name": f"{pipeline}/objmap/{image_stem}",
+                "data": image.objmap[:].copy(),
+                "component": "objmap",
+                "pipeline": pipeline,
+                "image_stem": image_stem,
+                "is_labels": True,
+            }
+        )
+
+        del image
+        gc.collect()
+
+        return layers
 
     def _clear_current_layers(self) -> None:
         """Remove all layers tracked in ``_current_layer_names``."""
@@ -217,55 +276,22 @@ class NapariSweepViewer:
         """Tab napari's native layer-list and layer-controls docks."""
         try:
             qt_window = self._viewer.window._qt_window
-            layer_list = self._viewer.window._qt_viewer.dockLayerList
+            layer_list = (
+                self._viewer.window._qt_viewer.dockLayerList
+            )
             layer_controls = (
                 self._viewer.window._qt_viewer.dockLayerControls
             )
 
-            qt_window.tabifyDockWidget(layer_list, layer_controls)
+            qt_window.tabifyDockWidget(
+                layer_list, layer_controls,
+            )
             layer_list.show()
             layer_list.raise_()
         except Exception as exc:
             logger.debug(
                 "Could not tabify native layer docks: %s", exc,
             )
-
-    @staticmethod
-    def _load_image_array(file_path: str) -> Optional[np.ndarray]:
-        """Load an image file into a NumPy array.
-
-        Args:
-            file_path: Absolute path string.
-
-        Returns:
-            NumPy array or ``None`` on failure.
-        """
-        p = Path(file_path)
-        if not p.exists():
-            logger.warning("File not found: %s", file_path)
-            return None
-        try:
-            arr = skio.imread(str(p))
-            logger.debug(
-                "Loaded %s — shape=%s dtype=%s",
-                p.name, arr.shape, arr.dtype,
-            )
-            return arr
-        except Exception as exc:
-            logger.warning("Failed to load %s: %s", file_path, exc)
-            return None
-
-    @staticmethod
-    def _make_layer_name(file_path: str) -> str:
-        """Derive ``pipeline/component/stem`` from file path."""
-        p = Path(file_path)
-        # Expected: …/results/<pipeline>/<component>/<file>
-        try:
-            component = p.parent.name
-            pipeline = p.parent.parent.name
-            return f"{pipeline}/{component}/{p.stem}"
-        except Exception:
-            return p.stem
 
 
 def launch_sweep_viewer(sweep_dir: Path) -> None:
@@ -279,9 +305,8 @@ def launch_sweep_viewer(sweep_dir: Path) -> None:
     viewer_obj = NapariSweepViewer(sweep_dir)
     viewer_obj.launch()
     logger.info(
-        "Viewer launched — %d pipelines, %d images, %d components",
+        "Viewer launched — %d pipelines, %d images",
         len(viewer_obj._data.pipeline_names),
         len(viewer_obj._data.image_stems),
-        len(viewer_obj._data.components),
     )
     napari.run()

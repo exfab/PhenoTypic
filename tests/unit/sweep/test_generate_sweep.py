@@ -4,7 +4,12 @@ import json
 
 import pytest
 
-from phenotypic.sweep import Sweep, generate_sweep_manifest, load_sweep_manifest
+from phenotypic.sweep import (
+    Presence,
+    Sweep,
+    generate_sweep_manifest,
+    load_sweep_manifest,
+)
 from phenotypic import ImagePipeline
 from phenotypic.enhance import GaussianBlur
 from phenotypic.detect import OtsuDetector
@@ -192,3 +197,156 @@ class TestLoadSweepManifest:
             ops = list(pipe._ops.values())
             assert isinstance(ops[0], GaussianBlur)
             assert isinstance(ops[1], OtsuDetector)
+
+
+# ---------------------------------------------------------------------------
+# Presence sweep tests
+# ---------------------------------------------------------------------------
+
+
+class TestPresenceSweep:
+
+    def test_presence_adds_absent_variant(self):
+        """Presence(GB, sigma=(1,2)) + Sweep(Otsu) → 3 pipelines."""
+        config = [
+            Presence(GaussianBlur, sigma=(1.0, 2.0)),
+            Sweep(OtsuDetector),
+        ]
+        manifest = generate_sweep_manifest(config)
+        # 2 sigma + 1 absent = 3
+        assert manifest["total_pipelines"] == 3
+
+    def test_presence_no_sweep_params(self):
+        """Presence(GB) + Sweep(Otsu) → 2 pipelines (present + absent)."""
+        config = [
+            Presence(GaussianBlur),
+            Sweep(OtsuDetector),
+        ]
+        manifest = generate_sweep_manifest(config)
+        assert manifest["total_pipelines"] == 2
+
+    def test_absent_pipeline_lacks_operation(self):
+        """Absent variant should not contain the Presence op."""
+        config = [
+            Presence(GaussianBlur, sigma=(1.0,)),
+            Sweep(OtsuDetector),
+        ]
+        manifest = generate_sweep_manifest(config)
+        pipes = manifest["configs"]["Pipeline"]["pipelines"]
+        op_sets = []
+        for pipe_dict in pipes.values():
+            op_names = list(pipe_dict["pipe_cfgs"].keys())
+            op_sets.append(set(op_names))
+
+        # One pipeline has GB, one does not
+        has_gb = [s for s in op_sets if "GaussianBlur" in s]
+        no_gb = [s for s in op_sets if "GaussianBlur" not in s]
+        assert len(has_gb) == 1
+        assert len(no_gb) == 1
+        # All pipelines should have OtsuDetector
+        for s in op_sets:
+            assert "OtsuDetector" in s
+
+    def test_present_pipeline_has_correct_params(self):
+        """Present variant should have the correct op and params."""
+        config = [
+            Presence(GaussianBlur, sigma=(1.5,), truncate=3.0),
+            Sweep(OtsuDetector),
+        ]
+        manifest = generate_sweep_manifest(config)
+        pipes = manifest["configs"]["Pipeline"]["pipelines"]
+        for pipe_dict in pipes.values():
+            if "GaussianBlur" in pipe_dict["pipe_cfgs"]:
+                gb_cfg = pipe_dict["pipe_cfgs"]["GaussianBlur"]
+                assert gb_cfg["params"]["sigma"] == 1.5
+                assert gb_cfg["params"]["truncate"] == 3.0
+
+    def test_multiple_presence(self):
+        """Two Presence ops → combos with neither, one, or both."""
+        from phenotypic.enhance import MedianFilter
+
+        config = [
+            Presence(GaussianBlur, sigma=(1.0,)),
+            Presence(MedianFilter, width=(3,)),
+        ]
+        manifest = generate_sweep_manifest(config)
+        # Each Presence: 1 param combo + 1 absent = 2
+        # 2 × 2 = 4
+        assert manifest["total_pipelines"] == 4
+
+        pipes = manifest["configs"]["Pipeline"]["pipelines"]
+        combos = []
+        for pipe_dict in pipes.values():
+            op_names = set(pipe_dict["pipe_cfgs"].keys())
+            combos.append(op_names)
+
+        # Should include: both, GB only, MF only, neither
+        assert {"GaussianBlur", "MedianFilter"} in combos
+        assert {"GaussianBlur"} in combos
+        assert {"MedianFilter"} in combos
+        assert set() in combos
+
+    def test_presence_with_fixed_params(self):
+        """Fixed params present when op is included."""
+        config = [
+            Presence(GaussianBlur, sigma=(1.0,), truncate=4.0),
+        ]
+        manifest = generate_sweep_manifest(config)
+        pipes = manifest["configs"]["Pipeline"]["pipelines"]
+        for pipe_dict in pipes.values():
+            if "GaussianBlur" in pipe_dict["pipe_cfgs"]:
+                gb_cfg = pipe_dict["pipe_cfgs"]["GaussianBlur"]
+                assert gb_cfg["params"]["truncate"] == 4.0
+
+    def test_presence_pipeline_loadable(self, tmp_path):
+        """Round-trip through JSON works for both present and absent."""
+        config = [
+            Presence(GaussianBlur, sigma=(1.0,)),
+            Sweep(OtsuDetector),
+        ]
+        out = tmp_path / "opt_sweep.json"
+        generate_sweep_manifest(config, filepath=out)
+        result = load_sweep_manifest(out)
+        pipes = result["Pipeline"]
+        assert len(pipes) == 2
+        for pipe in pipes.values():
+            assert isinstance(pipe, ImagePipeline)
+
+    def test_presence_repr(self):
+        p = Presence(GaussianBlur, sigma=(1.0, 2.0), truncate=4.0)
+        r = repr(p)
+        assert r.startswith("Presence(")
+        assert "GaussianBlur" in r
+
+    def test_presence_is_sweep_subclass(self):
+        p = Presence(GaussianBlur)
+        assert isinstance(p, Sweep)
+
+    def test_presence_wraps_sweep_instance(self):
+        """Presence(Sweep(...)) copies operation_class and params."""
+        inner = Sweep(GaussianBlur, sigma=(1.0, 2.0), truncate=4.0)
+        p = Presence(inner)
+        assert p.operation_class is GaussianBlur
+        assert p.sweep_params == {"sigma": [1.0, 2.0]}
+        assert p.fixed_params == {"truncate": 4.0}
+        assert isinstance(p, Presence)
+
+    def test_presence_wraps_sweep_manifest_count(self):
+        """Presence(Sweep(GB, sigma=(1,2))) + Sweep(Otsu) → 3."""
+        config = [
+            Presence(Sweep(GaussianBlur, sigma=(1.0, 2.0))),
+            Sweep(OtsuDetector),
+        ]
+        manifest = generate_sweep_manifest(config)
+        assert manifest["total_pipelines"] == 3
+
+    def test_presence_wraps_sweep_repr(self):
+        """repr of wrapped Sweep still starts with 'Presence('."""
+        p = Presence(Sweep(GaussianBlur, sigma=(1.0, 2.0)))
+        assert repr(p).startswith("Presence(")
+        assert "GaussianBlur" in repr(p)
+
+    def test_presence_wraps_sweep_rejects_extra_params(self):
+        """Passing **params alongside a Sweep instance is an error."""
+        with pytest.raises(TypeError, match="Cannot pass \\*\\*params"):
+            Presence(Sweep(GaussianBlur), sigma=1.0)

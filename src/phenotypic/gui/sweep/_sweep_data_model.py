@@ -15,7 +15,7 @@ from typing import Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
-_IMAGE_EXTENSIONS = {".png", ".tiff", ".tif", ".jpg", ".jpeg"}
+_HDF5_EXTENSIONS = {".h5", ".hdf5"}
 
 
 # ---------------------------------------------------------------------------
@@ -24,12 +24,11 @@ _IMAGE_EXTENSIONS = {".png", ".tiff", ".tif", ".jpg", ".jpeg"}
 
 
 @dataclass
-class SweepImageFile:
-    """A single image file inside the sweep results tree."""
+class SweepHDF5File:
+    """A single HDF5 result file in the sweep output."""
 
     path: Path
     image_stem: str
-    component: str
     pipeline_name: str
 
 
@@ -51,16 +50,15 @@ class SweepOutputData:
     root_dir: Path
     manifest_raw: dict
     pipeline_configs: Dict[str, PipelineConfig]
-    image_files: List[SweepImageFile]
+    hdf5_files: List[SweepHDF5File]
     pipeline_names: List[str]
     image_stems: List[str]
-    components: List[str]
-    # [pipeline][stem][component] -> SweepImageFile
-    by_pipeline: Dict[str, Dict[str, Dict[str, SweepImageFile]]] = field(
+    # [pipeline][stem] -> SweepHDF5File
+    by_pipeline: Dict[str, Dict[str, SweepHDF5File]] = field(
         default_factory=dict,
     )
-    # [stem][component][pipeline] -> SweepImageFile
-    by_image: Dict[str, Dict[str, Dict[str, SweepImageFile]]] = field(
+    # [stem][pipeline] -> SweepHDF5File
+    by_image: Dict[str, Dict[str, SweepHDF5File]] = field(
         default_factory=dict,
     )
 
@@ -94,52 +92,51 @@ class SweepOutputScanner:
                 f"No sweep_manifest.json found in {sweep_dir}"
             )
 
-        manifest_raw, pipeline_configs = SweepOutputScanner._parse_manifest(
-            manifest_path,
+        manifest_raw, pipeline_configs = (
+            SweepOutputScanner._parse_manifest(manifest_path)
         )
 
         results_dir = sweep_dir / "results"
         if results_dir.is_dir():
-            image_files = SweepOutputScanner._scan_results(results_dir)
+            hdf5_files = SweepOutputScanner._scan_results(results_dir)
         else:
             logger.warning(
                 "Results directory not found: %s", results_dir,
             )
-            image_files = []
+            hdf5_files = []
 
         # Derive sorted unique lists
-        pipeline_names = sorted({f.pipeline_name for f in image_files})
-        image_stems = sorted({f.image_stem for f in image_files})
-        components = sorted({f.component for f in image_files})
+        pipeline_names = sorted(
+            {f.pipeline_name for f in hdf5_files},
+        )
+        image_stems = sorted({f.image_stem for f in hdf5_files})
 
         # Build lookup indexes
-        by_pipeline: Dict[str, Dict[str, Dict[str, SweepImageFile]]] = {}
-        by_image: Dict[str, Dict[str, Dict[str, SweepImageFile]]] = {}
+        by_pipeline: Dict[str, Dict[str, SweepHDF5File]] = {}
+        by_image: Dict[str, Dict[str, SweepHDF5File]] = {}
 
-        for f in image_files:
-            by_pipeline.setdefault(f.pipeline_name, {}).setdefault(
+        for f in hdf5_files:
+            by_pipeline.setdefault(
+                f.pipeline_name, {},
+            )[f.image_stem] = f
+
+            by_image.setdefault(
                 f.image_stem, {},
-            )[f.component] = f
-
-            by_image.setdefault(f.image_stem, {}).setdefault(
-                f.component, {},
             )[f.pipeline_name] = f
 
         logger.debug(
-            "Scan complete: %d files, %d pipelines, %d stems, "
-            "%d components",
-            len(image_files), len(pipeline_names),
-            len(image_stems), len(components),
+            "Scan complete: %d HDF5 files, %d pipelines, %d stems",
+            len(hdf5_files), len(pipeline_names),
+            len(image_stems),
         )
 
         return SweepOutputData(
             root_dir=sweep_dir,
             manifest_raw=manifest_raw,
             pipeline_configs=pipeline_configs,
-            image_files=image_files,
+            hdf5_files=hdf5_files,
             pipeline_names=pipeline_names,
             image_stems=image_stems,
-            components=components,
             by_pipeline=by_pipeline,
             by_image=by_image,
         )
@@ -158,7 +155,9 @@ class SweepOutputScanner:
         Raises:
             FileNotFoundError: If no manifest is found in *path*.
         """
-        target = Path(path).resolve() if path else Path.cwd().resolve()
+        target = (
+            Path(path).resolve() if path else Path.cwd().resolve()
+        )
         manifest = target / "sweep_manifest.json"
         if not manifest.exists():
             raise FileNotFoundError(
@@ -175,7 +174,7 @@ class SweepOutputScanner:
     def _parse_manifest(
         manifest_path: Path,
     ) -> Tuple[dict, Dict[str, PipelineConfig]]:
-        """Parse the sweep manifest JSON into :class:`PipelineConfig` objects.
+        """Parse the sweep manifest JSON into PipelineConfig objects.
 
         Args:
             manifest_path: Path to ``sweep_manifest.json``.
@@ -187,8 +186,12 @@ class SweepOutputScanner:
         manifest_raw = json.loads(manifest_path.read_text())
         configs: Dict[str, PipelineConfig] = {}
 
-        for cfg_name, cfg_data in manifest_raw.get("configs", {}).items():
-            for pipe_name, pipe_dict in cfg_data.get("pipelines", {}).items():
+        for cfg_name, cfg_data in manifest_raw.get(
+            "configs", {},
+        ).items():
+            for pipe_name, pipe_dict in cfg_data.get(
+                "pipelines", {},
+            ).items():
                 # Extract operations from pipe_cfgs
                 operations: List[Dict] = []
                 pipe_cfgs = pipe_dict.get("pipe_cfgs", {})
@@ -197,7 +200,9 @@ class SweepOutputScanner:
                     operations.append(
                         {
                             "name": op_key,
-                            "class": op_data.get("class", "Unknown"),
+                            "class": op_data.get(
+                                "class", "Unknown",
+                            ),
                             "params": op_data.get("params", {}),
                         }
                     )
@@ -210,7 +215,9 @@ class SweepOutputScanner:
                     measurements.append(
                         {
                             "name": meas_key,
-                            "class": meas_data.get("class", "Unknown"),
+                            "class": meas_data.get(
+                                "class", "Unknown",
+                            ),
                             "params": meas_data.get("params", {}),
                         }
                     )
@@ -230,58 +237,50 @@ class SweepOutputScanner:
         return manifest_raw, configs
 
     @staticmethod
-    def _scan_results(results_dir: Path) -> List[SweepImageFile]:
-        """Walk ``results/<pipeline>/<component>/<image>`` for image files.
-
-        Skips the ``measurements/`` subdirectory (CSV data, not images).
+    def _scan_results(
+        results_dir: Path,
+    ) -> List[SweepHDF5File]:
+        """Walk ``results/<image_stem>/<pipeline>/*.h5`` for HDF5 files.
 
         Args:
-            results_dir: The ``results/`` directory inside the sweep output.
+            results_dir: The ``results/`` directory inside the sweep
+                output.
 
         Returns:
-            List of :class:`SweepImageFile` entries.
+            List of :class:`SweepHDF5File` entries.
         """
-        files: List[SweepImageFile] = []
+        files: List[SweepHDF5File] = []
 
-        for pipeline_dir in sorted(results_dir.iterdir()):
-            if not pipeline_dir.is_dir():
+        for stem_dir in sorted(results_dir.iterdir()):
+            if not stem_dir.is_dir():
                 continue
-            pipeline_name = pipeline_dir.name
-            pipe_file_count = 0
-            pipe_comp_count = 0
+            image_stem = stem_dir.name
+            stem_file_count = 0
 
-            for component_dir in sorted(pipeline_dir.iterdir()):
-                if not component_dir.is_dir():
+            for pipe_dir in sorted(stem_dir.iterdir()):
+                if not pipe_dir.is_dir():
                     continue
-                component = component_dir.name
-                if component == "measurements":
-                    continue  # CSV data, not images
+                pipeline_name = pipe_dir.name
 
-                comp_file_count = 0
-                for img_path in sorted(component_dir.iterdir()):
+                for h5_path in sorted(pipe_dir.iterdir()):
                     if (
-                        img_path.is_file()
-                        and img_path.suffix.lower() in _IMAGE_EXTENSIONS
+                        h5_path.is_file()
+                        and h5_path.suffix.lower()
+                        in _HDF5_EXTENSIONS
                     ):
                         files.append(
-                            SweepImageFile(
-                                path=img_path,
-                                image_stem=img_path.stem,
-                                component=component,
+                            SweepHDF5File(
+                                path=h5_path,
+                                image_stem=image_stem,
                                 pipeline_name=pipeline_name,
                             )
                         )
-                        comp_file_count += 1
+                        stem_file_count += 1
 
-                if comp_file_count:
-                    pipe_comp_count += 1
-                    pipe_file_count += comp_file_count
-
-            logger.debug(
-                "Scanned pipeline %r: %d files across"
-                " %d components",
-                pipeline_name, pipe_file_count,
-                pipe_comp_count,
-            )
+            if stem_file_count:
+                logger.debug(
+                    "Scanned stem %r: %d HDF5 files",
+                    image_stem, stem_file_count,
+                )
 
         return files

@@ -8,24 +8,20 @@ from pathlib import Path
 
 import pytest
 
-from phenotypic.sweep._sweep_output import SweepOutputManager
+from phenotypic.sweep._sweep_cli._sweep_output import SweepOutputManager
 
 
 @pytest.fixture
 def output_manager(tmp_path):
     """Create a SweepOutputManager with a temporary base directory."""
-    return SweepOutputManager(
-        base_dir=tmp_path,
-        save_layers={},
-        extensions={},
-    )
+    return SweepOutputManager(base_dir=tmp_path)
 
 
 class TestCreateStructure:
     """Tests for failures directory creation during create_structure."""
 
     def test_creates_failures_dir(self, output_manager, tmp_path):
-        output_manager.create_structure(pipeline_names=["Pipeline_0"])
+        output_manager.create_structure()
         assert (tmp_path / "logs" / "failures").is_dir()
 
     def test_failures_dir_attribute(self, output_manager, tmp_path):

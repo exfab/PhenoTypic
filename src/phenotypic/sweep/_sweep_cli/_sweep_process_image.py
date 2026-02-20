@@ -70,8 +70,7 @@ def _run_single_pipeline(
         # Save results — each save is independent and non-fatal
         image_stem = image_path.stem
         output_manager.save_measurements(measurements, pipeline_name, image_stem)
-        output_manager.save_overlay(image, pipeline_name, image_stem)
-        output_manager.save_image_layers(image, pipeline_name, image_stem)
+        output_manager.save_image_hdf5(image, pipeline_name, image_stem)
 
         logger.info(
             f"Completed {pipeline_name} on {image_path.name}"
@@ -213,16 +212,6 @@ def process_image_all_pipelines_sequential(
 @click.option("--ncols", type=int, default=12, help="Grid columns (for GridImage).")
 @click.option("--bit-depth", type=int, default=None, help="Bit depth (8 or 16).")
 @click.option("--detect-mode", default="gray", help="Detection channel.")
-@click.option("--save-rgb", is_flag=True)
-@click.option("--save-gray", is_flag=True)
-@click.option("--save-detect-mat", is_flag=True)
-@click.option("--save-objmask", is_flag=True)
-@click.option("--save-objmap", is_flag=True)
-@click.option("--save-objmap-overlay", is_flag=True)
-@click.option("--save-detect-mat-overlay", is_flag=True)
-@click.option("--save-objmask-overlay", is_flag=True)
-@click.option("--overlay-mode", type=click.Choice(["image", "figure"]), default="image")
-@click.option("--overlay-alpha", type=float, default=0.3)
 @click.option(
     "--event-log", type=click.Path(path_type=Path), default=None,
     help="Path to event log file.",
@@ -240,16 +229,6 @@ def sweep_worker_cli(
     ncols: int,
     bit_depth: Optional[int],
     detect_mode: str,
-    save_rgb: bool,
-    save_gray: bool,
-    save_detect_mat: bool,
-    save_objmask: bool,
-    save_objmap: bool,
-    save_objmap_overlay: bool,
-    save_detect_mat_overlay: bool,
-    save_objmask_overlay: bool,
-    overlay_mode: str,
-    overlay_alpha: float,
     event_log: Optional[Path],
     pipeline_name: Optional[str],
 ):
@@ -290,23 +269,7 @@ def sweep_worker_cli(
             pipeline_json_strs = {pipeline_name: pipeline_json_strs[pipeline_name]}
 
         # Create output manager
-        save_layers = {
-            "rgb": save_rgb,
-            "gray": save_gray,
-            "detect_mat": save_detect_mat,
-            "objmask": save_objmask,
-            "objmap": save_objmap,
-            "objmap_overlay": save_objmap_overlay,
-            "detect_mat_overlay": save_detect_mat_overlay,
-            "objmask_overlay": save_objmask_overlay,
-        }
-        output_manager = SweepOutputManager(
-            base_dir=output_dir,
-            save_layers=save_layers,
-            extensions={},  # use defaults
-            overlay_mode=overlay_mode,
-            overlay_alpha=overlay_alpha,
-        )
+        output_manager = SweepOutputManager(base_dir=output_dir)
 
         # Process all pipelines sequentially (SLURM tasks)
         click.echo(f"Processing {image.name} through {len(pipeline_json_strs)} pipelines...")

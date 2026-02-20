@@ -7,7 +7,7 @@ from itertools import product
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
-from ._sweep import Sweep
+from ._sweep_types import Presence, Sweep, _ABSENT
 
 
 def generate_sweep_manifest(
@@ -92,6 +92,8 @@ def generate_sweep_manifest(
             pipe_name = f"{cfg_name}_{idx}"
             ops = []
             for sweep_obj, param_set in zip(sweep_list, combo):
+                if param_set is _ABSENT:
+                    continue  # Optional operation omitted
                 merged = {**sweep_obj.fixed_params, **param_set}
                 ops.append(sweep_obj.operation_class(**merged))
 
@@ -210,5 +212,9 @@ def _generate_param_combinations(
             values = list(sweep_obj.sweep_params.values())
             combos = [dict(zip(keys, vals)) for vals in product(*values)]
             per_op_combos.append(combos)
+
+        # Presence operations also produce an "absent" variant
+        if isinstance(sweep_obj, Presence):
+            per_op_combos[-1].append(_ABSENT)
 
     return list(product(*per_op_combos))

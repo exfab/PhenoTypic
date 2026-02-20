@@ -284,30 +284,6 @@ def _format_duration(seconds: float) -> str:
 )
 @click.option("--force-local", is_flag=True, help="Force local execution.")
 @click.option("--wait", is_flag=True, help="Monitor SLURM jobs.")
-@click.option("--save-rgb", is_flag=True, help="Save RGB layer.")
-@click.option("--save-gray", is_flag=True, help="Save grayscale layer.")
-@click.option("--save-detect-mat", is_flag=True, help="Save detection matrix.")
-@click.option("--save-objmask", is_flag=True, help="Save object mask.")
-@click.option("--save-objmap", is_flag=True, help="Save object map.")
-@click.option("--save-objmap-overlay", is_flag=True, help="Save object map overlay.")
-@click.option(
-        "--save-detect-mat-overlay", is_flag=True, help="Save detection matrix overlay."
-)
-@click.option("--save-objmask-overlay", is_flag=True, help="Save object mask overlay.")
-@click.option(
-        "--overlay-mode",
-        type=click.Choice(["image", "figure"]),
-        default="image",
-        show_default=True,
-        help="Overlay saving mode.",
-)
-@click.option(
-        "--overlay-alpha",
-        type=float,
-        default=0.3,
-        show_default=True,
-        help="Alpha transparency (0.0-1.0).",
-)
 @click.option("--dry-run", is_flag=True, help="Preview without executing.")
 @click.option("--skip-validation", is_flag=True, help="Skip pipeline validation.")
 def sweep_cli(
@@ -323,16 +299,6 @@ def sweep_cli(
         slurm_args: Sequence[str],
         force_local: bool,
         wait: bool,
-        save_rgb: bool,
-        save_gray: bool,
-        save_detect_mat: bool,
-        save_objmask: bool,
-        save_objmap: bool,
-        save_objmap_overlay: bool,
-        save_detect_mat_overlay: bool,
-        save_objmask_overlay: bool,
-        overlay_mode: str,
-        overlay_alpha: float,
         dry_run: bool,
         skip_validation: bool,
 ):
@@ -452,38 +418,11 @@ def sweep_cli(
                 click.echo(f"  - {name}")
             sys.exit(0)
 
-        # Build save layers config
-        save_layers = {
-            "rgb"               : save_rgb,
-            "gray"              : save_gray,
-            "detect_mat"        : save_detect_mat,
-            "objmask"           : save_objmask,
-            "objmap"            : save_objmap,
-            "objmap_overlay"    : save_objmap_overlay,
-            "detect_mat_overlay": save_detect_mat_overlay,
-            "objmask_overlay"   : save_objmask_overlay,
-        }
-
-        extensions = {
-            "rgb"           : ".tiff",
-            "gray"          : ".tiff",
-            "detect_mat"    : ".tiff",
-            "objmask"       : ".png",
-            "objmap"        : ".png",
-            "objmap_overlay": ".png",
-        }
-
         # Create output manager and directory structure
         from ._sweep_output import SweepOutputManager
 
-        output_manager = SweepOutputManager(
-                base_dir=output_dir,
-                save_layers=save_layers,
-                extensions=extensions,
-                overlay_mode=overlay_mode,
-                overlay_alpha=overlay_alpha,
-        )
-        output_manager.create_structure(pipeline_names)
+        output_manager = SweepOutputManager(base_dir=output_dir)
+        output_manager.create_structure()
 
         # Copy manifest to output directory for reproducibility
         dest_manifest = output_dir / "sweep_manifest.json"
@@ -537,9 +476,6 @@ def sweep_cli(
                     manifest_path=manifest_json,
                     slurm_args=slurm_args_dict,
                     wait=wait,
-                    save_layers=save_layers,
-                    overlay_mode=overlay_mode,
-                    overlay_alpha=overlay_alpha,
             )
         else:
             strategy = LocalSweepStrategy(
@@ -561,18 +497,6 @@ def sweep_cli(
             start_time=sweep_start_time,
             is_complete=True,
         )
-
-        # Aggregate master CSV
-        if results.get("completed", 0) > 0:
-            click.echo("\nAggregating measurements...")
-            master_path = output_manager.aggregate_master_csv(pipeline_names)
-            if master_path:
-                click.echo(f"Master measurements: {master_path}")
-            else:
-                click.echo(
-                        "Warning: Could not aggregate master CSV",
-                        err=True,
-                )
 
         # Summary
         duration = (results["end_time"] - results["start_time"]).total_seconds()

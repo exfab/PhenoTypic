@@ -1,531 +1,409 @@
 """
-Tests for AnscombeTransformDenoise.
+Tests for AnscombeForward and AnscombeInverse.
 
-Tests parameter validation, mathematical transforms, integration with
-ImageEnhancer and ImagePipeline, ClipControlMixin functionality, and
-immutability guarantees.
+Tests parameter validation, mathematical transforms, forward/inverse
+roundtrip, pipeline composition, scale factor auto-detection, serialization,
+and immutability guarantees.
 """
 
 import pytest
 import numpy as np
 
 from phenotypic import Image, ImagePipeline
-from phenotypic.enhance import AnscombeTransformDenoise, GaussianBlur, BilateralDenoise
-from phenotypic.tools_ import ClipControlMixin
+from phenotypic.enhance import (
+    AnscombeForward,
+    AnscombeInverse,
+    GaussianBlur,
+    BilateralDenoise,
+)
 
 
-class TestAnscombeTransformDenoiseParameterValidation:
-    """Test AnscombeTransformDenoise parameter validation."""
+# -- Parameter validation (both classes) ----------------------------------
 
-    def test_inner_enhancer_without_apply_raises_error(self):
-        """Test that inner_enhancer without apply() method raises TypeError."""
-        with pytest.raises(TypeError, match="inner_enhancer must be an ImageEnhancer"):
-            AnscombeTransformDenoise(inner_enhancer="not_an_enhancer")
 
-    def test_inner_enhancer_with_non_callable_apply_raises_error(self):
-        """Test that inner_enhancer with non-callable apply raises TypeError."""
-
-        class FakeEnhancer:
-            apply = "not_callable"
-
-        with pytest.raises(TypeError, match="inner_enhancer must be an ImageEnhancer"):
-            AnscombeTransformDenoise(inner_enhancer=FakeEnhancer())
+class TestAnscombeForwardParameterValidation:
+    """Test AnscombeForward parameter validation."""
 
     def test_gain_zero_raises_error(self):
-        """Test that gain = 0 raises ValueError."""
         with pytest.raises(ValueError, match="gain must be > 0"):
-            AnscombeTransformDenoise(inner_enhancer=GaussianBlur(), gain=0)
+            AnscombeForward(gain=0)
 
     def test_gain_negative_raises_error(self):
-        """Test that negative gain raises ValueError."""
         with pytest.raises(ValueError, match="gain must be > 0"):
-            AnscombeTransformDenoise(inner_enhancer=GaussianBlur(), gain=-1.0)
+            AnscombeForward(gain=-1.0)
 
     def test_sigma_negative_raises_error(self):
-        """Test that negative sigma (read noise) raises ValueError."""
         with pytest.raises(ValueError, match="sigma must be >= 0"):
-            AnscombeTransformDenoise(inner_enhancer=GaussianBlur(), sigma=-0.1)
+            AnscombeForward(sigma=-0.1)
 
     def test_scale_factor_zero_raises_error(self):
-        """Test that scale_factor = 0 raises ValueError."""
         with pytest.raises(ValueError, match="scale_factor must be > 0"):
-            AnscombeTransformDenoise(inner_enhancer=GaussianBlur(), scale_factor=0)
+            AnscombeForward(scale_factor=0)
 
     def test_scale_factor_negative_raises_error(self):
-        """Test that negative scale_factor raises ValueError."""
         with pytest.raises(ValueError, match="scale_factor must be > 0"):
-            AnscombeTransformDenoise(inner_enhancer=GaussianBlur(), scale_factor=-255)
+            AnscombeForward(scale_factor=-255)
 
-    def test_valid_parameters_with_image_enhancer(self):
-        """Test that valid parameters with ImageEnhancer are accepted."""
-        enhancer = AnscombeTransformDenoise(
-            inner_enhancer=GaussianBlur(sigma=1.0),
-            gain=2.0,
-            mu=0.5,
-            sigma=1.0,
-            scale_factor=255.0,
+    def test_valid_parameters_accepted(self):
+        fwd = AnscombeForward(
+            gain=2.0, mu=0.5, sigma=1.0, scale_factor=255.0
         )
-        assert enhancer.gain == 2.0
-        assert enhancer.mu == 0.5
-        assert enhancer.sigma == 1.0
-        assert enhancer.scale_factor == 255.0
+        assert fwd.gain == 2.0
+        assert fwd.mu == 0.5
+        assert fwd.sigma == 1.0
+        assert fwd.scale_factor == 255.0
 
-    def test_valid_parameters_with_image_pipeline(self):
-        """Test that valid parameters with ImagePipeline are accepted."""
-        pipeline = ImagePipeline([GaussianBlur(sigma=1.0)])
-        enhancer = AnscombeTransformDenoise(
-            inner_enhancer=pipeline,
-            gain=1.0,
-            mu=0.0,
-            sigma=0.0,
+    def test_defaults(self):
+        fwd = AnscombeForward()
+        assert fwd.gain == 1.0
+        assert fwd.mu == 0.0
+        assert fwd.sigma == 0.0
+        assert fwd.scale_factor is None
+
+
+class TestAnscombeInverseParameterValidation:
+    """Test AnscombeInverse parameter validation."""
+
+    def test_gain_zero_raises_error(self):
+        with pytest.raises(ValueError, match="gain must be > 0"):
+            AnscombeInverse(gain=0)
+
+    def test_gain_negative_raises_error(self):
+        with pytest.raises(ValueError, match="gain must be > 0"):
+            AnscombeInverse(gain=-1.0)
+
+    def test_sigma_negative_raises_error(self):
+        with pytest.raises(ValueError, match="sigma must be >= 0"):
+            AnscombeInverse(sigma=-0.1)
+
+    def test_scale_factor_zero_raises_error(self):
+        with pytest.raises(ValueError, match="scale_factor must be > 0"):
+            AnscombeInverse(scale_factor=0)
+
+    def test_scale_factor_negative_raises_error(self):
+        with pytest.raises(ValueError, match="scale_factor must be > 0"):
+            AnscombeInverse(scale_factor=-255)
+
+    def test_valid_parameters_accepted(self):
+        inv = AnscombeInverse(
+            gain=2.0, mu=0.5, sigma=1.0, scale_factor=255.0
         )
-        assert enhancer.inner_enhancer is pipeline
-
-    def test_scale_factor_none_accepted(self):
-        """Test that scale_factor=None (auto-detect) is accepted."""
-        enhancer = AnscombeTransformDenoise(
-            inner_enhancer=GaussianBlur(),
-            scale_factor=None,
-        )
-        assert enhancer.scale_factor is None
+        assert inv.gain == 2.0
+        assert inv.mu == 0.5
+        assert inv.sigma == 1.0
+        assert inv.scale_factor == 255.0
 
 
-class TestAnscombeTransformMathematics:
-    """Test the mathematical correctness of the Anscombe transforms."""
+# -- Forward transform mathematics ----------------------------------------
 
-    def test_forward_transform_increases_sqrt_scaled(self):
-        """Test that forward transform applies sqrt scaling."""
-        # For pure Poisson (sigma=0), forward transform: (2/gain) * sqrt(gain*x + 3/8*gain^2)
+
+class TestForwardTransformMathematics:
+    """Test mathematical correctness of the forward Anscombe transform."""
+
+    def test_sqrt_scaling_for_large_counts(self):
+        """Forward transform approximates 2*sqrt(x) for large counts."""
         x = np.array([100.0, 400.0, 900.0])
-        result = AnscombeTransformDenoise._generalized_anscombe(
+        result = AnscombeForward._generalized_anscombe(
             x, mu=0, sigma=0, gain=1.0
         )
-        # For large counts, result should be approximately 2*sqrt(x)
         expected_approx = 2 * np.sqrt(x)
         np.testing.assert_allclose(result, expected_approx, rtol=0.05)
 
-    def test_forward_transform_handles_zero_values(self):
-        """Test that forward transform handles zero counts gracefully."""
+    def test_handles_zero_values(self):
+        """Forward transform handles zero counts without NaN."""
         x = np.array([0.0, 0.0, 0.0])
-        result = AnscombeTransformDenoise._generalized_anscombe(
+        result = AnscombeForward._generalized_anscombe(
             x, mu=0, sigma=0, gain=1.0
         )
-        # Should not produce NaN
         assert not np.any(np.isnan(result))
-        # Result should be positive (due to 3/8 constant term)
         assert np.all(result >= 0)
 
-    def test_forward_inverse_roundtrip_large_counts(self):
-        """Test that forward + inverse transforms approximately recover original for large counts."""
-        # Create array with values that have good roundtrip properties
-        x = np.array([50.0, 100.0, 200.0, 500.0, 1000.0])
-        gain = 1.0
-        mu = 0.0
-        sigma = 0.0
-
-        # Forward then inverse
-        forward = AnscombeTransformDenoise._generalized_anscombe(x, mu, sigma, gain)
-        inverse = AnscombeTransformDenoise._inverse_generalized_anscombe(
-            forward, mu, sigma, gain
-        )
-
-        # Should approximately recover original (better for larger counts)
-        np.testing.assert_allclose(inverse, x, rtol=0.1)
-
-    def test_forward_transform_with_read_noise(self):
-        """Test forward transform with non-zero read noise parameters."""
+    def test_with_read_noise(self):
+        """Forward transform with non-zero read noise produces valid output."""
         x = np.array([100.0, 200.0, 300.0])
-        mu = 5.0
-        sigma = 10.0
-        gain = 2.0
-
-        result = AnscombeTransformDenoise._generalized_anscombe(x, mu, sigma, gain)
-
-        # Should produce valid, positive results
+        result = AnscombeForward._generalized_anscombe(
+            x, mu=5.0, sigma=10.0, gain=2.0
+        )
         assert not np.any(np.isnan(result))
         assert np.all(result > 0)
 
-    def test_inverse_transform_handles_small_values(self):
-        """Test that inverse transform handles small transformed values."""
-        # Small transformed values (< 1) get clamped to 1 in the inverse
+
+# -- Inverse transform mathematics ----------------------------------------
+
+
+class TestInverseTransformMathematics:
+    """Test mathematical correctness of the inverse Anscombe transform."""
+
+    def test_handles_small_values(self):
+        """Inverse transform handles small transformed values."""
         x = np.array([0.5, 0.8, 1.0, 1.5])
-        result = AnscombeTransformDenoise._inverse_generalized_anscombe(
+        result = AnscombeInverse._inverse_generalized_anscombe(
             x, mu=0, sigma=0, gain=1.0
         )
-
-        # Should not produce NaN
         assert not np.any(np.isnan(result))
-        # Should produce non-negative results
         assert np.all(result >= 0)
 
-    def test_inverse_transform_handles_nan(self):
-        """Test that inverse transform replaces NaN with 0."""
+    def test_handles_nan(self):
+        """Inverse transform replaces NaN with 0."""
         x = np.array([np.nan, 10.0, 20.0])
-        result = AnscombeTransformDenoise._inverse_generalized_anscombe(
+        result = AnscombeInverse._inverse_generalized_anscombe(
             x, mu=0, sigma=0, gain=1.0
         )
-
-        # NaN should be replaced with 0
         assert result[0] == 0.0
         assert not np.any(np.isnan(result))
 
 
-class TestAnscombeTransformDenoiseIntegration:
-    """Integration tests with Image, ImageEnhancer, and ImagePipeline."""
+# -- Forward/Inverse roundtrip --------------------------------------------
+
+
+class TestForwardInverseRoundtrip:
+    """Test that forward then inverse approximately recovers original."""
+
+    def test_roundtrip_large_counts(self):
+        x = np.array([50.0, 100.0, 200.0, 500.0, 1000.0])
+        forward = AnscombeForward._generalized_anscombe(
+            x, mu=0, sigma=0, gain=1.0
+        )
+        inverse = AnscombeInverse._inverse_generalized_anscombe(
+            forward, mu=0, sigma=0, gain=1.0
+        )
+        np.testing.assert_allclose(inverse, x, rtol=0.1)
+
+    def test_roundtrip_with_read_noise(self):
+        x = np.array([100.0, 200.0, 500.0, 1000.0])
+        gain, mu, sigma = 2.0, 1.0, 3.0
+        forward = AnscombeForward._generalized_anscombe(
+            x, mu=mu, sigma=sigma, gain=gain
+        )
+        inverse = AnscombeInverse._inverse_generalized_anscombe(
+            forward, mu=mu, sigma=sigma, gain=gain
+        )
+        np.testing.assert_allclose(inverse, x, rtol=0.15)
+
+    def test_roundtrip_on_image(self):
+        """Forward + Inverse pipeline recovers detect_mat approximately."""
+        np.random.seed(42)
+        arr = np.random.rand(64, 64).astype(np.float64) * 0.5 + 0.25
+        image = Image(arr=arr)
+        original = image.detect_mat[:].copy()
+
+        pipeline = ImagePipeline([
+            AnscombeForward(gain=1.0, sigma=0.0, scale_factor=255.0),
+            AnscombeInverse(gain=1.0, sigma=0.0, scale_factor=255.0),
+        ])
+        result = pipeline.apply(image)
+
+        np.testing.assert_allclose(
+            result.detect_mat[:], original, atol=0.02
+        )
+
+
+# -- Pipeline integration -------------------------------------------------
+
+
+class TestPipelineIntegration:
+    """Test AnscombeForward/Inverse composed with denoisers in a pipeline."""
 
     @pytest.fixture
     def synthetic_image(self):
-        """Create a synthetic test image."""
         np.random.seed(42)
         arr = np.random.rand(64, 64).astype(np.float64) * 0.5 + 0.25
         return Image(arr=arr)
 
     @pytest.fixture
     def rgb_image(self):
-        """Create a synthetic RGB image."""
         np.random.seed(42)
         arr = np.random.rand(64, 64, 3).astype(np.float64)
         return Image(arr=arr)
 
-    def test_apply_with_gaussian_blur(self, synthetic_image):
-        """Test apply with GaussianBlur as inner enhancer."""
-        enhancer = AnscombeTransformDenoise(
-            inner_enhancer=GaussianBlur(sigma=1.0),
-            gain=1.0,
-            sigma=0.0,
-            scale_factor=255.0,
-        )
-        result = enhancer.apply(synthetic_image)
-
-        # Output should have same shape
-        assert result.detect_mat[:].shape == synthetic_image.detect_mat[:].shape
-        # Output should be in [0, 1] range
-        assert result.detect_mat[:].min() >= 0.0
-        assert result.detect_mat[:].max() <= 1.0
-
-    def test_apply_with_image_pipeline(self, synthetic_image):
-        """Test apply with ImagePipeline as inner enhancer."""
+    def test_forward_denoise_inverse_pipeline(self, synthetic_image):
+        """Full pipeline: Forward -> GaussianBlur -> Inverse."""
         pipeline = ImagePipeline([
-            GaussianBlur(sigma=0.5),
-            BilateralDenoise(sigma_spatial=5),
+            AnscombeForward(
+                gain=1.0, sigma=0.0, scale_factor=255.0
+            ),
+            GaussianBlur(sigma=1.0),
+            AnscombeInverse(
+                gain=1.0, sigma=0.0, scale_factor=255.0
+            ),
         ])
-        enhancer = AnscombeTransformDenoise(
-            inner_enhancer=pipeline,
-            gain=1.0,
-            sigma=0.0,
-            scale_factor=255.0,
-        )
-        result = enhancer.apply(synthetic_image)
+        result = pipeline.apply(synthetic_image)
 
-        # Output should have same shape
-        assert result.detect_mat[:].shape == synthetic_image.detect_mat[:].shape
-        # Output should be in [0, 1] range
+        assert result.detect_mat[:].shape == (
+            synthetic_image.detect_mat[:].shape
+        )
         assert result.detect_mat[:].min() >= 0.0
         assert result.detect_mat[:].max() <= 1.0
 
-    def test_apply_with_clipping_enhancer(self, synthetic_image):
-        """Test that AnscombeTransformDenoise works with clipping enhancers.
+    def test_pipeline_with_clip_false_enhancer(self, synthetic_image):
+        """Pipeline with clip=False on intermediate BilateralDenoise."""
+        pipeline = ImagePipeline([
+            AnscombeForward(
+                gain=1.0, sigma=0.0, scale_factor=255.0
+            ),
+            BilateralDenoise(sigma_spatial=5, clip=False),
+            AnscombeInverse(
+                gain=1.0, sigma=0.0, scale_factor=255.0
+            ),
+        ])
+        result = pipeline.apply(synthetic_image)
 
-        BilateralDenoise has clip=True by default, which would destroy GAT-scale
-        values. AnscombeTransformDenoise should disable clipping internally.
-        """
-        enhancer = AnscombeTransformDenoise(
-            inner_enhancer=BilateralDenoise(sigma_spatial=5),  # clip=True default
-            gain=1.0,
-            sigma=0.0,
-            scale_factor=255.0,
-        )
-        result = enhancer.apply(synthetic_image)
-
-        # Output should be in [0, 1] range and non-trivial
         assert result.detect_mat[:].min() >= 0.0
         assert result.detect_mat[:].max() <= 1.0
-        # Output should not be all zeros (which would happen if clipping broke things)
         assert result.detect_mat[:].max() > 0.1
 
-    def test_apply_with_pipeline_containing_clipping_enhancers(self, synthetic_image):
-        """Test that AnscombeTransformDenoise disables clipping in pipelines."""
-        pipeline = ImagePipeline([
-            GaussianBlur(sigma=0.5),
-            BilateralDenoise(sigma_spatial=5),  # Has clip=True
-        ])
-        enhancer = AnscombeTransformDenoise(
-            inner_enhancer=pipeline,
-            gain=1.0,
-            sigma=0.0,
-            scale_factor=255.0,
-        )
-        result = enhancer.apply(synthetic_image)
-
-        # Output should be non-trivial (not all zeros)
-        assert result.detect_mat[:].max() > 0.1
-        # Original pipeline's enhancer should still have clip=True
-        # _ops is a Dict[str, ImageOperation], access by operation name
-        orig_ops = list(pipeline._ops.values())
-        assert orig_ops[1].clip is True
-
-    def test_apply_preserves_image_rgb(self, rgb_image):
-        """Test that apply() does not modify image.rgb (immutability)."""
+    def test_preserves_rgb(self, rgb_image):
+        """Pipeline does not modify image.rgb (immutability)."""
         original_rgb = rgb_image.rgb[:].copy()
 
-        enhancer = AnscombeTransformDenoise(
-            inner_enhancer=GaussianBlur(sigma=1.0),
-            scale_factor=255.0,
-        )
-        result = enhancer.apply(rgb_image)
+        pipeline = ImagePipeline([
+            AnscombeForward(scale_factor=255.0),
+            GaussianBlur(sigma=1.0),
+            AnscombeInverse(scale_factor=255.0),
+        ])
+        pipeline.apply(rgb_image)
 
-        # Original image rgb should be unchanged
-        assert np.array_equal(rgb_image.rgb[:], original_rgb)
+        np.testing.assert_array_equal(rgb_image.rgb[:], original_rgb)
 
-    def test_apply_preserves_image_gray(self, synthetic_image):
-        """Test that apply() does not modify image.gray (immutability)."""
+    def test_preserves_gray(self, synthetic_image):
+        """Pipeline does not modify image.gray (immutability)."""
         original_gray = synthetic_image.gray[:].copy()
 
-        enhancer = AnscombeTransformDenoise(
-            inner_enhancer=GaussianBlur(sigma=1.0),
-            scale_factor=255.0,
+        pipeline = ImagePipeline([
+            AnscombeForward(scale_factor=255.0),
+            GaussianBlur(sigma=1.0),
+            AnscombeInverse(scale_factor=255.0),
+        ])
+        pipeline.apply(synthetic_image)
+
+        np.testing.assert_array_equal(
+            synthetic_image.gray[:], original_gray
         )
-        result = enhancer.apply(synthetic_image)
 
-        # Original image gray should be unchanged
-        assert np.array_equal(synthetic_image.gray[:], original_gray)
+    def test_forward_produces_gat_scale_values(self, synthetic_image):
+        """AnscombeForward produces values > 1 (GAT domain)."""
+        fwd = AnscombeForward(scale_factor=255.0)
+        result = fwd.apply(synthetic_image)
+        # GAT values should be well above 1 for typical [0.25, 0.75] data
+        assert result.detect_mat[:].max() > 1.0
 
-    def test_inplace_modifies_original(self, synthetic_image):
-        """Test that inplace=True modifies the original image."""
-        original_detect_mat = synthetic_image.detect_mat[:].copy()
-
-        enhancer = AnscombeTransformDenoise(
-            inner_enhancer=GaussianBlur(sigma=1.0),
-            scale_factor=255.0,
-        )
-        result = enhancer.apply(synthetic_image, inplace=True)
-
-        # Result should be the same object
-        assert result is synthetic_image
-        # detect_mat should be modified (not equal to original)
-        assert not np.array_equal(synthetic_image.detect_mat[:], original_detect_mat)
-
-    def test_nested_in_pipeline(self, synthetic_image):
-        """Test AnscombeTransformDenoise nested inside ImagePipeline."""
+    def test_nested_in_outer_pipeline(self, synthetic_image):
+        """Forward/Inverse pair nested inside a larger pipeline."""
         from phenotypic.enhance import CLAHE
 
         pipeline = ImagePipeline([
-            AnscombeTransformDenoise(
-                inner_enhancer=GaussianBlur(sigma=1.0),
-                scale_factor=255.0,
-            ),
+            AnscombeForward(scale_factor=255.0),
+            GaussianBlur(sigma=1.0),
+            AnscombeInverse(scale_factor=255.0),
             CLAHE(clip_limit=0.02),
         ])
         result = pipeline.apply(synthetic_image)
 
-        # Output should have same shape
-        assert result.detect_mat[:].shape == synthetic_image.detect_mat[:].shape
-        # Output should be in [0, 1] range
         assert result.detect_mat[:].min() >= 0.0
         assert result.detect_mat[:].max() <= 1.0
 
 
-class TestClipParameter:
-    """Test the clip parameter added to enhancers for GAT compatibility."""
-
-    def test_bilateral_denoise_clip_true_default(self):
-        """Test that BilateralDenoise clips to [0,1] by default."""
-        # Create GAT-scale test data (~1-32)
-        np.random.seed(42)
-        gat_data = np.random.uniform(1.0, 32.0, (32, 32)).astype(np.float64)
-        image = Image(arr=gat_data)
-
-        enh = BilateralDenoise(sigma_spatial=5)  # clip=True by default
-        result = enh.apply(image)
-
-        # Output should be clipped to [0, 1]
-        assert result.detect_mat[:].max() <= 1.0
-        assert result.detect_mat[:].min() >= 0.0
-
-    def test_bilateral_denoise_clip_false_preserves_scale(self):
-        """Test that BilateralDenoise with clip=False preserves GAT scale."""
-        # Create GAT-scale test data (~1-32)
-        np.random.seed(42)
-        gat_data = np.random.uniform(1.0, 32.0, (32, 32)).astype(np.float64)
-        image = Image(arr=gat_data)
-
-        enh = BilateralDenoise(sigma_spatial=5, clip=False)
-        result = enh.apply(image)
-
-        # Output should preserve GAT scale (max > 1)
-        assert result.detect_mat[:].max() > 1.0
+# -- Scale factor auto-detection ------------------------------------------
 
 
-class TestClipControlMixin:
-    """Test ClipControlMixin._disable_clipping functionality."""
-
-    def test_disable_clipping_single_enhancer(self):
-        """Test that _disable_clipping creates clip-disabled copy of enhancer."""
-        enh = BilateralDenoise(sigma_spatial=5, clip=True)
-        copied = ClipControlMixin._disable_clipping(enh)
-
-        # Original should be unchanged
-        assert enh.clip is True
-        # Copy should have clip=False
-        assert copied.clip is False
-        # Should be different objects
-        assert enh is not copied
-
-    def test_disable_clipping_enhancer_without_clip(self):
-        """Test that enhancers without clip parameter are returned unchanged."""
-        enh = GaussianBlur(sigma=1.0)
-        copied = ClipControlMixin._disable_clipping(enh)
-
-        # Should return the same object (no copy needed)
-        assert copied is enh
-
-    def test_disable_clipping_pipeline(self):
-        """Test that _disable_clipping works recursively on pipelines."""
-        pipeline = ImagePipeline([
-            GaussianBlur(sigma=1.0),
-            BilateralDenoise(sigma_spatial=5, clip=True),
-        ])
-        copied_pipe = ClipControlMixin._disable_clipping(pipeline)
-
-        # _ops is a Dict[str, ImageOperation], so we get values as a list
-        orig_ops = list(pipeline._ops.values())
-        copied_ops = list(copied_pipe._ops.values())
-
-        # Original pipeline should be unchanged
-        assert orig_ops[1].clip is True
-        # Copied pipeline should have clip=False on BilateralDenoise
-        assert copied_ops[1].clip is False
-        # Should be different pipeline objects
-        assert pipeline is not copied_pipe
-
-    def test_disable_clipping_nested_pipeline(self):
-        """Test that _disable_clipping handles nested pipelines."""
-        inner_pipeline = ImagePipeline([BilateralDenoise(sigma_spatial=5, clip=True)])
-        outer_pipeline = ImagePipeline([
-            GaussianBlur(sigma=1.0),
-            inner_pipeline,
-        ])
-        # Note: ImagePipeline doesn't have a clip attribute but contains _ops
-        # This test verifies the recursion handles pipeline-like structures
-
-
-class TestAnscombeTransformDenoiseScaleFactorAutoDetect:
+class TestScaleFactorAutoDetection:
     """Test scale factor auto-detection from image metadata."""
 
-    def test_scale_factor_manual_override(self):
-        """Test that manual scale_factor is used when provided."""
+    def test_manual_override_forward(self):
         arr = np.random.rand(32, 32).astype(np.float64)
         image = Image(arr=arr)
+        fwd = AnscombeForward(scale_factor=65535.0)
+        assert fwd._get_scale_factor(image) == 65535.0
 
-        enhancer = AnscombeTransformDenoise(
-            inner_enhancer=GaussianBlur(sigma=0.5),
-            scale_factor=65535.0,  # Manual override
-        )
-
-        scale = enhancer._get_scale_factor(image)
-        assert scale == 65535.0
-
-    def test_scale_factor_default_when_none_and_no_metadata(self):
-        """Test that default 255 is used when scale_factor=None and no metadata."""
+    def test_manual_override_inverse(self):
         arr = np.random.rand(32, 32).astype(np.float64)
         image = Image(arr=arr)
+        inv = AnscombeInverse(scale_factor=65535.0)
+        assert inv._get_scale_factor(image) == 65535.0
 
-        enhancer = AnscombeTransformDenoise(
-            inner_enhancer=GaussianBlur(sigma=0.5),
-            scale_factor=None,  # Auto-detect
-        )
+    def test_default_when_no_metadata_forward(self):
+        arr = np.random.rand(32, 32).astype(np.float64)
+        image = Image(arr=arr)
+        fwd = AnscombeForward(scale_factor=None)
+        assert fwd._get_scale_factor(image) == 255.0
 
-        scale = enhancer._get_scale_factor(image)
-        # Should default to 255 when no bit_depth metadata
-        assert scale == 255.0
+    def test_default_when_no_metadata_inverse(self):
+        arr = np.random.rand(32, 32).astype(np.float64)
+        image = Image(arr=arr)
+        inv = AnscombeInverse(scale_factor=None)
+        assert inv._get_scale_factor(image) == 255.0
 
 
-class TestAnscombeTransformDenoiseSerialization:
-    """Test serialization and deserialization in pipelines.
+# -- Serialization ---------------------------------------------------------
 
-    Note: Full roundtrip deserialization is limited by the current serialization
-    system which instantiates classes with empty constructors. AnscombeTransformDenoise
-    has a required parameter (inner_enhancer) which prevents this pattern from working.
-    Serialization works, but deserialization would require framework changes.
-    """
 
-    def test_pipeline_to_json_serializes(self):
-        """Test that pipeline with AnscombeTransformDenoise can be serialized to JSON."""
+class TestSerialization:
+    """Test that both classes serialize and deserialize in pipelines."""
+
+    def test_forward_serializes_to_json(self):
         pipeline = ImagePipeline([
-            AnscombeTransformDenoise(
-                inner_enhancer=GaussianBlur(sigma=1.0),
-                gain=2.0,
-                mu=1.0,
-                sigma=0.5,
-                scale_factor=255.0,
+            AnscombeForward(
+                gain=2.0, mu=1.0, sigma=0.5, scale_factor=255.0
             )
         ])
-
-        # Serialize should succeed
         json_str = pipeline.to_json()
-        assert "AnscombeTransformDenoise" in json_str
+        assert "AnscombeForward" in json_str
+
+    def test_inverse_serializes_to_json(self):
+        pipeline = ImagePipeline([
+            AnscombeInverse(
+                gain=2.0, mu=1.0, sigma=0.5, scale_factor=255.0
+            )
+        ])
+        json_str = pipeline.to_json()
+        assert "AnscombeInverse" in json_str
+
+    def test_full_pipeline_serializes(self):
+        pipeline = ImagePipeline([
+            AnscombeForward(
+                gain=1.0, sigma=0.0, scale_factor=255.0
+            ),
+            GaussianBlur(sigma=1.0),
+            AnscombeInverse(
+                gain=1.0, sigma=0.0, scale_factor=255.0
+            ),
+        ])
+        json_str = pipeline.to_json()
+        assert "AnscombeForward" in json_str
+        assert "AnscombeInverse" in json_str
         assert "GaussianBlur" in json_str
-        assert "inner_enhancer" in json_str
 
-    @pytest.mark.skip(
-        reason="Deserialization requires empty constructor support. "
-        "AnscombeTransformDenoise has required 'inner_enhancer' parameter."
-    )
-    def test_pipeline_to_json_and_back(self):
-        """Test that pipeline with AnscombeTransformDenoise can be deserialized."""
+    def test_roundtrip_deserialization(self):
+        """Both classes have no required params so deserialization works."""
         pipeline = ImagePipeline([
-            AnscombeTransformDenoise(
-                inner_enhancer=GaussianBlur(sigma=1.0),
-                gain=2.0,
-                mu=1.0,
-                sigma=0.5,
-                scale_factor=255.0,
-            )
+            AnscombeForward(
+                gain=2.0, mu=1.0, sigma=0.5, scale_factor=255.0
+            ),
+            GaussianBlur(sigma=1.0),
+            AnscombeInverse(
+                gain=2.0, mu=1.0, sigma=0.5, scale_factor=255.0
+            ),
         ])
-
-        # Serialize
         json_str = pipeline.to_json()
-
-        # Deserialize - this would require framework changes
         loaded = ImagePipeline.from_json(json_str)
 
-        # Verify the operation was restored
-        assert len(loaded._ops) == 1
-        restored = loaded._ops[0]
-        assert isinstance(restored, AnscombeTransformDenoise)
-        assert restored.gain == 2.0
-        assert restored.mu == 1.0
-        assert restored.sigma == 0.5
-        assert restored.scale_factor == 255.0
-
-    @pytest.mark.skip(
-        reason="Deserialization requires empty constructor support. "
-        "AnscombeTransformDenoise has required 'inner_enhancer' parameter."
-    )
-    def test_pipeline_with_nested_pipeline_serialization(self):
-        """Test serialization with ImagePipeline as inner enhancer."""
-        inner_pipeline = ImagePipeline([GaussianBlur(sigma=1.0)])
-        pipeline = ImagePipeline([
-            AnscombeTransformDenoise(
-                inner_enhancer=inner_pipeline,
-                gain=1.0,
-                scale_factor=255.0,
-            )
-        ])
-
-        # Serialize
-        json_str = pipeline.to_json()
-
-        # Deserialize - this would require framework changes
-        loaded = ImagePipeline.from_json(json_str)
-
-        # Verify structure
-        assert len(loaded._ops) == 1
-        restored = loaded._ops[0]
-        assert isinstance(restored, AnscombeTransformDenoise)
-        assert isinstance(restored.inner_enhancer, ImagePipeline)
+        ops = list(loaded._ops.values())
+        assert len(ops) == 3
+        assert isinstance(ops[0], AnscombeForward)
+        assert isinstance(ops[2], AnscombeInverse)
+        assert ops[0].gain == 2.0
+        assert ops[0].mu == 1.0
+        assert ops[0].sigma == 0.5
+        assert ops[0].scale_factor == 255.0
+        assert ops[2].gain == 2.0
 
 
-# Run all tests if this file is executed directly
-if __name__ == "__main__":
-    pytest.main([__file__, "-v"])
+# -- Old class is removed -------------------------------------------------
+
+
+class TestOldClassRemoved:
+    """Verify that AnscombeTransformDenoise is no longer importable."""
+
+    def test_old_class_not_in_enhance(self):
+        import phenotypic.enhance as enhance_mod
+        assert not hasattr(enhance_mod, "AnscombeTransformDenoise")

@@ -9,7 +9,7 @@ from phenotypic.sweep import Sweep, generate_sweep_manifest
 from phenotypic.enhance import GaussianBlur
 from phenotypic.detect import OtsuDetector
 from phenotypic.measure import MeasureShape
-from phenotypic.sweep._sweep_process_image import sweep_worker_cli
+from phenotypic.sweep._sweep_cli._sweep_process_image import sweep_worker_cli
 
 
 @pytest.fixture
@@ -51,7 +51,7 @@ class TestPipelineNameOption:
         assert result.exit_code != 0
         assert "NonexistentPipeline" in result.output or "NonexistentPipeline" in (result.stderr_bytes or b"").decode()
 
-    @patch("phenotypic.sweep._sweep_process_image.process_image_all_pipelines_sequential")
+    @patch("phenotypic.sweep._sweep_cli._sweep_process_image.process_image_all_pipelines_sequential")
     def test_pipeline_name_filters_to_single_pipeline(
         self, mock_process, manifest_path, dummy_image, tmp_path
     ):
@@ -74,7 +74,7 @@ class TestPipelineNameOption:
         call_kwargs = mock_process.call_args[1]
         assert list(call_kwargs["pipeline_json_strs"].keys()) == ["Pipeline_0"]
 
-    @patch("phenotypic.sweep._sweep_process_image.process_image_all_pipelines_sequential")
+    @patch("phenotypic.sweep._sweep_cli._sweep_process_image.process_image_all_pipelines_sequential")
     def test_no_pipeline_name_passes_all_pipelines(
         self, mock_process, manifest_path, dummy_image, tmp_path
     ):
@@ -98,7 +98,7 @@ class TestPipelineNameOption:
         call_kwargs = mock_process.call_args[1]
         assert len(call_kwargs["pipeline_json_strs"]) == 2
 
-    @patch("phenotypic.sweep._sweep_process_image.process_image_all_pipelines_sequential")
+    @patch("phenotypic.sweep._sweep_cli._sweep_process_image.process_image_all_pipelines_sequential")
     @patch("phenotypic._cli._cli_update_state.append_completion_event")
     def test_pipeline_name_uses_composite_event_id(
         self, mock_event, mock_process, manifest_path, dummy_image, tmp_path

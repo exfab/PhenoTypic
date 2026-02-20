@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from ._sweep_data_model import (
     PipelineConfig,
-    SweepImageFile,
+    SweepHDF5File,
     SweepOutputData,
     SweepOutputScanner,
 )
@@ -25,7 +25,7 @@ __all__ = [
     "SweepOutputScanner",
     "SweepOutputData",
     "PipelineConfig",
-    "SweepImageFile",
+    "SweepHDF5File",
 ]
 
 

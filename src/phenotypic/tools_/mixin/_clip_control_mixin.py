@@ -14,9 +14,9 @@ class ClipControlMixin:
     """Mixin for operations that need to control clipping behavior of inner operations.
 
     Provides a method to create copies of ImageEnhancer or ImagePipeline instances
-    with clipping disabled. This is useful for composite operations like
-    AnscombeTransformDenoise where the inner enhancer operates on non-normalized data
-    (e.g., GAT-transformed values in the range ~1-32).
+    with clipping disabled. This is useful for composite operations where an inner
+    enhancer operates on non-normalized data (e.g., variance-stabilized values from
+    the Generalized Anscombe Transform, typically in the range ~1-32).
 
     The mixin uses duck typing to check for a `clip` attribute on operations. If an
     operation has `clip=True`, the `_disable_clipping` method will create a shallow
