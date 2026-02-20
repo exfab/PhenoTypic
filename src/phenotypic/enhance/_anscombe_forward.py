@@ -157,7 +157,7 @@ class AnscombeForward(ImageEnhancer):
     def _operate(self, image: Image) -> Image:
         """Apply forward GAT to variance-stabilize detect_mat."""
         scale_factor = self._get_scale_factor(image)
-        data = image.detect_mat[:].copy() * scale_factor
+        data = image.detect_mat[:] * scale_factor
         transformed = self._generalized_anscombe(
             data, self.mu, self.sigma, self.gain
         )
@@ -195,5 +195,9 @@ class AnscombeForward(ImageEnhancer):
         Reference:
             https://github.com/broxtronix/pymultiscale
         """
-        y = gain * x + (gain ** 2) * 3.0 / 8.0 + sigma ** 2 - gain * mu
-        return (2.0 / gain) * np.sqrt(np.maximum(y, 0.0))
+        y = x * gain
+        y += (gain ** 2) * 3.0 / 8.0 + sigma ** 2 - gain * mu
+        np.maximum(y, 0.0, out=y)
+        np.sqrt(y, out=y)
+        y *= 2.0 / gain
+        return y

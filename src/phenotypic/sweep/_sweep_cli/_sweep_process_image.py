@@ -236,7 +236,6 @@ def sweep_worker_cli(
     import matplotlib
     matplotlib.use("Agg")
 
-    from phenotypic.sweep import load_sweep_manifest
     from ._sweep_output import SweepOutputManager
 
     try:
@@ -251,22 +250,27 @@ def sweep_worker_cli(
             read_kwargs["detect_mode"] = detect_mode
 
         # Load pipelines from manifest
-        configs = load_sweep_manifest(manifest)
         pipeline_json_strs: Dict[str, str] = {}
-        for _cfg_name, pipes in configs.items():
-            for pipe_name, pipe in pipes.items():
-                pipeline_json_strs[pipe_name] = pipe.to_json_str()
-
-        # Filter to single pipeline if specified (per-pipeline SLURM tasks)
         if pipeline_name is not None:
-            if pipeline_name not in pipeline_json_strs:
-                click.echo(
-                    f"ERROR: Pipeline '{pipeline_name}' not found in manifest. "
-                    f"Available: {list(pipeline_json_strs.keys())}",
-                    err=True,
+            # SLURM per-pipeline mode: only deserialize the one we need
+            from phenotypic.sweep._generate_sweep import (
+                load_single_pipeline_from_manifest,
+            )
+            try:
+                json_str = load_single_pipeline_from_manifest(
+                    manifest, pipeline_name,
                 )
+            except KeyError as exc:
+                click.echo(f"ERROR: {exc}", err=True)
                 sys.exit(1)
-            pipeline_json_strs = {pipeline_name: pipeline_json_strs[pipeline_name]}
+            pipeline_json_strs = {pipeline_name: json_str}
+        else:
+            # All-pipelines mode: extract JSON strings without instantiation
+            import json as _json
+            raw = _json.loads(Path(manifest).read_text())
+            for cfg_data in raw.get("configs", {}).values():
+                for pipe_name, pipe_dict in cfg_data.get("pipelines", {}).items():
+                    pipeline_json_strs[pipe_name] = _json.dumps(pipe_dict)
 
         # Create output manager
         output_manager = SweepOutputManager(base_dir=output_dir)

@@ -8,6 +8,8 @@ from phenotypic.sweep import (
     Presence,
     Sweep,
     generate_sweep_manifest,
+    load_pipeline_names_from_manifest,
+    load_single_pipeline_from_manifest,
     load_sweep_manifest,
 )
 from phenotypic import ImagePipeline
@@ -350,3 +352,89 @@ class TestPresenceSweep:
         """Passing **params alongside a Sweep instance is an error."""
         with pytest.raises(TypeError, match="Cannot pass \\*\\*params"):
             Presence(Sweep(GaussianBlur), sigma=1.0)
+
+
+# ---------------------------------------------------------------------------
+# Lazy loading tests
+# ---------------------------------------------------------------------------
+
+
+class TestLoadSinglePipelineFromManifest:
+
+    def test_round_trips_correctly(self, simple_config, tmp_path):
+        """Extracted JSON is valid and produces correct pipeline."""
+        out = tmp_path / "sweep.json"
+        generate_sweep_manifest(simple_config, filepath=out)
+
+        json_str = load_single_pipeline_from_manifest(out, "Pipeline_0")
+        pipe = ImagePipeline.from_json(json_str)
+        assert pipe.name == "Pipeline_0"
+        op_names = list(pipe._ops.keys())
+        assert "GaussianBlur" in op_names
+        assert "OtsuDetector" in op_names
+
+    def test_matches_full_load(self, simple_config, tmp_path):
+        """Single-pipeline load matches the corresponding full load."""
+        out = tmp_path / "sweep.json"
+        generate_sweep_manifest(simple_config, filepath=out)
+
+        # Full load
+        full = load_sweep_manifest(out)
+        full_pipe = full["Pipeline"]["Pipeline_1"]
+
+        # Lazy load
+        json_str = load_single_pipeline_from_manifest(out, "Pipeline_1")
+        lazy_pipe = ImagePipeline.from_json(json_str)
+
+        assert full_pipe.to_json_str() == lazy_pipe.to_json_str()
+
+    def test_not_found_raises_key_error(self, simple_config, tmp_path):
+        out = tmp_path / "sweep.json"
+        generate_sweep_manifest(simple_config, filepath=out)
+
+        with pytest.raises(KeyError, match="not found in manifest"):
+            load_single_pipeline_from_manifest(out, "NonexistentPipeline")
+
+    def test_nonexistent_file_raises(self, tmp_path):
+        with pytest.raises(FileNotFoundError):
+            load_single_pipeline_from_manifest(
+                tmp_path / "missing.json", "Pipeline_0",
+            )
+
+    def test_named_configs(self, named_configs, tmp_path):
+        """Works with multi-config manifests."""
+        out = tmp_path / "multi.json"
+        generate_sweep_manifest(named_configs, filepath=out)
+
+        json_str = load_single_pipeline_from_manifest(out, "ConfigA_0")
+        pipe = ImagePipeline.from_json(json_str)
+        assert pipe.name == "ConfigA_0"
+
+
+class TestLoadPipelineNamesFromManifest:
+
+    def test_returns_correct_names(self, simple_config, tmp_path):
+        out = tmp_path / "sweep.json"
+        manifest = generate_sweep_manifest(simple_config, filepath=out)
+
+        names = load_pipeline_names_from_manifest(out)
+        expected = list(manifest["configs"]["Pipeline"]["pipelines"].keys())
+        assert names == expected
+
+    def test_correct_count(self, simple_config, tmp_path):
+        out = tmp_path / "sweep.json"
+        generate_sweep_manifest(simple_config, filepath=out)
+
+        names = load_pipeline_names_from_manifest(out)
+        assert len(names) == 4  # 2 sigma × 2 ignore_zeros
+
+    def test_named_configs_count(self, named_configs, tmp_path):
+        out = tmp_path / "multi.json"
+        manifest = generate_sweep_manifest(named_configs, filepath=out)
+
+        names = load_pipeline_names_from_manifest(out)
+        assert len(names) == manifest["total_pipelines"]
+
+    def test_nonexistent_file_raises(self, tmp_path):
+        with pytest.raises(FileNotFoundError):
+            load_pipeline_names_from_manifest(tmp_path / "missing.json")

@@ -189,16 +189,21 @@ class AnscombeInverse(ImageEnhancer):
             https://github.com/broxtronix/pymultiscale
         """
         test = np.maximum(x, 1.0)
-        exact_inverse = (
-                np.power(test / 2.0, 2.0)
-                + 1.0 / 4.0 * np.sqrt(3.0 / 2.0) * np.power(test, -1.0)
-                - 11.0 / 8.0 * np.power(test, -2.0)
-                + 5.0 / 8.0 * np.sqrt(3.0 / 2.0) * np.power(test, -3.0)
-                - 1.0 / 8.0
-                - sigma ** 2
-        )
-        exact_inverse = np.maximum(0.0, exact_inverse)
-        exact_inverse *= gain
-        exact_inverse += mu
-        exact_inverse = np.where(np.isnan(exact_inverse), 0.0, exact_inverse)
-        return exact_inverse
+        inv_test = np.reciprocal(test)
+
+        result = test * test
+        result *= 0.25                                          # (test/2)^2
+
+        result += (0.25 * np.sqrt(1.5)) * inv_test              # test^-1 term
+
+        inv_test_sq = inv_test * inv_test
+        result -= 1.375 * inv_test_sq                            # test^-2 term
+
+        result += (0.625 * np.sqrt(1.5)) * (inv_test_sq * inv_test)  # test^-3
+
+        result -= 0.125 + sigma ** 2
+        np.maximum(result, 0.0, out=result)
+        result *= gain
+        result += mu
+        np.nan_to_num(result, nan=0.0, copy=False)
+        return result

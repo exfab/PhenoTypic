@@ -9,6 +9,7 @@ distributed across SLURM array tasks.
 
 from __future__ import annotations
 
+import json
 import logging
 import shutil
 import sys
@@ -78,7 +79,12 @@ def _scan_flat_image_dir(input_dir: Path) -> List[Path]:
 
 
 def _flatten_pipelines(manifest_path: Path) -> Dict[str, str]:
-    """Load manifest and return ``{pipeline_name: json_str}`` for all pipelines.
+    """Load manifest and return ``{pipeline_name: json_str}`` without
+    instantiating ``ImagePipeline`` objects.
+
+    Reads the raw JSON and extracts each pipeline's dict as a JSON string,
+    avoiding the expensive ``ImagePipeline.from_json()`` round-trip that
+    would instantiate all operation objects.
 
     Args:
         manifest_path: Path to sweep manifest JSON.
@@ -86,14 +92,16 @@ def _flatten_pipelines(manifest_path: Path) -> Dict[str, str]:
     Returns:
         Dictionary mapping pipeline names to their JSON string representation.
     """
-    from phenotypic.sweep import load_sweep_manifest
+    path = Path(manifest_path)
+    if not path.exists():
+        raise FileNotFoundError(f"Manifest not found: {manifest_path}")
 
-    configs = load_sweep_manifest(manifest_path)
-
+    manifest = json.loads(path.read_text())
     pipeline_json_strs: Dict[str, str] = {}
-    for _cfg_name, pipes in configs.items():
-        for pipe_name, pipe in pipes.items():
-            pipeline_json_strs[pipe_name] = pipe.to_json_str()
+
+    for cfg_data in manifest.get("configs", {}).values():
+        for pipe_name, pipe_dict in cfg_data.get("pipelines", {}).items():
+            pipeline_json_strs[pipe_name] = json.dumps(pipe_dict)
 
     if not pipeline_json_strs:
         raise click.ClickException("Manifest contains no pipelines")

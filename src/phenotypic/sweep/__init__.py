@@ -11,6 +11,10 @@ sweeps from :class:`~phenotypic.ImagePipeline` operations using a
 - :class:`Fixed` — explicitly mark a value as fixed (escape hatch for tuples).
 - :func:`generate_sweep_manifest` — build manifest of all pipeline combinations.
 - :func:`load_sweep_manifest` — reload pipelines from a saved manifest JSON.
+- :func:`load_single_pipeline_from_manifest` — extract one pipeline's JSON
+  without deserializing all pipelines (used by SLURM workers).
+- :func:`load_pipeline_names_from_manifest` — list pipeline names without
+  deserializing any pipelines.
 
 Example:
     >>> from phenotypic.sweep import Sweep, generate_sweep_manifest
@@ -26,12 +30,19 @@ Example:
 """
 
 from ._sweep_types import Fixed, Presence, Sweep
-from ._generate_sweep import generate_sweep_manifest, load_sweep_manifest
+from ._generate_sweep import (
+    generate_sweep_manifest,
+    load_pipeline_names_from_manifest,
+    load_single_pipeline_from_manifest,
+    load_sweep_manifest,
+)
 
 __all__ = [
     "Fixed",
     "Presence",
     "Sweep",
     "generate_sweep_manifest",
+    "load_pipeline_names_from_manifest",
+    "load_single_pipeline_from_manifest",
     "load_sweep_manifest",
 ]

@@ -117,6 +117,69 @@ def generate_sweep_manifest(
     return manifest
 
 
+def load_single_pipeline_from_manifest(
+    filepath: Union[str, Path],
+    pipeline_name: str,
+) -> str:
+    """Load a single pipeline's JSON string from a manifest without
+    deserializing all pipelines.
+
+    Args:
+        filepath: Path to manifest JSON.
+        pipeline_name: Name of the pipeline to extract.
+
+    Returns:
+        JSON string for the requested pipeline.
+
+    Raises:
+        FileNotFoundError: If manifest does not exist.
+        KeyError: If pipeline_name not found in manifest.
+    """
+    path = Path(filepath)
+    if not path.exists():
+        raise FileNotFoundError(f"Manifest file not found: {filepath}")
+
+    manifest = json.loads(path.read_text())
+
+    for _cfg_name, cfg_data in manifest.get("configs", {}).items():
+        pipelines = cfg_data.get("pipelines", {})
+        if pipeline_name in pipelines:
+            return json.dumps(pipelines[pipeline_name])
+
+    available = []
+    for cfg_data in manifest.get("configs", {}).values():
+        available.extend(cfg_data.get("pipelines", {}).keys())
+    raise KeyError(
+        f"Pipeline '{pipeline_name}' not found in manifest. "
+        f"Available: {len(available)} pipelines"
+    )
+
+
+def load_pipeline_names_from_manifest(
+    filepath: Union[str, Path],
+) -> List[str]:
+    """Load all pipeline names from a manifest without deserializing pipelines.
+
+    Args:
+        filepath: Path to manifest JSON.
+
+    Returns:
+        List of pipeline names.
+
+    Raises:
+        FileNotFoundError: If manifest does not exist.
+    """
+    path = Path(filepath)
+    if not path.exists():
+        raise FileNotFoundError(f"Manifest file not found: {filepath}")
+
+    manifest = json.loads(path.read_text())
+    names: List[str] = []
+    for cfg_data in manifest.get("configs", {}).values():
+        names.extend(cfg_data.get("pipelines", {}).keys())
+    return names
+
+
 def load_sweep_manifest(
     filepath: Union[str, Path],
 ) -> Dict[str, Dict[str, Any]]:
