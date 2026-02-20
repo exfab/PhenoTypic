@@ -151,13 +151,17 @@ def _validate_sweep(
         if detect_mode != "gray":
             image.set_detect_mode(detect_mode)
 
-        measurements = pipeline.apply_and_measure(image, inplace=True)
+        if pipeline._meas:
+            measurements = pipeline.apply_and_measure(image, inplace=True)
 
-        if measurements is None or len(measurements) == 0:
-            raise click.ClickException(
-                "Pipeline produced no measurements on test image")
+            if measurements is None or len(measurements) == 0:
+                raise click.ClickException(
+                    "Pipeline produced no measurements on test image")
 
-        console.print("[green]Validation passed")
+            console.print("[green]Validation passed")
+        else:
+            pipeline.apply(image, inplace=True)
+            console.print("[green]Validation passed (no measurements in pipeline)")
 
     except click.ClickException:
         raise

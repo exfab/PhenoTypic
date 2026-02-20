@@ -65,11 +65,16 @@ def _run_single_pipeline(
             image.set_detect_mode(detect_mode)
 
         # Execute pipeline
-        measurements = pipeline.apply_and_measure(image, inplace=True)
+        if pipeline._meas:
+            measurements = pipeline.apply_and_measure(image, inplace=True)
+        else:
+            pipeline.apply(image, inplace=True)
+            measurements = None
 
         # Save results — each save is independent and non-fatal
         image_stem = image_path.stem
-        output_manager.save_measurements(measurements, pipeline_name, image_stem)
+        if measurements is not None:
+            output_manager.save_measurements(measurements, pipeline_name, image_stem)
         output_manager.save_image_hdf5(image, pipeline_name, image_stem)
 
         logger.info(
