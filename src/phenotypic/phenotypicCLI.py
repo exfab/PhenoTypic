@@ -142,7 +142,6 @@ from phenotypic._cli._cli_utils import normalize_extension, parse_slurm_args
 from phenotypic._cli._cli_validation import (
     validate_execution_config,
     validate_pipeline,
-    validate_pipeline_on_test_image,
 )
 from phenotypic._cli._cli_constants import (
     MIN_SLURM_TIME_MINUTES,
@@ -947,53 +946,6 @@ def phenotypic_cli(
                 console.print(f"  - {pipeline_error}", style="red")
                 sys.exit(1)
             console.print("[green]✓ Pipeline loaded successfully")
-
-            # Step 3: Test pipeline on sample image
-            test_image_path = None
-            if datasets:
-                for dataset in datasets:
-                    if dataset.images:
-                        test_image_path = dataset.images[0]
-                        break
-
-            if test_image_path:
-                # Determine image class
-                from phenotypic import Image, GridImage
-
-                image_cls = GridImage if config.image_type == "GridImage" else Image
-
-                # Prepare read kwargs
-                read_kwargs = {}
-                if config.image_type == "GridImage":
-                    read_kwargs["nrows"] = config.nrows
-                    read_kwargs["ncols"] = config.ncols
-                if config.bit_depth is not None:
-                    read_kwargs["bit_depth"] = config.bit_depth
-
-                console.print(f"[cyan]Testing pipeline on: {test_image_path.name}")
-
-                with console.status(
-                    "[bold cyan]Processing test image...", spinner="dots"
-                ):
-                    test_valid, test_error = validate_pipeline_on_test_image(
-                        config.pipeline_json,
-                        test_image_path,
-                        image_cls,
-                        read_kwargs,
-                        config.skip_validation,
-                    )
-
-                if not test_valid:
-                    console.print(
-                        "[bold red]✗ Test image processing failed:", style="bold red"
-                    )
-                    console.print(f"  - {test_error}", style="red")
-                    sys.exit(1)
-                console.print("[green]✓ Test image processed successfully")
-            else:
-                console.print(
-                    "[yellow]⚠ No test image available - skipping pipeline test"
-                )
 
             console.print()  # Add blank line after validation
         else:

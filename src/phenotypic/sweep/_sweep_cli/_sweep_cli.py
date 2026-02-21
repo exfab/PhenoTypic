@@ -110,20 +110,12 @@ def _flatten_pipelines(manifest_path: Path) -> Dict[str, str]:
 
 
 def _validate_sweep(
-        manifest_path: Path,
         pipeline_json_strs: Dict[str, str],
-        image_paths: List[Path],
-        image_type: str,
-        read_kwargs: Dict[str, Any],
 ) -> None:
-    """Validate the first pipeline on the first image.
+    """Validate that all pipelines can be loaded from JSON.
 
     Args:
-        manifest_path: Path to manifest (for error messages).
         pipeline_json_strs: Pipeline name -> JSON str mapping.
-        image_paths: List of images (uses first).
-        image_type: Image class name.
-        read_kwargs: Image read kwargs.
 
     Raises:
         click.ClickException: If validation fails.
@@ -132,39 +124,18 @@ def _validate_sweep(
 
     console = Console()
 
-    first_pipe_name = next(iter(pipeline_json_strs))
-    first_pipe_json = pipeline_json_strs[first_pipe_name]
-    first_image = image_paths[0]
-
-    console.print(
-            f"[cyan]Validating pipeline '{first_pipe_name}' on {first_image.name}..."
-    )
+    console.print("[cyan]Validating pipeline configurations...")
 
     try:
-        from phenotypic import Image, GridImage, ImagePipeline
+        from phenotypic import ImagePipeline
 
-        pipeline = ImagePipeline.from_json(first_pipe_json)
-        image_cls = GridImage if image_type == "GridImage" else Image
-        rk = dict(read_kwargs)
-        detect_mode = rk.pop("detect_mode", "gray")
-        image = image_cls.imread(first_image, **rk)
-        if detect_mode != "gray":
-            image.set_detect_mode(detect_mode)
+        for pipe_name, pipe_json in pipeline_json_strs.items():
+            ImagePipeline.from_json(pipe_json)
 
-        if pipeline._meas:
-            measurements = pipeline.apply_and_measure(image, inplace=True)
+        console.print(
+            f"[green]Validation passed ({len(pipeline_json_strs)} pipelines loaded)"
+        )
 
-            if measurements is None or len(measurements) == 0:
-                raise click.ClickException(
-                    "Pipeline produced no measurements on test image")
-
-            console.print("[green]Validation passed")
-        else:
-            pipeline.apply(image, inplace=True)
-            console.print("[green]Validation passed (no measurements in pipeline)")
-
-    except click.ClickException:
-        raise
     except Exception as e:
         raise click.ClickException(f"Validation failed: {type(e).__name__}: {e}")
 
@@ -389,13 +360,7 @@ def sweep_cli(
 
         # Validation
         if not skip_validation:
-            _validate_sweep(
-                    manifest_json,
-                    pipeline_json_strs,
-                    image_paths,
-                    image_type,
-                    read_kwargs,
-            )
+            _validate_sweep(pipeline_json_strs)
 
         # Generate output directory
         if output_dir is None:

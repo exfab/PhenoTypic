@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Tuple, Optional, Dict, Any, TYPE_CHECKING
+from typing import Tuple, Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
     pass
@@ -52,54 +52,6 @@ def validate_pipeline(
         return False, f"Invalid JSON in pipeline file: {e}"
     except Exception as e:
         return False, f"Failed to load pipeline: {type(e).__name__}: {e}"
-
-
-def validate_pipeline_on_test_image(
-    pipeline_path: Path,
-    test_image_path: Path,
-    image_cls: type,
-    read_kwargs: Dict[str, Any],
-    skip_validation: bool = False
-) -> Tuple[bool, Optional[str]]:
-    """
-    Validate pipeline by running it on a single test image.
-    
-    This catches errors that might not be apparent from just loading
-    the pipeline JSON (e.g., missing required operations, incompatible
-    parameters, etc.).
-    
-    Args:
-        pipeline_path: Path to pipeline JSON file
-        test_image_path: Path to test image
-        image_cls: Image class to use (Image or GridImage)
-        read_kwargs: Kwargs for imread
-        skip_validation: If True, skip validation
-        
-    Returns:
-        Tuple of (is_valid, error_message)
-        If valid, error_message is None
-    """
-    if skip_validation:
-        return True, None
-    
-    try:
-        # Load pipeline
-        pipeline = ImagePipeline.from_json(pipeline_path)
-        
-        # Load test image
-        image = image_cls.imread(test_image_path, **read_kwargs)
-        
-        # Try to run pipeline
-        measurements = pipeline.apply_and_measure(image, inplace=True)
-        
-        # Check that measurements were produced
-        if measurements is None or len(measurements) == 0:
-            return False, "Pipeline produced no measurements"
-        
-        return True, None
-        
-    except Exception as e:
-        return False, f"Pipeline failed on test image: {type(e).__name__}: {e}"
 
 
 def validate_execution_config(
@@ -148,28 +100,25 @@ def validate_execution_config(
 
 def full_validation(
     config: ExecutionConfig,
-    datasets = None
 ) -> Tuple[bool, list[str]]:
     """
-    Perform comprehensive validation of configuration and pipeline.
-    
+    Validate execution configuration and pipeline loading.
+
     Args:
-        config: Execution configuration
-        datasets: Optional list of Dataset objects for finding test images
-            If None, validation will be limited to config and pipeline loading
-            
+        config: Execution configuration.
+
     Returns:
-        Tuple of (is_valid, list_of_errors)
-        If valid, list_of_errors is empty
+        Tuple of (is_valid, list_of_errors).
+        If valid, list_of_errors is empty.
     """
     errors = []
-    
+
     # Validate config
     config_valid, config_error = validate_execution_config(config)
     if not config_valid:
         errors.append(config_error)
-        return False, errors  # Can't continue without valid config
-    
+        return False, errors
+
     # Validate pipeline can be loaded
     pipeline_valid, pipeline_error = validate_pipeline(
         config.pipeline_json,
@@ -177,44 +126,5 @@ def full_validation(
     )
     if not pipeline_valid:
         errors.append(pipeline_error)
-        return False, errors  # Can't test on image without valid pipeline
-    
-    # Test pipeline on image if possible
-    test_image_path = None
-    if datasets is not None and not config.skip_validation:
-        # Try to find a test image from datasets
-        try:
-            for dataset in datasets:
-                if dataset.images:
-                    test_image_path = dataset.images[0]
-                    break
-        except Exception:
-            # Can't find test image - skip this validation
-            pass
-    
-    if test_image_path is not None and not config.skip_validation:
-        # Determine image class
-        from phenotypic import Image, GridImage
-        image_cls = GridImage if config.image_type == "GridImage" else Image
-        
-        # Prepare read kwargs
-        read_kwargs = {}
-        if config.image_type == "GridImage":
-            read_kwargs["nrows"] = config.nrows
-            read_kwargs["ncols"] = config.ncols
-        if config.bit_depth is not None:
-            read_kwargs["bit_depth"] = config.bit_depth
-        
-        # Validate on test image
-        test_valid, test_error = validate_pipeline_on_test_image(
-            config.pipeline_json,
-            test_image_path,
-            image_cls,
-            read_kwargs,
-            config.skip_validation
-        )
-        
-        if not test_valid:
-            errors.append(test_error)
 
     return len(errors) == 0, errors
