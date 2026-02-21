@@ -6,12 +6,19 @@ This module generates standalone bash scripts for autonomous SLURM execution.
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 from typing import Dict, List, Any
 import shlex
 
 from ._cli_types import Dataset, ExecutionConfig
 from ._cli_utils import get_python_command
+
+logger = logging.getLogger(__name__)
+
+# SBATCH directive names that are managed by script generators and must not
+# be overridden by user ``--slurm`` arguments.
+_RESERVED_SBATCH_KEYS = frozenset({"array", "output", "error", "job-name"})
 
 
 def generate_slurm_directives(
@@ -35,6 +42,9 @@ def generate_slurm_directives(
         - Time parameters (time, slurm_time) should be integers (minutes)
         - They are converted to HH:MM:SS format for SBATCH directives
         - Memory parameters (mem_gb) are converted to SLURM format
+        - Reserved keys (array, output, error, job-name) are silently
+          skipped with a warning log because they are managed by the
+          script generators.
     """
     directives = [f"#SBATCH --job-name={job_name}"]
 
@@ -46,6 +56,16 @@ def generate_slurm_directives(
     for key, value in slurm_args.items():
         # Convert CLI-style keys to SBATCH directive names
         directive_name = key.replace("slurm_", "").replace("_", "-")
+
+        # Skip reserved keys that are managed by the script generators
+        if directive_name in _RESERVED_SBATCH_KEYS:
+            logger.warning(
+                "Ignoring user --slurm %s=%s: '%s' is managed by PhenoTypic",
+                key,
+                value,
+                directive_name,
+            )
+            continue
 
         # Handle special cases
         if key in ("time", "slurm_time"):

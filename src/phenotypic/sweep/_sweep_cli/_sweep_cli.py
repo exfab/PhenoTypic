@@ -457,7 +457,7 @@ def sweep_cli(
                     image_type=image_type_lit,
                     read_kwargs=read_kwargs,
                     output_manager=output_manager,
-                    manifest_path=manifest_json,
+                    manifest_path=dest_manifest,
                     slurm_args=slurm_args_dict,
                     wait=wait,
                     verbose=verbose,

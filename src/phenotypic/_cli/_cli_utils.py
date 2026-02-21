@@ -117,7 +117,7 @@ def parse_slurm_args(slurm_args: "Sequence[str]") -> dict:
     return parsed
 
 
-def get_python_command() -> Tuple[List[str], str]:
+def get_python_command(for_slurm: bool = False) -> Tuple[List[str], str]:
     """
     Detect available Python runner command for SLURM scripts.
 
@@ -125,6 +125,12 @@ def get_python_command() -> Tuple[List[str], str]:
     for invoking Python in generated SLURM scripts. When uv is available,
     uses 'uv run python' to ensure the correct virtual environment and
     project context are used on worker nodes.
+
+    Args:
+        for_slurm: When True, return the direct venv Python interpreter
+            path (``sys.executable``) instead of ``uv run python``.
+            This avoids ``uv`` resolution overhead on SLURM worker nodes
+            where the venv is already activated.
 
     Returns:
         Tuple of (command_parts, description) where:
@@ -136,6 +142,10 @@ def get_python_command() -> Tuple[List[str], str]:
         >>> len(cmd_parts) >= 1
         True
     """
+    if for_slurm:
+        import sys
+
+        return ([sys.executable], f"{sys.executable} (direct venv)")
     if shutil.which("uv"):
         return (["uv", "run", "python"], "uv run python (project environment)")
     return (["python"], "python (system)")

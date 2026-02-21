@@ -116,7 +116,7 @@ def generate_array_job_script(
     event_log = output_dir / "processing_events.log"
 
     # Get Python command (uses uv run python if available)
-    python_cmd, _ = get_python_command()
+    python_cmd, _ = get_python_command(for_slurm=True)
 
     cmd_parts = [
         *python_cmd,

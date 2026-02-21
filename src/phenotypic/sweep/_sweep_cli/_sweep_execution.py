@@ -6,6 +6,7 @@ of parameter sweep processing.
 
 from __future__ import annotations
 
+import math
 import re
 import subprocess
 import time
@@ -204,19 +205,39 @@ class SLURMSweepStrategy(SweepExecutionStrategy):
         )
 
         # Generate chunked array job scripts (respects MaxArraySize)
-        from phenotypic._cli._cli_slurm_config import get_slurm_array_limit
+        from phenotypic._cli._cli_slurm_config import (
+            get_slurm_array_limit,
+            get_slurm_max_submit_jobs,
+        )
         from ._sweep_slurm_scripts import generate_sweep_array_scripts_chunked
 
         num_pipelines = len(self.pipeline_json_strs)
         total_tasks = total_images * num_pipelines
         array_limit = get_slurm_array_limit()
+        max_submit = get_slurm_max_submit_jobs() or 50
         pipeline_names = list(self.pipeline_json_strs.keys())
+
+        # Auto-calculate batch size so chunks fit within max_submit
+        max_schedulable = array_limit * max_submit
+        batch_size = max(1, math.ceil(total_tasks / max_schedulable))
+        effective_tasks = math.ceil(total_tasks / batch_size)
+        num_chunks = math.ceil(effective_tasks / array_limit)
 
         console.print(
             f"  SLURM array limit: {array_limit}\n"
-            f"  Array scripts needed: "
-            f"{(total_tasks + array_limit - 1) // array_limit}"
+            f"  MaxSubmitJobs: {max_submit}\n"
+            f"  Batch size: {batch_size} pair(s)/task\n"
+            f"  Effective array tasks: {effective_tasks}\n"
+            f"  Array scripts needed: {num_chunks}"
         )
+
+        # Warn if chunks still exceed the submission limit
+        if num_chunks > max_submit:
+            console.print(
+                f"  [yellow]Warning: {num_chunks} chunks needed but "
+                f"MaxSubmitJobs={max_submit}. Some submissions may be "
+                f"rejected by the scheduler.[/yellow]"
+            )
 
         script_paths = generate_sweep_array_scripts_chunked(
             image_paths=image_paths,
@@ -228,15 +249,49 @@ class SLURMSweepStrategy(SweepExecutionStrategy):
             slurm_args=self.slurm_args,
             array_limit=array_limit,
             verbose=self.verbose,
+            batch_size=batch_size,
         )
 
-        # Submit all chunk scripts independently
+        # Submit chunk scripts with dependency chain
         job_ids: List[str] = []
-        for script_path in script_paths:
-            console.print(f"\n  Script: {script_path}")
-            job_id = self._submit(script_path)
-            job_ids.append(job_id)
-            console.print(f"  [green]Submitted job {job_id}[/green]")
+        failed_submissions: List[str] = []
+        prev_job_id: Optional[str] = None
+
+        for idx, script_path in enumerate(script_paths):
+            dep_str = f", depends on {prev_job_id}" if prev_job_id else ""
+            console.print(
+                f"  [{idx + 1}/{len(script_paths)}] {script_path.name}{dep_str}",
+                end="",
+            )
+
+            try:
+                job_id = self._submit(
+                    script_path, dependency_job_id=prev_job_id
+                )
+                job_ids.append(job_id)
+                prev_job_id = job_id
+                console.print(f" -> [green]Job {job_id}[/green]")
+            except RuntimeError as e:
+                console.print(f" -> [red]Failed: {e}[/red]")
+                failed_submissions.append(str(script_path))
+                # Don't update prev_job_id — next chunk can still try
+
+        if failed_submissions:
+            console.print(
+                f"\n  [yellow]Warning: {len(failed_submissions)} chunk(s) "
+                f"failed to submit[/yellow]"
+            )
+
+        if not job_ids:
+            raise RuntimeError(
+                "No SLURM jobs were submitted successfully. "
+                "Check cluster configuration and sbatch availability."
+            )
+
+        console.print(
+            f"\n  [green]Submitted {len(job_ids)} job(s) "
+            f"with dependency chain[/green]"
+        )
 
         if self.wait:
             console.print("\nMonitoring progress (Ctrl+C to detach)...")
@@ -257,11 +312,33 @@ class SLURMSweepStrategy(SweepExecutionStrategy):
             "job_ids": job_ids,
         }
 
-    def _submit(self, script_path: Path) -> str:
-        """Submit array job via sbatch."""
+    def _submit(
+        self,
+        script_path: Path,
+        dependency_job_id: Optional[str] = None,
+    ) -> str:
+        """Submit array job via sbatch with optional dependency.
+
+        Args:
+            script_path: Path to the SLURM batch script.
+            dependency_job_id: When set, adds
+                ``--dependency=afterany:<id>`` so this chunk only starts
+                after the previous one finishes.
+
+        Returns:
+            SLURM job ID string.
+
+        Raises:
+            RuntimeError: If sbatch is unavailable or submission fails.
+        """
+        cmd = ["sbatch"]
+        if dependency_job_id:
+            cmd.extend(["--dependency", f"afterany:{dependency_job_id}"])
+        cmd.append(str(script_path))
+
         try:
             result = subprocess.run(
-                ["sbatch", str(script_path)],
+                cmd,
                 capture_output=True,
                 text=True,
                 check=True,
@@ -271,8 +348,12 @@ class SLURMSweepStrategy(SweepExecutionStrategy):
             raise RuntimeError(
                 "sbatch not found. SLURM not available. Use --force-local."
             )
+        except subprocess.TimeoutExpired:
+            raise RuntimeError(
+                f"sbatch submission timed out for script: {script_path.name}"
+            )
         except subprocess.CalledProcessError as e:
-            raise RuntimeError(f"sbatch failed:\n{e.stderr}")
+            raise RuntimeError(f"sbatch failed for {script_path.name}:\n{e.stderr}")
 
         match = re.search(r"Submitted batch job (\d+)", result.stdout)
         if not match:
