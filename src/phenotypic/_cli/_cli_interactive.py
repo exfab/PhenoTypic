@@ -233,7 +233,7 @@ def execute_dry_run(
     # Validation
     click.echo("\nPipeline Validation:")
     if not config.skip_validation:
-        is_valid, errors = full_validation(config, datasets)
+        is_valid, errors = full_validation(config)
         if is_valid:
             click.echo("  ✓ Configuration validation passed")
         else:
