@@ -270,6 +270,7 @@ def _format_duration(seconds: float) -> str:
 @click.option("--dry-run", is_flag=True, help="Preview without executing.")
 @click.option("--skip-validation", is_flag=True, help="Skip pipeline validation.")
 @click.option("-v", "--verbose", is_flag=True, help="Log per-operation pipeline steps to stderr.")
+@click.option("--save-intermediates", is_flag=True, help="Save intermediate image state after each pipeline operation as HDF5.")
 def sweep_cli(
         manifest_json: Path,
         input_dir: Path,
@@ -286,6 +287,7 @@ def sweep_cli(
         dry_run: bool,
         skip_validation: bool,
         verbose: bool,
+        save_intermediates: bool,
 ):
     """Execute a parameter sweep on a flat image directory.
 
@@ -461,6 +463,7 @@ def sweep_cli(
                     slurm_args=slurm_args_dict,
                     wait=wait,
                     verbose=verbose,
+                    save_intermediates=save_intermediates,
             )
         else:
             strategy = LocalSweepStrategy(
@@ -470,6 +473,7 @@ def sweep_cli(
                     output_manager=output_manager,
                     n_jobs=n_jobs,
                     event_log=event_log,
+                    save_intermediates=save_intermediates,
             )
 
         results = strategy.execute(image_paths, output_dir)

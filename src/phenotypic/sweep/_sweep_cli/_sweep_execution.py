@@ -70,10 +70,12 @@ class LocalSweepStrategy(SweepExecutionStrategy):
         output_manager: SweepOutputManager,
         n_jobs: int = -1,
         event_log: Optional[Path] = None,
+        save_intermediates: bool = False,
     ):
         super().__init__(pipeline_json_strs, image_type, read_kwargs, output_manager)
         self.n_jobs = n_jobs
         self.event_log = event_log
+        self.save_intermediates = save_intermediates
 
     def execute(
         self,
@@ -109,6 +111,7 @@ class LocalSweepStrategy(SweepExecutionStrategy):
                 read_kwargs=self.read_kwargs,
                 output_manager=self.output_manager,
                 n_jobs=self.n_jobs,
+                save_intermediates=self.save_intermediates,
             )
 
             img_ok = sum(1 for _, ok, _ in results if ok)
@@ -178,12 +181,14 @@ class SLURMSweepStrategy(SweepExecutionStrategy):
         slurm_args: Dict[str, Any],
         wait: bool = False,
         verbose: bool = False,
+        save_intermediates: bool = False,
     ):
         super().__init__(pipeline_json_strs, image_type, read_kwargs, output_manager)
         self.manifest_path = manifest_path
         self.slurm_args = slurm_args
         self.wait = wait
         self.verbose = verbose
+        self.save_intermediates = save_intermediates
 
     def execute(
         self,
@@ -250,6 +255,7 @@ class SLURMSweepStrategy(SweepExecutionStrategy):
             array_limit=array_limit,
             verbose=self.verbose,
             batch_size=batch_size,
+            save_intermediates=self.save_intermediates,
         )
 
         # Submit chunk scripts with dependency chain

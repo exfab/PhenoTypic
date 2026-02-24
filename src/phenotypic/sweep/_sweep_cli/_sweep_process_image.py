@@ -37,6 +37,7 @@ def _run_single_pipeline(
     image_type: Literal["Image", "GridImage"],
     read_kwargs: Dict[str, Any],
     output_manager: SweepOutputManager,
+    save_intermediates: bool = False,
 ) -> Tuple[str, bool, str]:
     """Run a single pipeline on an image.
 
@@ -51,6 +52,8 @@ def _run_single_pipeline(
         image_type: ``"Image"`` or ``"GridImage"``.
         read_kwargs: Kwargs for ``imread`` (nrows, ncols, etc.).
         output_manager: Sweep output manager instance.
+        save_intermediates: When True, save intermediate image state
+            after each pipeline operation as HDF5.
 
     Returns:
         Tuple of ``(pipeline_name, success, error_message)``.
@@ -74,14 +77,28 @@ def _run_single_pipeline(
             image.set_detect_mode(detect_mode)
 
         # Execute pipeline
-        if pipeline._meas:
-            measurements = pipeline.apply_and_measure(image, inplace=True)
+        image_stem = image_path.stem
+        if save_intermediates:
+            intermediates_dir = (
+                output_manager._pipeline_dir(image_stem, pipeline_name)
+                / "intermediates"
+            )
+            intermediate_result = pipeline.apply_with_intermediates(
+                image, inplace=True, output_dir=intermediates_dir,
+            )
+            image = intermediate_result.image
+            if pipeline.get_meas():
+                measurements = pipeline.measure(image)
+            else:
+                measurements = None
         else:
-            pipeline.apply(image, inplace=True)
-            measurements = None
+            if pipeline.get_meas():
+                measurements = pipeline.apply_and_measure(image, inplace=True)
+            else:
+                pipeline.apply(image, inplace=True)
+                measurements = None
 
         # Save results — each save is independent and non-fatal
-        image_stem = image_path.stem
         if measurements is not None:
             output_manager.save_measurements(measurements, pipeline_name, image_stem)
         output_manager.save_image_hdf5(image, pipeline_name, image_stem)
@@ -124,6 +141,7 @@ def process_image_all_pipelines(
     read_kwargs: Dict[str, Any],
     output_manager: SweepOutputManager,
     n_jobs: int = -1,
+    save_intermediates: bool = False,
 ) -> List[Tuple[str, bool, str]]:
     """Process a single image through all pipelines in parallel.
 
@@ -137,6 +155,8 @@ def process_image_all_pipelines(
         read_kwargs: Kwargs for ``imread``.
         output_manager: Sweep output manager instance.
         n_jobs: Number of parallel jobs (``-1`` = all cores).
+        save_intermediates: When True, save intermediate image state
+            after each pipeline operation as HDF5.
 
     Returns:
         List of ``(pipeline_name, success, error_message)`` tuples.
@@ -151,6 +171,7 @@ def process_image_all_pipelines(
             image_type=image_type,
             read_kwargs=read_kwargs,
             output_manager=output_manager,
+            save_intermediates=save_intermediates,
         )
         for pipe_name, json_str in pipeline_json_strs.items()
     )
@@ -164,6 +185,7 @@ def process_image_all_pipelines_sequential(
     image_type: Literal["Image", "GridImage"],
     read_kwargs: Dict[str, Any],
     output_manager: SweepOutputManager,
+    save_intermediates: bool = False,
 ) -> List[Tuple[str, bool, str]]:
     """Process a single image through all pipelines sequentially.
 
@@ -176,6 +198,8 @@ def process_image_all_pipelines_sequential(
         image_type: ``"Image"`` or ``"GridImage"``.
         read_kwargs: Kwargs for ``imread``.
         output_manager: Sweep output manager instance.
+        save_intermediates: When True, save intermediate image state
+            after each pipeline operation as HDF5.
 
     Returns:
         List of ``(pipeline_name, success, error_message)`` tuples.
@@ -192,6 +216,7 @@ def process_image_all_pipelines_sequential(
             image_type=image_type,
             read_kwargs=read_kwargs,
             output_manager=output_manager,
+            save_intermediates=save_intermediates,
         )
         elapsed = time.monotonic() - t0
         status = "OK" if result[1] else "FAILED"
@@ -238,6 +263,10 @@ def process_image_all_pipelines_sequential(
     "-v", "--verbose/--no-verbose", default=True,
     help="Log per-operation pipeline steps to stderr (on by default).",
 )
+@click.option(
+    "--save-intermediates", is_flag=True, default=False,
+    help="Save intermediate image state after each pipeline operation.",
+)
 def sweep_worker_cli(
     manifest: Path,
     image: Path,
@@ -250,6 +279,7 @@ def sweep_worker_cli(
     event_log: Optional[Path],
     pipeline_name: Optional[str],
     verbose: bool,
+    save_intermediates: bool,
 ):
     """Process a single image through all sweep pipelines (SLURM worker)."""
     if verbose:
@@ -306,6 +336,7 @@ def sweep_worker_cli(
             image_type=image_type_literal,
             read_kwargs=read_kwargs,
             output_manager=output_manager,
+            save_intermediates=save_intermediates,
         )
 
         # Log results

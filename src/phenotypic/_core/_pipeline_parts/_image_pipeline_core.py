@@ -4,7 +4,8 @@ import importlib.util
 import logging
 import traceback
 import uuid
-from typing import TYPE_CHECKING, Union, Optional
+from pathlib import Path
+from typing import TYPE_CHECKING, Callable, Union, Optional, NamedTuple
 
 import numpy as np
 
@@ -23,6 +24,20 @@ from phenotypic.abc_ import MeasureFeatures, BaseOperation, ImageOperation
 from phenotypic.tools_.mixin import LazyWidgetMixin
 
 logger = logging.getLogger("ImagePipeline")
+
+
+class IntermediateResult(NamedTuple):
+    """Result of ``apply_with_intermediates``.
+
+    Attributes:
+        image: The final processed image (same type as the input).
+        intermediates: Dictionary mapping operation names to image snapshots
+            taken after each operation. Values are ``Image`` copies when
+            results are kept in memory, or ``None`` when saved to disk.
+    """
+
+    image: Union[GridImage, Image]
+    intermediates: Dict[str, Optional[Image]]
 
 
 class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
@@ -242,32 +257,18 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
 
         return result
 
-    def apply(
-            self, image: Image, inplace: bool = False, reset: Optional[bool] = None
-    ) -> Union[GridImage, Image]:
-        """
-        The class provides an abc_ to process and apply a series of operations on
-        an Image. The operations are maintained in a queue and executed sequentially
-        when applied to the given Image.
+    def _run_operations(
+        self,
+        img: Image,
+        on_op_complete: Optional[Callable[[int, str, Image], None]] = None,
+    ) -> None:
+        """Execute all queued operations on *img* in order.
 
         Args:
-            image (Image): The arr Image to be processed. The type `Image` refers to
-                an instance of the Image object to which transformations are applied.
-            inplace (bool, optional): A flag indicating whether to apply the
-                transformations directly on the provided Image (`True`) or create a
-                copy of the Image before performing transformations (`False`). Defaults
-                to `False`.
-            reset (bool, optional): Whether to reset the image before applying the pipeline.
-                If None (default), uses the pipeline's reset setting from __init__.
-                If explicitly set to True or False, overrides the pipeline setting.
+            img: The image to process (modified in place).
+            on_op_complete: Optional callback invoked after each successful
+                operation with ``(index, op_name, img)``.
         """
-        # Resolve reset: use explicit value if provided, otherwise use pipeline default
-        effective_reset = reset if reset is not None else self._reset
-
-        img = image if inplace else image.copy()
-        if effective_reset:
-            image.reset()
-
         # Reset operation times for new apply run if benchmarking is enabled
         if self._benchmark:
             self._operation_times = {}
@@ -278,13 +279,11 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
             if has_tqdm:
                 from tqdm import tqdm
 
-                # Create a tqdm instance without items to manually update it
                 total_ops = len(self._ops)
                 pbar = tqdm(
-                        total=total_ops, desc="Applying operations", file=sys.stdout
+                    total=total_ops, desc="Applying operations", file=sys.stdout
                 )
             else:
-                # If tqdm is not available, fall back to simple printing
                 print("Applying operations...")
         else:
             has_tqdm = False
@@ -315,36 +314,111 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
                     )
 
                 # Apply actual operation
-                # -----------------
                 operation.apply(img, **apply_params)
 
                 # Store execution time if benchmarking is enabled
                 if self._benchmark:
                     self._operation_times[key] = time.time() - start_time
 
-                    # Print execution time if verbose and benchmark are enabled
                     if self._verbose:
                         if has_tqdm:
                             pbar.set_postfix(time=f"{self._operation_times[key]:.4f}s")
                             pbar.update(1)
                         else:
                             print(
-                                    f"    Completed in {self._operation_times[key]:.4f} seconds"
+                                f"    Completed in {self._operation_times[key]:.4f} seconds"
                             )
+
+                if on_op_complete is not None:
+                    on_op_complete(i, key, img)
+
             except Exception:
                 if self._benchmark and self._verbose and has_tqdm:
                     pbar.close()
                 exc_type, exc_val, exc_tb = sys.exc_info()
-                # You can inspect or log:
                 traceback.print_tb(exc_tb)
-                # Re-raise later:
                 raise exc_val.with_traceback(exc_tb)
 
         # Close the progress bar if it exists
         if self._benchmark and self._verbose and has_tqdm:
             pbar.close()
 
+    def apply(
+            self, image: Image, inplace: bool = False, reset: Optional[bool] = None
+    ) -> Union[GridImage, Image]:
+        """
+        The class provides an abc_ to process and apply a series of operations on
+        an Image. The operations are maintained in a queue and executed sequentially
+        when applied to the given Image.
+
+        Args:
+            image (Image): The arr Image to be processed. The type `Image` refers to
+                an instance of the Image object to which transformations are applied.
+            inplace (bool, optional): A flag indicating whether to apply the
+                transformations directly on the provided Image (`True`) or create a
+                copy of the Image before performing transformations (`False`). Defaults
+                to `False`.
+            reset (bool, optional): Whether to reset the image before applying the pipeline.
+                If None (default), uses the pipeline's reset setting from __init__.
+                If explicitly set to True or False, overrides the pipeline setting.
+        """
+        effective_reset = reset if reset is not None else self._reset
+        img = image if inplace else image.copy()
+        if effective_reset:
+            img.reset()
+        self._run_operations(img)
         return img
+
+    def apply_with_intermediates(
+        self,
+        image: Image,
+        inplace: bool = False,
+        reset: Optional[bool] = None,
+        output_dir: Optional[Union[str, Path]] = None,
+    ) -> IntermediateResult:
+        """Apply the pipeline and capture a snapshot of the image after each operation.
+
+        Behaves identically to :meth:`apply` (respecting *inplace*, *reset*,
+        benchmark timing, and verbose/tqdm progress) but additionally records
+        the image state after every operation completes.
+
+        Args:
+            image: The input image to process.
+            inplace: If ``True`` the image is modified in place; otherwise a
+                copy is made first.  Defaults to ``False``.
+            reset: Whether to reset the image before applying operations.
+                ``None`` (default) uses the pipeline-level setting.
+            output_dir: Optional directory path.  When provided, each
+                intermediate image is persisted to an HDF5 file inside this
+                directory (created automatically) and the corresponding dict
+                value is set to ``None`` to conserve memory.  When ``None``,
+                intermediates are kept in memory as ``Image`` copies.
+
+        Returns:
+            IntermediateResult: A named tuple containing the final image and a
+            dictionary mapping operation names to intermediate snapshots (or
+            ``None`` when *output_dir* is used).
+        """
+        effective_reset = reset if reset is not None else self._reset
+        img = image if inplace else image.copy()
+        if effective_reset:
+            img.reset()
+
+        if output_dir is not None:
+            output_dir = Path(output_dir)
+            output_dir.mkdir(parents=True, exist_ok=True)
+
+        intermediates: Dict[str, Optional[Image]] = {}
+
+        def _capture(i: int, key: str, current: Image) -> None:
+            if output_dir is not None:
+                current.copy().save2hdf5(output_dir / f"{i:02d}_{key}.h5")
+                intermediates[key] = None
+            else:
+                intermediates[key] = current.copy()
+
+        self._run_operations(img, on_op_complete=_capture)
+        return IntermediateResult(image=img, intermediates=intermediates)
 
     def measure(self, image: Image, include_metadata=True) -> pd.DataFrame:
         """

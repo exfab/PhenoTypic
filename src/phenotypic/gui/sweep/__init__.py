@@ -13,6 +13,7 @@ Or use programmatically::
 from __future__ import annotations
 
 from ._sweep_data_model import (
+    IntermediateStep,
     PipelineConfig,
     SweepHDF5File,
     SweepOutputData,
@@ -26,6 +27,8 @@ __all__ = [
     "SweepOutputData",
     "PipelineConfig",
     "SweepHDF5File",
+    "IntermediateStep",
+    "StepSliderWidget",
 ]
 
 
@@ -39,4 +42,8 @@ def __getattr__(name: str):
         from ._napari_sweep_viewer import launch_sweep_viewer
 
         return launch_sweep_viewer
+    if name == "StepSliderWidget":
+        from ._step_slider_widget import StepSliderWidget
+
+        return StepSliderWidget
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

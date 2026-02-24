@@ -32,6 +32,15 @@ class SweepHDF5File:
     pipeline_name: str
 
 
+@dataclass(frozen=True)
+class IntermediateStep:
+    """An intermediate HDF5 file saved after a single pipeline operation."""
+
+    index: int              # 0, 1, 2, ...
+    operation_name: str     # "GaussianBlur"
+    h5_path: Path           # absolute path to HDF5
+
+
 @dataclass
 class PipelineConfig:
     """Parsed configuration for one pipeline from the sweep manifest."""
@@ -59,6 +68,10 @@ class SweepOutputData:
     )
     # [stem][pipeline] -> SweepHDF5File
     by_image: Dict[str, Dict[str, SweepHDF5File]] = field(
+        default_factory=dict,
+    )
+    # [stem][pipeline] -> sorted list of IntermediateStep
+    intermediates: Dict[str, Dict[str, List[IntermediateStep]]] = field(
         default_factory=dict,
     )
 
@@ -124,6 +137,14 @@ class SweepOutputScanner:
                 f.image_stem, {},
             )[f.pipeline_name] = f
 
+        # Scan for intermediate HDF5 files
+        if results_dir.is_dir():
+            intermediates = SweepOutputScanner._scan_intermediates(
+                results_dir,
+            )
+        else:
+            intermediates = {}
+
         logger.debug(
             "Scan complete: %d HDF5 files, %d pipelines, %d stems",
             len(hdf5_files), len(pipeline_names),
@@ -139,6 +160,7 @@ class SweepOutputScanner:
             image_stems=image_stems,
             by_pipeline=by_pipeline,
             by_image=by_image,
+            intermediates=intermediates,
         )
 
     @staticmethod
@@ -284,3 +306,81 @@ class SweepOutputScanner:
                 )
 
         return files
+
+    @staticmethod
+    def _scan_intermediates(
+        results_dir: Path,
+    ) -> Dict[str, Dict[str, List[IntermediateStep]]]:
+        """Scan for intermediate HDF5 files in ``intermediates/`` subdirectories.
+
+        Expected structure::
+
+            results/<image_stem>/<pipeline>/intermediates/00_OpName.h5
+
+        Args:
+            results_dir: The ``results/`` directory inside the sweep output.
+
+        Returns:
+            Nested dict: ``intermediates[image_stem][pipeline_name]`` -> sorted
+            list of :class:`IntermediateStep`.
+        """
+        intermediates: Dict[str, Dict[str, List[IntermediateStep]]] = {}
+
+        for stem_dir in sorted(results_dir.iterdir()):
+            if not stem_dir.is_dir():
+                continue
+            image_stem = stem_dir.name
+
+            for pipe_dir in sorted(stem_dir.iterdir()):
+                if not pipe_dir.is_dir():
+                    continue
+                pipeline_name = pipe_dir.name
+
+                inter_dir = pipe_dir / "intermediates"
+                if not inter_dir.is_dir():
+                    continue
+
+                steps: List[IntermediateStep] = []
+                for h5_path in sorted(inter_dir.iterdir()):
+                    if not h5_path.is_file():
+                        continue
+                    if h5_path.suffix.lower() not in _HDF5_EXTENSIONS:
+                        continue
+
+                    # Parse filename: "00_GaussianBlur.h5" -> (0, "GaussianBlur")
+                    name_no_ext = h5_path.stem
+                    parts = name_no_ext.split("_", 1)
+                    if len(parts) != 2:
+                        logger.warning(
+                            "Skipping unparseable intermediate: %s",
+                            h5_path.name,
+                        )
+                        continue
+                    try:
+                        idx = int(parts[0])
+                    except ValueError:
+                        logger.warning(
+                            "Skipping intermediate with non-integer"
+                            " index: %s",
+                            h5_path.name,
+                        )
+                        continue
+                    op_name = parts[1]
+
+                    steps.append(IntermediateStep(
+                        index=idx,
+                        operation_name=op_name,
+                        h5_path=h5_path,
+                    ))
+
+                if steps:
+                    steps.sort(key=lambda s: s.index)
+                    intermediates.setdefault(
+                        image_stem, {},
+                    )[pipeline_name] = steps
+                    logger.debug(
+                        "Found %d intermediates for %s/%s",
+                        len(steps), image_stem, pipeline_name,
+                    )
+
+        return intermediates

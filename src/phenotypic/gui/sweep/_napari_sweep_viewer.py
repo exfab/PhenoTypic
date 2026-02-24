@@ -9,7 +9,7 @@ from typing import List, Optional
 
 import numpy as np
 
-from ._sweep_data_model import SweepOutputData, SweepOutputScanner
+from ._sweep_data_model import IntermediateStep, SweepOutputData, SweepOutputScanner
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +29,9 @@ class NapariSweepViewer:
         self._data: Optional[SweepOutputData] = None
         self._viewer = None
         self._current_layer_names: List[str] = []
+        self._active_pipeline: Optional[str] = None
+        self._active_stem: Optional[str] = None
+        self._active_steps: List[IntermediateStep] = []
 
     def launch(self):
         """Scan the sweep directory, create the napari viewer, and dock widgets.
@@ -49,11 +52,13 @@ class NapariSweepViewer:
         from ._file_tree_widget import SweepFileTreeWidget
         from ._grouped_layer_widget import GroupedLayerWidget
         from ._pipeline_info_widget import PipelineInfoWidget
+        from ._step_slider_widget import StepSliderWidget
 
         # Build widgets
         self._tree = SweepFileTreeWidget(self._data)
         self._info = PipelineInfoWidget(self._data.pipeline_configs)
         self._layer_tree = GroupedLayerWidget(self._viewer)
+        self._step_slider = StepSliderWidget()
 
         # Dock them
         self._viewer.window.add_dock_widget(
@@ -65,6 +70,9 @@ class NapariSweepViewer:
         self._viewer.window.add_dock_widget(
             self._layer_tree, name="Layers", area="left",
         )
+        self._viewer.window.add_dock_widget(
+            self._step_slider, name="Step Slider", area="bottom",
+        )
 
         # Wire signals
         self._tree.pipeline_selected.connect(self._info.set_pipeline)
@@ -72,6 +80,7 @@ class NapariSweepViewer:
         self._tree.stem_compare_requested.connect(
             self._on_stem_compare,
         )
+        self._step_slider.step_changed.connect(self._on_step_changed)
 
         self._tabify_native_layer_docks()
 
@@ -91,40 +100,31 @@ class NapariSweepViewer:
         logger.debug(
             "_on_stem_selected: %d entries", len(entries),
         )
-        self._clear_current_layers()
-        loaded_entries: list[dict] = []
-
-        for entry in entries:
-            layers = self._load_hdf5_layers(
-                entry["h5_path"],
-                entry["pipeline"],
-                entry["image_stem"],
-            )
-            for layer in layers:
-                if layer["is_labels"]:
-                    self._viewer.add_labels(
-                        layer["data"].astype(np.intp),
-                        name=layer["name"],
-                    )
-                else:
-                    self._viewer.add_image(
-                        layer["data"], name=layer["name"],
-                    )
-                self._current_layer_names.append(layer["name"])
-                loaded_entries.append(
-                    {
-                        "pipeline": layer["pipeline"],
-                        "component": layer["component"],
-                        "image_stem": layer["image_stem"],
-                    }
-                )
-
-        self._viewer.grid.enabled = False
+        loaded_entries = self._replace_layers(entries)
 
         if loaded_entries and entries:
             self._info.set_pipeline(entries[0]["pipeline"])
 
-        self._layer_tree.set_layers(loaded_entries)
+        # Configure step slider for intermediates
+        if entries:
+            stem = entries[0]["image_stem"]
+            pipeline = entries[0]["pipeline"]
+            self._active_stem = stem
+            self._active_pipeline = pipeline
+            steps = (
+                self._data.intermediates
+                .get(stem, {})
+                .get(pipeline, [])
+            )
+            if steps:
+                self._active_steps = list(steps)
+                self._step_slider.set_steps(steps)
+            else:
+                self._active_steps = []
+                self._step_slider.clear()
+        else:
+            self._active_steps = []
+            self._step_slider.clear()
 
     def _on_stem_compare(self, entries: List[dict]) -> None:
         """Accumulate HDF5 layers for compare mode (no clearing).
@@ -171,9 +171,97 @@ class NapariSweepViewer:
 
         self._layer_tree.add_layers(loaded_entries)
 
+        # Update step slider for most-recently-selected pipeline
+        if entries:
+            stem = entries[0]["image_stem"]
+            pipeline = entries[0]["pipeline"]
+            self._active_stem = stem
+            self._active_pipeline = pipeline
+            steps = (
+                self._data.intermediates
+                .get(stem, {})
+                .get(pipeline, [])
+            )
+            if steps:
+                self._active_steps = list(steps)
+                self._step_slider.set_steps(steps)
+            else:
+                self._active_steps = []
+                self._step_slider.clear()
+
     # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------
+
+    def _on_step_changed(self, step_index: int) -> None:
+        """Reload layers from the selected intermediate or final HDF5.
+
+        Args:
+            step_index: Index into ``_active_steps`` for intermediates,
+                or ``len(_active_steps)`` for the final output.
+        """
+        if not self._active_pipeline or not self._active_stem:
+            return
+
+        pipeline = self._active_pipeline
+        stem = self._active_stem
+
+        if step_index >= len(self._active_steps):
+            # Final output — load from main HDF5
+            hdf5_entry = (
+                self._data.by_image
+                .get(stem, {})
+                .get(pipeline)
+            )
+            if hdf5_entry is None:
+                return
+            h5_path = str(hdf5_entry.path)
+        else:
+            # Intermediate step
+            h5_path = str(self._active_steps[step_index].h5_path)
+
+        self._replace_layers([
+            {"h5_path": h5_path, "pipeline": pipeline, "image_stem": stem},
+        ])
+
+    def _replace_layers(self, entries: List[dict]) -> List[dict]:
+        """Clear current layers and load new ones from HDF5 entries.
+
+        Args:
+            entries: List of dicts with ``h5_path``, ``pipeline``,
+                and ``image_stem`` keys.
+
+        Returns:
+            List of loaded entry dicts for downstream use.
+        """
+        self._clear_current_layers()
+        loaded_entries: list[dict] = []
+
+        for entry in entries:
+            layers = self._load_hdf5_layers(
+                entry["h5_path"], entry["pipeline"], entry["image_stem"],
+            )
+            for layer in layers:
+                if layer["is_labels"]:
+                    self._viewer.add_labels(
+                        layer["data"].astype(np.intp), name=layer["name"],
+                    )
+                else:
+                    self._viewer.add_image(
+                        layer["data"], name=layer["name"],
+                    )
+                self._current_layer_names.append(layer["name"])
+                loaded_entries.append(
+                    {
+                        "pipeline": layer["pipeline"],
+                        "component": layer["component"],
+                        "image_stem": layer["image_stem"],
+                    }
+                )
+
+        self._viewer.grid.enabled = False
+        self._layer_tree.set_layers(loaded_entries)
+        return loaded_entries
 
     def _load_hdf5_layers(
         self,

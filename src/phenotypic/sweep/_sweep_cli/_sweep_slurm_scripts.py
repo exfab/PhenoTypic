@@ -23,6 +23,7 @@ def _build_worker_command(
     image_type: str,
     read_kwargs: Dict[str, Any],
     verbose: bool = False,
+    save_intermediates: bool = False,
 ) -> str:
     """Build the worker CLI command string (without image/pipeline args).
 
@@ -33,6 +34,8 @@ def _build_worker_command(
         read_kwargs: Image read kwargs (nrows, ncols, etc.).
         verbose: When True, append ``--verbose`` to enable per-operation
             debug logging in the worker process.
+        save_intermediates: When True, append ``--save-intermediates``
+            to save intermediate image state after each pipeline operation.
 
     Returns:
         Command string with ``${CURRENT_IMAGE}`` and ``${CURRENT_PIPELINE}``
@@ -76,6 +79,9 @@ def _build_worker_command(
     if verbose:
         cmd_parts.append("--verbose")
 
+    if save_intermediates:
+        cmd_parts.append("--save-intermediates")
+
     return " \\\n    ".join(cmd_parts)
 
 
@@ -92,6 +98,7 @@ def generate_sweep_array_script(
     script_name: str = "sweep_array_job.sh",
     verbose: bool = False,
     batch_size: int = 1,
+    save_intermediates: bool = False,
 ) -> Path:
     """Generate a SLURM array job script for sweep processing.
 
@@ -115,6 +122,9 @@ def generate_sweep_array_script(
             sequentially by each array task.  When ``1`` (default), each
             array task processes exactly one pair — identical to the
             original un-batched behavior.
+        save_intermediates: When True, pass ``--save-intermediates``
+            to the worker CLI to save intermediate image state after
+            each pipeline operation.
 
     Returns:
         Path to the generated script.
@@ -169,6 +179,7 @@ def generate_sweep_array_script(
         image_type=image_type,
         read_kwargs=read_kwargs,
         verbose=verbose,
+        save_intermediates=save_intermediates,
     )
 
     # Offset section (only included for chunked scripts)
@@ -334,6 +345,7 @@ def generate_sweep_array_scripts_chunked(
     array_limit: int,
     verbose: bool = False,
     batch_size: int = 1,
+    save_intermediates: bool = False,
 ) -> List[Path]:
     """Generate chunked SLURM array scripts for large sweeps.
 
@@ -353,6 +365,9 @@ def generate_sweep_array_scripts_chunked(
         array_limit: Maximum SLURM array size (from ``get_slurm_array_limit``).
         verbose: When True, pass ``--verbose`` to the worker CLI.
         batch_size: (image, pipeline) pairs per array task.
+        save_intermediates: When True, pass ``--save-intermediates``
+            to the worker CLI to save intermediate image state after
+            each pipeline operation.
 
     Returns:
         List of paths to generated scripts (one per chunk).
@@ -377,6 +392,7 @@ def generate_sweep_array_scripts_chunked(
             script_name="sweep_array_job.sh",
             verbose=verbose,
             batch_size=batch_size,
+            save_intermediates=save_intermediates,
         )
         return [path]
 
@@ -397,6 +413,7 @@ def generate_sweep_array_scripts_chunked(
             script_name=script_name,
             verbose=verbose,
             batch_size=batch_size,
+            save_intermediates=save_intermediates,
         )
         script_paths.append(path)
 
